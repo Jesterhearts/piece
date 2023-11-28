@@ -1,4 +1,4 @@
-name: Counterspell
+name: Annul
 cost:
   mana:
     - Blue
@@ -7,6 +7,9 @@ oracle_text: Counter target spell.
 effects:
   - !CounterSpell
     target: !Spell
+      types:
+        - !Artifact
+        - !Enchantment
 targets:
   - !Spells
 ty: !Instant

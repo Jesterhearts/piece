@@ -1,5 +1,4 @@
 use std::{
-    cell::RefCell,
     collections::{BTreeSet, HashSet},
     rc::Rc,
 };
@@ -9,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     activated_ability,
     battlefield::Battlefield,
-    mana::{Cost, Mana},
-    player::Player,
+    mana::{Cost, ManaGain},
+    player::{Player, PlayerRef},
     stack::{ActiveTarget, EntryType, Stack},
 };
 
@@ -24,16 +23,18 @@ pub enum Color {
     Colorless,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone, Default)]
 pub enum Controller {
     You,
     Opponent,
+    #[default]
     Any,
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
 pub enum Target {
     Spell {
+        #[serde(default)]
         controller: Controller,
         #[serde(default)]
         types: Vec<Type>,
@@ -51,7 +52,9 @@ pub enum Effect {
         target: Target,
     },
     CannotBeCountered,
-    GainMana(Vec<Mana>),
+    GainMana {
+        mana: ManaGain,
+    },
     ModifyBasePT {
         targets: Vec<Target>,
         base_power: i32,
@@ -85,9 +88,23 @@ pub enum Type {
     Enchantment,
     Battle,
 }
+impl Type {
+    fn is_permanent(&self) -> bool {
+        match self {
+            Type::BasicLand(_)
+            | Type::Land { .. }
+            | Type::Creature
+            | Type::Artifact
+            | Type::Enchantment
+            | Type::Battle => true,
+            Type::Sorcery | Type::Instant => false,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone, PartialOrd, Ord)]
 pub enum Subtype {
+    Bear,
     Elf,
     Shaman,
 }
@@ -104,6 +121,8 @@ pub struct Card {
     #[serde(default)]
     pub oracle_text: String,
     #[serde(default)]
+    pub flavor_text: String,
+    #[serde(default)]
     pub effects: HashSet<Effect>,
     #[serde(default)]
     pub abilities: HashSet<Ability>,
@@ -112,6 +131,8 @@ pub struct Card {
     pub subtypes: HashSet<Subtype>,
     #[serde(default)]
     pub targets: HashSet<Targets>,
+    pub power: Option<usize>,
+    pub toughness: Option<usize>,
 }
 
 impl Card {
@@ -239,17 +260,17 @@ impl Card {
         }
 
         for effect in battlefield.effects.iter() {
-            match effect {
+            match &effect.ability {
                 Ability::GreenCannotBeCountered { controller } => {
                     if self.color().contains(&Color::Green) {
                         match controller {
                             Controller::You => {
-                                if caster.id != this_controller.id {
+                                if effect.controller == *this_controller {
                                     return false;
                                 }
                             }
                             Controller::Opponent => {
-                                if caster.id == this_controller.id {
+                                if effect.controller != *this_controller {
                                     return false;
                                 }
                             }
@@ -272,11 +293,15 @@ impl Card {
     pub fn subtypes_match(&self, subtypes: &[Subtype]) -> bool {
         subtypes.iter().all(|ty| self.subtypes.contains(ty))
     }
+
+    pub fn is_permanent(&self) -> bool {
+        self.ty.is_permanent()
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PlayedCard {
     pub card: Rc<Card>,
-    pub controller: Rc<RefCell<Player>>,
-    pub owner: Rc<RefCell<Player>>,
+    pub controller: PlayerRef,
+    pub owner: PlayerRef,
 }

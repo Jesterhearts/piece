@@ -5,5 +5,6 @@ abilities:
     cost:
       tap: true
     effect: !GainMana
-      - !White
+      mana: !Specific
+        - !White
 ty: !BasicLand Plains

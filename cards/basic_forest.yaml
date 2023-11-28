@@ -5,5 +5,6 @@ abilities:
     cost:
       tap: true
     effect: !GainMana
-      - !Green
+      mana: !Specific
+        - !Green
 ty: !BasicLand Forest

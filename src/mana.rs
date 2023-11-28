@@ -2,6 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::card::Color;
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
+pub enum ManaGain {
+    Specific(Vec<Mana>),
+    Choice(Vec<Vec<Mana>>),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Hash)]
 pub enum Mana {
     White,

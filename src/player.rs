@@ -1,4 +1,6 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
+
+use derive_more::Deref;
 
 use crate::{
     battlefield::Battlefield,
@@ -89,6 +91,21 @@ impl ManaPool {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Deref)]
+pub struct PlayerRef(Rc<RefCell<Player>>);
+
+impl std::hash::Hash for PlayerRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.borrow().hash(state);
+    }
+}
+
+impl PartialEq<Player> for PlayerRef {
+    fn eq(&self, other: &Player) -> bool {
+        &*self.borrow() == other
+    }
+}
+
 #[derive(Debug)]
 pub struct Player {
     pub lands_per_turn: usize,
@@ -102,9 +119,23 @@ pub struct Player {
     pub deck: Deck,
 }
 
+impl std::hash::Hash for Player {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl PartialEq for Player {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Player {}
+
 impl Player {
-    pub fn new(deck: Deck, id: usize) -> Self {
-        Self {
+    pub fn new_ref(deck: Deck, id: usize) -> PlayerRef {
+        PlayerRef(Rc::new(RefCell::new(Self {
             lands_per_turn: 1,
             hexproof: false,
             lands_played: 0,
@@ -112,7 +143,7 @@ impl Player {
             hand: Default::default(),
             id,
             deck,
-        }
+        })))
     }
 
     pub fn draw_initial_hand(&mut self) {

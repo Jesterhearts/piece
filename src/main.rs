@@ -1,6 +1,9 @@
 #![allow(clippy::single_match)]
 
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
+
+use anyhow::{anyhow, Context};
+use include_dir::{include_dir, Dir};
 
 use crate::{
     battlefield::Battlefield,
@@ -19,13 +22,25 @@ pub mod mana;
 pub mod player;
 pub mod stack;
 
-fn main() -> anyhow::Result<()> {
+static CARD_DEFINITIONS: Dir = include_dir!("cards");
+
+fn load_cards() -> anyhow::Result<HashMap<String, Rc<Card>>> {
     let mut cards: HashMap<String, Rc<Card>> = Default::default();
-    for card in std::fs::read_dir("cards/").unwrap() {
-        let card = dbg!(std::fs::File::open(card?.path())?);
-        let card: Rc<Card> = Rc::new(serde_yaml::from_reader(card)?);
+    for card in CARD_DEFINITIONS.entries().iter() {
+        let card = card
+            .as_file()
+            .ok_or_else(|| anyhow!("Non-file entry in cards directory"))?;
+        let card: Rc<Card> = Rc::new(
+            serde_yaml::from_slice(card.contents())
+                .with_context(|| format!("Unpacking file: {}", card.path().display()))?,
+        );
         cards.insert(card.name.clone(), card);
     }
+    Ok(cards)
+}
+
+fn main() -> anyhow::Result<()> {
+    let cards = load_cards()?;
     dbg!(&cards);
 
     let mut stack = Stack::default();
@@ -41,7 +56,7 @@ fn main() -> anyhow::Result<()> {
         cards.get("Forest").cloned().unwrap(),
         cards.get("Forest").cloned().unwrap(),
     ];
-    let player = Rc::new(RefCell::new(Player::new(Deck::new(deck), 0)));
+    let player = Player::new_ref(Deck::new(deck), 0);
     player.borrow_mut().draw_initial_hand();
 
     let played = dbg!(player.borrow_mut().play_card(0, &stack, &battlefield, None));
