@@ -1,0 +1,9 @@
+name: Swamp
+cost:
+abilities:
+  - !Activated
+    cost:
+      tap: true
+    effect: !GainMana
+      - !Black
+ty: !BasicLand Swamp

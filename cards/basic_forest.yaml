@@ -1,0 +1,9 @@
+name: Forest
+cost:
+abilities:
+  - !Activated
+    cost:
+      tap: true
+    effect: !GainMana
+      - !Green
+ty: !BasicLand Forest

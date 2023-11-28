@@ -1,0 +1,9 @@
+name: Plains
+cost:
+abilities:
+  - !Activated
+    cost:
+      tap: true
+    effect: !GainMana
+      - !White
+ty: !BasicLand Plains

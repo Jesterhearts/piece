@@ -1,0 +1,9 @@
+name: Island
+cost:
+abilities:
+  - !Activated
+    cost:
+      tap: true
+    effect: !GainMana
+      - !Blue
+ty: !BasicLand Island

@@ -1,0 +1,9 @@
+name: Mountain
+cost:
+abilities:
+  - !Activated
+    cost:
+      tap: true
+    effect: !GainMana
+      - !Red
+ty: !BasicLand Mountain

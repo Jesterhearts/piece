@@ -1,0 +1,13 @@
+name: Counterspell
+cost:
+  mana:
+    - Blue
+    - Blue
+oracle_text: Counter target spell.
+effects:
+  - !CounterSpell
+    target: !Spell
+      controller: !Any
+targets:
+  - !Spells
+ty: !Instant
