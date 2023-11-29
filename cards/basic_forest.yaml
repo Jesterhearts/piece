@@ -3,7 +3,8 @@ cost:
 activated_abilities:
   - cost:
       tap: true
-    effect: !GainMana
-      mana: !Specific
-        - !Green
+    effects:
+      - !GainMana
+        mana: !Specific
+          - !Green
 ty: !BasicLand Forest

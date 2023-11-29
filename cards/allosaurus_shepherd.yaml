@@ -20,13 +20,14 @@ activated_abilities:
         - !Green
         - !Green
         - !Generic 4
-    effect: !ModifyBasePT
-      base_toughness: 5
-      base_power: 5
-      targets:
-        - !Creature
-          types:
-            - !Elf
+    effects:
+      - !ModifyBasePT
+        base_toughness: 5
+        base_power: 5
+        targets:
+          - !Creature
+            types:
+              - !Elf
 ty: !Creature
 subtypes:
   - !Elf

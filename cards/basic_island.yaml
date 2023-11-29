@@ -3,7 +3,8 @@ cost:
 activated_abilities:
   - cost:
       tap: true
-    effect: !GainMana
-      mana: !Specific
-        - !Blue
+    effects:
+      - !GainMana
+        mana: !Specific
+          - !Blue
 ty: !BasicLand Island

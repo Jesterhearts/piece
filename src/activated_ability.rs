@@ -6,5 +6,5 @@ use crate::{card::Effect, mana::Cost};
 #[serde(deny_unknown_fields)]
 pub struct Ability {
     pub cost: Cost,
-    pub effect: Effect,
+    pub effects: Vec<Effect>,
 }

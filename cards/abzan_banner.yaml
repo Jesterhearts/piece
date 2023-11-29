@@ -9,11 +9,12 @@ oracle_text: >
 activated_abilities:
   - cost:
       tap: true
-    effect: !GainMana
-      mana: !Choice
-        - !White
-        - !Black
-        - !Green
+    effects:
+      - !GainMana
+        mana: !Choice
+          - !White
+          - !Black
+          - !Green
   - cost:
       mana:
         - !White
@@ -22,5 +23,6 @@ activated_abilities:
       tap: true
       additional_costs:
         - !SacrificeThis
-    effect: !ControllerDrawCards 1
+    effects:
+      - !ControllerDrawCards 1
 ty: !Artifact

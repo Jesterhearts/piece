@@ -3,7 +3,8 @@ cost:
 activated_abilities:
   - cost:
       tap: true
-    effect: !GainMana
-      mana: !Specific
-        - !White
+    effects:
+      - !GainMana
+        mana: !Specific
+          - !White
 ty: !BasicLand Plains

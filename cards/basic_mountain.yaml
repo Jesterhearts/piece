@@ -3,7 +3,8 @@ cost:
 activated_abilities:
   - cost:
       tap: true
-    effect: !GainMana
-      mana: !Specific
-        - !Red
+    effects:
+      - !GainMana
+        mana: !Specific
+          - !Red
 ty: !BasicLand Mountain

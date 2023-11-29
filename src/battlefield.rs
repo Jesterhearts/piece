@@ -43,6 +43,7 @@ impl Battlefield {
         cards: &AllCards,
         stack: &Stack,
         index: usize,
+        target: Option<ActiveTarget>,
     ) -> Vec<ActivatedAbilityResult> {
         if stack.split_second {
             return vec![];
@@ -75,6 +76,16 @@ impl Battlefield {
 
         if !card.controller.borrow_mut().spend_mana(&ability.cost.mana) {
             return vec![];
+        }
+
+        for effect in ability.effects.iter() {
+            results.push(ActivatedAbilityResult::AddToStack(
+                EffectInPlay {
+                    effect: effect.clone(),
+                    controller: card.controller.clone(),
+                },
+                target,
+            ));
         }
 
         results
@@ -126,16 +137,21 @@ impl Battlefield {
 
     pub fn apply_results(
         &mut self,
+        cards: &mut AllCards,
         stack: &mut Stack,
         results: Vec<ActivatedAbilityResult>,
-        index: usize,
+        id: CardId,
     ) {
         for result in results {
             match result {
                 ActivatedAbilityResult::TapPermanent => {
-                    self.permanents[index].tapped = true;
+                    self.permanents.get_mut(&id).unwrap().tapped = true;
                 }
-                ActivatedAbilityResult::PermanentToGraveyard => {}
+                ActivatedAbilityResult::PermanentToGraveyard => {
+                    self.permanents.remove(&id).unwrap();
+                    cards[id].controller = cards[id].owner.clone();
+                    self.graveyards.insert(id);
+                }
                 ActivatedAbilityResult::AddToStack(effect, target) => {
                     stack.push_effect(effect, target);
                 }
@@ -148,8 +164,9 @@ impl Battlefield {
 mod tests {
     use crate::{
         battlefield::{ActivatedAbilityResult, Battlefield},
+        card::Effect,
         deck::Deck,
-        in_play::AllCards,
+        in_play::{AllCards, EffectInPlay},
         load_cards,
         player::Player,
         stack::Stack,
@@ -164,16 +181,23 @@ mod tests {
         let player = Player::new_ref(Deck::empty());
         player.borrow_mut().infinite_mana();
 
-        let card = all_cards.add(&cards, player, "Abzan Banner");
+        let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
         battlefield.add(card);
 
         let card = battlefield.select_card(0);
-        let result = battlefield.activate_ability(card, &all_cards, &stack, 1);
+        let result = battlefield.activate_ability(card, &all_cards, &stack, 1, None);
         assert_eq!(
             result,
             [
                 ActivatedAbilityResult::TapPermanent,
-                ActivatedAbilityResult::PermanentToGraveyard
+                ActivatedAbilityResult::PermanentToGraveyard,
+                ActivatedAbilityResult::AddToStack(
+                    EffectInPlay {
+                        effect: Effect::ControllerDrawCards(1),
+                        controller: player
+                    },
+                    None
+                )
             ]
         );
 
