@@ -12,14 +12,17 @@ pub mod battlefield;
 pub mod card;
 pub mod deck;
 pub mod hand;
+pub mod in_play;
 pub mod mana;
 pub mod player;
 pub mod stack;
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
-fn load_cards() -> anyhow::Result<HashMap<String, Rc<Card>>> {
-    let mut cards: HashMap<String, Rc<Card>> = Default::default();
+pub type Cards = HashMap<String, Rc<Card>>;
+
+fn load_cards() -> anyhow::Result<Cards> {
+    let mut cards: Cards = Default::default();
     for card in CARD_DEFINITIONS.entries().iter() {
         let card = card
             .as_file()

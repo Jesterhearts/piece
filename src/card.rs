@@ -1,15 +1,13 @@
-use std::{
-    collections::{BTreeSet, HashSet},
-    rc::Rc,
-};
+use std::collections::{BTreeSet, HashSet};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     activated_ability::Ability,
     battlefield::Battlefield,
+    in_play::AllCards,
     mana::{Cost, ManaGain},
-    player::{Player, PlayerRef},
+    player::Player,
     stack::{ActiveTarget, EntryType, Stack},
 };
 
@@ -184,6 +182,7 @@ impl Card {
 
     pub fn valid_targets(
         &self,
+        cards: &AllCards,
         battlefield: &Battlefield,
         stack: &Stack,
         caster: &Player,
@@ -199,7 +198,9 @@ impl Card {
                                 for (index, spell) in stack.stack.iter() {
                                     match &spell.ty {
                                         EntryType::Card(card) => {
+                                            let card = &cards[*card];
                                             if card.card.can_be_countered(
+                                                cards,
                                                 battlefield,
                                                 caster,
                                                 &card.controller.borrow(),
@@ -224,6 +225,7 @@ impl Card {
 
     pub fn can_be_countered(
         &self,
+        cards: &AllCards,
         battlefield: &Battlefield,
         caster: &Player,
         this_controller: &Player,
@@ -269,7 +271,7 @@ impl Card {
             _ => return false,
         }
 
-        for (ability, controllers) in battlefield.static_abilities().into_iter() {
+        for (ability, controllers) in battlefield.static_abilities(cards).into_iter() {
             match &ability {
                 StaticAbility::GreenCannotBeCountered { controller } => {
                     if self.color().contains(&Color::Green) {
@@ -318,17 +320,4 @@ impl Card {
     pub fn is_permanent(&self) -> bool {
         self.ty.is_permanent()
     }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct PlayedCard {
-    pub card: Rc<Card>,
-    pub controller: PlayerRef,
-    pub owner: PlayerRef,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct PlayedEffect {
-    pub effect: Effect,
-    pub controller: PlayerRef,
 }

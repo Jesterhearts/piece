@@ -1,17 +1,18 @@
-use std::collections::BTreeMap;
+use indexmap::IndexMap;
 
 use crate::{
     battlefield::Battlefield,
-    card::{CastingModifier, Effect, PlayedCard, PlayedEffect},
+    card::{CastingModifier, Effect},
+    in_play::{AllCards, CardId, EffectInPlay},
     player::PlayerRef,
 };
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StackResult {
-    AddToBattlefield(PlayedCard),
-    PlayerLoses(PlayerRef),
+    AddToBattlefield(CardId),
     SpellCountered { id: usize },
     RemoveSplitSecond,
+    DrawCards { player: PlayerRef, count: usize },
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -21,8 +22,8 @@ pub enum ActiveTarget {
 
 #[derive(Debug, Clone)]
 pub enum EntryType {
-    Card(PlayedCard),
-    Effect(PlayedEffect),
+    Card(CardId),
+    Effect(EffectInPlay),
 }
 
 #[derive(Debug, Clone)]
@@ -33,17 +34,22 @@ pub struct StackEntry {
 
 #[derive(Debug, Default)]
 pub struct Stack {
-    pub stack: BTreeMap<usize, StackEntry>,
+    pub stack: IndexMap<usize, StackEntry>,
     next_id: usize,
     pub split_second: bool,
 }
 
 impl Stack {
-    pub fn push_card(&mut self, card: PlayedCard, target: Option<ActiveTarget>) -> usize {
+    pub fn push_card(
+        &mut self,
+        cards: &AllCards,
+        card: CardId,
+        target: Option<ActiveTarget>,
+    ) -> usize {
         let id = self.next_id;
         self.next_id += 1;
 
-        if card
+        if cards[card]
             .card
             .casting_modifiers
             .contains(&CastingModifier::SplitSecond)
@@ -61,7 +67,7 @@ impl Stack {
 
         id
     }
-    pub(crate) fn push_effect(&mut self, effect: PlayedEffect, target: Option<ActiveTarget>) {
+    pub(crate) fn push_effect(&mut self, effect: EffectInPlay, target: Option<ActiveTarget>) {
         let id = self.next_id;
         self.next_id += 1;
         self.stack.insert(
@@ -86,13 +92,15 @@ impl Stack {
     }
 
     #[must_use]
-    pub fn resolve_1(&mut self, battlefield: &Battlefield) -> Vec<StackResult> {
+    pub fn resolve_1(&mut self, cards: &AllCards, battlefield: &Battlefield) -> Vec<StackResult> {
         let mut result = vec![];
-        let (_, next) = self.stack.pop_last().expect("Stack shouldn't be empty.");
+        let (_, next) = self.stack.pop().expect("Stack shouldn't be empty.");
 
         match next.ty {
             EntryType::Card(card) => {
-                if card
+                let resolving_card = &cards[card];
+
+                if resolving_card
                     .card
                     .casting_modifiers
                     .contains(&CastingModifier::SplitSecond)
@@ -100,7 +108,7 @@ impl Stack {
                     result.push(StackResult::RemoveSplitSecond);
                 }
 
-                for effect in card.card.effects.iter() {
+                for effect in resolving_card.card.effects.iter() {
                     match effect {
                         Effect::CounterSpell { target } => {
                             match next.active_target {
@@ -114,9 +122,11 @@ impl Stack {
 
                                             match &maybe_target.ty {
                                                 EntryType::Card(maybe_target) => {
+                                                    let maybe_target = &cards[*maybe_target];
                                                     if !maybe_target.card.can_be_countered(
+                                                        cards,
                                                         battlefield,
-                                                        &card.controller.borrow(),
+                                                        &resolving_card.controller.borrow(),
                                                         &maybe_target.controller.borrow(),
                                                         target,
                                                     ) {
@@ -148,7 +158,7 @@ impl Stack {
                     }
                 }
 
-                if card.card.is_permanent() {
+                if resolving_card.card.is_permanent() {
                     result.push(StackResult::AddToBattlefield(card));
                 }
 
@@ -163,10 +173,10 @@ impl Stack {
                     base_toughness: _,
                 } => todo!(),
                 Effect::ControllerDrawCards(count) => {
-                    let controller = effect.controller;
-                    if !controller.borrow_mut().draw(count) {
-                        result.push(StackResult::PlayerLoses(controller.clone()));
-                    }
+                    result.push(StackResult::DrawCards {
+                        player: effect.controller.clone(),
+                        count,
+                    });
 
                     result
                 }
@@ -177,12 +187,11 @@ impl Stack {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::anyhow;
 
     use crate::{
         battlefield::Battlefield,
-        card::PlayedCard,
         deck::Deck,
+        in_play::AllCards,
         load_cards,
         player::Player,
         stack::{Stack, StackResult},
@@ -191,24 +200,16 @@ mod tests {
     #[test]
     fn resolves_creatures() -> anyhow::Result<()> {
         let cards = load_cards()?;
-        let player = Player::new_ref(Deck::empty(), 0);
-
+        let player = Player::new_ref(Deck::empty());
+        let mut all_cards = AllCards::default();
         let battlefield = Battlefield::default();
         let mut stack = Stack::default();
 
-        let creature = cards
-            .get("Allosaurus Shepherd")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
+        let creature = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
 
-        let card = PlayedCard {
-            card: creature.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card.clone(), None);
-
-        let result = stack.resolve_1(&battlefield);
-        assert_eq!(result, [StackResult::AddToBattlefield(card)]);
+        stack.push_card(&all_cards, creature, None);
+        let result = stack.resolve_1(&all_cards, &battlefield);
+        assert_eq!(result, [StackResult::AddToBattlefield(creature)]);
 
         assert!(stack.is_empty());
 
@@ -218,32 +219,21 @@ mod tests {
     #[test]
     fn resolves_counterspells() -> anyhow::Result<()> {
         let cards = load_cards()?;
-        let player = Player::new_ref(Deck::empty(), 0);
-
+        let player = Player::new_ref(Deck::empty());
+        let mut all_cards = AllCards::default();
         let battlefield = Battlefield::default();
         let mut stack = Stack::default();
 
-        let counterspell = cards
-            .get("Counterspell")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
+        let counterspell_1 = all_cards.add(&cards, player.clone(), "Counterspell");
+        let counterspell_2 = all_cards.add(&cards, player.clone(), "Counterspell");
 
-        let card = PlayedCard {
-            card: counterspell.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        let countered = stack.push_card(card, None);
+        let countered = stack.push_card(&all_cards, counterspell_1, None);
 
-        let card = PlayedCard {
-            card: counterspell.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card.clone(), stack.target_nth(0));
+        stack.push_card(&all_cards, counterspell_2, stack.target_nth(0));
 
         assert_eq!(stack.stack.len(), 2);
 
-        let result = stack.resolve_1(&battlefield);
+        let result = stack.resolve_1(&all_cards, &battlefield);
         assert_eq!(result, [StackResult::SpellCountered { id: countered }]);
 
         Ok(())
@@ -252,36 +242,20 @@ mod tests {
     #[test]
     fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<()> {
         let cards = load_cards()?;
-        let player = Player::new_ref(Deck::empty(), 0);
-
+        let player = Player::new_ref(Deck::empty());
+        let mut all_cards = AllCards::default();
         let battlefield = Battlefield::default();
         let mut stack = Stack::default();
 
-        let creature = cards
-            .get("Allosaurus Shepherd")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
+        let creature = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
+        let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
 
-        let card = PlayedCard {
-            card: creature.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card.clone(), None);
-
-        let counterspell = cards
-            .get("Counterspell")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
-
-        let card = PlayedCard {
-            card: counterspell.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card, stack.target_nth(0));
+        stack.push_card(&all_cards, creature, None);
+        stack.push_card(&all_cards, counterspell, stack.target_nth(0));
 
         assert_eq!(stack.stack.len(), 2);
 
-        let result = stack.resolve_1(&battlefield);
+        let result = stack.resolve_1(&all_cards, &battlefield);
         assert_eq!(result, []);
 
         assert_eq!(stack.stack.len(), 1);
@@ -292,61 +266,37 @@ mod tests {
     #[test]
     fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Result<()> {
         let cards = load_cards()?;
-        let player = Player::new_ref(Deck::empty(), 0);
-
+        let player = Player::new_ref(Deck::empty());
+        let mut all_cards = AllCards::default();
         let mut battlefield = Battlefield::default();
         let mut stack = Stack::default();
 
-        let creature = cards
-            .get("Allosaurus Shepherd")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
+        let creature_1 = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
+        let creature_2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
+        let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
 
-        let card = PlayedCard {
-            card: creature.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card.clone(), None);
-        let mut result = stack.resolve_1(&battlefield);
-        assert_eq!(result, [StackResult::AddToBattlefield(card)]);
+        stack.push_card(&all_cards, creature_1, None);
+        let mut result = stack.resolve_1(&all_cards, &battlefield);
+        assert_eq!(result, [StackResult::AddToBattlefield(creature_1)]);
 
         let Some(StackResult::AddToBattlefield(card)) = result.pop() else {
             unreachable!()
         };
         battlefield.add(card);
 
-        let creature = cards
-            .get("Alpine Grizzly")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
-
-        let creature = PlayedCard {
-            card: creature.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(creature.clone(), None);
-
-        let counterspell = cards
-            .get("Counterspell")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
-
-        let card = PlayedCard {
-            card: counterspell.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card.clone(), stack.target_nth(0));
+        stack.push_card(&all_cards, creature_2, None);
+        stack.push_card(&all_cards, counterspell, stack.target_nth(0));
 
         assert_eq!(stack.stack.len(), 2);
 
-        let result = stack.resolve_1(&battlefield);
+        let result = stack.resolve_1(&all_cards, &battlefield);
         assert_eq!(result, []);
 
         assert_eq!(stack.stack.len(), 1);
 
-        let result = stack.resolve_1(&battlefield);
+        let result = stack.resolve_1(&all_cards, &battlefield);
         assert!(stack.is_empty());
-        assert_eq!(result, [StackResult::AddToBattlefield(creature)]);
+        assert_eq!(result, [StackResult::AddToBattlefield(creature_2)]);
 
         Ok(())
     }
@@ -354,55 +304,32 @@ mod tests {
     #[test]
     fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyhow::Result<()> {
         let cards = load_cards()?;
-        let player = Player::new_ref(Deck::empty(), 0);
-        let player2 = Player::new_ref(Deck::empty(), 1);
+        let player1 = Player::new_ref(Deck::empty());
+        let player2 = Player::new_ref(Deck::empty());
 
+        let mut all_cards = AllCards::default();
         let mut battlefield = Battlefield::default();
         let mut stack = Stack::default();
 
-        let creature = cards
-            .get("Allosaurus Shepherd")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
+        let creature_1 = all_cards.add(&cards, player1.clone(), "Allosaurus Shepherd");
+        let creature_2 = all_cards.add(&cards, player2.clone(), "Alpine Grizzly");
+        let counterspell = all_cards.add(&cards, player1.clone(), "Counterspell");
 
-        let card = PlayedCard {
-            card: creature.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card.clone(), None);
-        let mut result = stack.resolve_1(&battlefield);
-        assert_eq!(result, [StackResult::AddToBattlefield(card)]);
+        stack.push_card(&all_cards, creature_1, None);
+        let mut result = stack.resolve_1(&all_cards, &battlefield);
+        assert_eq!(result, [StackResult::AddToBattlefield(creature_1)]);
 
         let Some(StackResult::AddToBattlefield(card)) = result.pop() else {
             unreachable!()
         };
         battlefield.add(card);
 
-        let creature = cards
-            .get("Alpine Grizzly")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
-
-        let card = PlayedCard {
-            card: creature.clone(),
-            controller: player2.clone(),
-            owner: player2.clone(),
-        };
-        let countered = stack.push_card(card, None);
-
-        let counterspell = cards
-            .get("Counterspell")
-            .ok_or_else(|| anyhow!("Failed to find test card"))?;
-
-        let card = PlayedCard {
-            card: counterspell.clone(),
-            controller: player.clone(),
-            owner: player.clone(),
-        };
-        stack.push_card(card, stack.target_nth(0));
+        let countered = stack.push_card(&all_cards, creature_2, None);
+        stack.push_card(&all_cards, counterspell, stack.target_nth(0));
 
         assert_eq!(stack.stack.len(), 2);
 
-        let result = stack.resolve_1(&battlefield);
+        let result = stack.resolve_1(&all_cards, &battlefield);
         assert_eq!(result, [StackResult::SpellCountered { id: countered }]);
 
         Ok(())

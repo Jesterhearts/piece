@@ -1,15 +1,17 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, sync::atomic::AtomicUsize};
 
 use derive_more::Deref;
 
 use crate::{
     battlefield::Battlefield,
-    card::Card,
     deck::Deck,
     hand::Hand,
+    in_play::{AllCards, CardId},
     mana::Mana,
     stack::{ActiveTarget, Stack},
 };
+
+static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ManaPool {
@@ -134,14 +136,14 @@ impl PartialEq for Player {
 impl Eq for Player {}
 
 impl Player {
-    pub fn new_ref(deck: Deck, id: usize) -> PlayerRef {
+    pub fn new_ref(deck: Deck) -> PlayerRef {
         PlayerRef(Rc::new(RefCell::new(Self {
             lands_per_turn: 1,
             hexproof: false,
             lands_played: 0,
             mana_pool: Default::default(),
             hand: Default::default(),
-            id,
+            id: NEXT_PLAYER_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             deck,
         })))
     }
@@ -181,15 +183,17 @@ impl Player {
     /// Returns true if the card was played.
     pub fn play_card(
         &mut self,
+        cards: &AllCards,
         index: usize,
         stack: &Stack,
         battlefield: &Battlefield,
         target: Option<ActiveTarget>,
-    ) -> Option<Rc<Card>> {
-        let card = &self.hand.contents[index];
+    ) -> Option<CardId> {
+        let card = self.hand.contents[index];
+        let card = &cards[card];
         let mana_pool = self.mana_pool;
 
-        for mana in card.cost.mana.iter().copied() {
+        for mana in card.card.cost.mana.iter().copied() {
             if !self.mana_pool.spend(mana) {
                 self.mana_pool = mana_pool;
                 return None;
@@ -197,17 +201,17 @@ impl Player {
         }
 
         if let Some(target) = target {
-            let targets = card.valid_targets(battlefield, stack, self);
+            let targets = card.card.valid_targets(cards, battlefield, stack, self);
             if !targets.contains(&target) {
                 return None;
             }
         }
 
-        if card.requires_target() && target.is_none() {
+        if card.card.requires_target() && target.is_none() {
             return None;
         }
 
-        if card.is_land() && self.lands_played >= self.lands_per_turn {
+        if card.card.is_land() && self.lands_played >= self.lands_per_turn {
             return None;
         }
 

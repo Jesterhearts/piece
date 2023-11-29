@@ -1,11 +1,9 @@
-use std::rc::Rc;
-
-use crate::card::Card;
+use crate::in_play::CardId;
 
 #[derive(Debug)]
 pub struct Hand {
     pub max_size: usize,
-    pub contents: Vec<Rc<Card>>,
+    pub contents: Vec<CardId>,
 }
 
 impl Default for Hand {
