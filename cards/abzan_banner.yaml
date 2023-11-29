@@ -6,13 +6,21 @@ oracle_text: >
   {T}: Add {W}, {B}, or {G} to your mana pool.
 
   {W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card.
-abilities:
-  - !Activated
-    cost:
+activated_abilities:
+  - cost:
       tap: true
     effect: !GainMana
       mana: !Choice
         - !White
         - !Black
         - !Green
+  - cost:
+      mana:
+        - !White
+        - !Black
+        - !Green
+      tap: true
+      additional_costs:
+        - !SacrificeThis
+    effect: !ControllerDrawCards 1
 ty: !Artifact

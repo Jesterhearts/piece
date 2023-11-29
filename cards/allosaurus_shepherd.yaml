@@ -9,13 +9,13 @@ oracle_text: >
 
   {4}{G}{G}: Until end of turn, each Elf creature you control has base power and
   toughness 5/5 and becomes a dinosaur in addition to its other creature types.
-effects:
+casting_modifiers:
   - !CannotBeCountered
-abilities:
+static_abilities:
   - !GreenCannotBeCountered
     controller: !You
-  - !Activated
-    cost:
+activated_abilities:
+  - cost:
       mana:
         - !Green
         - !Green

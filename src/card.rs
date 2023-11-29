@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    activated_ability,
+    activated_ability::Ability,
     battlefield::Battlefield,
     mana::{Cost, ManaGain},
     player::{Player, PlayerRef},
@@ -51,7 +51,6 @@ pub enum Effect {
     CounterSpell {
         target: Target,
     },
-    CannotBeCountered,
     GainMana {
         mana: ManaGain,
     },
@@ -60,12 +59,18 @@ pub enum Effect {
         base_power: i32,
         base_toughness: i32,
     },
+    ControllerDrawCards(usize),
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone, Copy)]
+pub enum CastingModifier {
+    CannotBeCountered,
+    SplitSecond,
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum Ability {
+pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
-    Activated(activated_ability::Ability),
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
@@ -88,6 +93,7 @@ pub enum Type {
     Enchantment,
     Battle,
 }
+
 impl Type {
     fn is_permanent(&self) -> bool {
         match self {
@@ -115,6 +121,7 @@ pub enum Targets {
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Card {
     pub name: String,
     pub cost: Cost,
@@ -123,9 +130,13 @@ pub struct Card {
     #[serde(default)]
     pub flavor_text: String,
     #[serde(default)]
+    pub casting_modifiers: HashSet<CastingModifier>,
+    #[serde(default)]
     pub effects: HashSet<Effect>,
     #[serde(default)]
-    pub abilities: HashSet<Ability>,
+    pub static_abilities: Vec<StaticAbility>,
+    #[serde(default)]
+    pub activated_abilities: Vec<Ability>,
     pub ty: Type,
     #[serde(default)]
     pub subtypes: HashSet<Subtype>,
@@ -149,12 +160,10 @@ impl Card {
     pub fn color_identity(&self) -> HashSet<Color> {
         let mut identity = self.color();
 
-        for ability in self.abilities.iter() {
-            if let Ability::Activated(activated) = ability {
-                for mana in activated.cost.mana.iter() {
-                    let color = mana.color();
-                    identity.insert(color);
-                }
+        for ability in self.activated_abilities.iter() {
+            for mana in ability.cost.mana.iter() {
+                let color = mana.color();
+                identity.insert(color);
             }
         }
 
@@ -187,7 +196,7 @@ impl Card {
                     for effect in self.effects.iter() {
                         match effect {
                             Effect::CounterSpell { target } => {
-                                for (index, spell) in stack.spells.iter() {
+                                for (index, spell) in stack.stack.iter() {
                                     match &spell.ty {
                                         EntryType::Card(card) => {
                                             if card.card.can_be_countered(
@@ -199,6 +208,7 @@ impl Card {
                                                 targets.insert(ActiveTarget::Stack { id: *index });
                                             }
                                         }
+                                        EntryType::Effect(_) => {}
                                     }
                                 }
                             }
@@ -219,9 +229,9 @@ impl Card {
         this_controller: &Player,
         target: &Target,
     ) -> bool {
-        for effect in self.effects.iter() {
-            match effect {
-                Effect::CannotBeCountered => {
+        for modifier in self.casting_modifiers.iter() {
+            match modifier {
+                CastingModifier::CannotBeCountered => {
                     return false;
                 }
                 _ => {}
@@ -259,18 +269,24 @@ impl Card {
             _ => return false,
         }
 
-        for effect in battlefield.effects.iter() {
-            match &effect.ability {
-                Ability::GreenCannotBeCountered { controller } => {
+        for (ability, controllers) in battlefield.static_abilities().into_iter() {
+            match &ability {
+                StaticAbility::GreenCannotBeCountered { controller } => {
                     if self.color().contains(&Color::Green) {
                         match controller {
                             Controller::You => {
-                                if effect.controller == *this_controller {
+                                if controllers
+                                    .into_iter()
+                                    .any(|controller| controller == *this_controller)
+                                {
                                     return false;
                                 }
                             }
                             Controller::Opponent => {
-                                if effect.controller != *this_controller {
+                                if controllers
+                                    .into_iter()
+                                    .any(|controller| controller != *this_controller)
+                                {
                                     return false;
                                 }
                             }
@@ -280,12 +296,17 @@ impl Card {
                         }
                     }
                 }
-                _ => {}
             }
         }
 
         true
     }
+
+    pub fn can_be_sacrificed(&self, _battlefield: &Battlefield) -> bool {
+        // TODO: check battlefield for effects preventing sacrifice
+        true
+    }
+
     pub fn types_intersect(&self, types: &[Type]) -> bool {
         types.iter().any(|ty| self.ty == *ty)
     }
@@ -304,4 +325,10 @@ pub struct PlayedCard {
     pub card: Rc<Card>,
     pub controller: PlayerRef,
     pub owner: PlayerRef,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct PlayedEffect {
+    pub effect: Effect,
+    pub controller: PlayerRef,
 }

@@ -34,9 +34,17 @@ impl Mana {
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
+pub enum AdditionalCost {
+    SacrificeThis,
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct Cost {
     #[serde(default)]
     pub mana: Vec<Mana>,
     #[serde(default)]
     pub tap: bool,
+    #[serde(default)]
+    pub additional_costs: Vec<AdditionalCost>,
 }

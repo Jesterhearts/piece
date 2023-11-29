@@ -146,6 +146,15 @@ impl Player {
         })))
     }
 
+    #[cfg(test)]
+    pub fn infinite_mana(&mut self) {
+        self.mana_pool.white_mana = usize::MAX;
+        self.mana_pool.blue_mana = usize::MAX;
+        self.mana_pool.black_mana = usize::MAX;
+        self.mana_pool.red_mana = usize::MAX;
+        self.mana_pool.green_mana = usize::MAX;
+    }
+
     pub fn draw_initial_hand(&mut self) {
         for _ in 0..7 {
             let card = self
@@ -154,6 +163,19 @@ impl Player {
                 .expect("Decks should have at least 7 cards");
             self.hand.contents.push(card);
         }
+    }
+
+    pub fn draw(&mut self, count: usize) -> bool {
+        if self.deck.cards.len() < count {
+            return false;
+        }
+
+        for _ in 0..count {
+            let card = self.deck.draw().expect("Validated deck size");
+            self.hand.contents.push(card);
+        }
+
+        true
     }
 
     /// Returns true if the card was played.
@@ -190,5 +212,17 @@ impl Player {
         }
 
         Some(self.hand.contents.remove(index))
+    }
+
+    pub fn spend_mana(&mut self, mana: &[Mana]) -> bool {
+        let mana_pool = self.mana_pool;
+
+        for mana in mana.iter().copied() {
+            if !self.mana_pool.spend(mana) {
+                self.mana_pool = mana_pool;
+                return false;
+            }
+        }
+        true
     }
 }

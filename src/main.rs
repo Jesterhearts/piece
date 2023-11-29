@@ -3,15 +3,10 @@
 use std::{collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
+use bevy_ecs::world::World;
 use include_dir::{include_dir, Dir};
 
-use crate::{
-    battlefield::Battlefield,
-    card::{Card, PlayedCard},
-    deck::Deck,
-    player::Player,
-    stack::Stack,
-};
+use crate::card::Card;
 
 pub mod activated_ability;
 pub mod battlefield;
@@ -39,51 +34,15 @@ fn load_cards() -> anyhow::Result<HashMap<String, Rc<Card>>> {
     Ok(cards)
 }
 
-fn main() -> anyhow::Result<()> {
+fn build_world() -> anyhow::Result<World> {
     let cards = load_cards()?;
-    dbg!(&cards);
 
-    let mut stack = Stack::default();
+    todo!()
+}
 
-    let mut battlefield = Battlefield::default();
-
-    let deck = vec![
-        cards.get("Allosaurus Shepherd").cloned().unwrap(),
-        cards.get("Counterspell").cloned().unwrap(),
-        cards.get("Forest").cloned().unwrap(),
-        cards.get("Forest").cloned().unwrap(),
-        cards.get("Forest").cloned().unwrap(),
-        cards.get("Forest").cloned().unwrap(),
-        cards.get("Forest").cloned().unwrap(),
-    ];
-    let player = Player::new_ref(Deck::new(deck), 0);
-    player.borrow_mut().draw_initial_hand();
-
-    let played = dbg!(player.borrow_mut().play_card(0, &stack, &battlefield, None));
-    if let Some(played) = played {
-        if played.uses_stack() {
-            stack.push_card(
-                PlayedCard {
-                    card: played,
-                    controller: player.clone(),
-                    owner: player.clone(),
-                },
-                None,
-            );
-        } else {
-            battlefield.add(PlayedCard {
-                card: played,
-                controller: player.clone(),
-                owner: player.clone(),
-            });
-        }
-    }
-
-    dbg!(&battlefield);
-
-    dbg!(&stack);
-    stack.resolve_1(&mut battlefield);
-    dbg!(stack);
+fn main() -> anyhow::Result<()> {
+    let world = build_world()?;
+    dbg!(&world);
 
     Ok(())
 }

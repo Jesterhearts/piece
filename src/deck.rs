@@ -10,6 +10,10 @@ pub struct Deck {
 }
 
 impl Deck {
+    pub fn empty() -> Self {
+        Self { cards: vec![] }
+    }
+
     pub fn new(cards: Vec<Rc<Card>>) -> Self {
         Self { cards }
     }

@@ -1,8 +1,7 @@
 name: Forest
 cost:
-abilities:
-  - !Activated
-    cost:
+activated_abilities:
+  - cost:
       tap: true
     effect: !GainMana
       mana: !Specific
