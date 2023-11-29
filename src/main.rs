@@ -3,7 +3,6 @@
 use std::{collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
-use bevy_ecs::world::World;
 use include_dir::{include_dir, Dir};
 
 use crate::card::Card;
@@ -34,15 +33,9 @@ fn load_cards() -> anyhow::Result<HashMap<String, Rc<Card>>> {
     Ok(cards)
 }
 
-fn build_world() -> anyhow::Result<World> {
-    let cards = load_cards()?;
-
-    todo!()
-}
-
 fn main() -> anyhow::Result<()> {
-    let world = build_world()?;
-    dbg!(&world);
+    let cards = load_cards()?;
+    dbg!(&cards);
 
     Ok(())
 }
