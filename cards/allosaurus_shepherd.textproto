@@ -1,0 +1,38 @@
+name: "Allosaurus Shepherd"
+ty { creature {} }
+subtypes { elf {} }
+subtypes { shaman {} }
+cost {
+  mana_costs { green {} }
+}
+oracle_text:  "This spell can't be countered.\n"
+              "Green spells you control can't be countered\n"
+              "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and"
+              "toughness 5/5 and becomes a dinosaur in addition to its other creature types."
+casting_modifiers {
+  cannot_be_countered {}
+}
+static_abilities {
+  green_cannot_be_countered {
+    controller { you {} }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs { green {} }
+    mana_costs { green {} }
+    mana_costs { generic { count: 4} }
+  }
+  effects {
+    modify_battlefield { 
+      modify_base_power_toughness {
+        targets { elf {} }
+        power: 5
+        toughness: 5
+        duration { until_end_of_turn {} }
+      }
+    }
+  }
+}
+power: 1
+toughness: 1

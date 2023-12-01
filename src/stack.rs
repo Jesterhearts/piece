@@ -2,14 +2,16 @@ use indexmap::IndexMap;
 
 use crate::{
     battlefield::Battlefield,
-    card::{CastingModifier, Effect},
-    in_play::{AllCards, CardId, EffectInPlay},
+    card::CastingModifier,
+    effects::Effect,
+    in_play::{AllCards, CardId, EffectInPlay, ModifierInPlay},
     player::PlayerRef,
 };
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StackResult {
     AddToBattlefield(CardId),
+    ApplyToBattlefield(ModifierInPlay),
     SpellCountered { id: usize },
     RemoveSplitSecond,
     DrawCards { player: PlayerRef, count: usize },
@@ -149,11 +151,7 @@ impl Stack {
                             };
                         }
                         Effect::GainMana { mana: _ } => todo!(),
-                        Effect::ModifyBasePT {
-                            targets: _,
-                            base_power: _,
-                            base_toughness: _,
-                        } => todo!(),
+                        Effect::ModifyBattlefield(_) => todo!(),
                         Effect::ControllerDrawCards(_) => todo!(),
                     }
                 }
@@ -167,14 +165,18 @@ impl Stack {
             EntryType::Effect(effect) => match effect.effect {
                 Effect::CounterSpell { target: _ } => todo!(),
                 Effect::GainMana { mana: _ } => todo!(),
-                Effect::ModifyBasePT {
-                    targets: _,
-                    base_power: _,
-                    base_toughness: _,
-                } => todo!(),
+                Effect::ModifyBattlefield(modifier) => {
+                    result.push(StackResult::ApplyToBattlefield(ModifierInPlay {
+                        modifier,
+                        controller: effect.controller,
+                        modified_cards: Default::default(),
+                    }));
+
+                    result
+                }
                 Effect::ControllerDrawCards(count) => {
                     result.push(StackResult::DrawCards {
-                        player: effect.controller.clone(),
+                        player: effect.controller,
                         count,
                     });
 

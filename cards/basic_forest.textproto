@@ -1,0 +1,14 @@
+name: "Forest"
+cost { }
+ty { basic_land {} }
+subtypes { forest {} }
+activated_abilities {
+  cost {
+    tap: true
+  }
+  effects {
+    gain_mana {
+      specific { gains { green {} } }
+    }
+  }
+}

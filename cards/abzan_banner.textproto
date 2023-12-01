@@ -1,0 +1,41 @@
+name: "Abzan Banner"
+cost {
+  mana_costs {
+    generic {
+      count: 3
+    }
+  }
+}
+ty { artifact {} } 
+oracle_text:  "{T}: Add {W}, {B}, or {G} to your mana pool.\n"
+              "{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card."
+activated_abilities {
+  cost {
+    tap: true
+  }
+  effects {
+    gain_mana {
+      choice {
+        choices {
+          gains { white {} }
+          gains { black {} }
+          gains { green {} }
+        }
+      }
+    }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs { white {} }
+    mana_costs { black {} }
+    mana_costs { green {} }
+    tap: true
+    additional_costs { sacrifice_this {} }
+  }
+  effects {
+    controller_draw_cards {
+      count: 1
+    }
+  }
+}

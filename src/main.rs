@@ -1,44 +1,60 @@
 #![allow(clippy::single_match)]
 
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
 use include_dir::{include_dir, Dir};
 
 use crate::card::Card;
 
-pub mod activated_ability;
+pub mod abilities;
 pub mod battlefield;
 pub mod card;
+pub mod controller;
+pub mod cost;
 pub mod deck;
+pub mod effects;
 pub mod hand;
 pub mod in_play;
 pub mod mana;
 pub mod player;
+pub mod protogen;
 pub mod stack;
+pub mod targets;
+pub mod types;
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
-pub type Cards = HashMap<String, Rc<Card>>;
+pub type Cards = HashMap<String, Card>;
 
 fn load_cards() -> anyhow::Result<Cards> {
-    let mut cards: Cards = Default::default();
+    let mut cards = Cards::default();
     for card in CARD_DEFINITIONS.entries().iter() {
-        let card = card
+        let card_file = card
             .as_file()
             .ok_or_else(|| anyhow!("Non-file entry in cards directory"))?;
-        let card: Rc<Card> = Rc::new(
-            serde_yaml::from_slice(card.contents())
-                .with_context(|| format!("Unpacking file: {}", card.path().display()))?,
+
+        let card: protogen::card::Card = protobuf::text_format::parse_from_str(
+            card_file
+                .contents_utf8()
+                .ok_or_else(|| anyhow!("Non utf-8 text proto"))?,
+        )
+        .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
+
+        cards.insert(
+            card.name.to_owned(),
+            card.try_into()
+                .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
         );
-        cards.insert(card.name.clone(), card);
     }
+
     Ok(cards)
 }
 
 fn main() -> anyhow::Result<()> {
     let cards = load_cards()?;
     dbg!(&cards);
+    println!("{}", cards.get("Abzan Banner").unwrap().oracle_text);
 
     Ok(())
 }

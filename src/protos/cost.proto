@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package cost;
+
+import "mana.proto";
+
+message ManaCost {
+  oneof cost {
+    mana.White white = 1;
+    mana.Blue blue = 2;
+    mana.Black black = 3;
+    mana.Red red = 4;
+    mana.Green green = 5;
+    mana.Colorless colorless = 6;
+    mana.Generic generic = 7;
+  } 
+}
+
+
+message AdditionalCost {
+  message SacrificeThis {
+  }
+
+  oneof cost {
+    SacrificeThis sacrifice_this = 1;
+  }
+}
+
+message CastingCost {
+  repeated ManaCost mana_costs = 1;
+}
+
+message AbilityCost {
+  repeated ManaCost mana_costs = 1;
+  optional bool tap = 2;
+  repeated AdditionalCost additional_costs = 3;
+}

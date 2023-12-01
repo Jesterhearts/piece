@@ -1,14 +1,6 @@
-use serde::{Deserialize, Serialize};
+use crate::{card::Color, protogen};
 
-use crate::card::Color;
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
-pub enum ManaGain {
-    Specific(Vec<Mana>),
-    Choice(Vec<Vec<Mana>>),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Mana {
     White,
     Blue,
@@ -17,6 +9,40 @@ pub enum Mana {
     Green,
     Colorless,
     Generic(usize),
+}
+
+impl TryFrom<&protogen::cost::mana_cost::Cost> for Mana {
+    type Error = anyhow::Error;
+    fn try_from(value: &protogen::cost::mana_cost::Cost) -> Result<Self, Self::Error> {
+        match value {
+            protogen::cost::mana_cost::Cost::White(_) => Ok(Self::White),
+            protogen::cost::mana_cost::Cost::Blue(_) => Ok(Self::Blue),
+            protogen::cost::mana_cost::Cost::Black(_) => Ok(Self::Black),
+            protogen::cost::mana_cost::Cost::Red(_) => Ok(Self::Red),
+            protogen::cost::mana_cost::Cost::Green(_) => Ok(Self::Green),
+            protogen::cost::mana_cost::Cost::Colorless(_) => Ok(Self::Colorless),
+            protogen::cost::mana_cost::Cost::Generic(generic) => {
+                Ok(Self::Generic(usize::try_from(generic.count)?))
+            }
+        }
+    }
+}
+
+impl TryFrom<&protogen::mana::mana::Mana> for Mana {
+    type Error = anyhow::Error;
+    fn try_from(value: &protogen::mana::mana::Mana) -> Result<Self, Self::Error> {
+        match value {
+            protogen::mana::mana::Mana::White(_) => Ok(Self::White),
+            protogen::mana::mana::Mana::Blue(_) => Ok(Self::Blue),
+            protogen::mana::mana::Mana::Black(_) => Ok(Self::Black),
+            protogen::mana::mana::Mana::Red(_) => Ok(Self::Red),
+            protogen::mana::mana::Mana::Green(_) => Ok(Self::Green),
+            protogen::mana::mana::Mana::Colorless(_) => Ok(Self::Colorless),
+            protogen::mana::mana::Mana::Generic(generic) => {
+                Ok(Self::Generic(usize::try_from(generic.count)?))
+            }
+        }
+    }
 }
 
 impl Mana {
@@ -31,20 +57,4 @@ impl Mana {
             Mana::Generic(_) => Color::Colorless,
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum AdditionalCost {
-    SacrificeThis,
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct Cost {
-    #[serde(default)]
-    pub mana: Vec<Mana>,
-    #[serde(default)]
-    pub tap: bool,
-    #[serde(default)]
-    pub additional_costs: Vec<AdditionalCost>,
 }

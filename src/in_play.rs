@@ -1,18 +1,18 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    rc::Rc,
-};
+use std::collections::{HashMap, VecDeque};
+
+use indexmap::IndexMap;
 
 use crate::{
-    card::{Card, Effect},
+    card::Card,
     deck::{Deck, DeckDefinition},
+    effects::{Effect, ModifyBattlefield},
     player::PlayerRef,
     Cards,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CardInPlay {
-    pub card: Rc<Card>,
+    pub card: Card,
     pub controller: PlayerRef,
     pub owner: PlayerRef,
 }
@@ -21,6 +21,13 @@ pub struct CardInPlay {
 pub struct EffectInPlay {
     pub effect: Effect,
     pub controller: PlayerRef,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ModifierInPlay {
+    pub modifier: ModifyBattlefield,
+    pub controller: PlayerRef,
+    pub modified_cards: IndexMap<CardId, Card>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]

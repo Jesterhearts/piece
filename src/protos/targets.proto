@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package targets;
+
+import "controller.proto";
+import "types.proto";
+
+message SpellTarget {
+  controller.Controller controller = 1;
+  repeated types.Type types = 2;
+  repeated types.Subtype subtypes = 3;
+}
+
+message Target {
+  message Creature {
+    repeated types.Subtype subtypes = 2;
+  }
+
+  oneof target {
+    SpellTarget spell = 1;
+    Creature creature = 2;
+  }
+}

@@ -1,0 +1,14 @@
+name: "Mountain"
+cost { }
+ty { basic_land {} }
+subtypes { mountain {} }
+activated_abilities {
+  cost {
+    tap: true
+  }
+  effects {
+    gain_mana {
+      specific { gains { red {} } }
+    }
+  }
+}

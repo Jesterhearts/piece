@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package card;
+
+import "abilities.proto";
+import "cost.proto";
+import "effects.proto";
+import "targets.proto";
+import "types.proto";
+
+message Color {
+  message White {
+  }
+  message Blue {
+  }
+  message Black {
+  }
+  message Red {
+  }
+  message Green {
+  }
+  message Colorless {
+  }
+
+  oneof color {
+    White white = 1;
+    Blue blue = 2;
+    Black black = 3;
+    Red red = 4;
+    Green green = 5;
+    Colorless colorless = 6;
+  }
+}
+
+message CastingModifier {
+  message CannotBeCountered {
+  }
+  message SplitSecond {
+  }
+
+  oneof modifier {
+    CannotBeCountered cannot_be_countered = 1;
+    SplitSecond split_second = 2;
+  }
+}
+
+message Card {
+  string name = 1;
+  types.Type ty = 2;
+  repeated types.Subtype subtypes = 3;
+
+  cost.CastingCost cost = 4;
+  repeated CastingModifier casting_modifiers = 5;
+  repeated Color colors = 6;
+
+  string oracle_text = 7;
+  string flavor_text = 8;
+
+  repeated effects.Effect effects = 9;
+  repeated abilities.StaticAbility static_abilities = 10;
+  repeated abilities.ActivatedAbility activated_abilities = 11;
+
+  repeated targets.Target targets = 12;
+
+  optional int32 power = 13;
+  optional int32 toughness = 14;
+}

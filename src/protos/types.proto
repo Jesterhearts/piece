@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package types;
+
+message Type {
+  message BasicLand {
+  }
+  message Land {
+  }
+  message Instant {
+  }
+  message Sorcery {
+  }
+  message Creature {
+  }
+  message Artifact {
+  }
+  message Enchantment {
+  }
+  message Battle {
+  }
+
+  oneof ty {
+    BasicLand basic_land = 1;
+    Land land = 2;
+    Instant instant = 3;
+    Sorcery sorcery = 4;
+    Creature creature = 5;
+    Artifact artifact = 6;
+    Enchantment enchantment = 7;
+    Battle battle = 8;
+  }
+}
+
+message Subtype {
+  message Bear {
+  }
+  message Elf {
+  }
+  message Shaman {
+  }
+  message Plains {
+  }
+  message Island {
+  }
+  message Swamp {
+  }
+  message Mountain {
+  }
+  message Forest {
+  }
+
+  oneof subtype {
+    Bear bear = 1;
+    Elf elf = 2;
+    Shaman shaman = 3;
+    Plains plains = 4;
+    Island island = 5;
+    Swamp swamp = 6;
+    Mountain mountain = 7;
+    Forest forest = 8;
+  }
+}

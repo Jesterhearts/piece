@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package effects;
+
+import "mana.proto";
+import "targets.proto";
+import "types.proto";
+
+message Duration {
+  message UntilEndOfTurn {
+  }
+
+  oneof duration {
+    UntilEndOfTurn until_end_of_turn = 1;
+  }
+}
+
+message Effect {
+  message CounterSpell {
+    targets.SpellTarget target = 1;
+  }
+  message GainMana {
+    message GainMana {
+      repeated mana.Mana gains = 1;
+    }
+    message Specific {
+      repeated mana.Mana gains = 1;
+    }
+    message Choice {
+      repeated GainMana choices = 1;
+    }
+
+    oneof gain {
+      Specific specific = 1;
+      Choice choice = 2;
+    }
+  }
+  message ModifyBattlefield {
+    message ModifyBasePowerToughness {
+      repeated types.Subtype targets = 1;
+      int32 power = 2;
+      int32 toughness = 3;
+      Duration duration = 4;
+    }
+
+    oneof modifier {
+      ModifyBasePowerToughness modify_base_power_toughness = 1;
+    }
+  }
+  message ControllerDrawCards {
+    int32 count = 1;
+  }
+
+  oneof effect {
+    CounterSpell counter_spell = 1;
+    GainMana gain_mana = 2;
+    ModifyBattlefield modify_battlefield = 3;
+    ControllerDrawCards controller_draw_cards = 4;
+  }
+}

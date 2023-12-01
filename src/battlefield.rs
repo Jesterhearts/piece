@@ -3,9 +3,10 @@ use std::{collections::HashSet, vec};
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
-    card::StaticAbility,
-    in_play::{AllCards, CardId, EffectInPlay},
-    mana::AdditionalCost,
+    abilities::StaticAbility,
+    cost::AdditionalCost,
+    effects::{EffectDuration, ModifyBattlefield},
+    in_play::{AllCards, CardId, EffectInPlay, ModifierInPlay},
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
 };
@@ -26,11 +27,21 @@ pub struct Permanent {
 pub struct Battlefield {
     pub permanents: IndexMap<CardId, Permanent>,
     pub graveyards: IndexSet<CardId>,
+
+    pub until_end_of_turn: Vec<ModifierInPlay>,
 }
 
 impl Battlefield {
     pub fn add(&mut self, card: CardId) {
         self.permanents.insert(card, Permanent { tapped: false });
+    }
+
+    pub fn end_turn(&mut self, cards: &mut AllCards) {
+        for effect in self.until_end_of_turn.drain(..).rev() {
+            for (cardid, card) in effect.modified_cards.into_iter() {
+                cards[cardid].card = card;
+            }
+        }
     }
 
     pub fn select_card(&self, index: usize) -> CardId {
@@ -62,7 +73,7 @@ impl Battlefield {
             results.push(ActivatedAbilityResult::TapPermanent);
         }
 
-        for cost in ability.cost.additional_costs.iter() {
+        for cost in ability.cost.additional_cost.iter() {
             match cost {
                 AdditionalCost::SacrificeThis => {
                     if !card.card.can_be_sacrificed(self) {
@@ -74,7 +85,11 @@ impl Battlefield {
             }
         }
 
-        if !card.controller.borrow_mut().spend_mana(&ability.cost.mana) {
+        if !card
+            .controller
+            .borrow_mut()
+            .spend_mana(&ability.cost.mana_cost)
+        {
             return vec![];
         }
 
@@ -109,6 +124,7 @@ impl Battlefield {
 
         result
     }
+
     pub fn apply_activated_ability(
         &mut self,
         cards: &mut AllCards,
@@ -135,25 +151,30 @@ impl Battlefield {
         }
     }
 
-    pub fn apply_results(
-        &mut self,
-        cards: &mut AllCards,
-        stack: &mut Stack,
-        results: Vec<ActivatedAbilityResult>,
-        id: CardId,
-    ) {
-        for result in results {
-            match result {
-                ActivatedAbilityResult::TapPermanent => {
-                    self.permanents.get_mut(&id).unwrap().tapped = true;
+    fn apply(&mut self, cards: &mut AllCards, mut modifier: ModifierInPlay) {
+        match &modifier.modifier {
+            ModifyBattlefield::ModifyBasePowerToughness {
+                targets,
+                power: base_power,
+                toughness: base_tough,
+                duration,
+            } => {
+                for cardid in self.permanents.keys() {
+                    let card = &mut cards[*cardid];
+
+                    if card.card.subtypes_match(targets) {
+                        modifier.modified_cards.insert(*cardid, card.card.clone());
+
+                        if let Some(power) = &mut card.card.power {
+                            *power = *base_power;
+                        }
+                        if let Some(tough) = &mut card.card.toughness {
+                            *tough = *base_tough;
+                        }
+                    }
                 }
-                ActivatedAbilityResult::PermanentToGraveyard => {
-                    self.permanents.remove(&id).unwrap();
-                    cards[id].controller = cards[id].owner.clone();
-                    self.graveyards.insert(id);
-                }
-                ActivatedAbilityResult::AddToStack(effect, target) => {
-                    stack.push_effect(effect, target);
+                match duration {
+                    EffectDuration::UntilEndOfTurn => self.until_end_of_turn.push(modifier),
                 }
             }
         }
@@ -162,14 +183,16 @@ impl Battlefield {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         battlefield::{ActivatedAbilityResult, Battlefield},
-        card::Effect,
         deck::Deck,
-        in_play::{AllCards, EffectInPlay},
+        effects::{Effect, EffectDuration, ModifyBattlefield},
+        in_play::{AllCards, EffectInPlay, ModifierInPlay},
         load_cards,
         player::Player,
-        stack::Stack,
+        stack::{Stack, StackResult},
+        types::Subtype,
     };
 
     #[test]
@@ -200,6 +223,76 @@ mod tests {
                 )
             ]
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn modify_base_p_t_works() -> anyhow::Result<()> {
+        let cards = load_cards()?;
+        let mut all_cards = AllCards::default();
+        let mut stack = Stack::default();
+        let mut battlefield = Battlefield::default();
+        let player = Player::new_ref(Deck::empty());
+        player.borrow_mut().infinite_mana();
+
+        let card = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
+        battlefield.add(card);
+
+        let card = battlefield.select_card(0);
+        let results = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
+
+        assert_eq!(
+            results,
+            [ActivatedAbilityResult::AddToStack(
+                EffectInPlay {
+                    effect: Effect::ModifyBattlefield(
+                        ModifyBattlefield::ModifyBasePowerToughness {
+                            targets: vec![Subtype::Elf],
+                            power: 5,
+                            toughness: 5,
+                            duration: EffectDuration::UntilEndOfTurn
+                        }
+                    ),
+                    controller: player.clone()
+                },
+                None
+            )]
+        );
+
+        battlefield.apply_activated_ability(&mut all_cards, &mut stack, card, results);
+
+        let results = stack.resolve_1(&all_cards, &battlefield);
+        assert_eq!(
+            results,
+            [StackResult::ApplyToBattlefield(ModifierInPlay {
+                modifier: ModifyBattlefield::ModifyBasePowerToughness {
+                    targets: vec![Subtype::Elf],
+                    power: 5,
+                    toughness: 5,
+                    duration: EffectDuration::UntilEndOfTurn
+                },
+                controller: player,
+                modified_cards: Default::default(),
+            })]
+        );
+
+        let Some(StackResult::ApplyToBattlefield(effect)) = results.into_iter().next() else {
+            unreachable!()
+        };
+
+        battlefield.apply(&mut all_cards, effect);
+        let card = battlefield.select_card(0);
+        let card = &all_cards[card];
+        assert_eq!(card.card.power, Some(5));
+        assert_eq!(card.card.toughness, Some(5));
+
+        battlefield.end_turn(&mut all_cards);
+
+        let card = battlefield.select_card(0);
+        let card = &all_cards[card];
+        assert_eq!(card.card.power, Some(1));
+        assert_eq!(card.card.toughness, Some(1));
 
         Ok(())
     }

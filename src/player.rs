@@ -81,6 +81,7 @@ impl ManaPool {
                 self.colorless_mana = mana;
             }
             Mana::Generic(count) => {
+                // TODO: take from other pools
                 let Some(mana) = self.colorless_mana.checked_sub(count) else {
                     return false;
                 };
@@ -155,6 +156,7 @@ impl Player {
         self.mana_pool.black_mana = usize::MAX;
         self.mana_pool.red_mana = usize::MAX;
         self.mana_pool.green_mana = usize::MAX;
+        self.mana_pool.colorless_mana = usize::MAX;
     }
 
     pub fn draw_initial_hand(&mut self) {
@@ -193,7 +195,7 @@ impl Player {
         let card = &cards[card];
         let mana_pool = self.mana_pool;
 
-        for mana in card.card.cost.mana.iter().copied() {
+        for mana in card.card.cost.mana_cost.iter().copied() {
             if !self.mana_pool.spend(mana) {
                 self.mana_pool = mana_pool;
                 return None;

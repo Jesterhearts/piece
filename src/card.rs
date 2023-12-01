@@ -1,17 +1,22 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
+use anyhow::anyhow;
 
 use crate::{
-    activated_ability::Ability,
+    abilities::{ActivatedAbility, StaticAbility},
     battlefield::Battlefield,
+    controller::Controller,
+    cost::CastingCost,
+    effects::Effect,
     in_play::AllCards,
-    mana::{Cost, ManaGain},
     player::Player,
+    protogen,
     stack::{ActiveTarget, EntryType, Stack},
+    targets::{SpellTarget, Target},
+    types::{Subtype, Type},
 };
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     White,
     Blue,
@@ -21,135 +26,172 @@ pub enum Color {
     Colorless,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone, Default)]
-pub enum Controller {
-    You,
-    Opponent,
-    #[default]
-    Any,
+impl From<&protogen::card::color::Color> for Color {
+    fn from(value: &protogen::card::color::Color) -> Self {
+        match value {
+            protogen::card::color::Color::White(_) => Self::White,
+            protogen::card::color::Color::Blue(_) => Self::Blue,
+            protogen::card::color::Color::Black(_) => Self::Black,
+            protogen::card::color::Color::Red(_) => Self::Red,
+            protogen::card::color::Color::Green(_) => Self::Green,
+            protogen::card::color::Color::Colorless(_) => Self::Colorless,
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum Target {
-    Spell {
-        #[serde(default)]
-        controller: Controller,
-        #[serde(default)]
-        types: Vec<Type>,
-        #[serde(default)]
-        subtypes: Vec<Subtype>,
-    },
-    Creature {
-        types: BTreeSet<Subtype>,
-    },
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum Effect {
-    CounterSpell {
-        target: Target,
-    },
-    GainMana {
-        mana: ManaGain,
-    },
-    ModifyBasePT {
-        targets: Vec<Target>,
-        base_power: i32,
-        base_toughness: i32,
-    },
-    ControllerDrawCards(usize),
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CastingModifier {
     CannotBeCountered,
     SplitSecond,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum StaticAbility {
-    GreenCannotBeCountered { controller: Controller },
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum LandType {
-    Plains,
-    Island,
-    Swamp,
-    Mountain,
-    Forest,
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
-pub enum Type {
-    BasicLand(LandType),
-    Land { types: Vec<LandType> },
-    Instant,
-    Sorcery,
-    Creature,
-    Artifact,
-    Enchantment,
-    Battle,
-}
-
-impl Type {
-    fn is_permanent(&self) -> bool {
-        match self {
-            Type::BasicLand(_)
-            | Type::Land { .. }
-            | Type::Creature
-            | Type::Artifact
-            | Type::Enchantment
-            | Type::Battle => true,
-            Type::Sorcery | Type::Instant => false,
+impl From<&protogen::card::casting_modifier::Modifier> for CastingModifier {
+    fn from(value: &protogen::card::casting_modifier::Modifier) -> Self {
+        match value {
+            protogen::card::casting_modifier::Modifier::CannotBeCountered(_) => {
+                Self::CannotBeCountered
+            }
+            protogen::card::casting_modifier::Modifier::SplitSecond(_) => Self::SplitSecond,
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone, PartialOrd, Ord)]
-pub enum Subtype {
-    Bear,
-    Elf,
-    Shaman,
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash)]
-pub enum Targets {
-    Spells,
-}
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Card {
     pub name: String,
-    pub cost: Cost,
-    #[serde(default)]
-    pub oracle_text: String,
-    #[serde(default)]
-    pub flavor_text: String,
-    #[serde(default)]
-    pub casting_modifiers: HashSet<CastingModifier>,
-    #[serde(default)]
-    pub effects: HashSet<Effect>,
-    #[serde(default)]
-    pub static_abilities: Vec<StaticAbility>,
-    #[serde(default)]
-    pub activated_abilities: Vec<Ability>,
     pub ty: Type,
-    #[serde(default)]
-    pub subtypes: HashSet<Subtype>,
-    #[serde(default)]
-    pub targets: HashSet<Targets>,
+    pub subtypes: Vec<Subtype>,
+
+    pub cost: CastingCost,
+    pub casting_modifiers: Vec<CastingModifier>,
+    pub colors: Vec<Color>,
+
+    pub oracle_text: String,
+    pub flavor_text: String,
+
+    pub effects: Vec<Effect>,
+    pub static_abilities: Vec<StaticAbility>,
+    pub activated_abilities: Vec<ActivatedAbility>,
+
+    pub targets: Vec<Target>,
+
     pub power: Option<usize>,
     pub toughness: Option<usize>,
+}
+
+impl TryFrom<protogen::card::Card> for Card {
+    type Error = anyhow::Error;
+
+    fn try_from(value: protogen::card::Card) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            ty: value
+                .ty
+                .ty
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected card to have a type"))?
+                .into(),
+            subtypes: value
+                .subtypes
+                .iter()
+                .map(|subtype| {
+                    subtype
+                        .subtype
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
+                        .map(Subtype::from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            cost: value
+                .cost
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected a casting cost"))?
+                .try_into()?,
+            casting_modifiers: value
+                .casting_modifiers
+                .iter()
+                .map(|modifier| {
+                    modifier
+                        .modifier
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected modifier to have a modifier specified"))
+                        .map(CastingModifier::from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            colors: value
+                .colors
+                .iter()
+                .map(|color| {
+                    color
+                        .color
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected color to have a color set"))
+                        .map(Color::from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            oracle_text: value.oracle_text,
+            flavor_text: value.flavor_text,
+            effects: value
+                .effects
+                .iter()
+                .map(|effect| {
+                    effect
+                        .effect
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+                        .and_then(Effect::try_from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            static_abilities: value
+                .static_abilities
+                .iter()
+                .map(|ability| {
+                    ability
+                        .ability
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected ability to have an ability specified"))
+                        .and_then(StaticAbility::try_from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            activated_abilities: value
+                .activated_abilities
+                .iter()
+                .map(ActivatedAbility::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            targets: value
+                .targets
+                .iter()
+                .map(|target| {
+                    target
+                        .target
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected target to have a target specified"))
+                        .and_then(Target::try_from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            power: value
+                .power
+                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                    Ok(usize::try_from(v).map(Some)?)
+                })?,
+            toughness: value
+                .toughness
+                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                    Ok(usize::try_from(v).map(Some)?)
+                })?,
+        })
+    }
 }
 
 impl Card {
     pub fn color(&self) -> HashSet<Color> {
         let mut colors = HashSet::default();
-        for mana in self.cost.mana.iter() {
+        for mana in self.cost.mana_cost.iter() {
             let color = mana.color();
             colors.insert(color);
+        }
+        for color in self.colors.iter() {
+            colors.insert(*color);
         }
 
         colors
@@ -159,7 +201,7 @@ impl Card {
         let mut identity = self.color();
 
         for ability in self.activated_abilities.iter() {
-            for mana in ability.cost.mana.iter() {
+            for mana in ability.cost.mana_cost.iter() {
                 let color = mana.color();
                 identity.insert(color);
             }
@@ -177,7 +219,7 @@ impl Card {
     }
 
     pub fn is_land(&self) -> bool {
-        matches!(self.ty, Type::BasicLand(_) | Type::Land { .. })
+        matches!(self.ty, Type::BasicLand | Type::Land)
     }
 
     pub fn valid_targets(
@@ -191,7 +233,11 @@ impl Card {
 
         for target in self.targets.iter() {
             match target {
-                Targets::Spells => {
+                Target::Spell(SpellTarget {
+                    controller: _,
+                    types: _,
+                    subtypes: _,
+                }) => {
                     for effect in self.effects.iter() {
                         match effect {
                             Effect::CounterSpell { target } => {
@@ -217,6 +263,7 @@ impl Card {
                         }
                     }
                 }
+                Target::Creature { subtypes: _ } => todo!(),
             }
         }
 
@@ -229,7 +276,7 @@ impl Card {
         battlefield: &Battlefield,
         caster: &Player,
         this_controller: &Player,
-        target: &Target,
+        target: &SpellTarget,
     ) -> bool {
         for modifier in self.casting_modifiers.iter() {
             match modifier {
@@ -240,35 +287,31 @@ impl Card {
             }
         }
 
-        match target {
-            Target::Spell {
-                controller,
-                types,
-                subtypes,
-            } => {
-                match controller {
-                    Controller::You => {
-                        if caster.id != this_controller.id {
-                            return false;
-                        }
-                    }
-                    Controller::Opponent => {
-                        if caster.id == this_controller.id {
-                            return false;
-                        }
-                    }
-                    Controller::Any => {}
-                };
-
-                if !types.is_empty() && !self.types_intersect(types) {
-                    return false;
-                }
-
-                if !self.subtypes_match(subtypes) {
+        let SpellTarget {
+            controller,
+            types,
+            subtypes,
+        } = target;
+        match controller {
+            Controller::You => {
+                if caster.id != this_controller.id {
                     return false;
                 }
             }
-            _ => return false,
+            Controller::Opponent => {
+                if caster.id == this_controller.id {
+                    return false;
+                }
+            }
+            Controller::Any => {}
+        };
+
+        if !types.is_empty() && !self.types_intersect(types) {
+            return false;
+        }
+
+        if !self.subtypes_match(subtypes) {
+            return false;
         }
 
         for (ability, controllers) in battlefield.static_abilities(cards).into_iter() {

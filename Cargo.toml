@@ -8,7 +8,12 @@ anyhow = "1.0.75"
 derive_more = "0.99.17"
 include_dir = "0.7.3"
 indexmap = { version = "2.1.0", features = [ "serde" ] }
+protobuf = "3.3.0"
 rand = "0.8.5"
 scopeguard = "1.2.0"
 serde = { version = "1.0.193", features = [ "derive" ] }
 serde_yaml = "0.9.27"
+
+
+[build-dependencies]
+protobuf-codegen = "3.3.0"

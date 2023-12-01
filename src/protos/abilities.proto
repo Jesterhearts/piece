@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package abilities;
+
+import "controller.proto";
+import "cost.proto";
+import "effects.proto";
+
+message StaticAbility {
+  message GreenCannotBeCountered {
+    controller.Controller controller = 1;
+  }
+
+  oneof ability {
+    GreenCannotBeCountered green_cannot_be_countered = 1;
+  }
+}
+
+message ActivatedAbility {
+  cost.AbilityCost cost = 1;
+  repeated effects.Effect effects = 2;
+}
