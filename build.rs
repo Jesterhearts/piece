@@ -10,7 +10,7 @@ fn main() {
     let out_dir = std::path::Path::new(&out_dir_env);
 
     protobuf_codegen::Codegen::new()
-        .protoc()
+        .pure()
         // All inputs and imports from the inputs must reside in `includes` directories.
         .includes(["src/protos"])
         // Inputs must reside in some of include paths.
