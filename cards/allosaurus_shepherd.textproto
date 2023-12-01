@@ -33,6 +33,15 @@ activated_abilities {
       }
     }
   }
+  effects {
+    modify_battlefield { 
+      modify_creature_types {
+        targets { elf {} }
+        types { dinosaur {} }
+        duration { until_end_of_turn {} }
+      }
+    }
+  }
 }
 power: 1
 toughness: 1

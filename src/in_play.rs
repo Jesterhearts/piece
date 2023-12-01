@@ -18,8 +18,9 @@ pub struct CardInPlay {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct EffectInPlay {
-    pub effect: Effect,
+pub struct EffectsInPlay {
+    pub effects: Vec<Effect>,
+    pub source: CardId,
     pub controller: PlayerRef,
 }
 

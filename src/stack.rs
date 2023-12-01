@@ -4,7 +4,7 @@ use crate::{
     battlefield::Battlefield,
     card::CastingModifier,
     effects::Effect,
-    in_play::{AllCards, CardId, EffectInPlay, ModifierInPlay},
+    in_play::{AllCards, CardId, EffectsInPlay, ModifierInPlay},
     player::PlayerRef,
 };
 
@@ -12,6 +12,7 @@ use crate::{
 pub enum StackResult {
     AddToBattlefield(CardId),
     ApplyToBattlefield(ModifierInPlay),
+    EquipCreature { source: CardId, target: CardId },
     SpellCountered { id: usize },
     RemoveSplitSecond,
     DrawCards { player: PlayerRef, count: usize },
@@ -20,12 +21,13 @@ pub enum StackResult {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum ActiveTarget {
     Stack { id: usize },
+    Battlefield { id: CardId },
 }
 
 #[derive(Debug, Clone)]
 pub enum EntryType {
     Card(CardId),
-    Effect(EffectInPlay),
+    ActivatedAbility(EffectsInPlay),
 }
 
 #[derive(Debug, Clone)]
@@ -69,13 +71,17 @@ impl Stack {
 
         id
     }
-    pub(crate) fn push_effect(&mut self, effect: EffectInPlay, target: Option<ActiveTarget>) {
+    pub(crate) fn push_activatetd_ability(
+        &mut self,
+        effects: EffectsInPlay,
+        target: Option<ActiveTarget>,
+    ) {
         let id = self.next_id;
         self.next_id += 1;
         self.stack.insert(
             id,
             StackEntry {
-                ty: EntryType::Effect(effect),
+                ty: EntryType::ActivatedAbility(effects),
                 active_target: target,
             },
         );
@@ -136,11 +142,18 @@ impl Stack {
                                                         return vec![];
                                                     }
                                                 }
-                                                EntryType::Effect(_) => todo!(),
+                                                EntryType::ActivatedAbility(_) => {
+                                                    // Vanilla counterspells can't counter activated abilities.
+                                                    return vec![];
+                                                }
                                             }
 
                                             // If we reach here, we know the spell can be countered.
                                             result.push(StackResult::SpellCountered { id });
+                                        }
+                                        ActiveTarget::Battlefield { .. } => {
+                                            // Cards on the battlefield aren't valid targets of counterspells
+                                            return vec![];
                                         }
                                     }
                                 }
@@ -153,6 +166,8 @@ impl Stack {
                         Effect::GainMana { mana: _ } => todo!(),
                         Effect::ModifyBattlefield(_) => todo!(),
                         Effect::ControllerDrawCards(_) => todo!(),
+                        Effect::Equip => todo!(),
+                        Effect::AddPowerToughness(_) => todo!(),
                     }
                 }
 
@@ -162,27 +177,58 @@ impl Stack {
 
                 result
             }
-            EntryType::Effect(effect) => match effect.effect {
-                Effect::CounterSpell { target: _ } => todo!(),
-                Effect::GainMana { mana: _ } => todo!(),
-                Effect::ModifyBattlefield(modifier) => {
-                    result.push(StackResult::ApplyToBattlefield(ModifierInPlay {
-                        modifier,
-                        controller: effect.controller,
-                        modified_cards: Default::default(),
-                    }));
+            EntryType::ActivatedAbility(effects) => {
+                for effect in effects.effects.into_iter() {
+                    match effect {
+                        Effect::CounterSpell { target: _ } => todo!(),
+                        Effect::GainMana { mana: _ } => todo!(),
+                        Effect::ModifyBattlefield(modifier) => {
+                            result.push(StackResult::ApplyToBattlefield(ModifierInPlay {
+                                modifier,
+                                controller: effects.controller.clone(),
+                                modified_cards: Default::default(),
+                            }));
+                        }
+                        Effect::ControllerDrawCards(count) => {
+                            result.push(StackResult::DrawCards {
+                                player: effects.controller.clone(),
+                                count,
+                            });
+                        }
+                        Effect::Equip => {
+                            let Some(target) = next.active_target else {
+                                // Effect fizzles due to lack of target.
+                                return vec![];
+                            };
 
-                    result
-                }
-                Effect::ControllerDrawCards(count) => {
-                    result.push(StackResult::DrawCards {
-                        player: effect.controller,
-                        count,
-                    });
+                            match target {
+                                ActiveTarget::Stack { .. } => {
+                                    // Can't equip things on the stack
+                                    return vec![];
+                                }
+                                ActiveTarget::Battlefield { id } => {
+                                    let card = &cards[id];
+                                    if !card.card.can_be_targeted(
+                                        cards,
+                                        effects.source,
+                                        &card.controller.borrow(),
+                                    ) {
+                                        // Card is not a valid target, spell fizzles.
+                                        return vec![];
+                                    }
 
-                    result
+                                    result.push(StackResult::EquipCreature {
+                                        source: effects.source,
+                                        target: id,
+                                    });
+                                }
+                            }
+                        }
+                        Effect::AddPowerToughness(_) => todo!(),
+                    }
                 }
-            },
+                result
+            }
         }
     }
 }

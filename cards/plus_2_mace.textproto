@@ -1,0 +1,18 @@
+name: "+2 Mace"
+cost {
+  mana_costs { generic { count: 1 }}
+  mana_costs { white {} }
+}
+ty { artifact {} }
+subtypes { equipment {} }
+oracle_text: "Equipped creature gets +2/+2"
+activated_abilities {
+  cost { mana_costs { generic { count: 3 } } }
+  effects { equip {} }
+  effects {
+    add_power_toughness {
+      power: 2
+      toughness: 2
+    }
+  }
+}

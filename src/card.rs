@@ -8,7 +8,7 @@ use crate::{
     controller::Controller,
     cost::CastingCost,
     effects::Effect,
-    in_play::AllCards,
+    in_play::{AllCards, CardId},
     player::Player,
     protogen,
     stack::{ActiveTarget, EntryType, Stack},
@@ -77,6 +77,12 @@ pub struct Card {
 
     pub power: Option<usize>,
     pub toughness: Option<usize>,
+
+    pub power_modifier: Option<usize>,
+    pub toughness_modifier: Option<usize>,
+
+    pub hexproof: bool,
+    pub shroud: bool,
 }
 
 impl TryFrom<protogen::card::Card> for Card {
@@ -179,6 +185,10 @@ impl TryFrom<protogen::card::Card> for Card {
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
                     Ok(usize::try_from(v).map(Some)?)
                 })?,
+            power_modifier: None,
+            toughness_modifier: None,
+            hexproof: value.hexproof,
+            shroud: value.shroud,
         })
     }
 }
@@ -195,6 +205,20 @@ impl Card {
         }
 
         colors
+    }
+
+    pub fn power(&self) -> usize {
+        let base = self.power.unwrap_or_default();
+        let modifier = self.power_modifier.unwrap_or_default();
+
+        base + modifier
+    }
+
+    pub fn toughness(&self) -> usize {
+        let base = self.toughness.unwrap_or_default();
+        let modifier = self.toughness_modifier.unwrap_or_default();
+
+        base + modifier
     }
 
     pub fn color_identity(&self) -> HashSet<Color> {
@@ -255,7 +279,7 @@ impl Card {
                                                 targets.insert(ActiveTarget::Stack { id: *index });
                                             }
                                         }
-                                        EntryType::Effect(_) => {}
+                                        EntryType::ActivatedAbility(_) => {}
                                     }
                                 }
                             }
@@ -362,5 +386,26 @@ impl Card {
 
     pub fn is_permanent(&self) -> bool {
         self.ty.is_permanent()
+    }
+
+    pub(crate) fn can_be_targeted(
+        &self,
+        cards: &AllCards,
+        source: CardId,
+        this_controller: &Player,
+    ) -> bool {
+        if self.shroud {
+            return false;
+        }
+
+        let source_controller = cards[source].controller.borrow();
+
+        if self.hexproof && *source_controller != *this_controller {
+            return false;
+        }
+
+        // TODO protection
+
+        true
     }
 }

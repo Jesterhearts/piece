@@ -49,6 +49,10 @@ message Subtype {
   }
   message Forest {
   }
+  message Dinosaur {
+  }
+  message Equipment {
+  }
 
   oneof subtype {
     Bear bear = 1;
@@ -59,5 +63,7 @@ message Subtype {
     Swamp swamp = 6;
     Mountain mountain = 7;
     Forest forest = 8;
+    Dinosaur dinosaur = 9;
+    Equipment equipment = 10;
   }
 }

@@ -64,4 +64,7 @@ message Card {
 
   optional int32 power = 13;
   optional int32 toughness = 14;
+
+  bool hexproof = 15;
+  bool shroud = 16;
 }

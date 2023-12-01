@@ -35,20 +35,32 @@ message Effect {
       Choice choice = 2;
     }
   }
+  message ModifyBasePowerToughness {
+    repeated types.Subtype targets = 1;
+    int32 power = 2;
+    int32 toughness = 3;
+    Duration duration = 4;
+  }
+  message ModifyCreatureTypes {
+    repeated types.Subtype targets = 1;
+    repeated types.Subtype types = 2;
+    Duration duration = 4;
+  }
   message ModifyBattlefield {
-    message ModifyBasePowerToughness {
-      repeated types.Subtype targets = 1;
-      int32 power = 2;
-      int32 toughness = 3;
-      Duration duration = 4;
-    }
-
     oneof modifier {
       ModifyBasePowerToughness modify_base_power_toughness = 1;
+      ModifyCreatureTypes modify_creature_types = 2;
+      AddPowerToughness add_power_toughness = 3;
     }
   }
   message ControllerDrawCards {
     int32 count = 1;
+  }
+  message Equip {
+  }
+  message AddPowerToughness {
+    int32 power = 1;
+    int32 toughness = 2;
   }
 
   oneof effect {
@@ -56,5 +68,7 @@ message Effect {
     GainMana gain_mana = 2;
     ModifyBattlefield modify_battlefield = 3;
     ControllerDrawCards controller_draw_cards = 4;
+    Equip equip = 5;
+    AddPowerToughness add_power_toughness = 6;
   }
 }
