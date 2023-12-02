@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use crate::{
     card::Card,
     deck::{Deck, DeckDefinition},
-    effects::{BattlefieldModifier, Effect, ModifyCreature},
+    effects::{ActivatedAbilityEffect, BattlefieldModifier, ModifyCreature},
     player::PlayerRef,
     Cards,
 };
@@ -19,7 +19,7 @@ pub struct CardInPlay {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EffectsInPlay {
-    pub effects: Vec<Effect>,
+    pub effects: Vec<ActivatedAbilityEffect>,
     pub source: CardId,
     pub controller: PlayerRef,
 }

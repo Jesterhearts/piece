@@ -1,6 +1,10 @@
 use anyhow::anyhow;
 
-use crate::{controller::Controller, cost::AbilityCost, effects::Effect, protogen};
+use crate::{controller::Controller, cost::AbilityCost, effects::ActivatedAbilityEffect, protogen};
+
+pub enum ETBAbility {
+    CopyOfAnyCreature,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StaticAbility {
@@ -29,7 +33,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
-    pub effects: Vec<Effect>,
+    pub effects: Vec<ActivatedAbilityEffect>,
 }
 
 impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
@@ -50,7 +54,7 @@ impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
                         .effect
                         .as_ref()
                         .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-                        .and_then(Effect::try_from)
+                        .and_then(ActivatedAbilityEffect::try_from)
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })

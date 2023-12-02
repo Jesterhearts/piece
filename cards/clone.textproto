@@ -1,0 +1,15 @@
+name: "Clone"
+cost {
+  mana_costs { generic { count: 3 } }
+  mana_costs { blue {} }
+}
+ty { creature {} }
+subtypes { shapeshifter {} }
+oracle_text:  "You may have Clone enter the battlefield as a copy"
+              "of any creature on the battlefield."
+flavor_text:  "He knows your strengths, your weaknesses, and"
+              "the shape of that unfortunate birthmark on your"
+              "backside."
+power: 0
+toughness: 0
+etb_abilities { copy_of_any_creature {} }

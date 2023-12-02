@@ -35,35 +35,39 @@ message Type {
 message Subtype {
   message Bear {
   }
-  message Elf {
-  }
-  message Shaman {
-  }
-  message Plains {
-  }
-  message Island {
-  }
-  message Swamp {
-  }
-  message Mountain {
-  }
-  message Forest {
-  }
   message Dinosaur {
+  }
+  message Elf {
   }
   message Equipment {
   }
+  message Forest {
+  }
+  message Island {
+  }
+  message Mountain {
+  }
+  message Plains {
+  }
+  message Shaman {
+  }
+  message Shapeshifter {
+  }
+  message Swamp {
+  }
+
 
   oneof subtype {
     Bear bear = 1;
-    Elf elf = 2;
-    Shaman shaman = 3;
-    Plains plains = 4;
-    Island island = 5;
-    Swamp swamp = 6;
+    Dinosaur dinosaur = 2;
+    Elf elf = 3;
+    Equipment equipment = 4;
+    Forest forest = 5;
+    Island island = 6;
     Mountain mountain = 7;
-    Forest forest = 8;
-    Dinosaur dinosaur = 9;
-    Equipment equipment = 10;
+    Plains plains = 8;
+    Shaman shaman = 9;
+    Shapeshifter shapeshifter = 10;
+    Swamp swamp = 11;
   }
 }

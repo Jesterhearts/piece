@@ -7,7 +7,7 @@ use crate::{
     battlefield::Battlefield,
     controller::Controller,
     cost::CastingCost,
-    effects::Effect,
+    effects::SpellEffect,
     in_play::{AllCards, CardId},
     player::Player,
     protogen,
@@ -69,7 +69,7 @@ pub struct Card {
     pub oracle_text: String,
     pub flavor_text: String,
 
-    pub effects: Vec<Effect>,
+    pub effects: Vec<SpellEffect>,
     pub static_abilities: Vec<StaticAbility>,
     pub activated_abilities: Vec<ActivatedAbility>,
 
@@ -77,6 +77,9 @@ pub struct Card {
 
     pub power: Option<usize>,
     pub toughness: Option<usize>,
+
+    pub current_power: Option<usize>,
+    pub current_toughness: Option<usize>,
 
     pub power_modifier: Option<usize>,
     pub toughness_modifier: Option<usize>,
@@ -89,6 +92,17 @@ impl TryFrom<protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: protogen::card::Card) -> Result<Self, Self::Error> {
+        let power = value
+            .power
+            .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                Ok(usize::try_from(v).map(Some)?)
+            })?;
+        let toughness = value
+            .toughness
+            .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                Ok(usize::try_from(v).map(Some)?)
+            })?;
+
         Ok(Self {
             name: value.name,
             ty: value
@@ -145,7 +159,7 @@ impl TryFrom<protogen::card::Card> for Card {
                         .effect
                         .as_ref()
                         .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-                        .and_then(Effect::try_from)
+                        .and_then(SpellEffect::try_from)
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?,
             static_abilities: value
@@ -175,16 +189,10 @@ impl TryFrom<protogen::card::Card> for Card {
                         .and_then(Target::try_from)
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            power: value
-                .power
-                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                    Ok(usize::try_from(v).map(Some)?)
-                })?,
-            toughness: value
-                .toughness
-                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                    Ok(usize::try_from(v).map(Some)?)
-                })?,
+            power,
+            toughness,
+            current_power: power,
+            current_toughness: toughness,
             power_modifier: None,
             toughness_modifier: None,
             hexproof: value.hexproof,
@@ -208,14 +216,14 @@ impl Card {
     }
 
     pub fn power(&self) -> usize {
-        let base = self.power.unwrap_or_default();
+        let base = self.current_power.unwrap_or_default();
         let modifier = self.power_modifier.unwrap_or_default();
 
         base + modifier
     }
 
     pub fn toughness(&self) -> usize {
-        let base = self.toughness.unwrap_or_default();
+        let base = self.current_toughness.unwrap_or_default();
         let modifier = self.toughness_modifier.unwrap_or_default();
 
         base + modifier
@@ -264,7 +272,7 @@ impl Card {
                 }) => {
                     for effect in self.effects.iter() {
                         match effect {
-                            Effect::CounterSpell { target } => {
+                            SpellEffect::CounterSpell { target } => {
                                 for (index, spell) in stack.stack.iter() {
                                     match &spell.ty {
                                         EntryType::Card(card) => {

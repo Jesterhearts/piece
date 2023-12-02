@@ -6,6 +6,15 @@ import "controller.proto";
 import "cost.proto";
 import "effects.proto";
 
+message ETBAbility {
+  message CopyOfAnyCreature {
+  }
+
+  oneof ability {
+    CopyOfAnyCreature copy_of_any_creature = 1;
+  }
+}
+
 message StaticAbility {
   message GreenCannotBeCountered {
     controller.Controller controller = 1;
@@ -18,5 +27,5 @@ message StaticAbility {
 
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
-  repeated effects.Effect effects = 2;
+  repeated effects.ActivatedAbilityEffect effects = 2;
 }

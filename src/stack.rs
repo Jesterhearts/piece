@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use crate::{
     battlefield::Battlefield,
     card::CastingModifier,
-    effects::Effect,
+    effects::{ActivatedAbilityEffect, SpellEffect},
     in_play::{AllCards, CardId, CreaturesModifier, EffectsInPlay, ModifierInPlay},
     player::PlayerRef,
 };
@@ -118,7 +118,7 @@ impl Stack {
 
                 for effect in resolving_card.card.effects.iter() {
                     match effect {
-                        Effect::CounterSpell { target } => {
+                        SpellEffect::CounterSpell { target } => {
                             match next.active_target {
                                 Some(active_target) => {
                                     match active_target {
@@ -163,11 +163,11 @@ impl Stack {
                                 }
                             };
                         }
-                        Effect::GainMana { mana: _ } => todo!(),
-                        Effect::BattlefieldModifier(_) => todo!(),
-                        Effect::ControllerDrawCards(_) => todo!(),
-                        Effect::Equip(_) => todo!(),
-                        Effect::AddPowerToughness(_) => todo!(),
+                        SpellEffect::GainMana { mana: _ } => todo!(),
+                        SpellEffect::BattlefieldModifier(_) => todo!(),
+                        SpellEffect::ControllerDrawCards(_) => todo!(),
+                        SpellEffect::AddPowerToughness(_) => todo!(),
+                        SpellEffect::ModifyCreature(_) => todo!(),
                     }
                 }
 
@@ -180,22 +180,22 @@ impl Stack {
             EntryType::ActivatedAbility(effects) => {
                 for effect in effects.effects.into_iter() {
                     match effect {
-                        Effect::CounterSpell { target: _ } => todo!(),
-                        Effect::GainMana { mana: _ } => todo!(),
-                        Effect::BattlefieldModifier(modifier) => {
+                        ActivatedAbilityEffect::CounterSpell { target: _ } => todo!(),
+                        ActivatedAbilityEffect::GainMana { mana: _ } => todo!(),
+                        ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield(ModifierInPlay {
                                 modifier,
                                 controller: effects.controller.clone(),
                                 modified_cards: Default::default(),
                             }));
                         }
-                        Effect::ControllerDrawCards(count) => {
+                        ActivatedAbilityEffect::ControllerDrawCards(count) => {
                             result.push(StackResult::DrawCards {
                                 player: effects.controller.clone(),
                                 count,
                             });
                         }
-                        Effect::Equip(modifier) => {
+                        ActivatedAbilityEffect::Equip(modifier) => {
                             let Some(target) = next.active_target else {
                                 // Effect fizzles due to lack of target.
                                 return vec![];
@@ -226,7 +226,7 @@ impl Stack {
                                 }
                             }
                         }
-                        Effect::AddPowerToughness(_) => todo!(),
+                        ActivatedAbilityEffect::AddPowerToughness(_) => todo!(),
                     }
                 }
                 result

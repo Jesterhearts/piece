@@ -36,15 +36,16 @@ impl Type {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Subtype {
     Bear,
-    Elf,
-    Shaman,
-    Plains,
-    Island,
-    Swamp,
-    Mountain,
-    Forest,
     Dinosaur,
+    Elf,
     Equipment,
+    Forest,
+    Island,
+    Mountain,
+    Plains,
+    Shaman,
+    Shapeshifter,
+    Swamp,
 }
 
 impl From<&protogen::types::subtype::Subtype> for Subtype {
@@ -60,6 +61,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Forest(_) => Self::Forest,
             protogen::types::subtype::Subtype::Dinosaur(_) => Self::Dinosaur,
             protogen::types::subtype::Subtype::Equipment(_) => Self::Equipment,
+            protogen::types::subtype::Subtype::Shapeshifter(_) => Self::Shapeshifter,
         }
     }
 }

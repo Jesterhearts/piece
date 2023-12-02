@@ -32,6 +32,7 @@ activated_abilities {
           toughness: 5
         }
       }
+      controller { you {} }
       duration { until_end_of_turn {} }
     }
   }
@@ -43,6 +44,7 @@ activated_abilities {
           types { dinosaur {} }
         }
       }
+      controller { you {} }
       duration { until_end_of_turn {} }
     }
   }
