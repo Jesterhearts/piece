@@ -67,7 +67,6 @@ pub struct ModifyBasePowerToughness {
     pub targets: Vec<Subtype>,
     pub power: usize,
     pub toughness: usize,
-    pub duration: EffectDuration,
 }
 
 impl TryFrom<&protogen::effects::effect::ModifyBasePowerToughness> for ModifyBasePowerToughness {
@@ -90,12 +89,6 @@ impl TryFrom<&protogen::effects::effect::ModifyBasePowerToughness> for ModifyBas
                 .collect::<anyhow::Result<Vec<_>>>()?,
             power: usize::try_from(value.power)?,
             toughness: usize::try_from(value.toughness)?,
-            duration: value
-                .duration
-                .duration
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
-                .map(EffectDuration::from)?,
         })
     }
 }
@@ -104,7 +97,6 @@ impl TryFrom<&protogen::effects::effect::ModifyBasePowerToughness> for ModifyBas
 pub struct ModifyCreatureTypes {
     pub targets: Vec<Subtype>,
     pub types: Vec<Subtype>,
-    pub duration: EffectDuration,
 }
 
 impl TryFrom<&protogen::effects::effect::ModifyCreatureTypes> for ModifyCreatureTypes {
@@ -135,12 +127,6 @@ impl TryFrom<&protogen::effects::effect::ModifyCreatureTypes> for ModifyCreature
                         .map(Subtype::from)
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            duration: value
-                .duration
-                .duration
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
-                .map(EffectDuration::from)?,
         })
     }
 }
@@ -190,12 +176,68 @@ impl TryFrom<&protogen::effects::effect::modify_battlefield::Modifier> for Modif
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct BattlefieldModifier {
+    pub modifier: ModifyBattlefield,
+    pub duration: EffectDuration,
+}
+
+impl TryFrom<&protogen::effects::effect::BattlefieldModifier> for BattlefieldModifier {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::effect::BattlefieldModifier,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            modifier: value
+                .modifier
+                .modifier
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected battlefield modifier to have a modifier set"))?
+                .try_into()?,
+            duration: value
+                .duration
+                .duration
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
+                .map(EffectDuration::from)?,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum ModifyCreature {
+    ModifyBasePowerToughness(ModifyBasePowerToughness),
+    ModifyCreatureTypes(ModifyCreatureTypes),
+    AddPowerToughness(AddPowerToughness),
+}
+
+impl TryFrom<&protogen::effects::effect::modify_creature::Modifier> for ModifyCreature {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::effect::modify_creature::Modifier,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::effect::modify_creature::Modifier::ModifyBasePowerToughness(
+                modifier,
+            ) => Ok(Self::ModifyBasePowerToughness(modifier.try_into()?)),
+            protogen::effects::effect::modify_creature::Modifier::ModifyCreatureTypes(modifier) => {
+                Ok(Self::ModifyCreatureTypes(modifier.try_into()?))
+            }
+            protogen::effects::effect::modify_creature::Modifier::AddPowerToughness(modifier) => {
+                Ok(Self::AddPowerToughness(modifier.try_into()?))
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Effect {
     CounterSpell { target: SpellTarget },
     GainMana { mana: GainMana },
-    ModifyBattlefield(ModifyBattlefield),
+    BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
-    Equip,
+    Equip(ModifyCreature),
     AddPowerToughness(AddPowerToughness),
 }
 
@@ -218,18 +260,22 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                     .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
                     .and_then(GainMana::try_from)?,
             }),
-            protogen::effects::effect::Effect::ModifyBattlefield(modifier) => {
-                Ok(Self::ModifyBattlefield(ModifyBattlefield::try_from(
-                    modifier
-                        .modifier
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected modifier to have a modifier set"))?,
-                )?))
+            protogen::effects::effect::Effect::BattlefieldModifier(modifier) => {
+                Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
             protogen::effects::effect::Effect::ControllerDrawCards(draw) => {
                 Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
             }
-            protogen::effects::effect::Effect::Equip(_) => Ok(Self::Equip),
+            protogen::effects::effect::Effect::Equip(modifier) => Ok(Self::Equip(
+                modifier
+                    .modifier
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("Expected equipment to have a modifier"))?
+                    .modifier
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("Expected modifier to have a modifier set"))?
+                    .try_into()?,
+            )),
             protogen::effects::effect::Effect::AddPowerToughness(modifier) => {
                 Ok(Self::AddPowerToughness(modifier.try_into()?))
             }

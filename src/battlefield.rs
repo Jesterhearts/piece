@@ -1,12 +1,18 @@
-use std::{collections::HashSet, vec};
+use std::{
+    collections::{HashMap, HashSet},
+    vec,
+};
 
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     abilities::StaticAbility,
     cost::AdditionalCost,
-    effects::{EffectDuration, ModifyBasePowerToughness, ModifyBattlefield, ModifyCreatureTypes},
-    in_play::{AllCards, CardId, EffectsInPlay, ModifierInPlay},
+    effects::{
+        AddPowerToughness, EffectDuration, ModifyBasePowerToughness, ModifyBattlefield,
+        ModifyCreature, ModifyCreatureTypes,
+    },
+    in_play::{AllCards, CardId, CreaturesModifier, EffectsInPlay, ModifierInPlay},
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
 };
@@ -26,9 +32,10 @@ pub struct Permanent {
 #[derive(Debug, Default)]
 pub struct Battlefield {
     pub permanents: IndexMap<CardId, Permanent>,
-    pub graveyards: IndexSet<CardId>,
+    pub graveyards: HashMap<PlayerRef, IndexSet<CardId>>,
 
     pub until_end_of_turn: Vec<ModifierInPlay>,
+    pub creature_modifiers: IndexMap<CardId, CreaturesModifier>,
 }
 
 impl Battlefield {
@@ -38,8 +45,32 @@ impl Battlefield {
 
     pub fn end_turn(&mut self, cards: &mut AllCards) {
         for effect in self.until_end_of_turn.drain(..).rev() {
-            for (cardid, card) in effect.modified_cards.into_iter() {
-                cards[cardid].card = card;
+            match effect.modifier.modifier {
+                ModifyBattlefield::ModifyBasePowerToughness(_) => {
+                    for (cardid, card) in effect.modified_cards.into_iter() {
+                        cards[cardid].card = card;
+                    }
+                }
+                ModifyBattlefield::ModifyCreatureTypes(_) => {
+                    for (cardid, card) in effect.modified_cards.into_iter() {
+                        cards[cardid].card = card;
+                    }
+                }
+                ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
+                    for cardid in self.permanents.keys().copied() {
+                        *cards[cardid]
+                            .card
+                            .power_modifier
+                            .as_mut()
+                            .expect("Modified creatures should have a power modifier") -= power;
+                        *cards[cardid]
+                            .card
+                            .toughness_modifier
+                            .as_mut()
+                            .expect("Modified creatures should have a toughness modifier") -=
+                            toughness;
+                    }
+                }
             }
         }
     }
@@ -139,9 +170,7 @@ impl Battlefield {
                     permanent.tapped = true;
                 }
                 ActivatedAbilityResult::PermanentToGraveyard => {
-                    self.permanents.remove(&card_id).unwrap();
-                    cards[card_id].controller = cards[card_id].owner.clone();
-                    self.graveyards.insert(card_id);
+                    self.permanent_to_graveyard(cards, stack, card_id);
                 }
                 ActivatedAbilityResult::AddToStack(effect, target) => {
                     stack.push_activatetd_ability(effect, target);
@@ -150,13 +179,56 @@ impl Battlefield {
         }
     }
 
-    pub fn apply(&mut self, cards: &mut AllCards, mut modifier: ModifierInPlay) {
-        match &modifier.modifier {
+    pub fn permanent_to_graveyard(
+        &mut self,
+        cards: &mut AllCards,
+        _stack: &mut Stack,
+        card_id: CardId,
+    ) {
+        self.permanents.remove(&card_id).unwrap();
+        cards[card_id].controller = cards[card_id].owner.clone();
+        self.graveyards
+            .entry(cards[card_id].owner.clone())
+            .or_default()
+            .insert(card_id);
+
+        if let Some(modifier) = self.creature_modifiers.remove(&card_id) {
+            match modifier.effect {
+                ModifyCreature::ModifyBasePowerToughness(_) => {
+                    for (cardid, card) in modifier.modified_cards.into_iter() {
+                        cards[cardid].card = card;
+                    }
+                }
+                ModifyCreature::ModifyCreatureTypes(_) => {
+                    for (cardid, card) in modifier.modified_cards.into_iter() {
+                        cards[cardid].card = card;
+                    }
+                }
+                ModifyCreature::AddPowerToughness(AddPowerToughness { power, toughness }) => {
+                    for cardid in modifier.targets {
+                        *cards[cardid]
+                            .card
+                            .power_modifier
+                            .as_mut()
+                            .expect("Modified creatures should have a power modifier") -= power;
+                        *cards[cardid]
+                            .card
+                            .toughness_modifier
+                            .as_mut()
+                            .expect("Modified creatures should have a toughness modifier") -=
+                            toughness;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn apply_modifier(&mut self, cards: &mut AllCards, mut modifier: ModifierInPlay) {
+        match &modifier.modifier.modifier {
             ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
                 targets,
                 power: base_power,
                 toughness: base_tough,
-                duration,
             }) => {
                 for cardid in self.permanents.keys() {
                     let card = &mut cards[*cardid];
@@ -172,15 +244,8 @@ impl Battlefield {
                         }
                     }
                 }
-                match duration {
-                    EffectDuration::UntilEndOfTurn => self.until_end_of_turn.push(modifier),
-                }
             }
-            ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
-                targets,
-                types,
-                duration,
-            }) => {
+            ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes { targets, types }) => {
                 for cardid in self.permanents.keys() {
                     let card = &mut cards[*cardid];
 
@@ -189,14 +254,52 @@ impl Battlefield {
                         card.card.subtypes.extend(types.iter().copied());
                     }
                 }
-                match duration {
-                    EffectDuration::UntilEndOfTurn => self.until_end_of_turn.push(modifier),
+            }
+            ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
+                for cardid in self.permanents.keys() {
+                    *cards[*cardid].card.power_modifier.get_or_insert(0) += power;
+                    *cards[*cardid].card.toughness_modifier.get_or_insert(0) += toughness;
                 }
             }
-            ModifyBattlefield::AddPowerToughness(_) => {
-                todo!()
+        }
+
+        match modifier.modifier.duration {
+            EffectDuration::UntilEndOfTurn => self.until_end_of_turn.push(modifier),
+        }
+    }
+
+    pub fn modify_creatures(&mut self, all_cards: &mut AllCards, mut modifier: CreaturesModifier) {
+        for cardid in modifier.targets.iter() {
+            match &modifier.effect {
+                ModifyCreature::ModifyBasePowerToughness(ModifyBasePowerToughness {
+                    targets,
+                    power,
+                    toughness,
+                }) => {
+                    let card = &mut all_cards[*cardid];
+
+                    if card.card.subtypes_match(targets) {
+                        modifier.modified_cards.insert(*cardid, card.card.clone());
+
+                        *card.card.power.get_or_insert(0) = *power;
+                        *card.card.toughness.get_or_insert(0) = *toughness;
+                    }
+                }
+                ModifyCreature::ModifyCreatureTypes(ModifyCreatureTypes { targets, types }) => {
+                    let card = &mut all_cards[*cardid].card;
+                    if card.subtypes_match(targets) {
+                        modifier.modified_cards.insert(*cardid, card.clone());
+                        card.subtypes.extend(types.iter().copied());
+                    }
+                }
+                ModifyCreature::AddPowerToughness(AddPowerToughness { power, toughness }) => {
+                    *all_cards[*cardid].card.power_modifier.get_or_insert(0) += power;
+                    *all_cards[*cardid].card.toughness_modifier.get_or_insert(0) += toughness;
+                }
             }
         }
+
+        self.creature_modifiers.insert(modifier.source, modifier);
     }
 }
 
@@ -207,13 +310,13 @@ mod tests {
         battlefield::{ActivatedAbilityResult, Battlefield},
         deck::Deck,
         effects::{
-            Effect, EffectDuration, ModifyBasePowerToughness, ModifyBattlefield,
-            ModifyCreatureTypes,
+            AddPowerToughness, BattlefieldModifier, Effect, EffectDuration,
+            ModifyBasePowerToughness, ModifyBattlefield, ModifyCreature, ModifyCreatureTypes,
         },
-        in_play::{AllCards, EffectsInPlay, ModifierInPlay},
+        in_play::{AllCards, CreaturesModifier, EffectsInPlay, ModifierInPlay},
         load_cards,
         player::Player,
-        stack::{Stack, StackResult},
+        stack::{ActiveTarget, Stack, StackResult},
         types::Subtype,
     };
 
@@ -270,21 +373,24 @@ mod tests {
             [ActivatedAbilityResult::AddToStack(
                 EffectsInPlay {
                     effects: vec![
-                        Effect::ModifyBattlefield(ModifyBattlefield::ModifyBasePowerToughness(
-                            ModifyBasePowerToughness {
-                                targets: vec![Subtype::Elf],
-                                power: 5,
-                                toughness: 5,
-                                duration: EffectDuration::UntilEndOfTurn,
-                            }
-                        )),
-                        Effect::ModifyBattlefield(ModifyBattlefield::ModifyCreatureTypes(
-                            ModifyCreatureTypes {
+                        Effect::BattlefieldModifier(BattlefieldModifier {
+                            modifier: ModifyBattlefield::ModifyBasePowerToughness(
+                                ModifyBasePowerToughness {
+                                    targets: vec![Subtype::Elf],
+                                    power: 5,
+                                    toughness: 5,
+                                }
+                            ),
+                            duration: EffectDuration::UntilEndOfTurn,
+                        }),
+                        Effect::BattlefieldModifier(BattlefieldModifier {
+                            modifier: ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
                                 targets: vec![Subtype::Elf],
                                 types: vec![Subtype::Dinosaur],
-                                duration: EffectDuration::UntilEndOfTurn,
-                            }
-                        ))
+                            }),
+
+                            duration: EffectDuration::UntilEndOfTurn,
+                        })
                     ],
                     source: card,
                     controller: player.clone(),
@@ -300,23 +406,27 @@ mod tests {
             results,
             [
                 StackResult::ApplyToBattlefield(ModifierInPlay {
-                    modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                        ModifyBasePowerToughness {
-                            targets: vec![Subtype::Elf],
-                            power: 5,
-                            toughness: 5,
-                            duration: EffectDuration::UntilEndOfTurn
-                        }
-                    ),
+                    modifier: BattlefieldModifier {
+                        modifier: ModifyBattlefield::ModifyBasePowerToughness(
+                            ModifyBasePowerToughness {
+                                targets: vec![Subtype::Elf],
+                                power: 5,
+                                toughness: 5,
+                            }
+                        ),
+                        duration: EffectDuration::UntilEndOfTurn
+                    },
                     controller: player.clone(),
                     modified_cards: Default::default(),
                 }),
                 StackResult::ApplyToBattlefield(ModifierInPlay {
-                    modifier: ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
-                        targets: vec![Subtype::Elf],
-                        types: vec![Subtype::Dinosaur],
+                    modifier: BattlefieldModifier {
+                        modifier: ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
+                            targets: vec![Subtype::Elf],
+                            types: vec![Subtype::Dinosaur],
+                        }),
                         duration: EffectDuration::UntilEndOfTurn
-                    }),
+                    },
                     controller: player.clone(),
                     modified_cards: Default::default(),
                 })
@@ -327,7 +437,7 @@ mod tests {
             unreachable!()
         };
 
-        battlefield.apply(&mut all_cards, effect);
+        battlefield.apply_modifier(&mut all_cards, effect);
         let card = battlefield.select_card(0);
         let card = &all_cards[card];
         assert_eq!(card.card.power(), 5);
@@ -339,6 +449,82 @@ mod tests {
         let card = &all_cards[card];
         assert_eq!(card.card.power(), 1);
         assert_eq!(card.card.toughness(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn equipment_works() -> anyhow::Result<()> {
+        let cards = load_cards()?;
+        let mut all_cards = AllCards::default();
+        let mut stack = Stack::default();
+        let mut battlefield = Battlefield::default();
+        let player = Player::new_ref(Deck::empty());
+        player.borrow_mut().infinite_mana();
+
+        let equipment = all_cards.add(&cards, player.clone(), "+2 Mace");
+        battlefield.add(equipment);
+
+        let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
+        battlefield.add(creature);
+
+        let equipment = battlefield.select_card(0);
+        let results = battlefield.activate_ability(
+            equipment,
+            &all_cards,
+            &stack,
+            0,
+            Some(ActiveTarget::Battlefield { id: creature }),
+        );
+
+        assert_eq!(
+            results,
+            [ActivatedAbilityResult::AddToStack(
+                EffectsInPlay {
+                    effects: vec![Effect::Equip(ModifyCreature::AddPowerToughness(
+                        AddPowerToughness {
+                            power: 2,
+                            toughness: 2
+                        }
+                    )),],
+                    source: equipment,
+                    controller: player.clone(),
+                },
+                Some(ActiveTarget::Battlefield { id: creature })
+            )]
+        );
+
+        battlefield.apply_activated_ability(&mut all_cards, &mut stack, equipment, results);
+
+        let results = stack.resolve_1(&all_cards, &battlefield);
+        assert_eq!(
+            results,
+            [StackResult::ModifyCreatures(CreaturesModifier {
+                source: equipment,
+                effect: ModifyCreature::AddPowerToughness(AddPowerToughness {
+                    power: 2,
+                    toughness: 2
+                }),
+                targets: vec![creature],
+                modified_cards: Default::default()
+            })]
+        );
+
+        let Some(StackResult::ModifyCreatures(modifier)) = results.into_iter().next() else {
+            unreachable!()
+        };
+
+        battlefield.modify_creatures(&mut all_cards, modifier);
+
+        let card = &all_cards[creature];
+        assert_eq!(card.card.power(), 6);
+        assert_eq!(card.card.toughness(), 4);
+
+        battlefield.permanent_to_graveyard(&mut all_cards, &mut stack, equipment);
+
+        let card = &all_cards[creature];
+        assert_eq!(card.card.power(), 4);
+        assert_eq!(card.card.toughness(), 2);
 
         Ok(())
     }

@@ -24,22 +24,26 @@ activated_abilities {
     mana_costs { generic { count: 4} }
   }
   effects {
-    modify_battlefield { 
-      modify_base_power_toughness {
-        targets { elf {} }
-        power: 5
-        toughness: 5
-        duration { until_end_of_turn {} }
+    battlefield_modifier { 
+      modifier {
+        modify_base_power_toughness {
+          targets { elf {} }
+          power: 5
+          toughness: 5
+        }
       }
+      duration { until_end_of_turn {} }
     }
   }
   effects {
-    modify_battlefield { 
-      modify_creature_types {
-        targets { elf {} }
-        types { dinosaur {} }
-        duration { until_end_of_turn {} }
+    battlefield_modifier { 
+      modifier {
+        modify_creature_types {
+          targets { elf {} }
+          types { dinosaur {} }
+        }
       }
+      duration { until_end_of_turn {} }
     }
   }
 }

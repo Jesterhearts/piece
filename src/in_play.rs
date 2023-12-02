@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use crate::{
     card::Card,
     deck::{Deck, DeckDefinition},
-    effects::{Effect, ModifyBattlefield},
+    effects::{BattlefieldModifier, Effect, ModifyCreature},
     player::PlayerRef,
     Cards,
 };
@@ -26,8 +26,16 @@ pub struct EffectsInPlay {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModifierInPlay {
-    pub modifier: ModifyBattlefield,
+    pub modifier: BattlefieldModifier,
     pub controller: PlayerRef,
+    pub modified_cards: IndexMap<CardId, Card>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct CreaturesModifier {
+    pub source: CardId,
+    pub effect: ModifyCreature,
+    pub targets: Vec<CardId>,
     pub modified_cards: IndexMap<CardId, Card>,
 }
 

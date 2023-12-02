@@ -4,7 +4,7 @@ use crate::{
     battlefield::Battlefield,
     card::CastingModifier,
     effects::Effect,
-    in_play::{AllCards, CardId, EffectsInPlay, ModifierInPlay},
+    in_play::{AllCards, CardId, CreaturesModifier, EffectsInPlay, ModifierInPlay},
     player::PlayerRef,
 };
 
@@ -12,7 +12,7 @@ use crate::{
 pub enum StackResult {
     AddToBattlefield(CardId),
     ApplyToBattlefield(ModifierInPlay),
-    EquipCreature { source: CardId, target: CardId },
+    ModifyCreatures(CreaturesModifier),
     SpellCountered { id: usize },
     RemoveSplitSecond,
     DrawCards { player: PlayerRef, count: usize },
@@ -164,9 +164,9 @@ impl Stack {
                             };
                         }
                         Effect::GainMana { mana: _ } => todo!(),
-                        Effect::ModifyBattlefield(_) => todo!(),
+                        Effect::BattlefieldModifier(_) => todo!(),
                         Effect::ControllerDrawCards(_) => todo!(),
-                        Effect::Equip => todo!(),
+                        Effect::Equip(_) => todo!(),
                         Effect::AddPowerToughness(_) => todo!(),
                     }
                 }
@@ -182,7 +182,7 @@ impl Stack {
                     match effect {
                         Effect::CounterSpell { target: _ } => todo!(),
                         Effect::GainMana { mana: _ } => todo!(),
-                        Effect::ModifyBattlefield(modifier) => {
+                        Effect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield(ModifierInPlay {
                                 modifier,
                                 controller: effects.controller.clone(),
@@ -195,7 +195,7 @@ impl Stack {
                                 count,
                             });
                         }
-                        Effect::Equip => {
+                        Effect::Equip(modifier) => {
                             let Some(target) = next.active_target else {
                                 // Effect fizzles due to lack of target.
                                 return vec![];
@@ -217,10 +217,12 @@ impl Stack {
                                         return vec![];
                                     }
 
-                                    result.push(StackResult::EquipCreature {
+                                    result.push(StackResult::ModifyCreatures(CreaturesModifier {
                                         source: effects.source,
-                                        target: id,
-                                    });
+                                        effect: modifier,
+                                        targets: vec![id],
+                                        modified_cards: Default::default(),
+                                    }));
                                 }
                             }
                         }
