@@ -8,7 +8,6 @@ oracle_text: "Counter target spell."
 effects {
   counter_spell {
     target { 
-      controller { any {} }
       types { artifact {} }
       types { enchantment {} }
     }

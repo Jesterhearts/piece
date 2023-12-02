@@ -247,11 +247,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
     fn try_from(value: &protogen::effects::effect::Effect) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::effect::Effect::CounterSpell(counter) => Ok(Self::CounterSpell {
-                target: counter
-                    .target
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("Expected counterspell to have a target"))?
-                    .try_into()?,
+                target: counter.target.as_ref().unwrap_or_default().try_into()?,
             }),
             protogen::effects::effect::Effect::GainMana(gain) => Ok(Self::GainMana {
                 mana: gain

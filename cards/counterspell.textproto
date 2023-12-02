@@ -5,5 +5,5 @@ cost {
 }
 ty { instant {} }
 oracle_text: "Counter target spell."
-effects { counter_spell { target { } } }
+effects { counter_spell { } }
 targets { spell {} }

@@ -81,16 +81,34 @@ impl ManaPool {
                 self.colorless_mana = mana;
             }
             Mana::Generic(count) => {
-                // TODO: take from other pools
-                let Some(mana) = self.colorless_mana.checked_sub(count) else {
-                    return false;
-                };
+                let copy = *self;
 
-                self.colorless_mana = mana;
+                for _ in 0..count {
+                    let Some(mana) = self.max().checked_sub(1) else {
+                        *self = copy;
+                        return false;
+                    };
+
+                    *self.max() = mana;
+                }
             }
         }
 
         true
+    }
+
+    fn max(&mut self) -> &mut usize {
+        [
+            &mut self.white_mana,
+            &mut self.blue_mana,
+            &mut self.black_mana,
+            &mut self.red_mana,
+            &mut self.green_mana,
+            &mut self.colorless_mana,
+        ]
+        .into_iter()
+        .max()
+        .unwrap()
     }
 }
 
