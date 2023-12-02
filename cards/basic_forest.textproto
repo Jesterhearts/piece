@@ -1,6 +1,6 @@
 name: "Forest"
 cost { }
-ty { basic_land {} }
+types { basic_land {} }
 subtypes { forest {} }
 activated_abilities {
   cost {

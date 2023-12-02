@@ -47,31 +47,3 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
         })
     }
 }
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Target {
-    Spell(SpellTarget),
-    Creature { subtypes: Vec<Subtype> },
-}
-
-impl TryFrom<&protogen::targets::target::Target> for Target {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::targets::target::Target) -> Result<Self, Self::Error> {
-        match value {
-            protogen::targets::target::Target::Spell(spell) => Ok(Self::Spell(spell.try_into()?)),
-            protogen::targets::target::Target::Creature(creature) => Ok(Self::Creature {
-                subtypes: creature
-                    .subtypes
-                    .iter()
-                    .map(|ty| {
-                        ty.subtype
-                            .as_ref()
-                            .ok_or_else(|| anyhow!("Expected type to have a type set"))
-                            .map(Subtype::from)
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()?,
-            }),
-        }
-    }
-}

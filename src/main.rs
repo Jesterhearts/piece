@@ -23,11 +23,14 @@ pub mod stack;
 pub mod targets;
 pub mod types;
 
+#[cfg(test)]
+pub mod tests;
+
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
 pub type Cards = HashMap<String, Card>;
 
-fn load_cards() -> anyhow::Result<Cards> {
+pub fn load_cards() -> anyhow::Result<Cards> {
     let mut cards = Cards::default();
     for card in CARD_DEFINITIONS.entries().iter() {
         let card_file = card

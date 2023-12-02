@@ -1,6 +1,6 @@
 name: "Mountain"
 cost { }
-ty { basic_land {} }
+types { basic_land {} }
 subtypes { mountain {} }
 activated_abilities {
   cost {

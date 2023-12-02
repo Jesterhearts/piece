@@ -6,7 +6,7 @@ cost {
     }
   }
 }
-ty { artifact {} } 
+types { artifact {} } 
 oracle_text:  "{T}: Add {W}, {B}, or {G} to your mana pool.\n"
               "{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card."
 activated_abilities {
@@ -16,11 +16,9 @@ activated_abilities {
   effects {
     gain_mana {
       choice {
-        choices {
-          gains { white {} }
-          gains { black {} }
-          gains { green {} }
-        }
+        choices { gains { white {} } }
+        choices { gains { black {} } }
+        choices { gains { green {} } }
       }
     }
   }

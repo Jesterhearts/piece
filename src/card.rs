@@ -7,12 +7,12 @@ use crate::{
     battlefield::Battlefield,
     controller::Controller,
     cost::CastingCost,
-    effects::SpellEffect,
+    effects::{ModifyBasePowerToughness, ModifyCreature, SpellEffect},
     in_play::{AllCards, CardId},
     player::Player,
     protogen,
     stack::{ActiveTarget, EntryType, Stack},
-    targets::{SpellTarget, Target},
+    targets::SpellTarget,
     types::{Subtype, Type},
 };
 
@@ -56,11 +56,11 @@ impl From<&protogen::card::casting_modifier::Modifier> for CastingModifier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Card {
     pub name: String,
-    pub ty: Type,
-    pub subtypes: Vec<Subtype>,
+    pub types: HashSet<Type>,
+    pub subtypes: HashSet<Subtype>,
 
     pub cost: CastingCost,
     pub casting_modifiers: Vec<CastingModifier>,
@@ -72,8 +72,6 @@ pub struct Card {
     pub effects: Vec<SpellEffect>,
     pub static_abilities: Vec<StaticAbility>,
     pub activated_abilities: Vec<ActivatedAbility>,
-
-    pub targets: Vec<Target>,
 
     pub power: Option<usize>,
     pub toughness: Option<usize>,
@@ -105,12 +103,16 @@ impl TryFrom<protogen::card::Card> for Card {
 
         Ok(Self {
             name: value.name,
-            ty: value
-                .ty
-                .ty
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected card to have a type"))?
-                .into(),
+            types: value
+                .types
+                .iter()
+                .map(|ty| {
+                    ty.ty
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected type to have a type specified"))
+                        .map(Type::from)
+                })
+                .collect::<anyhow::Result<HashSet<_>>>()?,
             subtypes: value
                 .subtypes
                 .iter()
@@ -121,7 +123,7 @@ impl TryFrom<protogen::card::Card> for Card {
                         .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
                         .map(Subtype::from)
                 })
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<HashSet<_>>>()?,
             cost: value
                 .cost
                 .as_ref()
@@ -177,17 +179,6 @@ impl TryFrom<protogen::card::Card> for Card {
                 .activated_abilities
                 .iter()
                 .map(ActivatedAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            targets: value
-                .targets
-                .iter()
-                .map(|target| {
-                    target
-                        .target
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected target to have a target specified"))
-                        .and_then(Target::try_from)
-                })
                 .collect::<anyhow::Result<Vec<_>>>()?,
             power,
             toughness,
@@ -246,12 +237,10 @@ impl Card {
         !self.is_land()
     }
 
-    pub fn requires_target(&self) -> bool {
-        !self.targets.is_empty()
-    }
-
     pub fn is_land(&self) -> bool {
-        matches!(self.ty, Type::BasicLand | Type::Land)
+        self.types
+            .iter()
+            .any(|ty| matches!(ty, Type::BasicLand | Type::Land))
     }
 
     pub fn valid_targets(
@@ -263,39 +252,53 @@ impl Card {
     ) -> HashSet<ActiveTarget> {
         let mut targets = HashSet::default();
 
-        for target in self.targets.iter() {
-            match target {
-                Target::Spell(SpellTarget {
-                    controller: _,
-                    types: _,
-                    subtypes: _,
-                }) => {
-                    for effect in self.effects.iter() {
-                        match effect {
-                            SpellEffect::CounterSpell { target } => {
-                                for (index, spell) in stack.stack.iter() {
-                                    match &spell.ty {
-                                        EntryType::Card(card) => {
-                                            let card = &cards[*card];
-                                            if card.card.can_be_countered(
-                                                cards,
-                                                battlefield,
-                                                caster,
-                                                &card.controller.borrow(),
-                                                target,
-                                            ) {
-                                                targets.insert(ActiveTarget::Stack { id: *index });
-                                            }
-                                        }
-                                        EntryType::ActivatedAbility(_) => {}
-                                    }
+        for effect in self.effects.iter() {
+            match effect {
+                SpellEffect::CounterSpell { target } => {
+                    for (index, spell) in stack.stack.iter() {
+                        match &spell.ty {
+                            EntryType::Card(card) => {
+                                let card = &cards[*card];
+                                if card.card.can_be_countered(
+                                    cards,
+                                    battlefield,
+                                    caster,
+                                    &card.controller.borrow(),
+                                    target,
+                                ) {
+                                    targets.insert(ActiveTarget::Stack { id: *index });
                                 }
                             }
-                            _ => {}
+                            EntryType::ActivatedAbility(_) => {}
                         }
                     }
                 }
-                Target::Creature { subtypes: _ } => todo!(),
+                SpellEffect::GainMana { .. } => {}
+                SpellEffect::BattlefieldModifier(_) => {}
+                SpellEffect::ControllerDrawCards(_) => {}
+                SpellEffect::AddPowerToughness(_) => {
+                    for creature in battlefield.creatures(cards) {
+                        targets.insert(ActiveTarget::Battlefield { id: creature });
+                    }
+                }
+                SpellEffect::ModifyCreature(modifier) => match modifier {
+                    ModifyCreature::ModifyBasePowerToughness(ModifyBasePowerToughness {
+                        targets: target_types,
+                        ..
+                    }) => {
+                        for creature in battlefield.creatures(cards) {
+                            if cards[creature].card.subtypes_match(target_types) {
+                                targets.insert(ActiveTarget::Battlefield { id: creature });
+                            }
+                        }
+                    }
+                    ModifyCreature::ModifyCreatureTypes(_)
+                    | ModifyCreature::AddPowerToughness(_) => {
+                        for creature in battlefield.creatures(cards) {
+                            targets.insert(ActiveTarget::Battlefield { id: creature });
+                        }
+                    }
+                },
             }
         }
 
@@ -385,7 +388,11 @@ impl Card {
     }
 
     pub fn types_intersect(&self, types: &[Type]) -> bool {
-        types.iter().any(|ty| self.ty == *ty)
+        types.iter().any(|ty| self.types.contains(ty))
+    }
+
+    pub fn subtypes_intersect(&self, subtypes: &[Subtype]) -> bool {
+        subtypes.iter().any(|ty| self.subtypes.contains(ty))
     }
 
     pub fn subtypes_match(&self, subtypes: &[Subtype]) -> bool {
@@ -393,7 +400,7 @@ impl Card {
     }
 
     pub fn is_permanent(&self) -> bool {
-        self.ty.is_permanent()
+        self.types.iter().any(|ty| ty.is_permanent())
     }
 
     pub(crate) fn can_be_targeted(
@@ -415,5 +422,19 @@ impl Card {
         // TODO protection
 
         true
+    }
+
+    pub(crate) fn requires_target(&self) -> bool {
+        for effect in self.effects.iter() {
+            match effect {
+                SpellEffect::CounterSpell { .. } => return true,
+                SpellEffect::GainMana { .. } => {}
+                SpellEffect::BattlefieldModifier(_) => {}
+                SpellEffect::ControllerDrawCards(_) => {}
+                SpellEffect::AddPowerToughness(_) => return true,
+                SpellEffect::ModifyCreature(_) => return true,
+            }
+        }
+        false
     }
 }

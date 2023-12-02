@@ -3,7 +3,6 @@ cost {
   mana_costs { blue {} }
   mana_costs { blue {} }
 }
-ty { instant {} }
+types { instant {} }
 oracle_text: "Counter target spell."
 effects { counter_spell { } }
-targets { spell {} }

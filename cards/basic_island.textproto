@@ -1,6 +1,6 @@
 name: "Island"
 cost { }
-ty { basic_land {} }
+types { basic_land {} }
 subtypes { island {} }
 activated_abilities {
   cost {

@@ -3,7 +3,7 @@ cost {
   mana_costs { generic { count: 1 }}
   mana_costs { white {} }
 }
-ty { artifact {} }
+types { artifact {} }
 subtypes { equipment {} }
 oracle_text: "Equipped creature gets +2/+2"
 activated_abilities {

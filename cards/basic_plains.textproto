@@ -1,6 +1,6 @@
 name: "Plains"
 cost { }
-ty { basic_land {} }
+types { basic_land {} }
 subtypes { plains {} }
 activated_abilities {
   cost {

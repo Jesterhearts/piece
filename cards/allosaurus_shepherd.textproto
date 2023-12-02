@@ -1,5 +1,5 @@
 name: "Allosaurus Shepherd"
-ty { creature {} }
+types { creature {} }
 subtypes { elf {} }
 subtypes { shaman {} }
 cost {
