@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use enumset::EnumSetType;
 
 use crate::{
     controller::Controller,
@@ -45,5 +46,18 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
+    }
+}
+
+#[derive(Debug, EnumSetType)]
+pub enum Restriction {
+    NotSelf,
+}
+
+impl From<&protogen::targets::restriction::Restriction> for Restriction {
+    fn from(value: &protogen::targets::restriction::Restriction) -> Self {
+        match value {
+            protogen::targets::restriction::Restriction::NotSelf(_) => Self::NotSelf,
+        }
     }
 }

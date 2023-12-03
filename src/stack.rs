@@ -3,8 +3,9 @@ use indexmap::IndexMap;
 use crate::{
     battlefield::Battlefield,
     card::CastingModifier,
-    effects::{ActivatedAbilityEffect, SpellEffect},
-    in_play::{AllCards, CardId, CreaturesModifier, EffectsInPlay, ModifierInPlay},
+    controller::Controller,
+    effects::{ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, SpellEffect},
+    in_play::{AllCards, CardId, EffectsInPlay, ModifierInPlay},
     player::PlayerRef,
 };
 
@@ -12,10 +13,19 @@ use crate::{
 pub enum StackResult {
     AddToBattlefield(CardId),
     ApplyToBattlefield(ModifierInPlay),
-    ModifyCreatures(CreaturesModifier),
-    SpellCountered { id: usize },
+    ModifyCreatures {
+        source: CardId,
+        targets: Vec<CardId>,
+        modifier: ModifierInPlay,
+    },
+    SpellCountered {
+        id: usize,
+    },
     RemoveSplitSecond,
-    DrawCards { player: PlayerRef, count: usize },
+    DrawCards {
+        player: PlayerRef,
+        count: usize,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -71,11 +81,7 @@ impl Stack {
 
         id
     }
-    pub(crate) fn push_activatetd_ability(
-        &mut self,
-        effects: EffectsInPlay,
-        target: Option<ActiveTarget>,
-    ) {
+    pub fn push_activated_ability(&mut self, effects: EffectsInPlay, target: Option<ActiveTarget>) {
         let id = self.next_id;
         self.next_id += 1;
         self.stack.insert(
@@ -186,7 +192,7 @@ impl Stack {
                             result.push(StackResult::ApplyToBattlefield(ModifierInPlay {
                                 modifier,
                                 controller: effects.controller.clone(),
-                                modified_cards: Default::default(),
+                                modifying: Default::default(),
                             }));
                         }
                         ActivatedAbilityEffect::ControllerDrawCards(count) => {
@@ -195,7 +201,7 @@ impl Stack {
                                 count,
                             });
                         }
-                        ActivatedAbilityEffect::Equip(modifier) => {
+                        ActivatedAbilityEffect::Equip(modifiers) => {
                             let Some(target) = next.active_target else {
                                 // Effect fizzles due to lack of target.
                                 return vec![];
@@ -207,22 +213,32 @@ impl Stack {
                                     return vec![];
                                 }
                                 ActiveTarget::Battlefield { id } => {
-                                    let card = &cards[id];
-                                    if !card.card.can_be_targeted(
-                                        cards,
-                                        effects.source,
-                                        &card.controller.borrow(),
-                                    ) {
-                                        // Card is not a valid target, spell fizzles.
-                                        return vec![];
-                                    }
+                                    for modifier in modifiers {
+                                        let card = &cards[id];
+                                        if !card.card.can_be_targeted(
+                                            cards,
+                                            effects.source,
+                                            &card.controller.borrow(),
+                                        ) {
+                                            // Card is not a valid target, spell fizzles.
+                                            return vec![];
+                                        }
 
-                                    result.push(StackResult::ModifyCreatures(CreaturesModifier {
-                                        source: effects.source,
-                                        effect: modifier,
-                                        targets: vec![id],
-                                        modified_cards: Default::default(),
-                                    }));
+                                        result.push(StackResult::ModifyCreatures {
+                                            source: effects.source,
+                                            targets: vec![id],
+                                            modifier: ModifierInPlay {
+                                                modifier: BattlefieldModifier {
+                                                    modifier,
+                                                    controller: Controller::You,
+                                                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                                                    restrictions: Default::default(),
+                                                },
+                                                controller: card.controller.clone(),
+                                                modifying: vec![],
+                                            },
+                                        });
+                                    }
                                 }
                             }
                         }

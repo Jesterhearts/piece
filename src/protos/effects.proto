@@ -10,9 +10,12 @@ import "types.proto";
 message Duration {
   message UntilEndOfTurn {
   }
+  message UntilSourceLeavesBattlefield {
+  }
 
   oneof duration {
     UntilEndOfTurn until_end_of_turn = 1;
+    UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
   }
 }
 
@@ -60,14 +63,7 @@ message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
   controller.Controller controller = 2;
   Duration duration = 3;
-}
-
-message ModifyCreature {
-  oneof modifier {
-    ModifyBasePowerToughness modify_base_power_toughness = 1;
-    ModifyCreatureTypes modify_creature_types = 2;
-    AddPowerToughness add_power_toughness = 3;
-  }
+  repeated targets.Restriction restrictions = 4;
 }
 
 message ControllerDrawCards {
@@ -75,7 +71,7 @@ message ControllerDrawCards {
 }
 
 message Equip {
-  ModifyCreature modifier = 1;
+  repeated ModifyBattlefield modifiers = 1;
 }
 
 message AddPowerToughness {
@@ -99,7 +95,7 @@ message SpellEffect {
     CounterSpell counter_spell = 1;
     GainMana gain_mana = 2;
     BattlefieldModifier battlefield_modifier = 3;
-    ModifyCreature modify_creature = 4;
+    BattlefieldModifier modify_creature = 4;
     ControllerDrawCards controller_draw_cards = 5;
     AddPowerToughness add_power_toughness = 6;
   }

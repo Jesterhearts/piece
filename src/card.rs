@@ -1,14 +1,18 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
+use indexmap::IndexMap;
 
 use crate::{
-    abilities::{ActivatedAbility, StaticAbility},
+    abilities::{ActivatedAbility, ETBAbility, StaticAbility},
     battlefield::Battlefield,
     controller::Controller,
     cost::CastingCost,
-    effects::{ModifyBasePowerToughness, ModifyCreature, SpellEffect},
-    in_play::{AllCards, CardId},
+    effects::{
+        AddPowerToughness, BattlefieldModifier, ModifyBasePowerToughness, ModifyBattlefield,
+        ModifyCreatureTypes, SpellEffect,
+    },
+    in_play::{AllCards, CardId, ModifierId},
     player::Player,
     protogen,
     stack::{ActiveTarget, EntryType, Stack},
@@ -62,6 +66,8 @@ pub struct Card {
     pub types: HashSet<Type>,
     pub subtypes: HashSet<Subtype>,
 
+    pub modified_subtypes: IndexMap<ModifierId, HashSet<Subtype>>,
+
     pub cost: CastingCost,
     pub casting_modifiers: Vec<CastingModifier>,
     pub colors: Vec<Color>,
@@ -69,18 +75,19 @@ pub struct Card {
     pub oracle_text: String,
     pub flavor_text: String,
 
+    pub etb_abilities: Vec<ETBAbility>,
     pub effects: Vec<SpellEffect>,
-    pub static_abilities: Vec<StaticAbility>,
+    pub static_abilities: HashSet<StaticAbility>,
     pub activated_abilities: Vec<ActivatedAbility>,
 
     pub power: Option<usize>,
     pub toughness: Option<usize>,
 
-    pub current_power: Option<usize>,
-    pub current_toughness: Option<usize>,
+    pub adjusted_base_power: IndexMap<ModifierId, i32>,
+    pub adjusted_base_toughness: IndexMap<ModifierId, i32>,
 
-    pub power_modifier: Option<usize>,
-    pub toughness_modifier: Option<usize>,
+    pub power_modifier: IndexMap<ModifierId, i32>,
+    pub toughness_modifier: IndexMap<ModifierId, i32>,
 
     pub hexproof: bool,
     pub shroud: bool,
@@ -90,17 +97,6 @@ impl TryFrom<protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: protogen::card::Card) -> Result<Self, Self::Error> {
-        let power = value
-            .power
-            .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                Ok(usize::try_from(v).map(Some)?)
-            })?;
-        let toughness = value
-            .toughness
-            .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                Ok(usize::try_from(v).map(Some)?)
-            })?;
-
         Ok(Self {
             name: value.name,
             types: value
@@ -124,6 +120,7 @@ impl TryFrom<protogen::card::Card> for Card {
                         .map(Subtype::from)
                 })
                 .collect::<anyhow::Result<HashSet<_>>>()?,
+            modified_subtypes: Default::default(),
             cost: value
                 .cost
                 .as_ref()
@@ -153,6 +150,17 @@ impl TryFrom<protogen::card::Card> for Card {
                 .collect::<anyhow::Result<Vec<_>>>()?,
             oracle_text: value.oracle_text,
             flavor_text: value.flavor_text,
+            etb_abilities: value
+                .etb_abilities
+                .iter()
+                .map(|ability| {
+                    ability
+                        .ability
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected etb ability to have an ability specified"))
+                        .map(ETBAbility::from)
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
             effects: value
                 .effects
                 .iter()
@@ -174,18 +182,26 @@ impl TryFrom<protogen::card::Card> for Card {
                         .ok_or_else(|| anyhow!("Expected ability to have an ability specified"))
                         .and_then(StaticAbility::try_from)
                 })
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<HashSet<_>>>()?,
             activated_abilities: value
                 .activated_abilities
                 .iter()
                 .map(ActivatedAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            power,
-            toughness,
-            current_power: power,
-            current_toughness: toughness,
-            power_modifier: None,
-            toughness_modifier: None,
+            power: value
+                .power
+                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                    Ok(usize::try_from(v).map(Some)?)
+                })?,
+            toughness: value
+                .toughness
+                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                    Ok(usize::try_from(v).map(Some)?)
+                })?,
+            adjusted_base_power: Default::default(),
+            adjusted_base_toughness: Default::default(),
+            power_modifier: Default::default(),
+            toughness_modifier: Default::default(),
             hexproof: value.hexproof,
             shroud: value.shroud,
         })
@@ -206,16 +222,36 @@ impl Card {
         colors
     }
 
-    pub fn power(&self) -> usize {
-        let base = self.current_power.unwrap_or_default();
-        let modifier = self.power_modifier.unwrap_or_default();
+    pub fn subtypes(&self) -> HashSet<Subtype> {
+        let mut subtypes = self.subtypes.clone();
+
+        for modified_subtypes in self.modified_subtypes.values() {
+            subtypes.extend(modified_subtypes.iter());
+        }
+
+        subtypes
+    }
+
+    pub fn power(&self) -> i32 {
+        let base = self
+            .adjusted_base_power
+            .last()
+            .map(|(_, v)| *v)
+            .or(self.power.map(|p| p as i32))
+            .unwrap_or_default();
+        let modifier: i32 = self.power_modifier.iter().map(|(_, v)| *v).sum();
 
         base + modifier
     }
 
-    pub fn toughness(&self) -> usize {
-        let base = self.current_toughness.unwrap_or_default();
-        let modifier = self.toughness_modifier.unwrap_or_default();
+    pub fn toughness(&self) -> i32 {
+        let base = self
+            .adjusted_base_toughness
+            .last()
+            .map(|(_, v)| *v)
+            .or(self.toughness.map(|p| p as i32))
+            .unwrap_or_default();
+        let modifier: i32 = self.toughness_modifier.iter().map(|(_, v)| *v).sum();
 
         base + modifier
     }
@@ -281,19 +317,19 @@ impl Card {
                         targets.insert(ActiveTarget::Battlefield { id: creature });
                     }
                 }
-                SpellEffect::ModifyCreature(modifier) => match modifier {
-                    ModifyCreature::ModifyBasePowerToughness(ModifyBasePowerToughness {
+                SpellEffect::ModifyCreature(modifier) => match &modifier.modifier {
+                    ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
                         targets: target_types,
                         ..
                     }) => {
                         for creature in battlefield.creatures(cards) {
-                            if cards[creature].card.subtypes_match(target_types) {
+                            if cards[creature].card.subtypes_intersect(target_types) {
                                 targets.insert(ActiveTarget::Battlefield { id: creature });
                             }
                         }
                     }
-                    ModifyCreature::ModifyCreatureTypes(_)
-                    | ModifyCreature::AddPowerToughness(_) => {
+                    ModifyBattlefield::ModifyCreatureTypes(_)
+                    | ModifyBattlefield::AddPowerToughness(_) => {
                         for creature in battlefield.creatures(cards) {
                             targets.insert(ActiveTarget::Battlefield { id: creature });
                         }
@@ -376,6 +412,8 @@ impl Card {
                         }
                     }
                 }
+                StaticAbility::Vigilance => {}
+                StaticAbility::BattlefieldModifier(_) => {}
             }
         }
 
@@ -392,11 +430,13 @@ impl Card {
     }
 
     pub fn subtypes_intersect(&self, subtypes: &[Subtype]) -> bool {
-        subtypes.iter().any(|ty| self.subtypes.contains(ty))
+        let self_subtypes = self.subtypes();
+        subtypes.iter().any(|ty| self_subtypes.contains(ty))
     }
 
     pub fn subtypes_match(&self, subtypes: &[Subtype]) -> bool {
-        subtypes.iter().all(|ty| self.subtypes.contains(ty))
+        let self_subtypes = self.subtypes();
+        subtypes.iter().all(|ty| self_subtypes.contains(ty))
     }
 
     pub fn is_permanent(&self) -> bool {
@@ -436,5 +476,46 @@ impl Card {
             }
         }
         false
+    }
+
+    pub(crate) fn remove_modifier(&mut self, id: ModifierId, modifier: &BattlefieldModifier) {
+        match &modifier.modifier {
+            ModifyBattlefield::ModifyBasePowerToughness(_) => {
+                self.adjusted_base_power.remove(&id);
+                self.adjusted_base_toughness.remove(&id);
+            }
+            ModifyBattlefield::ModifyCreatureTypes(_) => {
+                self.modified_subtypes.remove(&id);
+            }
+            ModifyBattlefield::AddPowerToughness(_) => {
+                self.power_modifier.remove(&id);
+                self.toughness_modifier.remove(&id);
+            }
+        }
+    }
+
+    pub(crate) fn add_modifier(&mut self, id: ModifierId, modifier: &BattlefieldModifier) {
+        match &modifier.modifier {
+            ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
+                targets,
+                power,
+                toughness,
+            }) => {
+                if self.subtypes_intersect(targets) {
+                    self.adjusted_base_power.insert(id, *power);
+                    self.adjusted_base_toughness.insert(id, *toughness);
+                }
+            }
+            ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes { targets, types }) => {
+                if self.subtypes_intersect(targets) {
+                    self.modified_subtypes
+                        .insert(id, types.iter().copied().collect());
+                }
+            }
+            ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
+                self.power_modifier.insert(id, *power);
+                self.toughness_modifier.insert(id, *toughness);
+            }
+        }
     }
 }

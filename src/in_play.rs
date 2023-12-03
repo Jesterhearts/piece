@@ -3,9 +3,10 @@ use std::collections::{HashMap, VecDeque};
 use indexmap::IndexMap;
 
 use crate::{
+    abilities::StaticAbility,
     card::Card,
     deck::{Deck, DeckDefinition},
-    effects::{ActivatedAbilityEffect, BattlefieldModifier, ModifyCreature},
+    effects::{ActivatedAbilityEffect, BattlefieldModifier},
     player::PlayerRef,
     Cards,
 };
@@ -13,6 +14,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CardInPlay {
     pub card: Card,
+    pub original_card: Card,
     pub controller: PlayerRef,
     pub owner: PlayerRef,
 }
@@ -25,18 +27,17 @@ pub struct EffectsInPlay {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ModifierInPlay {
-    pub modifier: BattlefieldModifier,
+pub struct AbilityInPlay {
+    pub ability: StaticAbility,
     pub controller: PlayerRef,
     pub modified_cards: IndexMap<CardId, Card>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct CreaturesModifier {
-    pub source: CardId,
-    pub effect: ModifyCreature,
-    pub targets: Vec<CardId>,
-    pub modified_cards: IndexMap<CardId, Card>,
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ModifierInPlay {
+    pub modifier: BattlefieldModifier,
+    pub controller: PlayerRef,
+    pub modifying: Vec<CardId>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -82,6 +83,7 @@ impl AllCards {
             id,
             CardInPlay {
                 card: cards.get(name).expect("Valid card name").clone(),
+                original_card: cards.get(name).expect("Valid card name").clone(),
                 controller: owner.clone(),
                 owner,
             },
@@ -93,5 +95,82 @@ impl AllCards {
         let id = self.next_id;
         self.next_id += 1;
         CardId(id)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct AbilityId(usize);
+
+#[derive(Default)]
+pub struct AllAbilities {
+    pub abilities: HashMap<AbilityId, AbilityInPlay>,
+    next_id: usize,
+}
+
+impl std::ops::Index<AbilityId> for AllAbilities {
+    type Output = AbilityInPlay;
+
+    fn index(&self, index: AbilityId) -> &Self::Output {
+        self.abilities.get(&index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<AbilityId> for AllAbilities {
+    fn index_mut(&mut self, index: AbilityId) -> &mut Self::Output {
+        self.abilities.get_mut(&index).unwrap()
+    }
+}
+
+impl AllAbilities {
+    pub fn add_ability(&mut self, ability: AbilityInPlay) -> AbilityId {
+        let id = self.next_id();
+        self.abilities.insert(id, ability);
+        id
+    }
+    fn next_id(&mut self) -> AbilityId {
+        let id = self.next_id;
+        self.next_id += 1;
+        AbilityId(id)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct ModifierId(usize);
+
+#[derive(Default)]
+pub struct AllModifiers {
+    pub modifiers: HashMap<ModifierId, ModifierInPlay>,
+    next_id: usize,
+}
+
+impl std::ops::Index<ModifierId> for AllModifiers {
+    type Output = ModifierInPlay;
+
+    fn index(&self, index: ModifierId) -> &Self::Output {
+        self.modifiers.get(&index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<ModifierId> for AllModifiers {
+    fn index_mut(&mut self, index: ModifierId) -> &mut Self::Output {
+        self.modifiers.get_mut(&index).unwrap()
+    }
+}
+
+impl AllModifiers {
+    pub fn add_modifier(&mut self, modifier: ModifierInPlay) -> ModifierId {
+        let id = self.next_id();
+        self.modifiers.insert(id, modifier);
+        id
+    }
+
+    pub fn remove(&mut self, id: ModifierId) -> ModifierInPlay {
+        self.modifiers.remove(&id).unwrap()
+    }
+
+    fn next_id(&mut self) -> ModifierId {
+        let id = self.next_id;
+        self.next_id += 1;
+        ModifierId(id)
     }
 }

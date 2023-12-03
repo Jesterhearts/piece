@@ -10,3 +10,12 @@ message SpellTarget {
   repeated types.Type types = 2;
   repeated types.Subtype subtypes = 3;
 }
+
+message Restriction {
+  message NotSelf {
+  }
+
+  oneof restriction {
+    NotSelf not_self = 1;
+  }
+}

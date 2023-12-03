@@ -1,14 +1,32 @@
 use anyhow::anyhow;
 
-use crate::{controller::Controller, cost::AbilityCost, effects::ActivatedAbilityEffect, protogen};
+use crate::{
+    controller::Controller,
+    cost::AbilityCost,
+    effects::{ActivatedAbilityEffect, BattlefieldModifier},
+    protogen,
+};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
+}
+
+impl From<&protogen::abilities::etbability::Ability> for ETBAbility {
+    fn from(value: &protogen::abilities::etbability::Ability) -> Self {
+        match value {
+            protogen::abilities::etbability::Ability::CopyOfAnyCreature(_) => {
+                Self::CopyOfAnyCreature
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
+    Vigilance,
+    BattlefieldModifier(BattlefieldModifier),
 }
 
 impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
@@ -26,6 +44,10 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                         .unwrap_or_default(),
                 })
             }
+            protogen::abilities::static_ability::Ability::BattlefieldModifier(modifier) => {
+                Ok(Self::BattlefieldModifier(modifier.try_into()?))
+            }
+            protogen::abilities::static_ability::Ability::Vigilance(_) => Ok(Self::Vigilance),
         }
     }
 }

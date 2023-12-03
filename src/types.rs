@@ -10,6 +10,7 @@ pub enum Type {
     Artifact,
     Enchantment,
     Battle,
+    Legendary,
 }
 
 impl From<&protogen::types::type_::Ty> for Type {
@@ -23,6 +24,7 @@ impl From<&protogen::types::type_::Ty> for Type {
             protogen::types::type_::Ty::Artifact(_) => Self::Artifact,
             protogen::types::type_::Ty::Enchantment(_) => Self::Enchantment,
             protogen::types::type_::Ty::Battle(_) => Self::Battle,
+            protogen::types::type_::Ty::Legendary(_) => Self::Legendary,
         }
     }
 }
@@ -43,6 +45,7 @@ pub enum Subtype {
     Island,
     Mountain,
     Plains,
+    Praetor,
     Shaman,
     Shapeshifter,
     Swamp,
@@ -62,6 +65,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Dinosaur(_) => Self::Dinosaur,
             protogen::types::subtype::Subtype::Equipment(_) => Self::Equipment,
             protogen::types::subtype::Subtype::Shapeshifter(_) => Self::Shapeshifter,
+            protogen::types::subtype::Subtype::Praetor(_) => Self::Praetor,
         }
     }
 }

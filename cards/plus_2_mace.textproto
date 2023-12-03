@@ -10,7 +10,7 @@ activated_abilities {
   cost { mana_costs { generic { count: 3 } } }
   effects {
     equip {
-      modifier {
+      modifiers {
         add_power_toughness {
           power: 2
           toughness: 2

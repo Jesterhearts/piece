@@ -19,6 +19,8 @@ message Type {
   }
   message Battle {
   }
+  message Legendary {
+  }
 
   oneof ty {
     BasicLand basic_land = 1;
@@ -29,6 +31,7 @@ message Type {
     Artifact artifact = 6;
     Enchantment enchantment = 7;
     Battle battle = 8;
+    Legendary legendary = 9;
   }
 }
 
@@ -49,6 +52,8 @@ message Subtype {
   }
   message Plains {
   }
+  message Praetor {
+  }
   message Shaman {
   }
   message Shapeshifter {
@@ -66,8 +71,9 @@ message Subtype {
     Island island = 6;
     Mountain mountain = 7;
     Plains plains = 8;
-    Shaman shaman = 9;
-    Shapeshifter shapeshifter = 10;
-    Swamp swamp = 11;
+    Praetor praetor = 9;
+    Shaman shaman = 10;
+    Shapeshifter shapeshifter = 11;
+    Swamp swamp = 12;
   }
 }

@@ -9,7 +9,7 @@ use crate::{
         ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, ModifyBasePowerToughness,
         ModifyBattlefield, ModifyCreatureTypes,
     },
-    in_play::{AllCards, EffectsInPlay, ModifierInPlay},
+    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay},
     load_cards,
     player::Player,
     stack::{Stack, StackResult},
@@ -20,13 +20,14 @@ use crate::{
 fn modify_base_p_t_works() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_cards = AllCards::default();
+    let mut modifiers = AllModifiers::default();
     let mut stack = Stack::default();
     let mut battlefield = Battlefield::default();
     let player = Player::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    battlefield.add(card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
 
     let card = battlefield.select_card(0);
     let results = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
@@ -46,6 +47,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
                     }),
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
@@ -54,6 +56,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
                     })
                 ],
                 source: card,
@@ -63,7 +66,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         )]
     );
 
-    battlefield.apply_action_results(&mut all_cards, &mut stack, results);
+    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
 
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(
@@ -79,10 +82,11 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         }
                     ),
                     controller: Controller::You,
-                    duration: EffectDuration::UntilEndOfTurn
+                    duration: EffectDuration::UntilEndOfTurn,
+                    restrictions: Default::default(),
                 },
                 controller: player.clone(),
-                modified_cards: Default::default(),
+                modifying: Default::default(),
             }),
             StackResult::ApplyToBattlefield(ModifierInPlay {
                 modifier: BattlefieldModifier {
@@ -91,10 +95,11 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         types: vec![Subtype::Dinosaur],
                     }),
                     controller: Controller::You,
-                    duration: EffectDuration::UntilEndOfTurn
+                    duration: EffectDuration::UntilEndOfTurn,
+                    restrictions: Default::default(),
                 },
                 controller: player.clone(),
-                modified_cards: Default::default(),
+                modifying: Default::default(),
             })
         ]
     );
@@ -105,19 +110,22 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         unreachable!()
     };
 
-    battlefield.apply_modifier(&mut all_cards, effect1.clone());
-    battlefield.apply_modifier(&mut all_cards, effect2.clone());
+    let id1 = modifiers.add_modifier(effect1.clone());
+    let id2 = modifiers.add_modifier(effect2.clone());
+
+    battlefield.apply_modifier(&mut all_cards, &mut modifiers, card, id1);
+    battlefield.apply_modifier(&mut all_cards, &mut modifiers, card, id2);
     let card = battlefield.select_card(0);
     let card = &all_cards[card];
     assert_eq!(card.card.power(), 5);
     assert_eq!(card.card.toughness(), 5);
 
     assert_eq!(
-        card.card.subtypes,
+        card.card.subtypes(),
         HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
     );
 
-    battlefield.end_turn(&mut all_cards);
+    battlefield.end_turn(&mut all_cards, &mut modifiers);
 
     let card = battlefield.select_card(0);
     let card = &all_cards[card];
@@ -161,6 +169,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let cards = load_cards()?;
     let player = Player::new_ref(Deck::empty());
     let mut all_cards = AllCards::default();
+    let mut modifiers = AllModifiers::default();
     let mut battlefield = Battlefield::default();
     let mut stack = Stack::default();
 
@@ -175,7 +184,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let Some(StackResult::AddToBattlefield(card)) = result.pop() else {
         unreachable!()
     };
-    battlefield.add(card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
 
     stack.push_card(&all_cards, creature_2, None);
     stack.push_card(&all_cards, counterspell, stack.target_nth(0));
@@ -201,6 +210,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let player2 = Player::new_ref(Deck::empty());
 
     let mut all_cards = AllCards::default();
+    let mut modifiers = AllModifiers::default();
     let mut battlefield = Battlefield::default();
     let mut stack = Stack::default();
 
@@ -215,7 +225,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let Some(StackResult::AddToBattlefield(card)) = result.pop() else {
         unreachable!()
     };
-    battlefield.add(card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
 
     let countered = stack.push_card(&all_cards, creature_2, None);
     stack.push_card(&all_cards, counterspell, stack.target_nth(0));

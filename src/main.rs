@@ -57,7 +57,7 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 fn main() -> anyhow::Result<()> {
     let cards = load_cards()?;
     dbg!(&cards);
-    println!("{}", cards.get("Abzan Banner").unwrap().oracle_text);
+    dbg!(cards.get("Elesh Norn, Grand Cenobite"));
 
     Ok(())
 }

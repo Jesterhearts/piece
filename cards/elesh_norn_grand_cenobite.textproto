@@ -1,0 +1,43 @@
+name: "Elesh Norn, Grand Cenobite"
+types { legendary {} }
+types { creature {} }
+subtypes { praetor {} }
+cost { 
+  mana_costs { generic { count: 5 } }
+  mana_costs { white {} }
+  mana_costs { white {} }
+}
+oracle_text:  "Vigilance\n"
+              "Other creatures you control get +2/+2\n"
+              "Creatures your opponents control get -2/-2\n"
+flavor_text:  "\"The Gitaxians whisper among themselves"
+              "of other worlds. If they exist, we must bring"
+              "Phyrexia's magnificence to them.\""
+static_abilities { vigilance {} }
+static_abilities {
+  battlefield_modifier {
+    modifier {
+      add_power_toughness {
+        power: 2
+        toughness: 2
+      }
+    }
+    restrictions { not_self {} }
+    controller { you {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+}
+static_abilities {
+  battlefield_modifier {
+    modifier {
+      add_power_toughness {
+        power: -2
+        toughness: -2
+      }
+    }
+    controller { opponent {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+}
+power: 4
+toughness: 7

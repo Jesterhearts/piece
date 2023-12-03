@@ -19,9 +19,13 @@ message StaticAbility {
   message GreenCannotBeCountered {
     controller.Controller controller = 1;
   }
+  message Vigilance {
+  }
 
   oneof ability {
     GreenCannotBeCountered green_cannot_be_countered = 1;
+    effects.BattlefieldModifier battlefield_modifier = 2;
+    Vigilance vigilance = 3;
   }
 }
 

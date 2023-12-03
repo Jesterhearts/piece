@@ -4,7 +4,7 @@ use crate::{
     battlefield::{ActionResult, Battlefield},
     deck::Deck,
     effects::{ActivatedAbilityEffect, GainMana},
-    in_play::{AllCards, EffectsInPlay},
+    in_play::{AllCards, AllModifiers, EffectsInPlay},
     load_cards,
     mana::Mana,
     player::Player,
@@ -15,13 +15,14 @@ use crate::{
 fn sacrifice_draw_card() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_cards = AllCards::default();
+    let mut modifiers = AllModifiers::default();
     let stack = Stack::default();
     let mut battlefield = Battlefield::default();
     let player = Player::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
-    battlefield.add(card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
 
     let card = battlefield.select_card(0);
     let result = battlefield.activate_ability(card, &all_cards, &stack, 1, None);
@@ -48,13 +49,14 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
 fn add_mana() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_cards = AllCards::default();
+    let mut modifiers = AllModifiers::default();
     let stack = Stack::default();
     let mut battlefield = Battlefield::default();
     let player = Player::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
-    battlefield.add(card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
 
     let card = battlefield.select_card(0);
     let result = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
