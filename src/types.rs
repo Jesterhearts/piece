@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+
 use crate::protogen;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -11,6 +13,18 @@ pub enum Type {
     Enchantment,
     Battle,
     Legendary,
+}
+
+impl TryFrom<&protogen::types::Type> for Type {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::types::Type) -> Result<Self, Self::Error> {
+        value
+            .ty
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected type to have a type set"))
+            .map(Self::from)
+    }
 }
 
 impl From<&protogen::types::type_::Ty> for Type {
@@ -37,6 +51,7 @@ impl Type {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Subtype {
+    Aura,
     Bear,
     Dinosaur,
     Elf,
@@ -49,6 +64,18 @@ pub enum Subtype {
     Shaman,
     Shapeshifter,
     Swamp,
+}
+
+impl TryFrom<&protogen::types::Subtype> for Subtype {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::types::Subtype) -> Result<Self, Self::Error> {
+        value
+            .subtype
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
+            .map(Subtype::from)
+    }
 }
 
 impl From<&protogen::types::subtype::Subtype> for Subtype {
@@ -66,6 +93,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Equipment(_) => Self::Equipment,
             protogen::types::subtype::Subtype::Shapeshifter(_) => Self::Shapeshifter,
             protogen::types::subtype::Subtype::Praetor(_) => Self::Praetor,
+            protogen::types::subtype::Subtype::Aura(_) => Self::Aura,
         }
     }
 }

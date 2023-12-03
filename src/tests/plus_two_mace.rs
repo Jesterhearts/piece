@@ -103,5 +103,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(card.card.power(), 4);
     assert_eq!(card.card.toughness(), 2);
 
+    assert!(battlefield.no_modifiers());
+
     Ok(())
 }

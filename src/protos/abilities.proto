@@ -5,6 +5,7 @@ package abilities;
 import "controller.proto";
 import "cost.proto";
 import "effects.proto";
+import "targets.proto";
 
 message ETBAbility {
   message CopyOfAnyCreature {
@@ -19,13 +20,16 @@ message StaticAbility {
   message GreenCannotBeCountered {
     controller.Controller controller = 1;
   }
-  message Vigilance {
+  message Enchant {
+    repeated effects.BattlefieldModifier modifiers = 1;
+    repeated targets.Restriction restrictions = 2;
   }
 
   oneof ability {
     GreenCannotBeCountered green_cannot_be_countered = 1;
     effects.BattlefieldModifier battlefield_modifier = 2;
-    Vigilance vigilance = 3;
+    effects.Vigilance vigilance = 3;
+    Enchant enchant = 4;
   }
 }
 

@@ -30,6 +30,18 @@ pub enum Color {
     Colorless,
 }
 
+impl TryFrom<&protogen::card::Color> for Color {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::card::Color) -> Result<Self, Self::Error> {
+        value
+            .color
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected color to have a color set"))
+            .map(Self::from)
+    }
+}
+
 impl From<&protogen::card::color::Color> for Color {
     fn from(value: &protogen::card::color::Color) -> Self {
         match value {
@@ -47,6 +59,18 @@ impl From<&protogen::card::color::Color> for Color {
 pub enum CastingModifier {
     CannotBeCountered,
     SplitSecond,
+}
+
+impl TryFrom<&protogen::card::CastingModifier> for CastingModifier {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::card::CastingModifier) -> Result<Self, Self::Error> {
+        value
+            .modifier
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected modifier to have a modifier specified"))
+            .map(Self::from)
+    }
 }
 
 impl From<&protogen::card::casting_modifier::Modifier> for CastingModifier {
@@ -78,7 +102,10 @@ pub struct Card {
 
     pub etb_abilities: Vec<ETBAbility>,
     pub effects: Vec<SpellEffect>,
+
     pub static_abilities: HashSet<StaticAbility>,
+    pub adjusted_static_abilities: IndexMap<ModifierId, StaticAbility>,
+
     pub activated_abilities: Vec<ActivatedAbility>,
 
     pub power: Option<usize>,
@@ -103,23 +130,12 @@ impl TryFrom<protogen::card::Card> for Card {
             types: value
                 .types
                 .iter()
-                .map(|ty| {
-                    ty.ty
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected type to have a type specified"))
-                        .map(Type::from)
-                })
+                .map(Type::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             subtypes: value
                 .subtypes
                 .iter()
-                .map(|subtype| {
-                    subtype
-                        .subtype
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
-                        .map(Subtype::from)
-                })
+                .map(Subtype::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             modified_subtypes: Default::default(),
             remove_all_subtypes: Default::default(),
@@ -131,60 +147,31 @@ impl TryFrom<protogen::card::Card> for Card {
             casting_modifiers: value
                 .casting_modifiers
                 .iter()
-                .map(|modifier| {
-                    modifier
-                        .modifier
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected modifier to have a modifier specified"))
-                        .map(CastingModifier::from)
-                })
+                .map(CastingModifier::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             colors: value
                 .colors
                 .iter()
-                .map(|color| {
-                    color
-                        .color
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected color to have a color set"))
-                        .map(Color::from)
-                })
+                .map(Color::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             oracle_text: value.oracle_text,
             flavor_text: value.flavor_text,
             etb_abilities: value
                 .etb_abilities
                 .iter()
-                .map(|ability| {
-                    ability
-                        .ability
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected etb ability to have an ability specified"))
-                        .map(ETBAbility::from)
-                })
+                .map(ETBAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             effects: value
                 .effects
                 .iter()
-                .map(|effect| {
-                    effect
-                        .effect
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-                        .and_then(SpellEffect::try_from)
-                })
+                .map(SpellEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             static_abilities: value
                 .static_abilities
                 .iter()
-                .map(|ability| {
-                    ability
-                        .ability
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected ability to have an ability specified"))
-                        .and_then(StaticAbility::try_from)
-                })
+                .map(StaticAbility::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
+            adjusted_static_abilities: Default::default(),
             activated_abilities: value
                 .activated_abilities
                 .iter()
@@ -340,7 +327,8 @@ impl Card {
                     }
                     ModifyBattlefield::AddCreatureSubtypes(_)
                     | ModifyBattlefield::AddPowerToughness(_)
-                    | ModifyBattlefield::RemoveAllSubtypes(_) => {
+                    | ModifyBattlefield::RemoveAllSubtypes(_)
+                    | ModifyBattlefield::Vigilance(_) => {
                         for creature in creatures.iter() {
                             let card = &cards[*creature];
                             if card.card.can_be_targeted(caster, &card.controller.borrow()) {
@@ -444,6 +432,7 @@ impl Card {
                 }
                 StaticAbility::Vigilance => {}
                 StaticAbility::BattlefieldModifier(_) => {}
+                StaticAbility::Enchant(_) => {}
             }
         }
 
@@ -523,6 +512,9 @@ impl Card {
             ModifyBattlefield::RemoveAllSubtypes(_) => {
                 self.remove_all_subtypes.remove(&id);
             }
+            ModifyBattlefield::Vigilance(_) => {
+                self.adjusted_static_abilities.remove(&id);
+            }
         }
     }
 
@@ -559,6 +551,10 @@ impl Card {
             }
             ModifyBattlefield::RemoveAllSubtypes(_) => {
                 self.remove_all_subtypes.insert(id);
+            }
+            ModifyBattlefield::Vigilance(_) => {
+                self.adjusted_static_abilities
+                    .insert(id, StaticAbility::Vigilance);
             }
         }
     }

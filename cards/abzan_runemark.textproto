@@ -1,0 +1,36 @@
+name: "Abzan Runemark"
+types { enchantment {} }
+subtypes { aura {} }
+cost {
+  mana_costs { generic { count: 2} }
+  mana_costs { white {} }
+}
+oracle_text:  "Enchant creature\n"
+              "Enchanted creature gets +2/+2\n"
+              "Enchanted creature has vigilance as"
+              "long as you control a black or green"
+              "permanent."
+static_abilities {
+  enchant {
+    modifiers { 
+      modifier { 
+        add_power_toughness {
+          power: 2
+          toughness: 2
+        }
+      }
+      controller { any {} }
+      duration { until_source_leaves_battlefield {} }
+    }
+    modifiers {
+      modifier {
+        vigilance {
+          restrictions { controller_controls_black_or_green {} }
+        }
+      }
+      controller { any {} }
+      duration { until_source_leaves_battlefield {} }
+    }
+    restrictions { creatures_only {} }
+  }
+}

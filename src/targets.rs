@@ -28,22 +28,12 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
             types: value
                 .types
                 .iter()
-                .map(|ty| {
-                    ty.ty
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected type to have a type set"))
-                        .map(Type::from)
-                })
+                .map(Type::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             subtypes: value
                 .subtypes
                 .iter()
-                .map(|ty| {
-                    ty.subtype
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected type to have a type set"))
-                        .map(Subtype::from)
-                })
+                .map(Subtype::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }
@@ -53,6 +43,20 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
 pub enum Restriction {
     NotSelf,
     SingleTarget,
+    CreaturesOnly,
+    ControllerControlsBlackOrGreen,
+}
+
+impl TryFrom<&protogen::targets::Restriction> for Restriction {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::Restriction) -> Result<Self, Self::Error> {
+        value
+            .restriction
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected restriction to have a restriction specified"))
+            .map(Restriction::from)
+    }
 }
 
 impl From<&protogen::targets::restriction::Restriction> for Restriction {
@@ -60,6 +64,10 @@ impl From<&protogen::targets::restriction::Restriction> for Restriction {
         match value {
             protogen::targets::restriction::Restriction::NotSelf(_) => Self::NotSelf,
             protogen::targets::restriction::Restriction::SingleTarget(_) => Self::SingleTarget,
+            protogen::targets::restriction::Restriction::CreaturesOnly(_) => Self::CreaturesOnly,
+            protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
+                Self::ControllerControlsBlackOrGreen
+            }
         }
     }
 }

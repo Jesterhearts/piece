@@ -7,6 +7,10 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
+message Vigilance {
+  repeated targets.Restriction restrictions = 1;
+}
+
 message Duration {
   message UntilEndOfTurn {
   }
@@ -57,7 +61,7 @@ message ModifyCreatureTypes {
 }
 
 message RemoveAllSubtypes {
-  repeated targets.Restriction restrictions = 3;
+  repeated targets.Restriction restrictions = 1;
 }
 
 message ModifyBattlefield {
@@ -66,6 +70,7 @@ message ModifyBattlefield {
     ModifyCreatureTypes modify_creature_types = 2;
     AddPowerToughness add_power_toughness = 3;
     RemoveAllSubtypes remove_all_subtypes = 4;
+    Vigilance vigilance = 5;
   }
 }
 

@@ -15,7 +15,7 @@ use crate::{
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
     targets::Restriction,
-    types::Type,
+    types::{Subtype, Type},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,10 +52,20 @@ pub struct Battlefield {
 
     pub sourced_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
     pub attaching_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
-    pub attached_modifiers: IndexMap<CardId, HashSet<CardId>>,
+    pub attached_cards: IndexMap<CardId, HashSet<CardId>>,
 }
 
 impl Battlefield {
+    pub fn is_empty(&self) -> bool {
+        self.permanents.is_empty() && self.no_modifiers()
+    }
+
+    pub fn no_modifiers(&self) -> bool {
+        self.sourced_modifiers.is_empty()
+            && self.attaching_modifiers.is_empty()
+            && self.attached_cards.values().all(|v| v.is_empty())
+    }
+
     #[must_use]
     pub fn add(
         &mut self,
@@ -135,6 +145,7 @@ impl Battlefield {
                         modifier: modifier_id,
                     })
                 }
+                StaticAbility::Enchant(_) => todo!(),
             }
         }
 
@@ -308,7 +319,7 @@ impl Battlefield {
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         card_id: CardId,
     ) {
         self.permanents.remove(&card_id).unwrap();
@@ -318,7 +329,7 @@ impl Battlefield {
             .or_default()
             .insert(card_id);
 
-        self.card_leaves_battlefield(card_id, modifiers, cards);
+        self.card_leaves_battlefield(card_id, modifiers, cards, stack);
     }
 
     fn card_leaves_battlefield(
@@ -326,6 +337,7 @@ impl Battlefield {
         removed_card_id: CardId,
         modifiers: &mut AllModifiers,
         cards: &mut AllCards,
+        stack: &mut Stack,
     ) {
         if let Some(removed_modifiers) = self
             .sourced_modifiers
@@ -345,7 +357,7 @@ impl Battlefield {
             for modifier_id in removed_modifiers {
                 let modifier = modifiers.remove(modifier_id);
                 for modified_card in modifier.modifying.iter().copied() {
-                    self.attached_modifiers
+                    self.attached_cards
                         .entry(modified_card)
                         .or_default()
                         .remove(&removed_card_id);
@@ -353,6 +365,14 @@ impl Battlefield {
                     cards[modified_card]
                         .card
                         .remove_modifier(modifier_id, &modifier.modifier)
+                }
+            }
+        }
+
+        if let Some(attached_cards) = self.attached_cards.remove(&removed_card_id) {
+            for card in attached_cards {
+                if cards[card].card.subtypes_intersect(&[Subtype::Aura]) {
+                    self.permanent_to_graveyard(cards, modifiers, stack, card);
                 }
             }
         }
@@ -368,7 +388,7 @@ impl Battlefield {
         Self::apply_modifier_to_targets_internal(
             &mut self.sourced_modifiers,
             &mut self.attaching_modifiers,
-            &mut self.attached_modifiers,
+            &mut self.attached_cards,
             cards,
             modifiers,
             source_card_id,
@@ -388,7 +408,7 @@ impl Battlefield {
         Self::apply_modifier_to_targets_internal(
             &mut self.sourced_modifiers,
             &mut self.attaching_modifiers,
-            &mut self.attached_modifiers,
+            &mut self.attached_cards,
             cards,
             modifiers,
             source_card_id,
@@ -408,13 +428,15 @@ impl Battlefield {
         modifier_id: ModifierId,
         targets: impl Iterator<Item = CardId> + Clone,
     ) {
-        let modifier = apply_modifier_to_targets(
+        apply_modifier_to_targets(
             modifiers,
             modifier_id,
             targets.clone(),
             cards,
             source_card_id,
         );
+
+        let modifier = &mut modifiers[modifier_id];
 
         match modifier.modifier.duration {
             EffectDuration::UntilEndOfTurn => {
@@ -467,7 +489,7 @@ impl Battlefield {
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         target: CardId,
     ) {
         let removed = self.permanents.remove(&target);
@@ -481,17 +503,17 @@ impl Battlefield {
             .or_default()
             .insert(target);
 
-        self.card_leaves_battlefield(target, modifiers, cards);
+        self.card_leaves_battlefield(target, modifiers, cards, stack);
     }
 }
 
-fn apply_modifier_to_targets<'m>(
-    modifiers: &'m mut AllModifiers,
+fn apply_modifier_to_targets(
+    modifiers: &mut AllModifiers,
     modifier_id: ModifierId,
     targets: impl Iterator<Item = CardId>,
     cards: &mut AllCards,
     source_card_id: CardId,
-) -> &'m ModifierInPlay {
+) {
     let modifier = &mut modifiers[modifier_id];
 
     'outer: for card_id in targets {
@@ -523,12 +545,16 @@ fn apply_modifier_to_targets<'m>(
                         continue 'outer;
                     }
                 }
+                Restriction::CreaturesOnly => {
+                    if !card.card.types_intersect(&[Type::Creature]) {
+                        continue 'outer;
+                    }
+                }
+                Restriction::ControllerControlsBlackOrGreen => todo!(),
             }
         }
 
         card.card.add_modifier(modifier_id, &modifier.modifier);
         modifier.modifying.push(card_id);
     }
-
-    modifier
 }

@@ -29,9 +29,40 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Vigilance {
+    pub restrictions: EnumSet<Restriction>,
+}
+
+impl TryFrom<&protogen::effects::Vigilance> for Vigilance {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Vigilance) -> Result<Self, Self::Error> {
+        Ok(Self {
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
+}
+
+impl TryFrom<&protogen::effects::GainMana> for GainMana {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::GainMana) -> Result<Self, Self::Error> {
+        value
+            .gain
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
+            .and_then(GainMana::try_from)
+    }
 }
 
 impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
@@ -43,12 +74,7 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
                 gains: specific
                     .gains
                     .iter()
-                    .map(|mana| {
-                        mana.mana
-                            .as_ref()
-                            .ok_or_else(|| anyhow!("Expected mana to have a mana field specified"))
-                            .and_then(Mana::try_from)
-                    })
+                    .map(Mana::try_from)
                     .collect::<anyhow::Result<Vec<_>>>()?,
             }),
             protogen::effects::gain_mana::Gain::Choice(choice) => Ok(Self::Choice {
@@ -59,14 +85,7 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
                         choice
                             .gains
                             .iter()
-                            .map(|mana| {
-                                mana.mana
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        anyhow!("Expected mana to have a mana field specified")
-                                    })
-                                    .and_then(Mana::try_from)
-                            })
+                            .map(Mana::try_from)
                             .collect::<anyhow::Result<Vec<_>>>()
                     })
                     .collect::<anyhow::Result<Vec<_>>>()?,
@@ -91,26 +110,14 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
             targets: value
                 .targets
                 .iter()
-                .map(|target| {
-                    target
-                        .subtype
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
-                        .map(Subtype::from)
-                })
+                .map(Subtype::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             power: value.power,
             toughness: value.toughness,
             restrictions: value
                 .restrictions
                 .iter()
-                .map(|restriction| {
-                    restriction
-                        .restriction
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
-                        .map(Restriction::from)
-                })
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
@@ -131,34 +138,17 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
             targets: value
                 .targets
                 .iter()
-                .map(|target| {
-                    target
-                        .subtype
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
-                        .map(Subtype::from)
-                })
+                .map(Subtype::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             types: value
                 .types
                 .iter()
-                .map(|ty| {
-                    ty.subtype
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected subtype to have a subtype specified"))
-                        .map(Subtype::from)
-                })
+                .map(Subtype::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             restrictions: value
                 .restrictions
                 .iter()
-                .map(|restriction| {
-                    restriction
-                        .restriction
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
-                        .map(Restriction::from)
-                })
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
@@ -177,13 +167,7 @@ impl TryFrom<&protogen::effects::RemoveAllSubtypes> for RemoveAllSubtypes {
             restrictions: value
                 .restrictions
                 .iter()
-                .map(|restriction| {
-                    restriction
-                        .restriction
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
-                        .map(Restriction::from)
-                })
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
@@ -206,13 +190,7 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
             restrictions: value
                 .restrictions
                 .iter()
-                .map(|restriction| {
-                    restriction
-                        .restriction
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
-                        .map(Restriction::from)
-                })
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
@@ -224,6 +202,19 @@ pub enum ModifyBattlefield {
     AddCreatureSubtypes(AddCreatureSubtypes),
     RemoveAllSubtypes(RemoveAllSubtypes),
     AddPowerToughness(AddPowerToughness),
+    Vigilance(Vigilance),
+}
+
+impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ModifyBattlefield) -> Result<Self, Self::Error> {
+        value
+            .modifier
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected modifier to have a modifier set"))
+            .and_then(Self::try_from)
+    }
 }
 
 impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlefield {
@@ -244,6 +235,9 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
             }
             protogen::effects::modify_battlefield::Modifier::RemoveAllSubtypes(modifier) => {
                 Ok(Self::RemoveAllSubtypes(modifier.try_into()?))
+            }
+            protogen::effects::modify_battlefield::Modifier::Vigilance(vigilance) => {
+                Ok(Self::Vigilance(vigilance.try_into()?))
             }
         }
     }
@@ -266,9 +260,8 @@ impl BattlefieldModifier {
                 restrictions, ..
             })
             | ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes { restrictions })
-            | ModifyBattlefield::AddPowerToughness(AddPowerToughness { restrictions, .. }) => {
-                restrictions
-            }
+            | ModifyBattlefield::AddPowerToughness(AddPowerToughness { restrictions, .. })
+            | ModifyBattlefield::Vigilance(Vigilance { restrictions }) => restrictions,
         }
     }
 }
@@ -312,6 +305,18 @@ pub enum SpellEffect {
     ExileTargetCreatureManifestTopOfLibrary,
 }
 
+impl TryFrom<&protogen::effects::SpellEffect> for SpellEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::SpellEffect) -> Result<Self, Self::Error> {
+        value
+            .effect
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+            .and_then(Self::try_from)
+    }
+}
+
 impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
     type Error = anyhow::Error;
 
@@ -323,11 +328,7 @@ impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
                 })
             }
             protogen::effects::spell_effect::Effect::GainMana(gain) => Ok(Self::GainMana {
-                mana: gain
-                    .gain
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
-                    .and_then(GainMana::try_from)?,
+                mana: GainMana::try_from(gain)?,
             }),
             protogen::effects::spell_effect::Effect::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
@@ -361,6 +362,18 @@ pub enum ActivatedAbilityEffect {
     AddPowerToughnessToTarget(AddPowerToughness),
 }
 
+impl TryFrom<&protogen::effects::ActivatedAbilityEffect> for ActivatedAbilityEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ActivatedAbilityEffect) -> Result<Self, Self::Error> {
+        value
+            .effect
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+            .and_then(Self::try_from)
+    }
+}
+
 impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for ActivatedAbilityEffect {
     type Error = anyhow::Error;
 
@@ -375,11 +388,7 @@ impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for Activated
             }
             protogen::effects::activated_ability_effect::Effect::GainMana(gain) => {
                 Ok(Self::GainMana {
-                    mana: gain
-                        .gain
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
-                        .and_then(GainMana::try_from)?,
+                    mana: GainMana::try_from(gain)?,
                 })
             }
             protogen::effects::activated_ability_effect::Effect::BattlefieldModifier(modifier) => {
@@ -393,13 +402,7 @@ impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for Activated
                     modifier
                         .modifiers
                         .iter()
-                        .map(|modifier| {
-                            modifier
-                                .modifier
-                                .as_ref()
-                                .ok_or_else(|| anyhow!("Expected modifier to have a modifier set"))
-                                .and_then(ModifyBattlefield::try_from)
-                        })
+                        .map(ModifyBattlefield::try_from)
                         .collect::<anyhow::Result<Vec<_>>>()?,
                 ))
             }

@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+
 use crate::{card::Color, protogen};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -9,6 +11,18 @@ pub enum Mana {
     Green,
     Colorless,
     Generic(usize),
+}
+
+impl TryFrom<&protogen::cost::ManaCost> for Mana {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::ManaCost) -> Result<Self, Self::Error> {
+        value
+            .cost
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
+            .and_then(Mana::try_from)
+    }
 }
 
 impl TryFrom<&protogen::cost::mana_cost::Cost> for Mana {
@@ -25,6 +39,18 @@ impl TryFrom<&protogen::cost::mana_cost::Cost> for Mana {
                 Ok(Self::Generic(usize::try_from(generic.count)?))
             }
         }
+    }
+}
+
+impl TryFrom<&protogen::mana::Mana> for Mana {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::mana::Mana) -> Result<Self, Self::Error> {
+        value
+            .mana
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected mana to have a mana field specified"))
+            .and_then(Self::try_from)
     }
 }
 

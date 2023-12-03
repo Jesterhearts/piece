@@ -15,12 +15,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
             mana_cost: value
                 .mana_costs
                 .iter()
-                .map(|cost| {
-                    cost.cost
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
-                        .and_then(Mana::try_from)
-                })
+                .map(Mana::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }
@@ -29,6 +24,18 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AdditionalCost {
     SacrificeThis,
+}
+
+impl TryFrom<&protogen::cost::AdditionalCost> for AdditionalCost {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::AdditionalCost) -> Result<Self, Self::Error> {
+        value
+            .cost
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected additional cost to have a cost specified"))
+            .map(Self::from)
+    }
 }
 
 impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
@@ -54,24 +61,13 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
             mana_cost: value
                 .mana_costs
                 .iter()
-                .map(|cost| {
-                    cost.cost
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
-                        .and_then(Mana::try_from)
-                })
+                .map(Mana::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             tap: value.tap.unwrap_or_default(),
             additional_cost: value
                 .additional_costs
                 .iter()
-                .map(|additional_cost| {
-                    additional_cost
-                        .cost
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected additional cost to have a cost specified"))
-                        .map(AdditionalCost::from)
-                })
+                .map(AdditionalCost::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }
