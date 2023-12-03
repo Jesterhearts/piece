@@ -9,10 +9,10 @@ use crate::{
     controller::Controller,
     cost::CastingCost,
     effects::{
-        AddPowerToughness, BattlefieldModifier, ModifyBasePowerToughness, ModifyBattlefield,
-        ModifyCreatureTypes, SpellEffect,
+        AddCreatureSubtypes, AddPowerToughness, BattlefieldModifier, ModifyBasePowerToughness,
+        ModifyBattlefield, SpellEffect,
     },
-    in_play::{AllCards, CardId, ModifierId},
+    in_play::{AllCards, ModifierId},
     player::Player,
     protogen,
     stack::{ActiveTarget, EntryType, Stack},
@@ -67,6 +67,7 @@ pub struct Card {
     pub subtypes: HashSet<Subtype>,
 
     pub modified_subtypes: IndexMap<ModifierId, HashSet<Subtype>>,
+    pub remove_all_subtypes: HashSet<ModifierId>,
 
     pub cost: CastingCost,
     pub casting_modifiers: Vec<CastingModifier>,
@@ -121,6 +122,7 @@ impl TryFrom<protogen::card::Card> for Card {
                 })
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             modified_subtypes: Default::default(),
+            remove_all_subtypes: Default::default(),
             cost: value
                 .cost
                 .as_ref()
@@ -223,6 +225,10 @@ impl Card {
     }
 
     pub fn subtypes(&self) -> HashSet<Subtype> {
+        if !self.remove_all_subtypes.is_empty() {
+            return Default::default();
+        }
+
         let mut subtypes = self.subtypes.clone();
 
         for modified_subtypes in self.modified_subtypes.values() {
@@ -287,6 +293,7 @@ impl Card {
         caster: &Player,
     ) -> HashSet<ActiveTarget> {
         let mut targets = HashSet::default();
+        let creatures = battlefield.creatures(cards);
 
         for effect in self.effects.iter() {
             match effect {
@@ -305,7 +312,7 @@ impl Card {
                                     targets.insert(ActiveTarget::Stack { id: *index });
                                 }
                             }
-                            EntryType::ActivatedAbility(_) => {}
+                            EntryType::ActivatedAbility { .. } => {}
                         }
                     }
                 }
@@ -322,19 +329,42 @@ impl Card {
                         targets: target_types,
                         ..
                     }) => {
-                        for creature in battlefield.creatures(cards) {
-                            if cards[creature].card.subtypes_intersect(target_types) {
-                                targets.insert(ActiveTarget::Battlefield { id: creature });
+                        for creature in creatures.iter() {
+                            let card = &cards[*creature];
+                            if card.card.subtypes_intersect(target_types)
+                                && card.card.can_be_targeted(caster, &card.controller.borrow())
+                            {
+                                targets.insert(ActiveTarget::Battlefield { id: *creature });
                             }
                         }
                     }
-                    ModifyBattlefield::ModifyCreatureTypes(_)
-                    | ModifyBattlefield::AddPowerToughness(_) => {
-                        for creature in battlefield.creatures(cards) {
-                            targets.insert(ActiveTarget::Battlefield { id: creature });
+                    ModifyBattlefield::AddCreatureSubtypes(_)
+                    | ModifyBattlefield::AddPowerToughness(_)
+                    | ModifyBattlefield::RemoveAllSubtypes => {
+                        for creature in creatures.iter() {
+                            let card = &cards[*creature];
+                            if card.card.can_be_targeted(caster, &card.controller.borrow()) {
+                                targets.insert(ActiveTarget::Battlefield { id: *creature });
+                            }
                         }
                     }
                 },
+                SpellEffect::ExileTargetCreature => {
+                    for creature in creatures.iter() {
+                        let card = &cards[*creature];
+                        if card.card.can_be_targeted(caster, &card.controller.borrow()) {
+                            targets.insert(ActiveTarget::Battlefield { id: *creature });
+                        }
+                    }
+                }
+                SpellEffect::ExileTargetCreatureManifestTopOfLibrary => {
+                    for creature in creatures.iter() {
+                        let card = &cards[*creature];
+                        if card.card.can_be_targeted(caster, &card.controller.borrow()) {
+                            targets.insert(ActiveTarget::Battlefield { id: *creature });
+                        }
+                    }
+                }
             }
         }
 
@@ -431,7 +461,7 @@ impl Card {
 
     pub fn subtypes_intersect(&self, subtypes: &[Subtype]) -> bool {
         let self_subtypes = self.subtypes();
-        subtypes.iter().any(|ty| self_subtypes.contains(ty))
+        subtypes.is_empty() || subtypes.iter().any(|ty| self_subtypes.contains(ty))
     }
 
     pub fn subtypes_match(&self, subtypes: &[Subtype]) -> bool {
@@ -445,15 +475,12 @@ impl Card {
 
     pub(crate) fn can_be_targeted(
         &self,
-        cards: &AllCards,
-        source: CardId,
+        source_controller: &Player,
         this_controller: &Player,
     ) -> bool {
         if self.shroud {
             return false;
         }
-
-        let source_controller = cards[source].controller.borrow();
 
         if self.hexproof && *source_controller != *this_controller {
             return false;
@@ -473,6 +500,8 @@ impl Card {
                 SpellEffect::ControllerDrawCards(_) => {}
                 SpellEffect::AddPowerToughness(_) => return true,
                 SpellEffect::ModifyCreature(_) => return true,
+                SpellEffect::ExileTargetCreature => return true,
+                SpellEffect::ExileTargetCreatureManifestTopOfLibrary => return false,
             }
         }
         false
@@ -484,12 +513,15 @@ impl Card {
                 self.adjusted_base_power.remove(&id);
                 self.adjusted_base_toughness.remove(&id);
             }
-            ModifyBattlefield::ModifyCreatureTypes(_) => {
+            ModifyBattlefield::AddCreatureSubtypes(_) => {
                 self.modified_subtypes.remove(&id);
             }
             ModifyBattlefield::AddPowerToughness(_) => {
                 self.power_modifier.remove(&id);
                 self.toughness_modifier.remove(&id);
+            }
+            ModifyBattlefield::RemoveAllSubtypes => {
+                self.remove_all_subtypes.remove(&id);
             }
         }
     }
@@ -506,7 +538,7 @@ impl Card {
                     self.adjusted_base_toughness.insert(id, *toughness);
                 }
             }
-            ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes { targets, types }) => {
+            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes { targets, types }) => {
                 if self.subtypes_intersect(targets) {
                     self.modified_subtypes
                         .insert(id, types.iter().copied().collect());
@@ -515,6 +547,9 @@ impl Card {
             ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
                 self.power_modifier.insert(id, *power);
                 self.toughness_modifier.insert(id, *toughness);
+            }
+            ModifyBattlefield::RemoveAllSubtypes => {
+                self.remove_all_subtypes.insert(id);
             }
         }
     }

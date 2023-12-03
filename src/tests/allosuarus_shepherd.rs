@@ -6,8 +6,8 @@ use crate::{
     controller::Controller,
     deck::Deck,
     effects::{
-        ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, ModifyBasePowerToughness,
-        ModifyBattlefield, ModifyCreatureTypes,
+        ActivatedAbilityEffect, AddCreatureSubtypes, BattlefieldModifier, EffectDuration,
+        ModifyBasePowerToughness, ModifyBattlefield,
     },
     in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay},
     load_cards,
@@ -35,6 +35,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [ActionResult::AddToStack(
+            card,
             EffectsInPlay {
                 effects: vec![
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
@@ -50,7 +51,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         restrictions: Default::default(),
                     }),
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
-                        modifier: ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
+                        modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: vec![Subtype::Elf],
                             types: vec![Subtype::Dinosaur],
                         }),
@@ -72,49 +73,46 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [
-            StackResult::ApplyToBattlefield(ModifierInPlay {
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                        ModifyBasePowerToughness {
+            StackResult::ApplyToBattlefield {
+                source: card,
+                modifier: ModifierInPlay {
+                    modifier: BattlefieldModifier {
+                        modifier: ModifyBattlefield::ModifyBasePowerToughness(
+                            ModifyBasePowerToughness {
+                                targets: vec![Subtype::Elf],
+                                power: 5,
+                                toughness: 5,
+                            }
+                        ),
+                        controller: Controller::You,
+                        duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
+                    },
+                    controller: player.clone(),
+                    modifying: Default::default(),
+                },
+            },
+            StackResult::ApplyToBattlefield {
+                source: card,
+                modifier: ModifierInPlay {
+                    modifier: BattlefieldModifier {
+                        modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: vec![Subtype::Elf],
-                            power: 5,
-                            toughness: 5,
-                        }
-                    ),
-                    controller: Controller::You,
-                    duration: EffectDuration::UntilEndOfTurn,
-                    restrictions: Default::default(),
-                },
-                controller: player.clone(),
-                modifying: Default::default(),
-            }),
-            StackResult::ApplyToBattlefield(ModifierInPlay {
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::ModifyCreatureTypes(ModifyCreatureTypes {
-                        targets: vec![Subtype::Elf],
-                        types: vec![Subtype::Dinosaur],
-                    }),
-                    controller: Controller::You,
-                    duration: EffectDuration::UntilEndOfTurn,
-                    restrictions: Default::default(),
-                },
-                controller: player.clone(),
-                modifying: Default::default(),
-            })
+                            types: vec![Subtype::Dinosaur],
+                        }),
+                        controller: Controller::You,
+                        duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
+                    },
+                    controller: player.clone(),
+                    modifying: Default::default(),
+                }
+            }
         ]
     );
 
-    let [StackResult::ApplyToBattlefield(effect1), StackResult::ApplyToBattlefield(effect2)] =
-        results.as_slice()
-    else {
-        unreachable!()
-    };
+    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
-    let id1 = modifiers.add_modifier(effect1.clone());
-    let id2 = modifiers.add_modifier(effect2.clone());
-
-    battlefield.apply_modifier(&mut all_cards, &mut modifiers, card, id1);
-    battlefield.apply_modifier(&mut all_cards, &mut modifiers, card, id2);
     let card = battlefield.select_card(0);
     let card = &all_cards[card];
     assert_eq!(card.card.power(), 5);
@@ -151,8 +149,8 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let creature = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
     let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
 
-    stack.push_card(&all_cards, creature, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0));
+    stack.push_card(&all_cards, creature, None, None);
+    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
 
     assert_eq!(stack.stack.len(), 2);
 
@@ -177,17 +175,14 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let creature_2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
     let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
 
-    stack.push_card(&all_cards, creature_1, None);
-    let mut result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, [StackResult::AddToBattlefield(creature_1)]);
+    stack.push_card(&all_cards, creature_1, None, None);
+    let results = stack.resolve_1(&all_cards, &battlefield);
+    assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
 
-    let Some(StackResult::AddToBattlefield(card)) = result.pop() else {
-        unreachable!()
-    };
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
-    stack.push_card(&all_cards, creature_2, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0));
+    stack.push_card(&all_cards, creature_2, None, None);
+    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
 
     assert_eq!(stack.stack.len(), 2);
 
@@ -218,22 +213,20 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let creature_2 = all_cards.add(&cards, player2.clone(), "Alpine Grizzly");
     let counterspell = all_cards.add(&cards, player1.clone(), "Counterspell");
 
-    stack.push_card(&all_cards, creature_1, None);
-    let mut result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, [StackResult::AddToBattlefield(creature_1)]);
+    stack.push_card(&all_cards, creature_1, None, None);
+    let results = stack.resolve_1(&all_cards, &battlefield);
+    assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
+    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
-    let Some(StackResult::AddToBattlefield(card)) = result.pop() else {
-        unreachable!()
-    };
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
-
-    let countered = stack.push_card(&all_cards, creature_2, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0));
+    let countered = stack.push_card(&all_cards, creature_2, None, None);
+    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
 
     assert_eq!(stack.stack.len(), 2);
 
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, [StackResult::SpellCountered { id: countered }]);
+    let results = stack.resolve_1(&all_cards, &battlefield);
+    assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
+
+    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
     Ok(())
 }

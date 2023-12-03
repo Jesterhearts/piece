@@ -79,6 +79,12 @@ message AddPowerToughness {
   int32 toughness = 2;
 }
 
+message ExileTargetCreature {
+}
+
+message ExileTargetCreatureManifestTopOfLibrary {
+}
+
 message ActivatedAbilityEffect {
   oneof effect {
     CounterSpell counter_spell = 1;
@@ -98,5 +104,8 @@ message SpellEffect {
     BattlefieldModifier modify_creature = 4;
     ControllerDrawCards controller_draw_cards = 5;
     AddPowerToughness add_power_toughness = 6;
+    ExileTargetCreature exile_target_creature = 7;
+    ExileTargetCreatureManifestTopOfLibrary
+      exile_target_creature_manifest_top_of_library = 8;
   }
 }

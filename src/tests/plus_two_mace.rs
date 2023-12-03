@@ -30,9 +30,6 @@ fn equipment_works() -> anyhow::Result<()> {
     let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
     let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
 
-    let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
-
     let equipment = battlefield.select_card(0);
     let results = battlefield.activate_ability(
         equipment,
@@ -45,6 +42,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [ActionResult::AddToStack(
+            equipment,
             EffectsInPlay {
                 effects: vec![ActivatedAbilityEffect::Equip(vec![
                     ModifyBattlefield::AddPowerToughness(AddPowerToughness {
@@ -83,27 +81,14 @@ fn equipment_works() -> anyhow::Result<()> {
         }]
     );
 
-    let Some(StackResult::ModifyCreatures {
-        source,
-        targets,
-        modifier,
-    }) = results.into_iter().next()
-    else {
-        unreachable!()
-    };
-
-    let modifier = modifiers.add_modifier(modifier);
-    battlefield.apply_modifier_to_targets(
-        &mut all_cards,
-        &mut modifiers,
-        source,
-        modifier,
-        targets,
-    );
+    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
     let card = &all_cards[creature];
     assert_eq!(card.card.power(), 6);
     assert_eq!(card.card.toughness(), 4);
+
+    let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
 
     let card2 = &all_cards[creature2];
     assert_eq!(card2.card.power(), 4);

@@ -2,11 +2,17 @@ use std::collections::{HashMap, VecDeque};
 
 use rand::{seq::SliceRandom, thread_rng};
 
-use crate::{in_play::CardId, player::PlayerRef};
+use crate::in_play::CardId;
 
+#[derive(Debug, Default)]
 pub struct DeckDefinition {
     pub cards: HashMap<String, usize>,
-    pub owner: PlayerRef,
+}
+
+impl DeckDefinition {
+    pub fn add_card(&mut self, name: String, count: usize) {
+        self.cards.insert(name, count);
+    }
 }
 
 #[derive(Debug)]

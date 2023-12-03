@@ -103,12 +103,12 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct ModifyCreatureTypes {
+pub struct AddCreatureSubtypes {
     pub targets: Vec<Subtype>,
     pub types: Vec<Subtype>,
 }
 
-impl TryFrom<&protogen::effects::ModifyCreatureTypes> for ModifyCreatureTypes {
+impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::effects::ModifyCreatureTypes) -> Result<Self, Self::Error> {
@@ -158,7 +158,8 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum ModifyBattlefield {
     ModifyBasePowerToughness(ModifyBasePowerToughness),
-    ModifyCreatureTypes(ModifyCreatureTypes),
+    AddCreatureSubtypes(AddCreatureSubtypes),
+    RemoveAllSubtypes,
     AddPowerToughness(AddPowerToughness),
 }
 
@@ -173,7 +174,7 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
                 Ok(Self::ModifyBasePowerToughness(modifier.try_into()?))
             }
             protogen::effects::modify_battlefield::Modifier::ModifyCreatureTypes(modifier) => {
-                Ok(Self::ModifyCreatureTypes(modifier.try_into()?))
+                Ok(Self::AddCreatureSubtypes(modifier.try_into()?))
             }
             protogen::effects::modify_battlefield::Modifier::AddPowerToughness(modifier) => {
                 Ok(Self::AddPowerToughness(modifier.try_into()?))
@@ -236,6 +237,8 @@ pub enum SpellEffect {
     ControllerDrawCards(usize),
     AddPowerToughness(AddPowerToughness),
     ModifyCreature(BattlefieldModifier),
+    ExileTargetCreature,
+    ExileTargetCreatureManifestTopOfLibrary,
 }
 
 impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
@@ -266,6 +269,12 @@ impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
             }
             protogen::effects::spell_effect::Effect::ModifyCreature(modifier) => {
                 Ok(Self::ModifyCreature(modifier.try_into()?))
+            }
+            protogen::effects::spell_effect::Effect::ExileTargetCreature(_) => {
+                Ok(Self::ExileTargetCreature)
+            }
+            protogen::effects::spell_effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
+                Ok(Self::ExileTargetCreatureManifestTopOfLibrary)
             }
         }
     }

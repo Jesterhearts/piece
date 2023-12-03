@@ -6,7 +6,7 @@ use crate::{
     battlefield::Battlefield,
     deck::Deck,
     hand::Hand,
-    in_play::{AllCards, CardId},
+    in_play::{AllCards, AllModifiers, CardId},
     mana::Mana,
     stack::{ActiveTarget, Stack},
 };
@@ -248,5 +248,21 @@ impl Player {
             }
         }
         true
+    }
+
+    pub fn manifest(
+        &mut self,
+        cards: &mut AllCards,
+        modifiers: &mut AllModifiers,
+        battlefield: &mut Battlefield,
+        stack: &mut Stack,
+    ) {
+        if let Some(manifested) = self.deck.draw() {
+            let card = &mut cards[manifested];
+            card.face_down = true;
+            card.manifested = true;
+            let results = battlefield.add(cards, modifiers, manifested);
+            battlefield.apply_action_results(cards, modifiers, stack, results);
+        }
     }
 }

@@ -17,6 +17,8 @@ pub struct CardInPlay {
     pub original_card: Card,
     pub controller: PlayerRef,
     pub owner: PlayerRef,
+    pub manifested: bool,
+    pub face_down: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -64,16 +66,21 @@ impl std::ops::IndexMut<CardId> for AllCards {
 }
 
 impl AllCards {
-    pub fn add_deck(&mut self, cards: &Cards, definition: &DeckDefinition) -> Deck {
+    pub fn build_deck_for_player(
+        &mut self,
+        cards: &Cards,
+        definition: &DeckDefinition,
+        owner: PlayerRef,
+    ) {
         let mut deck = VecDeque::default();
         for (card, count) in definition.cards.iter() {
             for _ in 0..*count {
-                let id = self.add(cards, definition.owner.clone(), card);
+                let id = self.add(cards, owner.clone(), card);
                 deck.push_back(id);
             }
         }
 
-        Deck::new(deck)
+        owner.borrow_mut().deck = Deck::new(deck);
     }
 
     #[must_use]
@@ -86,6 +93,8 @@ impl AllCards {
                 original_card: cards.get(name).expect("Valid card name").clone(),
                 controller: owner.clone(),
                 owner,
+                manifested: false,
+                face_down: false,
             },
         );
         id

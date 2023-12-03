@@ -23,7 +23,7 @@ fn etb_clones() -> anyhow::Result<()> {
     let result = battlefield.add(&mut all_cards, &mut modifiers, creature);
     assert_eq!(result, []);
 
-    stack.push_card(&all_cards, clone, None);
+    stack.push_card(&all_cards, clone, None, None);
 
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(results, [StackResult::AddToBattlefield(clone)]);
@@ -66,7 +66,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
 
     let clone = all_cards.add(&cards, player.clone(), "Clone");
 
-    stack.push_card(&all_cards, clone, None);
+    stack.push_card(&all_cards, clone, None, None);
 
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(results, [StackResult::AddToBattlefield(clone)]);

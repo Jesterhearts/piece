@@ -32,6 +32,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
             ActionResult::TapPermanent(card),
             ActionResult::PermanentToGraveyard(card),
             ActionResult::AddToStack(
+                card,
                 EffectsInPlay {
                     effects: vec![ActivatedAbilityEffect::ControllerDrawCards(1)],
                     source: card,
@@ -65,6 +66,7 @@ fn add_mana() -> anyhow::Result<()> {
         [
             ActionResult::TapPermanent(card),
             ActionResult::AddToStack(
+                card,
                 EffectsInPlay {
                     effects: vec![ActivatedAbilityEffect::GainMana {
                         mana: GainMana::Choice {

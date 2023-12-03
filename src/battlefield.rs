@@ -6,7 +6,7 @@ use crate::{
     abilities::{ETBAbility, StaticAbility},
     controller::Controller,
     cost::AdditionalCost,
-    effects::EffectDuration,
+    effects::{BattlefieldModifier, EffectDuration, ModifyBasePowerToughness, ModifyBattlefield},
     in_play::{AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay},
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
@@ -18,7 +18,7 @@ use crate::{
 pub enum ActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
-    AddToStack(EffectsInPlay, Option<ActiveTarget>),
+    AddToStack(CardId, EffectsInPlay, Option<ActiveTarget>),
     CloneCreatureNonTargeting {
         source: CardId,
         target: Option<CardId>,
@@ -44,6 +44,7 @@ pub struct Permanent {
 pub struct Battlefield {
     pub permanents: IndexMap<CardId, Permanent>,
     pub graveyards: HashMap<PlayerRef, IndexSet<CardId>>,
+    pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
 
     pub sourced_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
 }
@@ -59,8 +60,54 @@ impl Battlefield {
         let mut result = vec![];
         self.permanents
             .insert(source_card_id, Permanent { tapped: false });
-        let card = &cards[source_card_id];
 
+        if cards[source_card_id].face_down {
+            let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                modifier: BattlefieldModifier {
+                    modifier: ModifyBattlefield::ModifyBasePowerToughness(
+                        ModifyBasePowerToughness {
+                            targets: vec![],
+                            power: 2,
+                            toughness: 2,
+                        },
+                    ),
+                    controller: Controller::Any,
+                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    restrictions: Default::default(),
+                },
+                controller: cards[source_card_id].controller.clone(),
+                modifying: vec![],
+            });
+
+            apply_modifier_to_targets(
+                modifiers,
+                modifier_id,
+                std::iter::once(source_card_id),
+                cards,
+                source_card_id,
+            );
+
+            let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                modifier: BattlefieldModifier {
+                    modifier: ModifyBattlefield::RemoveAllSubtypes,
+                    controller: Controller::Any,
+                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    restrictions: Default::default(),
+                },
+                controller: cards[source_card_id].controller.clone(),
+                modifying: vec![],
+            });
+
+            apply_modifier_to_targets(
+                modifiers,
+                modifier_id,
+                std::iter::once(source_card_id),
+                cards,
+                source_card_id,
+            );
+        }
+
+        let card = &cards[source_card_id];
         for etb in card.card.etb_abilities.iter() {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
@@ -193,6 +240,7 @@ impl Battlefield {
         }
 
         results.push(ActionResult::AddToStack(
+            card_id,
             EffectsInPlay {
                 effects: ability.effects.clone(),
                 source: card_id,
@@ -240,8 +288,8 @@ impl Battlefield {
                 ActionResult::PermanentToGraveyard(card_id) => {
                     self.permanent_to_graveyard(cards, modifiers, stack, card_id);
                 }
-                ActionResult::AddToStack(effects, target) => {
-                    stack.push_activated_ability(effects, target);
+                ActionResult::AddToStack(source, effects, target) => {
+                    stack.push_activated_ability(source, effects, target);
                 }
                 ActionResult::CloneCreatureNonTargeting { source, target } => {
                     if let Some(target) = target {
@@ -269,6 +317,15 @@ impl Battlefield {
             .or_default()
             .insert(card_id);
 
+        self.card_leaves_battlefield(card_id, modifiers, cards);
+    }
+
+    fn card_leaves_battlefield(
+        &mut self,
+        card_id: CardId,
+        modifiers: &mut AllModifiers,
+        cards: &mut AllCards,
+    ) {
         if let Some(removed_modifiers) = self
             .sourced_modifiers
             .remove(&ModifierSource::Card(card_id))
@@ -345,14 +402,44 @@ impl Battlefield {
         }
     }
 
-    pub(crate) fn creatures<'ac>(
-        &'ac self,
-        cards: &'ac AllCards,
-    ) -> impl Iterator<Item = CardId> + 'ac {
-        self.permanents.keys().copied().filter(move |card_id| {
-            let card = &cards[*card_id].card;
-            card.types.contains(&Type::Creature)
-        })
+    pub(crate) fn creatures(&self, cards: &AllCards) -> Vec<CardId> {
+        self.permanents
+            .keys()
+            .copied()
+            .filter(move |card_id| {
+                let card = &cards[*card_id].card;
+                card.types.contains(&Type::Creature)
+            })
+            .collect()
+    }
+
+    pub(crate) fn get(&self, id: CardId) -> Option<CardId> {
+        if self.permanents.contains_key(&id) {
+            Some(id)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn exile(
+        &mut self,
+        cards: &mut AllCards,
+        modifiers: &mut AllModifiers,
+        _stack: &mut Stack,
+        target: CardId,
+    ) {
+        let removed = self.permanents.remove(&target);
+        assert!(removed.is_some());
+
+        let card = &mut cards[target];
+        card.controller = card.owner.clone();
+
+        self.exiles
+            .entry(card.controller.clone())
+            .or_default()
+            .insert(target);
+
+        self.card_leaves_battlefield(target, modifiers, cards);
     }
 }
 
