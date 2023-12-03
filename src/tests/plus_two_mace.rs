@@ -1,3 +1,4 @@
+use enumset::enum_set;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
     load_cards,
     player::Player,
     stack::{ActiveTarget, Stack, StackResult},
+    targets::Restriction,
 };
 
 #[test]
@@ -47,7 +49,8 @@ fn equipment_works() -> anyhow::Result<()> {
                 effects: vec![ActivatedAbilityEffect::Equip(vec![
                     ModifyBattlefield::AddPowerToughness(AddPowerToughness {
                         power: 2,
-                        toughness: 2
+                        toughness: 2,
+                        restrictions: enum_set!(Restriction::SingleTarget),
                     })
                 ]),],
                 source: equipment,
@@ -69,11 +72,11 @@ fn equipment_works() -> anyhow::Result<()> {
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::AddPowerToughness(AddPowerToughness {
                         power: 2,
-                        toughness: 2
+                        toughness: 2,
+                        restrictions: enum_set!(Restriction::SingleTarget),
                     }),
                     controller: Controller::You,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: Default::default()
                 },
                 controller: player.clone(),
                 modifying: vec![]
@@ -88,7 +91,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(card.card.toughness(), 4);
 
     let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2);
 
     let card2 = &all_cards[creature2];
     assert_eq!(card2.card.power(), 4);

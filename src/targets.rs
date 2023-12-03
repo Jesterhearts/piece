@@ -52,12 +52,14 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
 #[derive(Debug, EnumSetType)]
 pub enum Restriction {
     NotSelf,
+    SingleTarget,
 }
 
 impl From<&protogen::targets::restriction::Restriction> for Restriction {
     fn from(value: &protogen::targets::restriction::Restriction) -> Self {
         match value {
             protogen::targets::restriction::Restriction::NotSelf(_) => Self::NotSelf,
+            protogen::targets::restriction::Restriction::SingleTarget(_) => Self::SingleTarget,
         }
     }
 }

@@ -14,8 +14,11 @@ message SpellTarget {
 message Restriction {
   message NotSelf {
   }
+  message SingleTarget {
+  }
 
   oneof restriction {
     NotSelf not_self = 1;
+    SingleTarget single_target = 2;
   }
 }

@@ -78,6 +78,7 @@ pub struct ModifyBasePowerToughness {
     pub targets: Vec<Subtype>,
     pub power: i32,
     pub toughness: i32,
+    pub restrictions: EnumSet<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerToughness {
@@ -98,6 +99,17 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
                 .collect::<anyhow::Result<Vec<_>>>()?,
             power: value.power,
             toughness: value.toughness,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(|restriction| {
+                    restriction
+                        .restriction
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
+                        .map(Restriction::from)
+                })
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }
@@ -106,6 +118,7 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
 pub struct AddCreatureSubtypes {
     pub targets: Vec<Subtype>,
     pub types: Vec<Subtype>,
+    pub restrictions: EnumSet<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
@@ -134,6 +147,42 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
                         .map(Subtype::from)
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(|restriction| {
+                    restriction
+                        .restriction
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
+                        .map(Restriction::from)
+                })
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct RemoveAllSubtypes {
+    pub restrictions: EnumSet<Restriction>,
+}
+
+impl TryFrom<&protogen::effects::RemoveAllSubtypes> for RemoveAllSubtypes {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::RemoveAllSubtypes) -> Result<Self, Self::Error> {
+        Ok(Self {
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(|restriction| {
+                    restriction
+                        .restriction
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
+                        .map(Restriction::from)
+                })
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }
@@ -142,6 +191,7 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
 pub struct AddPowerToughness {
     pub power: i32,
     pub toughness: i32,
+    pub restrictions: EnumSet<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
@@ -151,6 +201,17 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
         Ok(Self {
             power: value.power,
             toughness: value.toughness,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(|restriction| {
+                    restriction
+                        .restriction
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
+                        .map(Restriction::from)
+                })
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }
@@ -159,7 +220,7 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
 pub enum ModifyBattlefield {
     ModifyBasePowerToughness(ModifyBasePowerToughness),
     AddCreatureSubtypes(AddCreatureSubtypes),
-    RemoveAllSubtypes,
+    RemoveAllSubtypes(RemoveAllSubtypes),
     AddPowerToughness(AddPowerToughness),
 }
 
@@ -179,6 +240,9 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
             protogen::effects::modify_battlefield::Modifier::AddPowerToughness(modifier) => {
                 Ok(Self::AddPowerToughness(modifier.try_into()?))
             }
+            protogen::effects::modify_battlefield::Modifier::RemoveAllSubtypes(modifier) => {
+                Ok(Self::RemoveAllSubtypes(modifier.try_into()?))
+            }
         }
     }
 }
@@ -188,7 +252,23 @@ pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,
     pub duration: EffectDuration,
-    pub restrictions: EnumSet<Restriction>,
+}
+impl BattlefieldModifier {
+    pub(crate) fn restrictions(&self) -> &EnumSet<Restriction> {
+        match &self.modifier {
+            ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
+                restrictions,
+                ..
+            })
+            | ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
+                restrictions, ..
+            })
+            | ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes { restrictions })
+            | ModifyBattlefield::AddPowerToughness(AddPowerToughness { restrictions, .. }) => {
+                restrictions
+            }
+        }
+    }
 }
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
@@ -214,17 +294,6 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
                 .map(EffectDuration::from)?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(|restriction| {
-                    restriction
-                        .restriction
-                        .as_ref()
-                        .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
-                        .map(Restriction::from)
-                })
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }

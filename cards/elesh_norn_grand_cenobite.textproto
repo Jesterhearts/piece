@@ -20,9 +20,9 @@ static_abilities {
       add_power_toughness {
         power: 2
         toughness: 2
+        restrictions { not_self {} }
       }
     }
-    restrictions { not_self {} }
     controller { you {} }
     duration { until_source_leaves_battlefield {} }
   }
@@ -33,6 +33,7 @@ static_abilities {
       add_power_toughness {
         power: -2
         toughness: -2
+        restrictions { not_self {} }
       }
     }
     controller { opponent {} }

@@ -44,11 +44,17 @@ message ModifyBasePowerToughness {
   repeated types.Subtype targets = 1;
   int32 power = 2;
   int32 toughness = 3;
+  repeated targets.Restriction restrictions = 4;
 }
 
 message ModifyCreatureTypes {
   repeated types.Subtype targets = 1;
   repeated types.Subtype types = 2;
+  repeated targets.Restriction restrictions = 3;
+}
+
+message RemoveAllSubtypes {
+  repeated targets.Restriction restrictions = 3;
 }
 
 message ModifyBattlefield {
@@ -56,6 +62,7 @@ message ModifyBattlefield {
     ModifyBasePowerToughness modify_base_power_toughness = 1;
     ModifyCreatureTypes modify_creature_types = 2;
     AddPowerToughness add_power_toughness = 3;
+    RemoveAllSubtypes remove_all_subtypes = 4;
   }
 }
 
@@ -63,7 +70,6 @@ message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
   controller.Controller controller = 2;
   Duration duration = 3;
-  repeated targets.Restriction restrictions = 4;
 }
 
 message ControllerDrawCards {
@@ -77,6 +83,7 @@ message Equip {
 message AddPowerToughness {
   int32 power = 1;
   int32 toughness = 2;
+  repeated targets.Restriction restrictions = 3;
 }
 
 message ExileTargetCreature {

@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
+use enumset::enum_set;
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     abilities::{ETBAbility, StaticAbility},
     controller::Controller,
     cost::AdditionalCost,
-    effects::{BattlefieldModifier, EffectDuration, ModifyBasePowerToughness, ModifyBattlefield},
+    effects::{
+        BattlefieldModifier, EffectDuration, ModifyBasePowerToughness, ModifyBattlefield,
+        RemoveAllSubtypes,
+    },
     in_play::{AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay},
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
@@ -69,42 +73,37 @@ impl Battlefield {
                             targets: vec![],
                             power: 2,
                             toughness: 2,
+                            restrictions: enum_set!(Restriction::SingleTarget),
                         },
                     ),
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: Default::default(),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![],
             });
 
-            apply_modifier_to_targets(
-                modifiers,
-                modifier_id,
-                std::iter::once(source_card_id),
-                cards,
-                source_card_id,
-            );
+            self.sourced_modifiers
+                .entry(ModifierSource::Card(source_card_id))
+                .or_default()
+                .insert(modifier_id);
 
             let modifier_id = modifiers.add_modifier(ModifierInPlay {
                 modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::RemoveAllSubtypes,
+                    modifier: ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes {
+                        restrictions: enum_set!(Restriction::SingleTarget),
+                    }),
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: Default::default(),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![],
             });
 
-            apply_modifier_to_targets(
-                modifiers,
-                modifier_id,
-                std::iter::once(source_card_id),
-                cards,
-                source_card_id,
-            );
+            self.sourced_modifiers
+                .entry(ModifierSource::Card(source_card_id))
+                .or_default()
+                .insert(modifier_id);
         }
 
         let card = &cards[source_card_id];
@@ -468,10 +467,16 @@ fn apply_modifier_to_targets<'m>(
             }
         }
 
-        for restriction in modifier.modifier.restrictions.iter() {
+        for restriction in modifier.modifier.restrictions().iter() {
             match restriction {
                 Restriction::NotSelf => {
                     if card_id == source_card_id {
+                        continue 'outer;
+                    }
+                }
+                Restriction::SingleTarget => {
+                    if !modifier.modifying.is_empty() {
+                        assert_eq!(modifier.modifying.len(), 1);
                         continue 'outer;
                     }
                 }

@@ -44,20 +44,20 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                                 targets: vec![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
+                                restrictions: Default::default(),
                             }
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
                     }),
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: vec![Subtype::Elf],
                             types: vec![Subtype::Dinosaur],
+                            restrictions: Default::default(),
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
                     })
                 ],
                 source: card,
@@ -82,11 +82,11 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                                 targets: vec![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
+                                restrictions: Default::default(),
                             }
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
                     },
                     controller: player.clone(),
                     modifying: Default::default(),
@@ -99,10 +99,10 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: vec![Subtype::Elf],
                             types: vec![Subtype::Dinosaur],
+                            restrictions: Default::default(),
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
                     },
                     controller: player.clone(),
                     modifying: Default::default(),

@@ -340,7 +340,7 @@ impl Card {
                     }
                     ModifyBattlefield::AddCreatureSubtypes(_)
                     | ModifyBattlefield::AddPowerToughness(_)
-                    | ModifyBattlefield::RemoveAllSubtypes => {
+                    | ModifyBattlefield::RemoveAllSubtypes(_) => {
                         for creature in creatures.iter() {
                             let card = &cards[*creature];
                             if card.card.can_be_targeted(caster, &card.controller.borrow()) {
@@ -520,7 +520,7 @@ impl Card {
                 self.power_modifier.remove(&id);
                 self.toughness_modifier.remove(&id);
             }
-            ModifyBattlefield::RemoveAllSubtypes => {
+            ModifyBattlefield::RemoveAllSubtypes(_) => {
                 self.remove_all_subtypes.remove(&id);
             }
         }
@@ -532,23 +532,32 @@ impl Card {
                 targets,
                 power,
                 toughness,
+                restrictions: _,
             }) => {
                 if self.subtypes_intersect(targets) {
                     self.adjusted_base_power.insert(id, *power);
                     self.adjusted_base_toughness.insert(id, *toughness);
                 }
             }
-            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes { targets, types }) => {
+            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
+                targets,
+                types,
+                restrictions: _,
+            }) => {
                 if self.subtypes_intersect(targets) {
                     self.modified_subtypes
                         .insert(id, types.iter().copied().collect());
                 }
             }
-            ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
+            ModifyBattlefield::AddPowerToughness(AddPowerToughness {
+                power,
+                toughness,
+                restrictions: _,
+            }) => {
                 self.power_modifier.insert(id, *power);
                 self.toughness_modifier.insert(id, *toughness);
             }
-            ModifyBattlefield::RemoveAllSubtypes => {
+            ModifyBattlefield::RemoveAllSubtypes(_) => {
                 self.remove_all_subtypes.insert(id);
             }
         }
