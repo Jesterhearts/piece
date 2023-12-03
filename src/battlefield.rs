@@ -51,6 +51,7 @@ pub struct Battlefield {
     pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
 
     pub sourced_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
+    pub attached_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
 }
 
 impl Battlefield {
@@ -338,6 +339,17 @@ impl Battlefield {
                 }
             }
         }
+
+        if let Some(removed_modifiers) = self.attached_modifiers.remove(&card_id) {
+            for modifier_id in removed_modifiers {
+                let modifier = modifiers.remove(modifier_id);
+                for card in modifier.modifying.iter() {
+                    cards[*card]
+                        .card
+                        .remove_modifier(modifier_id, &modifier.modifier)
+                }
+            }
+        }
     }
 
     pub fn apply_modifier(
@@ -349,6 +361,7 @@ impl Battlefield {
     ) {
         Self::apply_modifier_to_targets_internal(
             &mut self.sourced_modifiers,
+            &mut self.attached_modifiers,
             cards,
             modifiers,
             source_card_id,
@@ -367,6 +380,7 @@ impl Battlefield {
     ) {
         Self::apply_modifier_to_targets_internal(
             &mut self.sourced_modifiers,
+            &mut self.attached_modifiers,
             cards,
             modifiers,
             source_card_id,
@@ -376,6 +390,7 @@ impl Battlefield {
     }
     fn apply_modifier_to_targets_internal(
         sourced_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
+        attached_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         source_card_id: CardId,
@@ -395,6 +410,12 @@ impl Battlefield {
             EffectDuration::UntilSourceLeavesBattlefield => {
                 sourced_modifiers
                     .entry(ModifierSource::Card(source_card_id))
+                    .or_default()
+                    .insert(modifier_id);
+            }
+            EffectDuration::UntilUnattached => {
+                attached_modifiers
+                    .entry(source_card_id)
                     .or_default()
                     .insert(modifier_id);
             }

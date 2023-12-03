@@ -12,10 +12,13 @@ message Duration {
   }
   message UntilSourceLeavesBattlefield {
   }
+  message UntilUnattached {
+  }
 
   oneof duration {
     UntilEndOfTurn until_end_of_turn = 1;
     UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
+    UntilUnattached until_unattached = 3;
   }
 }
 

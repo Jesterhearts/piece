@@ -76,7 +76,7 @@ fn equipment_works() -> anyhow::Result<()> {
                         restrictions: enum_set!(Restriction::SingleTarget),
                     }),
                     controller: Controller::You,
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    duration: EffectDuration::UntilUnattached,
                 },
                 controller: player.clone(),
                 modifying: vec![]

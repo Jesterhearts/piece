@@ -368,7 +368,7 @@ impl Stack {
                                                 modifier: BattlefieldModifier {
                                                     modifier,
                                                     controller: Controller::You,
-                                                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                                                    duration: EffectDuration::UntilUnattached,
                                                 },
                                                 controller: card.controller.clone(),
                                                 modifying: vec![],

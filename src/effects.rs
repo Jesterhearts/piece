@@ -13,6 +13,7 @@ use crate::{
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
+    UntilUnattached,
 }
 
 impl From<&protogen::effects::duration::Duration> for EffectDuration {
@@ -22,6 +23,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
             protogen::effects::duration::Duration::UntilSourceLeavesBattlefield(_) => {
                 Self::UntilSourceLeavesBattlefield
             }
+            protogen::effects::duration::Duration::UntilUnattached(_) => Self::UntilUnattached,
         }
     }
 }
