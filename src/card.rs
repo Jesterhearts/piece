@@ -319,7 +319,7 @@ impl Card {
                 SpellEffect::GainMana { .. } => {}
                 SpellEffect::BattlefieldModifier(_) => {}
                 SpellEffect::ControllerDrawCards(_) => {}
-                SpellEffect::AddPowerToughness(_) => {
+                SpellEffect::AddPowerToughnessToTarget(_) => {
                     for creature in battlefield.creatures(cards) {
                         targets.insert(ActiveTarget::Battlefield { id: creature });
                     }
@@ -498,7 +498,7 @@ impl Card {
                 SpellEffect::GainMana { .. } => {}
                 SpellEffect::BattlefieldModifier(_) => {}
                 SpellEffect::ControllerDrawCards(_) => {}
-                SpellEffect::AddPowerToughness(_) => return true,
+                SpellEffect::AddPowerToughnessToTarget(_) => return true,
                 SpellEffect::ModifyCreature(_) => return true,
                 SpellEffect::ExileTargetCreature => return true,
                 SpellEffect::ExileTargetCreatureManifestTopOfLibrary => return false,

@@ -198,29 +198,9 @@ impl Stack {
                             };
                         }
                         SpellEffect::GainMana { mana } => {
-                            let mut manas = HashMap::default();
-                            match mana {
-                                GainMana::Specific { gains } => {
-                                    for gain in gains.iter() {
-                                        *manas.entry(*gain).or_default() += 1;
-                                    }
-                                }
-                                GainMana::Choice { choices } => {
-                                    let Some(mode) = next.mode else {
-                                        // No mode selected for modal ability.
-                                        return vec![];
-                                    };
-
-                                    for gain in choices[mode].iter() {
-                                        *manas.entry(*gain).or_default() += 1;
-                                    }
-                                }
-                            };
-
-                            result.push(StackResult::GainMana {
-                                player: cards[card].controller.clone(),
-                                mana: manas,
-                            })
+                            if !gain_mana(mana, next.mode, &mut result, cards, card) {
+                                return vec![];
+                            }
                         }
                         SpellEffect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield {
@@ -238,91 +218,28 @@ impl Stack {
                                 count: *count,
                             });
                         }
-                        SpellEffect::AddPowerToughness(modifier) => {
-                            match next.active_target {
-                                Some(active_target) => {
-                                    match active_target {
-                                        ActiveTarget::Stack { .. } => {
-                                            // Stack is not a valid target.
-                                            return vec![];
-                                        }
-                                        ActiveTarget::Battlefield { id } => {
-                                            let Some(target) = battlefield.get(id) else {
-                                                // Permanent no longer on battlefield.
-                                                return vec![];
-                                            };
-
-                                            if !cards[target].card.can_be_targeted(
-                                                &cards[card].controller.borrow(),
-                                                &cards[target].controller.borrow(),
-                                            ) {
-                                                // Card is no longer a valid target.
-                                                return vec![];
-                                            }
-
-                                            result.push(StackResult::ModifyCreatures {
-                                                source: card,
-                                                targets: vec![target],
-                                                modifier: ModifierInPlay {
-                                                    modifier: BattlefieldModifier {
-                                                        modifier:
-                                                            ModifyBattlefield::AddPowerToughness(
-                                                                modifier.clone(),
-                                                            ),
-                                                        controller: Controller::Any,
-                                                        duration: EffectDuration::UntilEndOfTurn,
-                                                    },
-                                                    controller: cards[card].controller.clone(),
-                                                    modifying: Default::default(),
-                                                },
-                                            });
-                                        }
-                                    };
-                                }
-                                None => {
-                                    // Spell fizzles due to lack of target.
-                                    return vec![];
-                                }
-                            };
+                        SpellEffect::AddPowerToughnessToTarget(modifier) => {
+                            if !add_power_toughness(
+                                next.active_target,
+                                battlefield,
+                                cards,
+                                card,
+                                &mut result,
+                                modifier,
+                            ) {
+                                return vec![];
+                            }
                         }
                         SpellEffect::ModifyCreature(modifier) => {
-                            match next.active_target {
-                                Some(active_target) => {
-                                    match active_target {
-                                        ActiveTarget::Stack { .. } => {
-                                            // Stack is not a valid target.
-                                            return vec![];
-                                        }
-                                        ActiveTarget::Battlefield { id } => {
-                                            let Some(target) = battlefield.get(id) else {
-                                                // Permanent no longer on battlefield.
-                                                return vec![];
-                                            };
-
-                                            if !cards[target].card.can_be_targeted(
-                                                &cards[card].controller.borrow(),
-                                                &cards[target].controller.borrow(),
-                                            ) {
-                                                // Card is no longer a valid target.
-                                                return vec![];
-                                            }
-
-                                            result.push(StackResult::ModifyCreatures {
-                                                source: card,
-                                                targets: vec![target],
-                                                modifier: ModifierInPlay {
-                                                    modifier: modifier.clone(),
-                                                    controller: cards[card].controller.clone(),
-                                                    modifying: Default::default(),
-                                                },
-                                            });
-                                        }
-                                    };
-                                }
-                                None => {
-                                    // Spell fizzles due to lack of target.
-                                    return vec![];
-                                }
+                            if !modify_creature(
+                                next.active_target,
+                                battlefield,
+                                cards,
+                                card,
+                                &mut result,
+                                modifier,
+                            ) {
+                                return vec![];
                             };
                         }
                         SpellEffect::ExileTargetCreature => {
@@ -401,7 +318,11 @@ impl Stack {
                 for effect in effects.effects.into_iter() {
                     match effect {
                         ActivatedAbilityEffect::CounterSpell { target: _ } => todo!(),
-                        ActivatedAbilityEffect::GainMana { mana: _ } => todo!(),
+                        ActivatedAbilityEffect::GainMana { mana } => {
+                            if !gain_mana(&mana, next.mode, &mut result, cards, source) {
+                                return vec![];
+                            }
+                        }
                         ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield {
                                 source,
@@ -457,7 +378,18 @@ impl Stack {
                                 }
                             }
                         }
-                        ActivatedAbilityEffect::AddPowerToughness(_) => todo!(),
+                        ActivatedAbilityEffect::AddPowerToughnessToTarget(modifier) => {
+                            if !add_power_toughness(
+                                next.active_target,
+                                battlefield,
+                                cards,
+                                source,
+                                &mut result,
+                                &modifier,
+                            ) {
+                                return vec![];
+                            }
+                        }
                     }
                 }
                 result
@@ -524,6 +456,143 @@ impl Stack {
             }
         }
     }
+}
+
+fn add_power_toughness(
+    active_target: Option<ActiveTarget>,
+    battlefield: &Battlefield,
+    cards: &AllCards,
+    card: CardId,
+    result: &mut Vec<StackResult>,
+    modifier: &crate::effects::AddPowerToughness,
+) -> bool {
+    match active_target {
+        Some(active_target) => {
+            match active_target {
+                ActiveTarget::Stack { .. } => {
+                    // Stack is not a valid target.
+                    return false;
+                }
+                ActiveTarget::Battlefield { id } => {
+                    let Some(target) = battlefield.get(id) else {
+                        // Permanent no longer on battlefield.
+                        return false;
+                    };
+
+                    if !cards[target].card.can_be_targeted(
+                        &cards[card].controller.borrow(),
+                        &cards[target].controller.borrow(),
+                    ) {
+                        // Card is no longer a valid target.
+                        return false;
+                    }
+
+                    result.push(StackResult::ModifyCreatures {
+                        source: card,
+                        targets: vec![target],
+                        modifier: ModifierInPlay {
+                            modifier: BattlefieldModifier {
+                                modifier: ModifyBattlefield::AddPowerToughness(modifier.clone()),
+                                controller: Controller::Any,
+                                duration: EffectDuration::UntilEndOfTurn,
+                            },
+                            controller: cards[card].controller.clone(),
+                            modifying: Default::default(),
+                        },
+                    });
+                }
+            };
+        }
+        None => {
+            // Spell fizzles due to lack of target.
+            return false;
+        }
+    }
+
+    true
+}
+
+fn modify_creature(
+    active_target: Option<ActiveTarget>,
+    battlefield: &Battlefield,
+    cards: &AllCards,
+    card: CardId,
+    result: &mut Vec<StackResult>,
+    modifier: &BattlefieldModifier,
+) -> bool {
+    match active_target {
+        Some(active_target) => {
+            match active_target {
+                ActiveTarget::Stack { .. } => {
+                    // Stack is not a valid target.
+                    return false;
+                }
+                ActiveTarget::Battlefield { id } => {
+                    let Some(target) = battlefield.get(id) else {
+                        // Permanent no longer on battlefield.
+                        return false;
+                    };
+
+                    if !cards[target].card.can_be_targeted(
+                        &cards[card].controller.borrow(),
+                        &cards[target].controller.borrow(),
+                    ) {
+                        // Card is no longer a valid target.
+                        return false;
+                    }
+
+                    result.push(StackResult::ModifyCreatures {
+                        source: card,
+                        targets: vec![target],
+                        modifier: ModifierInPlay {
+                            modifier: modifier.clone(),
+                            controller: cards[card].controller.clone(),
+                            modifying: Default::default(),
+                        },
+                    });
+                }
+            };
+        }
+        None => {
+            // Spell fizzles due to lack of target.
+            return false;
+        }
+    }
+    true
+}
+
+fn gain_mana(
+    mana: &GainMana,
+    mode: Option<usize>,
+    result: &mut Vec<StackResult>,
+    cards: &AllCards,
+    card: CardId,
+) -> bool {
+    let mut manas = HashMap::default();
+    match mana {
+        GainMana::Specific { gains } => {
+            for gain in gains.iter() {
+                *manas.entry(*gain).or_default() += 1;
+            }
+        }
+        GainMana::Choice { choices } => {
+            let Some(mode) = mode else {
+                // No mode selected for modal ability.
+                return false;
+            };
+
+            for gain in choices[mode].iter() {
+                *manas.entry(*gain).or_default() += 1;
+            }
+        }
+    };
+
+    result.push(StackResult::GainMana {
+        player: cards[card].controller.clone(),
+        mana: manas,
+    });
+
+    true
 }
 
 #[cfg(test)]

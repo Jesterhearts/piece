@@ -304,7 +304,7 @@ pub enum SpellEffect {
     GainMana { mana: GainMana },
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
-    AddPowerToughness(AddPowerToughness),
+    AddPowerToughnessToTarget(AddPowerToughness),
     ModifyCreature(BattlefieldModifier),
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
@@ -333,8 +333,8 @@ impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
             protogen::effects::spell_effect::Effect::ControllerDrawCards(draw) => {
                 Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
             }
-            protogen::effects::spell_effect::Effect::AddPowerToughness(modifier) => {
-                Ok(Self::AddPowerToughness(modifier.try_into()?))
+            protogen::effects::spell_effect::Effect::AddPowerToughnessToTarget(modifier) => {
+                Ok(Self::AddPowerToughnessToTarget(modifier.try_into()?))
             }
             protogen::effects::spell_effect::Effect::ModifyCreature(modifier) => {
                 Ok(Self::ModifyCreature(modifier.try_into()?))
@@ -356,7 +356,7 @@ pub enum ActivatedAbilityEffect {
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
     Equip(Vec<ModifyBattlefield>),
-    AddPowerToughness(AddPowerToughness),
+    AddPowerToughnessToTarget(AddPowerToughness),
 }
 
 impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for ActivatedAbilityEffect {
@@ -401,9 +401,9 @@ impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for Activated
                         .collect::<anyhow::Result<Vec<_>>>()?,
                 ))
             }
-            protogen::effects::activated_ability_effect::Effect::AddPowerToughness(modifier) => {
-                Ok(Self::AddPowerToughness(modifier.try_into()?))
-            }
+            protogen::effects::activated_ability_effect::Effect::AddPowerToughnessToTarget(
+                modifier,
+            ) => Ok(Self::AddPowerToughnessToTarget(modifier.try_into()?)),
         }
     }
 }

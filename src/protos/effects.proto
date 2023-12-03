@@ -99,7 +99,7 @@ message ActivatedAbilityEffect {
     BattlefieldModifier battlefield_modifier = 3;
     ControllerDrawCards controller_draw_cards = 4;
     Equip equip = 5;
-    AddPowerToughness add_power_toughness = 6;
+    AddPowerToughness add_power_toughness_to_target = 6;
   }
 }
 
@@ -110,7 +110,7 @@ message SpellEffect {
     BattlefieldModifier battlefield_modifier = 3;
     BattlefieldModifier modify_creature = 4;
     ControllerDrawCards controller_draw_cards = 5;
-    AddPowerToughness add_power_toughness = 6;
+    AddPowerToughness add_power_toughness_to_target = 6;
     ExileTargetCreature exile_target_creature = 7;
     ExileTargetCreatureManifestTopOfLibrary
       exile_target_creature_manifest_top_of_library = 8;
