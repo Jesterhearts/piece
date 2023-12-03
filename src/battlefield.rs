@@ -51,7 +51,8 @@ pub struct Battlefield {
     pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
 
     pub sourced_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
-    pub attached_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
+    pub attaching_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
+    pub attached_modifiers: IndexMap<CardId, HashSet<CardId>>,
 }
 
 impl Battlefield {
@@ -322,29 +323,34 @@ impl Battlefield {
 
     fn card_leaves_battlefield(
         &mut self,
-        card_id: CardId,
+        removed_card_id: CardId,
         modifiers: &mut AllModifiers,
         cards: &mut AllCards,
     ) {
         if let Some(removed_modifiers) = self
             .sourced_modifiers
-            .remove(&ModifierSource::Card(card_id))
+            .remove(&ModifierSource::Card(removed_card_id))
         {
             for modifier_id in removed_modifiers {
                 let modifier = modifiers.remove(modifier_id);
-                for card in modifier.modifying.iter() {
-                    cards[*card]
+                for card in modifier.modifying.iter().copied() {
+                    cards[card]
                         .card
                         .remove_modifier(modifier_id, &modifier.modifier)
                 }
             }
         }
 
-        if let Some(removed_modifiers) = self.attached_modifiers.remove(&card_id) {
+        if let Some(removed_modifiers) = self.attaching_modifiers.remove(&removed_card_id) {
             for modifier_id in removed_modifiers {
                 let modifier = modifiers.remove(modifier_id);
-                for card in modifier.modifying.iter() {
-                    cards[*card]
+                for modified_card in modifier.modifying.iter().copied() {
+                    self.attached_modifiers
+                        .entry(modified_card)
+                        .or_default()
+                        .remove(&removed_card_id);
+
+                    cards[modified_card]
                         .card
                         .remove_modifier(modifier_id, &modifier.modifier)
                 }
@@ -361,6 +367,7 @@ impl Battlefield {
     ) {
         Self::apply_modifier_to_targets_internal(
             &mut self.sourced_modifiers,
+            &mut self.attaching_modifiers,
             &mut self.attached_modifiers,
             cards,
             modifiers,
@@ -380,6 +387,7 @@ impl Battlefield {
     ) {
         Self::apply_modifier_to_targets_internal(
             &mut self.sourced_modifiers,
+            &mut self.attaching_modifiers,
             &mut self.attached_modifiers,
             cards,
             modifiers,
@@ -388,17 +396,25 @@ impl Battlefield {
             targets.into_iter(),
         );
     }
+
+    #[allow(clippy::too_many_arguments)]
     fn apply_modifier_to_targets_internal(
         sourced_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
-        attached_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
+        attaching_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
+        attached_modifiers: &mut IndexMap<CardId, HashSet<CardId>>,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         source_card_id: CardId,
         modifier_id: ModifierId,
-        targets: impl Iterator<Item = CardId>,
+        targets: impl Iterator<Item = CardId> + Clone,
     ) {
-        let modifier =
-            apply_modifier_to_targets(modifiers, modifier_id, targets, cards, source_card_id);
+        let modifier = apply_modifier_to_targets(
+            modifiers,
+            modifier_id,
+            targets.clone(),
+            cards,
+            source_card_id,
+        );
 
         match modifier.modifier.duration {
             EffectDuration::UntilEndOfTurn => {
@@ -414,10 +430,16 @@ impl Battlefield {
                     .insert(modifier_id);
             }
             EffectDuration::UntilUnattached => {
-                attached_modifiers
+                attaching_modifiers
                     .entry(source_card_id)
                     .or_default()
                     .insert(modifier_id);
+                for target in targets {
+                    attached_modifiers
+                        .entry(target)
+                        .or_default()
+                        .insert(source_card_id);
+                }
             }
         }
     }
