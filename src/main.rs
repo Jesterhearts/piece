@@ -1,13 +1,19 @@
 #![allow(clippy::single_match)]
 #![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
-use bevy_ecs::{event::Events, world::World};
+use bevy_ecs::{
+    entity::Entity,
+    event::{Event, Events},
+    world::World,
+};
 use include_dir::{include_dir, Dir};
 
 use crate::{
+    battlefield::{Battlefield, EtbEvent, PermanentToGraveyardEvent},
     card::Card,
     stack::{AddToStackEvent, Stack, StackResult},
 };
@@ -28,6 +34,22 @@ pub mod protogen;
 pub mod stack;
 pub mod targets;
 pub mod types;
+
+#[derive(Debug, Event)]
+pub enum FollowupWork {
+    ChooseTargetThenEtb {
+        valid_targets: Vec<Entity>,
+        targets_for: Entity,
+        up_to: usize,
+    },
+    Etb {
+        events: Vec<EtbEvent>,
+    },
+
+    Graveyard {
+        events: Vec<PermanentToGraveyardEvent>,
+    },
+}
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
@@ -59,9 +81,17 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 
 pub fn init_world() -> World {
     let stack = Stack::default();
+    let battlefield = Battlefield::default();
+
     let mut world = World::default();
     world.insert_resource(stack);
+    world.insert_resource(battlefield);
+
+    // Keep sorted
     world.init_resource::<Events<AddToStackEvent>>();
+    world.init_resource::<Events<EtbEvent>>();
+    world.init_resource::<Events<FollowupWork>>();
+    world.init_resource::<Events<PermanentToGraveyardEvent>>();
     world.init_resource::<Events<StackResult>>();
 
     world

@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use bevy_ecs::component::Component;
 use enumset::EnumSet;
 
 use crate::{
@@ -243,7 +244,7 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,

@@ -13,11 +13,11 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let mut world = init_world();
 
     let mut deck = DeckDefinition::default();
-    deck.add_card("Counterspell".to_owned(), 2);
-    let mut deck = Deck::new(&mut world, PlayerId::default(), &cards, &deck);
+    deck.add_card("Counterspell", 2);
+    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
 
-    let counterspell_1 = deck.draw().unwrap();
-    let counterspell_2 = deck.draw().unwrap();
+    let counterspell_1 = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let counterspell_2 = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
 
     world.send_event(AddToStackEvent {
         entry: stack::StackEntry::Spell(counterspell_1),
@@ -26,7 +26,8 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     world.run_system_once(stack::add_to_stack)?;
 
-    let target = dbg!(world.resource::<Stack>())
+    let target = world
+        .resource::<Stack>()
         .target_nth(0)
         .expect("Should have a spell on the stack");
 

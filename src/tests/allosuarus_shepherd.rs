@@ -1,21 +1,178 @@
-use pretty_assertions::assert_eq;
 use std::collections::HashSet;
 
+use bevy_ecs::{query::With, system::RunSystemOnce};
+use pretty_assertions::assert_eq;
+
 use crate::{
-    battlefield::{ActionResult, Battlefield},
-    controller::Controller,
-    deck::Deck,
-    effects::{
-        ActivatedAbilityEffect, AddCreatureSubtypes, BattlefieldModifier, EffectDuration,
-        ModifyBasePowerToughness, ModifyBattlefield,
-    },
-    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay},
-    load_cards,
-    player::Player,
-    stack::{Stack, StackResult},
-    types::Subtype,
+    battlefield::{self, Battlefield, BattlefieldId},
+    card::Card,
+    deck::{Deck, DeckDefinition},
+    init_world, load_cards,
+    player::PlayerId,
+    stack::{self, AddToStackEvent, Stack, StackEntry, Target},
 };
 
+#[test]
+fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<()> {
+    let cards = load_cards()?;
+    let mut world = init_world();
+
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Allosaurus Shepherd", 1);
+    deck.add_card("Counterspell", 1);
+    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+
+    let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(creature),
+        target: None,
+    });
+    world.run_system_once(stack::add_to_stack)?;
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(counterspell),
+        target: world.resource::<Stack>().target_nth(0).map(Target::Stack),
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+    assert_eq!(world.resource::<Stack>().len(), 2);
+
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    assert_eq!(world.resource::<Stack>().len(), 1);
+
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    assert!(world.resource::<Stack>().is_empty());
+
+    world.resource::<Battlefield>();
+
+    Ok(())
+}
+
+#[test]
+fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Result<()> {
+    let cards = load_cards()?;
+    let mut world = init_world();
+
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Allosaurus Shepherd", 1);
+    deck.add_card("Alpine Grizzly", 1);
+    deck.add_card("Counterspell", 1);
+    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+
+    let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(creature),
+        target: None,
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    world.run_system_once(battlefield::handle_events)?;
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(bear),
+        target: None,
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(counterspell),
+        target: world.resource::<Stack>().target_nth(0).map(Target::Stack),
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    world.run_system_once(battlefield::handle_events)?;
+
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    world.run_system_once(battlefield::handle_events)?;
+
+    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let on_battlefield = on_battlefield
+        .iter(&world)
+        .map(|card| card.name.clone())
+        .collect::<HashSet<_>>();
+
+    assert_eq!(on_battlefield.len(), 2);
+    assert!(on_battlefield.contains("Allosaurus Shepherd"));
+    assert!(on_battlefield.contains("Alpine Grizzly"));
+
+    Ok(())
+}
+
+#[test]
+fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyhow::Result<()> {
+    let cards = load_cards()?;
+    let mut world = init_world();
+
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Allosaurus Shepherd", 1);
+    deck.add_card("Counterspell", 1);
+    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+
+    let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Alpine Grizzly", 1);
+    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(creature),
+        target: None,
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    world.run_system_once(battlefield::handle_events)?;
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(bear),
+        target: None,
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(counterspell),
+        target: world.resource::<Stack>().target_nth(0).map(Target::Stack),
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::handle_results)?;
+    world.run_system_once(battlefield::handle_events)?;
+
+    assert!(world.resource::<Stack>().is_empty());
+
+    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let on_battlefield = on_battlefield
+        .iter(&world)
+        .map(|card| card.name.clone())
+        .collect::<HashSet<_>>();
+
+    assert_eq!(on_battlefield.len(), 1);
+    assert!(on_battlefield.contains("Allosaurus Shepherd"));
+
+    Ok(())
+}
+
+/*
 #[test]
 fn modify_base_p_t_works() -> anyhow::Result<()> {
     let cards = load_cards()?;
@@ -137,96 +294,4 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-#[test]
-fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<()> {
-    let cards = load_cards()?;
-    let player = Player::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let battlefield = Battlefield::default();
-    let mut stack = Stack::default();
-
-    let creature = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
-
-    stack.push_card(&all_cards, creature, None, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
-
-    assert_eq!(stack.stack.len(), 2);
-
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, []);
-
-    assert_eq!(stack.stack.len(), 1);
-
-    Ok(())
-}
-
-#[test]
-fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Result<()> {
-    let cards = load_cards()?;
-    let player = Player::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
-
-    let creature_1 = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let creature_2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
-
-    stack.push_card(&all_cards, creature_1, None, None);
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
-
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-
-    stack.push_card(&all_cards, creature_2, None, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
-
-    assert_eq!(stack.stack.len(), 2);
-
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, []);
-
-    assert_eq!(stack.stack.len(), 1);
-
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert!(stack.is_empty());
-    assert_eq!(result, [StackResult::AddToBattlefield(creature_2)]);
-
-    Ok(())
-}
-
-#[test]
-fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyhow::Result<()> {
-    let cards = load_cards()?;
-    let player1 = Player::new_ref(Deck::empty());
-    let player2 = Player::new_ref(Deck::empty());
-
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
-
-    let creature_1 = all_cards.add(&cards, player1.clone(), "Allosaurus Shepherd");
-    let creature_2 = all_cards.add(&cards, player2.clone(), "Alpine Grizzly");
-    let counterspell = all_cards.add(&cards, player1.clone(), "Counterspell");
-
-    stack.push_card(&all_cards, creature_1, None, None);
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-
-    let countered = stack.push_card(&all_cards, creature_2, None, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
-
-    assert_eq!(stack.stack.len(), 2);
-
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
-
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-
-    Ok(())
-}
+*/

@@ -79,6 +79,62 @@ impl ModifyingSubtypes {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum PowerModifier {
+    SetBase(i32),
+    Add(i32),
+}
+
+#[derive(Debug, Component)]
+pub struct ModifyingPower(IndexSet<PowerModifier>);
+
+impl ModifyingPower {
+    pub fn power(&self, card: &Card) -> Option<i32> {
+        let mut base = card.power;
+        let mut add = 0;
+        for modifier in self.0.iter().copied() {
+            match modifier {
+                PowerModifier::SetBase(new_base) => {
+                    base = Some(new_base);
+                }
+                PowerModifier::Add(also_add) => {
+                    add += also_add;
+                }
+            }
+        }
+
+        base.map(|base| base + add)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ToughnessModifier {
+    SetBase(i32),
+    Add(i32),
+}
+
+#[derive(Debug, Component)]
+pub struct ModifyingToughness(IndexSet<ToughnessModifier>);
+
+impl ModifyingToughness {
+    pub fn toughness(&self, card: &Card) -> Option<i32> {
+        let mut base = card.toughness;
+        let mut add = 0;
+        for modifier in self.0.iter().copied() {
+            match modifier {
+                ToughnessModifier::SetBase(new_base) => {
+                    base = Some(new_base);
+                }
+                ToughnessModifier::Add(also_add) => {
+                    add += also_add;
+                }
+            }
+        }
+
+        base.map(|base| base + add)
+    }
+}
+
 #[derive(Debug, EnumSetType)]
 pub enum Color {
     White,
@@ -162,8 +218,8 @@ pub struct Card {
     pub static_abilities: Vec<StaticAbility>,
     pub activated_abilities: Vec<ActivatedAbility>,
 
-    pub power: Option<usize>,
-    pub toughness: Option<usize>,
+    pub power: Option<i32>,
+    pub toughness: Option<i32>,
 
     pub hexproof: bool,
     pub shroud: bool,
@@ -222,16 +278,8 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(ActivatedAbility::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            power: value
-                .power
-                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                    Ok(usize::try_from(v).map(Some)?)
-                })?,
-            toughness: value
-                .toughness
-                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                    Ok(usize::try_from(v).map(Some)?)
-                })?,
+            power: value.power,
+            toughness: value.toughness,
             hexproof: value.hexproof,
             shroud: value.shroud,
         })
@@ -239,7 +287,7 @@ impl TryFrom<protogen::card::Card> for Card {
 }
 
 impl Card {
-    pub fn color(&self) -> EnumSet<Color> {
+    pub fn colors(&self) -> EnumSet<Color> {
         let mut colors = EnumSet::default();
         for mana in self.cost.mana_cost.iter() {
             let color = mana.color();
@@ -253,7 +301,7 @@ impl Card {
     }
 
     pub fn color_identity(&self) -> EnumSet<Color> {
-        let mut identity = self.color();
+        let mut identity = self.colors();
 
         for ability in self.activated_abilities.iter() {
             for mana in ability.cost.mana_cost.iter() {

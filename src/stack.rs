@@ -8,13 +8,14 @@ use bevy_ecs::{
 use indexmap::IndexMap;
 
 use crate::{
-    battlefield::{Battlefield, BattlefieldId, GraveyardId},
+    abilities::StaticAbility,
+    battlefield::{Battlefield, BattlefieldId, EtbEvent, GraveyardId},
     card::{
-        Card, CastingModifier, ModifyingSubtypeSet, ModifyingSubtypes, ModifyingTypeSet,
+        Card, CastingModifier, Color, ModifyingSubtypeSet, ModifyingSubtypes, ModifyingTypeSet,
         ModifyingTypes,
     },
     controller::Controller,
-    effects::SpellEffect,
+    effects::{BattlefieldModifier, ModifyBattlefield, SpellEffect},
     player::{self, PlayerId},
     targets::SpellTarget,
 };
@@ -49,7 +50,8 @@ impl StackEntry {
 
 #[derive(Debug, Event)]
 pub enum StackResult {
-    CardToGraveyard(Entity),
+    StackToGraveyard(Entity),
+    StackToBattlefield(Entity),
 }
 
 #[derive(Debug, Event)]
@@ -74,6 +76,10 @@ impl Stack {
 
     pub fn target_nth(&self, nth: usize) -> Option<StackId> {
         self.entries.get_index(nth).map(|(id, _)| *id)
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -133,6 +139,8 @@ pub fn resolve_1(
     >,
     type_modifiers: Query<&ModifyingTypeSet>,
     subtype_modifiers: Query<&ModifyingSubtypeSet>,
+    static_abilities: Query<(&StaticAbility, &player::Controller)>,
+    battlefield_modifiers: Query<(&BattlefieldModifier, &player::Controller)>,
 ) -> anyhow::Result<()> {
     let Some((_, entry)) = stack.entries.pop() else {
         return Ok(());
@@ -146,7 +154,7 @@ pub fn resolve_1(
                 .remove::<StackId>()
                 .remove::<player::Controller>()
                 .insert(player::Controller::from(*spell_owner));
-            results.send(StackResult::CardToGraveyard(entity));
+            results.send(StackResult::StackToGraveyard(entity));
 
             if card.requires_target() && maybe_target.is_none() {
                 return Ok(());
@@ -191,6 +199,50 @@ pub fn resolve_1(
                             _,
                         ) = cards.get(entity_target)?;
 
+                        if target_card
+                            .casting_modifiers
+                            .contains(CastingModifier::CannotBeCountered)
+                        {
+                            return Ok(());
+                        }
+
+                        for (ability, ability_controller) in static_abilities.iter() {
+                            match ability {
+                                StaticAbility::GreenCannotBeCountered { controller } => {
+                                    if target_card.colors().contains(Color::Green) {
+                                        match controller {
+                                            Controller::Any => {
+                                                return Ok(());
+                                            }
+                                            Controller::You => {
+                                                if ability_controller == target_controller {
+                                                    return Ok(());
+                                                }
+                                            }
+                                            Controller::Opponent => {
+                                                if ability_controller != target_controller {
+                                                    return Ok(());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                StaticAbility::Vigilance => {}
+                                StaticAbility::BattlefieldModifier(_) => {}
+                                StaticAbility::Enchant(_) => {}
+                            }
+                        }
+
+                        for (modifier, _modifier_controller) in battlefield_modifiers.iter() {
+                            match modifier.modifier {
+                                ModifyBattlefield::ModifyBasePowerToughness(_) => {}
+                                ModifyBattlefield::AddCreatureSubtypes(_) => {}
+                                ModifyBattlefield::RemoveAllSubtypes(_) => {}
+                                ModifyBattlefield::AddPowerToughness(_) => {}
+                                ModifyBattlefield::Vigilance(_) => {}
+                            }
+                        }
+
                         match controller {
                             Controller::Any => {}
                             Controller::You => {
@@ -231,7 +283,7 @@ pub fn resolve_1(
                             .remove::<player::Controller>()
                             .insert(player::Controller::from(*target_owner));
                         stack.entries.remove(stack_target);
-                        results.send(StackResult::CardToGraveyard(entity_target));
+                        results.send(StackResult::StackToGraveyard(entity_target));
                     }
                     SpellEffect::GainMana { mana: _ } => todo!(),
                     SpellEffect::BattlefieldModifier(_) => todo!(),
@@ -241,6 +293,10 @@ pub fn resolve_1(
                     SpellEffect::ExileTargetCreature => todo!(),
                     SpellEffect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
                 }
+            }
+
+            if card.is_permanent() {
+                results.send(StackResult::StackToBattlefield(entity));
             }
         }
         StackEntry::ActivatedAbility(_) => todo!(),
@@ -252,15 +308,22 @@ pub fn resolve_1(
 
 pub fn handle_results(
     mut queue: ResMut<Events<StackResult>>,
+    mut etb_events: EventWriter<EtbEvent>,
     mut commands: Commands,
     mut battlefield: ResMut<Battlefield>,
 ) -> anyhow::Result<()> {
     for result in queue.drain() {
         match result {
-            StackResult::CardToGraveyard(entity) => {
+            StackResult::StackToGraveyard(entity) => {
                 commands
                     .entity(entity)
                     .insert(battlefield.next_graveyard_id());
+            }
+            StackResult::StackToBattlefield(entity) => {
+                etb_events.send(EtbEvent {
+                    card: entity,
+                    targets: None,
+                });
             }
         }
     }

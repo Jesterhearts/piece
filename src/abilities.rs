@@ -1,4 +1,6 @@
 use anyhow::anyhow;
+use bevy_ecs::{component::Component, entity::Entity};
+use derive_more::Deref;
 use enumset::EnumSet;
 
 use crate::{
@@ -34,6 +36,9 @@ impl TryFrom<&protogen::abilities::static_ability::Enchant> for Enchant {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Component, Deref)]
+pub struct Copying(pub Entity);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
@@ -61,7 +66,7 @@ impl From<&protogen::abilities::etbability::Ability> for ETBAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
     Vigilance,
