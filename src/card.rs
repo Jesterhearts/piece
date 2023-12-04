@@ -79,23 +79,23 @@ impl ModifyingSubtypes {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Component)]
 pub enum PowerModifier {
     SetBase(i32),
     Add(i32),
 }
 
 #[derive(Debug, Component)]
-pub struct ModifyingPower(IndexSet<PowerModifier>);
+pub struct ModifyingPower(IndexSet<Entity>);
 
 impl ModifyingPower {
-    pub fn power(&self, card: &Card) -> Option<i32> {
+    pub fn power(&self, card: &Card, query: &Query<&PowerModifier>) -> anyhow::Result<Option<i32>> {
         let mut base = card.power;
         let mut add = 0;
         for modifier in self.0.iter().copied() {
-            match modifier {
+            match query.get(modifier)? {
                 PowerModifier::SetBase(new_base) => {
-                    base = Some(new_base);
+                    base = Some(*new_base);
                 }
                 PowerModifier::Add(also_add) => {
                     add += also_add;
@@ -103,27 +103,31 @@ impl ModifyingPower {
             }
         }
 
-        base.map(|base| base + add)
+        Ok(base.map(|base| base + add))
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Component)]
 pub enum ToughnessModifier {
     SetBase(i32),
     Add(i32),
 }
 
 #[derive(Debug, Component)]
-pub struct ModifyingToughness(IndexSet<ToughnessModifier>);
+pub struct ModifyingToughness(IndexSet<Entity>);
 
 impl ModifyingToughness {
-    pub fn toughness(&self, card: &Card) -> Option<i32> {
+    pub fn toughness(
+        &self,
+        card: &Card,
+        modifiers: &Query<&ToughnessModifier>,
+    ) -> anyhow::Result<Option<i32>> {
         let mut base = card.toughness;
         let mut add = 0;
         for modifier in self.0.iter().copied() {
-            match modifier {
+            match modifiers.get(modifier)? {
                 ToughnessModifier::SetBase(new_base) => {
-                    base = Some(new_base);
+                    base = Some(*new_base);
                 }
                 ToughnessModifier::Add(also_add) => {
                     add += also_add;
@@ -131,7 +135,7 @@ impl ModifyingToughness {
             }
         }
 
-        base.map(|base| base + add)
+        Ok(base.map(|base| base + add))
     }
 }
 

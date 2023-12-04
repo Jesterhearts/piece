@@ -8,7 +8,7 @@ use bevy_ecs::{
 
 use crate::{
     abilities::{Copying, ETBAbility},
-    card::{Card, ModifyingToughness, ModifyingTypeSet, ModifyingTypes},
+    card::{Card, ModifyingToughness, ModifyingTypeSet, ModifyingTypes, ToughnessModifier},
     types::Type,
     FollowupWork,
 };
@@ -55,6 +55,7 @@ pub fn handle_sba(
         (Entity, &Card, Option<&Copying>, Option<&ModifyingToughness>),
         With<BattlefieldId>,
     >,
+    toughness_modifiers: Query<&ToughnessModifier>,
     cards: Query<&Card>,
 ) -> anyhow::Result<()> {
     for (e, card, copying, modifying_toughness) in cards_on_battlefield.iter() {
@@ -65,11 +66,13 @@ pub fn handle_sba(
         };
 
         let toughness = modifying_toughness
-            .map(|modifier| modifier.toughness(card))
-            .unwrap_or(card.toughness);
+            .map(|modifier| modifier.toughness(card, &toughness_modifiers))
+            .unwrap_or(Ok(card.toughness))?;
 
-        if let Some(0) = toughness {
-            to_graveyard.send(PermanentToGraveyardEvent { card: e })
+        if let Some(toughness) = toughness {
+            if toughness <= 0 {
+                to_graveyard.send(PermanentToGraveyardEvent { card: e })
+            }
         }
     }
 
