@@ -1,6 +1,6 @@
 use crate::protogen;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Default, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Copy)]
 pub enum Controller {
     #[default]
     Any,

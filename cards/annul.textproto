@@ -7,7 +7,7 @@ types { instant {} }
 oracle_text: "Counter target spell."
 effects {
   counter_spell {
-    target { 
+    valid_target { 
       types { artifact {} }
       types { enchantment {} }
     }

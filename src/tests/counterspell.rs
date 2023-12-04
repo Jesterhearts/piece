@@ -1,37 +1,46 @@
-use pretty_assertions::assert_eq;
+use bevy_ecs::system::RunSystemOnce;
 
 use crate::{
-    battlefield::Battlefield,
-    deck::Deck,
-    in_play::{AllCards, AllModifiers},
-    load_cards,
-    player::Player,
-    stack::{Stack, StackResult},
+    deck::{Deck, DeckDefinition},
+    init_world, load_cards,
+    player::PlayerId,
+    stack::{self, AddToStackEvent, Stack},
 };
 
 #[test]
 fn resolves_counterspells() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player = Player::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
+    let mut world = init_world();
 
-    let counterspell_1 = all_cards.add(&cards, player.clone(), "Counterspell");
-    let counterspell_2 = all_cards.add(&cards, player.clone(), "Counterspell");
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Counterspell".to_owned(), 2);
+    let mut deck = Deck::new(&mut world, PlayerId::default(), &cards, &deck);
 
-    let countered = stack.push_card(&all_cards, counterspell_1, None, None);
+    let counterspell_1 = deck.draw().unwrap();
+    let counterspell_2 = deck.draw().unwrap();
 
-    stack.push_card(&all_cards, counterspell_2, stack.target_nth(0), None);
+    world.send_event(AddToStackEvent {
+        entry: stack::StackEntry::Spell(counterspell_1),
+        target: None,
+    });
 
-    assert_eq!(stack.stack.len(), 2);
+    world.run_system_once(stack::add_to_stack)?;
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let target = dbg!(world.resource::<Stack>())
+        .target_nth(0)
+        .expect("Should have a spell on the stack");
 
-    assert!(stack.is_empty());
+    world.send_event(AddToStackEvent {
+        entry: stack::StackEntry::Spell(counterspell_2),
+        target: Some(stack::Target::Stack(target)),
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::resolve_1)?;
+
+    assert!(world.resource::<Stack>().is_empty());
+
+    world.run_system_once(stack::handle_results)?;
 
     Ok(())
 }

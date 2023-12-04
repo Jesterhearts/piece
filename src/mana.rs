@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 use crate::{card::Color, protogen};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mana {
     White,
     Blue,

@@ -9,7 +9,7 @@ use crate::{
     types::Subtype,
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
@@ -28,7 +28,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Vigilance {
     pub restrictions: EnumSet<Restriction>,
 }
@@ -47,7 +47,7 @@ impl TryFrom<&protogen::effects::Vigilance> for Vigilance {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
@@ -94,7 +94,7 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModifyBasePowerToughness {
     pub targets: Vec<Subtype>,
     pub power: i32,
@@ -123,7 +123,7 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AddCreatureSubtypes {
     pub targets: Vec<Subtype>,
     pub types: Vec<Subtype>,
@@ -154,7 +154,7 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct RemoveAllSubtypes {
     pub restrictions: EnumSet<Restriction>,
 }
@@ -173,7 +173,7 @@ impl TryFrom<&protogen::effects::RemoveAllSubtypes> for RemoveAllSubtypes {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AddPowerToughness {
     pub power: i32,
     pub toughness: i32,
@@ -196,7 +196,7 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ModifyBattlefield {
     ModifyBasePowerToughness(ModifyBasePowerToughness),
     AddCreatureSubtypes(AddCreatureSubtypes),
@@ -243,14 +243,14 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,
     pub duration: EffectDuration,
 }
 impl BattlefieldModifier {
-    pub(crate) fn restrictions(&self) -> &EnumSet<Restriction> {
+    pub fn restrictions(&self) -> &EnumSet<Restriction> {
         match &self.modifier {
             ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
                 restrictions,
@@ -293,9 +293,9 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SpellEffect {
-    CounterSpell { target: SpellTarget },
+    CounterSpell { valid_target: SpellTarget },
     GainMana { mana: GainMana },
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
@@ -324,7 +324,11 @@ impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
         match value {
             protogen::effects::spell_effect::Effect::CounterSpell(counter) => {
                 Ok(Self::CounterSpell {
-                    target: counter.target.as_ref().unwrap_or_default().try_into()?,
+                    valid_target: counter
+                        .valid_target
+                        .as_ref()
+                        .unwrap_or_default()
+                        .try_into()?,
                 })
             }
             protogen::effects::spell_effect::Effect::GainMana(gain) => Ok(Self::GainMana {
@@ -352,9 +356,9 @@ impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ActivatedAbilityEffect {
-    CounterSpell { target: SpellTarget },
+    CounterSpell { valid_target: SpellTarget },
     GainMana { mana: GainMana },
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
@@ -383,7 +387,11 @@ impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for Activated
         match value {
             protogen::effects::activated_ability_effect::Effect::CounterSpell(counter) => {
                 Ok(Self::CounterSpell {
-                    target: counter.target.as_ref().unwrap_or_default().try_into()?,
+                    valid_target: counter
+                        .valid_target
+                        .as_ref()
+                        .unwrap_or_default()
+                        .try_into()?,
                 })
             }
             protogen::effects::activated_ability_effect::Effect::GainMana(gain) => {

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 use crate::{mana::Mana, protogen};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CastingCost {
     pub mana_cost: Vec<Mana>,
 }
@@ -21,7 +21,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
     SacrificeThis,
 }
@@ -46,7 +46,7 @@ impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AbilityCost {
     pub mana_cost: Vec<Mana>,
     pub tap: bool,

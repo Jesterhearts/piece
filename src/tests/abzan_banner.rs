@@ -66,8 +66,8 @@ fn add_mana() -> anyhow::Result<()> {
         [
             ActionResult::TapPermanent(card),
             ActionResult::AddToStack(
-                card,
                 EffectsInPlay {
+                    card,
                     effects: vec![ActivatedAbilityEffect::GainMana {
                         mana: GainMana::Choice {
                             choices: vec![vec![Mana::White], vec![Mana::Black], vec![Mana::Green]],

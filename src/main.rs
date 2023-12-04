@@ -1,11 +1,19 @@
 #![allow(clippy::single_match)]
+#![allow(clippy::type_complexity)]
 
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
+use bevy_ecs::{event::Events, world::World};
 use include_dir::{include_dir, Dir};
 
-use crate::card::Card;
+use crate::{
+    card::Card,
+    stack::{AddToStackEvent, Stack, StackResult},
+};
+
+#[cfg(test)]
+pub mod tests;
 
 pub mod abilities;
 pub mod battlefield;
@@ -14,17 +22,12 @@ pub mod controller;
 pub mod cost;
 pub mod deck;
 pub mod effects;
-pub mod hand;
-pub mod in_play;
 pub mod mana;
 pub mod player;
 pub mod protogen;
 pub mod stack;
 pub mod targets;
 pub mod types;
-
-#[cfg(test)]
-pub mod tests;
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
@@ -52,6 +55,16 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     }
 
     Ok(cards)
+}
+
+pub fn init_world() -> World {
+    let stack = Stack::default();
+    let mut world = World::default();
+    world.insert_resource(stack);
+    world.init_resource::<Events<AddToStackEvent>>();
+    world.init_resource::<Events<StackResult>>();
+
+    world
 }
 
 fn main() -> anyhow::Result<()> {

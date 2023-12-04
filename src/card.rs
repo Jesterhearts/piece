@@ -1,26 +1,85 @@
-use std::collections::HashSet;
-
 use anyhow::anyhow;
-use indexmap::IndexMap;
+use bevy_ecs::{component::Component, entity::Entity, system::Query};
+use enumset::{EnumSet, EnumSetType};
+use indexmap::IndexSet;
 
 use crate::{
     abilities::{ActivatedAbility, ETBAbility, StaticAbility},
-    battlefield::Battlefield,
-    controller::Controller,
     cost::CastingCost,
-    effects::{
-        AddCreatureSubtypes, AddPowerToughness, BattlefieldModifier, ModifyBasePowerToughness,
-        ModifyBattlefield, SpellEffect,
-    },
-    in_play::{AllCards, ModifierId},
-    player::Player,
+    effects::SpellEffect,
     protogen,
-    stack::{ActiveTarget, EntryType, Stack},
-    targets::SpellTarget,
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Component)]
+pub enum ModifyingTypeSet {
+    Adding(EnumSet<Type>),
+    RemovingAll,
+    Subtracting(EnumSet<Type>),
+}
+
+#[derive(Debug, Component)]
+pub enum ModifyingSubtypeSet {
+    Adding(EnumSet<Subtype>),
+    RemovingAll,
+    Subtracting(EnumSet<Subtype>),
+}
+
+#[derive(Debug, Component)]
+pub struct ModifyingTypes(pub IndexSet<Entity>);
+
+impl ModifyingTypes {
+    pub fn union(
+        &self,
+        base: &Card,
+        query: &Query<&ModifyingTypeSet>,
+    ) -> anyhow::Result<EnumSet<Type>> {
+        let mut types = base.types;
+        for entity in self.0.iter().copied() {
+            let modifier = query.get(entity)?;
+            match modifier {
+                ModifyingTypeSet::Adding(adding) => {
+                    types.insert_all(*adding);
+                }
+                ModifyingTypeSet::RemovingAll => types.clear(),
+                ModifyingTypeSet::Subtracting(subtracting) => {
+                    types.remove_all(*subtracting);
+                }
+            }
+        }
+
+        Ok(types)
+    }
+}
+
+#[derive(Debug, Component)]
+pub struct ModifyingSubtypes(pub IndexSet<Entity>);
+
+impl ModifyingSubtypes {
+    pub fn union(
+        &self,
+        base: &Card,
+        query: &Query<&ModifyingSubtypeSet>,
+    ) -> anyhow::Result<EnumSet<Subtype>> {
+        let mut types = base.subtypes;
+        for entity in self.0.iter().copied() {
+            let modifier = query.get(entity)?;
+            match modifier {
+                ModifyingSubtypeSet::Adding(adding) => {
+                    types.insert_all(*adding);
+                }
+                ModifyingSubtypeSet::RemovingAll => types.clear(),
+                ModifyingSubtypeSet::Subtracting(subtracting) => {
+                    types.remove_all(*subtracting);
+                }
+            }
+        }
+
+        Ok(types)
+    }
+}
+
+#[derive(Debug, EnumSetType)]
 pub enum Color {
     White,
     Blue,
@@ -55,7 +114,7 @@ impl From<&protogen::card::color::Color> for Color {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumSetType)]
 pub enum CastingModifier {
     CannotBeCountered,
     SplitSecond,
@@ -84,18 +143,15 @@ impl From<&protogen::card::casting_modifier::Modifier> for CastingModifier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct Card {
     pub name: String,
-    pub types: HashSet<Type>,
-    pub subtypes: HashSet<Subtype>,
-
-    pub modified_subtypes: IndexMap<ModifierId, HashSet<Subtype>>,
-    pub remove_all_subtypes: HashSet<ModifierId>,
+    pub types: EnumSet<Type>,
+    pub subtypes: EnumSet<Subtype>,
 
     pub cost: CastingCost,
-    pub casting_modifiers: Vec<CastingModifier>,
-    pub colors: Vec<Color>,
+    pub casting_modifiers: EnumSet<CastingModifier>,
+    pub colors: EnumSet<Color>,
 
     pub oracle_text: String,
     pub flavor_text: String,
@@ -103,19 +159,11 @@ pub struct Card {
     pub etb_abilities: Vec<ETBAbility>,
     pub effects: Vec<SpellEffect>,
 
-    pub static_abilities: HashSet<StaticAbility>,
-    pub adjusted_static_abilities: IndexMap<ModifierId, StaticAbility>,
-
+    pub static_abilities: Vec<StaticAbility>,
     pub activated_abilities: Vec<ActivatedAbility>,
 
     pub power: Option<usize>,
     pub toughness: Option<usize>,
-
-    pub adjusted_base_power: IndexMap<ModifierId, i32>,
-    pub adjusted_base_toughness: IndexMap<ModifierId, i32>,
-
-    pub power_modifier: IndexMap<ModifierId, i32>,
-    pub toughness_modifier: IndexMap<ModifierId, i32>,
 
     pub hexproof: bool,
     pub shroud: bool,
@@ -131,14 +179,12 @@ impl TryFrom<protogen::card::Card> for Card {
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
-            modified_subtypes: Default::default(),
-            remove_all_subtypes: Default::default(),
+                .collect::<anyhow::Result<_>>()?,
             cost: value
                 .cost
                 .as_ref()
@@ -148,35 +194,34 @@ impl TryFrom<protogen::card::Card> for Card {
                 .casting_modifiers
                 .iter()
                 .map(CastingModifier::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             colors: value
                 .colors
                 .iter()
                 .map(Color::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             oracle_text: value.oracle_text,
             flavor_text: value.flavor_text,
             etb_abilities: value
                 .etb_abilities
                 .iter()
                 .map(ETBAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             effects: value
                 .effects
                 .iter()
                 .map(SpellEffect::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             static_abilities: value
                 .static_abilities
                 .iter()
                 .map(StaticAbility::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
-            adjusted_static_abilities: Default::default(),
+                .collect::<anyhow::Result<_>>()?,
             activated_abilities: value
                 .activated_abilities
                 .iter()
                 .map(ActivatedAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             power: value
                 .power
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
@@ -187,10 +232,6 @@ impl TryFrom<protogen::card::Card> for Card {
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
                     Ok(usize::try_from(v).map(Some)?)
                 })?,
-            adjusted_base_power: Default::default(),
-            adjusted_base_toughness: Default::default(),
-            power_modifier: Default::default(),
-            toughness_modifier: Default::default(),
             hexproof: value.hexproof,
             shroud: value.shroud,
         })
@@ -198,58 +239,20 @@ impl TryFrom<protogen::card::Card> for Card {
 }
 
 impl Card {
-    pub fn color(&self) -> HashSet<Color> {
-        let mut colors = HashSet::default();
+    pub fn color(&self) -> EnumSet<Color> {
+        let mut colors = EnumSet::default();
         for mana in self.cost.mana_cost.iter() {
             let color = mana.color();
             colors.insert(color);
         }
         for color in self.colors.iter() {
-            colors.insert(*color);
+            colors.insert(color);
         }
 
         colors
     }
 
-    pub fn subtypes(&self) -> HashSet<Subtype> {
-        if !self.remove_all_subtypes.is_empty() {
-            return Default::default();
-        }
-
-        let mut subtypes = self.subtypes.clone();
-
-        for modified_subtypes in self.modified_subtypes.values() {
-            subtypes.extend(modified_subtypes.iter());
-        }
-
-        subtypes
-    }
-
-    pub fn power(&self) -> i32 {
-        let base = self
-            .adjusted_base_power
-            .last()
-            .map(|(_, v)| *v)
-            .or(self.power.map(|p| p as i32))
-            .unwrap_or_default();
-        let modifier: i32 = self.power_modifier.iter().map(|(_, v)| *v).sum();
-
-        base + modifier
-    }
-
-    pub fn toughness(&self) -> i32 {
-        let base = self
-            .adjusted_base_toughness
-            .last()
-            .map(|(_, v)| *v)
-            .or(self.toughness.map(|p| p as i32))
-            .unwrap_or_default();
-        let modifier: i32 = self.toughness_modifier.iter().map(|(_, v)| *v).sum();
-
-        base + modifier
-    }
-
-    pub fn color_identity(&self) -> HashSet<Color> {
+    pub fn color_identity(&self) -> EnumSet<Color> {
         let mut identity = self.color();
 
         for ability in self.activated_abilities.iter() {
@@ -272,215 +275,11 @@ impl Card {
             .any(|ty| matches!(ty, Type::BasicLand | Type::Land))
     }
 
-    pub fn valid_targets(
-        &self,
-        cards: &AllCards,
-        battlefield: &Battlefield,
-        stack: &Stack,
-        caster: &Player,
-    ) -> HashSet<ActiveTarget> {
-        let mut targets = HashSet::default();
-        let creatures = battlefield.creatures(cards);
-
-        for effect in self.effects.iter() {
-            match effect {
-                SpellEffect::CounterSpell { target } => {
-                    for (index, spell) in stack.stack.iter() {
-                        match &spell.ty {
-                            EntryType::Card(card) => {
-                                let card = &cards[*card];
-                                if card.card.can_be_countered(
-                                    cards,
-                                    battlefield,
-                                    caster,
-                                    &card.controller.borrow(),
-                                    target,
-                                ) {
-                                    targets.insert(ActiveTarget::Stack { id: *index });
-                                }
-                            }
-                            EntryType::ActivatedAbility { .. } => {}
-                        }
-                    }
-                }
-                SpellEffect::GainMana { .. } => {}
-                SpellEffect::BattlefieldModifier(_) => {}
-                SpellEffect::ControllerDrawCards(_) => {}
-                SpellEffect::AddPowerToughnessToTarget(_) => {
-                    for creature in battlefield.creatures(cards) {
-                        targets.insert(ActiveTarget::Battlefield { id: creature });
-                    }
-                }
-                SpellEffect::ModifyCreature(modifier) => match &modifier.modifier {
-                    ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
-                        targets: target_types,
-                        ..
-                    }) => {
-                        for creature in creatures.iter() {
-                            let card = &cards[*creature];
-                            if card.card.subtypes_intersect(target_types)
-                                && card.card.can_be_targeted(caster, &card.controller.borrow())
-                            {
-                                targets.insert(ActiveTarget::Battlefield { id: *creature });
-                            }
-                        }
-                    }
-                    ModifyBattlefield::AddCreatureSubtypes(_)
-                    | ModifyBattlefield::AddPowerToughness(_)
-                    | ModifyBattlefield::RemoveAllSubtypes(_)
-                    | ModifyBattlefield::Vigilance(_) => {
-                        for creature in creatures.iter() {
-                            let card = &cards[*creature];
-                            if card.card.can_be_targeted(caster, &card.controller.borrow()) {
-                                targets.insert(ActiveTarget::Battlefield { id: *creature });
-                            }
-                        }
-                    }
-                },
-                SpellEffect::ExileTargetCreature => {
-                    for creature in creatures.iter() {
-                        let card = &cards[*creature];
-                        if card.card.can_be_targeted(caster, &card.controller.borrow()) {
-                            targets.insert(ActiveTarget::Battlefield { id: *creature });
-                        }
-                    }
-                }
-                SpellEffect::ExileTargetCreatureManifestTopOfLibrary => {
-                    for creature in creatures.iter() {
-                        let card = &cards[*creature];
-                        if card.card.can_be_targeted(caster, &card.controller.borrow()) {
-                            targets.insert(ActiveTarget::Battlefield { id: *creature });
-                        }
-                    }
-                }
-            }
-        }
-
-        targets
-    }
-
-    pub fn can_be_countered(
-        &self,
-        cards: &AllCards,
-        battlefield: &Battlefield,
-        caster: &Player,
-        this_controller: &Player,
-        target: &SpellTarget,
-    ) -> bool {
-        for modifier in self.casting_modifiers.iter() {
-            match modifier {
-                CastingModifier::CannotBeCountered => {
-                    return false;
-                }
-                _ => {}
-            }
-        }
-
-        let SpellTarget {
-            controller,
-            types,
-            subtypes,
-        } = target;
-        match controller {
-            Controller::You => {
-                if caster.id != this_controller.id {
-                    return false;
-                }
-            }
-            Controller::Opponent => {
-                if caster.id == this_controller.id {
-                    return false;
-                }
-            }
-            Controller::Any => {}
-        };
-
-        if !types.is_empty() && !self.types_intersect(types) {
-            return false;
-        }
-
-        if !self.subtypes_match(subtypes) {
-            return false;
-        }
-
-        for (ability, controllers) in battlefield.static_abilities(cards).into_iter() {
-            match &ability {
-                StaticAbility::GreenCannotBeCountered { controller } => {
-                    if self.color().contains(&Color::Green) {
-                        match controller {
-                            Controller::You => {
-                                if controllers
-                                    .into_iter()
-                                    .any(|controller| controller == *this_controller)
-                                {
-                                    return false;
-                                }
-                            }
-                            Controller::Opponent => {
-                                if controllers
-                                    .into_iter()
-                                    .any(|controller| controller != *this_controller)
-                                {
-                                    return false;
-                                }
-                            }
-                            Controller::Any => {
-                                return false;
-                            }
-                        }
-                    }
-                }
-                StaticAbility::Vigilance => {}
-                StaticAbility::BattlefieldModifier(_) => {}
-                StaticAbility::Enchant(_) => {}
-            }
-        }
-
-        true
-    }
-
-    pub fn can_be_sacrificed(&self, _battlefield: &Battlefield) -> bool {
-        // TODO: check battlefield for effects preventing sacrifice
-        true
-    }
-
-    pub fn types_intersect(&self, types: &[Type]) -> bool {
-        types.iter().any(|ty| self.types.contains(ty))
-    }
-
-    pub fn subtypes_intersect(&self, subtypes: &[Subtype]) -> bool {
-        let self_subtypes = self.subtypes();
-        subtypes.is_empty() || subtypes.iter().any(|ty| self_subtypes.contains(ty))
-    }
-
-    pub fn subtypes_match(&self, subtypes: &[Subtype]) -> bool {
-        let self_subtypes = self.subtypes();
-        subtypes.iter().all(|ty| self_subtypes.contains(ty))
-    }
-
     pub fn is_permanent(&self) -> bool {
         self.types.iter().any(|ty| ty.is_permanent())
     }
 
-    pub(crate) fn can_be_targeted(
-        &self,
-        source_controller: &Player,
-        this_controller: &Player,
-    ) -> bool {
-        if self.shroud {
-            return false;
-        }
-
-        if self.hexproof && *source_controller != *this_controller {
-            return false;
-        }
-
-        // TODO protection
-
-        true
-    }
-
-    pub(crate) fn requires_target(&self) -> bool {
+    pub fn requires_target(&self) -> bool {
         for effect in self.effects.iter() {
             match effect {
                 SpellEffect::CounterSpell { .. } => return true,
@@ -494,68 +293,5 @@ impl Card {
             }
         }
         false
-    }
-
-    pub(crate) fn remove_modifier(&mut self, id: ModifierId, modifier: &BattlefieldModifier) {
-        match &modifier.modifier {
-            ModifyBattlefield::ModifyBasePowerToughness(_) => {
-                self.adjusted_base_power.remove(&id);
-                self.adjusted_base_toughness.remove(&id);
-            }
-            ModifyBattlefield::AddCreatureSubtypes(_) => {
-                self.modified_subtypes.remove(&id);
-            }
-            ModifyBattlefield::AddPowerToughness(_) => {
-                self.power_modifier.remove(&id);
-                self.toughness_modifier.remove(&id);
-            }
-            ModifyBattlefield::RemoveAllSubtypes(_) => {
-                self.remove_all_subtypes.remove(&id);
-            }
-            ModifyBattlefield::Vigilance(_) => {
-                self.adjusted_static_abilities.remove(&id);
-            }
-        }
-    }
-
-    pub(crate) fn add_modifier(&mut self, id: ModifierId, modifier: &BattlefieldModifier) {
-        match &modifier.modifier {
-            ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
-                targets,
-                power,
-                toughness,
-                restrictions: _,
-            }) => {
-                if self.subtypes_intersect(targets) {
-                    self.adjusted_base_power.insert(id, *power);
-                    self.adjusted_base_toughness.insert(id, *toughness);
-                }
-            }
-            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                targets,
-                types,
-                restrictions: _,
-            }) => {
-                if self.subtypes_intersect(targets) {
-                    self.modified_subtypes
-                        .insert(id, types.iter().copied().collect());
-                }
-            }
-            ModifyBattlefield::AddPowerToughness(AddPowerToughness {
-                power,
-                toughness,
-                restrictions: _,
-            }) => {
-                self.power_modifier.insert(id, *power);
-                self.toughness_modifier.insert(id, *toughness);
-            }
-            ModifyBattlefield::RemoveAllSubtypes(_) => {
-                self.remove_all_subtypes.insert(id);
-            }
-            ModifyBattlefield::Vigilance(_) => {
-                self.adjusted_static_abilities
-                    .insert(id, StaticAbility::Vigilance);
-            }
-        }
     }
 }

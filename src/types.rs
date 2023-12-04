@@ -1,8 +1,9 @@
 use anyhow::anyhow;
+use enumset::EnumSetType;
 
 use crate::protogen;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, EnumSetType)]
 pub enum Type {
     BasicLand,
     Land,
@@ -49,7 +50,7 @@ impl Type {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, EnumSetType)]
 pub enum Subtype {
     Aura,
     Bear,

@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use enumset::EnumSetType;
+use enumset::{EnumSet, EnumSetType};
 
 use crate::{
     controller::Controller,
@@ -7,11 +7,11 @@ use crate::{
     types::{Subtype, Type},
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SpellTarget {
     pub controller: Controller,
-    pub types: Vec<Type>,
-    pub subtypes: Vec<Subtype>,
+    pub types: EnumSet<Type>,
+    pub subtypes: EnumSet<Subtype>,
 }
 
 impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
@@ -29,12 +29,12 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
