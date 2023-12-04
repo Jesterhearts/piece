@@ -79,6 +79,9 @@ fn etb_clones() -> anyhow::Result<()> {
 
     world.run_system_once(battlefield::handle_events)?;
 
+    world.run_system_once(battlefield::handle_sba)?;
+    world.run_system_once(battlefield::handle_events)?;
+
     let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
         .iter(&world)
