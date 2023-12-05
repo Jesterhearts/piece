@@ -547,8 +547,7 @@ fn resolve_counterspell(
         if !types.is_empty() {
             let card_types = modifying_types
                 .map(|types| types.union(card_types, type_modifiers))
-                .unwrap_or_else(|| Ok(**card_types))
-                .unwrap();
+                .unwrap_or_else(|| **card_types);
 
             if card_types.intersection(*types).is_empty() {
                 continue 'targets;
@@ -558,8 +557,7 @@ fn resolve_counterspell(
         if !subtypes.is_empty() {
             let card_types = modifying_subtypes
                 .map(|types| types.union(card_subtypes, subtype_modifiers))
-                .unwrap_or_else(|| Ok(**card_subtypes))
-                .unwrap();
+                .unwrap_or_else(|| **card_subtypes);
 
             if card_types.intersection(*subtypes).is_empty() {
                 continue 'targets;

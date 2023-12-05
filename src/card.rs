@@ -30,14 +30,10 @@ pub enum ModifyingSubtypeSet {
 pub struct ModifyingTypes(pub IndexSet<Entity>);
 
 impl ModifyingTypes {
-    pub fn union(
-        &self,
-        base: &CardTypes,
-        query: &Query<&ModifyingTypeSet>,
-    ) -> anyhow::Result<EnumSet<Type>> {
+    pub fn union(&self, base: &CardTypes, query: &Query<&ModifyingTypeSet>) -> EnumSet<Type> {
         let mut types = **base;
         for entity in self.0.iter().copied() {
-            let modifier = query.get(entity)?;
+            let modifier = query.get(entity).unwrap();
             match modifier {
                 ModifyingTypeSet::Adding(adding) => {
                     types.insert_all(*adding);
@@ -49,7 +45,7 @@ impl ModifyingTypes {
             }
         }
 
-        Ok(types)
+        types
     }
 }
 
@@ -61,10 +57,10 @@ impl ModifyingSubtypes {
         &self,
         base: &CardSubtypes,
         query: &Query<&ModifyingSubtypeSet>,
-    ) -> anyhow::Result<EnumSet<Subtype>> {
+    ) -> EnumSet<Subtype> {
         let mut types = **base;
         for entity in self.0.iter().copied() {
-            let modifier = query.get(entity)?;
+            let modifier = query.get(entity).unwrap();
             match modifier {
                 ModifyingSubtypeSet::Adding(adding) => {
                     types.insert_all(*adding);
@@ -76,7 +72,7 @@ impl ModifyingSubtypes {
             }
         }
 
-        Ok(types)
+        types
     }
 }
 
@@ -90,15 +86,11 @@ pub enum PowerModifier {
 pub struct ModifyingPower(IndexSet<Entity>);
 
 impl ModifyingPower {
-    pub fn power(
-        &self,
-        power: &Power,
-        query: &Query<&PowerModifier>,
-    ) -> anyhow::Result<Option<i32>> {
+    pub fn power(&self, power: &Power, query: &Query<&PowerModifier>) -> Option<i32> {
         let mut base = **power;
         let mut add = 0;
         for modifier in self.0.iter().copied() {
-            match query.get(modifier)? {
+            match query.get(modifier).unwrap() {
                 PowerModifier::SetBase(new_base) => {
                     base = Some(*new_base);
                 }
@@ -108,7 +100,7 @@ impl ModifyingPower {
             }
         }
 
-        Ok(base.map(|base| base + add))
+        base.map(|base| base + add)
     }
 }
 
@@ -126,11 +118,11 @@ impl ModifyingToughness {
         &self,
         toughness: &Toughness,
         modifiers: &Query<&ToughnessModifier>,
-    ) -> anyhow::Result<Option<i32>> {
+    ) -> Option<i32> {
         let mut base = **toughness;
         let mut add = 0;
         for modifier in self.0.iter().copied() {
-            match modifiers.get(modifier)? {
+            match modifiers.get(modifier).unwrap() {
                 ToughnessModifier::SetBase(new_base) => {
                     base = Some(*new_base);
                 }
@@ -140,7 +132,7 @@ impl ModifyingToughness {
             }
         }
 
-        Ok(base.map(|base| base + add))
+        base.map(|base| base + add)
     }
 }
 

@@ -167,8 +167,7 @@ pub fn handle_sba(
 
         let toughness = modifying_toughness
             .map(|modifier| modifier.toughness(toughness, &toughness_modifiers))
-            .unwrap_or(Ok(**toughness))
-            .unwrap();
+            .unwrap_or(**toughness);
 
         if let Some(toughness) = toughness {
             if toughness <= 0 {
@@ -184,7 +183,7 @@ pub fn end_turn(
     mut subtype_modifiers: Query<&mut ModifyingSubtypes>,
     mut power_modifiers: Query<&mut ModifyingPower>,
     mut toughness_modifiers: Query<&mut ModifyingToughness>,
-) -> anyhow::Result<()> {
+) {
     for (entity, effect) in active_effects.iter() {
         match effect {
             EffectDuration::UntilEndOfTurn => {
@@ -205,8 +204,6 @@ pub fn end_turn(
             EffectDuration::UntilUnattached => {}
         }
     }
-
-    Ok(())
 }
 
 pub fn handle_events(
@@ -237,8 +234,7 @@ pub fn handle_events(
                         for (entity, card_types, modifying_types) in cards_on_battlefield.iter() {
                             let types = modifying_types
                                 .map(|types| types.union(card_types, &type_modifiers))
-                                .unwrap_or_else(|| Ok(**card_types))
-                                .unwrap();
+                                .unwrap_or_else(|| **card_types);
 
                             if types.contains(Type::Creature) {
                                 targets.push(entity);

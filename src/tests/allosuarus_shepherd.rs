@@ -233,16 +233,16 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         toughness_modifiers: Query<&ToughnessModifier>,
         power_modifiers: Query<&PowerModifier>,
         subtype_modifiers: Query<&ModifyingSubtypeSet>,
-    ) -> anyhow::Result<(EnumSet<Subtype>, Option<i32>, Option<i32>)> {
+    ) -> (EnumSet<Subtype>, Option<i32>, Option<i32>) {
         let (subtypes, toughness, power, subtypes_mod, toughness_mod, power_mod) = query.single();
-        Ok((
-            subtypes_mod.union(subtypes, &subtype_modifiers)?,
-            toughness_mod.toughness(toughness, &toughness_modifiers)?,
-            power_mod.power(power, &power_modifiers)?,
-        ))
+        (
+            subtypes_mod.union(subtypes, &subtype_modifiers),
+            toughness_mod.toughness(toughness, &toughness_modifiers),
+            power_mod.power(power, &power_modifiers),
+        )
     }
 
-    let result = world.run_system_once(query_pt)?;
+    let result = world.run_system_once(query_pt);
     assert_eq!(
         result,
         (
@@ -252,8 +252,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         )
     );
 
-    world.run_system_once(battlefield::end_turn)?;
-    let result = world.run_system_once(query_pt)?;
+    world.run_system_once(battlefield::end_turn);
+    let result = world.run_system_once(query_pt);
     assert_eq!(
         result,
         (enum_set!(Subtype::Elf | Subtype::Shaman), Some(1), Some(1))
