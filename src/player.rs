@@ -133,3 +133,6 @@ impl Owner {
         Self(this)
     }
 }
+
+#[derive(Debug, Component)]
+pub struct InHand;

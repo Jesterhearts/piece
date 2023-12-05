@@ -22,14 +22,23 @@ fn etb_clones() -> anyhow::Result<()> {
     deck.add_card("Clone", 1);
     deck.add_card("Alpine Grizzly", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
-    let clone = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let bear = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+    let clone = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(bear),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -39,6 +48,7 @@ fn etb_clones() -> anyhow::Result<()> {
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(clone),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -66,8 +76,9 @@ fn etb_clones() -> anyhow::Result<()> {
             FollowupWork::Etb { events } => {
                 assert!(events.is_empty());
             }
-            FollowupWork::Graveyard { events } => {
-                assert!(events.is_empty())
+            FollowupWork::Graveyard { battlefield, stack } => {
+                assert!(battlefield.is_empty());
+                assert!(stack.is_empty());
             }
         }
     }
@@ -98,13 +109,18 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let mut deck = DeckDefinition::default();
     deck.add_card("Clone", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let clone = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let clone = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(clone),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -132,8 +148,9 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
             FollowupWork::Etb { events } => {
                 assert!(events.is_empty());
             }
-            FollowupWork::Graveyard { events } => {
-                assert!(events.is_empty())
+            FollowupWork::Graveyard { battlefield, stack } => {
+                assert!(battlefield.is_empty());
+                assert!(stack.is_empty());
             }
         }
     }

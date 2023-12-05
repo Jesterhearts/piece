@@ -13,7 +13,10 @@ use bevy_ecs::{
 use include_dir::{include_dir, Dir};
 
 use crate::{
-    battlefield::{ActivateAbilityEvent, Battlefield, EtbEvent, PermanentToGraveyardEvent},
+    battlefield::{
+        ActivateAbilityEvent, Battlefield, EtbEvent, PermanentToGraveyardEvent,
+        StackToGraveyardEvent,
+    },
     card::Card,
     stack::{AddToStackEvent, Stack, StackResult},
 };
@@ -49,7 +52,8 @@ pub enum FollowupWork {
     },
 
     Graveyard {
-        events: Vec<PermanentToGraveyardEvent>,
+        battlefield: Vec<PermanentToGraveyardEvent>,
+        stack: Vec<StackToGraveyardEvent>,
     },
 }
 
@@ -96,6 +100,7 @@ pub fn init_world() -> World {
     world.init_resource::<Events<FollowupWork>>();
     world.init_resource::<Events<PermanentToGraveyardEvent>>();
     world.init_resource::<Events<StackResult>>();
+    world.init_resource::<Events<StackToGraveyardEvent>>();
 
     world
 }

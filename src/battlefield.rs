@@ -26,12 +26,18 @@ pub struct ActivateAbilityEvent {
     pub card: Entity,
     pub index: usize,
     pub targets: Vec<Entity>,
+    pub choice: Option<usize>,
 }
 
 #[derive(Debug, Clone, Event)]
 pub struct EtbEvent {
     pub card: Entity,
     pub targets: Option<Vec<Entity>>,
+}
+
+#[derive(Debug, Clone, Event)]
+pub struct StackToGraveyardEvent {
+    pub card: Entity,
 }
 
 #[derive(Debug, Event)]
@@ -74,30 +80,31 @@ pub fn activate_ability(
     mut commands: Commands,
     cards: Query<(&ActivatedAbilities, &Controller, Option<&Tapped>), With<BattlefieldId>>,
     mut mana_pools: Query<&mut ManaPool>,
-) -> anyhow::Result<()> {
+) {
     assert!(events.len() <= 1);
     if let Some(ActivateAbilityEvent {
         card: card_entity,
         index,
         targets,
+        choice,
     }) = events.drain().last()
     {
-        let (activated_abilities, controller, tapped) = cards.get(card_entity)?;
+        let (activated_abilities, controller, tapped) = cards.get(card_entity).unwrap();
         let ability = &activated_abilities[index];
-        let mut mana = mana_pools.get_mut(**controller)?;
+        let mut mana = mana_pools.get_mut(**controller).unwrap();
 
         let mut costs: Vec<Box<dyn FnOnce(&mut Commands)>> = vec![];
 
         if ability.cost.tap {
             if tapped.is_some() {
-                return Ok(());
+                return;
             }
             costs.push(Box::new(|commands| {
                 commands.entity(card_entity).insert(Tapped);
             }));
         } else if ability.cost.untap {
             if tapped.is_none() {
-                return Ok(());
+                return;
             }
             costs.push(Box::new(|commands| {
                 commands.entity(card_entity).remove::<Tapped>();
@@ -109,7 +116,7 @@ pub fn activate_ability(
         for cost in ability.cost.mana_cost.iter() {
             if !mana.spend(*cost) {
                 *mana = old_mana;
-                return Ok(());
+                return;
             }
         }
 
@@ -134,14 +141,13 @@ pub fn activate_ability(
         add_to_stack.send(AddToStackEvent {
             entry: StackEntry::ActivatedAbility(abilty),
             target: Some(Targets::Entities(targets)),
+            choice,
         });
 
         for cost in costs {
             cost(&mut commands)
         }
     }
-
-    Ok(())
 }
 
 pub fn handle_sba(
@@ -208,6 +214,7 @@ pub fn end_turn(
 
 pub fn handle_events(
     mut etb_events: ResMut<Events<EtbEvent>>,
+    mut stack_to_graveyard_events: ResMut<Events<StackToGraveyardEvent>>,
     mut graveyard_events: ResMut<Events<PermanentToGraveyardEvent>>,
     mut followup_work: EventWriter<FollowupWork>,
     mut battlefield: ResMut<Battlefield>,
@@ -217,10 +224,10 @@ pub fn handle_events(
     type_modifiers: Query<&ModifyingTypeSet>,
 ) {
     let etb_events = etb_events.drain().collect::<Vec<_>>();
-    let graveyard_events = graveyard_events.drain().collect::<Vec<_>>();
 
     let mut events_to_add = vec![];
-    let mut events_to_graveyard = vec![];
+    let mut battlefield_to_graveyard = vec![];
+    let mut stack_to_graveyard = vec![];
 
     let mut had_followup = false;
 
@@ -258,8 +265,12 @@ pub fn handle_events(
         }
     }
 
-    for event in graveyard_events {
-        events_to_graveyard.push(event);
+    for event in graveyard_events.drain() {
+        battlefield_to_graveyard.push(event);
+    }
+
+    for event in stack_to_graveyard_events.drain() {
+        stack_to_graveyard.push(event);
     }
 
     if had_followup {
@@ -267,7 +278,8 @@ pub fn handle_events(
             events: events_to_add,
         });
         followup_work.send(FollowupWork::Graveyard {
-            events: events_to_graveyard,
+            battlefield: battlefield_to_graveyard,
+            stack: stack_to_graveyard,
         });
     } else {
         for mut event in events_to_add {
@@ -295,7 +307,14 @@ pub fn handle_events(
             commands.entity(event.card).insert(battlefield.next_id());
         }
 
-        for event in events_to_graveyard {
+        for event in battlefield_to_graveyard {
+            commands
+                .entity(event.card)
+                .remove::<BattlefieldId>()
+                .insert(battlefield.next_graveyard_id());
+        }
+
+        for event in stack_to_graveyard {
             commands
                 .entity(event.card)
                 .remove::<BattlefieldId>()

@@ -1,47 +1,55 @@
+use bevy_ecs::system::RunSystemOnce;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield},
-    deck::Deck,
-    effects::{ActivatedAbilityEffect, GainMana},
-    in_play::{AllCards, AllModifiers, EffectsInPlay},
-    load_cards,
-    mana::Mana,
-    player::Player,
-    stack::Stack,
+    battlefield::{self, ActivateAbilityEvent},
+    deck::{Deck, DeckDefinition},
+    init_world, load_cards,
+    player::{ManaPool, Owner},
+    stack::{self, AddToStackEvent, StackEntry},
 };
 
 #[test]
 fn sacrifice_draw_card() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Owner::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let mut world = init_world();
 
-    let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Abzan Banner", 2);
+    let player = Owner::new(&mut world);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let card = battlefield.select_card(0);
-    let result = battlefield.activate_ability(card, &all_cards, &stack, 1, None);
-    assert_eq!(
-        result,
-        [
-            ActionResult::TapPermanent(card),
-            ActionResult::PermanentToGraveyard(card),
-            ActionResult::AddToStack(
-                card,
-                EffectsInPlay {
-                    effects: vec![ActivatedAbilityEffect::ControllerDrawCards(1)],
-                    source: card,
-                    controller: player
-                },
-                None
-            )
-        ]
-    );
+    let mut mana_pool = world.query::<&mut ManaPool>().single_mut(&mut world);
+    mana_pool.infinite();
+
+    let banner = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(banner),
+        target: None,
+        choice: None,
+    });
+
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
+
+    world.send_event(ActivateAbilityEvent {
+        card: banner,
+        index: 1,
+        targets: vec![],
+        choice: None,
+    });
+
+    world.run_system_once(battlefield::activate_ability);
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+
+    assert!(world.query::<&Deck>().single(&world).cards.is_empty());
 
     Ok(())
 }
@@ -49,37 +57,44 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
 #[test]
 fn add_mana() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Owner::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let mut world = init_world();
 
-    let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Abzan Banner", 1);
+    let player = Owner::new(&mut world);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let card = battlefield.select_card(0);
-    let result = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
-    assert_eq!(
-        result,
-        [
-            ActionResult::TapPermanent(card),
-            ActionResult::AddToStack(
-                EffectsInPlay {
-                    card,
-                    effects: vec![ActivatedAbilityEffect::GainMana {
-                        mana: GainMana::Choice {
-                            choices: vec![vec![Mana::White], vec![Mana::Black], vec![Mana::Green]],
-                        }
-                    }],
-                    source: card,
-                    controller: player
-                },
-                None
-            )
-        ]
-    );
+    let banner = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(banner),
+        target: None,
+        choice: None,
+    });
+
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
+
+    world.send_event(ActivateAbilityEvent {
+        card: banner,
+        index: 0,
+        targets: vec![],
+        choice: Some(0),
+    });
+
+    world.run_system_once(battlefield::activate_ability);
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+
+    let mana_pool = world.query::<&ManaPool>().single(&world);
+    assert_eq!(mana_pool.white_mana, 1);
+    assert_eq!(mana_pool.black_mana, 0);
+    assert_eq!(mana_pool.green_mana, 0);
 
     Ok(())
 }

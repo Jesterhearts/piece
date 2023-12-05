@@ -31,7 +31,7 @@ impl Deck {
         player: Owner,
         card_definitions: &Cards,
         definition: &DeckDefinition,
-    ) -> Entity {
+    ) {
         let mut cards = VecDeque::default();
         for (name, count) in definition.cards.iter() {
             for _ in 0..*count {
@@ -42,7 +42,7 @@ impl Deck {
             }
         }
 
-        world.spawn(Self { cards }).insert(player).id()
+        world.entity_mut(*player).insert(Self { cards });
     }
 
     pub fn shuffle(&mut self) {

@@ -15,14 +15,23 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let mut deck = DeckDefinition::default();
     deck.add_card("Counterspell", 2);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let counterspell_1 = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
-    let counterspell_2 = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let counterspell_1 = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+    let counterspell_2 = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: stack::StackEntry::Spell(counterspell_1),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -35,6 +44,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     world.send_event(AddToStackEvent {
         entry: stack::StackEntry::Spell(counterspell_2),
         target: Some(stack::Targets::Stack(vec![target])),
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);

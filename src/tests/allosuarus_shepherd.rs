@@ -29,14 +29,23 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     deck.add_card("Allosaurus Shepherd", 1);
     deck.add_card("Counterspell", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
-    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let counterspell = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+    let creature = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(creature),
         target: None,
+        choice: None,
     });
     world.run_system_once(stack::add_to_stack);
 
@@ -46,6 +55,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
             .resource::<Stack>()
             .target_nth(0)
             .map(|target| Targets::Stack(vec![target])),
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -72,15 +82,28 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     deck.add_card("Alpine Grizzly", 1);
     deck.add_card("Counterspell", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
-    let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
-    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let counterspell = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+    let bear = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+    let creature = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(creature),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -90,6 +113,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(bear),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -100,6 +124,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
             .resource::<Stack>()
             .target_nth(0)
             .map(|target| Targets::Stack(vec![target])),
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -134,20 +159,33 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     deck.add_card("Allosaurus Shepherd", 1);
     deck.add_card("Counterspell", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
-    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let counterspell = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
+    let creature = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     let mut deck = DeckDefinition::default();
     deck.add_card("Alpine Grizzly", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
-    let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let bear = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(creature),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -157,6 +195,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(bear),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -167,6 +206,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
             .resource::<Stack>()
             .target_nth(0)
             .map(|target| Targets::Stack(vec![target])),
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -195,16 +235,21 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let mut deck = DeckDefinition::default();
     deck.add_card("Allosaurus Shepherd", 1);
     let player = Owner::new(&mut world);
-    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
+    Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let mut mana_pool = world.query::<&mut ManaPool>().single_mut(&mut world);
     mana_pool.infinite();
 
-    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+    let creature = world
+        .query::<&mut Deck>()
+        .single_mut(&mut world)
+        .draw()
+        .unwrap();
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(creature),
         target: None,
+        choice: None,
     });
 
     world.run_system_once(stack::add_to_stack);
@@ -215,9 +260,10 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         card: creature,
         index: 0,
         targets: vec![],
+        choice: None,
     });
 
-    world.run_system_once(battlefield::activate_ability)?;
+    world.run_system_once(battlefield::activate_ability);
     world.run_system_once(stack::add_to_stack);
     world.run_system_once(stack::resolve_1);
 

@@ -5,12 +5,13 @@ use bevy_ecs::{
     query::{With, Without},
     system::{Commands, Query, ResMut, Resource},
 };
+use derive_more::Deref;
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     abilities::StaticAbility,
     activated_ability::ActiveAbility,
-    battlefield::{Battlefield, BattlefieldId, EtbEvent, GraveyardId},
+    battlefield::{Battlefield, BattlefieldId, EtbEvent, GraveyardId, StackToGraveyardEvent},
     card::{
         Card, CardSubtypes, CardTypes, CastingModifier, CastingModifiers, Color, Colors,
         ModifyingPower, ModifyingSubtypeSet, ModifyingSubtypes, ModifyingToughness,
@@ -19,14 +20,18 @@ use crate::{
     },
     controller::Controller,
     cost::CastingCost,
-    effects::{ActivatedAbilityEffect, ModifyBattlefield, SpellEffect},
-    player::{self, Owner},
+    deck::Deck,
+    effects::{ActivatedAbilityEffect, GainMana, ModifyBattlefield, SpellEffect},
+    player::{self, InHand, ManaPool, Owner},
     targets::{Restriction, SpellTarget},
     types::Type,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
 pub struct StackId(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Deref)]
+pub struct Choice(pub usize);
 
 #[derive(Debug, Clone, Component)]
 pub enum Targets {
@@ -80,6 +85,7 @@ pub enum StackResult {
 pub struct AddToStackEvent {
     pub entry: StackEntry,
     pub target: Option<Targets>,
+    pub choice: Option<usize>,
 }
 
 #[derive(Debug, Default, Resource)]
@@ -123,6 +129,9 @@ pub fn add_to_stack(
         if let Some(target) = entry.target {
             commands.entity(entity).insert(target);
         }
+        if let Some(choice) = entry.choice {
+            commands.entity(entity).insert(Choice(choice));
+        }
 
         match entry.entry {
             StackEntry::Spell(entity) => {
@@ -147,6 +156,7 @@ pub fn resolve_1(
     mut stack: ResMut<Stack>,
     mut battlefield: ResMut<Battlefield>,
     mut etb_events: EventWriter<EtbEvent>,
+    stack_to_graveyard_events: EventWriter<StackToGraveyardEvent>,
     mut commands: Commands,
     cards_in_stack: Query<
         (
@@ -162,6 +172,7 @@ pub fn resolve_1(
             Option<&ModifyingTypes>,
             Option<&ModifyingSubtypes>,
             Option<&Targets>,
+            Option<&Choice>,
         ),
         (With<StackId>, Without<BattlefieldId>),
     >,
@@ -182,23 +193,57 @@ pub fn resolve_1(
     type_modifiers: Query<&ModifyingTypeSet>,
     subtype_modifiers: Query<&ModifyingSubtypeSet>,
     static_abilities: Query<(&StaticAbilities, &player::Controller)>,
-    active_abilities: Query<(&player::Controller, &ActiveAbility, Option<&Targets>)>,
+    active_abilities: Query<(
+        &player::Controller,
+        &ActiveAbility,
+        Option<&Targets>,
+        Option<&Choice>,
+    )>,
+    mut mana_pools: Query<(&mut ManaPool, &mut Deck)>,
 ) {
     let Some((_, entry)) = stack.entries.pop() else {
         return;
     };
 
-    match entry {
+    let mut pending: Vec<
+        Box<
+            dyn FnOnce(
+                &mut Commands,
+                &mut Stack,
+                &mut Battlefield,
+                &mut EventWriter<EtbEvent>,
+                &mut ManaPool,
+                &mut Deck,
+            ),
+        >,
+    > = vec![];
+
+    let controller = match entry {
         StackEntry::Spell(entity) => {
-            let (_, spell_controller, spell_owner, effects, _, _, _, types, _, _, _, maybe_target) =
-                cards_in_stack.get(entity).unwrap();
+            let (
+                _,
+                spell_controller,
+                spell_owner,
+                effects,
+                _,
+                _,
+                _,
+                types,
+                _,
+                _,
+                _,
+                maybe_target,
+                maybe_choice,
+            ) = cards_in_stack.get(entity).unwrap();
             commands
                 .entity(entity)
                 .remove::<StackId>()
                 .insert(player::Controller::from(*spell_owner));
-            commands
-                .entity(entity)
-                .insert(battlefield.next_graveyard_id());
+
+            let stack_to_graveyard_events =
+                scopeguard::guard_on_success(stack_to_graveyard_events, |mut events| {
+                    events.send(StackToGraveyardEvent { card: entity });
+                });
 
             if Card::requires_target(effects) && maybe_target.is_none() {
                 return;
@@ -214,10 +259,10 @@ pub fn resolve_1(
                                 subtypes,
                             },
                     } => {
-                        resolve_counterspell(
+                        if !resolve_counterspell(
                             maybe_target,
                             &cards_in_stack,
-                            &mut stack,
+                            &stack,
                             &static_abilities,
                             controller,
                             spell_controller,
@@ -225,11 +270,16 @@ pub fn resolve_1(
                             &type_modifiers,
                             subtypes,
                             &subtype_modifiers,
-                            &mut commands,
-                            &mut battlefield,
-                        );
+                            &mut pending,
+                        ) {
+                            return;
+                        }
                     }
-                    SpellEffect::GainMana { mana: _ } => todo!(),
+                    SpellEffect::GainMana { mana } => {
+                        if !gain_mana(mana, &mut pending, maybe_choice) {
+                            return;
+                        }
+                    }
                     SpellEffect::BattlefieldModifier(modifier) => {
                         if !apply_battlefield_modifier(
                             &mut commands,
@@ -251,14 +301,19 @@ pub fn resolve_1(
             }
 
             if Card::is_permanent(types) {
-                etb_events.send(EtbEvent {
-                    card: entity,
-                    targets: None,
-                });
+                let _ = scopeguard::ScopeGuard::into_inner(stack_to_graveyard_events);
+                pending.push(Box::new(move |_, _, _, etb_events, _, _| {
+                    etb_events.send(EtbEvent {
+                        card: entity,
+                        targets: None,
+                    });
+                }));
             }
+
+            *spell_controller
         }
         StackEntry::ActivatedAbility(ability) => {
-            let (ability_controller, ability, maybe_target) =
+            let (ability_controller, ability, maybe_target, maybe_choice) =
                 active_abilities.get(ability).unwrap();
 
             for effect in ability.effects.iter() {
@@ -271,10 +326,10 @@ pub fn resolve_1(
                                 subtypes,
                             },
                     } => {
-                        resolve_counterspell(
+                        if !resolve_counterspell(
                             maybe_target,
                             &cards_in_stack,
-                            &mut stack,
+                            &stack,
                             &static_abilities,
                             controller,
                             ability_controller,
@@ -282,11 +337,16 @@ pub fn resolve_1(
                             &type_modifiers,
                             subtypes,
                             &subtype_modifiers,
-                            &mut commands,
-                            &mut battlefield,
-                        );
+                            &mut pending,
+                        ) {
+                            return;
+                        }
                     }
-                    ActivatedAbilityEffect::GainMana { mana: _ } => todo!(),
+                    ActivatedAbilityEffect::GainMana { mana } => {
+                        if !gain_mana(mana, &mut pending, maybe_choice) {
+                            return;
+                        }
+                    }
                     ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
                         if !apply_battlefield_modifier(
                             &mut commands,
@@ -299,16 +359,84 @@ pub fn resolve_1(
                             return;
                         }
                     }
-                    ActivatedAbilityEffect::ControllerDrawCards(_) => todo!(),
+                    &ActivatedAbilityEffect::ControllerDrawCards(count) => {
+                        pending.push(Box::new(move |commands, _, _, _, _, deck| {
+                            for _ in 0..count {
+                                let Some(card) = deck.draw() else {
+                                    todo!();
+                                };
+
+                                commands.entity(card).insert(InHand);
+                            }
+                        }));
+                    }
                     ActivatedAbilityEffect::Equip(_) => todo!(),
                     ActivatedAbilityEffect::AddPowerToughnessToTarget(_) => todo!(),
                 }
             }
+            *ability_controller
         }
         StackEntry::TriggeredAbility(_) => todo!(),
+    };
+
+    for pend in pending {
+        let (mut mana_pool, mut deck) = mana_pools
+            .get_mut(*controller)
+            .expect("Players should have mana pools");
+        pend(
+            &mut commands,
+            &mut stack,
+            &mut battlefield,
+            &mut etb_events,
+            &mut mana_pool,
+            &mut deck,
+        );
     }
 }
 
+fn gain_mana(
+    mana: &GainMana,
+    pending: &mut Vec<
+        Box<
+            dyn FnOnce(
+                &mut Commands<'_, '_>,
+                &mut Stack,
+                &mut Battlefield,
+                &mut EventWriter<'_, EtbEvent>,
+                &mut ManaPool,
+                &mut Deck,
+            ),
+        >,
+    >,
+    maybe_choice: Option<&Choice>,
+) -> bool {
+    match mana {
+        GainMana::Specific { gains } => {
+            let gains = gains.clone();
+            pending.push(Box::new(move |_, _, _, _, mana_pool, _| {
+                for mana in gains {
+                    mana_pool.apply(mana);
+                }
+            }));
+        }
+        GainMana::Choice { choices } => {
+            let Some(choice) = maybe_choice else {
+                return false;
+            };
+
+            let choice = choices[**choice].clone();
+            pending.push(Box::new(move |_, _, _, _, mana_pool, _| {
+                for mana in choice {
+                    mana_pool.apply(mana);
+                }
+            }));
+        }
+    };
+
+    true
+}
+
+#[must_use]
 fn apply_battlefield_modifier(
     commands: &mut Commands,
     modifier: &crate::effects::BattlefieldModifier,
@@ -428,6 +556,7 @@ fn apply_battlefield_modifier(
     true
 }
 
+#[must_use]
 fn resolve_counterspell(
     maybe_target: Option<&Targets>,
     cards_in_stack: &Query<
@@ -444,10 +573,11 @@ fn resolve_counterspell(
             Option<&ModifyingTypes>,
             Option<&ModifyingSubtypes>,
             Option<&Targets>,
+            Option<&Choice>,
         ),
         (With<StackId>, Without<BattlefieldId>),
     >,
-    stack: &mut ResMut<Stack>,
+    stack: &ResMut<Stack>,
     static_abilities: &Query<(&StaticAbilities, &player::Controller)>,
     controller: &Controller,
     spell_controller: &player::Controller,
@@ -455,25 +585,37 @@ fn resolve_counterspell(
     type_modifiers: &Query<&ModifyingTypeSet>,
     subtypes: &enumset::EnumSet<crate::types::Subtype>,
     subtype_modifiers: &Query<&ModifyingSubtypeSet>,
-    commands: &mut Commands,
-    battlefield: &mut ResMut<Battlefield>,
-) {
+    pending: &mut Vec<
+        Box<
+            dyn FnOnce(
+                &mut Commands,
+                &mut Stack,
+                &mut Battlefield,
+                &mut EventWriter<EtbEvent>,
+                &mut ManaPool,
+                &mut Deck,
+            ),
+        >,
+    >,
+) -> bool {
     let stack_targets = match maybe_target.expect("Validated target exists") {
         Targets::Stack(targets) => targets.clone(),
         Targets::Entities(targets) => targets
             .iter()
-            .map(|target| *cards_in_stack.get(*target).unwrap().0)
+            .filter_map(|target| cards_in_stack.get(*target).ok().map(|t| *t.0))
             .collect::<Vec<_>>(),
         _ => {
             // Only the stack is a valid target for counterspells
-            return;
+            return false;
         }
     };
+
+    let mut had_target = false;
     'targets: for stack_target in stack_targets {
-        let target = stack
-            .entries
-            .get(&stack_target)
-            .expect("Stack ids should always be valid");
+        let Some(target) = stack.entries.get(&stack_target) else {
+            continue 'targets;
+        };
+
         let entity_target = match target {
             StackEntry::Spell(target) => *target,
             _ => {
@@ -482,7 +624,7 @@ fn resolve_counterspell(
             }
         };
 
-        let (
+        let Some((
             _,
             target_controller,
             target_owner,
@@ -495,7 +637,11 @@ fn resolve_counterspell(
             modifying_types,
             modifying_subtypes,
             _,
-        ) = cards_in_stack.get(entity_target).unwrap();
+            _,
+        )) = cards_in_stack.get(entity_target).ok()
+        else {
+            continue 'targets;
+        };
 
         if casting_modifiers.contains(CastingModifier::CannotBeCountered) {
             continue 'targets;
@@ -564,14 +710,21 @@ fn resolve_counterspell(
             }
         }
 
-        commands
-            .entity(entity_target)
-            .remove::<StackId>()
-            .insert(player::Controller::from(*target_owner));
-        stack.entries.remove(&stack_target);
+        had_target = true;
 
-        commands
-            .entity(entity_target)
-            .insert(battlefield.next_graveyard_id());
+        let target_owner = *target_owner;
+        pending.push(Box::new(move |commands, stack, battlefield, _, _, _| {
+            commands
+                .entity(entity_target)
+                .remove::<StackId>()
+                .insert(player::Controller::from(target_owner));
+            stack.entries.remove(&stack_target);
+
+            commands
+                .entity(entity_target)
+                .insert(battlefield.next_graveyard_id());
+        }))
     }
+
+    had_target
 }
