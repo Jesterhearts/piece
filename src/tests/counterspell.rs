@@ -25,7 +25,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::add_to_stack);
 
     let target = world
         .resource::<Stack>()
@@ -37,8 +37,8 @@ fn resolves_counterspells() -> anyhow::Result<()> {
         target: Some(stack::Targets::Stack(vec![target])),
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
 
     assert!(world.resource::<Stack>().is_empty());
 

@@ -38,7 +38,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
         entry: StackEntry::Spell(creature),
         target: None,
     });
-    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::add_to_stack);
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(counterspell),
@@ -48,13 +48,13 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
             .map(|target| Targets::Stack(vec![target])),
     });
 
-    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::add_to_stack);
     assert_eq!(world.resource::<Stack>().len(), 2);
 
-    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::resolve_1);
     assert_eq!(world.resource::<Stack>().len(), 1);
 
-    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::resolve_1);
     assert!(world.resource::<Stack>().is_empty());
 
     world.resource::<Battlefield>();
@@ -83,16 +83,16 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(bear),
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::add_to_stack);
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(counterspell),
@@ -102,15 +102,15 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
             .map(|target| Targets::Stack(vec![target])),
     });
 
-    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::add_to_stack);
 
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     assert!(!world.resource::<Stack>().is_empty());
 
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
@@ -150,16 +150,16 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(bear),
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::add_to_stack);
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(counterspell),
@@ -169,9 +169,9 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
             .map(|target| Targets::Stack(vec![target])),
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     assert!(world.resource::<Stack>().is_empty());
 
@@ -207,9 +207,9 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     world.send_event(ActivateAbilityEvent {
         card: creature,
@@ -218,8 +218,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     });
 
     world.run_system_once(battlefield::activate_ability)?;
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
 
     fn query_pt(
         query: Query<(

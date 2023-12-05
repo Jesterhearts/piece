@@ -114,7 +114,7 @@ pub fn add_to_stack(
     mut commands: Commands,
     mut queue: ResMut<Events<AddToStackEvent>>,
     cards: Query<&CastingModifiers>,
-) -> anyhow::Result<()> {
+) {
     for entry in queue.drain() {
         let entity = entry.entry.entity();
         let id = stack.next_id();
@@ -141,7 +141,6 @@ pub fn add_to_stack(
     }
 
     assert!(queue.is_empty());
-    Ok(())
 }
 
 pub fn resolve_1(
@@ -184,9 +183,9 @@ pub fn resolve_1(
     subtype_modifiers: Query<&ModifyingSubtypeSet>,
     static_abilities: Query<(&StaticAbilities, &player::Controller)>,
     active_abilities: Query<(&player::Controller, &ActiveAbility, Option<&Targets>)>,
-) -> anyhow::Result<()> {
+) {
     let Some((_, entry)) = stack.entries.pop() else {
-        return Ok(());
+        return;
     };
 
     match entry {
@@ -202,7 +201,7 @@ pub fn resolve_1(
                 .insert(battlefield.next_graveyard_id());
 
             if Card::requires_target(effects) && maybe_target.is_none() {
-                return Ok(());
+                return;
             }
 
             for effect in effects.iter() {
@@ -240,7 +239,7 @@ pub fn resolve_1(
                             maybe_target,
                             None,
                         ) {
-                            return Ok(());
+                            return;
                         }
                     }
                     SpellEffect::ControllerDrawCards(_) => todo!(),
@@ -297,7 +296,7 @@ pub fn resolve_1(
                             maybe_target,
                             Some(ability.source),
                         ) {
-                            return Ok(());
+                            return;
                         }
                     }
                     ActivatedAbilityEffect::ControllerDrawCards(_) => todo!(),
@@ -308,8 +307,6 @@ pub fn resolve_1(
         }
         StackEntry::TriggeredAbility(_) => todo!(),
     }
-
-    Ok(())
 }
 
 fn apply_battlefield_modifier(

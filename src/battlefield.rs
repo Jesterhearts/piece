@@ -157,17 +157,18 @@ pub fn handle_sba(
     >,
     toughness_modifiers: Query<&ToughnessModifier>,
     cards: Query<&Toughness>,
-) -> anyhow::Result<()> {
+) {
     for (e, toughness, copying, modifying_toughness) in cards_on_battlefield.iter() {
         let toughness = if let Some(copying) = copying {
-            cards.get(**copying)?
+            cards.get(**copying).unwrap()
         } else {
             toughness
         };
 
         let toughness = modifying_toughness
             .map(|modifier| modifier.toughness(toughness, &toughness_modifiers))
-            .unwrap_or(Ok(**toughness))?;
+            .unwrap_or(Ok(**toughness))
+            .unwrap();
 
         if let Some(toughness) = toughness {
             if toughness <= 0 {
@@ -175,8 +176,6 @@ pub fn handle_sba(
             }
         }
     }
-
-    Ok(())
 }
 
 pub fn end_turn(
@@ -219,7 +218,7 @@ pub fn handle_events(
     etb_abilities: Query<&ETBAbilities>,
     cards_on_battlefield: Query<(Entity, &CardTypes, Option<&ModifyingTypes>), With<BattlefieldId>>,
     type_modifiers: Query<&ModifyingTypeSet>,
-) -> anyhow::Result<()> {
+) {
     let etb_events = etb_events.drain().collect::<Vec<_>>();
     let graveyard_events = graveyard_events.drain().collect::<Vec<_>>();
 
@@ -230,7 +229,7 @@ pub fn handle_events(
 
     for event in etb_events {
         let mut add_to_battlefield = true;
-        for etb in etb_abilities.get(event.card)?.iter() {
+        for etb in etb_abilities.get(event.card).unwrap().iter() {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
                     if event.targets.is_none() {
@@ -238,7 +237,8 @@ pub fn handle_events(
                         for (entity, card_types, modifying_types) in cards_on_battlefield.iter() {
                             let types = modifying_types
                                 .map(|types| types.union(card_types, &type_modifiers))
-                                .unwrap_or_else(|| Ok(**card_types))?;
+                                .unwrap_or_else(|| Ok(**card_types))
+                                .unwrap();
 
                             if types.contains(Type::Creature) {
                                 targets.push(entity);
@@ -275,13 +275,13 @@ pub fn handle_events(
         });
     } else {
         for mut event in events_to_add {
-            for etb in etb_abilities.get(event.card)?.iter() {
+            for etb in etb_abilities.get(event.card).unwrap().iter() {
                 match etb {
                     ETBAbility::CopyOfAnyCreature => {
                         if let Some(targets) = event.targets.as_mut() {
                             assert!(targets.len() <= 1);
                             if let Some(target) = targets.pop() {
-                                let etb_abilities = etb_abilities.get(target)?;
+                                let etb_abilities = etb_abilities.get(target).unwrap();
 
                                 commands.entity(event.card).insert(Copying(target));
 
@@ -306,6 +306,4 @@ pub fn handle_events(
                 .insert(battlefield.next_graveyard_id());
         }
     }
-
-    Ok(())
 }

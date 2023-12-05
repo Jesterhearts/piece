@@ -32,18 +32,18 @@ fn etb_clones() -> anyhow::Result<()> {
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(clone),
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     for followup in world
         .resource_mut::<Events<FollowupWork>>()
@@ -72,10 +72,10 @@ fn etb_clones() -> anyhow::Result<()> {
         }
     }
 
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(battlefield::handle_events);
 
-    world.run_system_once(battlefield::handle_sba)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(battlefield::handle_sba);
+    world.run_system_once(battlefield::handle_events);
 
     let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
@@ -107,9 +107,9 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         target: None,
     });
 
-    world.run_system_once(stack::add_to_stack)?;
-    world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(stack::add_to_stack);
+    world.run_system_once(stack::resolve_1);
+    world.run_system_once(battlefield::handle_events);
 
     for followup in world
         .resource_mut::<Events<FollowupWork>>()
@@ -138,7 +138,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         }
     }
 
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(battlefield::handle_events);
 
     let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
@@ -149,8 +149,8 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     assert_eq!(on_battlefield.len(), 1);
     assert!(on_battlefield.contains("Clone"));
 
-    world.run_system_once(battlefield::handle_sba)?;
-    world.run_system_once(battlefield::handle_events)?;
+    world.run_system_once(battlefield::handle_sba);
+    world.run_system_once(battlefield::handle_events);
 
     let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
