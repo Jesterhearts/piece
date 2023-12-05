@@ -15,8 +15,8 @@ use crate::{
 #[test]
 fn resolves_shift() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player1 = Player::new_ref(Deck::empty());
-    let player2 = Player::new_ref(Deck::empty());
+    let player1 = Owner::new_ref(Deck::empty());
+    let player2 = Owner::new_ref(Deck::empty());
     let mut all_cards = AllCards::default();
     let mut modifiers = AllModifiers::default();
     let mut battlefield = Battlefield::default();

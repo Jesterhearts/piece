@@ -3,7 +3,7 @@ use bevy_ecs::system::RunSystemOnce;
 use crate::{
     deck::{Deck, DeckDefinition},
     init_world, load_cards,
-    player::PlayerId,
+    player::Owner,
     stack::{self, AddToStackEvent, Stack},
 };
 
@@ -14,7 +14,8 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     let mut deck = DeckDefinition::default();
     deck.add_card("Counterspell", 2);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let counterspell_1 = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
     let counterspell_2 = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
@@ -33,7 +34,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     world.send_event(AddToStackEvent {
         entry: stack::StackEntry::Spell(counterspell_2),
-        target: Some(stack::Target::Stack(target)),
+        target: Some(stack::Targets::Stack(vec![target])),
     });
 
     world.run_system_once(stack::add_to_stack)?;

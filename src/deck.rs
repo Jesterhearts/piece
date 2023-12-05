@@ -1,16 +1,17 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use bevy_ecs::{component::Component, entity::Entity, world::World};
+use indexmap::IndexMap;
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    player::{Controller, Owner, PlayerId},
+    player::{Controller, Owner},
     Cards,
 };
 
 #[derive(Debug, Default)]
 pub struct DeckDefinition {
-    pub cards: HashMap<String, usize>,
+    pub cards: IndexMap<String, usize>,
 }
 
 impl DeckDefinition {
@@ -27,7 +28,7 @@ pub struct Deck {
 impl Deck {
     pub fn add_to_world(
         world: &mut World,
-        player: PlayerId,
+        player: Owner,
         card_definitions: &Cards,
         definition: &DeckDefinition,
     ) -> Entity {
@@ -36,12 +37,12 @@ impl Deck {
             for _ in 0..*count {
                 let card = card_definitions.get(name).expect("Valid card name");
                 let mut entity = world.spawn(card.clone());
-                entity.insert(Owner(player)).insert(Controller(player));
+                entity.insert(player).insert(Controller::from(player));
                 cards.push_back(entity.id());
             }
         }
 
-        world.spawn(Self { cards }).insert(Owner::from(player)).id()
+        world.spawn(Self { cards }).insert(player).id()
     }
 
     pub fn shuffle(&mut self) {

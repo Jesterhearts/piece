@@ -8,10 +8,24 @@ use bevy_ecs::{
 
 use crate::{
     abilities::{Copying, ETBAbility},
-    card::{Card, ModifyingToughness, ModifyingTypeSet, ModifyingTypes, ToughnessModifier},
+    activated_ability::ActiveAbility,
+    card::{
+        ActivatedAbilities, CardTypes, ETBAbilities, ModifyingToughness, ModifyingTypeSet,
+        ModifyingTypes, Toughness, ToughnessModifier,
+    },
+    cost::AdditionalCost,
+    player::{Controller, ManaPool},
+    stack::{AddToStackEvent, StackEntry, StackId, Targets},
     types::Type,
     FollowupWork,
 };
+
+#[derive(Debug, Clone, Event)]
+pub struct ActivateAbilityEvent {
+    pub card: Entity,
+    pub index: usize,
+    pub targets: Vec<Entity>,
+}
 
 #[derive(Debug, Clone, Event)]
 pub struct EtbEvent {
@@ -23,6 +37,9 @@ pub struct EtbEvent {
 pub struct PermanentToGraveyardEvent {
     pub card: Entity,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
+pub struct Tapped;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
 pub struct BattlefieldId(usize);
@@ -49,25 +66,111 @@ impl Battlefield {
     }
 }
 
+pub fn activate_ability(
+    mut add_to_stack: EventWriter<AddToStackEvent>,
+    mut events: ResMut<Events<ActivateAbilityEvent>>,
+    mut graveyard_events: EventWriter<PermanentToGraveyardEvent>,
+    mut commands: Commands,
+    cards: Query<(&ActivatedAbilities, &Controller, Option<&Tapped>), With<BattlefieldId>>,
+    stack: Query<&StackId>,
+    mut mana_pools: Query<&mut ManaPool>,
+) -> anyhow::Result<()> {
+    assert!(events.len() <= 1);
+    if let Some(ActivateAbilityEvent {
+        card: card_entity,
+        index,
+        targets,
+    }) = events.drain().last()
+    {
+        let (activated_abilities, controller, tapped) = cards.get(card_entity)?;
+        let ability = &activated_abilities[index];
+        let mut mana = mana_pools.get_mut(controller.0)?;
+
+        let mut costs: Vec<Box<dyn FnOnce(&mut Commands)>> = vec![];
+
+        if ability.cost.tap {
+            if tapped.is_some() {
+                return Ok(());
+            }
+            costs.push(Box::new(|commands| {
+                commands.entity(card_entity).insert(Tapped);
+            }));
+        } else if ability.cost.untap {
+            if tapped.is_none() {
+                return Ok(());
+            }
+            costs.push(Box::new(|commands| {
+                commands.entity(card_entity).remove::<Tapped>();
+            }));
+        }
+
+        let old_mana = *mana;
+
+        for cost in ability.cost.mana_cost.iter() {
+            if !mana.spend(*cost) {
+                *mana = old_mana;
+                return Ok(());
+            }
+        }
+
+        if ability
+            .cost
+            .additional_cost
+            .contains(AdditionalCost::SacrificeThis)
+        {
+            costs.push(Box::new(|_commands| {
+                graveyard_events.send(PermanentToGraveyardEvent { card: card_entity });
+            }));
+        }
+
+        let abilty = commands
+            .spawn(ActiveAbility {
+                effects: ability.effects.clone(),
+            })
+            .id();
+
+        add_to_stack.send(AddToStackEvent {
+            entry: StackEntry::ActivatedAbility(abilty),
+            target: Some(Targets::Stack(
+                targets
+                    .into_iter()
+                    .map(|target| Ok(stack.get(target).map(|id| *id)?))
+                    .collect::<anyhow::Result<_>>()?,
+            )),
+        });
+
+        for cost in costs {
+            cost(&mut commands)
+        }
+    }
+
+    Ok(())
+}
+
 pub fn handle_sba(
     mut to_graveyard: EventWriter<PermanentToGraveyardEvent>,
     cards_on_battlefield: Query<
-        (Entity, &Card, Option<&Copying>, Option<&ModifyingToughness>),
+        (
+            Entity,
+            &Toughness,
+            Option<&Copying>,
+            Option<&ModifyingToughness>,
+        ),
         With<BattlefieldId>,
     >,
     toughness_modifiers: Query<&ToughnessModifier>,
-    cards: Query<&Card>,
+    cards: Query<&Toughness>,
 ) -> anyhow::Result<()> {
-    for (e, card, copying, modifying_toughness) in cards_on_battlefield.iter() {
-        let card = if let Some(copying) = copying {
+    for (e, toughness, copying, modifying_toughness) in cards_on_battlefield.iter() {
+        let toughness = if let Some(copying) = copying {
             cards.get(**copying)?
         } else {
-            card
+            toughness
         };
 
         let toughness = modifying_toughness
-            .map(|modifier| modifier.toughness(card, &toughness_modifiers))
-            .unwrap_or(Ok(card.toughness))?;
+            .map(|modifier| modifier.toughness(toughness, &toughness_modifiers))
+            .unwrap_or(Ok(**toughness))?;
 
         if let Some(toughness) = toughness {
             if toughness <= 0 {
@@ -85,8 +188,8 @@ pub fn handle_events(
     mut followup_work: EventWriter<FollowupWork>,
     mut battlefield: ResMut<Battlefield>,
     mut commands: Commands,
-    cards: Query<&Card>,
-    cards_on_battlefield: Query<(Entity, &Card, Option<&ModifyingTypes>), With<BattlefieldId>>,
+    etb_abilities: Query<&ETBAbilities>,
+    cards_on_battlefield: Query<(Entity, &CardTypes, Option<&ModifyingTypes>), With<BattlefieldId>>,
     type_modifiers: Query<&ModifyingTypeSet>,
 ) -> anyhow::Result<()> {
     let etb_events = etb_events.drain().collect::<Vec<_>>();
@@ -99,15 +202,15 @@ pub fn handle_events(
 
     for event in etb_events {
         let mut add_to_battlefield = true;
-        for etb in cards.get(event.card)?.etb_abilities.iter() {
+        for etb in etb_abilities.get(event.card)?.iter() {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
                     if event.targets.is_none() {
                         let mut targets = vec![];
-                        for (entity, card, modifying_types) in cards_on_battlefield.iter() {
+                        for (entity, card_types, modifying_types) in cards_on_battlefield.iter() {
                             let types = modifying_types
-                                .map(|types| types.union(card, &type_modifiers))
-                                .unwrap_or_else(|| Ok(card.types))?;
+                                .map(|types| types.union(card_types, &type_modifiers))
+                                .unwrap_or_else(|| Ok(**card_types))?;
 
                             if types.contains(Type::Creature) {
                                 targets.push(entity);
@@ -144,17 +247,17 @@ pub fn handle_events(
         });
     } else {
         for mut event in events_to_add {
-            for etb in cards.get(event.card)?.etb_abilities.iter() {
+            for etb in etb_abilities.get(event.card)?.iter() {
                 match etb {
                     ETBAbility::CopyOfAnyCreature => {
                         if let Some(targets) = event.targets.as_mut() {
                             assert!(targets.len() <= 1);
                             if let Some(target) = targets.pop() {
-                                let card = cards.get(target)?;
+                                let etb_abilities = etb_abilities.get(target)?;
 
                                 commands.entity(event.card).insert(Copying(target));
 
-                                for etb in card.etb_abilities.iter() {
+                                for etb in etb_abilities.iter() {
                                     match etb {
                                         ETBAbility::CopyOfAnyCreature => {}
                                     }

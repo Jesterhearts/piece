@@ -5,10 +5,10 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{self, BattlefieldId, EtbEvent},
-    card::Card,
+    card::CardName,
     deck::{Deck, DeckDefinition},
     init_world, load_cards,
-    player::PlayerId,
+    player::Owner,
     stack::{self, AddToStackEvent, StackEntry},
     FollowupWork,
 };
@@ -21,7 +21,8 @@ fn etb_clones() -> anyhow::Result<()> {
     let mut deck = DeckDefinition::default();
     deck.add_card("Clone", 1);
     deck.add_card("Alpine Grizzly", 1);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
     let clone = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
@@ -65,14 +66,10 @@ fn etb_clones() -> anyhow::Result<()> {
                 })
             }
             FollowupWork::Etb { events } => {
-                for event in events {
-                    world.send_event(event);
-                }
+                assert!(events.is_empty());
             }
             FollowupWork::Graveyard { events } => {
-                for event in events {
-                    world.send_event(event)
-                }
+                assert!(events.is_empty())
             }
         }
     }
@@ -82,10 +79,10 @@ fn etb_clones() -> anyhow::Result<()> {
     world.run_system_once(battlefield::handle_sba)?;
     world.run_system_once(battlefield::handle_events)?;
 
-    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
         .iter(&world)
-        .map(|card| card.name.clone())
+        .map(|card| (**card).clone())
         .collect::<HashSet<_>>();
 
     assert_eq!(on_battlefield.len(), 2);
@@ -102,7 +99,8 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
 
     let mut deck = DeckDefinition::default();
     deck.add_card("Clone", 1);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let clone = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
 
@@ -135,24 +133,20 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
                 })
             }
             FollowupWork::Etb { events } => {
-                for event in events {
-                    world.send_event(event);
-                }
+                assert!(events.is_empty());
             }
             FollowupWork::Graveyard { events } => {
-                for event in events {
-                    world.send_event(event)
-                }
+                assert!(events.is_empty())
             }
         }
     }
 
     world.run_system_once(battlefield::handle_events)?;
 
-    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
         .iter(&world)
-        .map(|card| card.name.clone())
+        .map(|card| (**card).clone())
         .collect::<HashSet<_>>();
 
     assert_eq!(on_battlefield.len(), 1);
@@ -161,10 +155,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     world.run_system_once(battlefield::handle_sba)?;
     world.run_system_once(battlefield::handle_events)?;
 
-    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
         .iter(&world)
-        .map(|card| card.name.clone())
+        .map(|card| (**card).clone())
         .collect::<HashSet<_>>();
 
     assert!(on_battlefield.is_empty());

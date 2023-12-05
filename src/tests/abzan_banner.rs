@@ -18,7 +18,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let mut modifiers = AllModifiers::default();
     let stack = Stack::default();
     let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let player = Owner::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
@@ -53,7 +53,7 @@ fn add_mana() -> anyhow::Result<()> {
     let mut modifiers = AllModifiers::default();
     let stack = Stack::default();
     let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let player = Owner::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Abzan Banner");

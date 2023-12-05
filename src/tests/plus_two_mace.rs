@@ -23,7 +23,7 @@ fn equipment_works() -> anyhow::Result<()> {
     let mut modifiers = AllModifiers::default();
     let mut stack = Stack::default();
     let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let player = Owner::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let equipment = all_cards.add(&cards, player.clone(), "+2 Mace");

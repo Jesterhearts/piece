@@ -16,7 +16,7 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     let mut modifiers = AllModifiers::default();
     let mut stack = Stack::default();
     let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let player = Owner::new_ref(Deck::empty());
 
     let elesh = all_cards.add(&cards, player.clone(), "Elesh Norn, Grand Cenobite");
     let bear = all_cards.add(&cards, player.clone(), "Alpine Grizzly");

@@ -11,24 +11,26 @@ use crate::{
     abilities::StaticAbility,
     battlefield::{Battlefield, BattlefieldId, EtbEvent, GraveyardId},
     card::{
-        Card, CastingModifier, Color, ModifyingSubtypeSet, ModifyingSubtypes, ModifyingTypeSet,
-        ModifyingTypes,
+        Card, CardSubtypes, CardTypes, CastingModifier, CastingModifiers, Color, Colors,
+        ModifyingSubtypeSet, ModifyingSubtypes, ModifyingTypeSet, ModifyingTypes, SpellEffects,
+        StaticAbilities,
     },
     controller::Controller,
+    cost::CastingCost,
     effects::{BattlefieldModifier, ModifyBattlefield, SpellEffect},
-    player::{self, PlayerId},
+    player::{self, Owner},
     targets::SpellTarget,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
 pub struct StackId(usize);
 
-#[derive(Debug, Clone, Copy, Component)]
-pub enum Target {
-    Stack(StackId),
-    Battlefield(BattlefieldId),
-    Graveyard(GraveyardId),
-    Player(PlayerId),
+#[derive(Debug, Clone, Component)]
+pub enum Targets {
+    Stack(Vec<StackId>),
+    Battlefield(Vec<BattlefieldId>),
+    Graveyard(Vec<GraveyardId>),
+    Player(Vec<Owner>),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -57,7 +59,7 @@ pub enum StackResult {
 #[derive(Debug, Event)]
 pub struct AddToStackEvent {
     pub entry: StackEntry,
-    pub target: Option<Target>,
+    pub target: Option<Targets>,
 }
 
 #[derive(Debug, Default, Resource)]
@@ -91,7 +93,7 @@ pub fn add_to_stack(
     mut stack: ResMut<Stack>,
     mut commands: Commands,
     mut queue: ResMut<Events<AddToStackEvent>>,
-    cards: Query<&Card>,
+    cards: Query<&CastingModifiers>,
 ) -> anyhow::Result<()> {
     for entry in queue.drain() {
         let entity = entry.entry.entity();
@@ -104,11 +106,7 @@ pub fn add_to_stack(
 
         match entry.entry {
             StackEntry::Spell(entity) => {
-                if cards
-                    .get(entity)?
-                    .casting_modifiers
-                    .contains(CastingModifier::SplitSecond)
-                {
+                if cards.get(entity)?.contains(CastingModifier::SplitSecond) {
                     stack.split_second = true;
                     break;
                 }
@@ -128,18 +126,23 @@ pub fn resolve_1(
     mut commands: Commands,
     cards: Query<
         (
-            &Card,
             &player::Controller,
             &player::Owner,
+            &SpellEffects,
+            &CastingModifiers,
+            &CastingCost,
+            &Colors,
+            &CardTypes,
+            &CardSubtypes,
             Option<&ModifyingTypes>,
             Option<&ModifyingSubtypes>,
-            Option<&Target>,
+            Option<&Targets>,
         ),
         With<StackId>,
     >,
     type_modifiers: Query<&ModifyingTypeSet>,
     subtype_modifiers: Query<&ModifyingSubtypeSet>,
-    static_abilities: Query<(&StaticAbility, &player::Controller)>,
+    static_abilities: Query<(&StaticAbilities, &player::Controller)>,
     battlefield_modifiers: Query<(&BattlefieldModifier, &player::Controller)>,
 ) -> anyhow::Result<()> {
     let Some((_, entry)) = stack.entries.pop() else {
@@ -148,19 +151,19 @@ pub fn resolve_1(
 
     match entry {
         StackEntry::Spell(entity) => {
-            let (card, spell_controller, spell_owner, _, _, maybe_target) = cards.get(entity)?;
+            let (spell_controller, spell_owner, effects, _, _, _, types, _, _, _, maybe_target) =
+                cards.get(entity)?;
             commands
                 .entity(entity)
                 .remove::<StackId>()
-                .remove::<player::Controller>()
                 .insert(player::Controller::from(*spell_owner));
             results.send(StackResult::StackToGraveyard(entity));
 
-            if card.requires_target() && maybe_target.is_none() {
+            if Card::requires_target(effects) && maybe_target.is_none() {
                 return Ok(());
             }
 
-            for effect in card.effects.iter() {
+            for effect in effects.iter() {
                 match effect {
                     SpellEffect::CounterSpell {
                         valid_target:
@@ -170,120 +173,127 @@ pub fn resolve_1(
                                 subtypes,
                             },
                     } => {
-                        let stack_target = match maybe_target.expect("Validated target exists") {
-                            Target::Stack(target) => target,
+                        let stack_targets = match maybe_target.expect("Validated target exists") {
+                            Targets::Stack(targets) => targets,
                             _ => {
                                 // Only the stack is a valid target for counterspells
                                 return Ok(());
                             }
                         };
 
-                        let target = stack
-                            .entries
-                            .get(stack_target)
-                            .expect("Stack ids should always be valid");
-                        let entity_target = match target {
-                            StackEntry::Spell(target) => *target,
-                            _ => {
-                                // Only spells are a valid target for counterspells
-                                return Ok(());
+                        'targets: for stack_target in stack_targets {
+                            let target = stack
+                                .entries
+                                .get(stack_target)
+                                .expect("Stack ids should always be valid");
+                            let entity_target = match target {
+                                StackEntry::Spell(target) => *target,
+                                _ => {
+                                    // Only spells are a valid target for counterspells
+                                    continue 'targets;
+                                }
+                            };
+
+                            let (
+                                target_controller,
+                                target_owner,
+                                _,
+                                casting_modifiers,
+                                casting_cost,
+                                colors,
+                                card_types,
+                                card_subtypes,
+                                modifying_types,
+                                modifying_subtypes,
+                                _,
+                            ) = cards.get(entity_target)?;
+
+                            if casting_modifiers.contains(CastingModifier::CannotBeCountered) {
+                                continue 'targets;
                             }
-                        };
 
-                        let (
-                            target_card,
-                            target_controller,
-                            target_owner,
-                            modifying_types,
-                            modifying_subtypes,
-                            _,
-                        ) = cards.get(entity_target)?;
-
-                        if target_card
-                            .casting_modifiers
-                            .contains(CastingModifier::CannotBeCountered)
-                        {
-                            return Ok(());
-                        }
-
-                        for (ability, ability_controller) in static_abilities.iter() {
-                            match ability {
-                                StaticAbility::GreenCannotBeCountered { controller } => {
-                                    if target_card.colors().contains(Color::Green) {
-                                        match controller {
-                                            Controller::Any => {
-                                                return Ok(());
-                                            }
-                                            Controller::You => {
-                                                if ability_controller == target_controller {
-                                                    return Ok(());
-                                                }
-                                            }
-                                            Controller::Opponent => {
-                                                if ability_controller != target_controller {
-                                                    return Ok(());
+                            for (abilities, ability_controller) in static_abilities.iter() {
+                                for ability in abilities.iter() {
+                                    match ability {
+                                        StaticAbility::GreenCannotBeCountered { controller } => {
+                                            if Card::colors(casting_cost, colors)
+                                                .contains(Color::Green)
+                                            {
+                                                match controller {
+                                                    Controller::Any => {
+                                                        continue 'targets;
+                                                    }
+                                                    Controller::You => {
+                                                        if ability_controller == target_controller {
+                                                            continue 'targets;
+                                                        }
+                                                    }
+                                                    Controller::Opponent => {
+                                                        if ability_controller != target_controller {
+                                                            continue 'targets;
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
+                                        StaticAbility::Vigilance => {}
+                                        StaticAbility::BattlefieldModifier(_) => {}
+                                        StaticAbility::Enchant(_) => {}
                                     }
                                 }
-                                StaticAbility::Vigilance => {}
-                                StaticAbility::BattlefieldModifier(_) => {}
-                                StaticAbility::Enchant(_) => {}
                             }
-                        }
 
-                        for (modifier, _modifier_controller) in battlefield_modifiers.iter() {
-                            match modifier.modifier {
-                                ModifyBattlefield::ModifyBasePowerToughness(_) => {}
-                                ModifyBattlefield::AddCreatureSubtypes(_) => {}
-                                ModifyBattlefield::RemoveAllSubtypes(_) => {}
-                                ModifyBattlefield::AddPowerToughness(_) => {}
-                                ModifyBattlefield::Vigilance(_) => {}
-                            }
-                        }
-
-                        match controller {
-                            Controller::Any => {}
-                            Controller::You => {
-                                if spell_controller != target_controller {
-                                    return Ok(());
+                            for (modifier, _modifier_controller) in battlefield_modifiers.iter() {
+                                match modifier.modifier {
+                                    ModifyBattlefield::ModifyBasePowerToughness(_) => {}
+                                    ModifyBattlefield::AddCreatureSubtypes(_) => {}
+                                    ModifyBattlefield::RemoveAllSubtypes(_) => {}
+                                    ModifyBattlefield::AddPowerToughness(_) => {}
+                                    ModifyBattlefield::Vigilance(_) => {}
                                 }
                             }
-                            Controller::Opponent => {
-                                if spell_controller == target_controller {
-                                    return Ok(());
+
+                            match controller {
+                                Controller::Any => {}
+                                Controller::You => {
+                                    if spell_controller != target_controller {
+                                        continue 'targets;
+                                    }
+                                }
+                                Controller::Opponent => {
+                                    if spell_controller == target_controller {
+                                        continue 'targets;
+                                    }
                                 }
                             }
-                        }
 
-                        if !types.is_empty() {
-                            let card_types = modifying_types
-                                .map(|types| types.union(target_card, &type_modifiers))
-                                .unwrap_or_else(|| Ok(target_card.types))?;
+                            if !types.is_empty() {
+                                let card_types = modifying_types
+                                    .map(|types| types.union(card_types, &type_modifiers))
+                                    .unwrap_or_else(|| Ok(**card_types))?;
 
-                            if card_types.intersection(*types).is_empty() {
-                                return Ok(());
+                                if card_types.intersection(*types).is_empty() {
+                                    continue 'targets;
+                                }
                             }
-                        }
 
-                        if !subtypes.is_empty() {
-                            let card_types = modifying_subtypes
-                                .map(|types| types.union(target_card, &subtype_modifiers))
-                                .unwrap_or_else(|| Ok(target_card.subtypes))?;
+                            if !subtypes.is_empty() {
+                                let card_types = modifying_subtypes
+                                    .map(|types| types.union(card_subtypes, &subtype_modifiers))
+                                    .unwrap_or_else(|| Ok(**card_subtypes))?;
 
-                            if card_types.intersection(*subtypes).is_empty() {
-                                return Ok(());
+                                if card_types.intersection(*subtypes).is_empty() {
+                                    continue 'targets;
+                                }
                             }
-                        }
 
-                        commands
-                            .entity(entity_target)
-                            .remove::<StackId>()
-                            .remove::<player::Controller>()
-                            .insert(player::Controller::from(*target_owner));
-                        stack.entries.remove(stack_target);
-                        results.send(StackResult::StackToGraveyard(entity_target));
+                            commands
+                                .entity(entity_target)
+                                .remove::<StackId>()
+                                .insert(player::Controller::from(*target_owner));
+                            stack.entries.remove(stack_target);
+                            results.send(StackResult::StackToGraveyard(entity_target));
+                        }
                     }
                     SpellEffect::GainMana { mana: _ } => todo!(),
                     SpellEffect::BattlefieldModifier(_) => todo!(),
@@ -295,7 +305,7 @@ pub fn resolve_1(
                 }
             }
 
-            if card.is_permanent() {
+            if Card::is_permanent(types) {
                 results.send(StackResult::StackToBattlefield(entity));
             }
         }

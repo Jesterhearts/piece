@@ -1,8 +1,10 @@
 use anyhow::anyhow;
+use bevy_ecs::component::Component;
+use enumset::{EnumSet, EnumSetType};
 
 use crate::{mana::Mana, protogen};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct CastingCost {
     pub mana_cost: Vec<Mana>,
 }
@@ -21,7 +23,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, EnumSetType)]
 pub enum AdditionalCost {
     SacrificeThis,
 }
@@ -50,7 +52,8 @@ impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 pub struct AbilityCost {
     pub mana_cost: Vec<Mana>,
     pub tap: bool,
-    pub additional_cost: Vec<AdditionalCost>,
+    pub untap: bool,
+    pub additional_cost: EnumSet<AdditionalCost>,
 }
 
 impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
@@ -64,11 +67,12 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
                 .map(Mana::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             tap: value.tap.unwrap_or_default(),
+            untap: false,
             additional_cost: value
                 .additional_costs
                 .iter()
                 .map(AdditionalCost::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }

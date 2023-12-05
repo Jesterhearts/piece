@@ -22,6 +22,7 @@ use crate::{
 pub mod tests;
 
 pub mod abilities;
+pub mod activated_ability;
 pub mod battlefield;
 pub mod card;
 pub mod controller;
@@ -42,6 +43,7 @@ pub enum FollowupWork {
         targets_for: Entity,
         up_to: usize,
     },
+
     Etb {
         events: Vec<EtbEvent>,
     },
@@ -84,8 +86,8 @@ pub fn init_world() -> World {
     let battlefield = Battlefield::default();
 
     let mut world = World::default();
-    world.insert_resource(stack);
     world.insert_resource(battlefield);
+    world.insert_resource(stack);
 
     // Keep sorted
     world.init_resource::<Events<AddToStackEvent>>();

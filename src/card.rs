@@ -1,5 +1,6 @@
 use anyhow::anyhow;
-use bevy_ecs::{component::Component, entity::Entity, system::Query};
+use bevy_ecs::{bundle::Bundle, component::Component, entity::Entity, system::Query};
+use derive_more::{Deref, DerefMut, From};
 use enumset::{EnumSet, EnumSetType};
 use indexmap::IndexSet;
 
@@ -31,10 +32,10 @@ pub struct ModifyingTypes(pub IndexSet<Entity>);
 impl ModifyingTypes {
     pub fn union(
         &self,
-        base: &Card,
+        base: &CardTypes,
         query: &Query<&ModifyingTypeSet>,
     ) -> anyhow::Result<EnumSet<Type>> {
-        let mut types = base.types;
+        let mut types = **base;
         for entity in self.0.iter().copied() {
             let modifier = query.get(entity)?;
             match modifier {
@@ -58,10 +59,10 @@ pub struct ModifyingSubtypes(pub IndexSet<Entity>);
 impl ModifyingSubtypes {
     pub fn union(
         &self,
-        base: &Card,
+        base: &CardSubtypes,
         query: &Query<&ModifyingSubtypeSet>,
     ) -> anyhow::Result<EnumSet<Subtype>> {
-        let mut types = base.subtypes;
+        let mut types = **base;
         for entity in self.0.iter().copied() {
             let modifier = query.get(entity)?;
             match modifier {
@@ -89,8 +90,12 @@ pub enum PowerModifier {
 pub struct ModifyingPower(IndexSet<Entity>);
 
 impl ModifyingPower {
-    pub fn power(&self, card: &Card, query: &Query<&PowerModifier>) -> anyhow::Result<Option<i32>> {
-        let mut base = card.power;
+    pub fn power(
+        &self,
+        power: &Power,
+        query: &Query<&PowerModifier>,
+    ) -> anyhow::Result<Option<i32>> {
+        let mut base = **power;
         let mut add = 0;
         for modifier in self.0.iter().copied() {
             match query.get(modifier)? {
@@ -119,10 +124,10 @@ pub struct ModifyingToughness(IndexSet<Entity>);
 impl ModifyingToughness {
     pub fn toughness(
         &self,
-        card: &Card,
+        toughness: &Toughness,
         modifiers: &Query<&ToughnessModifier>,
     ) -> anyhow::Result<Option<i32>> {
-        let mut base = card.toughness;
+        let mut base = **toughness;
         let mut add = 0;
         for modifier in self.0.iter().copied() {
             match modifiers.get(modifier)? {
@@ -203,30 +208,75 @@ impl From<&protogen::card::casting_modifier::Modifier> for CastingModifier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct CardName(String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct CardTypes(EnumSet<Type>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct CardSubtypes(EnumSet<Subtype>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct OracleText(String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct FlavorText(String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct CastingModifiers(EnumSet<CastingModifier>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct Colors(EnumSet<Color>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct ETBAbilities(Vec<ETBAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct SpellEffects(Vec<SpellEffect>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct StaticAbilities(Vec<StaticAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct ActivatedAbilities(Vec<ActivatedAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct Power(Option<i32>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct Toughness(Option<i32>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct Hexproof(bool);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
+pub struct Shroud(bool);
+
+#[derive(Debug, Clone, PartialEq, Eq, Bundle)]
 pub struct Card {
-    pub name: String,
-    pub types: EnumSet<Type>,
-    pub subtypes: EnumSet<Subtype>,
+    pub name: CardName,
+    pub types: CardTypes,
+    pub subtypes: CardSubtypes,
 
     pub cost: CastingCost,
-    pub casting_modifiers: EnumSet<CastingModifier>,
-    pub colors: EnumSet<Color>,
+    pub casting_modifiers: CastingModifiers,
+    pub colors: Colors,
 
-    pub oracle_text: String,
-    pub flavor_text: String,
+    pub oracle_text: OracleText,
+    pub flavor_text: FlavorText,
 
-    pub etb_abilities: Vec<ETBAbility>,
-    pub effects: Vec<SpellEffect>,
+    pub etb_abilities: ETBAbilities,
+    pub effects: SpellEffects,
 
-    pub static_abilities: Vec<StaticAbility>,
-    pub activated_abilities: Vec<ActivatedAbility>,
+    pub static_abilities: StaticAbilities,
+    pub activated_abilities: ActivatedAbilities,
 
-    pub power: Option<i32>,
-    pub toughness: Option<i32>,
+    pub power: Power,
+    pub toughness: Toughness,
 
-    pub hexproof: bool,
-    pub shroud: bool,
+    pub hexproof: Hexproof,
+    pub shroud: Shroud,
 }
 
 impl TryFrom<protogen::card::Card> for Card {
@@ -234,17 +284,19 @@ impl TryFrom<protogen::card::Card> for Card {
 
     fn try_from(value: protogen::card::Card) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.into(),
             types: value
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?
+                .into(),
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?
+                .into(),
             cost: value
                 .cost
                 .as_ref()
@@ -254,60 +306,70 @@ impl TryFrom<protogen::card::Card> for Card {
                 .casting_modifiers
                 .iter()
                 .map(CastingModifier::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?
+                .into(),
             colors: value
                 .colors
                 .iter()
                 .map(Color::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            oracle_text: value.oracle_text,
-            flavor_text: value.flavor_text,
+                .collect::<anyhow::Result<EnumSet<_>>>()?
+                .into(),
+            oracle_text: value.oracle_text.into(),
+            flavor_text: value.flavor_text.into(),
             etb_abilities: value
                 .etb_abilities
                 .iter()
                 .map(ETBAbility::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<Vec<_>>>()?
+                .into(),
             effects: value
                 .effects
                 .iter()
                 .map(SpellEffect::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<Vec<_>>>()?
+                .into(),
             static_abilities: value
                 .static_abilities
                 .iter()
                 .map(StaticAbility::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<Vec<_>>>()?
+                .into(),
             activated_abilities: value
                 .activated_abilities
                 .iter()
                 .map(ActivatedAbility::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            power: value.power,
-            toughness: value.toughness,
-            hexproof: value.hexproof,
-            shroud: value.shroud,
+                .collect::<anyhow::Result<Vec<_>>>()?
+                .into(),
+            power: value.power.into(),
+            toughness: value.toughness.into(),
+            hexproof: value.hexproof.into(),
+            shroud: value.shroud.into(),
         })
     }
 }
 
 impl Card {
-    pub fn colors(&self) -> EnumSet<Color> {
-        let mut colors = EnumSet::default();
-        for mana in self.cost.mana_cost.iter() {
+    pub fn colors(cost: &CastingCost, colors: &Colors) -> EnumSet<Color> {
+        let mut derived_colors = EnumSet::default();
+        for mana in cost.mana_cost.iter() {
             let color = mana.color();
-            colors.insert(color);
+            derived_colors.insert(color);
         }
-        for color in self.colors.iter() {
-            colors.insert(color);
+        for color in colors.iter() {
+            derived_colors.insert(color);
         }
 
-        colors
+        derived_colors
     }
 
-    pub fn color_identity(&self) -> EnumSet<Color> {
-        let mut identity = self.colors();
+    pub fn color_identity(
+        cost: &CastingCost,
+        colors: &Colors,
+        activated_abilities: &ActivatedAbilities,
+    ) -> EnumSet<Color> {
+        let mut identity = Self::colors(cost, colors);
 
-        for ability in self.activated_abilities.iter() {
+        for ability in activated_abilities.iter() {
             for mana in ability.cost.mana_cost.iter() {
                 let color = mana.color();
                 identity.insert(color);
@@ -327,12 +389,12 @@ impl Card {
             .any(|ty| matches!(ty, Type::BasicLand | Type::Land))
     }
 
-    pub fn is_permanent(&self) -> bool {
-        self.types.iter().any(|ty| ty.is_permanent())
+    pub fn is_permanent(types: &CardTypes) -> bool {
+        types.iter().any(|ty| ty.is_permanent())
     }
 
-    pub fn requires_target(&self) -> bool {
-        for effect in self.effects.iter() {
+    pub fn requires_target(effects: &SpellEffects) -> bool {
+        for effect in effects.iter() {
             match effect {
                 SpellEffect::CounterSpell { .. } => return true,
                 SpellEffect::GainMana { .. } => {}

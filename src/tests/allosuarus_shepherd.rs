@@ -5,11 +5,11 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{self, Battlefield, BattlefieldId},
-    card::Card,
+    card::CardName,
     deck::{Deck, DeckDefinition},
     init_world, load_cards,
-    player::PlayerId,
-    stack::{self, AddToStackEvent, Stack, StackEntry, Target},
+    player::Owner,
+    stack::{self, AddToStackEvent, Stack, StackEntry, Targets},
 };
 
 #[test]
@@ -20,7 +20,8 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let mut deck = DeckDefinition::default();
     deck.add_card("Allosaurus Shepherd", 1);
     deck.add_card("Counterspell", 1);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
     let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
@@ -33,7 +34,10 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(counterspell),
-        target: world.resource::<Stack>().target_nth(0).map(Target::Stack),
+        target: world
+            .resource::<Stack>()
+            .target_nth(0)
+            .map(|target| Targets::Stack(vec![target])),
     });
 
     world.run_system_once(stack::add_to_stack)?;
@@ -61,7 +65,8 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     deck.add_card("Allosaurus Shepherd", 1);
     deck.add_card("Alpine Grizzly", 1);
     deck.add_card("Counterspell", 1);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
     let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
@@ -86,7 +91,10 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(counterspell),
-        target: world.resource::<Stack>().target_nth(0).map(Target::Stack),
+        target: world
+            .resource::<Stack>()
+            .target_nth(0)
+            .map(|target| Targets::Stack(vec![target])),
     });
 
     world.run_system_once(stack::add_to_stack)?;
@@ -95,14 +103,16 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
+    assert!(!world.resource::<Stack>().is_empty());
+
     world.run_system_once(stack::resolve_1)?;
     world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
-    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
         .iter(&world)
-        .map(|card| card.name.clone())
+        .map(|card| (**card).clone())
         .collect::<HashSet<_>>();
 
     assert_eq!(on_battlefield.len(), 2);
@@ -120,14 +130,16 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let mut deck = DeckDefinition::default();
     deck.add_card("Allosaurus Shepherd", 1);
     deck.add_card("Counterspell", 1);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
     let counterspell = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
     let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
 
     let mut deck = DeckDefinition::default();
     deck.add_card("Alpine Grizzly", 1);
-    let deck = Deck::add_to_world(&mut world, PlayerId::new(), &cards, &deck);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
     let bear = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
 
     world.send_event(AddToStackEvent {
@@ -149,21 +161,23 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
 
     world.send_event(AddToStackEvent {
         entry: StackEntry::Spell(counterspell),
-        target: world.resource::<Stack>().target_nth(0).map(Target::Stack),
+        target: world
+            .resource::<Stack>()
+            .target_nth(0)
+            .map(|target| Targets::Stack(vec![target])),
     });
 
     world.run_system_once(stack::add_to_stack)?;
-
     world.run_system_once(stack::resolve_1)?;
     world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     assert!(world.resource::<Stack>().is_empty());
 
-    let mut on_battlefield = world.query_filtered::<&Card, With<BattlefieldId>>();
+    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
     let on_battlefield = on_battlefield
         .iter(&world)
-        .map(|card| card.name.clone())
+        .map(|card| (**card).clone())
         .collect::<HashSet<_>>();
 
     assert_eq!(on_battlefield.len(), 1);
@@ -180,7 +194,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let mut modifiers = AllModifiers::default();
     let mut stack = Stack::default();
     let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let player = Owner::new_ref(Deck::empty());
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
