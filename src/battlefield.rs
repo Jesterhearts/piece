@@ -10,12 +10,13 @@ use crate::{
     abilities::{Copying, ETBAbility},
     activated_ability::ActiveAbility,
     card::{
-        ActivatedAbilities, CardTypes, ETBAbilities, ModifyingToughness, ModifyingTypeSet,
-        ModifyingTypes, Toughness, ToughnessModifier,
+        ActivatedAbilities, CardTypes, ETBAbilities, ModifyingPower, ModifyingSubtypes,
+        ModifyingToughness, ModifyingTypeSet, ModifyingTypes, Toughness, ToughnessModifier,
     },
     cost::AdditionalCost,
+    effects::EffectDuration,
     player::{Controller, ManaPool},
-    stack::{AddToStackEvent, StackEntry, StackId, Targets},
+    stack::{AddToStackEvent, StackEntry, Targets},
     types::Type,
     FollowupWork,
 };
@@ -72,7 +73,6 @@ pub fn activate_ability(
     mut graveyard_events: EventWriter<PermanentToGraveyardEvent>,
     mut commands: Commands,
     cards: Query<(&ActivatedAbilities, &Controller, Option<&Tapped>), With<BattlefieldId>>,
-    stack: Query<&StackId>,
     mut mana_pools: Query<&mut ManaPool>,
 ) -> anyhow::Result<()> {
     assert!(events.len() <= 1);
@@ -84,7 +84,7 @@ pub fn activate_ability(
     {
         let (activated_abilities, controller, tapped) = cards.get(card_entity)?;
         let ability = &activated_abilities[index];
-        let mut mana = mana_pools.get_mut(controller.0)?;
+        let mut mana = mana_pools.get_mut(**controller)?;
 
         let mut costs: Vec<Box<dyn FnOnce(&mut Commands)>> = vec![];
 
@@ -125,18 +125,15 @@ pub fn activate_ability(
 
         let abilty = commands
             .spawn(ActiveAbility {
+                source: card_entity,
                 effects: ability.effects.clone(),
             })
+            .insert(*controller)
             .id();
 
         add_to_stack.send(AddToStackEvent {
             entry: StackEntry::ActivatedAbility(abilty),
-            target: Some(Targets::Stack(
-                targets
-                    .into_iter()
-                    .map(|target| Ok(stack.get(target).map(|id| *id)?))
-                    .collect::<anyhow::Result<_>>()?,
-            )),
+            target: Some(Targets::Entities(targets)),
         });
 
         for cost in costs {
@@ -176,6 +173,37 @@ pub fn handle_sba(
             if toughness <= 0 {
                 to_graveyard.send(PermanentToGraveyardEvent { card: e })
             }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn end_turn(
+    active_effects: Query<(Entity, &EffectDuration)>,
+    mut type_modifiers: Query<&mut ModifyingTypes>,
+    mut subtype_modifiers: Query<&mut ModifyingSubtypes>,
+    mut power_modifiers: Query<&mut ModifyingPower>,
+    mut toughness_modifiers: Query<&mut ModifyingToughness>,
+) -> anyhow::Result<()> {
+    for (entity, effect) in active_effects.iter() {
+        match effect {
+            EffectDuration::UntilEndOfTurn => {
+                for mut modifiers in type_modifiers.iter_mut() {
+                    modifiers.remove(&entity);
+                }
+                for mut modifiers in subtype_modifiers.iter_mut() {
+                    modifiers.remove(&entity);
+                }
+                for mut modifiers in power_modifiers.iter_mut() {
+                    modifiers.remove(&entity);
+                }
+                for mut modifiers in toughness_modifiers.iter_mut() {
+                    modifiers.remove(&entity);
+                }
+            }
+            EffectDuration::UntilSourceLeavesBattlefield => {}
+            EffectDuration::UntilUnattached => {}
         }
     }
 

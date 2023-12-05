@@ -34,7 +34,6 @@ fn etb_clones() -> anyhow::Result<()> {
 
     world.run_system_once(stack::add_to_stack)?;
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     world.send_event(AddToStackEvent {
@@ -44,7 +43,6 @@ fn etb_clones() -> anyhow::Result<()> {
 
     world.run_system_once(stack::add_to_stack)?;
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     for followup in world
@@ -111,7 +109,6 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
 
     world.run_system_once(stack::add_to_stack)?;
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     for followup in world

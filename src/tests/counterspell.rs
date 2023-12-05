@@ -42,7 +42,5 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     assert!(world.resource::<Stack>().is_empty());
 
-    world.run_system_once(stack::handle_results)?;
-
     Ok(())
 }

@@ -1,6 +1,8 @@
+use bevy_ecs::component::Component;
+
 use crate::protogen;
 
-#[derive(Debug, PartialEq, Eq, Clone, Default, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Copy, Component)]
 pub enum Controller {
     #[default]
     Any,

@@ -13,7 +13,7 @@ use bevy_ecs::{
 use include_dir::{include_dir, Dir};
 
 use crate::{
-    battlefield::{Battlefield, EtbEvent, PermanentToGraveyardEvent},
+    battlefield::{ActivateAbilityEvent, Battlefield, EtbEvent, PermanentToGraveyardEvent},
     card::Card,
     stack::{AddToStackEvent, Stack, StackResult},
 };
@@ -90,6 +90,7 @@ pub fn init_world() -> World {
     world.insert_resource(stack);
 
     // Keep sorted
+    world.init_resource::<Events<ActivateAbilityEvent>>();
     world.init_resource::<Events<AddToStackEvent>>();
     world.init_resource::<Events<EtbEvent>>();
     world.init_resource::<Events<FollowupWork>>();

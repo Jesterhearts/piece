@@ -1,5 +1,5 @@
 use bevy_ecs::{component::Component, entity::Entity, world::World};
-use derive_more::From;
+use derive_more::{Deref, From};
 
 use crate::mana::Mana;
 
@@ -87,6 +87,16 @@ impl ManaPool {
         true
     }
 
+    #[cfg(test)]
+    pub fn infinite(&mut self) {
+        self.white_mana = usize::MAX;
+        self.blue_mana = usize::MAX;
+        self.black_mana = usize::MAX;
+        self.red_mana = usize::MAX;
+        self.green_mana = usize::MAX;
+        self.colorless_mana = usize::MAX;
+    }
+
     fn max(&mut self) -> &mut usize {
         [
             &mut self.white_mana,
@@ -105,8 +115,8 @@ impl ManaPool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
 pub struct Player;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct Controller(pub Entity);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, Deref)]
+pub struct Controller(Entity);
 
 impl From<Owner> for Controller {
     fn from(value: Owner) -> Self {
@@ -114,8 +124,8 @@ impl From<Owner> for Controller {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, From)]
-pub struct Owner(pub Entity);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component, From, Deref)]
+pub struct Owner(Entity);
 
 impl Owner {
     pub fn new(world: &mut World) -> Self {

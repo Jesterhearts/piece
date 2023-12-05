@@ -26,7 +26,7 @@ pub enum ModifyingSubtypeSet {
     Subtracting(EnumSet<Subtype>),
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Deref, DerefMut, From)]
 pub struct ModifyingTypes(pub IndexSet<Entity>);
 
 impl ModifyingTypes {
@@ -53,7 +53,7 @@ impl ModifyingTypes {
     }
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Deref, DerefMut, From)]
 pub struct ModifyingSubtypes(pub IndexSet<Entity>);
 
 impl ModifyingSubtypes {
@@ -86,7 +86,7 @@ pub enum PowerModifier {
     Add(i32),
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Deref, DerefMut, From)]
 pub struct ModifyingPower(IndexSet<Entity>);
 
 impl ModifyingPower {
@@ -118,7 +118,7 @@ pub enum ToughnessModifier {
     Add(i32),
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Deref, DerefMut, From)]
 pub struct ModifyingToughness(IndexSet<Entity>);
 
 impl ModifyingToughness {

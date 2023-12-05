@@ -1,15 +1,23 @@
 use std::collections::HashSet;
 
-use bevy_ecs::{query::With, system::RunSystemOnce};
+use bevy_ecs::{
+    query::With,
+    system::{Query, RunSystemOnce},
+};
+use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{self, Battlefield, BattlefieldId},
-    card::CardName,
+    battlefield::{self, ActivateAbilityEvent, Battlefield, BattlefieldId},
+    card::{
+        CardName, CardSubtypes, ModifyingPower, ModifyingSubtypeSet, ModifyingSubtypes,
+        ModifyingToughness, Power, PowerModifier, Toughness, ToughnessModifier,
+    },
     deck::{Deck, DeckDefinition},
     init_world, load_cards,
-    player::Owner,
+    player::{ManaPool, Owner},
     stack::{self, AddToStackEvent, Stack, StackEntry, Targets},
+    types::Subtype,
 };
 
 #[test]
@@ -44,11 +52,9 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     assert_eq!(world.resource::<Stack>().len(), 2);
 
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     assert_eq!(world.resource::<Stack>().len(), 1);
 
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     assert!(world.resource::<Stack>().is_empty());
 
     world.resource::<Battlefield>();
@@ -79,7 +85,6 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
     world.run_system_once(stack::add_to_stack)?;
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     world.send_event(AddToStackEvent {
@@ -100,13 +105,11 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     world.run_system_once(stack::add_to_stack)?;
 
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     assert!(!world.resource::<Stack>().is_empty());
 
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
@@ -149,7 +152,6 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
 
     world.run_system_once(stack::add_to_stack)?;
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     world.send_event(AddToStackEvent {
@@ -169,7 +171,6 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
 
     world.run_system_once(stack::add_to_stack)?;
     world.run_system_once(stack::resolve_1)?;
-    world.run_system_once(stack::handle_results)?;
     world.run_system_once(battlefield::handle_events)?;
 
     assert!(world.resource::<Stack>().is_empty());
@@ -186,126 +187,77 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     Ok(())
 }
 
-/*
 #[test]
 fn modify_base_p_t_works() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Owner::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let mut world = init_world();
 
-    let card = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    let mut deck = DeckDefinition::default();
+    deck.add_card("Allosaurus Shepherd", 1);
+    let player = Owner::new(&mut world);
+    let deck = Deck::add_to_world(&mut world, player, &cards, &deck);
 
-    let card = battlefield.select_card(0);
-    let results = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
+    let mut mana_pool = world.query::<&mut ManaPool>().single_mut(&mut world);
+    mana_pool.infinite();
 
+    let creature = world.get_mut::<Deck>(deck).unwrap().draw().unwrap();
+
+    world.send_event(AddToStackEvent {
+        entry: StackEntry::Spell(creature),
+        target: None,
+    });
+
+    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::resolve_1)?;
+    world.run_system_once(battlefield::handle_events)?;
+
+    world.send_event(ActivateAbilityEvent {
+        card: creature,
+        index: 0,
+        targets: vec![],
+    });
+
+    world.run_system_once(battlefield::activate_ability)?;
+    world.run_system_once(stack::add_to_stack)?;
+    world.run_system_once(stack::resolve_1)?;
+
+    fn query_pt(
+        query: Query<(
+            &CardSubtypes,
+            &Toughness,
+            &Power,
+            &ModifyingSubtypes,
+            &ModifyingToughness,
+            &ModifyingPower,
+        )>,
+        toughness_modifiers: Query<&ToughnessModifier>,
+        power_modifiers: Query<&PowerModifier>,
+        subtype_modifiers: Query<&ModifyingSubtypeSet>,
+    ) -> anyhow::Result<(EnumSet<Subtype>, Option<i32>, Option<i32>)> {
+        let (subtypes, toughness, power, subtypes_mod, toughness_mod, power_mod) = query.single();
+        Ok((
+            subtypes_mod.union(subtypes, &subtype_modifiers)?,
+            toughness_mod.toughness(toughness, &toughness_modifiers)?,
+            power_mod.power(power, &power_modifiers)?,
+        ))
+    }
+
+    let result = world.run_system_once(query_pt)?;
     assert_eq!(
-        results,
-        [ActionResult::AddToStack(
-            card,
-            EffectsInPlay {
-                effects: vec![
-                    ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
-                        modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                            ModifyBasePowerToughness {
-                                targets: vec![Subtype::Elf],
-                                power: 5,
-                                toughness: 5,
-                                restrictions: Default::default(),
-                            }
-                        ),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                    }),
-                    ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
-                        modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            targets: vec![Subtype::Elf],
-                            types: vec![Subtype::Dinosaur],
-                            restrictions: Default::default(),
-                        }),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                    })
-                ],
-                source: card,
-                controller: player.clone(),
-            },
-            None
-        )]
+        result,
+        (
+            enum_set!(Subtype::Elf | Subtype::Shaman | Subtype::Dinosaur),
+            Some(5),
+            Some(5)
+        )
     );
 
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
-
-    let results = stack.resolve_1(&all_cards, &battlefield);
+    world.run_system_once(battlefield::end_turn)?;
+    let result = world.run_system_once(query_pt)?;
     assert_eq!(
-        results,
-        [
-            StackResult::ApplyToBattlefield {
-                source: card,
-                modifier: ModifierInPlay {
-                    modifier: BattlefieldModifier {
-                        modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                            ModifyBasePowerToughness {
-                                targets: vec![Subtype::Elf],
-                                power: 5,
-                                toughness: 5,
-                                restrictions: Default::default(),
-                            }
-                        ),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                    },
-                    controller: player.clone(),
-                    modifying: Default::default(),
-                },
-            },
-            StackResult::ApplyToBattlefield {
-                source: card,
-                modifier: ModifierInPlay {
-                    modifier: BattlefieldModifier {
-                        modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            targets: vec![Subtype::Elf],
-                            types: vec![Subtype::Dinosaur],
-                            restrictions: Default::default(),
-                        }),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                    },
-                    controller: player.clone(),
-                    modifying: Default::default(),
-                }
-            }
-        ]
-    );
-
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-
-    let card = battlefield.select_card(0);
-    let card = &all_cards[card];
-    assert_eq!(card.card.power(), 5);
-    assert_eq!(card.card.toughness(), 5);
-
-    assert_eq!(
-        card.card.subtypes(),
-        HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
-    );
-
-    battlefield.end_turn(&mut all_cards, &mut modifiers);
-
-    let card = battlefield.select_card(0);
-    let card = &all_cards[card];
-    assert_eq!(card.card.power(), 1);
-    assert_eq!(card.card.toughness(), 1);
-
-    assert_eq!(
-        card.card.subtypes,
-        HashSet::from([Subtype::Elf, Subtype::Shaman])
+        result,
+        (enum_set!(Subtype::Elf | Subtype::Shaman), Some(1), Some(1))
     );
 
     Ok(())
 }
-*/

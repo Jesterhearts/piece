@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
+use bevy_ecs::{bundle::Bundle, component::Component};
 use enumset::EnumSet;
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     types::Subtype,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
@@ -97,7 +97,7 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModifyBasePowerToughness {
-    pub targets: Vec<Subtype>,
+    pub targets: EnumSet<Subtype>,
     pub power: i32,
     pub toughness: i32,
     pub restrictions: EnumSet<Restriction>,
@@ -112,7 +112,7 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
                 .targets
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
             power: value.power,
             toughness: value.toughness,
             restrictions: value
@@ -126,8 +126,8 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AddCreatureSubtypes {
-    pub targets: Vec<Subtype>,
-    pub types: Vec<Subtype>,
+    pub targets: EnumSet<Subtype>,
+    pub types: EnumSet<Subtype>,
     pub restrictions: EnumSet<Restriction>,
 }
 
@@ -140,12 +140,12 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
                 .targets
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
             types: value
                 .types
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
             restrictions: value
                 .restrictions
                 .iter()
@@ -197,13 +197,34 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub enum ModifyBattlefield {
     ModifyBasePowerToughness(ModifyBasePowerToughness),
     AddCreatureSubtypes(AddCreatureSubtypes),
     RemoveAllSubtypes(RemoveAllSubtypes),
     AddPowerToughness(AddPowerToughness),
     Vigilance(Vigilance),
+}
+
+impl ModifyBattlefield {
+    pub fn restrictions(&self) -> &EnumSet<Restriction> {
+        match self {
+            ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
+                restrictions,
+                ..
+            }) => restrictions,
+            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
+                restrictions, ..
+            }) => restrictions,
+            ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes { restrictions }) => {
+                restrictions
+            }
+            ModifyBattlefield::AddPowerToughness(AddPowerToughness { restrictions, .. }) => {
+                restrictions
+            }
+            ModifyBattlefield::Vigilance(Vigilance { restrictions }) => restrictions,
+        }
+    }
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -244,7 +265,7 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Component)]
+#[derive(Debug, PartialEq, Eq, Clone, Bundle)]
 pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,
