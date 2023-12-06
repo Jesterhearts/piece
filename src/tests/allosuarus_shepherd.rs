@@ -1,5 +1,5 @@
+use enumset::enum_set;
 use pretty_assertions::assert_eq;
-use std::collections::HashSet;
 
 use crate::{
     battlefield::{ActionResult, Battlefield},
@@ -41,7 +41,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyBasePowerToughness(
                             ModifyBasePowerToughness {
-                                targets: vec![Subtype::Elf],
+                                targets: enum_set![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
                                 restrictions: Default::default(),
@@ -52,8 +52,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     }),
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            targets: vec![Subtype::Elf],
-                            types: vec![Subtype::Dinosaur],
+                            targets: enum_set![Subtype::Elf],
+                            types: enum_set![Subtype::Dinosaur],
                             restrictions: Default::default(),
                         }),
                         controller: Controller::You,
@@ -79,7 +79,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     modifier: BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyBasePowerToughness(
                             ModifyBasePowerToughness {
-                                targets: vec![Subtype::Elf],
+                                targets: enum_set![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
                                 restrictions: Default::default(),
@@ -97,8 +97,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                 modifier: ModifierInPlay {
                     modifier: BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            targets: vec![Subtype::Elf],
-                            types: vec![Subtype::Dinosaur],
+                            targets: enum_set![Subtype::Elf],
+                            types: enum_set![Subtype::Dinosaur],
                             restrictions: Default::default(),
                         }),
                         controller: Controller::You,
@@ -115,24 +115,24 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     let card = battlefield.select_card(0);
     let card = &all_cards[card];
-    assert_eq!(card.card.power(), 5);
-    assert_eq!(card.card.toughness(), 5);
+    assert_eq!(card.card.power(), Some(5));
+    assert_eq!(card.card.toughness(), Some(5));
 
     assert_eq!(
         card.card.subtypes(),
-        HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
+        enum_set![Subtype::Elf | Subtype::Shaman | Subtype::Dinosaur]
     );
 
     battlefield.end_turn(&mut all_cards, &mut modifiers);
 
     let card = battlefield.select_card(0);
     let card = &all_cards[card];
-    assert_eq!(card.card.power(), 1);
-    assert_eq!(card.card.toughness(), 1);
+    assert_eq!(card.card.power(), Some(1));
+    assert_eq!(card.card.toughness(), Some(1));
 
     assert_eq!(
         card.card.subtypes,
-        HashSet::from([Subtype::Elf, Subtype::Shaman])
+        enum_set![Subtype::Elf | Subtype::Shaman]
     );
 
     Ok(())

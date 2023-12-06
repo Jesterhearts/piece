@@ -87,21 +87,21 @@ fn equipment_works() -> anyhow::Result<()> {
     stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
     let card = &all_cards[creature];
-    assert_eq!(card.card.power(), 6);
-    assert_eq!(card.card.toughness(), 4);
+    assert_eq!(card.card.power(), Some(6));
+    assert_eq!(card.card.toughness(), Some(4));
 
     let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
     let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2);
 
     let card2 = &all_cards[creature2];
-    assert_eq!(card2.card.power(), 4);
-    assert_eq!(card2.card.toughness(), 2);
+    assert_eq!(card2.card.power(), Some(4));
+    assert_eq!(card2.card.toughness(), Some(2));
 
     battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, equipment);
 
     let card = &all_cards[creature];
-    assert_eq!(card.card.power(), 4);
-    assert_eq!(card.card.toughness(), 2);
+    assert_eq!(card.card.power(), Some(4));
+    assert_eq!(card.card.toughness(), Some(2));
 
     assert!(battlefield.no_modifiers());
 

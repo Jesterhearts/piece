@@ -7,7 +7,7 @@ use crate::{
     types::{Subtype, Type},
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SpellTarget {
     pub controller: Controller,
     pub types: Vec<Type>,

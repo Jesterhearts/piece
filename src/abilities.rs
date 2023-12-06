@@ -9,7 +9,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
     pub restrictions: EnumSet<Restriction>,
@@ -61,7 +61,7 @@ impl From<&protogen::abilities::etbability::Ability> for ETBAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
     Vigilance,
@@ -107,7 +107,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<ActivatedAbilityEffect>,

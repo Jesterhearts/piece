@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use enumset::enum_set;
+use enumset::{enum_set, EnumSet};
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     abilities::{ETBAbility, StaticAbility},
+    card::SubtypeModifier,
     controller::Controller,
     cost::AdditionalCost,
     effects::{
@@ -33,7 +34,7 @@ pub enum ActionResult {
     },
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModifierSource {
     UntilEndOfTurn,
     Card(CardId),
@@ -50,7 +51,7 @@ pub struct Battlefield {
     pub graveyards: HashMap<PlayerRef, IndexSet<CardId>>,
     pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
 
-    pub sourced_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
+    pub global_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
     pub attaching_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
     pub attached_cards: IndexMap<CardId, HashSet<CardId>>,
 }
@@ -61,7 +62,7 @@ impl Battlefield {
     }
 
     pub fn no_modifiers(&self) -> bool {
-        self.sourced_modifiers.is_empty()
+        self.global_modifiers.is_empty()
             && self.attaching_modifiers.is_empty()
             && self.attached_cards.values().all(|v| v.is_empty())
     }
@@ -82,7 +83,7 @@ impl Battlefield {
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::ModifyBasePowerToughness(
                         ModifyBasePowerToughness {
-                            targets: vec![],
+                            targets: enum_set!(),
                             power: 2,
                             toughness: 2,
                             restrictions: enum_set!(Restriction::SingleTarget),
@@ -92,11 +93,20 @@ impl Battlefield {
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
                 },
                 controller: cards[source_card_id].controller.clone(),
-                modifying: vec![],
+                modifying: vec![source_card_id],
             });
 
-            self.sourced_modifiers
-                .entry(ModifierSource::Card(source_card_id))
+            cards[source_card_id]
+                .card
+                .adjusted_base_power
+                .insert(modifier_id, 2);
+            cards[source_card_id]
+                .card
+                .adjusted_base_toughness
+                .insert(modifier_id, 2);
+
+            self.attaching_modifiers
+                .entry(source_card_id)
                 .or_default()
                 .insert(modifier_id);
 
@@ -109,11 +119,16 @@ impl Battlefield {
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
                 },
                 controller: cards[source_card_id].controller.clone(),
-                modifying: vec![],
+                modifying: vec![source_card_id],
             });
 
-            self.sourced_modifiers
-                .entry(ModifierSource::Card(source_card_id))
+            cards[source_card_id]
+                .card
+                .modified_subtypes
+                .insert(modifier_id, SubtypeModifier::RemoveAll);
+
+            self.attaching_modifiers
+                .entry(source_card_id)
                 .or_default()
                 .insert(modifier_id);
         }
@@ -149,7 +164,7 @@ impl Battlefield {
             }
         }
 
-        for (source, sourced_modifiers) in self.sourced_modifiers.iter() {
+        for (source, sourced_modifiers) in self.global_modifiers.iter() {
             match source {
                 ModifierSource::UntilEndOfTurn => {}
                 ModifierSource::Card(id) => {
@@ -171,7 +186,7 @@ impl Battlefield {
 
     pub fn end_turn(&mut self, cards: &mut AllCards, modifers: &mut AllModifiers) {
         for effect in self
-            .sourced_modifiers
+            .global_modifiers
             .get_mut(&ModifierSource::UntilEndOfTurn)
             .unwrap_or(&mut Default::default())
             .drain()
@@ -191,9 +206,7 @@ impl Battlefield {
         for card_id in self.permanents.keys() {
             let card = &cards[*card_id].card;
 
-            if (card.toughness.is_some() || !card.adjusted_base_toughness.is_empty())
-                && card.toughness() <= 0
-            {
+            if card.toughness() <= Some(0) {
                 result.push(ActionResult::PermanentToGraveyard(*card_id));
             }
         }
@@ -264,19 +277,13 @@ impl Battlefield {
         results
     }
 
-    pub fn static_abilities(
-        &self,
-        cards: &AllCards,
-    ) -> IndexMap<StaticAbility, HashSet<PlayerRef>> {
-        let mut result: IndexMap<StaticAbility, HashSet<PlayerRef>> = Default::default();
+    pub fn static_abilities(&self, cards: &AllCards) -> Vec<(StaticAbility, PlayerRef)> {
+        let mut result: Vec<(StaticAbility, PlayerRef)> = Default::default();
 
         for (id, _) in self.permanents.iter() {
             let card = &cards[*id];
             for ability in card.card.static_abilities.iter().cloned() {
-                result
-                    .entry(ability)
-                    .or_default()
-                    .insert(card.controller.clone());
+                result.push((ability, card.controller.clone()));
             }
         }
 
@@ -340,7 +347,7 @@ impl Battlefield {
         stack: &mut Stack,
     ) {
         if let Some(removed_modifiers) = self
-            .sourced_modifiers
+            .global_modifiers
             .remove(&ModifierSource::Card(removed_card_id))
         {
             for modifier_id in removed_modifiers {
@@ -371,7 +378,10 @@ impl Battlefield {
 
         if let Some(attached_cards) = self.attached_cards.remove(&removed_card_id) {
             for card in attached_cards {
-                if cards[card].card.subtypes_intersect(&[Subtype::Aura]) {
+                if cards[card]
+                    .card
+                    .subtypes_intersect(enum_set!(Subtype::Aura))
+                {
                     self.permanent_to_graveyard(cards, modifiers, stack, card);
                 }
             }
@@ -386,7 +396,7 @@ impl Battlefield {
         modifier_id: ModifierId,
     ) {
         Self::apply_modifier_to_targets_internal(
-            &mut self.sourced_modifiers,
+            &mut self.global_modifiers,
             &mut self.attaching_modifiers,
             &mut self.attached_cards,
             cards,
@@ -406,7 +416,7 @@ impl Battlefield {
         targets: Vec<CardId>,
     ) {
         Self::apply_modifier_to_targets_internal(
-            &mut self.sourced_modifiers,
+            &mut self.global_modifiers,
             &mut self.attaching_modifiers,
             &mut self.attached_cards,
             cards,
@@ -472,7 +482,7 @@ impl Battlefield {
             .copied()
             .filter(move |card_id| {
                 let card = &cards[*card_id].card;
-                card.types.contains(&Type::Creature)
+                card.types.contains(Type::Creature)
             })
             .collect()
     }

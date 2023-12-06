@@ -27,18 +27,18 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     let _ = battlefield.add(&mut all_cards, &mut modifiers, bear);
 
     let card = &all_cards[elesh].card;
-    assert_eq!(card.power(), 4);
-    assert_eq!(card.toughness(), 7);
+    assert_eq!(card.power(), Some(4));
+    assert_eq!(card.toughness(), Some(7));
 
     let card = &all_cards[bear].card;
-    assert_eq!(card.power(), 6);
-    assert_eq!(card.toughness(), 4);
+    assert_eq!(card.power(), Some(6));
+    assert_eq!(card.toughness(), Some(4));
 
     battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, elesh);
 
     let card = &all_cards[bear].card;
-    assert_eq!(card.power(), 4);
-    assert_eq!(card.toughness(), 2);
+    assert_eq!(card.power(), Some(4));
+    assert_eq!(card.toughness(), Some(2));
 
     Ok(())
 }

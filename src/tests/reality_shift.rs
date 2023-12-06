@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -54,16 +53,16 @@ fn resolves_shift() -> anyhow::Result<()> {
 
     assert_eq!(
         all_cards[creature].card.subtypes(),
-        HashSet::from([Subtype::Bear])
+        enum_set!(Subtype::Bear)
     );
-    assert_eq!(all_cards[creature].card.power(), 4);
-    assert_eq!(all_cards[creature].card.toughness(), 2);
+    assert_eq!(all_cards[creature].card.power(), Some(4));
+    assert_eq!(all_cards[creature].card.toughness(), Some(2));
 
     let creature = battlefield.select_card(0);
 
-    assert_eq!(all_cards[creature].card.subtypes(), Default::default());
-    assert_eq!(all_cards[creature].card.power(), 2);
-    assert_eq!(all_cards[creature].card.toughness(), 2);
+    assert_eq!(all_cards[creature].card.subtypes(), enum_set!());
+    assert_eq!(all_cards[creature].card.power(), Some(2));
+    assert_eq!(all_cards[creature].card.toughness(), Some(2));
     assert!(all_cards[creature].face_down);
     assert!(all_cards[creature].manifested);
 

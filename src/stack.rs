@@ -44,7 +44,7 @@ pub enum StackResult {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ActiveTarget {
     Stack { id: usize },
     Battlefield { id: CardId },

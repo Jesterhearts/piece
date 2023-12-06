@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{card::Effect, mana::Cost};
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Ability {
     pub cost: Cost,
