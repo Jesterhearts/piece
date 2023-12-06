@@ -41,6 +41,7 @@ pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
     UntilUnattached,
+    UntilAuraLeavesBattlefield,
 }
 
 impl From<&protogen::effects::duration::Duration> for EffectDuration {
@@ -51,6 +52,9 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
                 Self::UntilSourceLeavesBattlefield
             }
             protogen::effects::duration::Duration::UntilUnattached(_) => Self::UntilUnattached,
+            protogen::effects::duration::Duration::UntilAuraLeavesBattlefield(_) => {
+                Self::UntilAuraLeavesBattlefield
+            }
         }
     }
 }

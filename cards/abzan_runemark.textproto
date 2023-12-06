@@ -19,7 +19,7 @@ enchant {
       }
     }
     controller { any {} }
-    duration { until_source_leaves_battlefield {} }
+    duration { until_aura_leaves_battlefield {} }
     restrictions { single_target {} }
   }
   modifiers {
@@ -29,7 +29,7 @@ enchant {
       }
     }
     controller { any {} }
-    duration { until_source_leaves_battlefield {} }
+    duration { until_aura_leaves_battlefield {} }
     restrictions { single_target {} }
   }
   restrictions { creatures_only {} }

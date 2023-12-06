@@ -16,7 +16,7 @@ use crate::{
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
     targets::Restriction,
-    types::{Subtype, Type},
+    types::Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,7 +155,7 @@ impl Battlefield {
         for etb in card.card.etb_abilities.iter() {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
-                    assert_eq!(targets.len(), 1);
+                    assert!(targets.len() <= 1);
                     result.push(ActionResult::CloneCreatureNonTargeting {
                         source: source_card_id,
                         target: targets.pop(),
@@ -182,11 +182,11 @@ impl Battlefield {
             }
         }
 
-        for (source, sourced_modifiers) in self.global_modifiers.iter() {
+        for (source, global_modifiers) in self.global_modifiers.iter() {
             match source {
                 ModifierSource::UntilEndOfTurn => {}
                 ModifierSource::Card(id) => {
-                    for modifier_id in sourced_modifiers.iter().copied() {
+                    for modifier_id in global_modifiers.iter().copied() {
                         apply_modifier_to_targets(
                             modifiers,
                             modifier_id,
@@ -378,7 +378,7 @@ impl Battlefield {
         removed_card_id: CardId,
         modifiers: &mut AllModifiers,
         cards: &mut AllCards,
-        stack: &mut Stack,
+        _stack: &mut Stack,
     ) {
         if let Some(removed_modifiers) = self
             .global_modifiers
@@ -412,11 +412,14 @@ impl Battlefield {
 
         if let Some(attached_cards) = self.attached_cards.remove(&removed_card_id) {
             for card in attached_cards {
-                if cards[card]
-                    .card
-                    .subtypes_intersect(enum_set!(Subtype::Aura))
-                {
-                    self.permanent_to_graveyard(cards, modifiers, stack, card);
+                let attached_modifiers = self
+                    .attaching_modifiers
+                    .remove(&card)
+                    .expect("Attached modifiers should have a corresponding attaching modifier");
+                for modifier in attached_modifiers {
+                    if modifiers[modifier].modifying.len() <= 1 {
+                        modifiers.remove(modifier);
+                    }
                 }
             }
         }
@@ -463,7 +466,7 @@ impl Battlefield {
 
     #[allow(clippy::too_many_arguments)]
     fn apply_modifier_to_targets_internal(
-        sourced_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
+        global_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
         attaching_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
         attached_modifiers: &mut IndexMap<CardId, HashSet<CardId>>,
         cards: &mut AllCards,
@@ -484,18 +487,30 @@ impl Battlefield {
 
         match modifier.modifier.duration {
             EffectDuration::UntilEndOfTurn => {
-                sourced_modifiers
+                global_modifiers
                     .entry(ModifierSource::UntilEndOfTurn)
                     .or_default()
                     .insert(modifier_id);
             }
             EffectDuration::UntilSourceLeavesBattlefield => {
-                sourced_modifiers
+                global_modifiers
                     .entry(ModifierSource::Card(source_card_id))
                     .or_default()
                     .insert(modifier_id);
             }
             EffectDuration::UntilUnattached => {
+                attaching_modifiers
+                    .entry(source_card_id)
+                    .or_default()
+                    .insert(modifier_id);
+                for target in targets {
+                    attached_modifiers
+                        .entry(target)
+                        .or_default()
+                        .insert(source_card_id);
+                }
+            }
+            EffectDuration::UntilAuraLeavesBattlefield => {
                 attaching_modifiers
                     .entry(source_card_id)
                     .or_default()

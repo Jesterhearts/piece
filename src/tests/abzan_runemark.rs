@@ -63,6 +63,9 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     let aura = all_cards.add(&cards, player.clone(), "Abzan Runemark");
     let _ = battlefield.add(&mut all_cards, &mut modifiers, aura, vec![creature]);
 
+    let results = battlefield.check_sba(&all_cards);
+    assert_eq!(results, []);
+
     let card = &all_cards[creature];
     assert_eq!(card.card.power(), Some(6));
     assert_eq!(card.card.toughness(), Some(4));

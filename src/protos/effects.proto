@@ -31,11 +31,14 @@ message Duration {
   }
   message UntilUnattached {
   }
+  message UntilAuraLeavesBattlefield {
+  }
 
   oneof duration {
     UntilEndOfTurn until_end_of_turn = 1;
     UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
     UntilUnattached until_unattached = 3;
+    UntilAuraLeavesBattlefield until_aura_leaves_battlefield = 4;
   }
 }
 
