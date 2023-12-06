@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 use crate::{mana::Mana, protogen};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CastingCost {
     pub mana_cost: Vec<Mana>,
 }

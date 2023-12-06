@@ -55,7 +55,9 @@ fn etb_clones() -> anyhow::Result<()> {
         })
         .collect();
 
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results =
+        battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    assert_eq!(results, []);
 
     let clone = &all_cards[clone].card;
     let creature = &all_cards[creature].card;
@@ -107,7 +109,9 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         })
         .collect();
 
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results =
+        battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    assert_eq!(results, []);
 
     let results = battlefield.check_sba(&all_cards);
 

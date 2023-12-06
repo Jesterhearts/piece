@@ -6,6 +6,7 @@ import "controller.proto";
 import "cost.proto";
 import "effects.proto";
 import "targets.proto";
+import "triggers.proto";
 
 message ETBAbility {
   message CopyOfAnyCreature {
@@ -15,6 +16,8 @@ message ETBAbility {
     CopyOfAnyCreature copy_of_any_creature = 1;
     effects.Mill mill = 2;
     effects.ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 3;
+    effects.ReturnFromGraveyardToBattlefield 
+      return_from_graveyard_to_battlefield = 4;
   }
 }
 
@@ -38,4 +41,9 @@ message StaticAbility {
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
   repeated effects.ActivatedAbilityEffect effects = 2;
+}
+
+message TriggeredAbility {  
+  triggers.Trigger trigger = 1;
+  repeated effects.TriggeredEffect effects = 2;
 }

@@ -36,7 +36,9 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(card2.card.power(), Some(4));
     assert_eq!(card2.card.toughness(), Some(2));
 
-    battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, aura);
+    let results =
+        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, aura);
+    assert_eq!(results, []);
 
     let card = &all_cards[creature];
     assert_eq!(card.card.power(), Some(4));
@@ -70,12 +72,16 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     assert_eq!(card.card.power(), Some(6));
     assert_eq!(card.card.toughness(), Some(4));
 
-    battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, creature);
+    let results =
+        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, creature);
+    assert_eq!(results, []);
     let results = battlefield.check_sba(&all_cards);
 
     assert_eq!(results, [ActionResult::PermanentToGraveyard(aura)]);
 
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results =
+        battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    assert_eq!(results, []);
 
     assert!(battlefield.no_modifiers());
     assert!(battlefield.is_empty());

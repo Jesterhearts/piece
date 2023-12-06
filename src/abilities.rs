@@ -4,9 +4,13 @@ use enumset::EnumSet;
 use crate::{
     controller::Controller,
     cost::AbilityCost,
-    effects::{ActivatedAbilityEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToLibrary},
+    effects::{
+        ActivatedAbilityEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
+        ReturnFromGraveyardToLibrary, TriggeredEffect,
+    },
     protogen,
     targets::Restriction,
+    triggers::Trigger,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +43,7 @@ pub enum ETBAbility {
     CopyOfAnyCreature,
     Mill(Mill),
     ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
+    ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
 }
 
 impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
@@ -66,6 +71,9 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
             }
             protogen::abilities::etbability::Ability::ReturnFromGraveyardToLibrary(ret) => {
                 Ok(Self::ReturnFromGraveyardToLibrary(ret.try_into()?))
+            }
+            protogen::abilities::etbability::Ability::ReturnFromGraveyardToBattlefield(ret) => {
+                Ok(Self::ReturnFromGraveyardToBattlefield(ret.try_into()?))
             }
         }
     }
@@ -133,6 +141,27 @@ impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
                 .effects
                 .iter()
                 .map(ActivatedAbilityEffect::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TriggeredAbility {
+    pub trigger: Trigger,
+    pub effects: Vec<TriggeredEffect>,
+}
+
+impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::abilities::TriggeredAbility) -> Result<Self, Self::Error> {
+        Ok(Self {
+            trigger: value.trigger.get_or_default().try_into()?,
+            effects: value
+                .effects
+                .iter()
+                .map(TriggeredEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }

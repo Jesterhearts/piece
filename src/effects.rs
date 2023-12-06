@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use enumset::{EnumSet, EnumSetType};
 
 use crate::{
+    card::Color,
     controller::Controller,
     mana::Mana,
     protogen,
@@ -42,6 +43,31 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGra
         Ok(Self {
             count: usize::try_from(value.count)?,
             controller: value.controller.get_or_default().try_into()?,
+            types: value
+                .types
+                .iter()
+                .map(Type::try_from)
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReturnFromGraveyardToBattlefield {
+    pub count: usize,
+    pub types: EnumSet<Type>,
+}
+
+impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
+    for ReturnFromGraveyardToBattlefield
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::ReturnFromGraveyardToBattlefield,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            count: usize::try_from(value.count)?,
             types: value
                 .types
                 .iter()
@@ -454,6 +480,102 @@ impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for Activated
             protogen::effects::activated_ability_effect::Effect::AddPowerToughnessToTarget(
                 modifier,
             ) => Ok(Self::AddPowerToughnessToTarget(modifier.try_into()?)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenCreature {
+    pub name: String,
+    pub types: EnumSet<Type>,
+    pub subtypes: EnumSet<Subtype>,
+    pub colors: EnumSet<Color>,
+    pub power: usize,
+    pub toughness: usize,
+}
+
+impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::create_token::Creature) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name.clone(),
+            types: value
+                .types
+                .iter()
+                .map(Type::try_from)
+                .chain(std::iter::once(Ok(Type::Creature)))
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+            subtypes: value
+                .subtypes
+                .iter()
+                .map(Subtype::try_from)
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+            colors: value
+                .colors
+                .iter()
+                .map(Color::try_from)
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+            power: usize::try_from(value.power)?,
+            toughness: usize::try_from(value.toughness)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Token {
+    Creature(TokenCreature),
+}
+
+impl TryFrom<&protogen::effects::CreateToken> for Token {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::CreateToken) -> Result<Self, Self::Error> {
+        value
+            .token
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected CreateToken to have a token specified"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::create_token::Token> for Token {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::create_token::Token) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::create_token::Token::Creature(creature) => {
+                Ok(Self::Creature(creature.try_into()?))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TriggeredEffect {
+    CreateToken(Token),
+}
+
+impl TryFrom<&protogen::effects::TriggeredEffect> for TriggeredEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::TriggeredEffect) -> Result<Self, Self::Error> {
+        value
+            .effect
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected triggered effect to havev an effect set"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::triggered_effect::Effect> for TriggeredEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::triggered_effect::Effect) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::triggered_effect::Effect::CreateToken(token) => {
+                Ok(Self::CreateToken(token.try_into()?))
+            }
         }
     }
 }

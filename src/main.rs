@@ -25,6 +25,7 @@ pub mod types;
 
 #[cfg(test)]
 pub mod tests;
+pub mod triggers;
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
@@ -57,7 +58,6 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 fn main() -> anyhow::Result<()> {
     let cards = load_cards()?;
     dbg!(&cards);
-    dbg!(cards.get("Elesh Norn, Grand Cenobite"));
 
     Ok(())
 }

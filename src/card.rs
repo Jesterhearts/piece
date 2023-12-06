@@ -3,13 +3,13 @@ use enumset::{EnumSet, EnumSetType};
 use indexmap::IndexMap;
 
 use crate::{
-    abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility},
+    abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility, TriggeredAbility},
     battlefield::Battlefield,
     controller::Controller,
     cost::CastingCost,
     effects::{
         ActivatedAbilityEffect, AddCreatureSubtypes, AddPowerToughness, BattlefieldModifier,
-        GainMana, ModifyBasePowerToughness, ModifyBattlefield, SpellEffect,
+        GainMana, ModifyBasePowerToughness, ModifyBattlefield, SpellEffect, Token, TokenCreature,
     },
     in_play::{AllCards, CardId, ModifierId},
     player::Player,
@@ -29,10 +29,10 @@ pub enum Color {
     Colorless,
 }
 
-impl TryFrom<&protogen::card::Color> for Color {
+impl TryFrom<&protogen::color::Color> for Color {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::card::Color) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::color::Color) -> Result<Self, Self::Error> {
         value
             .color
             .as_ref()
@@ -41,15 +41,15 @@ impl TryFrom<&protogen::card::Color> for Color {
     }
 }
 
-impl From<&protogen::card::color::Color> for Color {
-    fn from(value: &protogen::card::color::Color) -> Self {
+impl From<&protogen::color::color::Color> for Color {
+    fn from(value: &protogen::color::color::Color) -> Self {
         match value {
-            protogen::card::color::Color::White(_) => Self::White,
-            protogen::card::color::Color::Blue(_) => Self::Blue,
-            protogen::card::color::Color::Black(_) => Self::Black,
-            protogen::card::color::Color::Red(_) => Self::Red,
-            protogen::card::color::Color::Green(_) => Self::Green,
-            protogen::card::color::Color::Colorless(_) => Self::Colorless,
+            protogen::color::color::Color::White(_) => Self::White,
+            protogen::color::color::Color::Blue(_) => Self::Blue,
+            protogen::color::color::Color::Black(_) => Self::Black,
+            protogen::color::color::Color::Red(_) => Self::Red,
+            protogen::color::color::Color::Green(_) => Self::Green,
+            protogen::color::color::Color::Colorless(_) => Self::Colorless,
         }
     }
 }
@@ -107,7 +107,7 @@ pub enum ActivatedAbilityModifier {
     Add(ActivatedAbility),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Card {
     pub name: String,
     types: EnumSet<Type>,
@@ -118,7 +118,7 @@ pub struct Card {
 
     pub cost: CastingCost,
     pub casting_modifiers: Vec<CastingModifier>,
-    pub colors: Vec<Color>,
+    pub colors: EnumSet<Color>,
 
     pub oracle_text: String,
     pub flavor_text: String,
@@ -133,6 +133,8 @@ pub struct Card {
 
     activated_abilities: Vec<ActivatedAbility>,
     pub adjusted_activated_abilities: IndexMap<ModifierId, ActivatedAbilityModifier>,
+
+    pub triggered_abilities: Vec<TriggeredAbility>,
 
     power: Option<usize>,
     toughness: Option<usize>,
@@ -179,7 +181,7 @@ impl TryFrom<protogen::card::Card> for Card {
                 .colors
                 .iter()
                 .map(Color::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
             oracle_text: value.oracle_text,
             flavor_text: value.flavor_text,
             enchant: value
@@ -208,6 +210,11 @@ impl TryFrom<protogen::card::Card> for Card {
                 .map(ActivatedAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             adjusted_activated_abilities: Default::default(),
+            triggered_abilities: value
+                .triggered_abilities
+                .iter()
+                .map(TriggeredAbility::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
             power: value
                 .power
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
@@ -228,6 +235,29 @@ impl TryFrom<protogen::card::Card> for Card {
     }
 }
 
+impl From<Token> for Card {
+    fn from(value: Token) -> Self {
+        match value {
+            Token::Creature(TokenCreature {
+                name,
+                types,
+                subtypes,
+                colors,
+                power,
+                toughness,
+            }) => Self {
+                name,
+                types,
+                subtypes,
+                colors,
+                power: Some(power),
+                toughness: Some(toughness),
+                ..Default::default()
+            },
+        }
+    }
+}
+
 impl Card {
     pub fn color(&self) -> EnumSet<Color> {
         let mut colors = EnumSet::default();
@@ -236,7 +266,7 @@ impl Card {
             colors.insert(color);
         }
         for color in self.colors.iter() {
-            colors.insert(*color);
+            colors.insert(color);
         }
 
         colors

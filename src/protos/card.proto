@@ -3,34 +3,11 @@ syntax = "proto3";
 package card;
 
 import "abilities.proto";
+import "color.proto";
 import "cost.proto";
 import "effects.proto";
 import "targets.proto";
 import "types.proto";
-
-message Color {
-  message White {
-  }
-  message Blue {
-  }
-  message Black {
-  }
-  message Red {
-  }
-  message Green {
-  }
-  message Colorless {
-  }
-
-  oneof color {
-    White white = 1;
-    Blue blue = 2;
-    Black black = 3;
-    Red red = 4;
-    Green green = 5;
-    Colorless colorless = 6;
-  }
-}
 
 message CastingModifier {
   message CannotBeCountered {
@@ -51,7 +28,7 @@ message Card {
 
   cost.CastingCost cost = 4;
   repeated CastingModifier casting_modifiers = 5;
-  repeated Color colors = 6;
+  repeated color.Color colors = 6;
 
   string oracle_text = 7;
   string flavor_text = 8;
@@ -63,10 +40,11 @@ message Card {
   repeated abilities.ETBAbility etb_abilities = 11;
   repeated abilities.StaticAbility static_abilities = 12;
   repeated abilities.ActivatedAbility activated_abilities = 13;
+  repeated abilities.TriggeredAbility triggered_abilities = 14;
 
-  optional int32 power = 14;
-  optional int32 toughness = 15;
+  optional int32 power = 15;
+  optional int32 toughness = 16;
 
-  bool hexproof = 16;
-  bool shroud = 17;
+  bool hexproof = 17;
+  bool shroud = 18;
 }

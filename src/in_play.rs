@@ -6,7 +6,7 @@ use crate::{
     abilities::StaticAbility,
     card::Card,
     deck::{Deck, DeckDefinition},
-    effects::{ActivatedAbilityEffect, BattlefieldModifier},
+    effects::{ActivatedAbilityEffect, BattlefieldModifier, Token},
     player::PlayerRef,
     Cards,
 };
@@ -19,6 +19,14 @@ pub struct CardInPlay {
     pub owner: PlayerRef,
     pub manifested: bool,
     pub face_down: bool,
+    pub is_token: bool,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TokenInPlay {
+    pub token: Token,
+    pub controller: PlayerRef,
+    pub owner: PlayerRef,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -59,7 +67,7 @@ pub struct CardId(usize);
 #[derive(Default)]
 pub struct AllCards {
     pub cards: HashMap<CardId, CardInPlay>,
-    next_id: usize,
+    next_card_id: usize,
 }
 
 impl std::ops::Index<CardId> for AllCards {
@@ -107,7 +115,7 @@ impl AllCards {
 
     #[must_use]
     pub fn add(&mut self, cards: &Cards, owner: PlayerRef, name: &str) -> CardId {
-        let id = self.next_id();
+        let id = self.next_card_id();
         self.cards.insert(
             id,
             CardInPlay {
@@ -117,14 +125,33 @@ impl AllCards {
                 owner,
                 manifested: false,
                 face_down: false,
+                is_token: false,
             },
         );
         id
     }
 
-    fn next_id(&mut self) -> CardId {
-        let id = self.next_id;
-        self.next_id += 1;
+    #[must_use]
+    pub fn add_token(&mut self, owner: PlayerRef, token: Token) -> CardId {
+        let id = self.next_card_id();
+        self.cards.insert(
+            id,
+            CardInPlay {
+                card: token.clone().into(),
+                original_card: token.into(),
+                controller: owner.clone(),
+                owner,
+                manifested: false,
+                face_down: false,
+                is_token: true,
+            },
+        );
+        id
+    }
+
+    fn next_card_id(&mut self) -> CardId {
+        let id = self.next_card_id;
+        self.next_card_id += 1;
         CardId(id)
     }
 }

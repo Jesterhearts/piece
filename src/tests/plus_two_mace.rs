@@ -98,7 +98,9 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(card2.card.power(), Some(4));
     assert_eq!(card2.card.toughness(), Some(2));
 
-    battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, equipment);
+    let results =
+        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, equipment);
+    assert_eq!(results, []);
 
     let card = &all_cards[creature];
     assert_eq!(card.card.power(), Some(4));

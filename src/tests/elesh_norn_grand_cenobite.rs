@@ -41,7 +41,9 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     assert_eq!(card.power(), Some(6));
     assert_eq!(card.toughness(), Some(4));
 
-    battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, elesh);
+    let results =
+        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, elesh);
+    assert_eq!(results, []);
 
     let card = &all_cards[bear].card;
     assert_eq!(card.power(), Some(4));

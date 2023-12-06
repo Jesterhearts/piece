@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    vec,
+};
 
 use enumset::{enum_set, EnumSet};
 use indexmap::{IndexMap, IndexSet};
@@ -10,7 +13,8 @@ use crate::{
     cost::AdditionalCost,
     effects::{
         BattlefieldModifier, EffectDuration, Mill, ModifyBasePowerToughness, ModifyBattlefield,
-        RemoveAllSubtypes, ReturnFromGraveyardToLibrary,
+        RemoveAllSubtypes, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token,
+        TriggeredEffect,
     },
     in_play::{
         AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay, ModifierType,
@@ -18,6 +22,7 @@ use crate::{
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
     targets::Restriction,
+    triggers::{Location, PutIntoGraveyard, Trigger},
     types::Type,
 };
 
@@ -47,6 +52,15 @@ pub enum UnresolvedActionResult {
         types: EnumSet<Type>,
         valid_targets: Vec<CardId>,
     },
+    ReturnFromGraveyardToBattlefield {
+        count: usize,
+        types: EnumSet<Type>,
+        valid_targets: Vec<CardId>,
+    },
+    CreateToken {
+        source: CardId,
+        token: Token,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,8 +84,14 @@ pub enum ActionResult {
         targets: HashSet<PlayerRef>,
     },
     ReturnFromGraveyardToLibrary {
-        count: usize,
         targets: Vec<CardId>,
+    },
+    ReturnFromGraveyardToBattlefield {
+        targets: Vec<CardId>,
+    },
+    CreateToken {
+        source: CardId,
+        token: Token,
     },
 }
 
@@ -89,12 +109,15 @@ pub struct Permanent {
 #[derive(Debug, Default)]
 pub struct Battlefield {
     pub permanents: IndexMap<CardId, Permanent>,
+
     pub graveyards: HashMap<PlayerRef, IndexSet<CardId>>,
     pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
 
     pub global_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
     pub attaching_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
     pub attached_cards: IndexMap<CardId, HashSet<CardId>>,
+
+    pub on_graveyard_triggers: IndexMap<CardId, (PutIntoGraveyard, Vec<TriggeredEffect>)>,
 }
 
 impl Battlefield {
@@ -233,7 +256,24 @@ impl Battlefield {
                         controller,
                         types,
                         valid_targets: target_cards,
-                    })
+                    });
+                }
+                ETBAbility::ReturnFromGraveyardToBattlefield(
+                    ReturnFromGraveyardToBattlefield { count, types },
+                ) => {
+                    let target_cards = compute_graveyard_targets(
+                        Controller::You,
+                        cards,
+                        cards[source_card_id].controller.clone(),
+                        &this,
+                        types,
+                    );
+
+                    results.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                        count,
+                        types,
+                        valid_targets: target_cards,
+                    });
                 }
             }
         }
@@ -269,6 +309,15 @@ impl Battlefield {
                             cards,
                         );
                     }
+                }
+            }
+        }
+
+        for triggered in cards[source_card_id].card.triggered_abilities.iter() {
+            match &triggered.trigger {
+                Trigger::PutIntoGraveyard(gy) => {
+                    this.on_graveyard_triggers
+                        .insert(source_card_id, (gy.clone(), triggered.effects.clone()));
                 }
             }
         }
@@ -439,20 +488,20 @@ impl Battlefield {
         for result in results {
             match result {
                 UnresolvedActionResult::TapPermanent(cardid) => {
-                    self.apply_action_result(
+                    pending.extend(self.apply_action_result(
                         ActionResult::TapPermanent(cardid),
                         cards,
                         modifiers,
                         stack,
-                    );
+                    ));
                 }
                 UnresolvedActionResult::PermanentToGraveyard(cardid) => {
-                    self.apply_action_result(
+                    pending.extend(self.apply_action_result(
                         ActionResult::PermanentToGraveyard(cardid),
                         cards,
                         modifiers,
                         stack,
-                    );
+                    ));
                 }
                 UnresolvedActionResult::AddToStack {
                     card,
@@ -463,9 +512,10 @@ impl Battlefield {
                         .effects
                         .iter()
                         .map(|effect| effect.wants_targets())
-                        .sum();
-                    if wants_targets == valid_targets.len() {
-                        self.apply_action_result(
+                        .max()
+                        .unwrap();
+                    if wants_targets >= valid_targets.len() {
+                        pending.extend(self.apply_action_result(
                             ActionResult::AddToStack {
                                 card,
                                 effects,
@@ -474,7 +524,7 @@ impl Battlefield {
                             cards,
                             modifiers,
                             stack,
-                        )
+                        ));
                     } else {
                         pending.push(UnresolvedActionResult::AddToStack {
                             card,
@@ -498,19 +548,19 @@ impl Battlefield {
                     });
                 }
                 UnresolvedActionResult::AddModifier { modifier } => {
-                    self.apply_action_results(
+                    pending.extend(self.apply_action_results(
                         cards,
                         modifiers,
                         stack,
                         vec![ActionResult::AddModifier { modifier }],
-                    );
+                    ));
                 }
                 UnresolvedActionResult::Mill {
                     count,
                     valid_targets,
                 } => {
                     if valid_targets.len() == 1 {
-                        self.apply_action_result(
+                        pending.extend(self.apply_action_result(
                             ActionResult::Mill {
                                 count,
                                 targets: valid_targets,
@@ -518,7 +568,7 @@ impl Battlefield {
                             cards,
                             modifiers,
                             stack,
-                        );
+                        ));
                     } else {
                         pending.push(UnresolvedActionResult::Mill {
                             count,
@@ -532,16 +582,15 @@ impl Battlefield {
                     types,
                     valid_targets,
                 } => {
-                    if valid_targets.len() == count {
-                        self.apply_action_result(
+                    if valid_targets.len() <= count {
+                        pending.extend(self.apply_action_result(
                             ActionResult::ReturnFromGraveyardToLibrary {
-                                count,
                                 targets: valid_targets,
                             },
                             cards,
                             modifiers,
                             stack,
-                        );
+                        ));
                     } else {
                         pending.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
                             count,
@@ -557,31 +606,72 @@ impl Battlefield {
                         })
                     }
                 }
+                UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                    count,
+                    types,
+                    valid_targets,
+                } => {
+                    if valid_targets.len() <= count {
+                        pending.extend(self.apply_action_result(
+                            ActionResult::ReturnFromGraveyardToBattlefield {
+                                targets: valid_targets,
+                            },
+                            cards,
+                            modifiers,
+                            stack,
+                        ));
+                    } else {
+                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                            count,
+                            types,
+                            valid_targets: compute_graveyard_targets(
+                                Controller::You,
+                                cards,
+                                resolution_controller.clone(),
+                                self,
+                                types,
+                            ),
+                        })
+                    }
+                }
+                UnresolvedActionResult::CreateToken { source, token } => {
+                    pending.extend(self.apply_action_result(
+                        ActionResult::CreateToken { source, token },
+                        cards,
+                        modifiers,
+                        stack,
+                    ));
+                }
             }
         }
 
         pending
     }
 
+    #[must_use]
     pub fn apply_action_results(
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         stack: &mut Stack,
         results: Vec<ActionResult>,
-    ) {
+    ) -> Vec<UnresolvedActionResult> {
+        let mut pending = vec![];
+
         for result in results {
-            self.apply_action_result(result, cards, modifiers, stack);
+            pending.extend(self.apply_action_result(result, cards, modifiers, stack));
         }
+        pending
     }
 
+    #[must_use]
     fn apply_action_result(
         &mut self,
         result: ActionResult,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         stack: &mut Stack,
-    ) {
+    ) -> Vec<UnresolvedActionResult> {
         match result {
             ActionResult::TapPermanent(card_id) => {
                 let permanent = self.permanents.get_mut(&card_id).unwrap();
@@ -589,7 +679,7 @@ impl Battlefield {
                 permanent.tapped = true;
             }
             ActionResult::PermanentToGraveyard(card_id) => {
-                self.permanent_to_graveyard(cards, modifiers, stack, card_id);
+                return self.permanent_to_graveyard(cards, modifiers, stack, card_id);
             }
             ActionResult::AddToStack {
                 card,
@@ -619,8 +709,7 @@ impl Battlefield {
                     }
                 }
             }
-            ActionResult::ReturnFromGraveyardToLibrary { count, targets } => {
-                assert_eq!(count, targets.len());
+            ActionResult::ReturnFromGraveyardToLibrary { targets } => {
                 for target in targets {
                     let owner = cards[target].owner.clone();
                     self.graveyards
@@ -631,16 +720,38 @@ impl Battlefield {
                     owner.borrow_mut().deck.place_on_top(target);
                 }
             }
+            ActionResult::ReturnFromGraveyardToBattlefield { targets } => {
+                let mut pending = vec![];
+                for target in targets {
+                    let owner = cards[target].owner.clone();
+                    self.graveyards
+                        .get_mut(&owner)
+                        .expect("Card should be in a graveyard")
+                        .remove(&target);
+
+                    pending.extend(self.add(cards, modifiers, target, vec![]));
+                }
+
+                return pending;
+            }
+            ActionResult::CreateToken { source, token } => {
+                let controller = cards[source].controller.clone();
+                let id = cards.add_token(controller, token);
+                self.permanents.insert(id, Permanent { tapped: false });
+            }
         }
+
+        vec![]
     }
 
+    #[must_use]
     pub fn permanent_to_graveyard(
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         stack: &mut Stack,
         card_id: CardId,
-    ) {
+    ) -> Vec<UnresolvedActionResult> {
         self.permanents.remove(&card_id).unwrap();
         cards[card_id].controller = cards[card_id].owner.clone();
         self.graveyards
@@ -648,7 +759,28 @@ impl Battlefield {
             .or_default()
             .insert(card_id);
 
+        let mut pending = vec![];
+
+        for (trigger_source, (filter, effects)) in self.on_graveyard_triggers.iter() {
+            if matches!(filter.location, Location::Anywhere | Location::Battlefield)
+                && cards[card_id].card.types_intersect(filter.types)
+            {
+                for effect in effects.iter() {
+                    match effect {
+                        TriggeredEffect::CreateToken(token) => {
+                            pending.push(UnresolvedActionResult::CreateToken {
+                                source: *trigger_source,
+                                token: token.clone(),
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
         self.card_leaves_battlefield(card_id, modifiers, cards, stack);
+
+        pending
     }
 
     fn card_leaves_battlefield(
@@ -846,16 +978,16 @@ impl Battlefield {
 fn compute_graveyard_targets(
     controller: Controller,
     cards: &mut AllCards,
-    card: PlayerRef,
+    card_controller: PlayerRef,
     this: &Battlefield,
     types: EnumSet<Type>,
 ) -> Vec<CardId> {
     let targets = match controller {
         Controller::Any => cards.all_players(),
-        Controller::You => HashSet::from([card]),
+        Controller::You => HashSet::from([card_controller]),
         Controller::Opponent => {
             let mut all = cards.all_players();
-            all.remove(&card);
+            all.remove(&card_controller);
             all
         }
     };

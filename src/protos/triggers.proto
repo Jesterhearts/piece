@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package triggers;
+
+import "types.proto";
+
+message Location {
+  message Anywhere {
+  }
+  message Battlefield {
+  }
+  message Library {
+  }
+
+  oneof location {
+    Anywhere anywhere = 1;
+    Battlefield battlefield = 2;
+    Library library = 3;
+  }
+}
+
+message Trigger {
+  message PutIntoGraveyard {
+    Location from = 1;
+    repeated types.Type types = 2;
+  }
+
+  oneof trigger {
+    PutIntoGraveyard put_into_graveyard = 1;
+  }
+}

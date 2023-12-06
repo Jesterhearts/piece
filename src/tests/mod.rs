@@ -7,3 +7,4 @@ mod elesh_norn_grand_cenobite;
 mod glowspore_shaman;
 mod plus_two_mace;
 mod reality_shift;
+mod titania_protector_of_argoth;

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package effects;
 
+import "color.proto";
 import "controller.proto";
 import "mana.proto";
 import "targets.proto";
@@ -16,6 +17,11 @@ message ReturnFromGraveyardToLibrary {
   int32 count = 1;
   controller.Controller controller = 2;
   repeated types.Type types = 3;
+}
+
+message ReturnFromGraveyardToBattlefield {
+  int32 count = 1;
+  repeated types.Type types = 2;
 }
 
 message Restriction {
@@ -99,6 +105,21 @@ message BattlefieldModifier {
   repeated targets.Restriction restrictions = 4;
 }
 
+message CreateToken {
+  message Creature {
+    string name = 1;
+    repeated types.Type types = 2;
+    repeated types.Subtype subtypes = 3;
+    repeated color.Color colors = 4;
+    int32 power = 5;
+    int32 toughness = 6;
+  }
+
+  oneof token {
+    Creature creature = 1;
+  }
+}
+
 message ControllerDrawCards {
   int32 count = 1;
 }
@@ -126,6 +147,12 @@ message ActivatedAbilityEffect {
     ControllerDrawCards controller_draw_cards = 4;
     Equip equip = 5;
     AddPowerToughness add_power_toughness_to_target = 6;
+  }
+}
+
+message TriggeredEffect {  
+  oneof effect {
+    CreateToken create_token = 1;
   }
 }
 
