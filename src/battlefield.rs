@@ -5,14 +5,16 @@ use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     abilities::{ETBAbility, StaticAbility},
-    card::{Color, StaticAbilityModifier, SubtypeModifier},
+    card::Color,
     controller::Controller,
     cost::AdditionalCost,
     effects::{
         BattlefieldModifier, EffectDuration, Mill, ModifyBasePowerToughness, ModifyBattlefield,
         RemoveAllSubtypes, ReturnFromGraveyardToLibrary,
     },
-    in_play::{AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay},
+    in_play::{
+        AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay, ModifierType,
+    },
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
     targets::Restriction,
@@ -33,7 +35,6 @@ pub enum UnresolvedActionResult {
         valid_targets: Vec<CardId>,
     },
     AddModifier {
-        source: CardId,
         modifier: ModifierId,
     },
     Mill {
@@ -62,7 +63,6 @@ pub enum ActionResult {
         target: Option<CardId>,
     },
     AddModifier {
-        source: CardId,
         modifier: ModifierId,
     },
     Mill {
@@ -93,7 +93,7 @@ pub struct Battlefield {
     pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
 
     pub global_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
-    pub attaching_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
+    pub attaching_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
     pub attached_cards: IndexMap<CardId, HashSet<CardId>>,
 }
 
@@ -124,6 +124,7 @@ impl Battlefield {
 
         if cards[source_card_id].face_down {
             let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                source: source_card_id,
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::ModifyBasePowerToughness(
                         ModifyBasePowerToughness {
@@ -137,24 +138,13 @@ impl Battlefield {
                     restrictions: enum_set!(Restriction::SingleTarget),
                 },
                 controller: cards[source_card_id].controller.clone(),
-                modifying: vec![source_card_id],
+                modifying: vec![],
+                modifier_type: ModifierType::CardProperty,
             });
-
-            cards[source_card_id]
-                .card
-                .adjusted_base_power
-                .insert(modifier_id, 2);
-            cards[source_card_id]
-                .card
-                .adjusted_base_toughness
-                .insert(modifier_id, 2);
-
-            this.attaching_modifiers
-                .entry(source_card_id)
-                .or_default()
-                .insert(modifier_id);
+            this.apply_modifier_to_targets(cards, modifiers, modifier_id, &[source_card_id]);
 
             let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                source: source_card_id,
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes {}),
                     controller: Controller::Any,
@@ -163,19 +153,12 @@ impl Battlefield {
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![source_card_id],
+                modifier_type: ModifierType::CardProperty,
             });
-
-            cards[source_card_id]
-                .card
-                .modified_subtypes
-                .insert(modifier_id, SubtypeModifier::RemoveAll);
-
-            this.attaching_modifiers
-                .entry(source_card_id)
-                .or_default()
-                .insert(modifier_id);
+            this.apply_modifier_to_targets(cards, modifiers, modifier_id, &[source_card_id]);
 
             let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                source: source_card_id,
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::RemoveAllAbilities,
                     controller: Controller::Any,
@@ -184,34 +167,23 @@ impl Battlefield {
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![source_card_id],
+                modifier_type: ModifierType::CardProperty,
             });
 
-            cards[source_card_id]
-                .card
-                .adjusted_static_abilities
-                .insert(modifier_id, StaticAbilityModifier::RemoveAll);
-
-            this.attaching_modifiers
-                .entry(source_card_id)
-                .or_default()
-                .insert(modifier_id);
+            this.apply_modifier_to_targets(cards, modifiers, modifier_id, &[source_card_id]);
         }
 
         if let Some(enchant) = cards[source_card_id].card.enchant.clone() {
             for modifier in enchant.modifiers {
                 let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                    source: source_card_id,
                     modifier: modifier.clone(),
                     controller: cards[source_card_id].controller.clone(),
                     modifying: vec![],
+                    modifier_type: ModifierType::Aura,
                 });
 
-                this.apply_modifier_to_targets(
-                    cards,
-                    modifiers,
-                    source_card_id,
-                    modifier_id,
-                    &targets,
-                );
+                this.apply_modifier_to_targets(cards, modifiers, modifier_id, &targets);
             }
         }
 
@@ -272,12 +244,13 @@ impl Battlefield {
                 StaticAbility::Vigilance => {}
                 StaticAbility::BattlefieldModifier(modifier) => {
                     let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                        source: source_card_id,
                         modifier,
                         controller: cards[source_card_id].controller.clone(),
                         modifying: Default::default(),
+                        modifier_type: ModifierType::Global,
                     });
                     results.push(UnresolvedActionResult::AddModifier {
-                        source: source_card_id,
                         modifier: modifier_id,
                     })
                 }
@@ -287,14 +260,13 @@ impl Battlefield {
         for (source, global_modifiers) in this.global_modifiers.iter() {
             match source {
                 ModifierSource::UntilEndOfTurn => {}
-                ModifierSource::Card(id) => {
+                ModifierSource::Card(_) => {
                     for modifier_id in global_modifiers.iter().copied() {
                         apply_modifier_to_targets(
                             modifiers,
                             modifier_id,
                             std::iter::once(source_card_id),
                             cards,
-                            *id,
                         );
                     }
                 }
@@ -316,18 +288,37 @@ impl Battlefield {
         colors
     }
 
-    pub fn end_turn(&mut self, cards: &mut AllCards, modifers: &mut AllModifiers) {
+    pub fn end_turn(&mut self, cards: &mut AllCards, modifiers: &mut AllModifiers) {
         for effect in self
             .global_modifiers
             .get_mut(&ModifierSource::UntilEndOfTurn)
             .unwrap_or(&mut Default::default())
             .drain()
         {
-            let modifier = modifers.remove(effect);
+            let modifier = modifiers.remove(effect);
             for card_id in modifier.modifying {
                 cards[card_id]
                     .card
                     .remove_modifier(effect, &modifier.modifier);
+            }
+        }
+
+        for modifier_id in self
+            .attaching_modifiers
+            .remove(&ModifierSource::UntilEndOfTurn)
+            .into_iter()
+            .flat_map(|modifiers| modifiers.into_iter())
+        {
+            let modifier = modifiers.remove(modifier_id);
+            for card_id in modifier.modifying {
+                self.attached_cards
+                    .get_mut(&card_id)
+                    .expect("Attaching modifiers should have a corresponding attached card")
+                    .remove(&modifier.source);
+
+                cards[card_id]
+                    .card
+                    .remove_modifier(modifier_id, &modifier.modifier);
             }
         }
     }
@@ -342,7 +333,11 @@ impl Battlefield {
                 result.push(ActionResult::PermanentToGraveyard(*card_id));
             }
 
-            if card.enchant.is_some() && !self.attaching_modifiers.contains_key(card_id) {
+            if card.enchant.is_some()
+                && !self
+                    .attaching_modifiers
+                    .contains_key(&ModifierSource::Card(*card_id))
+            {
                 result.push(ActionResult::PermanentToGraveyard(*card_id));
             }
         }
@@ -502,12 +497,12 @@ impl Battlefield {
                         valid_targets,
                     });
                 }
-                UnresolvedActionResult::AddModifier { source, modifier } => {
+                UnresolvedActionResult::AddModifier { modifier } => {
                     self.apply_action_results(
                         cards,
                         modifiers,
                         stack,
-                        vec![ActionResult::AddModifier { source, modifier }],
+                        vec![ActionResult::AddModifier { modifier }],
                     );
                 }
                 UnresolvedActionResult::Mill {
@@ -608,8 +603,8 @@ impl Battlefield {
                     cards[source].card = cards[target].card.clone();
                 }
             }
-            ActionResult::AddModifier { source, modifier } => {
-                self.apply_modifier(cards, modifiers, source, modifier);
+            ActionResult::AddModifier { modifier } => {
+                self.apply_modifier(cards, modifiers, modifier);
             }
             ActionResult::Mill { count, targets } => {
                 for target in targets {
@@ -677,7 +672,10 @@ impl Battlefield {
             }
         }
 
-        if let Some(removed_modifiers) = self.attaching_modifiers.remove(&removed_card_id) {
+        if let Some(removed_modifiers) = self
+            .attaching_modifiers
+            .remove(&ModifierSource::Card(removed_card_id))
+        {
             for modifier_id in removed_modifiers {
                 let modifier = modifiers.remove(modifier_id);
                 for modified_card in modifier.modifying.iter().copied() {
@@ -695,13 +693,13 @@ impl Battlefield {
 
         if let Some(attached_cards) = self.attached_cards.remove(&removed_card_id) {
             for card in attached_cards {
-                let attached_modifiers = self
-                    .attaching_modifiers
-                    .remove(&card)
-                    .expect("Attached modifiers should have a corresponding attaching modifier");
-                for modifier in attached_modifiers {
-                    if modifiers[modifier].modifying.len() <= 1 {
-                        modifiers.remove(modifier);
+                if let Some(attached_modifiers) =
+                    self.attaching_modifiers.remove(&ModifierSource::Card(card))
+                {
+                    for modifier in attached_modifiers {
+                        if modifiers[modifier].modifying.len() <= 1 {
+                            modifiers.remove(modifier);
+                        }
                     }
                 }
             }
@@ -712,7 +710,6 @@ impl Battlefield {
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
-        source_card_id: CardId,
         modifier_id: ModifierId,
     ) {
         Self::apply_modifier_to_targets_internal(
@@ -721,7 +718,6 @@ impl Battlefield {
             &mut self.attached_cards,
             cards,
             modifiers,
-            source_card_id,
             modifier_id,
             self.permanents.keys().copied(),
         );
@@ -731,7 +727,6 @@ impl Battlefield {
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
-        source_card_id: CardId,
         modifier_id: ModifierId,
         targets: &[CardId],
     ) {
@@ -741,7 +736,6 @@ impl Battlefield {
             &mut self.attached_cards,
             cards,
             modifiers,
-            source_card_id,
             modifier_id,
             targets.iter().copied(),
         );
@@ -750,61 +744,61 @@ impl Battlefield {
     #[allow(clippy::too_many_arguments)]
     fn apply_modifier_to_targets_internal(
         global_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
-        attaching_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
+        attaching_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
         attached_modifiers: &mut IndexMap<CardId, HashSet<CardId>>,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
-        source_card_id: CardId,
         modifier_id: ModifierId,
         targets: impl Iterator<Item = CardId> + Clone,
     ) {
-        apply_modifier_to_targets(
-            modifiers,
-            modifier_id,
-            targets.clone(),
-            cards,
-            source_card_id,
-        );
+        apply_modifier_to_targets(modifiers, modifier_id, targets.clone(), cards);
 
         let modifier = &mut modifiers[modifier_id];
 
-        match modifier.modifier.duration {
-            EffectDuration::UntilEndOfTurn => {
-                global_modifiers
-                    .entry(ModifierSource::UntilEndOfTurn)
-                    .or_default()
-                    .insert(modifier_id);
-            }
-            EffectDuration::UntilSourceLeavesBattlefield => {
-                global_modifiers
-                    .entry(ModifierSource::Card(source_card_id))
-                    .or_default()
-                    .insert(modifier_id);
-            }
-            EffectDuration::UntilUnattached => {
-                attaching_modifiers
-                    .entry(source_card_id)
-                    .or_default()
-                    .insert(modifier_id);
-                for target in targets {
-                    attached_modifiers
-                        .entry(target)
+        match modifier.modifier_type {
+            ModifierType::Global => match modifier.modifier.duration {
+                EffectDuration::UntilEndOfTurn => {
+                    global_modifiers
+                        .entry(ModifierSource::UntilEndOfTurn)
                         .or_default()
-                        .insert(source_card_id);
+                        .insert(modifier_id);
                 }
-            }
-            EffectDuration::UntilAuraLeavesBattlefield => {
-                attaching_modifiers
-                    .entry(source_card_id)
-                    .or_default()
-                    .insert(modifier_id);
-                for target in targets {
-                    attached_modifiers
-                        .entry(target)
+                EffectDuration::UntilSourceLeavesBattlefield => {
+                    global_modifiers
+                        .entry(ModifierSource::Card(modifier.source))
                         .or_default()
-                        .insert(source_card_id);
+                        .insert(modifier_id);
                 }
-            }
+            },
+            ModifierType::Equipment
+            | ModifierType::Aura
+            | ModifierType::CardProperty
+            | ModifierType::Temporary => match modifier.modifier.duration {
+                EffectDuration::UntilEndOfTurn => {
+                    attaching_modifiers
+                        .entry(ModifierSource::UntilEndOfTurn)
+                        .or_default()
+                        .insert(modifier_id);
+                    for target in targets {
+                        attached_modifiers
+                            .entry(target)
+                            .or_default()
+                            .insert(modifier.source);
+                    }
+                }
+                EffectDuration::UntilSourceLeavesBattlefield => {
+                    attaching_modifiers
+                        .entry(ModifierSource::Card(modifier.source))
+                        .or_default()
+                        .insert(modifier_id);
+                    for target in targets {
+                        attached_modifiers
+                            .entry(target)
+                            .or_default()
+                            .insert(modifier.source);
+                    }
+                }
+            },
         }
     }
 
@@ -889,7 +883,6 @@ fn apply_modifier_to_targets(
     modifier_id: ModifierId,
     targets: impl Iterator<Item = CardId>,
     cards: &mut AllCards,
-    source_card_id: CardId,
 ) {
     let modifier = &mut modifiers[modifier_id];
 
@@ -912,7 +905,7 @@ fn apply_modifier_to_targets(
         for restriction in modifier.modifier.restrictions.iter() {
             match restriction {
                 Restriction::NotSelf => {
-                    if card_id == source_card_id {
+                    if card_id == modifier.source {
                         continue 'outer;
                     }
                 }

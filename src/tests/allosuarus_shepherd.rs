@@ -9,7 +9,7 @@ use crate::{
         ActivatedAbilityEffect, AddCreatureSubtypes, BattlefieldModifier, EffectDuration,
         ModifyBasePowerToughness, ModifyBattlefield,
     },
-    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay},
+    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay, ModifierType},
     load_cards,
     player::Player,
     stack::{Stack, StackResult},
@@ -81,8 +81,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         results,
         [
             StackResult::ApplyToBattlefield {
-                source: card,
                 modifier: ModifierInPlay {
+                    source: card,
                     modifier: BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyBasePowerToughness(
                             ModifyBasePowerToughness {
@@ -97,11 +97,12 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     },
                     controller: player.clone(),
                     modifying: Default::default(),
+                    modifier_type: ModifierType::Global,
                 },
             },
             StackResult::ApplyToBattlefield {
-                source: card,
                 modifier: ModifierInPlay {
+                    source: card,
                     modifier: BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: enum_set![Subtype::Elf],
@@ -113,6 +114,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     },
                     controller: player.clone(),
                     modifying: Default::default(),
+                    modifier_type: ModifierType::Global,
                 }
             }
         ]

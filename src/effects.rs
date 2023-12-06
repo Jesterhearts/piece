@@ -82,8 +82,6 @@ impl From<&protogen::effects::restriction::Restriction> for Restriction {
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
-    UntilUnattached,
-    UntilAuraLeavesBattlefield,
 }
 
 impl From<&protogen::effects::duration::Duration> for EffectDuration {
@@ -92,10 +90,6 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
             protogen::effects::duration::Duration::UntilEndOfTurn(_) => Self::UntilEndOfTurn,
             protogen::effects::duration::Duration::UntilSourceLeavesBattlefield(_) => {
                 Self::UntilSourceLeavesBattlefield
-            }
-            protogen::effects::duration::Duration::UntilUnattached(_) => Self::UntilUnattached,
-            protogen::effects::duration::Duration::UntilAuraLeavesBattlefield(_) => {
-                Self::UntilAuraLeavesBattlefield
             }
         }
     }

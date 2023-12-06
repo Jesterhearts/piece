@@ -55,6 +55,7 @@ pub enum Subtype {
     Aura,
     Bear,
     Dinosaur,
+    Elemental,
     Elf,
     Equipment,
     Forest,
@@ -95,6 +96,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Shapeshifter(_) => Self::Shapeshifter,
             protogen::types::subtype::Subtype::Praetor(_) => Self::Praetor,
             protogen::types::subtype::Subtype::Aura(_) => Self::Aura,
+            protogen::types::subtype::Subtype::Elemental(_) => Self::Elemental,
         }
     }
 }

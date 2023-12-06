@@ -11,7 +11,7 @@ use crate::{
         ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, ModifyBattlefield,
         SpellEffect,
     },
-    in_play::{AllCards, AllModifiers, CardId, EffectsInPlay, ModifierInPlay},
+    in_play::{AllCards, AllModifiers, CardId, EffectsInPlay, ModifierInPlay, ModifierType},
     mana::Mana,
     player::PlayerRef,
     types::Type,
@@ -21,13 +21,11 @@ use crate::{
 pub enum StackResult {
     AddToBattlefield(CardId),
     ApplyToBattlefield {
-        source: CardId,
         modifier: ModifierInPlay,
     },
     ExileTarget(CardId),
     ManifestTopOfLibrary(PlayerRef),
     ModifyCreatures {
-        source: CardId,
         targets: Vec<CardId>,
         modifier: ModifierInPlay,
     },
@@ -208,11 +206,12 @@ impl Stack {
                         }
                         SpellEffect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield {
-                                source: card,
                                 modifier: ModifierInPlay {
+                                    source: card,
                                     modifier: modifier.clone(),
                                     controller: cards[card].controller.clone(),
                                     modifying: Default::default(),
+                                    modifier_type: ModifierType::Global,
                                 },
                             });
                         }
@@ -335,11 +334,12 @@ impl Stack {
                         }
                         ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield {
-                                source,
                                 modifier: ModifierInPlay {
+                                    source,
                                     modifier,
                                     controller: effects.controller.clone(),
                                     modifying: Default::default(),
+                                    modifier_type: ModifierType::Global,
                                 },
                             });
                         }
@@ -372,17 +372,18 @@ impl Stack {
                                         }
 
                                         result.push(StackResult::ModifyCreatures {
-                                            source: effects.source,
                                             targets: vec![id],
                                             modifier: ModifierInPlay {
+                                            source: effects.source,
                                                 modifier: BattlefieldModifier {
                                                     modifier,
                                                     controller: Controller::You,
-                                                    duration: EffectDuration::UntilUnattached,
+                                                    duration: EffectDuration::UntilSourceLeavesBattlefield,
                                                     restrictions: enum_set!(),
                                                 },
                                                 controller: card.controller.clone(),
                                                 modifying: vec![],
+                                                modifier_type: ModifierType::Equipment,
                                             },
                                         });
                                     }
@@ -424,9 +425,9 @@ impl Stack {
                     let results = battlefield.add(cards, modifiers, card, vec![]);
                     pending.extend(results.into_iter());
                 }
-                StackResult::ApplyToBattlefield { source, modifier } => {
+                StackResult::ApplyToBattlefield { modifier } => {
                     let modifier_id = modifiers.add_modifier(modifier);
-                    battlefield.apply_modifier(cards, modifiers, source, modifier_id)
+                    battlefield.apply_modifier(cards, modifiers, modifier_id)
                 }
                 StackResult::ExileTarget(target) => {
                     battlefield.exile(cards, modifiers, self, target);
@@ -434,19 +435,9 @@ impl Stack {
                 StackResult::ManifestTopOfLibrary(player) => {
                     pending.extend(player.borrow_mut().manifest(cards, modifiers, battlefield));
                 }
-                StackResult::ModifyCreatures {
-                    source,
-                    targets,
-                    modifier,
-                } => {
+                StackResult::ModifyCreatures { targets, modifier } => {
                     let modifier_id = modifiers.add_modifier(modifier);
-                    battlefield.apply_modifier_to_targets(
-                        cards,
-                        modifiers,
-                        source,
-                        modifier_id,
-                        &targets,
-                    );
+                    battlefield.apply_modifier_to_targets(cards, modifiers, modifier_id, &targets);
                 }
                 StackResult::SpellCountered { id } => {
                     let removed = self.stack.remove(&id);
@@ -502,9 +493,9 @@ fn add_power_toughness(
                     }
 
                     result.push(StackResult::ModifyCreatures {
-                        source: card,
                         targets: vec![target],
                         modifier: ModifierInPlay {
+                            source: card,
                             modifier: BattlefieldModifier {
                                 modifier: ModifyBattlefield::AddPowerToughness(modifier.clone()),
                                 controller: Controller::Any,
@@ -513,6 +504,7 @@ fn add_power_toughness(
                             },
                             controller: cards[card].controller.clone(),
                             modifying: Default::default(),
+                            modifier_type: ModifierType::Temporary,
                         },
                     });
                 }
@@ -557,12 +549,13 @@ fn modify_creature(
                     }
 
                     result.push(StackResult::ModifyCreatures {
-                        source: card,
                         targets: vec![target],
                         modifier: ModifierInPlay {
+                            source: card,
                             modifier: modifier.clone(),
                             controller: cards[card].controller.clone(),
                             modifying: Default::default(),
+                            modifier_type: ModifierType::Temporary,
                         },
                     });
                 }

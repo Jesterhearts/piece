@@ -36,10 +36,21 @@ pub struct AbilityInPlay {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ModifierType {
+    Global,
+    Equipment,
+    Aura,
+    CardProperty,
+    Temporary,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModifierInPlay {
+    pub source: CardId,
     pub modifier: BattlefieldModifier,
     pub controller: PlayerRef,
     pub modifying: Vec<CardId>,
+    pub modifier_type: ModifierType,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]

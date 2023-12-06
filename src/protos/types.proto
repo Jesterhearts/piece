@@ -42,6 +42,8 @@ message Subtype {
   }
   message Dinosaur {
   }
+  message Elemental {
+  }
   message Elf {
   }
   message Equipment {
@@ -68,15 +70,16 @@ message Subtype {
     Aura aura = 1;
     Bear bear = 2;
     Dinosaur dinosaur = 3;
-    Elf elf = 4;
-    Equipment equipment = 5;
-    Forest forest = 6;
-    Island island = 7;
-    Mountain mountain = 8;
-    Plains plains = 9;
-    Praetor praetor = 10;
-    Shaman shaman = 11;
-    Shapeshifter shapeshifter = 12;
-    Swamp swamp = 13;
+    Elemental elemental = 4;
+    Elf elf = 5;
+    Equipment equipment = 6;
+    Forest forest = 7;
+    Island island = 8;
+    Mountain mountain = 9;
+    Plains plains = 10;
+    Praetor praetor = 11;
+    Shaman shaman = 12;
+    Shapeshifter shapeshifter = 13;
+    Swamp swamp = 14;
   }
 }

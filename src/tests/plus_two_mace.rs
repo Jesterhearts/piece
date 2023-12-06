@@ -9,7 +9,7 @@ use crate::{
         ActivatedAbilityEffect, AddPowerToughness, BattlefieldModifier, EffectDuration,
         ModifyBattlefield,
     },
-    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay},
+    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay, ModifierType},
     load_cards,
     player::Player,
     stack::{ActiveTarget, Stack, StackResult},
@@ -65,20 +65,21 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [StackResult::ModifyCreatures {
-            source: equipment,
             targets: vec![creature],
             modifier: ModifierInPlay {
+                source: equipment,
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::AddPowerToughness(AddPowerToughness {
                         power: 2,
                         toughness: 2,
                     }),
                     controller: Controller::You,
-                    duration: EffectDuration::UntilUnattached,
+                    duration: EffectDuration::UntilSourceLeavesBattlefield,
                     restrictions: enum_set!(),
                 },
                 controller: player.clone(),
-                modifying: vec![]
+                modifying: vec![],
+                modifier_type: ModifierType::Equipment,
             },
         }]
     );
