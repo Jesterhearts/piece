@@ -63,6 +63,7 @@ pub enum Subtype {
     Mountain,
     Plains,
     Praetor,
+    Shade,
     Shaman,
     Shapeshifter,
     Swamp,
@@ -97,6 +98,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Praetor(_) => Self::Praetor,
             protogen::types::subtype::Subtype::Aura(_) => Self::Aura,
             protogen::types::subtype::Subtype::Elemental(_) => Self::Elemental,
+            protogen::types::subtype::Subtype::Shade(_) => Self::Shade,
         }
     }
 }

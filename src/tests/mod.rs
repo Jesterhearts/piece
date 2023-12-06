@@ -8,3 +8,4 @@ mod glowspore_shaman;
 mod plus_two_mace;
 mod reality_shift;
 mod titania_protector_of_argoth;
+mod hoar_shade;

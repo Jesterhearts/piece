@@ -58,6 +58,8 @@ message Subtype {
   }
   message Praetor {
   }
+  message Shade {
+  }
   message Shaman {
   }
   message Shapeshifter {
@@ -78,8 +80,9 @@ message Subtype {
     Mountain mountain = 9;
     Plains plains = 10;
     Praetor praetor = 11;
-    Shaman shaman = 12;
-    Shapeshifter shapeshifter = 13;
-    Swamp swamp = 14;
+    Shade shade = 12;
+    Shaman shaman = 13;
+    Shapeshifter shapeshifter = 14;
+    Swamp swamp = 15;
   }
 }

@@ -1,0 +1,28 @@
+name: "Hoar Shade"
+cost {
+  mana_costs { generic { count: 3 } }
+  mana_costs { black {} }
+}
+types { creature {} }
+subtypes { shade {} }
+oracle_text: "{B}: Hoar Shad gets +1/+1 until end of turn"
+activated_abilities {
+  cost {
+    mana_costs { black {} }
+  }
+  effects {
+    battlefield_modifier { 
+      modifier {
+        add_power_toughness {
+          power: 1
+          toughness: 1
+        }
+      }
+      controller { you {} }
+      restrictions { self {} }
+      duration { until_end_of_turn {} }
+    }
+  }
+}
+power: 1
+toughness: 2
