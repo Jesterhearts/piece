@@ -35,6 +35,10 @@ impl Deck {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
+    pub fn place_on_top(&mut self, card: CardId) {
+        self.cards.push_back(card);
+    }
+
     pub fn draw(&mut self) -> Option<CardId> {
         self.cards.pop_back()
     }

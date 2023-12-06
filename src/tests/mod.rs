@@ -4,5 +4,6 @@ mod allosuarus_shepherd;
 mod clone;
 mod counterspell;
 mod elesh_norn_grand_cenobite;
+mod glowspore_shaman;
 mod plus_two_mace;
 mod reality_shift;

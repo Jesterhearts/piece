@@ -2,7 +2,7 @@ use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield},
+    battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
     deck::Deck,
     effects::{
@@ -32,19 +32,13 @@ fn equipment_works() -> anyhow::Result<()> {
     let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
 
     let equipment = battlefield.select_card(0);
-    let results = battlefield.activate_ability(
-        equipment,
-        &all_cards,
-        &stack,
-        0,
-        Some(ActiveTarget::Battlefield { id: creature }),
-    );
+    let results = battlefield.activate_ability(equipment, &all_cards, &stack, 0);
 
     assert_eq!(
         results,
-        [ActionResult::AddToStack(
-            equipment,
-            EffectsInPlay {
+        [UnresolvedActionResult::AddToStack {
+            card: equipment,
+            effects: EffectsInPlay {
                 effects: vec![ActivatedAbilityEffect::Equip(vec![
                     ModifyBattlefield::AddPowerToughness(AddPowerToughness {
                         power: 2,
@@ -54,11 +48,18 @@ fn equipment_works() -> anyhow::Result<()> {
                 source: equipment,
                 controller: player.clone(),
             },
-            Some(ActiveTarget::Battlefield { id: creature })
-        )]
+            valid_targets: vec![ActiveTarget::Battlefield { id: creature }]
+        }]
     );
 
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results = battlefield.maybe_resolve(
+        &mut all_cards,
+        &mut modifiers,
+        &mut stack,
+        player.clone(),
+        results,
+    );
+    assert_eq!(results, []);
 
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(
@@ -82,7 +83,8 @@ fn equipment_works() -> anyhow::Result<()> {
         }]
     );
 
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(results, []);
 
     let card = &all_cards[creature];
     assert_eq!(card.card.power(), Some(6));

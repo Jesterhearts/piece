@@ -22,7 +22,14 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     let bear = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
 
     let results = battlefield.add(&mut all_cards, &mut modifiers, elesh, vec![]);
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results = battlefield.maybe_resolve(
+        &mut all_cards,
+        &mut modifiers,
+        &mut stack,
+        player.clone(),
+        results,
+    );
+    assert_eq!(results, []);
 
     let _ = battlefield.add(&mut all_cards, &mut modifiers, bear, vec![]);
 

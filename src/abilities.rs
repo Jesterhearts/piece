@@ -4,7 +4,7 @@ use enumset::EnumSet;
 use crate::{
     controller::Controller,
     cost::AbilityCost,
-    effects::{ActivatedAbilityEffect, BattlefieldModifier},
+    effects::{ActivatedAbilityEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToLibrary},
     protogen,
     targets::Restriction,
 };
@@ -37,6 +37,8 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
+    Mill(Mill),
+    ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
 }
 
 impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
@@ -47,15 +49,23 @@ impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
             .ability
             .as_ref()
             .ok_or_else(|| anyhow!("Expected etb ability to have an ability specified"))
-            .map(Self::from)
+            .and_then(Self::try_from)
     }
 }
 
-impl From<&protogen::abilities::etbability::Ability> for ETBAbility {
-    fn from(value: &protogen::abilities::etbability::Ability) -> Self {
+impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::abilities::etbability::Ability) -> Result<Self, Self::Error> {
         match value {
             protogen::abilities::etbability::Ability::CopyOfAnyCreature(_) => {
-                Self::CopyOfAnyCreature
+                Ok(Self::CopyOfAnyCreature)
+            }
+            protogen::abilities::etbability::Ability::Mill(mill) => {
+                Ok(Self::Mill(mill.try_into()?))
+            }
+            protogen::abilities::etbability::Ability::ReturnFromGraveyardToLibrary(ret) => {
+                Ok(Self::ReturnFromGraveyardToLibrary(ret.try_into()?))
             }
         }
     }

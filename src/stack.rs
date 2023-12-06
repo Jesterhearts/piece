@@ -4,7 +4,7 @@ use enumset::{enum_set, EnumSet};
 use indexmap::IndexMap;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::{Battlefield, UnresolvedActionResult},
     card::CastingModifier,
     controller::Controller,
     effects::{
@@ -264,7 +264,10 @@ impl Stack {
                                             return vec![];
                                         }
 
-                                        if !cards[target].card.types_intersect(&[Type::Creature]) {
+                                        if !cards[target]
+                                            .card
+                                            .types_intersect(enum_set![Type::Creature])
+                                        {
                                             // Target isn't a creature
                                             return vec![];
                                         }
@@ -295,7 +298,10 @@ impl Stack {
                                             return vec![];
                                         }
 
-                                        if !cards[target].card.types_intersect(&[Type::Creature]) {
+                                        if !cards[target]
+                                            .card
+                                            .types_intersect(enum_set![Type::Creature])
+                                        {
                                             // Target isn't a creature
                                             return vec![];
                                         }
@@ -402,18 +408,21 @@ impl Stack {
         }
     }
 
+    #[must_use]
     pub fn apply_results(
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         battlefield: &mut Battlefield,
         results: Vec<StackResult>,
-    ) {
+    ) -> Vec<UnresolvedActionResult> {
+        let mut pending = vec![];
+
         for result in results {
             match result {
                 StackResult::AddToBattlefield(card) => {
                     let results = battlefield.add(cards, modifiers, card, vec![]);
-                    battlefield.apply_action_results(cards, modifiers, self, results);
+                    pending.extend(results.into_iter());
                 }
                 StackResult::ApplyToBattlefield { source, modifier } => {
                     let modifier_id = modifiers.add_modifier(modifier);
@@ -423,9 +432,7 @@ impl Stack {
                     battlefield.exile(cards, modifiers, self, target);
                 }
                 StackResult::ManifestTopOfLibrary(player) => {
-                    player
-                        .borrow_mut()
-                        .manifest(cards, modifiers, battlefield, self);
+                    pending.extend(player.borrow_mut().manifest(cards, modifiers, battlefield));
                 }
                 StackResult::ModifyCreatures {
                     source,
@@ -460,6 +467,8 @@ impl Stack {
                 }
             }
         }
+
+        pending
     }
 }
 

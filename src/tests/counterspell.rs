@@ -29,7 +29,8 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(results, []);
 
     assert!(stack.is_empty());
 

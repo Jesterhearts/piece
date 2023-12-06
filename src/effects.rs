@@ -6,8 +6,50 @@ use crate::{
     mana::Mana,
     protogen,
     targets::{self, SpellTarget},
-    types::Subtype,
+    types::{Subtype, Type},
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Mill {
+    pub count: usize,
+    pub target: Controller,
+}
+
+impl TryFrom<&protogen::effects::Mill> for Mill {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Mill) -> Result<Self, Self::Error> {
+        Ok(Self {
+            count: usize::try_from(value.count)?,
+            target: value.target.get_or_default().try_into()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReturnFromGraveyardToLibrary {
+    pub count: usize,
+    pub controller: Controller,
+    pub types: EnumSet<Type>,
+}
+
+impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGraveyardToLibrary {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::ReturnFromGraveyardToLibrary,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            count: usize::try_from(value.count)?,
+            controller: value.controller.get_or_default().try_into()?,
+            types: value
+                .types
+                .iter()
+                .map(Type::try_from)
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
+        })
+    }
+}
 
 #[derive(Debug, EnumSetType)]
 pub enum Restriction {
@@ -206,6 +248,7 @@ pub enum ModifyBattlefield {
     ModifyBasePowerToughness(ModifyBasePowerToughness),
     AddCreatureSubtypes(AddCreatureSubtypes),
     RemoveAllSubtypes(RemoveAllSubtypes),
+    RemoveAllAbilities,
     AddPowerToughness(AddPowerToughness),
     Vigilance(Vigilance),
 }
@@ -355,6 +398,19 @@ pub enum ActivatedAbilityEffect {
     ControllerDrawCards(usize),
     Equip(Vec<ModifyBattlefield>),
     AddPowerToughnessToTarget(AddPowerToughness),
+}
+
+impl ActivatedAbilityEffect {
+    pub fn wants_targets(&self) -> usize {
+        match self {
+            ActivatedAbilityEffect::CounterSpell { .. } => 1,
+            ActivatedAbilityEffect::GainMana { .. } => 0,
+            ActivatedAbilityEffect::BattlefieldModifier(_) => 0,
+            ActivatedAbilityEffect::ControllerDrawCards(_) => 0,
+            ActivatedAbilityEffect::Equip(_) => 1,
+            ActivatedAbilityEffect::AddPowerToughnessToTarget(_) => 1,
+        }
+    }
 }
 
 impl TryFrom<&protogen::effects::ActivatedAbilityEffect> for ActivatedAbilityEffect {

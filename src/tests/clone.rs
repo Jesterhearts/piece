@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield},
+    battlefield::{ActionResult, Battlefield, UnresolvedActionResult},
     deck::Deck,
     in_play::{AllCards, AllModifiers},
     load_cards,
@@ -32,19 +32,28 @@ fn etb_clones() -> anyhow::Result<()> {
         unreachable!();
     };
 
-    let mut results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
+    let results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
     assert_eq!(
         results,
-        [ActionResult::CloneCreatureNonTargeting {
+        [UnresolvedActionResult::CloneCreatureNonTargeting {
             source: clone,
-            target: None
+            valid_targets: vec![creature]
         }]
     );
 
-    let [ActionResult::CloneCreatureNonTargeting { target, .. }] = results.as_mut_slice() else {
-        unreachable!()
-    };
-    *target = Some(creature);
+    let results = results
+        .into_iter()
+        .map(|result| match result {
+            UnresolvedActionResult::CloneCreatureNonTargeting {
+                source,
+                mut valid_targets,
+            } => ActionResult::CloneCreatureNonTargeting {
+                source,
+                target: valid_targets.pop(),
+            },
+            _ => unreachable!(),
+        })
+        .collect();
 
     battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
 
@@ -78,11 +87,25 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
     assert_eq!(
         results,
-        [ActionResult::CloneCreatureNonTargeting {
+        [UnresolvedActionResult::CloneCreatureNonTargeting {
             source: clone,
-            target: None
+            valid_targets: vec![],
         }]
     );
+
+    let results = results
+        .into_iter()
+        .map(|result| match result {
+            UnresolvedActionResult::CloneCreatureNonTargeting {
+                source,
+                mut valid_targets,
+            } => ActionResult::CloneCreatureNonTargeting {
+                source,
+                target: valid_targets.pop(),
+            },
+            _ => unreachable!(),
+        })
+        .collect();
 
     battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
 

@@ -7,6 +7,17 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
+message Mill {
+  int32 count = 1;
+  controller.Controller target = 2;
+}
+
+message ReturnFromGraveyardToLibrary {
+  int32 count = 1;
+  controller.Controller controller = 2;
+  repeated types.Type types = 3;
+}
+
 message Restriction {
   message ControllerControlsBlackOrGreen {
   }

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use indexmap::IndexMap;
 
@@ -66,6 +66,17 @@ impl std::ops::IndexMut<CardId> for AllCards {
 }
 
 impl AllCards {
+    pub fn all_players(&self) -> HashSet<PlayerRef> {
+        let mut players = HashSet::default();
+        for card in self.cards.values() {
+            if !players.contains(&card.owner) {
+                players.insert(card.owner.clone());
+            }
+        }
+
+        players
+    }
+
     pub fn build_deck_for_player(
         &mut self,
         cards: &Cards,

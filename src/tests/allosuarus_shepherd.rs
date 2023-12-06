@@ -2,7 +2,7 @@ use enumset::enum_set;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield},
+    battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
     deck::Deck,
     effects::{
@@ -30,13 +30,13 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let _ = battlefield.add(&mut all_cards, &mut modifiers, card, vec![]);
 
     let card = battlefield.select_card(0);
-    let results = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
+    let results = battlefield.activate_ability(card, &all_cards, &stack, 0);
 
     assert_eq!(
         results,
-        [ActionResult::AddToStack(
+        [UnresolvedActionResult::AddToStack {
             card,
-            EffectsInPlay {
+            effects: EffectsInPlay {
                 effects: vec![
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyBasePowerToughness(
@@ -63,11 +63,18 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                 source: card,
                 controller: player.clone(),
             },
-            None
-        )]
+            valid_targets: vec![]
+        }]
     );
 
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results = battlefield.maybe_resolve(
+        &mut all_cards,
+        &mut modifiers,
+        &mut stack,
+        player.clone(),
+        results,
+    );
+    assert_eq!(results, []);
 
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(
@@ -111,7 +118,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         ]
     );
 
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(results, []);
 
     let card = battlefield.select_card(0);
     let card = &all_cards[card];
@@ -131,7 +139,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.card.toughness(), Some(1));
 
     assert_eq!(
-        card.card.subtypes,
+        card.card.subtypes(),
         enum_set![Subtype::Elf | Subtype::Shaman]
     );
 
@@ -179,7 +187,8 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
 
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(results, []);
 
     stack.push_card(&all_cards, creature_2, None, None);
     stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
@@ -216,7 +225,8 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     stack.push_card(&all_cards, creature_1, None, None);
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(results, []);
 
     let countered = stack.push_card(&all_cards, creature_2, None, None);
     stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
@@ -226,7 +236,8 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
 
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(results, []);
 
     Ok(())
 }

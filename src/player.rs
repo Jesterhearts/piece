@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc, sync::atomic::AtomicUsize};
 use derive_more::Deref;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::{Battlefield, UnresolvedActionResult},
     deck::Deck,
     hand::Hand,
     in_play::{AllCards, AllModifiers, CardId},
@@ -250,19 +250,21 @@ impl Player {
         true
     }
 
+    #[must_use]
     pub fn manifest(
         &mut self,
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         battlefield: &mut Battlefield,
-        stack: &mut Stack,
-    ) {
+    ) -> Vec<UnresolvedActionResult> {
         if let Some(manifested) = self.deck.draw() {
             let card = &mut cards[manifested];
             card.face_down = true;
             card.manifested = true;
-            let results = battlefield.add(cards, modifiers, manifested, vec![]);
-            battlefield.apply_action_results(cards, modifiers, stack, results);
+
+            battlefield.add(cards, modifiers, manifested, vec![])
+        } else {
+            vec![]
         }
     }
 }

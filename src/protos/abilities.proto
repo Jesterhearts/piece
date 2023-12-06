@@ -13,6 +13,8 @@ message ETBAbility {
 
   oneof ability {
     CopyOfAnyCreature copy_of_any_creature = 1;
+    effects.Mill mill = 2;
+    effects.ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 3;
   }
 }
 
