@@ -26,7 +26,7 @@ fn resolves_shift() -> anyhow::Result<()> {
     all_cards.build_deck_for_player(&cards, &deck, player1.clone());
 
     let creature = all_cards.add(&cards, player1.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
 
     let shift = all_cards.add(&cards, player2.clone(), "Reality Shift");
 
@@ -49,7 +49,7 @@ fn resolves_shift() -> anyhow::Result<()> {
     stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
 
     let creature = all_cards.add(&cards, player1.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
 
     assert_eq!(
         all_cards[creature].card.subtypes(),

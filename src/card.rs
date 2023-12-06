@@ -3,7 +3,7 @@ use enumset::{EnumSet, EnumSetType};
 use indexmap::IndexMap;
 
 use crate::{
-    abilities::{ActivatedAbility, ETBAbility, StaticAbility},
+    abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility},
     battlefield::Battlefield,
     controller::Controller,
     cost::CastingCost,
@@ -104,6 +104,8 @@ pub struct Card {
     pub oracle_text: String,
     pub flavor_text: String,
 
+    pub enchant: Option<Enchant>,
+
     pub etb_abilities: Vec<ETBAbility>,
     pub effects: Vec<SpellEffect>,
 
@@ -159,6 +161,10 @@ impl TryFrom<protogen::card::Card> for Card {
                 .collect::<anyhow::Result<Vec<_>>>()?,
             oracle_text: value.oracle_text,
             flavor_text: value.flavor_text,
+            enchant: value
+                .enchant
+                .as_ref()
+                .map_or(Ok(None), |enchant| enchant.try_into().map(Some))?,
             etb_abilities: value
                 .etb_abilities
                 .iter()
@@ -446,7 +452,6 @@ impl Card {
                 }
                 StaticAbility::Vigilance => {}
                 StaticAbility::BattlefieldModifier(_) => {}
-                StaticAbility::Enchant(_) => {}
             }
         }
 
@@ -538,28 +543,19 @@ impl Card {
                 targets,
                 power,
                 toughness,
-                restrictions: _,
             }) => {
                 if self.subtypes_intersect(*targets) {
                     self.adjusted_base_power.insert(id, *power);
                     self.adjusted_base_toughness.insert(id, *toughness);
                 }
             }
-            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                targets,
-                types,
-                restrictions: _,
-            }) => {
+            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes { targets, types }) => {
                 if self.subtypes_intersect(*targets) {
                     self.modified_subtypes
                         .insert(id, SubtypeModifier::Add(types.iter().collect()));
                 }
             }
-            ModifyBattlefield::AddPowerToughness(AddPowerToughness {
-                power,
-                toughness,
-                restrictions: _,
-            }) => {
+            ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
                 self.power_modifier.insert(id, *power);
                 self.toughness_modifier.insert(id, *toughness);
             }

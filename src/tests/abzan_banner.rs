@@ -22,7 +22,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card, vec![]);
 
     let card = battlefield.select_card(0);
     let result = battlefield.activate_ability(card, &all_cards, &stack, 1, None);
@@ -57,7 +57,7 @@ fn add_mana() -> anyhow::Result<()> {
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Abzan Banner");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card, vec![]);
 
     let card = battlefield.select_card(0);
     let result = battlefield.activate_ability(card, &all_cards, &stack, 0, None);

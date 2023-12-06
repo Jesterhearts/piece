@@ -14,7 +14,6 @@ activated_abilities {
         add_power_toughness {
           power: 2
           toughness: 2
-          restrictions { single_target {} }
         }
       }
     }

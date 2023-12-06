@@ -1,4 +1,4 @@
-use enumset::enum_set;
+use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -13,7 +13,6 @@ use crate::{
     load_cards,
     player::Player,
     stack::{ActiveTarget, Stack, StackResult},
-    targets::Restriction,
 };
 
 #[test]
@@ -27,10 +26,10 @@ fn equipment_works() -> anyhow::Result<()> {
     player.borrow_mut().infinite_mana();
 
     let equipment = all_cards.add(&cards, player.clone(), "+2 Mace");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, equipment);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, equipment, vec![]);
 
     let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
 
     let equipment = battlefield.select_card(0);
     let results = battlefield.activate_ability(
@@ -50,7 +49,6 @@ fn equipment_works() -> anyhow::Result<()> {
                     ModifyBattlefield::AddPowerToughness(AddPowerToughness {
                         power: 2,
                         toughness: 2,
-                        restrictions: enum_set!(Restriction::SingleTarget),
                     })
                 ]),],
                 source: equipment,
@@ -73,10 +71,10 @@ fn equipment_works() -> anyhow::Result<()> {
                     modifier: ModifyBattlefield::AddPowerToughness(AddPowerToughness {
                         power: 2,
                         toughness: 2,
-                        restrictions: enum_set!(Restriction::SingleTarget),
                     }),
                     controller: Controller::You,
                     duration: EffectDuration::UntilUnattached,
+                    restrictions: enum_set!(),
                 },
                 controller: player.clone(),
                 modifying: vec![]
@@ -91,7 +89,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(card.card.toughness(), Some(4));
 
     let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2, vec![]);
 
     let card2 = &all_cards[creature2];
     assert_eq!(card2.card.power(), Some(4));

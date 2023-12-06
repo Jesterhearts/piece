@@ -21,10 +21,10 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     let elesh = all_cards.add(&cards, player.clone(), "Elesh Norn, Grand Cenobite");
     let bear = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
 
-    let results = battlefield.add(&mut all_cards, &mut modifiers, elesh);
+    let results = battlefield.add(&mut all_cards, &mut modifiers, elesh, vec![]);
     battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
 
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, bear);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, bear, vec![]);
 
     let card = &all_cards[elesh].card;
     assert_eq!(card.power(), Some(4));

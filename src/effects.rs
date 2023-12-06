@@ -1,13 +1,40 @@
 use anyhow::anyhow;
-use enumset::EnumSet;
+use enumset::{EnumSet, EnumSetType};
 
 use crate::{
     controller::Controller,
     mana::Mana,
     protogen,
-    targets::{Restriction, SpellTarget},
+    targets::{self, SpellTarget},
     types::Subtype,
 };
+
+#[derive(Debug, EnumSetType)]
+pub enum Restriction {
+    ControllerControlsBlackOrGreen,
+}
+
+impl TryFrom<&protogen::effects::Restriction> for Restriction {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Restriction) -> Result<Self, Self::Error> {
+        value
+            .restriction
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
+            .map(Restriction::from)
+    }
+}
+
+impl From<&protogen::effects::restriction::Restriction> for Restriction {
+    fn from(value: &protogen::effects::restriction::Restriction) -> Self {
+        match value {
+            protogen::effects::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
+                Self::ControllerControlsBlackOrGreen
+            }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EffectDuration {
@@ -99,7 +126,6 @@ pub struct ModifyBasePowerToughness {
     pub targets: EnumSet<Subtype>,
     pub power: i32,
     pub toughness: i32,
-    pub restrictions: EnumSet<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerToughness {
@@ -114,11 +140,6 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
             power: value.power,
             toughness: value.toughness,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }
@@ -127,7 +148,6 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
 pub struct AddCreatureSubtypes {
     pub targets: EnumSet<Subtype>,
     pub types: EnumSet<Subtype>,
-    pub restrictions: EnumSet<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
@@ -145,31 +165,18 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
                 .iter()
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct RemoveAllSubtypes {
-    pub restrictions: EnumSet<Restriction>,
-}
+pub struct RemoveAllSubtypes {}
 
 impl TryFrom<&protogen::effects::RemoveAllSubtypes> for RemoveAllSubtypes {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::RemoveAllSubtypes) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
-        })
+    fn try_from(_value: &protogen::effects::RemoveAllSubtypes) -> Result<Self, Self::Error> {
+        Ok(Self {})
     }
 }
 
@@ -177,7 +184,6 @@ impl TryFrom<&protogen::effects::RemoveAllSubtypes> for RemoveAllSubtypes {
 pub struct AddPowerToughness {
     pub power: i32,
     pub toughness: i32,
-    pub restrictions: EnumSet<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
@@ -187,11 +193,6 @@ impl TryFrom<&protogen::effects::AddPowerToughness> for AddPowerToughness {
         Ok(Self {
             power: value.power,
             toughness: value.toughness,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }
@@ -248,22 +249,7 @@ pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,
     pub duration: EffectDuration,
-}
-impl BattlefieldModifier {
-    pub(crate) fn restrictions(&self) -> &EnumSet<Restriction> {
-        match &self.modifier {
-            ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
-                restrictions,
-                ..
-            })
-            | ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                restrictions, ..
-            })
-            | ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes { restrictions })
-            | ModifyBattlefield::AddPowerToughness(AddPowerToughness { restrictions, .. })
-            | ModifyBattlefield::Vigilance(Vigilance { restrictions }) => restrictions,
-        }
-    }
+    pub restrictions: EnumSet<targets::Restriction>,
 }
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
@@ -289,6 +275,11 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
                 .map(EffectDuration::from)?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(targets::Restriction::try_from)
+                .collect::<anyhow::Result<EnumSet<_>>>()?,
         })
     }
 }

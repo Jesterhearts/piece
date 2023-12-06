@@ -20,7 +20,7 @@ fn etb_clones() -> anyhow::Result<()> {
 
     let clone = all_cards.add(&cards, player.clone(), "Clone");
     let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let result = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    let result = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
     assert_eq!(result, []);
 
     stack.push_card(&all_cards, clone, None, None);
@@ -32,7 +32,7 @@ fn etb_clones() -> anyhow::Result<()> {
         unreachable!();
     };
 
-    let mut results = battlefield.add(&mut all_cards, &mut modifiers, *card);
+    let mut results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
     assert_eq!(
         results,
         [ActionResult::CloneCreatureNonTargeting {
@@ -75,7 +75,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         unreachable!();
     };
 
-    let results = battlefield.add(&mut all_cards, &mut modifiers, *card);
+    let results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
     assert_eq!(
         results,
         [ActionResult::CloneCreatureNonTargeting {

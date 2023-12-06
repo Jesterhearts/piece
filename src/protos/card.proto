@@ -56,15 +56,17 @@ message Card {
   string oracle_text = 7;
   string flavor_text = 8;
 
-  repeated effects.SpellEffect effects = 9;
+  optional abilities.Enchant enchant = 9;
 
-  repeated abilities.ETBAbility etb_abilities = 10;
-  repeated abilities.StaticAbility static_abilities = 11;
-  repeated abilities.ActivatedAbility activated_abilities = 12;
+  repeated effects.SpellEffect effects = 10;
 
-  optional int32 power = 13;
-  optional int32 toughness = 14;
+  repeated abilities.ETBAbility etb_abilities = 11;
+  repeated abilities.StaticAbility static_abilities = 12;
+  repeated abilities.ActivatedAbility activated_abilities = 13;
 
-  bool hexproof = 15;
-  bool shroud = 16;
+  optional int32 power = 14;
+  optional int32 toughness = 15;
+
+  bool hexproof = 16;
+  bool shroud = 17;
 }

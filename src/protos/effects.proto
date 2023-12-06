@@ -7,8 +7,21 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
+message Restriction {
+  message ControllerControlsBlackOrGreen {
+  }
+
+  oneof restriction {
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 1;
+  }
+}
+
 message Vigilance {
-  repeated targets.Restriction restrictions = 1;
+  repeated Restriction restrictions = 1;
+}
+
+message Flash {
+  repeated Restriction restrictions = 1;
 }
 
 message Duration {
@@ -51,17 +64,14 @@ message ModifyBasePowerToughness {
   repeated types.Subtype targets = 1;
   int32 power = 2;
   int32 toughness = 3;
-  repeated targets.Restriction restrictions = 4;
 }
 
 message ModifyCreatureTypes {
   repeated types.Subtype targets = 1;
   repeated types.Subtype types = 2;
-  repeated targets.Restriction restrictions = 3;
 }
 
 message RemoveAllSubtypes {
-  repeated targets.Restriction restrictions = 1;
 }
 
 message ModifyBattlefield {
@@ -78,6 +88,7 @@ message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
   controller.Controller controller = 2;
   Duration duration = 3;
+  repeated targets.Restriction restrictions = 4;
 }
 
 message ControllerDrawCards {
@@ -91,7 +102,6 @@ message Equip {
 message AddPowerToughness {
   int32 power = 1;
   int32 toughness = 2;
-  repeated targets.Restriction restrictions = 3;
 }
 
 message ExileTargetCreature {

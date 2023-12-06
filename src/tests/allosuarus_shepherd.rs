@@ -27,7 +27,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     player.borrow_mut().infinite_mana();
 
     let card = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card);
+    let _ = battlefield.add(&mut all_cards, &mut modifiers, card, vec![]);
 
     let card = battlefield.select_card(0);
     let results = battlefield.activate_ability(card, &all_cards, &stack, 0, None);
@@ -44,20 +44,20 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                                 targets: enum_set![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
-                                restrictions: Default::default(),
                             }
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
                     }),
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: enum_set![Subtype::Elf],
                             types: enum_set![Subtype::Dinosaur],
-                            restrictions: Default::default(),
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
                     })
                 ],
                 source: card,
@@ -82,11 +82,11 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                                 targets: enum_set![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
-                                restrictions: Default::default(),
                             }
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
                     },
                     controller: player.clone(),
                     modifying: Default::default(),
@@ -99,10 +99,10 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
                             targets: enum_set![Subtype::Elf],
                             types: enum_set![Subtype::Dinosaur],
-                            restrictions: Default::default(),
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
+                        restrictions: Default::default(),
                     },
                     controller: player.clone(),
                     modifying: Default::default(),

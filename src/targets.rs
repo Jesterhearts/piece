@@ -44,7 +44,6 @@ pub enum Restriction {
     NotSelf,
     SingleTarget,
     CreaturesOnly,
-    ControllerControlsBlackOrGreen,
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {
@@ -65,9 +64,6 @@ impl From<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::NotSelf(_) => Self::NotSelf,
             protogen::targets::restriction::Restriction::SingleTarget(_) => Self::SingleTarget,
             protogen::targets::restriction::Restriction::CreaturesOnly(_) => Self::CreaturesOnly,
-            protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
-                Self::ControllerControlsBlackOrGreen
-            }
         }
     }
 }

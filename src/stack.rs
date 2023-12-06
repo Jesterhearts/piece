@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use enumset::{enum_set, EnumSet};
 use indexmap::IndexMap;
 
 use crate::{
@@ -135,8 +136,11 @@ impl Stack {
 
     #[must_use]
     pub fn resolve_1(&mut self, cards: &AllCards, battlefield: &Battlefield) -> Vec<StackResult> {
+        let Some((_, next)) = self.stack.pop() else {
+            return vec![];
+        };
+
         let mut result = vec![];
-        let (_, next) = self.stack.pop().expect("Stack shouldn't be empty.");
 
         match next.ty {
             EntryType::Card(card) => {
@@ -369,6 +373,7 @@ impl Stack {
                                                     modifier,
                                                     controller: Controller::You,
                                                     duration: EffectDuration::UntilUnattached,
+                                                    restrictions: enum_set!(),
                                                 },
                                                 controller: card.controller.clone(),
                                                 modifying: vec![],
@@ -407,7 +412,7 @@ impl Stack {
         for result in results {
             match result {
                 StackResult::AddToBattlefield(card) => {
-                    let results = battlefield.add(cards, modifiers, card);
+                    let results = battlefield.add(cards, modifiers, card, vec![]);
                     battlefield.apply_action_results(cards, modifiers, self, results);
                 }
                 StackResult::ApplyToBattlefield { source, modifier } => {
@@ -433,7 +438,7 @@ impl Stack {
                         modifiers,
                         source,
                         modifier_id,
-                        targets,
+                        &targets,
                     );
                 }
                 StackResult::SpellCountered { id } => {
@@ -495,6 +500,7 @@ fn add_power_toughness(
                                 modifier: ModifyBattlefield::AddPowerToughness(modifier.clone()),
                                 controller: Controller::Any,
                                 duration: EffectDuration::UntilEndOfTurn,
+                                restrictions: enum_set!(),
                             },
                             controller: cards[card].controller.clone(),
                             modifying: Default::default(),

@@ -15,10 +15,10 @@ pub struct Enchant {
     pub restrictions: EnumSet<Restriction>,
 }
 
-impl TryFrom<&protogen::abilities::static_ability::Enchant> for Enchant {
+impl TryFrom<&protogen::abilities::Enchant> for Enchant {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::abilities::static_ability::Enchant) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::abilities::Enchant) -> Result<Self, Self::Error> {
         Ok(Self {
             modifiers: value
                 .modifiers
@@ -66,7 +66,6 @@ pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
     Vigilance,
     BattlefieldModifier(BattlefieldModifier),
-    Enchant(Enchant),
 }
 
 impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
@@ -100,9 +99,6 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
             protogen::abilities::static_ability::Ability::Vigilance(_) => Ok(Self::Vigilance),
-            protogen::abilities::static_ability::Ability::Enchant(enchant) => {
-                Ok(Self::Enchant(enchant.try_into()?))
-            }
         }
     }
 }

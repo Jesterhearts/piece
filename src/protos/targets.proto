@@ -18,13 +18,10 @@ message Restriction {
   }
   message CreaturesOnly {
   } 
-  message ControllerControlsBlackOrGreen {
-  }
 
   oneof restriction {
     NotSelf not_self = 1;
     SingleTarget single_target = 2;
     CreaturesOnly creatures_only = 3;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 4;
   }
 }

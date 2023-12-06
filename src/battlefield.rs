@@ -5,7 +5,7 @@ use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     abilities::{ETBAbility, StaticAbility},
-    card::SubtypeModifier,
+    card::{Color, SubtypeModifier},
     controller::Controller,
     cost::AdditionalCost,
     effects::{
@@ -73,6 +73,7 @@ impl Battlefield {
         cards: &mut AllCards,
         modifiers: &mut AllModifiers,
         source_card_id: CardId,
+        mut targets: Vec<CardId>,
     ) -> Vec<ActionResult> {
         let mut result = vec![];
         self.permanents
@@ -86,11 +87,11 @@ impl Battlefield {
                             targets: enum_set!(),
                             power: 2,
                             toughness: 2,
-                            restrictions: enum_set!(Restriction::SingleTarget),
                         },
                     ),
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    restrictions: enum_set!(Restriction::SingleTarget),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![source_card_id],
@@ -112,11 +113,10 @@ impl Battlefield {
 
             let modifier_id = modifiers.add_modifier(ModifierInPlay {
                 modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes {
-                        restrictions: enum_set!(Restriction::SingleTarget),
-                    }),
+                    modifier: ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes {}),
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    restrictions: enum_set!(Restriction::SingleTarget),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![source_card_id],
@@ -133,13 +133,32 @@ impl Battlefield {
                 .insert(modifier_id);
         }
 
+        if let Some(enchant) = cards[source_card_id].card.enchant.clone() {
+            for modifier in enchant.modifiers {
+                let modifier_id = modifiers.add_modifier(ModifierInPlay {
+                    modifier: modifier.clone(),
+                    controller: cards[source_card_id].controller.clone(),
+                    modifying: vec![],
+                });
+
+                self.apply_modifier_to_targets(
+                    cards,
+                    modifiers,
+                    source_card_id,
+                    modifier_id,
+                    &targets,
+                );
+            }
+        }
+
         let card = &cards[source_card_id];
         for etb in card.card.etb_abilities.iter() {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
+                    assert_eq!(targets.len(), 1);
                     result.push(ActionResult::CloneCreatureNonTargeting {
                         source: source_card_id,
-                        target: None,
+                        target: targets.pop(),
                     });
                 }
             }
@@ -160,7 +179,6 @@ impl Battlefield {
                         modifier: modifier_id,
                     })
                 }
-                StaticAbility::Enchant(_) => todo!(),
             }
         }
 
@@ -182,6 +200,18 @@ impl Battlefield {
         }
 
         result
+    }
+
+    pub fn controlled_colors(&self, cards: &AllCards, player: PlayerRef) -> EnumSet<Color> {
+        let mut colors = enum_set!();
+        for permanent in self.permanents.keys() {
+            let card = &cards[*permanent];
+            if card.controller == player {
+                colors.extend(card.card.color());
+            }
+        }
+
+        colors
     }
 
     pub fn end_turn(&mut self, cards: &mut AllCards, modifers: &mut AllModifiers) {
@@ -206,7 +236,11 @@ impl Battlefield {
         for card_id in self.permanents.keys() {
             let card = &cards[*card_id].card;
 
-            if card.toughness() <= Some(0) {
+            if card.toughness().is_some() && card.toughness() <= Some(0) {
+                result.push(ActionResult::PermanentToGraveyard(*card_id));
+            }
+
+            if card.enchant.is_some() && !self.attaching_modifiers.contains_key(card_id) {
                 result.push(ActionResult::PermanentToGraveyard(*card_id));
             }
         }
@@ -413,7 +447,7 @@ impl Battlefield {
         modifiers: &mut AllModifiers,
         source_card_id: CardId,
         modifier_id: ModifierId,
-        targets: Vec<CardId>,
+        targets: &[CardId],
     ) {
         Self::apply_modifier_to_targets_internal(
             &mut self.global_modifiers,
@@ -423,7 +457,7 @@ impl Battlefield {
             modifiers,
             source_card_id,
             modifier_id,
-            targets.into_iter(),
+            targets.iter().copied(),
         );
     }
 
@@ -542,7 +576,7 @@ fn apply_modifier_to_targets(
             }
         }
 
-        for restriction in modifier.modifier.restrictions().iter() {
+        for restriction in modifier.modifier.restrictions.iter() {
             match restriction {
                 Restriction::NotSelf => {
                     if card_id == source_card_id {
@@ -560,7 +594,6 @@ fn apply_modifier_to_targets(
                         continue 'outer;
                     }
                 }
-                Restriction::ControllerControlsBlackOrGreen => todo!(),
             }
         }
 

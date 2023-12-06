@@ -16,20 +16,20 @@ message ETBAbility {
   }
 }
 
+message Enchant {
+  repeated effects.BattlefieldModifier modifiers = 1;
+  repeated targets.Restriction restrictions = 2;
+}
+
 message StaticAbility {
   message GreenCannotBeCountered {
     controller.Controller controller = 1;
-  }
-  message Enchant {
-    repeated effects.BattlefieldModifier modifiers = 1;
-    repeated targets.Restriction restrictions = 2;
   }
 
   oneof ability {
     GreenCannotBeCountered green_cannot_be_countered = 1;
     effects.BattlefieldModifier battlefield_modifier = 2;
     effects.Vigilance vigilance = 3;
-    Enchant enchant = 4;
   }
 }
 

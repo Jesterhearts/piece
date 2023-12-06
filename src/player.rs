@@ -261,7 +261,7 @@ impl Player {
             let card = &mut cards[manifested];
             card.face_down = true;
             card.manifested = true;
-            let results = battlefield.add(cards, modifiers, manifested);
+            let results = battlefield.add(cards, modifiers, manifested, vec![]);
             battlefield.apply_action_results(cards, modifiers, stack, results);
         }
     }
