@@ -27,25 +27,25 @@ activated_abilities {
     battlefield_modifier { 
       modifier {
         modify_base_power_toughness {
-          targets { elf {} }
           power: 5
           toughness: 5
         }
       }
       controller { you {} }
       duration { until_end_of_turn {} }
+      restrictions { of_type { subtypes { elf {} } } }
     }
   }
   effects {
     battlefield_modifier { 
       modifier {
         modify_creature_types {
-          targets { elf {} }
-          types { dinosaur {} }
+          add_subtypes { dinosaur {} }
         }
       }
       controller { you {} }
       duration { until_end_of_turn {} }
+      restrictions { of_type { subtypes { elf {} } } }
     }
   }
 }

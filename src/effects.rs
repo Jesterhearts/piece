@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
 use enumset::{EnumSet, EnumSetType};
 
@@ -189,7 +191,6 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModifyBasePowerToughness {
-    pub targets: EnumSet<Subtype>,
     pub power: i32,
     pub toughness: i32,
 }
@@ -199,11 +200,6 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
 
     fn try_from(value: &protogen::effects::ModifyBasePowerToughness) -> Result<Self, Self::Error> {
         Ok(Self {
-            targets: value
-                .targets
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
             power: value.power,
             toughness: value.toughness,
         })
@@ -212,8 +208,8 @@ impl TryFrom<&protogen::effects::ModifyBasePowerToughness> for ModifyBasePowerTo
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AddCreatureSubtypes {
-    pub targets: EnumSet<Subtype>,
-    pub types: EnumSet<Subtype>,
+    pub add_types: EnumSet<Type>,
+    pub add_subtypes: EnumSet<Subtype>,
 }
 
 impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
@@ -221,13 +217,13 @@ impl TryFrom<&protogen::effects::ModifyCreatureTypes> for AddCreatureSubtypes {
 
     fn try_from(value: &protogen::effects::ModifyCreatureTypes) -> Result<Self, Self::Error> {
         Ok(Self {
-            targets: value
-                .targets
+            add_types: value
+                .add_types
                 .iter()
-                .map(Subtype::try_from)
+                .map(Type::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
-            types: value
-                .types
+            add_subtypes: value
+                .add_subtypes
                 .iter()
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<EnumSet<_>>>()?,
@@ -316,7 +312,7 @@ pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,
     pub duration: EffectDuration,
-    pub restrictions: EnumSet<targets::Restriction>,
+    pub restrictions: HashSet<targets::Restriction>,
 }
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
@@ -346,7 +342,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
                 .restrictions
                 .iter()
                 .map(targets::Restriction::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
+                .collect::<anyhow::Result<HashSet<_>>>()?,
         })
     }
 }

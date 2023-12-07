@@ -36,6 +36,8 @@ message Type {
 }
 
 message Subtype {
+  message Angel {
+  }
   message Aura {
   }
   message Bear {
@@ -69,23 +71,23 @@ message Subtype {
   message Swamp {
   }
 
-
   oneof subtype {
-    Aura aura = 1;
-    Bear bear = 2;
-    Dinosaur dinosaur = 3;
-    Elemental elemental = 4;
-    Elf elf = 5;
-    Equipment equipment = 6;
-    Forest forest = 7;
-    Golem golem = 8;
-    Island island = 9;
-    Mountain mountain = 10;
-    Plains plains = 11;
-    Praetor praetor = 12;
-    Shade shade = 13;
-    Shaman shaman = 14;
-    Shapeshifter shapeshifter = 15;
-    Swamp swamp = 16;
+    Angel angel = 1;
+    Aura aura = 2;
+    Bear bear = 3;
+    Dinosaur dinosaur = 4;
+    Elemental elemental = 5;
+    Elf elf = 6;
+    Equipment equipment = 7;
+    Forest forest = 8;
+    Golem golem = 9;
+    Island island = 10;
+    Mountain mountain = 11;
+    Plains plains = 12;
+    Praetor praetor = 13;
+    Shade shade = 14;
+    Shaman shaman = 15;
+    Shapeshifter shapeshifter = 16;
+    Swamp swamp = 17;
   }
 }

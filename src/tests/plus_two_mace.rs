@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
@@ -13,6 +15,8 @@ use crate::{
     load_cards,
     player::Player,
     stack::{ActiveTarget, Stack, StackResult},
+    targets::Restriction,
+    types::Type,
 };
 
 #[test]
@@ -75,7 +79,10 @@ fn equipment_works() -> anyhow::Result<()> {
                     }),
                     controller: Controller::You,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: enum_set!(),
+                    restrictions: HashSet::from([Restriction::OfType {
+                        types: enum_set!(Type::Creature),
+                        subtypes: enum_set!()
+                    }]),
                 },
                 controller: player.clone(),
                 modifying: vec![],

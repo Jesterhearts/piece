@@ -52,6 +52,7 @@ impl Type {
 
 #[derive(Debug, EnumSetType)]
 pub enum Subtype {
+    Angel,
     Aura,
     Bear,
     Dinosaur,
@@ -101,6 +102,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Elemental(_) => Self::Elemental,
             protogen::types::subtype::Subtype::Shade(_) => Self::Shade,
             protogen::types::subtype::Subtype::Golem(_) => Self::Golem,
+            protogen::types::subtype::Subtype::Angel(_) => Self::Angel,
         }
     }
 }

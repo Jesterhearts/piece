@@ -626,20 +626,20 @@ impl Card {
     pub(crate) fn add_modifier(&mut self, id: ModifierId, modifier: &BattlefieldModifier) {
         match &modifier.modifier {
             ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
-                targets,
                 power,
                 toughness,
             }) => {
-                if self.subtypes_intersect(*targets) {
-                    self.adjusted_base_power.insert(id, *power);
-                    self.adjusted_base_toughness.insert(id, *toughness);
-                }
+                self.adjusted_base_power.insert(id, *power);
+                self.adjusted_base_toughness.insert(id, *toughness);
             }
-            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes { targets, types }) => {
-                if self.subtypes_intersect(*targets) {
-                    self.modified_subtypes
-                        .insert(id, SubtypeModifier::Add(types.iter().collect()));
-                }
+            ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
+                add_types,
+                add_subtypes,
+            }) => {
+                self.modified_subtypes
+                    .insert(id, SubtypeModifier::Add(*add_subtypes));
+                self.modified_types
+                    .insert(id, TypeModifier::Add(*add_types));
             }
             ModifyBattlefield::AddPowerToughness(AddPowerToughness { power, toughness }) => {
                 self.power_modifier.insert(id, *power);
@@ -695,15 +695,10 @@ fn targets_for_battlefield_modifier(
     targets: &mut Vec<ActiveTarget>,
 ) {
     match &modifier {
-        ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness {
-            targets: target_types,
-            ..
-        }) => {
+        ModifyBattlefield::ModifyBasePowerToughness(ModifyBasePowerToughness { .. }) => {
             for creature in creatures.iter() {
                 let card = &cards[*creature];
-                if card.card.subtypes_intersect(*target_types)
-                    && card.card.can_be_targeted(caster, &card.controller.borrow())
-                {
+                if card.card.can_be_targeted(caster, &card.controller.borrow()) {
                     targets.push(ActiveTarget::Battlefield { id: *creature });
                 }
             }

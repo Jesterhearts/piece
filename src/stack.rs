@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use enumset::{enum_set, EnumSet};
 use indexmap::IndexMap;
@@ -14,6 +14,7 @@ use crate::{
     in_play::{AllCards, AllModifiers, CardId, EffectsInPlay, ModifierInPlay, ModifierType},
     mana::Mana,
     player::PlayerRef,
+    targets::Restriction,
     types::Type,
 };
 
@@ -379,7 +380,10 @@ impl Stack {
                                                     modifier,
                                                     controller: Controller::You,
                                                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                                                    restrictions: enum_set!(),
+                                                    restrictions: HashSet::from([Restriction::OfType {
+                                                        types: enum_set!(Type::Creature),
+                                                        subtypes: enum_set!()
+                                                    }]),
                                                 },
                                                 controller: card.controller.clone(),
                                                 modifying: vec![],
@@ -500,7 +504,10 @@ fn add_power_toughness(
                                 modifier: ModifyBattlefield::AddPowerToughness(modifier.clone()),
                                 controller: Controller::Any,
                                 duration: EffectDuration::UntilEndOfTurn,
-                                restrictions: enum_set!(),
+                                restrictions: HashSet::from([Restriction::OfType {
+                                    types: enum_set!(Type::Creature),
+                                    subtypes: enum_set!(),
+                                }]),
                             },
                             controller: cards[card].controller.clone(),
                             modifying: Default::default(),

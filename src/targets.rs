@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use enumset::{EnumSet, EnumSetType};
+use enumset::EnumSet;
 
 use crate::{
     controller::Controller,
@@ -39,12 +39,15 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
     }
 }
 
-#[derive(Debug, EnumSetType)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Restriction {
     NotSelf,
     SingleTarget,
-    CreaturesOnly,
     Self_,
+    OfType {
+        types: EnumSet<Type>,
+        subtypes: EnumSet<Subtype>,
+    },
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {
@@ -55,17 +58,30 @@ impl TryFrom<&protogen::targets::Restriction> for Restriction {
             .restriction
             .as_ref()
             .ok_or_else(|| anyhow!("Expected restriction to have a restriction specified"))
-            .map(Restriction::from)
+            .and_then(Restriction::try_from)
     }
 }
 
-impl From<&protogen::targets::restriction::Restriction> for Restriction {
-    fn from(value: &protogen::targets::restriction::Restriction) -> Self {
+impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
-            protogen::targets::restriction::Restriction::NotSelf(_) => Self::NotSelf,
-            protogen::targets::restriction::Restriction::SingleTarget(_) => Self::SingleTarget,
-            protogen::targets::restriction::Restriction::CreaturesOnly(_) => Self::CreaturesOnly,
-            protogen::targets::restriction::Restriction::Self_(_) => Self::Self_,
+            protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
+            protogen::targets::restriction::Restriction::SingleTarget(_) => Ok(Self::SingleTarget),
+            protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
+            protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {
+                types: types
+                    .types
+                    .iter()
+                    .map(Type::try_from)
+                    .collect::<anyhow::Result<EnumSet<_>>>()?,
+                subtypes: types
+                    .subtypes
+                    .iter()
+                    .map(Subtype::try_from)
+                    .collect::<anyhow::Result<EnumSet<_>>>()?,
+            }),
         }
     }
 }

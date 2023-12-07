@@ -1,4 +1,6 @@
-use enumset::enum_set;
+use std::collections::HashSet;
+
+use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -13,6 +15,7 @@ use crate::{
     load_cards,
     player::Player,
     stack::{Stack, StackResult},
+    targets::Restriction,
     types::Subtype,
 };
 
@@ -41,23 +44,28 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyBasePowerToughness(
                             ModifyBasePowerToughness {
-                                targets: enum_set![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
                             }
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
+                        restrictions: HashSet::from([Restriction::OfType {
+                            types: enum_set!(),
+                            subtypes: enum_set!(Subtype::Elf)
+                        }]),
                     }),
                     ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            targets: enum_set![Subtype::Elf],
-                            types: enum_set![Subtype::Dinosaur],
+                            add_subtypes: enum_set![Subtype::Dinosaur],
+                            add_types: enum_set![],
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
+                        restrictions: HashSet::from([Restriction::OfType {
+                            types: enum_set![],
+                            subtypes: enum_set![Subtype::Elf]
+                        }]),
                     })
                 ],
                 source: card,
@@ -86,14 +94,16 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     modifier: BattlefieldModifier {
                         modifier: ModifyBattlefield::ModifyBasePowerToughness(
                             ModifyBasePowerToughness {
-                                targets: enum_set![Subtype::Elf],
                                 power: 5,
                                 toughness: 5,
                             }
                         ),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
+                        restrictions: HashSet::from([Restriction::OfType {
+                            types: enum_set!(),
+                            subtypes: enum_set!(Subtype::Elf)
+                        }]),
                     },
                     controller: player.clone(),
                     modifying: Default::default(),
@@ -105,12 +115,15 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
                     source: card,
                     modifier: BattlefieldModifier {
                         modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            targets: enum_set![Subtype::Elf],
-                            types: enum_set![Subtype::Dinosaur],
+                            add_subtypes: enum_set![Subtype::Dinosaur],
+                            add_types: enum_set![],
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: Default::default(),
+                        restrictions: HashSet::from([Restriction::OfType {
+                            types: enum_set![],
+                            subtypes: enum_set![Subtype::Elf]
+                        }]),
                     },
                     controller: player.clone(),
                     modifying: Default::default(),

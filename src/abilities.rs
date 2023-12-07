@@ -1,5 +1,6 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
-use enumset::EnumSet;
 
 use crate::{
     controller::Controller,
@@ -16,7 +17,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
-    pub restrictions: EnumSet<Restriction>,
+    pub restrictions: HashSet<Restriction>,
 }
 
 impl TryFrom<&protogen::abilities::Enchant> for Enchant {

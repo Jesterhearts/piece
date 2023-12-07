@@ -151,14 +151,13 @@ impl Battlefield {
                 modifier: BattlefieldModifier {
                     modifier: ModifyBattlefield::ModifyBasePowerToughness(
                         ModifyBasePowerToughness {
-                            targets: enum_set!(),
                             power: 2,
                             toughness: 2,
                         },
                     ),
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: enum_set!(Restriction::SingleTarget),
+                    restrictions: HashSet::from([Restriction::SingleTarget]),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![],
@@ -172,7 +171,7 @@ impl Battlefield {
                     modifier: ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes {}),
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: enum_set!(Restriction::SingleTarget),
+                    restrictions: HashSet::from([Restriction::SingleTarget]),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![source_card_id],
@@ -186,7 +185,7 @@ impl Battlefield {
                     modifier: ModifyBattlefield::RemoveAllAbilities,
                     controller: Controller::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: enum_set!(Restriction::SingleTarget),
+                    restrictions: HashSet::from([Restriction::SingleTarget]),
                 },
                 controller: cards[source_card_id].controller.clone(),
                 modifying: vec![source_card_id],
@@ -1031,8 +1030,11 @@ fn apply_modifier_to_targets(
                         continue 'outer;
                     }
                 }
-                Restriction::CreaturesOnly => {
-                    if !card.card.types_intersect(enum_set![Type::Creature]) {
+                Restriction::OfType { types, subtypes } => {
+                    if !card.card.types_intersect(*types) {
+                        continue 'outer;
+                    }
+                    if !card.card.subtypes_intersect(*subtypes) {
                         continue 'outer;
                     }
                 }

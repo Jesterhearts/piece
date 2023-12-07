@@ -1,4 +1,5 @@
-use enumset::enum_set;
+use std::collections::HashSet;
+
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -51,7 +52,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
                         }),
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: enum_set!(Restriction::Self_),
+                        restrictions: HashSet::from([Restriction::Self_]),
                     }
                 ),],
                 source: card,
@@ -83,7 +84,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
                     }),
                     controller: Controller::You,
                     duration: EffectDuration::UntilEndOfTurn,
-                    restrictions: enum_set!(Restriction::Self_),
+                    restrictions: HashSet::from([Restriction::Self_]),
                 },
                 controller: player.clone(),
                 modifying: Default::default(),

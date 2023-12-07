@@ -75,14 +75,13 @@ message GainMana {
 }
 
 message ModifyBasePowerToughness {
-  repeated types.Subtype targets = 1;
   int32 power = 2;
   int32 toughness = 3;
 }
 
 message ModifyCreatureTypes {
-  repeated types.Subtype targets = 1;
-  repeated types.Subtype types = 2;
+  repeated types.Type add_types = 2;
+  repeated types.Subtype add_subtypes = 3;
 }
 
 message RemoveAllSubtypes {
