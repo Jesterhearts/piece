@@ -42,4 +42,8 @@ impl Deck {
     pub fn draw(&mut self) -> Option<CardId> {
         self.cards.pop_back()
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.cards.len()
+    }
 }

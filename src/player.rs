@@ -188,7 +188,7 @@ impl Player {
     }
 
     pub fn draw(&mut self, count: usize) -> bool {
-        if self.deck.cards.len() < count {
+        if self.deck.len() < count {
             return false;
         }
 

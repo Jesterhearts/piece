@@ -7,6 +7,35 @@ use crate::{
     types::{Subtype, Type},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Comparison {
+    LessThan(i32),
+    LessThanOrEqual(i32),
+}
+
+impl TryFrom<&protogen::targets::Comparison> for Comparison {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::Comparison) -> Result<Self, Self::Error> {
+        value
+            .value
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected comparison to have a comparison specified"))
+            .map(Comparison::from)
+    }
+}
+
+impl From<&protogen::targets::comparison::Value> for Comparison {
+    fn from(value: &protogen::targets::comparison::Value) -> Self {
+        match value {
+            protogen::targets::comparison::Value::LessThan(value) => Self::LessThan(value.value),
+            protogen::targets::comparison::Value::LessThanOrEqual(value) => {
+                Self::LessThanOrEqual(value.value)
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SpellTarget {
     pub controller: Controller,
@@ -48,6 +77,7 @@ pub enum Restriction {
         types: EnumSet<Type>,
         subtypes: EnumSet<Subtype>,
     },
+    Toughness(Comparison),
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {
@@ -82,6 +112,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Subtype::try_from)
                     .collect::<anyhow::Result<EnumSet<_>>>()?,
             }),
+            protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
+                Self::Toughness(toughness.comparison.get_or_default().try_into()?),
+            ),
         }
     }
 }

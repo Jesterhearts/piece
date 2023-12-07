@@ -61,6 +61,7 @@ pub enum Subtype {
     Equipment,
     Forest,
     Golem,
+    Human,
     Island,
     Mountain,
     Plains,
@@ -68,6 +69,7 @@ pub enum Subtype {
     Shade,
     Shaman,
     Shapeshifter,
+    Soldier,
     Swamp,
 }
 
@@ -103,6 +105,8 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Shade(_) => Self::Shade,
             protogen::types::subtype::Subtype::Golem(_) => Self::Golem,
             protogen::types::subtype::Subtype::Angel(_) => Self::Angel,
+            protogen::types::subtype::Subtype::Human(_) => Self::Human,
+            protogen::types::subtype::Subtype::Soldier(_) => Self::Soldier,
         }
     }
 }

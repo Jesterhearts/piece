@@ -18,6 +18,7 @@ message ETBAbility {
     effects.ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 3;
     effects.ReturnFromGraveyardToBattlefield 
       return_from_graveyard_to_battlefield = 4;
+    effects.TutorLibrary tutor_library = 5;
   }
 }
 

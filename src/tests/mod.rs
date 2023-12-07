@@ -10,3 +10,4 @@ mod hoar_shade;
 mod plus_two_mace;
 mod reality_shift;
 mod titania_protector_of_argoth;
+mod recruiter_of_the_guard;

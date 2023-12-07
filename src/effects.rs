@@ -12,6 +12,58 @@ use crate::{
     types::{Subtype, Type},
 };
 
+#[derive(Debug, EnumSetType)]
+pub enum Destination {
+    Hand,
+    TopOfLibrary,
+    Battlefield,
+}
+
+impl TryFrom<&protogen::effects::Destination> for Destination {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Destination) -> Result<Self, Self::Error> {
+        value
+            .destination
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected destination to have a destination set"))
+            .map(Self::from)
+    }
+}
+
+impl From<&protogen::effects::destination::Destination> for Destination {
+    fn from(value: &protogen::effects::destination::Destination) -> Self {
+        match value {
+            protogen::effects::destination::Destination::Hand(_) => Self::Hand,
+            protogen::effects::destination::Destination::TopOfLibrary(_) => Self::TopOfLibrary,
+            protogen::effects::destination::Destination::Battlefield(_) => Self::Battlefield,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TutorLibrary {
+    pub restrictions: HashSet<targets::Restriction>,
+    pub destination: Destination,
+    pub reveal: bool,
+}
+
+impl TryFrom<&protogen::effects::TutorLibrary> for TutorLibrary {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::TutorLibrary) -> Result<Self, Self::Error> {
+        Ok(Self {
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(targets::Restriction::try_from)
+                .collect::<anyhow::Result<HashSet<_>>>()?,
+            destination: value.destination.get_or_default().try_into()?,
+            reveal: value.reveal,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mill {
     pub count: usize,

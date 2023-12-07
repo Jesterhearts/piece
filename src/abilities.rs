@@ -7,7 +7,7 @@ use crate::{
     cost::AbilityCost,
     effects::{
         ActivatedAbilityEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
-        ReturnFromGraveyardToLibrary, TriggeredEffect,
+        ReturnFromGraveyardToLibrary, TriggeredEffect, TutorLibrary,
     },
     protogen,
     targets::Restriction,
@@ -45,6 +45,7 @@ pub enum ETBAbility {
     Mill(Mill),
     ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
     ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
+    TutorLibrary(TutorLibrary),
 }
 
 impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
@@ -75,6 +76,9 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
             }
             protogen::abilities::etbability::Ability::ReturnFromGraveyardToBattlefield(ret) => {
                 Ok(Self::ReturnFromGraveyardToBattlefield(ret.try_into()?))
+            }
+            protogen::abilities::etbability::Ability::TutorLibrary(tutor) => {
+                Ok(Self::TutorLibrary(tutor.try_into()?))
             }
         }
     }

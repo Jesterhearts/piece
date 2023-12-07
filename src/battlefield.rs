@@ -11,17 +11,18 @@ use crate::{
     card::Color,
     controller::Controller,
     cost::AdditionalCost,
+    deck::Deck,
     effects::{
-        BattlefieldModifier, EffectDuration, Mill, ModifyBasePowerToughness, ModifyBattlefield,
-        RemoveAllSubtypes, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token,
-        TriggeredEffect,
+        BattlefieldModifier, Destination, EffectDuration, Mill, ModifyBasePowerToughness,
+        ModifyBattlefield, RemoveAllSubtypes, ReturnFromGraveyardToBattlefield,
+        ReturnFromGraveyardToLibrary, Token, TriggeredEffect, TutorLibrary,
     },
     in_play::{
         AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay, ModifierType,
     },
     player::PlayerRef,
     stack::{ActiveTarget, Stack},
-    targets::Restriction,
+    targets::{Comparison, Restriction},
     triggers::{Location, PutIntoGraveyard, Trigger},
     types::Type,
 };
@@ -60,6 +61,13 @@ pub enum UnresolvedActionResult {
     CreateToken {
         source: CardId,
         token: Token,
+    },
+    TutorLibrary {
+        source: CardId,
+        destination: Destination,
+        targets: HashSet<CardId>,
+        reveal: bool,
+        restrictions: HashSet<Restriction>,
     },
 }
 
@@ -272,6 +280,24 @@ impl Battlefield {
                         count,
                         types,
                         valid_targets: target_cards,
+                    });
+                }
+                ETBAbility::TutorLibrary(TutorLibrary {
+                    restrictions,
+                    destination,
+                    reveal,
+                }) => {
+                    let target_cards = compute_deck_targets(
+                        cards,
+                        &cards[source_card_id].controller.borrow().deck,
+                        &restrictions,
+                    );
+                    results.push(UnresolvedActionResult::TutorLibrary {
+                        source: source_card_id,
+                        destination,
+                        targets: target_cards,
+                        reveal,
+                        restrictions,
                     });
                 }
             }
@@ -644,6 +670,27 @@ impl Battlefield {
                         stack,
                     ));
                 }
+                UnresolvedActionResult::TutorLibrary {
+                    source,
+                    destination,
+                    targets: _,
+                    reveal,
+                    restrictions,
+                } => {
+                    let targets = compute_deck_targets(
+                        cards,
+                        &cards[source].controller.borrow().deck,
+                        &restrictions,
+                    );
+
+                    pending.push(UnresolvedActionResult::TutorLibrary {
+                        source,
+                        destination,
+                        targets,
+                        reveal,
+                        restrictions,
+                    });
+                }
             }
         }
 
@@ -958,6 +1005,52 @@ impl Battlefield {
     }
 }
 
+fn compute_deck_targets(
+    cards: &AllCards,
+    deck: &Deck,
+    restrictions: &HashSet<Restriction>,
+) -> HashSet<CardId> {
+    let mut results = HashSet::default();
+
+    'outer: for card_id in deck.cards.iter() {
+        let card = &cards[*card_id].card;
+        for restriction in restrictions.iter() {
+            match restriction {
+                Restriction::NotSelf => {}
+                Restriction::SingleTarget => {}
+                Restriction::Self_ => {}
+                Restriction::OfType { types, subtypes } => {
+                    if !card.types_intersect(*types) {
+                        continue 'outer;
+                    }
+                    if !card.subtypes_intersect(*subtypes) {
+                        continue 'outer;
+                    }
+                }
+                Restriction::Toughness(comparison) => {
+                    let toughness = card.toughness();
+                    match comparison {
+                        Comparison::LessThan(value) => {
+                            if toughness.is_none() || toughness.unwrap() >= *value {
+                                continue 'outer;
+                            }
+                        }
+                        Comparison::LessThanOrEqual(value) => {
+                            if toughness.is_none() || toughness.unwrap() > *value {
+                                continue 'outer;
+                            }
+                        }
+                    };
+                }
+            }
+        }
+
+        results.insert(*card_id);
+    }
+
+    results
+}
+
 fn compute_graveyard_targets(
     controller: Controller,
     cards: &mut AllCards,
@@ -1042,6 +1135,21 @@ fn apply_modifier_to_targets(
                     if card_id != modifier.source {
                         continue 'outer;
                     }
+                }
+                Restriction::Toughness(comparison) => {
+                    let toughness = card.card.toughness();
+                    match comparison {
+                        Comparison::LessThan(value) => {
+                            if toughness.is_none() || toughness.unwrap() >= *value {
+                                continue 'outer;
+                            }
+                        }
+                        Comparison::LessThanOrEqual(value) => {
+                            if toughness.is_none() || toughness.unwrap() > *value {
+                                continue 'outer;
+                            }
+                        }
+                    };
                 }
             }
         }

@@ -8,6 +8,27 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
+message Destination {
+  message Hand {
+  }
+  message TopOfLibrary{
+  }
+  message Battlefield {
+  }
+
+  oneof destination {
+    Hand hand = 1;
+    TopOfLibrary top_of_library = 2;
+    Battlefield battlefield = 3;
+  }
+}
+
+message TutorLibrary {
+  repeated targets.Restriction restrictions = 1;
+  Destination destination = 2;
+  bool reveal = 3;
+}
+
 message Mill {
   int32 count = 1;
   controller.Controller target = 2;
@@ -75,13 +96,13 @@ message GainMana {
 }
 
 message ModifyBasePowerToughness {
-  int32 power = 2;
-  int32 toughness = 3;
+  int32 power = 1;
+  int32 toughness = 2;
 }
 
 message ModifyCreatureTypes {
-  repeated types.Type add_types = 2;
-  repeated types.Subtype add_subtypes = 3;
+  repeated types.Type add_types = 1;
+  repeated types.Subtype add_subtypes = 2;
 }
 
 message RemoveAllSubtypes {
