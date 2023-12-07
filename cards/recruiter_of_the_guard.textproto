@@ -21,3 +21,5 @@ etb_abilities {
     reveal: true
   }
 }
+power: 1
+toughness: 1

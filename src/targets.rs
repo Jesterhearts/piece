@@ -78,6 +78,7 @@ pub enum Restriction {
         subtypes: EnumSet<Subtype>,
     },
     Toughness(Comparison),
+    ControllerControlsBlackOrGreen,
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {
@@ -115,6 +116,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),
             ),
+            protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
+                Ok(Self::ControllerControlsBlackOrGreen)
+            }
         }
     }
 }

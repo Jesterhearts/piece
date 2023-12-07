@@ -307,6 +307,7 @@ impl Battlefield {
             match ability {
                 StaticAbility::GreenCannotBeCountered { .. } => {}
                 StaticAbility::Vigilance => {}
+                StaticAbility::Flash => {}
                 StaticAbility::BattlefieldModifier(modifier) => {
                     let modifier_id = modifiers.add_modifier(ModifierInPlay {
                         source: source_card_id,
@@ -328,6 +329,7 @@ impl Battlefield {
                 ModifierSource::Card(_) => {
                     for modifier_id in global_modifiers.iter().copied() {
                         apply_modifier_to_targets(
+                            this.controlled_colors(cards, &modifiers[modifier_id].controller),
                             modifiers,
                             modifier_id,
                             std::iter::once(source_card_id),
@@ -350,11 +352,11 @@ impl Battlefield {
         results
     }
 
-    pub fn controlled_colors(&self, cards: &AllCards, player: PlayerRef) -> EnumSet<Color> {
+    pub fn controlled_colors(&self, cards: &AllCards, player: &PlayerRef) -> EnumSet<Color> {
         let mut colors = enum_set!();
         for permanent in self.permanents.keys() {
             let card = &cards[*permanent];
-            if card.controller == player {
+            if card.controller == *player {
                 colors.extend(card.card.color());
             }
         }
@@ -889,6 +891,7 @@ impl Battlefield {
         modifier_id: ModifierId,
     ) {
         Self::apply_modifier_to_targets_internal(
+            self.controlled_colors(cards, &modifiers[modifier_id].controller),
             &mut self.global_modifiers,
             &mut self.attaching_modifiers,
             &mut self.attached_cards,
@@ -907,6 +910,7 @@ impl Battlefield {
         targets: &[CardId],
     ) {
         Self::apply_modifier_to_targets_internal(
+            self.controlled_colors(cards, &modifiers[modifier_id].controller),
             &mut self.global_modifiers,
             &mut self.attaching_modifiers,
             &mut self.attached_cards,
@@ -919,6 +923,7 @@ impl Battlefield {
 
     #[allow(clippy::too_many_arguments)]
     fn apply_modifier_to_targets_internal(
+        colors_controlled: EnumSet<Color>,
         global_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
         attaching_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
         attached_modifiers: &mut IndexMap<CardId, HashSet<CardId>>,
@@ -927,7 +932,13 @@ impl Battlefield {
         modifier_id: ModifierId,
         targets: impl Iterator<Item = CardId> + Clone,
     ) {
-        apply_modifier_to_targets(modifiers, modifier_id, targets.clone(), cards);
+        apply_modifier_to_targets(
+            colors_controlled,
+            modifiers,
+            modifier_id,
+            targets.clone(),
+            cards,
+        );
 
         let modifier = &mut modifiers[modifier_id];
 
@@ -1042,6 +1053,9 @@ fn compute_deck_targets(
                         }
                     };
                 }
+                Restriction::ControllerControlsBlackOrGreen => {
+                    todo!()
+                }
             }
         }
 
@@ -1087,6 +1101,7 @@ fn compute_graveyard_targets(
 }
 
 fn apply_modifier_to_targets(
+    colors_controlled: EnumSet<Color>,
     modifiers: &mut AllModifiers,
     modifier_id: ModifierId,
     targets: impl Iterator<Item = CardId>,
@@ -1150,6 +1165,11 @@ fn apply_modifier_to_targets(
                             }
                         }
                     };
+                }
+                Restriction::ControllerControlsBlackOrGreen => {
+                    if colors_controlled.is_disjoint(enum_set!(Color::Black | Color::Green)) {
+                        continue 'outer;
+                    }
                 }
             }
         }

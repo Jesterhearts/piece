@@ -88,6 +88,7 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
     Vigilance,
+    Flash,
     BattlefieldModifier(BattlefieldModifier),
 }
 
@@ -122,6 +123,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
             protogen::abilities::static_ability::Ability::Vigilance(_) => Ok(Self::Vigilance),
+            protogen::abilities::static_ability::Ability::Flash(_) => Ok(Self::Flash),
         }
     }
 }

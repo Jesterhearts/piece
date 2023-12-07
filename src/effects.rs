@@ -131,33 +131,6 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
     }
 }
 
-#[derive(Debug, EnumSetType)]
-pub enum Restriction {
-    ControllerControlsBlackOrGreen,
-}
-
-impl TryFrom<&protogen::effects::Restriction> for Restriction {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Restriction) -> Result<Self, Self::Error> {
-        value
-            .restriction
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected restriction to have a restriction set"))
-            .map(Restriction::from)
-    }
-}
-
-impl From<&protogen::effects::restriction::Restriction> for Restriction {
-    fn from(value: &protogen::effects::restriction::Restriction) -> Self {
-        match value {
-            protogen::effects::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
-                Self::ControllerControlsBlackOrGreen
-            }
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EffectDuration {
     UntilEndOfTurn,
@@ -172,25 +145,6 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
                 Self::UntilSourceLeavesBattlefield
             }
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Vigilance {
-    pub restrictions: EnumSet<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::Vigilance> for Vigilance {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Vigilance) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
-        })
     }
 }
 
@@ -318,7 +272,7 @@ pub enum ModifyBattlefield {
     RemoveAllSubtypes(RemoveAllSubtypes),
     RemoveAllAbilities,
     AddPowerToughness(AddPowerToughness),
-    Vigilance(Vigilance),
+    Vigilance,
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -352,9 +306,7 @@ impl TryFrom<&protogen::effects::modify_battlefield::Modifier> for ModifyBattlef
             protogen::effects::modify_battlefield::Modifier::RemoveAllSubtypes(modifier) => {
                 Ok(Self::RemoveAllSubtypes(modifier.try_into()?))
             }
-            protogen::effects::modify_battlefield::Modifier::Vigilance(vigilance) => {
-                Ok(Self::Vigilance(vigilance.try_into()?))
-            }
+            protogen::effects::modify_battlefield::Modifier::Vigilance(_) => Ok(Self::Vigilance),
         }
     }
 }

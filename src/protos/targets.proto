@@ -39,6 +39,8 @@ message Restriction {
   message Toughness {
     Comparison comparison = 1;
   }
+  message ControllerControlsBlackOrGreen {
+  }
 
   oneof restriction {
     NotSelf not_self = 1;
@@ -46,5 +48,6 @@ message Restriction {
     Self self = 3;
     OfType of_type = 4;
     Toughness toughness = 5;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 6;
   }
 }

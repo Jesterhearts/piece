@@ -532,6 +532,7 @@ impl Card {
                     }
                 }
                 StaticAbility::Vigilance => {}
+                StaticAbility::Flash => {}
                 StaticAbility::BattlefieldModifier(_) => {}
             }
         }
@@ -613,7 +614,7 @@ impl Card {
             ModifyBattlefield::RemoveAllSubtypes(_) => {
                 self.modified_subtypes.remove(&id);
             }
-            ModifyBattlefield::Vigilance(_) => {
+            ModifyBattlefield::Vigilance => {
                 self.adjusted_static_abilities.remove(&id);
             }
             ModifyBattlefield::RemoveAllAbilities => {
@@ -649,7 +650,7 @@ impl Card {
                 self.modified_subtypes
                     .insert(id, SubtypeModifier::RemoveAll);
             }
-            ModifyBattlefield::Vigilance(_) => {
+            ModifyBattlefield::Vigilance => {
                 self.adjusted_static_abilities
                     .insert(id, StaticAbilityModifier::Add(StaticAbility::Vigilance));
             }
@@ -706,7 +707,7 @@ fn targets_for_battlefield_modifier(
         ModifyBattlefield::AddCreatureSubtypes(_)
         | ModifyBattlefield::AddPowerToughness(_)
         | ModifyBattlefield::RemoveAllSubtypes(_)
-        | ModifyBattlefield::Vigilance(_)
+        | ModifyBattlefield::Vigilance
         | ModifyBattlefield::RemoveAllAbilities => {
             for creature in creatures.iter() {
                 let card = &cards[*creature];

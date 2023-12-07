@@ -23,14 +23,11 @@ enchant {
     restrictions { single_target {} }
   }
   modifiers {
-    modifier {
-      vigilance {
-        restrictions { controller_controls_black_or_green {} }
-      }
-    }
+    modifier { vigilance { } }
     controller { any {} }
     duration { until_source_leaves_battlefield {} }
     restrictions { single_target {} }
+        restrictions { controller_controls_black_or_green {} }
   }
   restrictions { of_type { types { creature {} } } }
 }
