@@ -50,6 +50,8 @@ message Subtype {
   }
   message Forest {
   }
+  message Golem {
+  }
   message Island {
   }
   message Mountain {
@@ -76,13 +78,14 @@ message Subtype {
     Elf elf = 5;
     Equipment equipment = 6;
     Forest forest = 7;
-    Island island = 8;
-    Mountain mountain = 9;
-    Plains plains = 10;
-    Praetor praetor = 11;
-    Shade shade = 12;
-    Shaman shaman = 13;
-    Shapeshifter shapeshifter = 14;
-    Swamp swamp = 15;
+    Golem golem = 8;
+    Island island = 9;
+    Mountain mountain = 10;
+    Plains plains = 11;
+    Praetor praetor = 12;
+    Shade shade = 13;
+    Shaman shaman = 14;
+    Shapeshifter shapeshifter = 15;
+    Swamp swamp = 16;
   }
 }

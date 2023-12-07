@@ -59,6 +59,7 @@ pub enum Subtype {
     Elf,
     Equipment,
     Forest,
+    Golem,
     Island,
     Mountain,
     Plains,
@@ -99,6 +100,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Aura(_) => Self::Aura,
             protogen::types::subtype::Subtype::Elemental(_) => Self::Elemental,
             protogen::types::subtype::Subtype::Shade(_) => Self::Shade,
+            protogen::types::subtype::Subtype::Golem(_) => Self::Golem,
         }
     }
 }

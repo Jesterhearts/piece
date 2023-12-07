@@ -89,7 +89,14 @@ fn graveyard_trigger() -> anyhow::Result<()> {
         results,
     );
 
-    assert_eq!(results, []);
+    assert_eq!(
+        results,
+        [UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+            count: 1,
+            types: enum_set!(Type::Land | Type::BasicLand),
+            valid_targets: vec![]
+        }]
+    );
 
     let results =
         battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, land);

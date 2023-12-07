@@ -1,0 +1,26 @@
+name: "Darigaaz's Attendant"
+cost {
+  mana_costs { generic { count: 5 } }
+}
+types { artifact {} }
+types { creature {} }
+subtypes { golem {} }
+oracle_text:  "{1}, Sacrifice Darigaaz's Attendant:"
+              "Add {B}{R}{G}."
+flavor_text:  "\"Darigaaz is the breath of theur-dragon,"
+              "burning away the burdens of mortality.\""
+activated_abilities {
+  cost {
+    mana_costs { generic { count: 1} }
+    additional_costs { sacrifice_this {} }
+  }
+  effects {
+    gain_mana {
+      specific {
+        gains { black{} }
+        gains { red{} }
+        gains { green {} }
+      }
+    }
+  }
+}
