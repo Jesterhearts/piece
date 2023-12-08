@@ -127,6 +127,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<ActivatedAbilityEffect>,
+    pub apply_to_self: bool,
 }
 
 impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
@@ -144,6 +145,7 @@ impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
                 .iter()
                 .map(ActivatedAbilityEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            apply_to_self: value.apply_to_self,
         })
     }
 }

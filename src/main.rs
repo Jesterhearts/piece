@@ -222,6 +222,8 @@ fn prepare_db() -> anyhow::Result<Connection> {
                 cost JSON NOT NULL,
                 effects JSON NOT NULL,
 
+                apply_to_self BOOLEAN NOT NULL,
+
                 in_stack BOOLEAN NOT NULL,
                 stack_seq INTEGER,
 

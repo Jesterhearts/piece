@@ -17,10 +17,10 @@ activated_abilities {
         add_toughness: 1
       }
       controller { you {} }
-      restrictions { self {} }
       duration { until_end_of_turn {} }
     }
   }
+  apply_to_self: true
 }
 power: 1
 toughness: 2

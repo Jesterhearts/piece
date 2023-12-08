@@ -53,8 +53,11 @@ impl Deck {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
-    pub fn place_on_top(&mut self, card: CardId) {
+    pub fn place_on_top(&mut self, db: &Connection, card: CardId) -> anyhow::Result<()> {
+        card.move_to_library(db)?;
         self.cards.push_back(card);
+
+        Ok(())
     }
 
     pub fn draw(&mut self) -> Option<CardId> {

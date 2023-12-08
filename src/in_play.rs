@@ -18,6 +18,7 @@ use crate::{
     cost::CastingCost,
     effects::{
         ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect, Token,
+        TriggeredEffect,
     },
     player::PlayerId,
     stack::{ActiveTarget, Stack},
@@ -668,15 +669,6 @@ impl CardId {
 
         modifier.activate(db)?;
 
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET active_seq = (?2)
-                WHERE modifierid = (?1) AND active_seq IS NULL
-            "},
-            (modifier, NEXT_MODIFIER_SEQ.fetch_add(1, Ordering::Relaxed)),
-        )?;
-
         Ok(())
     }
 
@@ -1189,15 +1181,25 @@ impl CardId {
     }
 
     pub fn subtypes(self, db: &Connection) -> anyhow::Result<HashSet<Subtype>> {
-        let mut types: HashSet<Subtype> = db.query_row(
-            "SELECT subtypes FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
+        let face_down: bool = db.query_row(
+            "SELECT face_down FROM cards WHERE cardid = (?1)",
+            (self,),
+            |row| row.get(0),
         )?;
+
+        let mut types: HashSet<Subtype> = if face_down {
+            Default::default()
+        } else {
+            db.query_row(
+                "SELECT subtypes FROM cards WHERE cardid = (?1)",
+                (if let Some(cloning) = self.cloning(db)? {
+                    cloning
+                } else {
+                    self
+                },),
+                |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
+            )?
+        };
 
         let mut statement = db.prepare(indoc! {"
                 SELECT subtype_modifiers, remove_all_subtypes, source, controller, restrictions, active_seq
@@ -1386,6 +1388,7 @@ impl CardId {
                         INSERT INTO abilities (
                             abilityid,
                             source,
+                            apply_to_self,
                             cost,
                             effects,
                             in_stack
@@ -1394,11 +1397,13 @@ impl CardId {
                             (?2),
                             (?3),
                             (?4),
-                            (?5)
+                            (?5),
+                            (?6)
                         )"},
                     (
                         id,
                         cardid,
+                        ability.apply_to_self,
                         serde_json::to_string(&ability.cost)?,
                         serde_json::to_string(&ability.effects)?,
                         false,
@@ -1515,11 +1520,25 @@ impl CardId {
         }
 
         for ability in self.activated_abilities(db)? {
-            let ability = ability.ability(db)?;
+            self.targets_for_ability(db, ability, &creatures, &mut targets)?;
+        }
+
+        Ok(targets)
+    }
+
+    pub fn targets_for_ability(
+        self,
+        db: &Connection,
+        ability: AbilityId,
+        creatures: &[CardId],
+        targets: &mut HashSet<ActiveTarget>,
+    ) -> Result<(), anyhow::Error> {
+        let ability = ability.ability(db)?;
+        if !ability.apply_to_self {
             for effect in ability.effects {
                 match effect {
                     ActivatedAbilityEffect::CounterSpell { target } => {
-                        targets_for_counterspell(db, self.controller(db)?, target, &mut targets)?;
+                        targets_for_counterspell(db, self.controller(db)?, target, targets)?;
                     }
                     ActivatedAbilityEffect::GainMana { .. } => {}
                     ActivatedAbilityEffect::BattlefieldModifier(_) => {}
@@ -1529,16 +1548,16 @@ impl CardId {
                             db,
                             self,
                             None,
-                            &creatures,
+                            creatures,
                             self.controller(db)?,
-                            &mut targets,
+                            targets,
                         )?;
                     }
                 }
             }
         }
 
-        Ok(targets)
+        Ok(())
     }
 
     pub fn can_be_countered(
@@ -1630,11 +1649,13 @@ impl CardId {
     }
 
     pub fn shroud(self, db: &Connection) -> anyhow::Result<bool> {
-        let mut has_shroud = db.query_row(
-            "SELECT shroud FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
+        let mut has_shroud = db
+            .query_row(
+                "SELECT shroud FROM cards WHERE cardid = (?1)",
+                (self,),
+                |row| row.get::<_, Option<bool>>(0),
+            )?
+            .unwrap_or_default();
 
         let mut statement = db.prepare(indoc! {"
                 SELECT add_shroud, remove_shroud
@@ -1668,11 +1689,13 @@ impl CardId {
     }
 
     pub fn hexproof(self, db: &Connection) -> anyhow::Result<bool> {
-        let mut has_hexproof = db.query_row(
-            "SELECT hexproof FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
+        let mut has_hexproof = db
+            .query_row(
+                "SELECT hexproof FROM cards WHERE cardid = (?1)",
+                (self,),
+                |row| row.get::<_, Option<bool>>(0),
+            )?
+            .unwrap_or_default();
 
         let mut statement = db.prepare(indoc! {"
                 SELECT add_hexproof, remove_hexproof
@@ -1973,14 +1996,23 @@ impl AbilityId {
 
     pub fn ability(self, db: &Connection) -> anyhow::Result<ActivatedAbility> {
         Ok(db.query_row(
-            "SELECT cost, effects FROM abilities WHERE abilityid = (?1)",
+            "SELECT cost, effects, apply_to_self FROM abilities WHERE abilityid = (?1)",
             (self,),
             |row| {
                 Ok(ActivatedAbility {
                     cost: serde_json::from_str(&row.get::<_, String>(0)?).unwrap(),
                     effects: serde_json::from_str(&row.get::<_, String>(1)?).unwrap(),
+                    apply_to_self: row.get(2)?,
                 })
             },
+        )?)
+    }
+
+    pub fn apply_to_self(self, db: &Connection) -> anyhow::Result<bool> {
+        Ok(db.query_row(
+            "SELECT  apply_to_self FROM abilities WHERE abilityid = (?1)",
+            (self,),
+            |row| row.get(0),
         )?)
     }
 
@@ -2101,6 +2133,14 @@ impl ModifierId {
                 WHERE modifierid = (?1)
             "},
             (self,),
+        )?;
+        db.execute(
+            indoc! {"
+                UPDATE modifiers
+                SET active_seq = (?2)
+                WHERE modifierid = (?1) AND active_seq IS NULL
+            "},
+            (self, NEXT_MODIFIER_SEQ.fetch_add(1, Ordering::Relaxed)),
         )?;
 
         Ok(())
@@ -2233,6 +2273,14 @@ impl TriggerId {
                     effects: serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
                 })
             },
+        )?)
+    }
+
+    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<TriggeredEffect>> {
+        Ok(db.query_row(
+            "SELECT effects FROM triggers WHERE triggerid = (?1)",
+            (self,),
+            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
         )?)
     }
 

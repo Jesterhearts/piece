@@ -10,7 +10,7 @@ use crate::{
     cost::AdditionalCost,
     effects::{
         Destination, EffectDuration, Mill, ReturnFromGraveyardToBattlefield,
-        ReturnFromGraveyardToLibrary, Token, TriggeredEffect, TutorLibrary,
+        ReturnFromGraveyardToLibrary, TutorLibrary,
     },
     in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
     player::{AllPlayers, PlayerId},
@@ -24,10 +24,11 @@ use crate::{
 pub enum UnresolvedActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
-    AddToStack {
+    AddAbilityToStack {
         ability: AbilityId,
         valid_targets: HashSet<ActiveTarget>,
     },
+    AddTriggerToStack(TriggerId),
     CloneCreatureNonTargeting {
         source: CardId,
         valid_targets: Vec<CardId>,
@@ -52,10 +53,6 @@ pub enum UnresolvedActionResult {
         types: HashSet<Type>,
         valid_targets: Vec<CardId>,
     },
-    CreateToken {
-        source: CardId,
-        token: Token,
-    },
     TutorLibrary {
         source: CardId,
         destination: Destination,
@@ -69,10 +66,11 @@ pub enum UnresolvedActionResult {
 pub enum ActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
-    AddToStack {
+    AddAbilityToStack {
         ability: AbilityId,
         targets: HashSet<ActiveTarget>,
     },
+    AddTriggerToStack(TriggerId),
     CloneCreatureNonTargeting {
         source: CardId,
         target: Option<CardId>,
@@ -89,10 +87,6 @@ pub enum ActionResult {
     },
     ReturnFromGraveyardToBattlefield {
         targets: Vec<CardId>,
-    },
-    CreateToken {
-        source: CardId,
-        token: Token,
     },
 }
 
@@ -346,7 +340,7 @@ impl Battlefield {
             return Ok(vec![]);
         }
 
-        results.push(UnresolvedActionResult::AddToStack {
+        results.push(UnresolvedActionResult::AddAbilityToStack {
             ability: ability_id,
             valid_targets: card.valid_targets(db)?,
         });
@@ -391,7 +385,7 @@ impl Battlefield {
                         ActionResult::PermanentToGraveyard(cardid),
                     )?);
                 }
-                UnresolvedActionResult::AddToStack {
+                UnresolvedActionResult::AddAbilityToStack {
                     ability,
                     valid_targets,
                 } => {
@@ -405,17 +399,32 @@ impl Battlefield {
                         pending.extend(Self::apply_action_result(
                             db,
                             all_players,
-                            ActionResult::AddToStack {
+                            ActionResult::AddAbilityToStack {
                                 ability,
                                 targets: valid_targets,
                             },
                         )?);
                     } else {
-                        pending.push(UnresolvedActionResult::AddToStack {
+                        let mut valid_targets = Default::default();
+                        ability.source(db)?.targets_for_ability(
+                            db,
                             ability,
-                            valid_targets: ability.source(db)?.valid_targets(db)?,
+                            &Self::creatures(db)?,
+                            &mut valid_targets,
+                        )?;
+
+                        pending.push(UnresolvedActionResult::AddAbilityToStack {
+                            ability,
+                            valid_targets,
                         });
                     }
+                }
+                UnresolvedActionResult::AddTriggerToStack(trigger) => {
+                    pending.extend(Self::apply_action_result(
+                        db,
+                        all_players,
+                        ActionResult::AddTriggerToStack(trigger),
+                    )?);
                 }
                 UnresolvedActionResult::CloneCreatureNonTargeting {
                     source,
@@ -505,13 +514,6 @@ impl Battlefield {
                         })
                     }
                 }
-                UnresolvedActionResult::CreateToken { source, token } => {
-                    pending.extend(Self::apply_action_result(
-                        db,
-                        all_players,
-                        ActionResult::CreateToken { source, token },
-                    )?);
-                }
                 UnresolvedActionResult::TutorLibrary {
                     source,
                     destination,
@@ -561,8 +563,11 @@ impl Battlefield {
             ActionResult::PermanentToGraveyard(card_id) => {
                 return Self::permanent_to_graveyard(db, card_id);
             }
-            ActionResult::AddToStack { ability, targets } => {
+            ActionResult::AddAbilityToStack { ability, targets } => {
                 ability.move_to_stack(db, targets)?;
+            }
+            ActionResult::AddTriggerToStack(trigger) => {
+                trigger.move_to_stack(db, Default::default())?;
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let Some(target) = target {
@@ -585,8 +590,9 @@ impl Battlefield {
             }
             ActionResult::ReturnFromGraveyardToLibrary { targets } => {
                 for target in targets {
-                    target.move_to_library(db)?;
-                    all_players[target.owner(db)?].deck.place_on_top(target);
+                    all_players[target.owner(db)?]
+                        .deck
+                        .place_on_top(db, target)?;
                 }
             }
             ActionResult::ReturnFromGraveyardToBattlefield { targets } => {
@@ -596,10 +602,6 @@ impl Battlefield {
                 }
 
                 return Ok(pending);
-            }
-            ActionResult::CreateToken { source, token } => {
-                let id = CardId::upload_token(db, source.controller(db)?, token)?;
-                return Self::add(db, id, vec![]);
             }
         }
 
@@ -612,24 +614,13 @@ impl Battlefield {
     ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut pending = vec![];
 
-        for triggerid in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
-            let trigger = triggerid.triggered_ability(db)?;
+        for trigger in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
             if matches!(
-                trigger.trigger.from,
+                trigger.location_from(db)?,
                 triggers::Location::Anywhere | triggers::Location::Battlefield
-            ) && target.types_intersect(db, &trigger.trigger.for_types)?
+            ) && target.types_intersect(db, &trigger.for_types(db)?)?
             {
-                for effect in trigger.effects {
-                    match effect {
-                        TriggeredEffect::CreateToken(token) => {
-                            // TODO this should use the stack
-                            pending.push(UnresolvedActionResult::CreateToken {
-                                source: triggerid.listener(db)?,
-                                token: token.clone(),
-                            })
-                        }
-                    }
-                }
+                pending.push(UnresolvedActionResult::AddTriggerToStack(trigger))
             }
         }
 
@@ -645,24 +636,13 @@ impl Battlefield {
     ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut pending = vec![];
 
-        for triggerid in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
-            let trigger = triggerid.triggered_ability(db)?;
+        for trigger in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
             if matches!(
-                trigger.trigger.from,
+                trigger.location_from(db)?,
                 triggers::Location::Anywhere | triggers::Location::Library
-            ) && target.types_intersect(db, &trigger.trigger.for_types)?
+            ) && target.types_intersect(db, &trigger.for_types(db)?)?
             {
-                for effect in trigger.effects {
-                    match effect {
-                        TriggeredEffect::CreateToken(token) => {
-                            // TODO this should use the stack
-                            pending.push(UnresolvedActionResult::CreateToken {
-                                source: triggerid.listener(db)?,
-                                token: token.clone(),
-                            })
-                        }
-                    }
-                }
+                pending.push(UnresolvedActionResult::AddTriggerToStack(trigger))
             }
         }
 
@@ -677,22 +657,11 @@ impl Battlefield {
     ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut pending = vec![];
 
-        for triggerid in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
-            let trigger = triggerid.triggered_ability(db)?;
-            if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-                && target.types_intersect(db, &trigger.trigger.for_types)?
+        for trigger in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
+            if matches!(trigger.location_from(db)?, triggers::Location::Anywhere)
+                && target.types_intersect(db, &trigger.for_types(db)?)?
             {
-                for effect in trigger.effects {
-                    match effect {
-                        TriggeredEffect::CreateToken(token) => {
-                            // TODO this should use the stack
-                            pending.push(UnresolvedActionResult::CreateToken {
-                                source: triggerid.listener(db)?,
-                                token: token.clone(),
-                            })
-                        }
-                    }
-                }
+                pending.push(UnresolvedActionResult::AddTriggerToStack(trigger))
             }
         }
 

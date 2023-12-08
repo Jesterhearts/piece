@@ -1,79 +1,64 @@
 use std::collections::HashSet;
 
-use enumset::enum_set;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
-    deck::Deck,
-    in_play::{AllCards, AllModifiers},
+    in_play::CardId,
     load_cards,
-    player::Player,
-    stack::Stack,
+    player::AllPlayers,
+    prepare_db,
     types::Type,
 };
 
 #[test]
 fn etb() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
+    let db = prepare_db()?;
 
-    let player = Player::new_ref(Deck::empty());
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let land = all_cards.add(&cards, player.clone(), "Forest");
-    let nonland = all_cards.add(&cards, player.clone(), "Annul");
+    let land = CardId::upload(&db, &cards, player, "Forest")?;
+    let nonland = CardId::upload(&db, &cards, player, "Annul")?;
 
-    player.borrow_mut().deck.place_on_top(land);
-    player.borrow_mut().deck.place_on_top(nonland);
+    all_players[player].deck.place_on_top(&db, land)?;
+    all_players[player].deck.place_on_top(&db, nonland)?;
 
-    let glowspore = all_cards.add(&cards, player.clone(), "Glowspore Shaman");
-    let results = battlefield.add(&mut all_cards, &mut modifiers, glowspore, vec![]);
+    let glowspore = CardId::upload(&db, &cards, player, "Glowspore Shaman")?;
+    let results = Battlefield::add(&db, glowspore, vec![])?;
     assert_eq!(
         results,
         [
             UnresolvedActionResult::Mill {
                 count: 3,
-                valid_targets: HashSet::from([player.clone()])
+                valid_targets: HashSet::from([player])
             },
             UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+                source: glowspore,
                 count: 1,
                 controller: Controller::You,
-                types: enum_set!(Type::BasicLand | Type::Land),
+                types: HashSet::from([Type::Land, Type::BasicLand]),
                 valid_targets: vec![]
             }
         ]
     );
 
-    let results = battlefield.maybe_resolve(
-        &mut all_cards,
-        &mut modifiers,
-        &mut stack,
-        player.clone(),
-        results,
-    );
-
+    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+            source: glowspore,
             count: 1,
             controller: Controller::You,
-            types: enum_set!(Type::BasicLand | Type::Land),
+            types: HashSet::from([Type::Land, Type::BasicLand]),
             valid_targets: vec![land]
         }]
     );
 
-    let results = battlefield.maybe_resolve(
-        &mut all_cards,
-        &mut modifiers,
-        &mut stack,
-        player.clone(),
-        results,
-    );
-
+    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
     Ok(())

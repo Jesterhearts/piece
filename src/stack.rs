@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
-    effects::{ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect},
+    effects::{
+        ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect, Token,
+        TriggeredEffect,
+    },
     in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
     mana::Mana,
     player::{AllPlayers, PlayerId},
@@ -19,6 +22,10 @@ pub enum StackResult {
     AddToBattlefield(CardId),
     StackToGraveyard(CardId),
     ApplyToBattlefield(ModifierId),
+    ApplyModifierToTarget {
+        modifier: ModifierId,
+        target: CardId,
+    },
     ExileTarget(CardId),
     ManifestTopOfLibrary(PlayerId),
     ModifyCreatures {
@@ -35,6 +42,10 @@ pub enum StackResult {
     GainMana {
         player: PlayerId,
         mana: HashMap<Mana, usize>,
+    },
+    CreateToken {
+        source: CardId,
+        token: Token,
     },
 }
 
@@ -523,7 +534,14 @@ impl Stack {
                                 &modifier,
                                 true,
                             )?;
-                            result.push(StackResult::ApplyToBattlefield(modifier));
+                            if ability.apply_to_self(db)? {
+                                result.push(StackResult::ApplyModifierToTarget {
+                                    modifier,
+                                    target: ability.source(db)?,
+                                });
+                            } else {
+                                result.push(StackResult::ApplyToBattlefield(modifier));
+                            }
                         }
                         ActivatedAbilityEffect::ControllerDrawCards(count) => {
                             result.push(StackResult::DrawCards {
@@ -579,7 +597,19 @@ impl Stack {
                 }
                 Ok(result)
             }
-            Entry::Trigger(_) => todo!(),
+            Entry::Trigger(trigger) => {
+                for effect in trigger.effects(db)? {
+                    match effect {
+                        TriggeredEffect::CreateToken(token) => {
+                            result.push(StackResult::CreateToken {
+                                source: trigger.listener(db)?,
+                                token,
+                            });
+                        }
+                    }
+                }
+                Ok(result)
+            }
         }
     }
 
@@ -627,6 +657,13 @@ impl Stack {
                 }
                 StackResult::StackToGraveyard(card) => {
                     pending.extend(Battlefield::stack_to_graveyard(db, card)?);
+                }
+                StackResult::ApplyModifierToTarget { modifier, target } => {
+                    target.apply_modifier(db, modifier)?;
+                }
+                StackResult::CreateToken { source, token } => {
+                    let id = CardId::upload_token(db, source.controller(db)?, token)?;
+                    pending.extend(Battlefield::add(db, id, vec![])?);
                 }
             }
         }

@@ -29,7 +29,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     assert_eq!(
         results,
-        [UnresolvedActionResult::AddToStack {
+        [UnresolvedActionResult::AddAbilityToStack {
             ability: card
                 .activated_abilities(&db)?
                 .first()
