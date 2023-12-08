@@ -35,8 +35,6 @@ message StaticAbility {
   oneof ability {
     GreenCannotBeCountered green_cannot_be_countered = 1;
     effects.BattlefieldModifier battlefield_modifier = 2;
-    effects.Vigilance vigilance = 3;
-    effects.Flash flash = 4;
   }
 }
 

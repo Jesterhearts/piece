@@ -237,8 +237,6 @@ impl Battlefield {
         for ability in source_card_id.static_abilities(db)? {
             match ability {
                 StaticAbility::GreenCannotBeCountered { .. } => {}
-                StaticAbility::Vigilance => {}
-                StaticAbility::Flash => {}
                 StaticAbility::BattlefieldModifier(modifier) => {
                     let modifier = ModifierId::upload_single_modifier(
                         db,
@@ -641,6 +639,7 @@ impl Battlefield {
             }
         }
 
+        target.deactivate_modifiers(db)?;
         target.move_to_graveyard(db)?;
 
         Ok(pending)

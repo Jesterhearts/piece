@@ -45,12 +45,6 @@ message ReturnFromGraveyardToBattlefield {
   repeated types.Type types = 2;
 }
 
-message Vigilance {
-}
-
-message Flash {
-}
-
 message Duration {
   message UntilEndOfTurn {
   }

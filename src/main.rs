@@ -172,7 +172,7 @@ fn prepare_db() -> anyhow::Result<Connection> {
             remove_shroud BOOLEAN,
             
             controller JSON NOT NULL,
-            duration JSON,
+            duration JSON NOT NULL,
             restrictions JSON NOT NULL,
 
             global BOOLEAN NOT NULL,

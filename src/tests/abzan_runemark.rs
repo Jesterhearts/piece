@@ -1,52 +1,48 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    abilities::StaticAbility,
     battlefield::{ActionResult, Battlefield},
-    deck::Deck,
-    in_play::{AllCards, AllModifiers},
+    in_play::CardId,
     load_cards,
-    player::Player,
-    stack::Stack,
+    player::AllPlayers,
+    prepare_db,
 };
 
 #[test]
 fn aura_works() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let db = prepare_db()?;
 
-    let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let aura = all_cards.add(&cards, player.clone(), "Abzan Runemark");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, aura, vec![creature]);
-
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(6));
-    assert_eq!(card.card.toughness(), Some(4));
-    assert_eq!(card.card.static_abilities(), vec![StaticAbility::Vigilance]);
-
-    let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2, vec![]);
-
-    let card2 = &all_cards[creature2];
-    assert_eq!(card2.card.power(), Some(4));
-    assert_eq!(card2.card.toughness(), Some(2));
-
-    let results =
-        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, aura);
+    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add(&db, creature, vec![])?;
     assert_eq!(results, []);
 
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(4));
-    assert_eq!(card.card.toughness(), Some(2));
+    let aura = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
+    let results = Battlefield::add(&db, aura, vec![creature])?;
+    assert_eq!(results, []);
 
-    assert!(battlefield.no_modifiers());
+    assert_eq!(creature.power(&db)?, Some(6));
+    assert_eq!(creature.toughness(&db)?, Some(4));
+    assert!(creature.vigilance(&db)?);
+
+    let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add(&db, card2, vec![])?;
+    assert_eq!(results, []);
+
+    assert_eq!(card2.power(&db)?, Some(4));
+    assert_eq!(card2.toughness(&db)?, Some(2));
+
+    let results = Battlefield::permanent_to_graveyard(&db, aura)?;
+    assert_eq!(results, []);
+
+    assert_eq!(creature.power(&db)?, Some(4));
+    assert_eq!(creature.toughness(&db)?, Some(2));
+    assert!(!creature.vigilance(&db)?);
+
+    assert!(Battlefield::no_modifiers(&db)?);
 
     Ok(())
 }
@@ -54,39 +50,37 @@ fn aura_works() -> anyhow::Result<()> {
 #[test]
 fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let db = prepare_db()?;
 
-    let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let aura = all_cards.add(&cards, player.clone(), "Abzan Runemark");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, aura, vec![creature]);
-
-    let results = battlefield.check_sba(&all_cards);
+    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add(&db, creature, vec![])?;
     assert_eq!(results, []);
 
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(6));
-    assert_eq!(card.card.toughness(), Some(4));
-
-    let results =
-        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, creature);
+    let aura = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
+    let results = Battlefield::add(&db, aura, vec![creature])?;
     assert_eq!(results, []);
-    let results = battlefield.check_sba(&all_cards);
 
+    assert_eq!(creature.power(&db)?, Some(6));
+    assert_eq!(creature.toughness(&db)?, Some(4));
+    assert!(creature.vigilance(&db)?);
+
+    let results = Battlefield::check_sba(&db)?;
+    assert_eq!(results, []);
+
+    let results = Battlefield::permanent_to_graveyard(&db, creature)?;
+    assert_eq!(results, []);
+
+    let results = Battlefield::check_sba(&db)?;
     assert_eq!(results, [ActionResult::PermanentToGraveyard(aura)]);
 
-    let results =
-        battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    assert!(battlefield.no_modifiers());
-    assert!(battlefield.is_empty());
+    assert!(Battlefield::no_modifiers(&db)?);
+    assert!(Battlefield::is_empty(&db)?);
 
     Ok(())
 }
@@ -94,42 +88,34 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
 #[test]
 fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let db = prepare_db()?;
 
-    let creature = all_cards.add(&cards, player.clone(), "Recruiter of the Guard");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let aura = all_cards.add(&cards, player.clone(), "Abzan Runemark");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, aura, vec![creature]);
+    let creature = CardId::upload(&db, &cards, player, "Recruiter of the Guard")?;
+    let _ = Battlefield::add(&db, creature, vec![])?;
 
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(3));
-    assert_eq!(card.card.toughness(), Some(3));
-    assert_eq!(card.card.static_abilities(), vec![]);
-
-    let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2, vec![]);
-
-    let card2 = &all_cards[creature2];
-    assert_eq!(card2.card.power(), Some(4));
-    assert_eq!(card2.card.toughness(), Some(2));
-
-    let card = &all_cards[creature];
-    assert_eq!(card.card.static_abilities(), vec![StaticAbility::Vigilance]);
-
-    let results =
-        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, creature2);
+    let aura = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
+    let results = Battlefield::add(&db, aura, vec![creature])?;
     assert_eq!(results, []);
 
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(3));
-    assert_eq!(card.card.toughness(), Some(3));
-    assert_eq!(card.card.static_abilities(), vec![]);
+    assert_eq!(creature.power(&db)?, Some(3));
+    assert_eq!(creature.toughness(&db)?, Some(3));
+    assert!(!creature.vigilance(&db)?);
+
+    let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add(&db, card2, vec![])?;
+    assert_eq!(results, []);
+
+    assert_eq!(card2.power(&db)?, Some(4));
+    assert_eq!(card2.toughness(&db)?, Some(2));
+    assert!(creature.vigilance(&db)?);
+
+    let results = Battlefield::permanent_to_graveyard(&db, card2)?;
+    assert_eq!(results, []);
+
+    assert!(!creature.vigilance(&db)?);
 
     Ok(())
 }
