@@ -36,6 +36,7 @@ static NEXT_MODIFIER_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_STACK_SEQ: AtomicUsize = AtomicUsize::new(1);
 static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_HAND_SEQ: AtomicUsize = AtomicUsize::new(0);
+static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 
 static UPLOAD_CARD_SQL: &str = indoc! {"
     INSERT INTO cards (
@@ -199,8 +200,12 @@ impl CardId {
 
     pub fn move_to_battlefield(self, db: &Connection) -> anyhow::Result<()> {
         db.execute(
-            "UPDATE cards SET location = (?2) WHERE cards.cardid = (?1)",
-            (self, serde_json::to_string(&Location::Battlefield)?),
+            "UPDATE cards SET location = (?2), location_seq = (?3) WHERE cards.cardid = (?1)",
+            (
+                self,
+                serde_json::to_string(&Location::Battlefield)?,
+                NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
+            ),
         )?;
 
         TriggerId::activate_all_for_card(db, self)?;
@@ -439,7 +444,7 @@ impl CardId {
             vec![]
         } else {
             db.query_row(
-                "SELECT static_abilities FROM cards WHERE cardid = (?1)",
+                "SELECT abilities FROM cards WHERE cardid = (?1)",
                 (if let Some(cloning) = self.cloning(db)? {
                     cloning
                 } else {
@@ -1046,6 +1051,7 @@ impl CardId {
             WHERE cards.cardid = (?1)
         "},
             (
+                cardid,
                 serde_json::to_string(&card.cost)?,
                 card.power,
                 card.toughness,
@@ -1130,18 +1136,21 @@ impl CardId {
                             abilityid,
                             source,
                             cost,
-                            effects
+                            effects,
+                            in_stack
                         ) VALUES (
                             (?1),
                             (?2),
                             (?3),
-                            (?4)
+                            (?4),
+                            (?5)
                         )"},
                     (
                         id,
                         cardid,
                         serde_json::to_string(&ability.cost)?,
                         serde_json::to_string(&ability.effects)?,
+                        false,
                     ),
                 )?;
 
@@ -1173,7 +1182,8 @@ impl CardId {
                             location_from,
                             for_types,
                             effects,
-                            active
+                            active,
+                            in_stack
                         ) VALUES (
                             (?1),
                             (?2),
@@ -1181,7 +1191,8 @@ impl CardId {
                             (?4),
                             (?5),
                             (?6),
-                            (?7)
+                            (?7),
+                            (?8)
                         )"},
                     (
                         triggerid,
@@ -1190,6 +1201,7 @@ impl CardId {
                         serde_json::to_string(&ability.trigger.from)?,
                         serde_json::to_string(&ability.trigger.for_types)?,
                         serde_json::to_string(&ability.effects)?,
+                        false,
                         false,
                     ),
                 )?;
@@ -1853,8 +1865,8 @@ impl ModifierId {
             (self,),
             |row| {
                 Ok((
-                    row.get(0)?,
-                    row.get::<_, Option<String>>(0)?
+                    row.get::<_, Option<bool>>(0)?,
+                    row.get::<_, Option<String>>(1)?
                         .as_ref()
                         .map(|s| serde_json::from_str::<Vec<CardId>>(s).unwrap())
                         .unwrap_or_default(),
@@ -1862,7 +1874,7 @@ impl ModifierId {
             },
         )?;
 
-        if is_temporary && modifying.is_empty() {
+        if is_temporary.unwrap_or_default() && modifying.is_empty() {
             db.execute("DELETE FROM modifiers WHERE modifierid = (?1)", (self,))?;
         } else {
             db.execute(

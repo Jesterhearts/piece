@@ -317,7 +317,7 @@ impl Battlefield {
 
     pub fn activate_ability(
         db: &Connection,
-        players: &mut AllPlayers,
+        all_players: &mut AllPlayers,
         card: CardId,
         index: usize,
     ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
@@ -350,7 +350,7 @@ impl Battlefield {
             }
         }
 
-        if !players[card.controller(db)?].spend_mana(&ability.cost.mana_cost) {
+        if !all_players[card.controller(db)?].spend_mana(&ability.cost.mana_cost) {
             return Ok(vec![]);
         }
 

@@ -72,7 +72,7 @@ impl Stack {
 
     pub fn target_nth(db: &Connection, nth: usize) -> anyhow::Result<ActiveTarget> {
         let mut cards_in_stack = db.prepare(
-            "SELECT location_seq FROM cards WHERE location = (?1) ORDER BY stack_seq ASC",
+            "SELECT location_seq FROM cards WHERE location = (?1) ORDER BY location_seq ASC",
         )?;
         let mut abilities_in_stack = db.prepare(
             "SELECT stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC",
@@ -130,7 +130,7 @@ impl Stack {
 
     fn in_stack(db: &Connection) -> anyhow::Result<HashMap<usize, Entry>> {
         let mut cards_in_stack = db.prepare(
-            "SELECT cardid, location_seq FROM cards WHERE location = (?1) ORDER BY stack_seq ASC",
+            "SELECT cardid, location_seq FROM cards WHERE location = (?1) ORDER BY location_seq ASC",
         )?;
         let mut abilities_in_stack = db.prepare(
             "SELECT abilityid, stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC",
@@ -202,7 +202,7 @@ impl Stack {
 
     fn pop(db: &Connection) -> anyhow::Result<Option<StackEntry>> {
         let mut cards_in_stack = db.prepare(
-            "SELECT cardid, targets, mode, location_seq FROM cards WHERE location = (?1) ORDER BY stack_seq ASC",
+            "SELECT cardid, targets, mode, location_seq FROM cards WHERE location = (?1) ORDER BY location_seq ASC",
         )?;
         let mut abilities_in_stack = db.prepare(
             "SELECT abilityid, targets, mode, stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC",
@@ -284,7 +284,7 @@ impl Stack {
 
     pub fn is_empty(db: &Connection) -> anyhow::Result<bool> {
         let mut cards_in_stack =
-            db.prepare("SELECT NULL FROM cards WHERE location = (?1) ORDER BY stack_seq ASC")?;
+            db.prepare("SELECT NULL FROM cards WHERE location = (?1) ORDER BY location_seq ASC")?;
         let mut abilities_in_stack =
             db.prepare("SELECT NULL FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC")?;
 
@@ -292,12 +292,11 @@ impl Stack {
             db.prepare("SELECT NULL FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq ASC")?;
 
         Ok(cards_in_stack
-            .query((serde_json::to_string(&Location::Stack)?,))
-            .into_iter()
-            .next()
+            .query((serde_json::to_string(&Location::Stack)?,))?
+            .next()?
             .is_none()
-            && abilities_in_stack.query(()).into_iter().next().is_none()
-            && triggers_in_stack.query(()).into_iter().next().is_none())
+            && abilities_in_stack.query(())?.next()?.is_none()
+            && triggers_in_stack.query(())?.next()?.is_none())
     }
 
     pub fn resolve_1(db: &Connection) -> anyhow::Result<Vec<StackResult>> {
@@ -659,11 +658,12 @@ mod tests {
         let player = all_players.new_player();
         let card1 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
 
-        card1.move_to_stack(&db, Default::default());
+        card1.move_to_stack(&db, Default::default())?;
 
-        let result = Stack::resolve_1(&db)?;
+        let results = Stack::resolve_1(&db)?;
 
-        assert_eq!(result, [StackResult::AddToBattlefield(card1)]);
+        assert_eq!(results, [StackResult::AddToBattlefield(card1)]);
+        Stack::apply_results(&db, &mut all_players, results)?;
 
         assert!(Stack::is_empty(&db)?);
 
