@@ -11,3 +11,4 @@ mod plus_two_mace;
 mod reality_shift;
 mod recruiter_of_the_guard;
 mod titania_protector_of_argoth;
+mod thermal_blast;

@@ -7,7 +7,7 @@ use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
     effects::{
-        ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect, Token,
+        spell, ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, Token,
         TriggeredEffect,
     },
     in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
@@ -27,6 +27,10 @@ pub enum StackResult {
         target: CardId,
     },
     ExileTarget(CardId),
+    DamageTarget {
+        quantity: usize,
+        target: CardId,
+    },
     ManifestTopOfLibrary(PlayerId),
     ModifyCreatures {
         targets: Vec<CardId>,
@@ -319,8 +323,19 @@ impl Stack {
         match next.ty {
             Entry::Card(resolving_card) => {
                 for effect in resolving_card.effects(db)? {
+                    let effect = if effect.threshold.is_some()
+                        && Battlefield::number_of_cards_in_graveyard(
+                            db,
+                            resolving_card.controller(db)?,
+                        )? >= 7
+                    {
+                        effect.threshold.unwrap()
+                    } else {
+                        effect.effect
+                    };
+
                     match effect {
-                        SpellEffect::CounterSpell {
+                        spell::Effect::CounterSpell {
                             target: restrictions,
                         } => {
                             if next.targets.is_empty() {
@@ -380,7 +395,7 @@ impl Stack {
                                 }
                             }
                         }
-                        SpellEffect::GainMana { mana } => {
+                        spell::Effect::GainMana { mana } => {
                             if !gain_mana(
                                 resolving_card.controller(db)?,
                                 &mana,
@@ -390,7 +405,7 @@ impl Stack {
                                 return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
                             }
                         }
-                        SpellEffect::BattlefieldModifier(modifier) => {
+                        spell::Effect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield(
                                 ModifierId::upload_single_modifier(
                                     db,
@@ -400,13 +415,13 @@ impl Stack {
                                 )?,
                             ));
                         }
-                        SpellEffect::ControllerDrawCards(count) => {
+                        spell::Effect::ControllerDrawCards(count) => {
                             result.push(StackResult::DrawCards {
                                 player: resolving_card.controller(db)?,
                                 count,
                             });
                         }
-                        SpellEffect::ModifyCreature(modifier) => {
+                        spell::Effect::ModifyCreature(modifier) => {
                             let modifier = ModifierId::upload_single_modifier(
                                 db,
                                 resolving_card,
@@ -433,10 +448,14 @@ impl Stack {
                                 target.apply_modifier(db, modifier)?;
                             }
                         }
-                        SpellEffect::ExileTargetCreature => {
+                        spell::Effect::ExileTargetCreature => {
                             for target in next.targets.iter() {
                                 match target {
-                                    ActiveTarget::Stack { .. } => return Ok(vec![]),
+                                    ActiveTarget::Stack { .. } => {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    }
                                     ActiveTarget::Battlefield { id } => {
                                         if !id.is_in_location(db, Location::Battlefield)? {
                                             // Permanent no longer on battlefield.
@@ -469,10 +488,14 @@ impl Stack {
                                 }
                             }
                         }
-                        SpellEffect::ExileTargetCreatureManifestTopOfLibrary => {
+                        spell::Effect::ExileTargetCreatureManifestTopOfLibrary => {
                             for target in next.targets.iter() {
                                 match target {
-                                    ActiveTarget::Stack { .. } => return Ok(vec![]),
+                                    ActiveTarget::Stack { .. } => {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    }
                                     ActiveTarget::Battlefield { id } => {
                                         if !id.is_in_location(db, Location::Battlefield)? {
                                             // Permanent no longer on battlefield.
@@ -503,6 +526,51 @@ impl Stack {
                                         result.push(StackResult::ManifestTopOfLibrary(
                                             id.controller(db)?,
                                         ));
+                                    }
+                                }
+                            }
+                        }
+                        spell::Effect::DealDamage(dmg) => {
+                            for target in next.targets.iter() {
+                                match target {
+                                    ActiveTarget::Stack { .. } => {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    }
+                                    ActiveTarget::Battlefield { id } => {
+                                        if !id.is_in_location(db, Location::Battlefield)? {
+                                            // Permanent no longer on battlefield.
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
+                                        }
+
+                                        if !id
+                                            .can_be_targeted(db, resolving_card.controller(db)?)?
+                                        {
+                                            // Card is no longer a valid target.
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
+                                        }
+
+                                        if !id.passes_restrictions(
+                                            db,
+                                            resolving_card,
+                                            resolving_card.controller(db)?,
+                                            Controller::Any,
+                                            &dmg.restrictions,
+                                        )? {
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
+                                        }
+
+                                        result.push(StackResult::DamageTarget {
+                                            quantity: dmg.quantity,
+                                            target: *id,
+                                        });
                                     }
                                 }
                             }
@@ -664,6 +732,9 @@ impl Stack {
                 StackResult::CreateToken { source, token } => {
                     let id = CardId::upload_token(db, source.controller(db)?, token)?;
                     pending.extend(Battlefield::add(db, id, vec![])?);
+                }
+                StackResult::DamageTarget { quantity, target } => {
+                    target.mark_damage(db, quantity)?;
                 }
             }
         }

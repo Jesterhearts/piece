@@ -8,7 +8,7 @@ use crate::{
     controller::Controller,
     mana::Mana,
     protogen,
-    targets::{self, SpellTarget},
+    targets::{Restriction, SpellTarget},
     types::{Subtype, Type},
 };
 
@@ -43,7 +43,7 @@ impl From<&protogen::effects::destination::Destination> for Destination {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct TutorLibrary {
-    pub restrictions: Vec<targets::Restriction>,
+    pub restrictions: Vec<Restriction>,
     pub destination: Destination,
     pub reveal: bool,
 }
@@ -56,7 +56,7 @@ impl TryFrom<&protogen::effects::TutorLibrary> for TutorLibrary {
             restrictions: value
                 .restrictions
                 .iter()
-                .map(targets::Restriction::try_from)
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             destination: value.destination.get_or_default().try_into()?,
             reveal: value.reveal,
@@ -248,7 +248,7 @@ pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
     pub controller: Controller,
     pub duration: EffectDuration,
-    pub restrictions: Vec<targets::Restriction>,
+    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
@@ -272,40 +272,59 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
             restrictions: value
                 .restrictions
                 .iter()
-                .map(targets::Restriction::try_from)
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum SpellEffect {
-    CounterSpell { target: SpellTarget },
-    GainMana { mana: GainMana },
-    BattlefieldModifier(BattlefieldModifier),
-    ControllerDrawCards(usize),
-    ModifyCreature(BattlefieldModifier),
-    ExileTargetCreature,
-    ExileTargetCreatureManifestTopOfLibrary,
+pub struct DealDamage {
+    pub quantity: usize,
+    pub restrictions: Vec<Restriction>,
 }
 
-impl TryFrom<&protogen::effects::SpellEffect> for SpellEffect {
+impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::SpellEffect) -> Result<Self, Self::Error> {
-        value
-            .effect
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-            .and_then(Self::try_from)
+    fn try_from(value: &protogen::effects::DealDamage) -> Result<Self, Self::Error> {
+        Ok(Self {
+            quantity: usize::try_from(value.quantity)?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
     }
 }
 
-impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
-    type Error = anyhow::Error;
+pub mod spell {
+    use serde::{Deserialize, Serialize};
 
-    fn try_from(value: &protogen::effects::spell_effect::Effect) -> Result<Self, Self::Error> {
-        match value {
+    use crate::{
+        effects::{BattlefieldModifier, DealDamage, GainMana},
+        protogen,
+        targets::SpellTarget,
+    };
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+    pub enum Effect {
+        CounterSpell { target: SpellTarget },
+        GainMana { mana: GainMana },
+        BattlefieldModifier(BattlefieldModifier),
+        ControllerDrawCards(usize),
+        ModifyCreature(BattlefieldModifier),
+        ExileTargetCreature,
+        ExileTargetCreatureManifestTopOfLibrary,
+        DealDamage(DealDamage),
+    }
+
+    impl TryFrom<&protogen::effects::spell_effect::Effect> for Effect {
+        type Error = anyhow::Error;
+
+        fn try_from(value: &protogen::effects::spell_effect::Effect) -> Result<Self, Self::Error> {
+            match value {
             protogen::effects::spell_effect::Effect::CounterSpell(counter) => {
                 Ok(Self::CounterSpell {
                     target: counter.target.as_ref().unwrap_or_default().try_into()?,
@@ -329,7 +348,39 @@ impl TryFrom<&protogen::effects::spell_effect::Effect> for SpellEffect {
             protogen::effects::spell_effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
                 Ok(Self::ExileTargetCreatureManifestTopOfLibrary)
             }
+            protogen::effects::spell_effect::Effect::DealDamage(dmg) => {
+                Ok(Self::DealDamage(dmg.try_into()?))
+            }
         }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct SpellEffect {
+    pub effect: spell::Effect,
+    pub threshold: Option<spell::Effect>,
+}
+
+impl TryFrom<&protogen::effects::SpellEffect> for SpellEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::SpellEffect) -> Result<Self, Self::Error> {
+        Ok(Self {
+            effect: value
+                .effect
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+                .and_then(spell::Effect::try_from)?,
+            threshold: value.threshold.as_ref().map_or(Ok(None), |threshold| {
+                threshold
+                    .effect
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+                    .and_then(spell::Effect::try_from)
+                    .map(Some)
+            })?,
+        })
     }
 }
 

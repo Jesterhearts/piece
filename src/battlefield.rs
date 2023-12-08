@@ -117,6 +117,22 @@ impl Battlefield {
         Ok(rows.next()?.is_none())
     }
 
+    pub fn number_of_cards_in_graveyard(
+        db: &Connection,
+        player: PlayerId,
+    ) -> anyhow::Result<usize> {
+        Ok(db.query_row(
+            indoc! {"
+                        SELECT COUNT(*)
+                        FROM cards
+                        WHERE location = (?1)
+                            AND controller = (?2)
+                "},
+            (serde_json::to_string(&Location::Graveyard)?, player),
+            |row| row.get(0),
+        )?)
+    }
+
     pub fn creatures(db: &Connection) -> anyhow::Result<Vec<CardId>> {
         let mut on_battlefield = db.prepare(indoc! {"
                 SELECT cardid
@@ -272,6 +288,15 @@ impl Battlefield {
             |row| row.get::<_, ModifierId>(0),
         )?;
 
+        db.execute(
+            indoc! {"
+                UPDATE cards
+                SET marked_damage = 0
+                WHERE location = (?1)
+            "},
+            (serde_json::to_string(&Location::Battlefield)?,),
+        )?;
+
         for row in rows {
             row?.detach_all(db)?;
         }
@@ -284,7 +309,7 @@ impl Battlefield {
         for card_id in Location::Battlefield.cards_in(db)? {
             let toughness = card_id.toughness(db)?;
 
-            if toughness.is_some() && toughness <= Some(0) {
+            if toughness.is_some() && (toughness.unwrap() - card_id.marked_damage(db)?) <= 0 {
                 result.push(ActionResult::PermanentToGraveyard(card_id));
             }
 

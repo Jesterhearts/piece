@@ -7,12 +7,7 @@ use include_dir::{include_dir, Dir};
 use indoc::indoc;
 use rusqlite::Connection;
 
-use crate::{
-    battlefield::Battlefield,
-    card::Card,
-    in_play::{CardId, ModifierId},
-    player::AllPlayers,
-};
+use crate::{battlefield::Battlefield, card::Card, in_play::CardId, player::AllPlayers};
 
 pub mod abilities;
 pub mod battlefield;
@@ -81,6 +76,8 @@ fn prepare_db() -> anyhow::Result<Connection> {
         CREATE TABLE cards (
             cardid INTEGER PRIMARY KEY,
             aura INTEGER,
+
+            marked_damage INTEGER NOT NULL,
 
             cloning INTEGER,
 
@@ -250,45 +247,13 @@ fn main() -> anyhow::Result<()> {
     let player = all_players.new_player();
 
     let card1 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let card2 = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
-    let card3 = CardId::upload(&db, &cards, player, "Titania, Protector of Argoth")?;
-
-    dbg!(card3.triggered_abilities(&db))?;
-    dbg!(Battlefield::is_empty(&db))?;
-
-    card1.move_to_battlefield(&db)?;
-    card2.move_to_battlefield(&db)?;
-
-    dbg!(Battlefield::creatures(&db))?;
-
-    dbg!(Battlefield::controlled_colors(&db, player))?;
-
-    dbg!(Battlefield::no_modifiers(&db))?;
-
-    dbg!(card2.colors(&db))?;
-
-    dbg!(card2.power(&db))?;
-    dbg!(card1.power(&db))?;
-
-    let aura = card2.aura(&db)?.unwrap();
-    card1.apply_aura(&db, aura)?;
-    for modifier in card2.aura(&db)?.unwrap().modifiers(&db)? {
-        dbg!(modifier.modifying(&db))?;
-    }
-
-    dbg!(Battlefield::no_modifiers(&db))?;
-
+    card1.mark_damage(&db, 1)?;
+    dbg!(card1.marked_damage(&db))?;
     dbg!(Battlefield::end_turn(&db))?;
-
-    dbg!(Battlefield::is_empty(&db))?;
-
-    dbg!(ModifierId::active_modifiers(&db))?;
-
-    dbg!(card1.power(&db))?;
-    card1.remove_all_modifiers(&db)?;
-    dbg!(card1.power(&db))?;
-
-    dbg!(ModifierId::active_modifiers(&db))?;
+    dbg!(card1.marked_damage(&db))?;
+    card1.move_to_battlefield(&db)?;
+    dbg!(Battlefield::end_turn(&db))?;
+    dbg!(card1.marked_damage(&db))?;
 
     Ok(())
 }

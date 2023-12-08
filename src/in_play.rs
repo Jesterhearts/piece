@@ -17,8 +17,8 @@ use crate::{
     controller::Controller,
     cost::CastingCost,
     effects::{
-        ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect, Token,
-        TriggeredEffect,
+        spell, ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect,
+        Token, TriggeredEffect,
     },
     player::PlayerId,
     stack::{ActiveTarget, Stack},
@@ -44,6 +44,7 @@ static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static UPLOAD_CARD_SQL: &str = indoc! {"
     INSERT INTO cards (
         cardid,
+        marked_damage,
         location,
         name,
         owner,
@@ -65,7 +66,8 @@ static UPLOAD_CARD_SQL: &str = indoc! {"
         (?8),
         (?9),
         (?10),
-        (?11)
+        (?11),
+        (?12)
     );
 "};
 
@@ -793,6 +795,30 @@ impl CardId {
         Ok(())
     }
 
+    pub fn marked_damage(self, db: &Connection) -> anyhow::Result<i32> {
+        Ok(db.query_row(
+            "SELECT marked_damage FROM cards WHERE cardid = (?1)",
+            (self,),
+            |row| row.get(0),
+        )?)
+    }
+
+    pub fn mark_damage(self, db: &Connection, amount: usize) -> anyhow::Result<()> {
+        db.execute(
+            "UPDATE cards SET marked_damage = marked_damage + (?2) WHERE cardid = (?1)",
+            (self, amount),
+        )?;
+        Ok(())
+    }
+
+    pub fn clear_damage(self, db: &Connection) -> anyhow::Result<()> {
+        db.execute(
+            "UPDATE cards SET marked_damage = 0 WHERE cardid = (?1)",
+            (self,),
+        )?;
+        Ok(())
+    }
+
     pub fn power(self, db: &Connection) -> anyhow::Result<Option<i32>> {
         let face_down: bool = db.query_row(
             "SELECT face_down FROM cards WHERE cardid = (?1)",
@@ -1280,6 +1306,7 @@ impl CardId {
             UPLOAD_CARD_SQL,
             (
                 cardid,
+                0,
                 serde_json::to_string(&destination)?,
                 card.name.clone(),
                 player,
@@ -1485,14 +1512,22 @@ impl CardId {
         let creatures = Battlefield::creatures(db)?;
 
         for effect in self.effects(db)? {
+            let effect = if effect.threshold.is_some()
+                && Battlefield::number_of_cards_in_graveyard(db, self.controller(db)?)? >= 7
+            {
+                effect.threshold.unwrap()
+            } else {
+                effect.effect
+            };
+
             match effect {
-                SpellEffect::CounterSpell { target } => {
+                spell::Effect::CounterSpell { target } => {
                     targets_for_counterspell(db, self.controller(db)?, target, &mut targets)?;
                 }
-                SpellEffect::GainMana { .. } => {}
-                SpellEffect::BattlefieldModifier(_) => {}
-                SpellEffect::ControllerDrawCards(_) => {}
-                SpellEffect::ModifyCreature(modifier) => {
+                spell::Effect::GainMana { .. } => {}
+                spell::Effect::BattlefieldModifier(_) => {}
+                spell::Effect::ControllerDrawCards(_) => {}
+                spell::Effect::ModifyCreature(modifier) => {
                     targets_for_battlefield_modifier(
                         db,
                         self,
@@ -1502,16 +1537,33 @@ impl CardId {
                         &mut targets,
                     )?;
                 }
-                SpellEffect::ExileTargetCreature => {
+                spell::Effect::ExileTargetCreature => {
                     for creature in creatures.iter() {
                         if creature.can_be_targeted(db, self.controller(db)?)? {
                             targets.insert(ActiveTarget::Battlefield { id: *creature });
                         }
                     }
                 }
-                SpellEffect::ExileTargetCreatureManifestTopOfLibrary => {
+                spell::Effect::ExileTargetCreatureManifestTopOfLibrary => {
                     for creature in creatures.iter() {
                         if creature.can_be_targeted(db, self.controller(db)?)? {
+                            targets.insert(ActiveTarget::Battlefield { id: *creature });
+                        }
+                    }
+                }
+                spell::Effect::DealDamage(dmg) => {
+                    // TODO players & plainswalkers
+                    for creature in creatures.iter() {
+                        let controller = self.controller(db)?;
+                        if creature.can_be_targeted(db, controller)?
+                            && creature.passes_restrictions(
+                                db,
+                                self,
+                                controller,
+                                Controller::Any,
+                                &dmg.restrictions,
+                            )?
+                        {
                             targets.insert(ActiveTarget::Battlefield { id: *creature });
                         }
                     }
