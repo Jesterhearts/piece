@@ -25,6 +25,7 @@ pub enum UnresolvedActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
     AddAbilityToStack {
+        source: CardId,
         ability: AbilityId,
         valid_targets: HashSet<ActiveTarget>,
     },
@@ -67,6 +68,7 @@ pub enum ActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
     AddAbilityToStack {
+        source: CardId,
         ability: AbilityId,
         targets: HashSet<ActiveTarget>,
     },
@@ -251,6 +253,7 @@ impl Battlefield {
                         ModifierId::upload_single_modifier(db, source_card_id, &modifier, true)?;
                     results.push(UnresolvedActionResult::AddModifier { modifier })
                 }
+                StaticAbility::ExtraLandsPerTurn(_) => {}
             }
         }
 
@@ -366,6 +369,7 @@ impl Battlefield {
         }
 
         results.push(UnresolvedActionResult::AddAbilityToStack {
+            source: card,
             ability: ability_id,
             valid_targets: card.valid_targets(db)?,
         });
@@ -411,6 +415,7 @@ impl Battlefield {
                     )?);
                 }
                 UnresolvedActionResult::AddAbilityToStack {
+                    source,
                     ability,
                     valid_targets,
                 } => {
@@ -425,13 +430,14 @@ impl Battlefield {
                             db,
                             all_players,
                             ActionResult::AddAbilityToStack {
+                                source,
                                 ability,
                                 targets: valid_targets,
                             },
                         )?);
                     } else {
                         let mut valid_targets = Default::default();
-                        ability.source(db)?.targets_for_ability(
+                        source.targets_for_ability(
                             db,
                             ability,
                             &Self::creatures(db)?,
@@ -439,6 +445,7 @@ impl Battlefield {
                         )?;
 
                         pending.push(UnresolvedActionResult::AddAbilityToStack {
+                            source,
                             ability,
                             valid_targets,
                         });
@@ -588,8 +595,12 @@ impl Battlefield {
             ActionResult::PermanentToGraveyard(card_id) => {
                 return Self::permanent_to_graveyard(db, card_id);
             }
-            ActionResult::AddAbilityToStack { ability, targets } => {
-                ability.move_to_stack(db, targets)?;
+            ActionResult::AddAbilityToStack {
+                source,
+                ability,
+                targets,
+            } => {
+                ability.move_to_stack(db, source, targets)?;
             }
             ActionResult::AddTriggerToStack(trigger) => {
                 trigger.move_to_stack(db, Default::default())?;

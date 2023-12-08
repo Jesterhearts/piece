@@ -27,6 +27,7 @@ fn sacrifice_draw_gain_mana() -> anyhow::Result<()> {
         [
             UnresolvedActionResult::PermanentToGraveyard(attendant),
             UnresolvedActionResult::AddAbilityToStack {
+                source: attendant,
                 ability: attendant
                     .activated_abilities(&db)?
                     .first()

@@ -78,6 +78,10 @@ message GainMana {
   }
 }
 
+message ExtraLandsPerTurn {
+  int32 count = 1;
+}
+
 message ModifyBattlefield {
   optional int32 base_power = 1;
   optional int32 base_toughness = 2;

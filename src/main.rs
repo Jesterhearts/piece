@@ -214,7 +214,7 @@ fn prepare_db() -> anyhow::Result<Connection> {
         indoc! {"
             CREATE TABLE abilities (
                 abilityid INTEGER PRIMARY KEY,
-                source INTEGER NOT NULL,
+                source INTEGER,
 
                 cost JSON NOT NULL,
                 effects JSON NOT NULL,

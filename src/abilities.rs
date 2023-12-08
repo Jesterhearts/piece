@@ -87,6 +87,7 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
     BattlefieldModifier(BattlefieldModifier),
+    ExtraLandsPerTurn(usize),
 }
 
 impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
@@ -118,6 +119,9 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
             }
             protogen::abilities::static_ability::Ability::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
+            }
+            protogen::abilities::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
+                Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
             }
         }
     }

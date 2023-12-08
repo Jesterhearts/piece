@@ -2,13 +2,3 @@ name: "Plains"
 cost { }
 types { basic_land {} }
 subtypes { plains {} }
-activated_abilities {
-  cost {
-    tap: true
-  }
-  effects {
-    gain_mana {
-      specific { gains { white {} } }
-    }
-  }
-}

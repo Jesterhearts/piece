@@ -28,6 +28,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
             UnresolvedActionResult::TapPermanent(card),
             UnresolvedActionResult::PermanentToGraveyard(card),
             UnresolvedActionResult::AddAbilityToStack {
+                source: card,
                 ability: card
                     .activated_abilities(&db)?
                     .last()
@@ -64,6 +65,7 @@ fn add_mana() -> anyhow::Result<()> {
         [
             UnresolvedActionResult::TapPermanent(card),
             UnresolvedActionResult::AddAbilityToStack {
+                source: card,
                 ability: card
                     .activated_abilities(&db)?
                     .first()

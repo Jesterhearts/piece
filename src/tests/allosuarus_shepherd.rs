@@ -4,7 +4,7 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
-    in_play::{CardId, ModifierId},
+    in_play::CardId,
     load_cards,
     player::AllPlayers,
     prepare_db,
@@ -30,6 +30,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [UnresolvedActionResult::AddAbilityToStack {
+            source: card,
             ability: card
                 .activated_abilities(&db)?
                 .first()
@@ -43,10 +44,10 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(results, []);
 
     let results = Stack::resolve_1(&db)?;
-    assert_eq!(
-        results,
-        [StackResult::ApplyToBattlefield(ModifierId::default()),]
-    );
+    assert!(matches!(
+        results.as_slice(),
+        [StackResult::ApplyToBattlefield(_),]
+    ));
 
     let results = Stack::apply_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);

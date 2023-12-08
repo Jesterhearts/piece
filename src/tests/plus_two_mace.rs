@@ -30,6 +30,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [UnresolvedActionResult::AddAbilityToStack {
+            source: equipment,
             ability: equipment
                 .activated_abilities(&db)?
                 .first()

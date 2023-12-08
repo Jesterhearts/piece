@@ -1,6 +1,9 @@
 use std::{
-    collections::HashSet,
-    sync::atomic::{AtomicUsize, Ordering},
+    collections::{HashMap, HashSet},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        OnceLock,
+    },
 };
 
 use derive_more::From;
@@ -15,11 +18,12 @@ use crate::{
         ActivatedAbilityModifier, Card, Color, StaticAbilityModifier, TriggeredAbilityModifier,
     },
     controller::Controller,
-    cost::CastingCost,
+    cost::{AbilityCost, CastingCost},
     effects::{
         spell, ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect,
         Token, TriggeredEffect,
     },
+    mana::Mana,
     player::PlayerId,
     stack::{ActiveTarget, Stack},
     targets::{Comparison, Restriction, SpellTarget},
@@ -40,6 +44,8 @@ static NEXT_STACK_SEQ: AtomicUsize = AtomicUsize::new(1);
 static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_HAND_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
+
+static INIT_LAND_ABILITIES: OnceLock<HashMap<Subtype, AbilityId>> = OnceLock::new();
 
 static UPLOAD_CARD_SQL: &str = indoc! {"
     INSERT INTO cards (
@@ -92,6 +98,24 @@ static UPLOAD_MODIFIER_SQL: &str = indoc! {"
         (?8)
     )
 "};
+
+static INSERT_ABILITIES_SQL: &str = indoc! {"
+    INSERT INTO abilities (
+        abilityid,
+        source,
+        apply_to_self,
+        cost,
+        effects,
+        in_stack
+    ) VALUES (
+        (?1),
+        (?2),
+        (?3),
+        (?4),
+        (?5),
+        (?6)
+    )"
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub enum Location {
@@ -623,6 +647,13 @@ impl CardId {
                         }
                     }
                 }
+            }
+        }
+
+        let land_abilities = AbilityId::land_abilities(db);
+        for ty in self.subtypes(db)? {
+            if let Some(ability) = land_abilities.get(&ty) {
+                abilities.push(*ability);
             }
         }
 
@@ -1411,22 +1442,7 @@ impl CardId {
             for ability in card.activated_abilities.iter() {
                 let id = AbilityId::new();
                 db.execute(
-                    indoc! {"
-                        INSERT INTO abilities (
-                            abilityid,
-                            source,
-                            apply_to_self,
-                            cost,
-                            effects,
-                            in_stack
-                        ) VALUES (
-                            (?1),
-                            (?2),
-                            (?3),
-                            (?4),
-                            (?5),
-                            (?6)
-                        )"},
+                    INSERT_ABILITIES_SQL,
                     (
                         id,
                         cardid,
@@ -1676,6 +1692,7 @@ impl CardId {
                     }
                 }
                 StaticAbility::BattlefieldModifier(_) => {}
+                StaticAbility::ExtraLandsPerTurn(_) => {}
             }
         }
 
@@ -2019,9 +2036,148 @@ impl AbilityId {
         Self(NEXT_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
     }
 
+    pub fn land_abilities(db: &Connection) -> &HashMap<Subtype, Self> {
+        INIT_LAND_ABILITIES.get_or_init(|| {
+            let mut abilities = HashMap::new();
+
+            let id = AbilityId::new();
+            db.execute(
+                INSERT_ABILITIES_SQL,
+                (
+                    id,
+                    Option::<CardId>::None,
+                    false,
+                    serde_json::to_string(&AbilityCost {
+                        mana_cost: vec![],
+                        tap: true,
+                        additional_cost: vec![],
+                    })
+                    .unwrap(),
+                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                        mana: GainMana::Specific {
+                            gains: vec![Mana::White],
+                        },
+                    }])
+                    .unwrap(),
+                    false,
+                ),
+            )
+            .unwrap();
+
+            abilities.insert(Subtype::Plains, id);
+
+            let id = AbilityId::new();
+            db.execute(
+                INSERT_ABILITIES_SQL,
+                (
+                    id,
+                    Option::<CardId>::None,
+                    false,
+                    serde_json::to_string(&AbilityCost {
+                        mana_cost: vec![],
+                        tap: true,
+                        additional_cost: vec![],
+                    })
+                    .unwrap(),
+                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                        mana: GainMana::Specific {
+                            gains: vec![Mana::Blue],
+                        },
+                    }])
+                    .unwrap(),
+                    false,
+                ),
+            )
+            .unwrap();
+
+            abilities.insert(Subtype::Island, id);
+
+            let id = AbilityId::new();
+            db.execute(
+                INSERT_ABILITIES_SQL,
+                (
+                    id,
+                    Option::<CardId>::None,
+                    false,
+                    serde_json::to_string(&AbilityCost {
+                        mana_cost: vec![],
+                        tap: true,
+                        additional_cost: vec![],
+                    })
+                    .unwrap(),
+                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                        mana: GainMana::Specific {
+                            gains: vec![Mana::Black],
+                        },
+                    }])
+                    .unwrap(),
+                    false,
+                ),
+            )
+            .unwrap();
+
+            abilities.insert(Subtype::Swamp, id);
+
+            let id = AbilityId::new();
+            db.execute(
+                INSERT_ABILITIES_SQL,
+                (
+                    id,
+                    Option::<CardId>::None,
+                    false,
+                    serde_json::to_string(&AbilityCost {
+                        mana_cost: vec![],
+                        tap: true,
+                        additional_cost: vec![],
+                    })
+                    .unwrap(),
+                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                        mana: GainMana::Specific {
+                            gains: vec![Mana::Red],
+                        },
+                    }])
+                    .unwrap(),
+                    false,
+                ),
+            )
+            .unwrap();
+
+            abilities.insert(Subtype::Mountain, id);
+
+            let id = AbilityId::new();
+            db.execute(
+                INSERT_ABILITIES_SQL,
+                (
+                    id,
+                    Option::<CardId>::None,
+                    false,
+                    serde_json::to_string(&AbilityCost {
+                        mana_cost: vec![],
+                        tap: true,
+                        additional_cost: vec![],
+                    })
+                    .unwrap(),
+                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                        mana: GainMana::Specific {
+                            gains: vec![Mana::Green],
+                        },
+                    }])
+                    .unwrap(),
+                    false,
+                ),
+            )
+            .unwrap();
+
+            abilities.insert(Subtype::Forest, id);
+
+            abilities
+        })
+    }
+
     pub fn move_to_stack(
         self,
         db: &Connection,
+        source: CardId,
         targets: HashSet<ActiveTarget>,
     ) -> anyhow::Result<()> {
         if Stack::split_second(db)? {
@@ -2033,13 +2189,16 @@ impl AbilityId {
                 UPDATE abilities
                 SET in_stack = TRUE,
                     stack_seq = (?2),
-                    targets = (?3)
+                    targets = (?3),
+                    source = (?4)
                 WHERE abilities.abilityid = (?1)
             "},
             (
                 self,
                 NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
                 serde_json::to_string(&targets)?,
+                // This is a hack to make land types work, probably need something better here
+                source,
             ),
         )?;
 

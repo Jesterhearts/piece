@@ -8,6 +8,7 @@ use indoc::indoc;
 use rusqlite::{types::FromSql, Connection, ToSql};
 
 use crate::{
+    abilities::StaticAbility,
     battlefield::{Battlefield, UnresolvedActionResult},
     deck::Deck,
     in_play::{CardId, Location},
@@ -184,7 +185,6 @@ impl AllPlayers {
         self.players.insert(
             id,
             Player {
-                lands_per_turn: 1,
                 hexproof: false,
                 lands_played: 0,
                 mana_pool: Default::default(),
@@ -208,7 +208,6 @@ impl AllPlayers {
 
 #[derive(Debug)]
 pub struct Player {
-    pub lands_per_turn: usize,
     pub hexproof: bool,
     pub lands_played: usize,
     pub mana_pool: ManaPool,
@@ -283,7 +282,7 @@ impl Player {
             return Ok(None);
         }
 
-        if card.is_land(db)? && self.lands_played >= self.lands_per_turn {
+        if card.is_land(db)? && self.lands_played >= Self::lands_per_turn(db)? {
             return Ok(None);
         }
 
@@ -309,5 +308,15 @@ impl Player {
         } else {
             Ok(vec![])
         }
+    }
+
+    pub fn lands_per_turn(db: &Connection) -> Result<usize, anyhow::Error> {
+        Ok(1 + Battlefield::static_abilities(db)?
+            .into_iter()
+            .filter_map(|(ability, _)| match ability {
+                StaticAbility::ExtraLandsPerTurn(count) => Some(count),
+                _ => None,
+            })
+            .sum::<usize>())
     }
 }

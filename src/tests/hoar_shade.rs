@@ -32,6 +32,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [UnresolvedActionResult::AddAbilityToStack {
+            source: shade1,
             ability: shade1
                 .activated_abilities(&db)?
                 .first()

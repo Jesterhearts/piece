@@ -33,8 +33,9 @@ message StaticAbility {
   }
 
   oneof ability {
-    GreenCannotBeCountered green_cannot_be_countered = 1;
-    effects.BattlefieldModifier battlefield_modifier = 2;
+    GreenCannotBeCountered green_cannot_be_countered = 2;
+    effects.BattlefieldModifier battlefield_modifier = 3;
+    effects.ExtraLandsPerTurn extra_lands_per_turn = 4;
   }
 }
 
