@@ -1,10 +1,19 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 
-use crate::{mana::Mana, protogen};
+use crate::{card::Color, mana::Mana, protogen};
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
 pub struct CastingCost {
     pub mana_cost: Vec<Mana>,
+}
+
+impl CastingCost {
+    pub fn colors(&self) -> HashSet<Color> {
+        self.mana_cost.iter().map(|mana| mana.color()).collect()
+    }
 }
 
 impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
@@ -21,7 +30,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
     SacrificeThis,
 }
@@ -46,7 +55,7 @@ impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AbilityCost {
     pub mana_cost: Vec<Mana>,
     pub tap: bool,

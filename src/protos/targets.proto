@@ -28,8 +28,6 @@ message SpellTarget {
 message Restriction {
   message NotSelf {
   }
-  message SingleTarget {
-  }
   message OfType {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
@@ -44,10 +42,9 @@ message Restriction {
 
   oneof restriction {
     NotSelf not_self = 1;
-    SingleTarget single_target = 2;
-    Self self = 3;
-    OfType of_type = 4;
-    Toughness toughness = 5;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 6;
+    Self self = 2;
+    OfType of_type = 3;
+    Toughness toughness = 4;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 5;
   }
 }

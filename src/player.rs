@@ -1,17 +1,63 @@
-use std::{cell::RefCell, rc::Rc, sync::atomic::AtomicUsize};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::{Index, IndexMut},
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-use derive_more::Deref;
+use indoc::indoc;
+use rusqlite::{types::FromSql, Connection, ToSql};
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     deck::Deck,
-    hand::Hand,
-    in_play::{AllCards, AllModifiers, CardId},
+    in_play::{CardId, Location},
     mana::Mana,
-    stack::{ActiveTarget, Stack},
+    stack::ActiveTarget,
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct PlayerId(usize);
+
+impl PlayerId {
+    fn new() -> Self {
+        Self(NEXT_PLAYER_ID.fetch_add(1, Ordering::Relaxed))
+    }
+
+    pub(crate) fn get_cards_in_zone(
+        &self,
+        db: &Connection,
+        location: Location,
+    ) -> anyhow::Result<Vec<CardId>> {
+        let mut results = vec![];
+        let mut in_location = db.prepare(indoc! {"
+            SELECT cardid
+            FROM cards
+            WHERE controller = (?1) AND location = (?2)
+            ORDER BY location_seq ASC
+        "})?;
+        for row in
+            in_location.query_map((self, serde_json::to_string(&location)?), |row| row.get(0))?
+        {
+            results.push(row?)
+        }
+
+        Ok(results)
+    }
+}
+
+impl FromSql for PlayerId {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        Ok(Self(usize::column_result(value)?))
+    }
+}
+
+impl ToSql for PlayerId {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        self.0.to_sql()
+    }
+}
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ManaPool {
@@ -112,18 +158,51 @@ impl ManaPool {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Deref)]
-pub struct PlayerRef(Rc<RefCell<Player>>);
+impl Index<PlayerId> for AllPlayers {
+    type Output = Player;
 
-impl std::hash::Hash for PlayerRef {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.borrow().hash(state);
+    fn index(&self, index: PlayerId) -> &Self::Output {
+        self.players.get(&index).expect("Valid player id")
     }
 }
 
-impl PartialEq<Player> for PlayerRef {
-    fn eq(&self, other: &Player) -> bool {
-        &*self.borrow() == other
+impl IndexMut<PlayerId> for AllPlayers {
+    fn index_mut(&mut self, index: PlayerId) -> &mut Self::Output {
+        self.players.get_mut(&index).expect("Valid player id")
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AllPlayers {
+    players: HashMap<PlayerId, Player>,
+}
+
+impl AllPlayers {
+    #[must_use]
+    pub fn new_player(&mut self) -> PlayerId {
+        let id = PlayerId::new();
+        self.players.insert(
+            id,
+            Player {
+                lands_per_turn: 1,
+                hexproof: false,
+                lands_played: 0,
+                mana_pool: Default::default(),
+                deck: Deck::empty(),
+            },
+        );
+
+        id
+    }
+
+    pub fn all_players(db: &Connection) -> anyhow::Result<HashSet<PlayerId>> {
+        let mut result = HashSet::default();
+        let mut owners = db.prepare("SELECT DISTINCT owner FROM cards")?;
+        for row in owners.query_map((), |row| row.get(0))? {
+            result.insert(row?);
+        }
+
+        Ok(result)
     }
 }
 
@@ -133,40 +212,11 @@ pub struct Player {
     pub hexproof: bool,
     pub lands_played: usize,
     pub mana_pool: ManaPool,
-    pub hand: Hand,
-
-    pub id: usize,
 
     pub deck: Deck,
 }
 
-impl std::hash::Hash for Player {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-impl PartialEq for Player {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Eq for Player {}
-
 impl Player {
-    pub fn new_ref(deck: Deck) -> PlayerRef {
-        PlayerRef(Rc::new(RefCell::new(Self {
-            lands_per_turn: 1,
-            hexproof: false,
-            lands_played: 0,
-            mana_pool: Default::default(),
-            hand: Default::default(),
-            id: NEXT_PLAYER_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            deck,
-        })))
-    }
-
     #[cfg(test)]
     pub fn infinite_mana(&mut self) {
         self.mana_pool.white_mana = usize::MAX;
@@ -177,65 +227,67 @@ impl Player {
         self.mana_pool.colorless_mana = usize::MAX;
     }
 
-    pub fn draw_initial_hand(&mut self) {
+    pub fn draw_initial_hand(&mut self, db: &Connection) -> anyhow::Result<()> {
         for _ in 0..7 {
             let card = self
                 .deck
                 .draw()
                 .expect("Decks should have at least 7 cards");
-            self.hand.contents.push(card);
+
+            card.move_to_hand(db)?;
         }
+
+        Ok(())
     }
 
-    pub fn draw(&mut self, count: usize) -> bool {
+    pub fn draw(&mut self, db: &Connection, count: usize) -> anyhow::Result<bool> {
         if self.deck.len() < count {
-            return false;
+            return Ok(false);
         }
 
         for _ in 0..count {
             let card = self.deck.draw().expect("Validated deck size");
-            self.hand.contents.push(card);
+            card.move_to_hand(db)?;
         }
 
-        true
+        Ok(true)
     }
 
-    /// Returns true if the card was played.
+    /// Returns Some if the card can be played
     pub fn play_card(
         &mut self,
-        cards: &AllCards,
+        db: &Connection,
         index: usize,
-        stack: &Stack,
-        battlefield: &Battlefield,
         target: Option<ActiveTarget>,
-    ) -> Option<CardId> {
-        let card = self.hand.contents[index];
-        let card = &cards[card];
+    ) -> anyhow::Result<Option<CardId>> {
+        let cards = Location::Hand.cards_in(db)?;
+        let card = cards[index];
         let mana_pool = self.mana_pool;
 
-        for mana in card.card.cost.mana_cost.iter().copied() {
+        for mana in card.cost(db)?.mana_cost.into_iter() {
             if !self.mana_pool.spend(mana) {
                 self.mana_pool = mana_pool;
-                return None;
+                return Ok(None);
             }
         }
 
         if let Some(target) = target {
-            let targets = card.card.valid_targets(cards, battlefield, stack, self);
+            let targets = card.valid_targets(db)?;
             if !targets.contains(&target) {
-                return None;
+                self.mana_pool = mana_pool;
+                return Ok(None);
             }
         }
 
-        if card.card.requires_target() && target.is_none() {
-            return None;
+        if card.requires_target(db)? && target.is_none() {
+            return Ok(None);
         }
 
-        if card.card.is_land() && self.lands_played >= self.lands_per_turn {
-            return None;
+        if card.is_land(db)? && self.lands_played >= self.lands_per_turn {
+            return Ok(None);
         }
 
-        Some(self.hand.contents.remove(index))
+        Ok(Some(card))
     }
 
     pub fn spend_mana(&mut self, mana: &[Mana]) -> bool {
@@ -250,21 +302,12 @@ impl Player {
         true
     }
 
-    #[must_use]
-    pub fn manifest(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        battlefield: &mut Battlefield,
-    ) -> Vec<UnresolvedActionResult> {
+    pub fn manifest(&mut self, db: &Connection) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         if let Some(manifested) = self.deck.draw() {
-            let card = &mut cards[manifested];
-            card.face_down = true;
-            card.manifested = true;
-
-            battlefield.add(cards, modifiers, manifested, vec![])
+            manifested.manifest(db)?;
+            Battlefield::add(db, manifested, vec![])
         } else {
-            vec![]
+            Ok(vec![])
         }
     }
 }

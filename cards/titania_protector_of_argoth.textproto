@@ -26,11 +26,10 @@ etb_abilities {
 }
 triggered_abilities {
   trigger {
-    put_into_graveyard {
-      from { battlefield {} }
-      types { land {} }
-      types { basic_land {} }
-    }
+    source { put_into_graveyard{} }
+    from { battlefield {} }
+    types { land {} }
+    types { basic_land {} }
   }
   effects {
     create_token {

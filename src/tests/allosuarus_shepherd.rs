@@ -7,10 +7,7 @@ use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
     deck::Deck,
-    effects::{
-        ActivatedAbilityEffect, AddCreatureSubtypes, BattlefieldModifier, EffectDuration,
-        ModifyBasePowerToughness, ModifyBattlefield,
-    },
+    effects::{ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, ModifyBattlefield},
     in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay, ModifierType},
     load_cards,
     player::Player,
@@ -40,34 +37,22 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         [UnresolvedActionResult::AddToStack {
             card,
             effects: EffectsInPlay {
-                effects: vec![
-                    ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
-                        modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                            ModifyBasePowerToughness {
-                                power: 5,
-                                toughness: 5,
-                            }
-                        ),
+                effects: vec![ActivatedAbilityEffect::BattlefieldModifier(
+                    BattlefieldModifier {
+                        modifier: ModifyBattlefield {
+                            base_power: Some(5),
+                            base_toughness: Some(5),
+                            add_subtypes: enum_set!(Subtype::Dinosaur),
+                            ..Default::default()
+                        },
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
                         restrictions: HashSet::from([Restriction::OfType {
                             types: enum_set!(),
                             subtypes: enum_set!(Subtype::Elf)
                         }]),
-                    }),
-                    ActivatedAbilityEffect::BattlefieldModifier(BattlefieldModifier {
-                        modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            add_subtypes: enum_set![Subtype::Dinosaur],
-                            add_types: enum_set![],
-                        }),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: HashSet::from([Restriction::OfType {
-                            types: enum_set![],
-                            subtypes: enum_set![Subtype::Elf]
-                        }]),
-                    })
-                ],
+                    }
+                ),],
                 source: card,
                 controller: player.clone(),
             },
@@ -87,50 +72,28 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let results = stack.resolve_1(&all_cards, &battlefield);
     assert_eq!(
         results,
-        [
-            StackResult::ApplyToBattlefield {
-                modifier: ModifierInPlay {
-                    source: card,
-                    modifier: BattlefieldModifier {
-                        modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                            ModifyBasePowerToughness {
-                                power: 5,
-                                toughness: 5,
-                            }
-                        ),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: HashSet::from([Restriction::OfType {
-                            types: enum_set!(),
-                            subtypes: enum_set!(Subtype::Elf)
-                        }]),
+        [StackResult::ApplyToBattlefield {
+            modifier: ModifierInPlay {
+                source: card,
+                modifier: BattlefieldModifier {
+                    modifier: ModifyBattlefield {
+                        base_power: Some(5),
+                        base_toughness: Some(5),
+                        add_subtypes: enum_set!(Subtype::Dinosaur),
+                        ..Default::default()
                     },
-                    controller: player.clone(),
-                    modifying: Default::default(),
-                    modifier_type: ModifierType::Global,
+                    controller: Controller::You,
+                    duration: EffectDuration::UntilEndOfTurn,
+                    restrictions: HashSet::from([Restriction::OfType {
+                        types: enum_set!(),
+                        subtypes: enum_set!(Subtype::Elf)
+                    }]),
                 },
+                controller: player.clone(),
+                modifying: Default::default(),
+                modifier_type: ModifierType::Global,
             },
-            StackResult::ApplyToBattlefield {
-                modifier: ModifierInPlay {
-                    source: card,
-                    modifier: BattlefieldModifier {
-                        modifier: ModifyBattlefield::AddCreatureSubtypes(AddCreatureSubtypes {
-                            add_subtypes: enum_set![Subtype::Dinosaur],
-                            add_types: enum_set![],
-                        }),
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: HashSet::from([Restriction::OfType {
-                            types: enum_set![],
-                            subtypes: enum_set![Subtype::Elf]
-                        }]),
-                    },
-                    controller: player.clone(),
-                    modifying: Default::default(),
-                    modifier_type: ModifierType::Global,
-                }
-            }
-        ]
+        },]
     );
 
     let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);

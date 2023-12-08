@@ -1,5 +1,7 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
-use enumset::EnumSet;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     controller::Controller,
@@ -7,7 +9,7 @@ use crate::{
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Comparison {
     LessThan(i32),
     LessThanOrEqual(i32),
@@ -36,11 +38,11 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct SpellTarget {
     pub controller: Controller,
-    pub types: EnumSet<Type>,
-    pub subtypes: EnumSet<Subtype>,
+    pub types: HashSet<Type>,
+    pub subtypes: HashSet<Subtype>,
 }
 
 impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
@@ -58,24 +60,23 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
+                .collect::<anyhow::Result<HashSet<_>>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
+                .collect::<anyhow::Result<HashSet<_>>>()?,
         })
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum Restriction {
     NotSelf,
-    SingleTarget,
     Self_,
     OfType {
-        types: EnumSet<Type>,
-        subtypes: EnumSet<Subtype>,
+        types: HashSet<Type>,
+        subtypes: HashSet<Subtype>,
     },
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
@@ -99,19 +100,18 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
     fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
             protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
-            protogen::targets::restriction::Restriction::SingleTarget(_) => Ok(Self::SingleTarget),
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
             protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {
                 types: types
                     .types
                     .iter()
                     .map(Type::try_from)
-                    .collect::<anyhow::Result<EnumSet<_>>>()?,
+                    .collect::<anyhow::Result<HashSet<_>>>()?,
                 subtypes: types
                     .subtypes
                     .iter()
                     .map(Subtype::try_from)
-                    .collect::<anyhow::Result<EnumSet<_>>>()?,
+                    .collect::<anyhow::Result<HashSet<_>>>()?,
             }),
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),

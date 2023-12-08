@@ -1,9 +1,11 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
-use enumset::{EnumSet, EnumSetType};
+use serde::{Deserialize, Serialize};
 
 use crate::{protogen, types::Type};
 
-#[derive(Debug, EnumSetType)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Location {
     Anywhere,
     Battlefield,
@@ -32,53 +34,51 @@ impl From<&protogen::triggers::location::Location> for Location {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PutIntoGraveyard {
-    pub location: Location,
-    pub types: EnumSet<Type>,
-}
-
-impl TryFrom<&protogen::triggers::trigger::PutIntoGraveyard> for PutIntoGraveyard {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::triggers::trigger::PutIntoGraveyard,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            location: value.from.get_or_default().try_into()?,
-            types: value
-                .types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?,
-        })
-    }
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerSource {
+    PutIntoGraveyard,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Trigger {
-    PutIntoGraveyard(PutIntoGraveyard),
+pub struct Trigger {
+    pub trigger: TriggerSource,
+    pub from: Location,
+    pub for_types: HashSet<Type>,
 }
 
 impl TryFrom<&protogen::triggers::Trigger> for Trigger {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::triggers::Trigger) -> Result<Self, Self::Error> {
+        Ok(Self {
+            trigger: value.source.get_or_default().try_into()?,
+            from: value.from.get_or_default().try_into()?,
+            for_types: value
+                .types
+                .iter()
+                .map(Type::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
+impl TryFrom<&protogen::triggers::TriggerSource> for TriggerSource {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::triggers::TriggerSource) -> Result<Self, Self::Error> {
         value
             .trigger
             .as_ref()
             .ok_or_else(|| anyhow!("Expected trigger to have a trigger specified"))
-            .and_then(Self::try_from)
+            .map(Self::from)
     }
 }
 
-impl TryFrom<&protogen::triggers::trigger::Trigger> for Trigger {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::triggers::trigger::Trigger) -> Result<Self, Self::Error> {
+impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
+    fn from(value: &protogen::triggers::trigger_source::Trigger) -> Self {
         match value {
-            protogen::triggers::trigger::Trigger::PutIntoGraveyard(trigger) => {
-                Ok(Self::PutIntoGraveyard(trigger.try_into()?))
+            protogen::triggers::trigger_source::Trigger::PutIntoGraveyard(_) => {
+                Self::PutIntoGraveyard
             }
         }
     }

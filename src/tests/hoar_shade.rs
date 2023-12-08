@@ -6,10 +6,7 @@ use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
     deck::Deck,
-    effects::{
-        ActivatedAbilityEffect, AddPowerToughness, BattlefieldModifier, EffectDuration,
-        ModifyBattlefield,
-    },
+    effects::{ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, ModifyBattlefield},
     in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay, ModifierType},
     load_cards,
     player::Player,
@@ -46,10 +43,11 @@ fn add_p_t_works() -> anyhow::Result<()> {
             effects: EffectsInPlay {
                 effects: vec![ActivatedAbilityEffect::BattlefieldModifier(
                     BattlefieldModifier {
-                        modifier: ModifyBattlefield::AddPowerToughness(AddPowerToughness {
-                            power: 1,
-                            toughness: 1,
-                        }),
+                        modifier: ModifyBattlefield {
+                            add_power: Some(1),
+                            add_toughness: Some(1),
+                            ..Default::default()
+                        },
                         controller: Controller::You,
                         duration: EffectDuration::UntilEndOfTurn,
                         restrictions: HashSet::from([Restriction::Self_]),

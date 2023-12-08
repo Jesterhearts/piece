@@ -84,27 +84,22 @@ message GainMana {
   }
 }
 
-message ModifyBasePowerToughness {
-  int32 power = 1;
-  int32 toughness = 2;
-}
-
-message ModifyCreatureTypes {
-  repeated types.Type add_types = 1;
-  repeated types.Subtype add_subtypes = 2;
-}
-
-message RemoveAllSubtypes {
-}
-
 message ModifyBattlefield {
-  oneof modifier {
-    ModifyBasePowerToughness modify_base_power_toughness = 1;
-    ModifyCreatureTypes modify_creature_types = 2;
-    AddPowerToughness add_power_toughness = 3;
-    RemoveAllSubtypes remove_all_subtypes = 4;
-    Vigilance vigilance = 5;
-  }
+  optional int32 base_power = 1;
+  optional int32 base_toughness = 2;
+
+  repeated types.Type add_types = 3;
+  repeated types.Subtype add_subtypes = 4;
+
+  optional int32 add_power = 5;
+  optional int32 add_toughness = 6;
+
+  bool remove_all_subtypes = 7;
+
+  bool entire_battlefield = 8;
+  bool global = 9;
+
+  bool add_vigilance = 10;
 }
 
 message BattlefieldModifier {
@@ -137,11 +132,6 @@ message Equip {
   repeated ModifyBattlefield modifiers = 1;
 }
 
-message AddPowerToughness {
-  int32 power = 1;
-  int32 toughness = 2;
-}
-
 message ExileTargetCreature {
 }
 
@@ -155,7 +145,6 @@ message ActivatedAbilityEffect {
     BattlefieldModifier battlefield_modifier = 3;
     ControllerDrawCards controller_draw_cards = 4;
     Equip equip = 5;
-    AddPowerToughness add_power_toughness_to_target = 6;
   }
 }
 
@@ -172,9 +161,8 @@ message SpellEffect {
     BattlefieldModifier battlefield_modifier = 3;
     BattlefieldModifier modify_creature = 4;
     ControllerDrawCards controller_draw_cards = 5;
-    AddPowerToughness add_power_toughness_to_target = 6;
-    ExileTargetCreature exile_target_creature = 7;
+    ExileTargetCreature exile_target_creature = 6;
     ExileTargetCreatureManifestTopOfLibrary
-      exile_target_creature_manifest_top_of_library = 8;
+      exile_target_creature_manifest_top_of_library = 7;
   }
 }

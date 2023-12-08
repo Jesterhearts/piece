@@ -13,27 +13,11 @@ flavor_text:  "New Capenna's statues hold Old"
 effects {
   modify_creature {
     modifier {
-      modify_base_power_toughness {
-        power: 4
-        toughness: 4
-      }
-    }
-    controller { any {} }
-    duration { until_end_of_turn {} }
-    restrictions { of_type {
-      types { creature {} }
-      types { artifact {} }
-    } }
-  }
-}
-effects {
-  modify_creature {
-    modifier {
-      modify_creature_types {
+        base_power: 4
+        base_toughness: 4
         add_types { creature {} }
         add_types { artifact {} }
         add_subtypes { angel {} }
-      }
     }
     controller { any {} }
     duration { until_end_of_turn {} }

@@ -1,6 +1,5 @@
-use std::collections::HashSet;
-
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     controller::Controller,
@@ -17,7 +16,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
-    pub restrictions: HashSet<Restriction>,
+    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::abilities::Enchant> for Enchant {
@@ -39,7 +38,7 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
     Mill(Mill),
@@ -84,7 +83,7 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
     Vigilance,
@@ -128,7 +127,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<ActivatedAbilityEffect>,

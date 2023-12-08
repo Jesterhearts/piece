@@ -1,29 +1,22 @@
-use std::{
-    collections::{HashMap, HashSet},
-    vec,
-};
+use std::collections::HashSet;
 
-use enumset::{enum_set, EnumSet};
-use indexmap::{IndexMap, IndexSet};
+use indoc::indoc;
+use rusqlite::Connection;
 
 use crate::{
     abilities::{ETBAbility, StaticAbility},
     card::Color,
     controller::Controller,
     cost::AdditionalCost,
-    deck::Deck,
     effects::{
-        BattlefieldModifier, Destination, EffectDuration, Mill, ModifyBasePowerToughness,
-        ModifyBattlefield, RemoveAllSubtypes, ReturnFromGraveyardToBattlefield,
+        Destination, EffectDuration, Mill, ReturnFromGraveyardToBattlefield,
         ReturnFromGraveyardToLibrary, Token, TriggeredEffect, TutorLibrary,
     },
-    in_play::{
-        AllCards, AllModifiers, CardId, EffectsInPlay, ModifierId, ModifierInPlay, ModifierType,
-    },
-    player::PlayerRef,
+    in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
+    player::{AllPlayers, PlayerId},
     stack::{ActiveTarget, Stack},
-    targets::{Comparison, Restriction},
-    triggers::{Location, PutIntoGraveyard, Trigger},
+    targets::Restriction,
+    triggers::{self, TriggerSource},
     types::Type,
 };
 
@@ -32,9 +25,8 @@ pub enum UnresolvedActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
     AddToStack {
-        card: CardId,
-        effects: EffectsInPlay,
-        valid_targets: Vec<ActiveTarget>,
+        ability: AbilityId,
+        valid_targets: HashSet<ActiveTarget>,
     },
     CloneCreatureNonTargeting {
         source: CardId,
@@ -45,17 +37,19 @@ pub enum UnresolvedActionResult {
     },
     Mill {
         count: usize,
-        valid_targets: HashSet<PlayerRef>,
+        valid_targets: HashSet<PlayerId>,
     },
     ReturnFromGraveyardToLibrary {
+        source: CardId,
         count: usize,
         controller: Controller,
-        types: EnumSet<Type>,
+        types: HashSet<Type>,
         valid_targets: Vec<CardId>,
     },
     ReturnFromGraveyardToBattlefield {
+        source: CardId,
         count: usize,
-        types: EnumSet<Type>,
+        types: HashSet<Type>,
         valid_targets: Vec<CardId>,
     },
     CreateToken {
@@ -65,9 +59,9 @@ pub enum UnresolvedActionResult {
     TutorLibrary {
         source: CardId,
         destination: Destination,
-        targets: HashSet<CardId>,
+        targets: Vec<CardId>,
         reveal: bool,
-        restrictions: HashSet<Restriction>,
+        restrictions: Vec<Restriction>,
     },
 }
 
@@ -76,9 +70,8 @@ pub enum ActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
     AddToStack {
-        card: CardId,
-        effects: EffectsInPlay,
-        target: Option<ActiveTarget>,
+        ability: AbilityId,
+        targets: HashSet<ActiveTarget>,
     },
     CloneCreatureNonTargeting {
         source: CardId,
@@ -89,7 +82,7 @@ pub enum ActionResult {
     },
     Mill {
         count: usize,
-        targets: HashSet<PlayerRef>,
+        targets: HashSet<PlayerId>,
     },
     ReturnFromGraveyardToLibrary {
         targets: Vec<CardId>,
@@ -114,128 +107,77 @@ pub struct Permanent {
     pub tapped: bool,
 }
 
-#[derive(Debug, Default)]
-pub struct Battlefield {
-    pub permanents: IndexMap<CardId, Permanent>,
-
-    pub graveyards: HashMap<PlayerRef, IndexSet<CardId>>,
-    pub exiles: HashMap<PlayerRef, IndexSet<CardId>>,
-
-    pub global_modifiers: IndexMap<ModifierSource, HashSet<ModifierId>>,
-    pub attaching_modifiers: IndexMap<CardId, HashSet<ModifierId>>,
-    pub attached_cards: IndexMap<CardId, HashSet<CardId>>,
-
-    pub on_graveyard_triggers: IndexMap<CardId, (PutIntoGraveyard, Vec<TriggeredEffect>)>,
-}
+#[derive(Debug)]
+pub struct Battlefield;
 
 impl Battlefield {
-    pub fn is_empty(&self) -> bool {
-        self.permanents.is_empty() && self.no_modifiers()
+    pub fn is_empty(db: &Connection) -> anyhow::Result<bool> {
+        let mut cards = db.prepare("SELECT NULL FROM cards WHERE location = (?1)")?;
+        let mut rows = cards.query((serde_json::to_string(&Location::Battlefield)?,))?;
+        Ok(rows.next()?.is_none())
     }
 
-    pub fn no_modifiers(&self) -> bool {
-        self.global_modifiers.is_empty()
-            && self.attaching_modifiers.is_empty()
-            && self.attached_cards.values().all(|v| v.is_empty())
+    pub fn no_modifiers(db: &Connection) -> anyhow::Result<bool> {
+        let mut modifiers = db.prepare("SELECT NULL FROM modifiers WHERE active")?;
+        let mut rows = modifiers.query(())?;
+        Ok(rows.next()?.is_none())
     }
 
-    #[must_use]
-    pub fn add(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        source_card_id: CardId,
-        targets: Vec<CardId>,
-    ) -> Vec<UnresolvedActionResult> {
+    pub fn creatures(db: &Connection) -> anyhow::Result<Vec<CardId>> {
+        let mut on_battlefield = db.prepare(indoc! {"
+                SELECT cardid
+                FROM cards
+                WHERE location = (?1)
+        "})?;
         let mut results = vec![];
-        let mut this = scopeguard::guard_on_success(self, |this| {
-            this.permanents
-                .insert(source_card_id, Permanent { tapped: false });
-        });
 
-        if cards[source_card_id].face_down {
-            let modifier_id = modifiers.add_modifier(ModifierInPlay {
-                source: source_card_id,
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::ModifyBasePowerToughness(
-                        ModifyBasePowerToughness {
-                            power: 2,
-                            toughness: 2,
-                        },
-                    ),
-                    controller: Controller::Any,
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: HashSet::from([Restriction::SingleTarget]),
-                },
-                controller: cards[source_card_id].controller.clone(),
-                modifying: vec![],
-                modifier_type: ModifierType::CardProperty,
-            });
-            this.apply_modifier_to_targets(cards, modifiers, modifier_id, &[source_card_id]);
-
-            let modifier_id = modifiers.add_modifier(ModifierInPlay {
-                source: source_card_id,
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::RemoveAllSubtypes(RemoveAllSubtypes {}),
-                    controller: Controller::Any,
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: HashSet::from([Restriction::SingleTarget]),
-                },
-                controller: cards[source_card_id].controller.clone(),
-                modifying: vec![source_card_id],
-                modifier_type: ModifierType::CardProperty,
-            });
-            this.apply_modifier_to_targets(cards, modifiers, modifier_id, &[source_card_id]);
-
-            let modifier_id = modifiers.add_modifier(ModifierInPlay {
-                source: source_card_id,
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::RemoveAllAbilities,
-                    controller: Controller::Any,
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: HashSet::from([Restriction::SingleTarget]),
-                },
-                controller: cards[source_card_id].controller.clone(),
-                modifying: vec![source_card_id],
-                modifier_type: ModifierType::CardProperty,
-            });
-
-            this.apply_modifier_to_targets(cards, modifiers, modifier_id, &[source_card_id]);
-        }
-
-        if let Some(enchant) = cards[source_card_id].card.enchant.clone() {
-            for modifier in enchant.modifiers {
-                let modifier_id = modifiers.add_modifier(ModifierInPlay {
-                    source: source_card_id,
-                    modifier: modifier.clone(),
-                    controller: cards[source_card_id].controller.clone(),
-                    modifying: vec![],
-                    modifier_type: ModifierType::Aura,
-                });
-
-                this.apply_modifier_to_targets(cards, modifiers, modifier_id, &targets);
+        let rows = on_battlefield
+            .query_map((serde_json::to_string(&Location::Battlefield)?,), |row| {
+                row.get(0)
+            })?;
+        for row in rows {
+            let cardid: CardId = row?;
+            let types = cardid.types(db)?;
+            if types.contains(&Type::Creature) {
+                results.push(cardid);
             }
         }
 
-        for etb in cards[source_card_id].card.etb_abilities.clone() {
+        Ok(results)
+    }
+
+    pub fn add(
+        db: &Connection,
+        source_card_id: CardId,
+        targets: Vec<CardId>,
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+        let mut results = vec![];
+        source_card_id.move_to_battlefield(db)?;
+
+        if let Some(aura) = source_card_id.aura(db)? {
+            for target in targets.iter() {
+                target.apply_aura(db, aura)?;
+            }
+        }
+
+        for etb in source_card_id.etb_abilities(db)? {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
                     assert!(targets.is_empty());
 
                     results.push(UnresolvedActionResult::CloneCreatureNonTargeting {
                         source: source_card_id,
-                        valid_targets: this.creatures(cards),
+                        valid_targets: Self::creatures(db)?,
                     });
                 }
                 ETBAbility::Mill(Mill { count, target }) => {
                     let targets = match target {
-                        Controller::Any => cards.all_players(),
-                        Controller::You => {
-                            HashSet::from([cards[source_card_id].controller.clone()])
-                        }
+                        Controller::Any => AllPlayers::all_players(db)?,
+                        Controller::You => HashSet::from([source_card_id.controller(db)?]),
                         Controller::Opponent => {
-                            let mut all = cards.all_players();
-                            all.remove(&cards[source_card_id].controller);
+                            // TODO this could probably be a query if I was smarter at sql
+                            let mut all = AllPlayers::all_players(db)?;
+                            all.remove(&source_card_id.controller(db)?);
                             all
                         }
                     };
@@ -250,36 +192,28 @@ impl Battlefield {
                     controller,
                     types,
                 }) => {
-                    let target_cards = compute_graveyard_targets(
-                        controller,
-                        cards,
-                        cards[source_card_id].controller.clone(),
-                        &this,
-                        types,
-                    );
+                    let valid_targets =
+                        compute_graveyard_targets(db, controller, source_card_id, &types)?;
 
                     results.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+                        source: source_card_id,
                         count,
                         controller,
                         types,
-                        valid_targets: target_cards,
+                        valid_targets,
                     });
                 }
                 ETBAbility::ReturnFromGraveyardToBattlefield(
                     ReturnFromGraveyardToBattlefield { count, types },
                 ) => {
-                    let target_cards = compute_graveyard_targets(
-                        Controller::You,
-                        cards,
-                        cards[source_card_id].controller.clone(),
-                        &this,
-                        types,
-                    );
+                    let valid_targets =
+                        compute_graveyard_targets(db, Controller::You, source_card_id, &types)?;
 
                     results.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                        source: source_card_id,
                         count,
                         types,
-                        valid_targets: target_cards,
+                        valid_targets,
                     });
                 }
                 ETBAbility::TutorLibrary(TutorLibrary {
@@ -287,15 +221,12 @@ impl Battlefield {
                     destination,
                     reveal,
                 }) => {
-                    let target_cards = compute_deck_targets(
-                        cards,
-                        &cards[source_card_id].controller.borrow().deck,
-                        &restrictions,
-                    );
+                    let targets =
+                        compute_deck_targets(db, source_card_id.controller(db)?, &restrictions)?;
                     results.push(UnresolvedActionResult::TutorLibrary {
                         source: source_card_id,
                         destination,
-                        targets: target_cards,
+                        targets,
                         reveal,
                         restrictions,
                     });
@@ -303,268 +234,194 @@ impl Battlefield {
             }
         }
 
-        for ability in cards[source_card_id].card.static_abilities() {
+        for ability in source_card_id.static_abilities(db)? {
             match ability {
                 StaticAbility::GreenCannotBeCountered { .. } => {}
                 StaticAbility::Vigilance => {}
                 StaticAbility::Flash => {}
                 StaticAbility::BattlefieldModifier(modifier) => {
-                    let modifier_id = modifiers.add_modifier(ModifierInPlay {
-                        source: source_card_id,
-                        modifier,
-                        controller: cards[source_card_id].controller.clone(),
-                        modifying: Default::default(),
-                        modifier_type: ModifierType::Global,
-                    });
-                    results.push(UnresolvedActionResult::AddModifier {
-                        modifier: modifier_id,
-                    })
+                    let modifier = ModifierId::upload_single_modifier(
+                        db,
+                        Some(source_card_id),
+                        &modifier,
+                        true,
+                    )?;
+                    results.push(UnresolvedActionResult::AddModifier { modifier })
                 }
             }
         }
 
-        for (source, global_modifiers) in this.global_modifiers.iter() {
-            match source {
-                ModifierSource::UntilEndOfTurn => {}
-                ModifierSource::Card(_) => {
-                    for modifier_id in global_modifiers.iter().copied() {
-                        apply_modifier_to_targets(
-                            this.controlled_colors(cards, &modifiers[modifier_id].controller),
-                            modifiers,
-                            modifier_id,
-                            std::iter::once(source_card_id),
-                            cards,
-                        );
-                    }
-                }
-            }
-        }
-
-        for triggered in cards[source_card_id].card.triggered_abilities.iter() {
-            match &triggered.trigger {
-                Trigger::PutIntoGraveyard(gy) => {
-                    this.on_graveyard_triggers
-                        .insert(source_card_id, (gy.clone(), triggered.effects.clone()));
-                }
-            }
-        }
-
-        results
+        Ok(results)
     }
 
-    pub fn controlled_colors(&self, cards: &AllCards, player: &PlayerRef) -> EnumSet<Color> {
-        let mut colors = enum_set!();
-        for permanent in self.permanents.keys() {
-            let card = &cards[*permanent];
-            if card.controller == *player {
-                colors.extend(card.card.color());
-            }
+    pub fn controlled_colors(db: &Connection, player: PlayerId) -> anyhow::Result<HashSet<Color>> {
+        let mut cards =
+            db.prepare("SELECT cardid FROM cards WHERE location = (?1) AND controller = (?2)")?;
+        let rows = cards.query_map(
+            (serde_json::to_string(&Location::Battlefield)?, player),
+            |row| row.get::<_, CardId>(0),
+        )?;
+
+        let mut colors = HashSet::default();
+        for row in rows {
+            let card_colors = row?.colors(db)?;
+            colors.extend(card_colors)
         }
 
-        colors
+        Ok(colors)
     }
 
-    pub fn end_turn(&mut self, cards: &mut AllCards, modifiers: &mut AllModifiers) {
-        for effect in self
-            .global_modifiers
-            .get_mut(&ModifierSource::UntilEndOfTurn)
-            .unwrap_or(&mut Default::default())
-            .drain()
-        {
-            let modifier = modifiers.remove(effect);
-            for card_id in modifier.modifying {
-                cards[card_id]
-                    .card
-                    .remove_modifier(effect, &modifier.modifier);
-            }
-        }
+    pub fn end_turn(db: &Connection) -> anyhow::Result<()> {
+        db.execute(
+            indoc! {"
+                UPDATE modifiers
+                SET modifying = NULL 
+                WHERE modifiers.duration = (?1) AND modifiers.active
+            "},
+            (serde_json::to_string(&EffectDuration::UntilEndOfTurn)?,),
+        )?;
 
-        self.attaching_modifiers
-            .retain(|_source, attaching_modifiers| {
-                attaching_modifiers.retain(|modifier_id| {
-                    let modifier = &modifiers[*modifier_id];
-                    if let EffectDuration::UntilEndOfTurn = modifier.modifier.duration {
-                        for card_id in modifier.modifying.iter() {
-                            self.attached_cards
-                                .get_mut(card_id)
-                                .expect(
-                                    "Attaching modifiers should have a corresponding attached card",
-                                )
-                                .remove(&modifier.source);
+        db.execute(
+            indoc! {"
+                UPDATE modifiers
+                SET active = FALSE
+                WHERE modifiers.duration = (?1) AND modifiers.active
+            "},
+            (serde_json::to_string(&EffectDuration::UntilEndOfTurn)?,),
+        )?;
 
-                            cards[*card_id]
-                                .card
-                                .remove_modifier(*modifier_id, &modifier.modifier);
-                        }
-                        false
-                    } else {
-                        true
-                    }
-                });
-
-                !attaching_modifiers.is_empty()
-            });
+        Ok(())
     }
 
-    #[must_use]
-    pub fn check_sba(&self, cards: &AllCards) -> Vec<ActionResult> {
+    pub fn check_sba(db: &Connection) -> anyhow::Result<Vec<ActionResult>> {
         let mut result = vec![];
-        for card_id in self.permanents.keys() {
-            let card = &cards[*card_id].card;
+        for card_id in Location::Battlefield.cards_in(db)? {
+            let toughness = card_id.toughness(db)?;
 
-            if card.toughness().is_some() && card.toughness() <= Some(0) {
-                result.push(ActionResult::PermanentToGraveyard(*card_id));
+            if toughness.is_some() && toughness <= Some(0) {
+                result.push(ActionResult::PermanentToGraveyard(card_id));
             }
 
-            if card.enchant.is_some() && !self.attaching_modifiers.contains_key(card_id) {
-                result.push(ActionResult::PermanentToGraveyard(*card_id));
+            let aura = card_id.aura(db)?;
+            if aura.is_some() && !aura.unwrap().is_attached(db)? {
+                result.push(ActionResult::PermanentToGraveyard(card_id));
             }
         }
 
-        result
+        Ok(result)
     }
 
-    pub fn select_card(&self, index: usize) -> CardId {
-        *self.permanents.get_index(index).unwrap().0
+    pub fn select_card(db: &Connection, index: usize) -> anyhow::Result<CardId> {
+        Ok(Location::Battlefield.cards_in(db)?[index])
     }
 
-    #[must_use]
     pub fn activate_ability(
-        &self,
-        card_id: CardId,
-        cards: &AllCards,
-        stack: &Stack,
+        db: &Connection,
+        players: &mut AllPlayers,
+        card: CardId,
         index: usize,
-    ) -> Vec<UnresolvedActionResult> {
-        if stack.split_second {
-            return vec![];
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+        if Stack::split_second(db)? {
+            return Ok(vec![]);
         }
 
         let mut results = vec![];
 
-        let card = &cards[card_id];
-        let ability = &card.card.activated_abilities()[index];
+        let ability_id = card.activated_abilities(db)?[index];
+        let ability = ability_id.ability(db)?;
 
         if ability.cost.tap {
-            if self.permanents.get(&card_id).unwrap().tapped {
-                return vec![];
+            if card.tapped(db)? {
+                return Ok(vec![]);
             }
 
-            results.push(UnresolvedActionResult::TapPermanent(card_id));
+            results.push(UnresolvedActionResult::TapPermanent(card));
         }
 
         for cost in ability.cost.additional_cost.iter() {
             match cost {
                 AdditionalCost::SacrificeThis => {
-                    if !card.card.can_be_sacrificed(self) {
-                        return vec![];
+                    if !card.can_be_sacrificed(db)? {
+                        return Ok(vec![]);
                     }
 
-                    results.push(UnresolvedActionResult::PermanentToGraveyard(card_id));
+                    results.push(UnresolvedActionResult::PermanentToGraveyard(card));
                 }
             }
         }
 
-        if !card
-            .controller
-            .borrow_mut()
-            .spend_mana(&ability.cost.mana_cost)
-        {
-            return vec![];
+        if !players[card.controller(db)?].spend_mana(&ability.cost.mana_cost) {
+            return Ok(vec![]);
         }
 
         results.push(UnresolvedActionResult::AddToStack {
-            card: card_id,
-            effects: EffectsInPlay {
-                effects: ability.effects.clone(),
-                source: card_id,
-                controller: card.controller.clone(),
-            },
-            valid_targets: cards[card_id].card.valid_targets(
-                cards,
-                self,
-                stack,
-                &cards[card_id].controller.borrow(),
-            ),
+            ability: ability_id,
+            valid_targets: card.valid_targets(db)?,
         });
 
-        results
+        Ok(results)
     }
 
-    pub fn static_abilities(&self, cards: &AllCards) -> Vec<(StaticAbility, PlayerRef)> {
-        let mut result: Vec<(StaticAbility, PlayerRef)> = Default::default();
+    pub fn static_abilities(db: &Connection) -> anyhow::Result<Vec<(StaticAbility, PlayerId)>> {
+        let mut result: Vec<(StaticAbility, PlayerId)> = Default::default();
 
-        for (id, _) in self.permanents.iter() {
-            let card = &cards[*id];
-            for ability in card.card.static_abilities().into_iter() {
-                result.push((ability, card.controller.clone()));
+        for card in Location::Battlefield.cards_in(db)? {
+            let controller = card.controller(db)?;
+            for ability in card.static_abilities(db)? {
+                result.push((ability, controller));
             }
         }
 
-        result
+        Ok(result)
     }
 
-    /// Attempts to automatically resolve any unresolved actions and _recomputes targets for pending actions_.
+    /// Attempts to automatically resolve any unresolved actions and _recomputes targets for pending actions.
     pub fn maybe_resolve(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        stack: &mut Stack,
-        resolution_controller: PlayerRef,
+        db: &Connection,
+        all_players: &mut AllPlayers,
         results: Vec<UnresolvedActionResult>,
-    ) -> Vec<UnresolvedActionResult> {
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut pending = vec![];
 
         for result in results {
             match result {
                 UnresolvedActionResult::TapPermanent(cardid) => {
-                    pending.extend(self.apply_action_result(
+                    pending.extend(Self::apply_action_result(
+                        db,
+                        all_players,
                         ActionResult::TapPermanent(cardid),
-                        cards,
-                        modifiers,
-                        stack,
-                    ));
+                    )?);
                 }
                 UnresolvedActionResult::PermanentToGraveyard(cardid) => {
-                    pending.extend(self.apply_action_result(
+                    pending.extend(Self::apply_action_result(
+                        db,
+                        all_players,
                         ActionResult::PermanentToGraveyard(cardid),
-                        cards,
-                        modifiers,
-                        stack,
-                    ));
+                    )?);
                 }
                 UnresolvedActionResult::AddToStack {
-                    card,
-                    effects,
-                    mut valid_targets,
+                    ability,
+                    valid_targets,
                 } => {
-                    let wants_targets: usize = effects
-                        .effects
-                        .iter()
+                    let wants_targets: usize = ability
+                        .effects(db)?
+                        .into_iter()
                         .map(|effect| effect.wants_targets())
                         .max()
                         .unwrap();
                     if wants_targets >= valid_targets.len() {
-                        pending.extend(self.apply_action_result(
+                        pending.extend(Self::apply_action_result(
+                            db,
+                            all_players,
                             ActionResult::AddToStack {
-                                card,
-                                effects,
-                                target: valid_targets.pop(),
+                                ability,
+                                targets: valid_targets,
                             },
-                            cards,
-                            modifiers,
-                            stack,
-                        ));
+                        )?);
                     } else {
                         pending.push(UnresolvedActionResult::AddToStack {
-                            card,
-                            effects,
-                            valid_targets: cards[card].card.valid_targets(
-                                cards,
-                                self,
-                                stack,
-                                &cards[card].controller.borrow(),
-                            ),
+                            ability,
+                            valid_targets: ability.source(db)?.valid_targets(db)?,
                         });
                     }
                 }
@@ -578,27 +435,25 @@ impl Battlefield {
                     });
                 }
                 UnresolvedActionResult::AddModifier { modifier } => {
-                    pending.extend(self.apply_action_results(
-                        cards,
-                        modifiers,
-                        stack,
-                        vec![ActionResult::AddModifier { modifier }],
-                    ));
+                    pending.extend(Self::apply_action_result(
+                        db,
+                        all_players,
+                        ActionResult::AddModifier { modifier },
+                    )?);
                 }
                 UnresolvedActionResult::Mill {
                     count,
                     valid_targets,
                 } => {
                     if valid_targets.len() == 1 {
-                        pending.extend(self.apply_action_result(
+                        pending.extend(Self::apply_action_result(
+                            db,
+                            all_players,
                             ActionResult::Mill {
                                 count,
                                 targets: valid_targets,
                             },
-                            cards,
-                            modifiers,
-                            stack,
-                        ));
+                        )?);
                     } else {
                         pending.push(UnresolvedActionResult::Mill {
                             count,
@@ -607,70 +462,63 @@ impl Battlefield {
                     }
                 }
                 UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+                    source,
                     count,
                     controller,
                     types,
                     valid_targets,
                 } => {
                     if valid_targets.len() == count {
-                        pending.extend(self.apply_action_result(
+                        pending.extend(Self::apply_action_result(
+                            db,
+                            all_players,
                             ActionResult::ReturnFromGraveyardToLibrary {
                                 targets: valid_targets,
                             },
-                            cards,
-                            modifiers,
-                            stack,
-                        ));
+                        )?);
                     } else {
+                        let valid_targets =
+                            compute_graveyard_targets(db, controller, source, &types)?;
                         pending.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+                            source,
                             count,
                             controller,
                             types,
-                            valid_targets: compute_graveyard_targets(
-                                controller,
-                                cards,
-                                resolution_controller.clone(),
-                                self,
-                                types,
-                            ),
+                            valid_targets,
                         })
                     }
                 }
                 UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                    source,
                     count,
                     types,
                     valid_targets,
                 } => {
                     if valid_targets.len() == count {
-                        pending.extend(self.apply_action_result(
+                        pending.extend(Self::apply_action_result(
+                            db,
+                            all_players,
                             ActionResult::ReturnFromGraveyardToBattlefield {
                                 targets: valid_targets,
                             },
-                            cards,
-                            modifiers,
-                            stack,
-                        ));
+                        )?);
                     } else {
+                        let valid_targets =
+                            compute_graveyard_targets(db, Controller::You, source, &types)?;
                         pending.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                            source,
                             count,
                             types,
-                            valid_targets: compute_graveyard_targets(
-                                Controller::You,
-                                cards,
-                                resolution_controller.clone(),
-                                self,
-                                types,
-                            ),
+                            valid_targets,
                         })
                     }
                 }
                 UnresolvedActionResult::CreateToken { source, token } => {
-                    pending.extend(self.apply_action_result(
+                    pending.extend(Self::apply_action_result(
+                        db,
+                        all_players,
                         ActionResult::CreateToken { source, token },
-                        cards,
-                        modifiers,
-                        stack,
-                    ));
+                    )?);
                 }
                 UnresolvedActionResult::TutorLibrary {
                     source,
@@ -679,11 +527,7 @@ impl Battlefield {
                     reveal,
                     restrictions,
                 } => {
-                    let targets = compute_deck_targets(
-                        cards,
-                        &cards[source].controller.borrow().deck,
-                        &restrictions,
-                    );
+                    let targets = compute_deck_targets(db, source.controller(db)?, &restrictions)?;
 
                     pending.push(UnresolvedActionResult::TutorLibrary {
                         source,
@@ -696,131 +540,99 @@ impl Battlefield {
             }
         }
 
-        pending
+        Ok(pending)
     }
 
-    #[must_use]
     pub fn apply_action_results(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        stack: &mut Stack,
+        db: &Connection,
+        all_players: &mut AllPlayers,
         results: Vec<ActionResult>,
-    ) -> Vec<UnresolvedActionResult> {
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut pending = vec![];
 
         for result in results {
-            pending.extend(self.apply_action_result(result, cards, modifiers, stack));
+            pending.extend(Self::apply_action_result(db, all_players, result)?);
         }
-        pending
+
+        Ok(pending)
     }
 
-    #[must_use]
     fn apply_action_result(
-        &mut self,
+        db: &Connection,
+        all_players: &mut AllPlayers,
         result: ActionResult,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        stack: &mut Stack,
-    ) -> Vec<UnresolvedActionResult> {
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         match result {
             ActionResult::TapPermanent(card_id) => {
-                let permanent = self.permanents.get_mut(&card_id).unwrap();
-                assert!(!permanent.tapped);
-                permanent.tapped = true;
+                card_id.tap(db)?;
             }
             ActionResult::PermanentToGraveyard(card_id) => {
-                return self.permanent_to_graveyard(cards, modifiers, stack, card_id);
+                return Self::permanent_to_graveyard(db, card_id);
             }
-            ActionResult::AddToStack {
-                card,
-                effects,
-                target,
-            } => {
-                stack.push_activated_ability(card, effects, target);
+            ActionResult::AddToStack { ability, targets } => {
+                ability.move_to_stack(db, targets)?;
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let Some(target) = target {
-                    cards[source].card = cards[target].card.clone();
+                    target.clone_card(db, source)?;
                 }
             }
             ActionResult::AddModifier { modifier } => {
-                self.apply_modifier(cards, modifiers, modifier);
+                modifier.activate(db)?;
             }
             ActionResult::Mill { count, targets } => {
                 for target in targets {
+                    let deck = &mut all_players[target].deck;
                     for _ in 0..count {
-                        let card_id = target.borrow_mut().deck.draw();
+                        let card_id = deck.draw();
                         if let Some(card_id) = card_id {
-                            self.graveyards
-                                .entry(cards[card_id].owner.clone())
-                                .or_default()
-                                .insert(card_id);
+                            Self::library_to_graveyard(db, card_id)?;
                         }
                     }
                 }
             }
             ActionResult::ReturnFromGraveyardToLibrary { targets } => {
                 for target in targets {
-                    let owner = cards[target].owner.clone();
-                    self.graveyards
-                        .get_mut(&owner)
-                        .expect("Card should be in a graveyard")
-                        .remove(&target);
-
-                    owner.borrow_mut().deck.place_on_top(target);
+                    target.move_to_library(db)?;
+                    all_players[target.owner(db)?].deck.place_on_top(target);
                 }
             }
             ActionResult::ReturnFromGraveyardToBattlefield { targets } => {
                 let mut pending = vec![];
                 for target in targets {
-                    let owner = cards[target].owner.clone();
-                    self.graveyards
-                        .get_mut(&owner)
-                        .expect("Card should be in a graveyard")
-                        .remove(&target);
-
-                    pending.extend(self.add(cards, modifiers, target, vec![]));
+                    pending.extend(Self::add(db, target, vec![])?);
                 }
 
-                return pending;
+                return Ok(pending);
             }
             ActionResult::CreateToken { source, token } => {
-                let controller = cards[source].controller.clone();
-                let id = cards.add_token(controller, token);
-                self.permanents.insert(id, Permanent { tapped: false });
+                let id = CardId::upload_token(db, source.controller(db)?, token)?;
+                return Self::add(db, id, vec![]);
             }
         }
 
-        vec![]
+        Ok(vec![])
     }
 
-    #[must_use]
     pub fn permanent_to_graveyard(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        stack: &mut Stack,
-        card_id: CardId,
-    ) -> Vec<UnresolvedActionResult> {
-        self.permanents.remove(&card_id).unwrap();
-        cards[card_id].controller = cards[card_id].owner.clone();
-        self.graveyards
-            .entry(cards[card_id].owner.clone())
-            .or_default()
-            .insert(card_id);
-
+        db: &Connection,
+        target: CardId,
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut pending = vec![];
 
-        for (trigger_source, (filter, effects)) in self.on_graveyard_triggers.iter() {
-            if matches!(filter.location, Location::Anywhere | Location::Battlefield)
-                && cards[card_id].card.types_intersect(filter.types)
+        for triggerid in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
+            let trigger = triggerid.triggered_ability(db)?;
+            if matches!(
+                trigger.trigger.from,
+                triggers::Location::Anywhere | triggers::Location::Battlefield
+            ) && target.types_intersect(db, &trigger.trigger.for_types)?
             {
-                for effect in effects.iter() {
+                for effect in trigger.effects {
                     match effect {
                         TriggeredEffect::CreateToken(token) => {
+                            // TODO this should use the stack
                             pending.push(UnresolvedActionResult::CreateToken {
-                                source: *trigger_source,
+                                source: triggerid.listener(db)?,
                                 token: token.clone(),
                             })
                         }
@@ -829,352 +641,124 @@ impl Battlefield {
             }
         }
 
-        self.card_leaves_battlefield(card_id, modifiers, cards, stack);
+        target.move_to_graveyard(db)?;
 
-        pending
+        Ok(pending)
     }
 
-    fn card_leaves_battlefield(
-        &mut self,
-        removed_card_id: CardId,
-        modifiers: &mut AllModifiers,
-        cards: &mut AllCards,
-        _stack: &mut Stack,
-    ) {
-        if let Some(removed_modifiers) = self
-            .global_modifiers
-            .remove(&ModifierSource::Card(removed_card_id))
-        {
-            for modifier_id in removed_modifiers {
-                let modifier = modifiers.remove(modifier_id);
-                for card in modifier.modifying.iter().copied() {
-                    cards[card]
-                        .card
-                        .remove_modifier(modifier_id, &modifier.modifier)
-                }
-            }
-        }
+    pub fn library_to_graveyard(
+        db: &Connection,
+        target: CardId,
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+        let mut pending = vec![];
 
-        if let Some(removed_modifiers) = self.attaching_modifiers.remove(&removed_card_id) {
-            for modifier_id in removed_modifiers {
-                let modifier = modifiers.remove(modifier_id);
-                for modified_card in modifier.modifying.iter().copied() {
-                    self.attached_cards
-                        .entry(modified_card)
-                        .or_default()
-                        .remove(&removed_card_id);
-
-                    cards[modified_card]
-                        .card
-                        .remove_modifier(modifier_id, &modifier.modifier)
-                }
-            }
-        }
-
-        if let Some(attached_cards) = self.attached_cards.remove(&removed_card_id) {
-            for card in attached_cards {
-                if let Some(attached_modifiers) = self.attaching_modifiers.remove(&card) {
-                    for modifier in attached_modifiers {
-                        if modifiers[modifier].modifying.len() <= 1 {
-                            modifiers.remove(modifier);
+        for triggerid in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
+            let trigger = triggerid.triggered_ability(db)?;
+            if matches!(
+                trigger.trigger.from,
+                triggers::Location::Anywhere | triggers::Location::Library
+            ) && target.types_intersect(db, &trigger.trigger.for_types)?
+            {
+                for effect in trigger.effects {
+                    match effect {
+                        TriggeredEffect::CreateToken(token) => {
+                            // TODO this should use the stack
+                            pending.push(UnresolvedActionResult::CreateToken {
+                                source: triggerid.listener(db)?,
+                                token: token.clone(),
+                            })
                         }
                     }
                 }
             }
         }
+
+        target.move_to_graveyard(db)?;
+
+        Ok(pending)
     }
 
-    pub fn apply_modifier(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        modifier_id: ModifierId,
-    ) {
-        Self::apply_modifier_to_targets_internal(
-            self.controlled_colors(cards, &modifiers[modifier_id].controller),
-            &mut self.global_modifiers,
-            &mut self.attaching_modifiers,
-            &mut self.attached_cards,
-            cards,
-            modifiers,
-            modifier_id,
-            self.permanents.keys().copied(),
-        );
-    }
+    pub fn stack_to_graveyard(
+        db: &Connection,
+        target: CardId,
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+        let mut pending = vec![];
 
-    pub fn apply_modifier_to_targets(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        modifier_id: ModifierId,
-        targets: &[CardId],
-    ) {
-        Self::apply_modifier_to_targets_internal(
-            self.controlled_colors(cards, &modifiers[modifier_id].controller),
-            &mut self.global_modifiers,
-            &mut self.attaching_modifiers,
-            &mut self.attached_cards,
-            cards,
-            modifiers,
-            modifier_id,
-            targets.iter().copied(),
-        );
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn apply_modifier_to_targets_internal(
-        colors_controlled: EnumSet<Color>,
-        global_modifiers: &mut IndexMap<ModifierSource, HashSet<ModifierId>>,
-        attaching_modifiers: &mut IndexMap<CardId, HashSet<ModifierId>>,
-        attached_modifiers: &mut IndexMap<CardId, HashSet<CardId>>,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        modifier_id: ModifierId,
-        targets: impl Iterator<Item = CardId> + Clone,
-    ) {
-        apply_modifier_to_targets(
-            colors_controlled,
-            modifiers,
-            modifier_id,
-            targets.clone(),
-            cards,
-        );
-
-        let modifier = &mut modifiers[modifier_id];
-
-        match modifier.modifier_type {
-            ModifierType::Global => match modifier.modifier.duration {
-                EffectDuration::UntilEndOfTurn => {
-                    global_modifiers
-                        .entry(ModifierSource::UntilEndOfTurn)
-                        .or_default()
-                        .insert(modifier_id);
-                }
-                EffectDuration::UntilSourceLeavesBattlefield => {
-                    global_modifiers
-                        .entry(ModifierSource::Card(modifier.source))
-                        .or_default()
-                        .insert(modifier_id);
-                }
-            },
-            ModifierType::Equipment
-            | ModifierType::Aura
-            | ModifierType::CardProperty
-            | ModifierType::Temporary => {
-                attaching_modifiers
-                    .entry(modifier.source)
-                    .or_default()
-                    .insert(modifier_id);
-                for target in targets {
-                    attached_modifiers
-                        .entry(target)
-                        .or_default()
-                        .insert(modifier.source);
+        for triggerid in TriggerId::active_triggers_of_type(db, TriggerSource::PutIntoGraveyard)? {
+            let trigger = triggerid.triggered_ability(db)?;
+            if matches!(trigger.trigger.from, triggers::Location::Anywhere)
+                && target.types_intersect(db, &trigger.trigger.for_types)?
+            {
+                for effect in trigger.effects {
+                    match effect {
+                        TriggeredEffect::CreateToken(token) => {
+                            // TODO this should use the stack
+                            pending.push(UnresolvedActionResult::CreateToken {
+                                source: triggerid.listener(db)?,
+                                token: token.clone(),
+                            })
+                        }
+                    }
                 }
             }
         }
+
+        target.move_to_graveyard(db)?;
+
+        Ok(pending)
     }
 
-    pub(crate) fn creatures(&self, cards: &AllCards) -> Vec<CardId> {
-        self.permanents
-            .keys()
-            .copied()
-            .filter(move |card_id| {
-                let card = &cards[*card_id].card;
-                card.types().contains(Type::Creature)
-            })
-            .collect()
-    }
+    pub fn exile(db: &Connection, target: CardId) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+        target.move_to_exile(db)?;
 
-    pub(crate) fn get(&self, id: CardId) -> Option<CardId> {
-        if self.permanents.contains_key(&id) {
-            Some(id)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn exile(
-        &mut self,
-        cards: &mut AllCards,
-        modifiers: &mut AllModifiers,
-        stack: &mut Stack,
-        target: CardId,
-    ) {
-        let removed = self.permanents.remove(&target);
-        assert!(removed.is_some());
-
-        let card = &mut cards[target];
-        card.controller = card.owner.clone();
-
-        self.exiles
-            .entry(card.controller.clone())
-            .or_default()
-            .insert(target);
-
-        self.card_leaves_battlefield(target, modifiers, cards, stack);
+        Ok(vec![])
     }
 }
 
 fn compute_deck_targets(
-    cards: &AllCards,
-    deck: &Deck,
-    restrictions: &HashSet<Restriction>,
-) -> HashSet<CardId> {
-    let mut results = HashSet::default();
+    db: &Connection,
+    player: PlayerId,
+    restrictions: &[Restriction],
+) -> anyhow::Result<Vec<CardId>> {
+    let mut results = vec![];
 
-    'outer: for card_id in deck.cards.iter() {
-        let card = &cards[*card_id].card;
-        for restriction in restrictions.iter() {
-            match restriction {
-                Restriction::NotSelf => {}
-                Restriction::SingleTarget => {}
-                Restriction::Self_ => {}
-                Restriction::OfType { types, subtypes } => {
-                    if !card.types_intersect(*types) {
-                        continue 'outer;
-                    }
-                    if !card.subtypes_intersect(*subtypes) {
-                        continue 'outer;
-                    }
-                }
-                Restriction::Toughness(comparison) => {
-                    let toughness = card.toughness();
-                    match comparison {
-                        Comparison::LessThan(value) => {
-                            if toughness.is_none() || toughness.unwrap() >= *value {
-                                continue 'outer;
-                            }
-                        }
-                        Comparison::LessThanOrEqual(value) => {
-                            if toughness.is_none() || toughness.unwrap() > *value {
-                                continue 'outer;
-                            }
-                        }
-                    };
-                }
-                Restriction::ControllerControlsBlackOrGreen => {
-                    todo!()
-                }
-            }
+    for card in player.get_cards_in_zone(db, Location::Library)? {
+        if !card.passes_restrictions(db, card, player, Controller::You, restrictions)? {
+            continue;
         }
 
-        results.insert(*card_id);
+        results.push(card);
     }
 
-    results
+    Ok(results)
 }
 
 fn compute_graveyard_targets(
+    db: &Connection,
     controller: Controller,
-    cards: &mut AllCards,
-    card_controller: PlayerRef,
-    this: &Battlefield,
-    types: EnumSet<Type>,
-) -> Vec<CardId> {
+    source_card: CardId,
+    types: &HashSet<Type>,
+) -> anyhow::Result<Vec<CardId>> {
     let targets = match controller {
-        Controller::Any => cards.all_players(),
-        Controller::You => HashSet::from([card_controller]),
+        Controller::Any => AllPlayers::all_players(db)?,
+        Controller::You => HashSet::from([source_card.controller(db)?]),
         Controller::Opponent => {
-            let mut all = cards.all_players();
-            all.remove(&card_controller);
+            // TODO this could probably be a query if I was smarter at sql
+            let mut all = AllPlayers::all_players(db)?;
+            all.remove(&source_card.controller(db)?);
             all
         }
     };
-
     let mut target_cards = vec![];
 
     for target in targets {
-        let graveyard = this.graveyards.get(&target);
-        for card_id in graveyard
-            .iter()
-            .flat_map(|graveyard| graveyard.iter())
-            .copied()
-        {
-            let card = &cards[card_id];
-            if card.card.types_intersect(types) {
-                target_cards.push(card_id);
+        let cards_in_graveyard: Vec<CardId> = target.get_cards_in_zone(db, Location::Graveyard)?;
+        for card in cards_in_graveyard {
+            if card.types_intersect(db, types)? {
+                target_cards.push(card);
             }
         }
     }
-    target_cards
-}
 
-fn apply_modifier_to_targets(
-    colors_controlled: EnumSet<Color>,
-    modifiers: &mut AllModifiers,
-    modifier_id: ModifierId,
-    targets: impl Iterator<Item = CardId>,
-    cards: &mut AllCards,
-) {
-    let modifier = &mut modifiers[modifier_id];
-
-    'outer: for card_id in targets {
-        let card = &mut cards[card_id];
-        match modifier.modifier.controller {
-            Controller::Any => {}
-            Controller::You => {
-                if modifier.controller != card.controller {
-                    continue;
-                }
-            }
-            Controller::Opponent => {
-                if modifier.controller == card.controller {
-                    continue;
-                }
-            }
-        }
-
-        for restriction in modifier.modifier.restrictions.iter() {
-            match restriction {
-                Restriction::NotSelf => {
-                    if card_id == modifier.source {
-                        continue 'outer;
-                    }
-                }
-                Restriction::SingleTarget => {
-                    if !modifier.modifying.is_empty() {
-                        assert_eq!(modifier.modifying.len(), 1);
-                        continue 'outer;
-                    }
-                }
-                Restriction::OfType { types, subtypes } => {
-                    if !card.card.types_intersect(*types) {
-                        continue 'outer;
-                    }
-                    if !card.card.subtypes_intersect(*subtypes) {
-                        continue 'outer;
-                    }
-                }
-                Restriction::Self_ => {
-                    if card_id != modifier.source {
-                        continue 'outer;
-                    }
-                }
-                Restriction::Toughness(comparison) => {
-                    let toughness = card.card.toughness();
-                    match comparison {
-                        Comparison::LessThan(value) => {
-                            if toughness.is_none() || toughness.unwrap() >= *value {
-                                continue 'outer;
-                            }
-                        }
-                        Comparison::LessThanOrEqual(value) => {
-                            if toughness.is_none() || toughness.unwrap() > *value {
-                                continue 'outer;
-                            }
-                        }
-                    };
-                }
-                Restriction::ControllerControlsBlackOrGreen => {
-                    if colors_controlled.is_disjoint(enum_set!(Color::Black | Color::Green)) {
-                        continue 'outer;
-                    }
-                }
-            }
-        }
-
-        card.card.add_modifier(modifier_id, &modifier.modifier);
-        modifier.modifying.push(card_id);
-    }
+    Ok(target_cards)
 }
