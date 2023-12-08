@@ -1,38 +1,45 @@
+use std::collections::HashSet;
+
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
-    deck::Deck,
-    in_play::{AllCards, AllModifiers},
+    in_play::CardId,
     load_cards,
-    player::Player,
-    stack::{Stack, StackResult},
+    player::AllPlayers,
+    prepare_db,
+    stack::{Entry, Stack, StackResult},
 };
 
 #[test]
 fn resolves_counterspells() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player = Player::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
+    let db = prepare_db()?;
 
-    let counterspell_1 = all_cards.add(&cards, player.clone(), "Counterspell");
-    let counterspell_2 = all_cards.add(&cards, player.clone(), "Counterspell");
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let countered = stack.push_card(&all_cards, counterspell_1, None, None);
+    let counterspell_1 = CardId::upload(&db, &cards, player, "Counterspell")?;
+    let counterspell_2 = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    stack.push_card(&all_cards, counterspell_2, stack.target_nth(0), None);
+    counterspell_1.move_to_stack(&db, Default::default())?;
+    counterspell_2.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    assert_eq!(stack.stack.len(), 2);
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
-    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(
+        results,
+        [
+            StackResult::SpellCountered {
+                id: Entry::Card(counterspell_1)
+            },
+            StackResult::StackToGraveyard(counterspell_2)
+        ]
+    );
+    let results = Stack::apply_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    assert!(stack.is_empty());
+    assert!(Stack::is_empty(&db)?);
 
     Ok(())
 }
