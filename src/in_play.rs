@@ -1731,7 +1731,7 @@ impl CardId {
         Ok(())
     }
 
-    pub fn cloning(&self, db: &Connection) -> anyhow::Result<Option<CardId>> {
+    pub fn cloning(self, db: &Connection) -> anyhow::Result<Option<CardId>> {
         Ok(db.query_row(
             "SELECT cloning FROM cards WHERE cardid = (?1)",
             (self,),
@@ -1739,15 +1739,15 @@ impl CardId {
         )?)
     }
 
-    pub fn requires_target(&self, _db: &Connection) -> anyhow::Result<bool> {
+    pub fn requires_target(self, _db: &Connection) -> anyhow::Result<bool> {
         todo!()
     }
 
-    pub fn is_land(&self, db: &Connection) -> anyhow::Result<bool> {
+    pub fn is_land(self, db: &Connection) -> anyhow::Result<bool> {
         self.types_intersect(db, &HashSet::from([Type::Land, Type::BasicLand]))
     }
 
-    pub(crate) fn manifest(&self, db: &Connection) -> anyhow::Result<()> {
+    pub(crate) fn manifest(self, db: &Connection) -> anyhow::Result<()> {
         db.execute(
             "UPDATE cards SET manifested = TRUE, face_down = TRUE WHERE cardid = (?1)",
             (self,),
@@ -1756,7 +1756,7 @@ impl CardId {
         Ok(())
     }
 
-    pub(crate) fn is_permanent(&self, db: &Connection) -> anyhow::Result<bool> {
+    pub(crate) fn is_permanent(self, db: &Connection) -> anyhow::Result<bool> {
         Ok(!self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))?)
     }
 }

@@ -152,7 +152,6 @@ impl Battlefield {
         targets: Vec<CardId>,
     ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         let mut results = vec![];
-        source_card_id.move_to_battlefield(db)?;
 
         if let Some(aura) = source_card_id.aura(db)? {
             for target in targets.iter() {
@@ -244,6 +243,8 @@ impl Battlefield {
                 }
             }
         }
+
+        source_card_id.move_to_battlefield(db)?;
 
         Ok(results)
     }
@@ -565,7 +566,7 @@ impl Battlefield {
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let Some(target) = target {
-                    target.clone_card(db, source)?;
+                    source.clone_card(db, target)?;
                 }
             }
             ActionResult::AddModifier { modifier } => {

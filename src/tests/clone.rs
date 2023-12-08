@@ -2,37 +2,26 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{ActionResult, Battlefield, UnresolvedActionResult},
-    deck::Deck,
-    in_play::{AllCards, AllModifiers},
+    in_play::CardId,
     load_cards,
-    player::Player,
-    stack::{Stack, StackResult},
+    player::AllPlayers,
+    prepare_db,
 };
 
 #[test]
 fn etb_clones() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let db = prepare_db()?;
 
-    let clone = all_cards.add(&cards, player.clone(), "Clone");
-    let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let result = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
-    assert_eq!(result, []);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    stack.push_card(&all_cards, clone, None, None);
+    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add(&db, creature, vec![])?;
+    assert_eq!(results, []);
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::AddToBattlefield(clone)]);
-
-    let [StackResult::AddToBattlefield(card)] = results.as_slice() else {
-        unreachable!();
-    };
-
-    let results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
+    let clone = CardId::upload(&db, &cards, player, "Clone")?;
+    let results = Battlefield::add(&db, clone, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::CloneCreatureNonTargeting {
@@ -55,13 +44,10 @@ fn etb_clones() -> anyhow::Result<()> {
         })
         .collect();
 
-    let results =
-        battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    let clone = &all_cards[clone].card;
-    let creature = &all_cards[creature].card;
-    assert_eq!(clone, creature);
+    assert_eq!(clone.cloning(&db)?, Some(creature));
 
     Ok(())
 }
@@ -69,29 +55,18 @@ fn etb_clones() -> anyhow::Result<()> {
 #[test]
 fn etb_no_targets_dies() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
+    let db = prepare_db()?;
 
-    let clone = all_cards.add(&cards, player.clone(), "Clone");
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    stack.push_card(&all_cards, clone, None, None);
-
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::AddToBattlefield(clone)]);
-
-    let [StackResult::AddToBattlefield(card)] = results.as_slice() else {
-        unreachable!();
-    };
-
-    let results = battlefield.add(&mut all_cards, &mut modifiers, *card, vec![]);
+    let clone = CardId::upload(&db, &cards, player, "Clone")?;
+    let results = Battlefield::add(&db, clone, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::CloneCreatureNonTargeting {
             source: clone,
-            valid_targets: vec![],
+            valid_targets: vec![]
         }]
     );
 
@@ -109,12 +84,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         })
         .collect();
 
-    let results =
-        battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    let results = battlefield.check_sba(&all_cards);
-
+    let results = Battlefield::check_sba(&db)?;
     assert_eq!(results, [ActionResult::PermanentToGraveyard(clone)]);
 
     Ok(())

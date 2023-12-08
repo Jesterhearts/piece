@@ -1,7 +1,7 @@
 mod abzan_banner;
 mod abzan_runemark;
 mod allosuarus_shepherd;
-// mod clone;
+mod clone;
 // mod counterspell;
 // mod darigaazs_attendant;
 // mod elesh_norn_grand_cenobite;
