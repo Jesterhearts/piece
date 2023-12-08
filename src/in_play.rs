@@ -405,13 +405,16 @@ impl CardId {
         };
 
         let mut statement = db.prepare(indoc! {"
-                SELECT triggered_ability_modifier, source, controller, restrictions
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq
+                FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
@@ -503,13 +506,16 @@ impl CardId {
         };
 
         let mut statement = db.prepare(indoc! {"
-                SELECT static_ability_modifier, source, controller, restrictions
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT static_ability_modifier, source, controller, restrictions, active_seq
+                FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT static_ability_modifier, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
@@ -574,13 +580,15 @@ impl CardId {
         };
 
         let mut statement = db.prepare(indoc! {"
-                SELECT activated_ability_modifier, source, controller, restrictions
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
@@ -697,6 +705,28 @@ impl CardId {
         controller_restriction: Controller,
         restrictions: &[Restriction],
     ) -> Result<bool, anyhow::Error> {
+        self.passes_restrictions_given_types(
+            db,
+            source,
+            controller,
+            controller_restriction,
+            restrictions,
+            &self.types(db)?,
+            &self.subtypes(db)?,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn passes_restrictions_given_types(
+        self,
+        db: &Connection,
+        source: CardId,
+        controller: PlayerId,
+        controller_restriction: Controller,
+        restrictions: &[Restriction],
+        self_types: &HashSet<Type>,
+        self_subtypes: &HashSet<Subtype>,
+    ) -> Result<bool, anyhow::Error> {
         match controller_restriction {
             Controller::Any => {}
             Controller::You => {
@@ -726,12 +756,10 @@ impl CardId {
                     }
                 }
                 Restriction::OfType { types, subtypes } => {
-                    let self_types = self.types(db)?;
                     if !types.is_empty() && self_types.is_disjoint(types) {
                         return Ok(false);
                     }
 
-                    let self_subtypes = self.subtypes(db)?;
                     if !subtypes.is_empty() && self_subtypes.is_disjoint(subtypes) {
                         return Ok(false);
                     }
@@ -795,36 +823,33 @@ impl CardId {
         )?;
 
         let mut statement = db.prepare(indoc! {"
-                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions, active_seq
+                FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
         let rows = statement.query_map((self,), |row| {
             Ok((
-                row.get(0)?,
-                row.get(1)?,
+                row.get::<_, Option<i32>>(0)?,
+                row.get::<_, Option<i32>>(1)?,
                 row.get(2)?,
                 serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
-                serde_json::from_str(&row.get::<_, String>(4)?).unwrap(),
+                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(4)?).unwrap(),
             ))
         })?;
 
         let mut add = 0;
 
         for row in rows {
-            let (base_mod, add_mod, source, controller_restriction, restrictions): (
-                Option<i32>,
-                Option<i32>,
-                _,
-                _,
-                Vec<Restriction>,
-            ) = row?;
+            let (base_mod, add_mod, source, controller_restriction, restrictions) = row?;
 
             if self.passes_restrictions(
                 db,
@@ -865,13 +890,16 @@ impl CardId {
         )?;
 
         let mut statement = db.prepare(indoc! {"
-                SELECT base_toughness_modifier, add_toughness_modifier, source, controller, restrictions
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT base_toughness_modifier, add_toughness_modifier, source, controller, restrictions, active_seq
+                FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT base_toughness_modifier, add_toughness_modifier, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
@@ -932,13 +960,16 @@ impl CardId {
         };
 
         let mut statement = db.prepare(indoc! {"
-                SELECT add_vigilance, remove_vigilance, source, controller, restrictions
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT add_vigilance, remove_vigilance, source, controller, restrictions, active_seq
+                FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT add_vigilance, remove_vigilance, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
@@ -1021,22 +1052,39 @@ impl CardId {
         colors.extend(cost.colors());
 
         let mut statement = db.prepare(indoc! {"
-                SELECT color_modifiers
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT color_modifiers, source, controller, restrictions, active_seq FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 ) AND color_modifiers IS NOT NULL
+                UNION
+                SELECT color_modifiers, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1) AND color_modifiers IS NOT NULL
                 ORDER BY active_seq ASC
             "})?;
 
         let rows = statement.query_map((self,), |row| {
-            Ok(serde_json::from_str::<HashSet<Color>>(&row.get::<_, String>(0)?).unwrap())
+            Ok((
+                serde_json::from_str::<HashSet<Color>>(&row.get::<_, String>(0)?).unwrap(),
+                row.get(1)?,
+                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
+                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
+            ))
         })?;
 
         for row in rows {
-            colors.extend(row?);
+            let (add_colors, source, controller_restriction, restrictions) = row?;
+
+            if self.passes_restrictions(
+                db,
+                source,
+                source.controller(db)?,
+                controller_restriction,
+                &restrictions,
+            )? {
+                colors.extend(add_colors);
+            }
         }
 
         Ok(colors)
@@ -1092,22 +1140,41 @@ impl CardId {
         )?;
 
         let mut statement = db.prepare(indoc! {"
-                SELECT type_modifiers 
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT type_modifiers, source, controller, restrictions, active_seq FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 ) AND type_modifiers IS NOT NULL
+                UNION
+                SELECT type_modifiers, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1) AND type_modifiers IS NOT NULL
                 ORDER BY active_seq ASC
             "})?;
 
         let rows = statement.query_map((self,), |row| {
-            Ok(serde_json::from_str::<HashSet<Type>>(&row.get::<_, String>(0)?).unwrap())
+            Ok((
+                serde_json::from_str::<HashSet<Type>>(&row.get::<_, String>(0)?).unwrap(),
+                row.get(1)?,
+                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
+                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
+            ))
         })?;
 
         for row in rows {
-            types.extend(row?);
+            let (add_types, source, controller_restriction, restrictions) = row?;
+
+            if self.passes_restrictions_given_types(
+                db,
+                source,
+                source.controller(db)?,
+                controller_restriction,
+                &restrictions,
+                &types,
+                &self.subtypes(db)?,
+            )? {
+                types.extend(add_types);
+            }
         }
 
         Ok(types)
@@ -1133,13 +1200,16 @@ impl CardId {
         )?;
 
         let mut statement = db.prepare(indoc! {"
-                SELECT subtype_modifiers, remove_all_subtypes
-                FROM modifiers, json_each(modifiers.modifying)
+                SELECT subtype_modifiers, remove_all_subtypes, source, controller, restrictions, active_seq
+                FROM modifiers
                 WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
+                    global
                     OR entire_battlefield
                 )
+                UNION
+                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions, active_seq
+                FROM modifiers, json_each(modifiers.modifying)
+                WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
             "})?;
 
@@ -1147,18 +1217,32 @@ impl CardId {
             Ok((
                 row.get::<_, Option<String>>(0)?
                     .map(|row| serde_json::from_str::<HashSet<Subtype>>(&row).unwrap()),
-                row.get(1)?,
+                row.get::<_, Option<bool>>(1)?,
+                row.get(2)?,
+                serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
+                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(4)?).unwrap(),
             ))
         })?;
 
         for row in rows {
-            let (add_types, remove_all) = row?;
-            if remove_all {
-                types.clear();
-            }
+            let (add_types, remove_all, source, controller_restriction, restrictions) = row?;
 
-            if let Some(add_types) = add_types {
-                types.extend(add_types);
+            if self.passes_restrictions_given_types(
+                db,
+                source,
+                source.controller(db)?,
+                controller_restriction,
+                &restrictions,
+                &self.types(db)?,
+                &types,
+            )? {
+                if remove_all.unwrap_or_default() {
+                    types.clear();
+                }
+
+                if let Some(add_types) = add_types {
+                    types.extend(add_types);
+                }
             }
         }
 
@@ -1234,8 +1318,7 @@ impl CardId {
 
             let mut modifierids = vec![];
             for modifier in enchant.modifiers.iter() {
-                let modifierid =
-                    upload_modifier(&mut statement, Some(cardid), modifier, db, false)?;
+                let modifierid = upload_modifier(&mut statement, cardid, modifier, db, false)?;
                 modifierids.push(modifierid);
             }
 
@@ -1724,7 +1807,7 @@ impl AuraId {
 
 fn upload_modifier(
     statement: &mut rusqlite::Statement<'_>,
-    source: Option<CardId>,
+    source: CardId,
     modifier: &BattlefieldModifier,
     db: &Connection,
     temporary: bool,
@@ -1742,12 +1825,10 @@ fn upload_modifier(
         false,
     ))?;
 
-    if let Some(source) = source {
-        db.execute(
-            "UPDATE modifiers SET source = (?2) WHERE modifierid = (?1)",
-            (modifierid, source),
-        )?;
-    }
+    db.execute(
+        "UPDATE modifiers SET source = (?2) WHERE modifierid = (?1)",
+        (modifierid, source),
+    )?;
 
     if let Some(power) = modifier.modifier.base_power {
         db.execute(
@@ -1977,7 +2058,7 @@ impl ModifierId {
 
     pub fn upload_single_modifier(
         db: &Connection,
-        cardid: Option<CardId>,
+        cardid: CardId,
         modifier: &BattlefieldModifier,
         temporary: bool,
     ) -> anyhow::Result<ModifierId> {
@@ -2056,7 +2137,7 @@ impl ModifierId {
         Ok(())
     }
 
-    fn detach_all(&self, db: &Connection) -> anyhow::Result<()> {
+    pub fn detach_all(&self, db: &Connection) -> anyhow::Result<()> {
         db.execute(
             "UPDATE modifiers SET modifying = NULL WHERE modifierid = (?1)",
             (self,),

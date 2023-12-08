@@ -1,124 +1,70 @@
 use std::collections::HashSet;
 
-use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
-    controller::Controller,
-    deck::Deck,
-    effects::{ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, ModifyBattlefield},
-    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay, ModifierType},
+    in_play::{CardId, ModifierId},
     load_cards,
-    player::Player,
-    stack::{Stack, StackResult},
-    targets::Restriction,
+    player::AllPlayers,
+    prepare_db,
+    stack::{Entry, Stack, StackResult},
     types::Subtype,
 };
 
 #[test]
 fn modify_base_p_t_works() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let db = prepare_db()?;
 
-    let card = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, card, vec![]);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let card = battlefield.select_card(0);
-    let results = battlefield.activate_ability(card, &all_cards, &stack, 0);
+    let card = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let results = Battlefield::add(&db, card, vec![])?;
+    assert_eq!(results, []);
+
+    let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
 
     assert_eq!(
         results,
         [UnresolvedActionResult::AddToStack {
-            card,
-            effects: EffectsInPlay {
-                effects: vec![ActivatedAbilityEffect::BattlefieldModifier(
-                    BattlefieldModifier {
-                        modifier: ModifyBattlefield {
-                            base_power: Some(5),
-                            base_toughness: Some(5),
-                            add_subtypes: enum_set!(Subtype::Dinosaur),
-                            ..Default::default()
-                        },
-                        controller: Controller::You,
-                        duration: EffectDuration::UntilEndOfTurn,
-                        restrictions: HashSet::from([Restriction::OfType {
-                            types: enum_set!(),
-                            subtypes: enum_set!(Subtype::Elf)
-                        }]),
-                    }
-                ),],
-                source: card,
-                controller: player.clone(),
-            },
-            valid_targets: vec![]
+            ability: card
+                .activated_abilities(&db)?
+                .first()
+                .copied()
+                .unwrap_or_default(),
+            valid_targets: Default::default(),
         }]
     );
 
-    let results = battlefield.maybe_resolve(
-        &mut all_cards,
-        &mut modifiers,
-        &mut stack,
-        player.clone(),
-        results,
-    );
+    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
+    let results = Stack::resolve_1(&db)?;
     assert_eq!(
         results,
-        [StackResult::ApplyToBattlefield {
-            modifier: ModifierInPlay {
-                source: card,
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield {
-                        base_power: Some(5),
-                        base_toughness: Some(5),
-                        add_subtypes: enum_set!(Subtype::Dinosaur),
-                        ..Default::default()
-                    },
-                    controller: Controller::You,
-                    duration: EffectDuration::UntilEndOfTurn,
-                    restrictions: HashSet::from([Restriction::OfType {
-                        types: enum_set!(),
-                        subtypes: enum_set!(Subtype::Elf)
-                    }]),
-                },
-                controller: player.clone(),
-                modifying: Default::default(),
-                modifier_type: ModifierType::Global,
-            },
-        },]
+        [StackResult::ApplyToBattlefield(ModifierId::default()),]
     );
 
-    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = Stack::apply_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    let card = battlefield.select_card(0);
-    let card = &all_cards[card];
-    assert_eq!(card.card.power(), Some(5));
-    assert_eq!(card.card.toughness(), Some(5));
-
+    assert_eq!(card.power(&db)?, Some(5));
+    assert_eq!(card.toughness(&db)?, Some(5));
     assert_eq!(
-        card.card.subtypes(),
-        enum_set![Subtype::Elf | Subtype::Shaman | Subtype::Dinosaur]
+        card.subtypes(&db)?,
+        HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
     );
 
-    battlefield.end_turn(&mut all_cards, &mut modifiers);
+    Battlefield::end_turn(&db)?;
 
-    let card = battlefield.select_card(0);
-    let card = &all_cards[card];
-    assert_eq!(card.card.power(), Some(1));
-    assert_eq!(card.card.toughness(), Some(1));
-
+    assert_eq!(card.power(&db)?, Some(1));
+    assert_eq!(card.toughness(&db)?, Some(1));
     assert_eq!(
-        card.card.subtypes(),
-        enum_set![Subtype::Elf | Subtype::Shaman]
+        card.subtypes(&db)?,
+        HashSet::from([Subtype::Elf, Subtype::Shaman])
     );
 
     Ok(())
@@ -127,23 +73,28 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 #[test]
 fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player = Player::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let battlefield = Battlefield::default();
-    let mut stack = Stack::default();
+    let db = prepare_db()?;
 
-    let creature = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    stack.push_card(&all_cards, creature, None, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
+    let card = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    assert_eq!(stack.stack.len(), 2);
+    card.move_to_stack(&db, HashSet::default())?;
+    counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, []);
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    assert_eq!(stack.stack.len(), 1);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
+    Stack::apply_results(&db, &mut all_players, results)?;
+
+    assert_eq!(Stack::in_stack(&db)?.len(), 1);
+
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::AddToBattlefield(card)]);
 
     Ok(())
 }
@@ -151,36 +102,31 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 #[test]
 fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player = Player::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
+    let db = prepare_db()?;
 
-    let creature_1 = all_cards.add(&cards, player.clone(), "Allosaurus Shepherd");
-    let creature_2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let counterspell = all_cards.add(&cards, player.clone(), "Counterspell");
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    stack.push_card(&all_cards, creature_1, None, None);
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
+    let card1 = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-    assert_eq!(results, []);
+    Battlefield::add(&db, card1, vec![])?;
 
-    stack.push_card(&all_cards, creature_2, None, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
+    card2.move_to_stack(&db, HashSet::default())?;
+    counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    assert_eq!(stack.stack.len(), 2);
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(result, []);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
+    Stack::apply_results(&db, &mut all_players, results)?;
 
-    assert_eq!(stack.stack.len(), 1);
+    assert_eq!(Stack::in_stack(&db)?.len(), 1);
 
-    let result = stack.resolve_1(&all_cards, &battlefield);
-    assert!(stack.is_empty());
-    assert_eq!(result, [StackResult::AddToBattlefield(creature_2)]);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::AddToBattlefield(card2)]);
 
     Ok(())
 }
@@ -188,34 +134,37 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 #[test]
 fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player1 = Player::new_ref(Deck::empty());
-    let player2 = Player::new_ref(Deck::empty());
+    let db = prepare_db()?;
 
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    let player2 = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let creature_1 = all_cards.add(&cards, player1.clone(), "Allosaurus Shepherd");
-    let creature_2 = all_cards.add(&cards, player2.clone(), "Alpine Grizzly");
-    let counterspell = all_cards.add(&cards, player1.clone(), "Counterspell");
+    let card1 = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let card2 = CardId::upload(&db, &cards, player2, "Alpine Grizzly")?;
+    let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    stack.push_card(&all_cards, creature_1, None, None);
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::AddToBattlefield(creature_1)]);
-    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-    assert_eq!(results, []);
+    Battlefield::add(&db, card1, vec![])?;
 
-    let countered = stack.push_card(&all_cards, creature_2, None, None);
-    stack.push_card(&all_cards, counterspell, stack.target_nth(0), None);
+    card2.move_to_stack(&db, HashSet::default())?;
+    counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    assert_eq!(stack.stack.len(), 2);
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(results, [StackResult::SpellCountered { id: countered }]);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(
+        results,
+        [
+            StackResult::SpellCountered {
+                id: Entry::Card(card2)
+            },
+            StackResult::StackToGraveyard(counterspell)
+        ]
+    );
+    Stack::apply_results(&db, &mut all_players, results)?;
 
-    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
-    assert_eq!(results, []);
+    assert!(Stack::is_empty(&db)?);
 
     Ok(())
 }

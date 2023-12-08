@@ -99,7 +99,7 @@ impl Stack {
             .peekable();
 
         let mut target = 0;
-        for _ in 0..nth {
+        for _ in 0..=nth {
             let (max, index) = [
                 (cards_in_stack.peek(), 0),
                 (abilities_in_stack.peek(), 1),
@@ -128,16 +128,13 @@ impl Stack {
         Ok(ActiveTarget::Stack { id: target })
     }
 
-    fn in_stack(db: &Connection) -> anyhow::Result<HashMap<usize, Entry>> {
-        let mut cards_in_stack = db.prepare(
-            "SELECT cardid, location_seq FROM cards WHERE location = (?1) ORDER BY location_seq ASC",
-        )?;
-        let mut abilities_in_stack = db.prepare(
-            "SELECT abilityid, stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC",
-        )?;
-        let mut triggers_in_stack = db.prepare(
-            "SELECT triggerid, stack_seq FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq ASC",
-        )?;
+    pub fn in_stack(db: &Connection) -> anyhow::Result<HashMap<usize, Entry>> {
+        let mut cards_in_stack =
+            db.prepare("SELECT cardid, location_seq FROM cards WHERE location = (?1)")?;
+        let mut abilities_in_stack =
+            db.prepare("SELECT abilityid, stack_seq FROM abilities WHERE in_stack = TRUE")?;
+        let mut triggers_in_stack =
+            db.prepare("SELECT triggerid, stack_seq FROM triggers WHERE in_stack = TRUE")?;
 
         let mut cards_in_stack = cards_in_stack
             .query_map((serde_json::to_string(&Location::Stack)?,), |row| {
@@ -202,14 +199,14 @@ impl Stack {
 
     fn pop(db: &Connection) -> anyhow::Result<Option<StackEntry>> {
         let mut cards_in_stack = db.prepare(
-            "SELECT cardid, targets, mode, location_seq FROM cards WHERE location = (?1) ORDER BY location_seq ASC",
+            "SELECT cardid, targets, mode, location_seq FROM cards WHERE location = (?1) ORDER BY location_seq DESC",
         )?;
         let mut abilities_in_stack = db.prepare(
-            "SELECT abilityid, targets, mode, stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC",
+            "SELECT abilityid, targets, mode, stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq DESC",
         )?;
 
         let mut triggers_in_stack = db.prepare(
-            "SELECT triggerid, targets, mode, stack_seq FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq ASC",
+            "SELECT triggerid, targets, mode, stack_seq FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq DESC",
         )?;
 
         let mut cards_in_stack = cards_in_stack
@@ -310,13 +307,13 @@ impl Stack {
 
         match next.ty {
             Entry::Card(resolving_card) => {
-                for effect in resolving_card.effects(db)?.iter() {
+                for effect in resolving_card.effects(db)? {
                     match effect {
                         SpellEffect::CounterSpell {
                             target: restrictions,
                         } => {
                             if next.targets.is_empty() {
-                                return Ok(vec![]);
+                                return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
                             }
 
                             for target in next.targets.iter() {
@@ -324,7 +321,9 @@ impl Stack {
                                     ActiveTarget::Stack { id } => {
                                         let Some(maybe_target) = in_stack.get(id) else {
                                             // Spell has left the stack already
-                                            return Ok(vec![]);
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         };
 
                                         match maybe_target {
@@ -332,19 +331,27 @@ impl Stack {
                                                 if !maybe_target.can_be_countered(
                                                     db,
                                                     resolving_card.controller(db)?,
-                                                    restrictions,
+                                                    &restrictions,
                                                 )? {
                                                     // Spell is no longer a valid target.
-                                                    return Ok(vec![]);
+                                                    return Ok(vec![
+                                                        StackResult::StackToGraveyard(
+                                                            resolving_card,
+                                                        ),
+                                                    ]);
                                                 }
                                             }
                                             Entry::Ability(_) => {
                                                 // Vanilla counterspells can't counter activated abilities.
-                                                return Ok(vec![]);
+                                                return Ok(vec![StackResult::StackToGraveyard(
+                                                    resolving_card,
+                                                )]);
                                             }
                                             Entry::Trigger(_) => {
                                                 // Vanilla counterspells can't counter triggered abilities.
-                                                return Ok(vec![]);
+                                                return Ok(vec![StackResult::StackToGraveyard(
+                                                    resolving_card,
+                                                )]);
                                             }
                                         }
 
@@ -355,7 +362,9 @@ impl Stack {
                                     }
                                     ActiveTarget::Battlefield { .. } => {
                                         // Cards on the battlefield aren't valid targets of counterspells
-                                        return Ok(vec![]);
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
                                     }
                                 }
                             }
@@ -363,19 +372,19 @@ impl Stack {
                         SpellEffect::GainMana { mana } => {
                             if !gain_mana(
                                 resolving_card.controller(db)?,
-                                mana,
+                                &mana,
                                 next.mode,
                                 &mut result,
                             ) {
-                                return Ok(vec![]);
+                                return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
                             }
                         }
                         SpellEffect::BattlefieldModifier(modifier) => {
                             result.push(StackResult::ApplyToBattlefield(
                                 ModifierId::upload_single_modifier(
                                     db,
-                                    Some(resolving_card),
-                                    modifier,
+                                    resolving_card,
+                                    &modifier,
                                     true,
                                 )?,
                             ));
@@ -383,14 +392,14 @@ impl Stack {
                         SpellEffect::ControllerDrawCards(count) => {
                             result.push(StackResult::DrawCards {
                                 player: resolving_card.controller(db)?,
-                                count: *count,
+                                count,
                             });
                         }
                         SpellEffect::ModifyCreature(modifier) => {
                             let modifier = ModifierId::upload_single_modifier(
                                 db,
-                                Some(resolving_card),
-                                modifier,
+                                resolving_card,
+                                &modifier,
                                 true,
                             )?;
 
@@ -399,7 +408,9 @@ impl Stack {
                                 match target {
                                     ActiveTarget::Stack { .. } => {
                                         // Stack is not a valid target.
-                                        return Ok(vec![]);
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
                                     }
                                     ActiveTarget::Battlefield { id } => {
                                         targets.push(id);
@@ -418,21 +429,28 @@ impl Stack {
                                     ActiveTarget::Battlefield { id } => {
                                         if !id.is_in_location(db, Location::Battlefield)? {
                                             // Permanent no longer on battlefield.
-                                            return Ok(vec![]);
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         }
 
                                         if !id
                                             .can_be_targeted(db, resolving_card.controller(db)?)?
                                         {
                                             // Card is no longer a valid target.
-                                            return Ok(vec![]);
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         }
 
                                         if !id
                                             .types_intersect(db, &HashSet::from([Type::Creature]))?
                                         {
                                             // Target isn't a creature
-                                            return Ok(vec![]);
+
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         }
 
                                         result.push(StackResult::ExileTarget(*id));
@@ -447,21 +465,27 @@ impl Stack {
                                     ActiveTarget::Battlefield { id } => {
                                         if !id.is_in_location(db, Location::Battlefield)? {
                                             // Permanent no longer on battlefield.
-                                            return Ok(vec![]);
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         }
 
                                         if !id
                                             .can_be_targeted(db, resolving_card.controller(db)?)?
                                         {
                                             // Card is no longer a valid target.
-                                            return Ok(vec![]);
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         }
 
                                         if !id
                                             .types_intersect(db, &HashSet::from([Type::Creature]))?
                                         {
                                             // Target isn't a creature
-                                            return Ok(vec![]);
+                                            return Ok(vec![StackResult::StackToGraveyard(
+                                                resolving_card,
+                                            )]);
                                         }
 
                                         result.push(StackResult::ExileTarget(*id));
@@ -493,8 +517,12 @@ impl Stack {
                             }
                         }
                         ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
-                            let modifier =
-                                ModifierId::upload_single_modifier(db, None, &modifier, true)?;
+                            let modifier = ModifierId::upload_single_modifier(
+                                db,
+                                ability.source(db)?,
+                                &modifier,
+                                true,
+                            )?;
                             result.push(StackResult::ApplyToBattlefield(modifier));
                         }
                         ActivatedAbilityEffect::ControllerDrawCards(count) => {
@@ -525,7 +553,7 @@ impl Stack {
 
                                         let modifier = ModifierId::upload_single_modifier(
                                             db,
-                                            None,
+                                            ability.source(db)?,
                                             &BattlefieldModifier {
                                                 modifier,
                                                 controller: Controller::You,

@@ -238,12 +238,8 @@ impl Battlefield {
             match ability {
                 StaticAbility::GreenCannotBeCountered { .. } => {}
                 StaticAbility::BattlefieldModifier(modifier) => {
-                    let modifier = ModifierId::upload_single_modifier(
-                        db,
-                        Some(source_card_id),
-                        &modifier,
-                        true,
-                    )?;
+                    let modifier =
+                        ModifierId::upload_single_modifier(db, source_card_id, &modifier, true)?;
                     results.push(UnresolvedActionResult::AddModifier { modifier })
                 }
             }
@@ -270,23 +266,20 @@ impl Battlefield {
     }
 
     pub fn end_turn(db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET modifying = NULL 
+        let mut all_modifiers = db.prepare(indoc! {"
+                SELECT modifierid
+                FROM modifiers 
                 WHERE modifiers.duration = (?1) AND modifiers.active
-            "},
+        "})?;
+
+        let rows = all_modifiers.query_map(
             (serde_json::to_string(&EffectDuration::UntilEndOfTurn)?,),
+            |row| row.get::<_, ModifierId>(0),
         )?;
 
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET active = FALSE
-                WHERE modifiers.duration = (?1) AND modifiers.active
-            "},
-            (serde_json::to_string(&EffectDuration::UntilEndOfTurn)?,),
-        )?;
+        for row in rows {
+            row?.detach_all(db)?;
+        }
 
         Ok(())
     }
