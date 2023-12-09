@@ -1,9 +1,7 @@
 use std::{
+    cell::OnceCell,
     collections::{HashMap, HashSet},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        OnceLock,
-    },
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 use derive_more::From;
@@ -45,7 +43,9 @@ static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_HAND_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 
-static INIT_LAND_ABILITIES: OnceLock<HashMap<Subtype, AbilityId>> = OnceLock::new();
+thread_local! {
+    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, AbilityId>> = OnceCell::new();
+}
 
 static UPLOAD_CARD_SQL: &str = indoc! {"
     INSERT INTO cards (
@@ -607,13 +607,13 @@ impl CardId {
         };
 
         let mut statement = db.prepare(indoc! {"
-                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq FROM modifiers
+                SELECT activated_ability_modifier, source, controller, restrictions, active_seq FROM modifiers
                 WHERE active AND (
                     global
                     OR entire_battlefield
                 )
                 UNION
-                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq
+                SELECT activated_ability_modifier, source, controller, restrictions, active_seq
                 FROM modifiers, json_each(modifiers.modifying)
                 WHERE active AND json_each.value = (?1)
                 ORDER BY active_seq ASC
@@ -2036,141 +2036,144 @@ impl AbilityId {
         Self(NEXT_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
     }
 
-    pub fn land_abilities(db: &Connection) -> &HashMap<Subtype, Self> {
-        INIT_LAND_ABILITIES.get_or_init(|| {
-            let mut abilities = HashMap::new();
+    pub fn land_abilities(db: &Connection) -> HashMap<Subtype, Self> {
+        INIT_LAND_ABILITIES.with(|init| {
+            init.get_or_init(|| {
+                let mut abilities = HashMap::new();
 
-            let id = AbilityId::new();
-            db.execute(
-                INSERT_ABILITIES_SQL,
-                (
-                    id,
-                    Option::<CardId>::None,
-                    false,
-                    serde_json::to_string(&AbilityCost {
-                        mana_cost: vec![],
-                        tap: true,
-                        additional_cost: vec![],
-                    })
-                    .unwrap(),
-                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                        mana: GainMana::Specific {
-                            gains: vec![Mana::White],
-                        },
-                    }])
-                    .unwrap(),
-                    false,
-                ),
-            )
-            .unwrap();
+                let id = AbilityId::new();
+                db.execute(
+                    INSERT_ABILITIES_SQL,
+                    (
+                        id,
+                        Option::<CardId>::None,
+                        false,
+                        serde_json::to_string(&AbilityCost {
+                            mana_cost: vec![],
+                            tap: true,
+                            additional_cost: vec![],
+                        })
+                        .unwrap(),
+                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                            mana: GainMana::Specific {
+                                gains: vec![Mana::White],
+                            },
+                        }])
+                        .unwrap(),
+                        false,
+                    ),
+                )
+                .unwrap();
 
-            abilities.insert(Subtype::Plains, id);
+                abilities.insert(Subtype::Plains, id);
 
-            let id = AbilityId::new();
-            db.execute(
-                INSERT_ABILITIES_SQL,
-                (
-                    id,
-                    Option::<CardId>::None,
-                    false,
-                    serde_json::to_string(&AbilityCost {
-                        mana_cost: vec![],
-                        tap: true,
-                        additional_cost: vec![],
-                    })
-                    .unwrap(),
-                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                        mana: GainMana::Specific {
-                            gains: vec![Mana::Blue],
-                        },
-                    }])
-                    .unwrap(),
-                    false,
-                ),
-            )
-            .unwrap();
+                let id = AbilityId::new();
+                db.execute(
+                    INSERT_ABILITIES_SQL,
+                    (
+                        id,
+                        Option::<CardId>::None,
+                        false,
+                        serde_json::to_string(&AbilityCost {
+                            mana_cost: vec![],
+                            tap: true,
+                            additional_cost: vec![],
+                        })
+                        .unwrap(),
+                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                            mana: GainMana::Specific {
+                                gains: vec![Mana::Blue],
+                            },
+                        }])
+                        .unwrap(),
+                        false,
+                    ),
+                )
+                .unwrap();
 
-            abilities.insert(Subtype::Island, id);
+                abilities.insert(Subtype::Island, id);
 
-            let id = AbilityId::new();
-            db.execute(
-                INSERT_ABILITIES_SQL,
-                (
-                    id,
-                    Option::<CardId>::None,
-                    false,
-                    serde_json::to_string(&AbilityCost {
-                        mana_cost: vec![],
-                        tap: true,
-                        additional_cost: vec![],
-                    })
-                    .unwrap(),
-                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                        mana: GainMana::Specific {
-                            gains: vec![Mana::Black],
-                        },
-                    }])
-                    .unwrap(),
-                    false,
-                ),
-            )
-            .unwrap();
+                let id = AbilityId::new();
+                db.execute(
+                    INSERT_ABILITIES_SQL,
+                    (
+                        id,
+                        Option::<CardId>::None,
+                        false,
+                        serde_json::to_string(&AbilityCost {
+                            mana_cost: vec![],
+                            tap: true,
+                            additional_cost: vec![],
+                        })
+                        .unwrap(),
+                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                            mana: GainMana::Specific {
+                                gains: vec![Mana::Black],
+                            },
+                        }])
+                        .unwrap(),
+                        false,
+                    ),
+                )
+                .unwrap();
 
-            abilities.insert(Subtype::Swamp, id);
+                abilities.insert(Subtype::Swamp, id);
 
-            let id = AbilityId::new();
-            db.execute(
-                INSERT_ABILITIES_SQL,
-                (
-                    id,
-                    Option::<CardId>::None,
-                    false,
-                    serde_json::to_string(&AbilityCost {
-                        mana_cost: vec![],
-                        tap: true,
-                        additional_cost: vec![],
-                    })
-                    .unwrap(),
-                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                        mana: GainMana::Specific {
-                            gains: vec![Mana::Red],
-                        },
-                    }])
-                    .unwrap(),
-                    false,
-                ),
-            )
-            .unwrap();
+                let id = AbilityId::new();
+                db.execute(
+                    INSERT_ABILITIES_SQL,
+                    (
+                        id,
+                        Option::<CardId>::None,
+                        false,
+                        serde_json::to_string(&AbilityCost {
+                            mana_cost: vec![],
+                            tap: true,
+                            additional_cost: vec![],
+                        })
+                        .unwrap(),
+                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                            mana: GainMana::Specific {
+                                gains: vec![Mana::Red],
+                            },
+                        }])
+                        .unwrap(),
+                        false,
+                    ),
+                )
+                .unwrap();
 
-            abilities.insert(Subtype::Mountain, id);
+                abilities.insert(Subtype::Mountain, id);
 
-            let id = AbilityId::new();
-            db.execute(
-                INSERT_ABILITIES_SQL,
-                (
-                    id,
-                    Option::<CardId>::None,
-                    false,
-                    serde_json::to_string(&AbilityCost {
-                        mana_cost: vec![],
-                        tap: true,
-                        additional_cost: vec![],
-                    })
-                    .unwrap(),
-                    serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                        mana: GainMana::Specific {
-                            gains: vec![Mana::Green],
-                        },
-                    }])
-                    .unwrap(),
-                    false,
-                ),
-            )
-            .unwrap();
+                let id = AbilityId::new();
+                db.execute(
+                    INSERT_ABILITIES_SQL,
+                    (
+                        id,
+                        Option::<CardId>::None,
+                        false,
+                        serde_json::to_string(&AbilityCost {
+                            mana_cost: vec![],
+                            tap: true,
+                            additional_cost: vec![],
+                        })
+                        .unwrap(),
+                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
+                            mana: GainMana::Specific {
+                                gains: vec![Mana::Green],
+                            },
+                        }])
+                        .unwrap(),
+                        false,
+                    ),
+                )
+                .unwrap();
 
-            abilities.insert(Subtype::Forest, id);
+                abilities.insert(Subtype::Forest, id);
 
-            abilities
+                abilities
+            })
+            .clone()
         })
     }
 
