@@ -3,8 +3,8 @@ syntax = "proto3";
 package effects;
 
 import "color.proto";
-import "cost.proto";
 import "controller.proto";
+import "cost.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
