@@ -1,23 +1,22 @@
-use std::collections::HashSet;
-
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     controller::Controller,
     cost::AbilityCost,
     effects::{
-        ActivatedAbilityEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
+        BattlefieldModifier, GainMana, Mill, ModifyBattlefield, ReturnFromGraveyardToBattlefield,
         ReturnFromGraveyardToLibrary, TriggeredEffect, TutorLibrary,
     },
     protogen,
-    targets::Restriction,
+    targets::{Restriction, SpellTarget},
     triggers::Trigger,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
-    pub restrictions: HashSet<Restriction>,
+    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::abilities::Enchant> for Enchant {
@@ -39,7 +38,7 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
     Mill(Mill),
@@ -84,12 +83,11 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
-    Vigilance,
-    Flash,
     BattlefieldModifier(BattlefieldModifier),
+    ExtraLandsPerTurn(usize),
 }
 
 impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
@@ -122,22 +120,93 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
             protogen::abilities::static_ability::Ability::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
-            protogen::abilities::static_ability::Ability::Vigilance(_) => Ok(Self::Vigilance),
-            protogen::abilities::static_ability::Ability::Flash(_) => Ok(Self::Flash),
+            protogen::abilities::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
+                Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
+            }
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub enum ActivatedAbilityEffect {
+    CounterSpell { target: SpellTarget },
+    GainMana { mana: GainMana },
+    BattlefieldModifier(BattlefieldModifier),
+    ControllerDrawCards(usize),
+    Equip(Vec<ModifyBattlefield>),
+}
+
+impl ActivatedAbilityEffect {
+    pub fn wants_targets(&self) -> usize {
+        match self {
+            ActivatedAbilityEffect::CounterSpell { .. } => 1,
+            ActivatedAbilityEffect::GainMana { .. } => 0,
+            ActivatedAbilityEffect::BattlefieldModifier(_) => 0,
+            ActivatedAbilityEffect::ControllerDrawCards(_) => 0,
+            ActivatedAbilityEffect::Equip(_) => 1,
+        }
+    }
+}
+
+impl TryFrom<&protogen::effects::ActivatedAbilityEffect> for ActivatedAbilityEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ActivatedAbilityEffect) -> Result<Self, Self::Error> {
+        value
+            .effect
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for ActivatedAbilityEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::activated_ability_effect::Effect,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::activated_ability_effect::Effect::CounterSpell(counter) => {
+                Ok(Self::CounterSpell {
+                    target: counter.target.as_ref().unwrap_or_default().try_into()?,
+                })
+            }
+            protogen::effects::activated_ability_effect::Effect::GainMana(gain) => {
+                Ok(Self::GainMana {
+                    mana: GainMana::try_from(gain)?,
+                })
+            }
+            protogen::effects::activated_ability_effect::Effect::BattlefieldModifier(modifier) => {
+                Ok(Self::BattlefieldModifier(modifier.try_into()?))
+            }
+            protogen::effects::activated_ability_effect::Effect::ControllerDrawCards(draw) => {
+                Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
+            }
+            protogen::effects::activated_ability_effect::Effect::Equip(modifier) => {
+                Ok(Self::Equip(
+                    modifier
+                        .modifiers
+                        .iter()
+                        .map(ModifyBattlefield::try_from)
+                        .collect::<anyhow::Result<Vec<_>>>()?,
+                ))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<ActivatedAbilityEffect>,
+    pub apply_to_self: bool,
 }
 
-impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
+impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::abilities::ActivatedAbility) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::ActivatedAbility) -> Result<Self, Self::Error> {
         Ok(Self {
             cost: value
                 .cost
@@ -149,6 +218,7 @@ impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
                 .iter()
                 .map(ActivatedAbilityEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            apply_to_self: value.apply_to_self,
         })
     }
 }

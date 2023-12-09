@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -6,11 +8,11 @@ use crate::{
     load_cards,
     player::AllPlayers,
     prepare_db,
-    stack::{Stack, StackResult},
+    stack::{ActiveTarget, Stack, StackResult},
 };
 
 #[test]
-fn add_p_t_works() -> anyhow::Result<()> {
+pub fn adds_ability() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let db = prepare_db()?;
 
@@ -18,27 +20,25 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let player = all_players.new_player();
     all_players[player].infinite_mana();
 
-    let shade1 = CardId::upload(&db, &cards, player, "Hoar Shade")?;
-    let shade2 = CardId::upload(&db, &cards, player, "Hoar Shade")?;
+    let equipment = CardId::upload(&db, &cards, player, "Paradise Mantle")?;
+    let _ = Battlefield::add(&db, equipment, vec![])?;
 
-    let results = Battlefield::add(&db, shade1, vec![])?;
-    assert_eq!(results, []);
+    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let _ = Battlefield::add(&db, creature, vec![])?;
 
-    let results = Battlefield::add(&db, shade2, vec![])?;
-    assert_eq!(results, []);
+    assert_eq!(creature.activated_abilities(&db)?, []);
 
-    let results = Battlefield::activate_ability(&db, &mut all_players, shade1, 0)?;
-
+    let results = Battlefield::activate_ability(&db, &mut all_players, equipment, 0)?;
     assert_eq!(
         results,
         [UnresolvedActionResult::AddAbilityToStack {
-            source: shade1,
-            ability: shade1
+            source: equipment,
+            ability: equipment
                 .activated_abilities(&db)?
                 .first()
                 .copied()
                 .unwrap_or_default(),
-            valid_targets: Default::default()
+            valid_targets: HashSet::from([ActiveTarget::Battlefield { id: creature }])
         }]
     );
 
@@ -48,22 +48,13 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let results = Stack::resolve_1(&db)?;
     assert!(matches!(
         results.as_slice(),
-        [StackResult::ApplyModifierToTarget { .. }]
+        [StackResult::ModifyCreatures { .. }]
     ));
 
     let results = Stack::apply_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    assert_eq!(shade1.power(&db)?, Some(2));
-    assert_eq!(shade1.toughness(&db)?, Some(3));
-
-    assert_eq!(shade2.power(&db)?, Some(1));
-    assert_eq!(shade2.toughness(&db)?, Some(2));
-
-    Battlefield::end_turn(&db)?;
-
-    assert_eq!(shade1.power(&db)?, Some(1));
-    assert_eq!(shade1.toughness(&db)?, Some(2));
+    assert_eq!(creature.activated_abilities(&db)?.len(), 1);
 
     Ok(())
 }

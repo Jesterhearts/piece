@@ -11,10 +11,8 @@ activated_abilities {
   effects {
     equip {
       modifiers {
-        add_power_toughness {
-          power: 2
-          toughness: 2
-        }
+        add_power: 2
+        add_toughness: 2
       }
     }
   }

@@ -1,8 +1,9 @@
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 
 use crate::protogen;
 
-#[derive(Debug, PartialEq, Eq, Clone, Default, Copy)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Default, Copy)]
 pub enum Controller {
     #[default]
     Any,

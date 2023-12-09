@@ -19,13 +19,17 @@ message Location {
   }
 }
 
-message Trigger {
+message TriggerSource  {
   message PutIntoGraveyard {
-    Location from = 1;
-    repeated types.Type types = 2;
   }
 
   oneof trigger {
     PutIntoGraveyard put_into_graveyard = 1;
   }
+}
+
+message Trigger {
+  TriggerSource source = 1;
+  Location from = 2;
+  repeated types.Type types = 3;
 }

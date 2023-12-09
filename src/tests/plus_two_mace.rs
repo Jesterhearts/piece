@@ -1,119 +1,73 @@
 use std::collections::HashSet;
 
-use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
-    controller::Controller,
-    deck::Deck,
-    effects::{
-        ActivatedAbilityEffect, AddPowerToughness, BattlefieldModifier, EffectDuration,
-        ModifyBattlefield,
-    },
-    in_play::{AllCards, AllModifiers, EffectsInPlay, ModifierInPlay, ModifierType},
+    in_play::CardId,
     load_cards,
-    player::Player,
+    player::AllPlayers,
+    prepare_db,
     stack::{ActiveTarget, Stack, StackResult},
-    targets::Restriction,
-    types::Type,
 };
 
 #[test]
 fn equipment_works() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Player::new_ref(Deck::empty());
-    player.borrow_mut().infinite_mana();
+    let db = prepare_db()?;
 
-    let equipment = all_cards.add(&cards, player.clone(), "+2 Mace");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, equipment, vec![]);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let creature = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature, vec![]);
+    let equipment = CardId::upload(&db, &cards, player, "+2 Mace")?;
+    let _ = Battlefield::add(&db, equipment, vec![])?;
 
-    let equipment = battlefield.select_card(0);
-    let results = battlefield.activate_ability(equipment, &all_cards, &stack, 0);
+    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let _ = Battlefield::add(&db, creature, vec![])?;
 
+    let results = Battlefield::activate_ability(&db, &mut all_players, equipment, 0)?;
     assert_eq!(
         results,
-        [UnresolvedActionResult::AddToStack {
-            card: equipment,
-            effects: EffectsInPlay {
-                effects: vec![ActivatedAbilityEffect::Equip(vec![
-                    ModifyBattlefield::AddPowerToughness(AddPowerToughness {
-                        power: 2,
-                        toughness: 2,
-                    })
-                ]),],
-                source: equipment,
-                controller: player.clone(),
-            },
-            valid_targets: vec![ActiveTarget::Battlefield { id: creature }]
+        [UnresolvedActionResult::AddAbilityToStack {
+            source: equipment,
+            ability: equipment
+                .activated_abilities(&db)?
+                .first()
+                .copied()
+                .unwrap_or_default(),
+            valid_targets: HashSet::from([ActiveTarget::Battlefield { id: creature }])
         }]
     );
 
-    let results = battlefield.maybe_resolve(
-        &mut all_cards,
-        &mut modifiers,
-        &mut stack,
-        player.clone(),
-        results,
-    );
+    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
-    assert_eq!(
-        results,
-        [StackResult::ModifyCreatures {
-            targets: vec![creature],
-            modifier: ModifierInPlay {
-                source: equipment,
-                modifier: BattlefieldModifier {
-                    modifier: ModifyBattlefield::AddPowerToughness(AddPowerToughness {
-                        power: 2,
-                        toughness: 2,
-                    }),
-                    controller: Controller::You,
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: HashSet::from([Restriction::OfType {
-                        types: enum_set!(Type::Creature),
-                        subtypes: enum_set!()
-                    }]),
-                },
-                controller: player.clone(),
-                modifying: vec![],
-                modifier_type: ModifierType::Equipment,
-            },
-        }]
-    );
+    let results = Stack::resolve_1(&db)?;
+    assert!(matches!(
+        results.as_slice(),
+        [StackResult::ModifyCreatures { .. }]
+    ));
 
-    let results = stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    let results = Stack::apply_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(6));
-    assert_eq!(card.card.toughness(), Some(4));
+    assert_eq!(creature.power(&db)?, Some(6));
+    assert_eq!(creature.toughness(&db)?, Some(4));
 
-    let creature2 = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature2, vec![]);
+    let creature2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let _ = Battlefield::add(&db, creature2, vec![])?;
 
-    let card2 = &all_cards[creature2];
-    assert_eq!(card2.card.power(), Some(4));
-    assert_eq!(card2.card.toughness(), Some(2));
+    assert_eq!(creature2.power(&db)?, Some(4));
+    assert_eq!(creature2.toughness(&db)?, Some(2));
 
-    let results =
-        battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, equipment);
+    let results = Battlefield::permanent_to_graveyard(&db, equipment)?;
     assert_eq!(results, []);
 
-    let card = &all_cards[creature];
-    assert_eq!(card.card.power(), Some(4));
-    assert_eq!(card.card.toughness(), Some(2));
+    assert_eq!(creature.power(&db)?, Some(4));
+    assert_eq!(creature.toughness(&db)?, Some(2));
 
-    assert!(battlefield.no_modifiers());
+    assert!(Battlefield::no_modifiers(&db)?);
 
     Ok(())
 }

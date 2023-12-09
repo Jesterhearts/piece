@@ -7,8 +7,6 @@ types { creature {} }
 subtypes { golem {} }
 oracle_text:  "{1}, Sacrifice Darigaaz's Attendant:"
               "Add {B}{R}{G}."
-flavor_text:  "\"Darigaaz is the breath of theur-dragon,"
-              "burning away the burdens of mortality.\""
 activated_abilities {
   cost {
     mana_costs { generic { count: 1} }

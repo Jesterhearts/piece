@@ -4,14 +4,21 @@ package effects;
 
 import "color.proto";
 import "controller.proto";
+import "cost.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
+message ActivatedAbility {
+  cost.AbilityCost cost = 1;
+  repeated ActivatedAbilityEffect effects = 2;
+  bool apply_to_self = 3;
+}
+
 message Destination {
   message Hand {
   }
-  message TopOfLibrary{
+  message TopOfLibrary {
   }
   message Battlefield {
   }
@@ -45,12 +52,6 @@ message ReturnFromGraveyardToBattlefield {
   repeated types.Type types = 2;
 }
 
-message Vigilance {
-}
-
-message Flash {
-}
-
 message Duration {
   message UntilEndOfTurn {
   }
@@ -79,32 +80,33 @@ message GainMana {
   }
 
   oneof gain {
-    Specific specific = 1;
-    Choice choice = 2;
+    Specific specific = 2;
+    Choice choice = 3;
   }
 }
 
-message ModifyBasePowerToughness {
-  int32 power = 1;
-  int32 toughness = 2;
-}
-
-message ModifyCreatureTypes {
-  repeated types.Type add_types = 1;
-  repeated types.Subtype add_subtypes = 2;
-}
-
-message RemoveAllSubtypes {
+message ExtraLandsPerTurn {
+  int32 count = 1;
 }
 
 message ModifyBattlefield {
-  oneof modifier {
-    ModifyBasePowerToughness modify_base_power_toughness = 1;
-    ModifyCreatureTypes modify_creature_types = 2;
-    AddPowerToughness add_power_toughness = 3;
-    RemoveAllSubtypes remove_all_subtypes = 4;
-    Vigilance vigilance = 5;
-  }
+  optional int32 base_power = 1;
+  optional int32 base_toughness = 2;
+
+  repeated types.Type add_types = 3;
+  repeated types.Subtype add_subtypes = 4;
+
+  optional int32 add_power = 5;
+  optional int32 add_toughness = 6;
+
+  optional ActivatedAbility add_ability = 7;
+
+  bool remove_all_subtypes = 8;
+
+  bool entire_battlefield = 9;
+  bool global = 10;
+
+  bool add_vigilance = 11;
 }
 
 message BattlefieldModifier {
@@ -125,7 +127,7 @@ message CreateToken {
   }
 
   oneof token {
-    Creature creature = 1;
+    Creature creature = 7;
   }
 }
 
@@ -137,25 +139,24 @@ message Equip {
   repeated ModifyBattlefield modifiers = 1;
 }
 
-message AddPowerToughness {
-  int32 power = 1;
-  int32 toughness = 2;
-}
-
 message ExileTargetCreature {
 }
 
 message ExileTargetCreatureManifestTopOfLibrary {
 }
 
+message DealDamage {
+  int32 quantity = 1;
+  repeated targets.Restriction restrictions = 2;
+}
+
 message ActivatedAbilityEffect {
   oneof effect {
-    CounterSpell counter_spell = 1;
-    GainMana gain_mana = 2;
-    BattlefieldModifier battlefield_modifier = 3;
-    ControllerDrawCards controller_draw_cards = 4;
-    Equip equip = 5;
-    AddPowerToughness add_power_toughness_to_target = 6;
+    effects.BattlefieldModifier battlefield_modifier = 1;
+    effects.ControllerDrawCards controller_draw_cards = 2;
+    effects.CounterSpell counter_spell = 3;
+    effects.Equip equip = 4;
+    effects.GainMana gain_mana = 5;
   }
 }
 
@@ -167,14 +168,16 @@ message TriggeredEffect {
 
 message SpellEffect {
   oneof effect {
-    CounterSpell counter_spell = 1;
-    GainMana gain_mana = 2;
-    BattlefieldModifier battlefield_modifier = 3;
-    BattlefieldModifier modify_creature = 4;
-    ControllerDrawCards controller_draw_cards = 5;
-    AddPowerToughness add_power_toughness_to_target = 6;
-    ExileTargetCreature exile_target_creature = 7;
+    BattlefieldModifier battlefield_modifier = 1;
+    BattlefieldModifier modify_creature = 2;
+    ControllerDrawCards controller_draw_cards = 3;
+    CounterSpell counter_spell = 4;
+    DealDamage deal_damage = 5;
+    ExileTargetCreature exile_target_creature = 6;
     ExileTargetCreatureManifestTopOfLibrary
-      exile_target_creature_manifest_top_of_library = 8;
+      exile_target_creature_manifest_top_of_library = 7;
+    GainMana gain_mana = 8;
   }
+
+  SpellEffect threshold = 9;
 }

@@ -1,15 +1,14 @@
 use std::collections::HashSet;
 
-use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
-    deck::Deck,
     effects::Destination,
-    in_play::{AllCards, AllModifiers},
+    in_play::CardId,
     load_cards,
-    player::Player,
+    player::AllPlayers,
+    prepare_db,
     targets::{Comparison, Restriction},
     types::Type,
 };
@@ -17,37 +16,38 @@ use crate::{
 #[test]
 fn etb() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
+    let db = prepare_db()?;
 
-    let player = Player::new_ref(Deck::empty());
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let bear = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
-    player.borrow_mut().deck.place_on_top(bear);
+    let bear = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    all_players[player].deck.place_on_top(&db, bear)?;
 
-    let spell = all_cards.add(&cards, player.clone(), "Annul");
-    player.borrow_mut().deck.place_on_top(spell);
+    let spell = CardId::upload(&db, &cards, player, "Annul")?;
+    all_players[player].deck.place_on_top(&db, spell)?;
 
-    let elesh = all_cards.add(&cards, player.clone(), "Elesh Norn, Grand Cenobite");
-    player.borrow_mut().deck.place_on_top(elesh);
+    let elesh = CardId::upload(&db, &cards, player, "Elesh Norn, Grand Cenobite")?;
+    all_players[player].deck.place_on_top(&db, elesh)?;
 
-    let recruiter = all_cards.add(&cards, player.clone(), "Recruiter of the Guard");
-    let results = battlefield.add(&mut all_cards, &mut modifiers, recruiter, vec![]);
+    let recruiter = CardId::upload(&db, &cards, player, "Recruiter of the Guard")?;
+    recruiter.move_to_hand(&db)?;
+    let results = Battlefield::add(&db, recruiter, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::TutorLibrary {
             source: recruiter,
             destination: Destination::Hand,
-            targets: HashSet::from([bear]),
+            targets: vec![bear],
             reveal: true,
-            restrictions: HashSet::from([
-                Restriction::Toughness(Comparison::LessThanOrEqual(2)),
+            restrictions: vec![
                 Restriction::OfType {
-                    types: enum_set!(Type::Creature),
-                    subtypes: enum_set!()
-                }
-            ])
+                    types: HashSet::from([Type::Creature]),
+                    subtypes: Default::default(),
+                },
+                Restriction::Toughness(Comparison::LessThanOrEqual(2)),
+            ]
         }]
     );
 

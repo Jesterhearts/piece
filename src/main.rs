@@ -4,8 +4,10 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
 use include_dir::{include_dir, Dir};
+use indoc::indoc;
+use rusqlite::Connection;
 
-use crate::card::Card;
+use crate::{battlefield::Battlefield, card::Card, in_play::CardId, player::AllPlayers};
 
 pub mod abilities;
 pub mod battlefield;
@@ -55,9 +57,203 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     Ok(cards)
 }
 
+fn prepare_db() -> anyhow::Result<Connection> {
+    let db = Connection::open_in_memory()?;
+
+    db.execute(
+        indoc! {"
+            CREATE TABLE auras (
+                auraid INTEGER PRIMARY KEY,
+                modifiers JSON,
+
+                restrictions JSON
+            );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! { "
+        CREATE TABLE cards (
+            cardid INTEGER PRIMARY KEY,
+            aura INTEGER,
+
+            marked_damage INTEGER NOT NULL,
+
+            cloning INTEGER,
+
+            location JSON NOT NULL,
+            location_seq INTEGER,
+
+            name TEXT NOT NULL,
+
+            owner INTEGER NOT NULL,
+            controller INTEGER NOT NULL,
+
+            tapped BOOLEAN NOT NULL,
+            manifested BOOLEAN NOT NULL,
+            face_down BOOLEAN NOT NULL,
+            token BOOLEAN NOT NULL,
+
+            casting_cost JSON,
+            cannot_be_countered BOOLEAN NOT NULL,
+            split_second BOOLEAN NOT NULL,
+
+            effects JSON,
+
+            power INTEGER,
+            toughness INTEGER,
+
+            types JSON,
+            subtypes JSON,
+            
+            colors JSON,
+
+            etb JSON,
+            abilities JSON,
+            activated_abilities JSON,
+            triggered_abilities JSON,
+
+            vigilance BOOLEAN,
+            flying BOOLEAN,
+            flash BOOLEAN,
+            hexproof BOOLEAN,
+            shroud BOOLEAN,
+
+            targets JSON,
+            mode INTEGER,
+            
+            FOREIGN KEY(aura) REFERENCES auras(auraid)
+        );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! { "
+        CREATE TABLE modifiers (
+            modifierid INTEGER PRIMARY KEY,
+            source INTEGER,
+
+            is_temporary BOOLEAN NOT NULL,
+            
+            type_modifiers JSON,
+            subtype_modifiers JSON,
+            remove_all_subtypes BOOLEAN,
+            
+            color_modifiers JSON,
+            
+            ability_modifiers JSON,
+            
+            base_power_modifier INTEGER,
+            base_toughness_modifier INTEGER,
+            
+            add_power_modifier INTEGER,
+            add_toughness_modifier INTEGER,
+
+            activated_ability_modifier JSON,
+            static_ability_modifier JSON,
+            triggered_ability_modifier JSON,
+            
+            add_vigilance BOOLEAN,
+            remove_vigilance BOOLEAN,
+
+            add_flying BOOLEAN,
+            remove_flying BOOLEAN,
+
+            add_flash BOOLEAN,
+            remove_flash BOOLEAN,
+
+            add_hexproof BOOLEAN,
+            remove_hexproof BOOLEAN,
+
+            add_shroud BOOLEAN,
+            remove_shroud BOOLEAN,
+            
+            controller JSON NOT NULL,
+            duration JSON NOT NULL,
+            restrictions JSON NOT NULL,
+
+            global BOOLEAN NOT NULL,
+            entire_battlefield BOOLEAN NOT NULL,
+
+            active BOOLEAN NOT NULL,
+            active_seq INTEGER,
+
+            modifying JSON,
+
+            FOREIGN KEY(source) REFERENCES cards(cardid)
+        );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! {"
+            CREATE TABLE triggers (
+                triggerid INTEGER PRIMARY KEY,
+                listener INTEGER NOT NULL,
+
+                source JSON NOT NULL,
+                location_from JSON NOT NULL,
+                for_types JSON NOT NULL,
+
+                effects JSON NOT NULL,
+
+                active BOOLEAN NOT NULL,
+
+                in_stack BOOLEAN NOT NULL,
+                stack_seq INTEGER,
+
+                targets JSON,
+                mode INTEGER,
+
+                FOREIGN KEY(listener) REFERENCES cards(cardid)
+            );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! {"
+            CREATE TABLE abilities (
+                abilityid INTEGER PRIMARY KEY,
+                source INTEGER,
+
+                cost JSON NOT NULL,
+                effects JSON NOT NULL,
+
+                apply_to_self BOOLEAN NOT NULL,
+
+                in_stack BOOLEAN NOT NULL,
+                stack_seq INTEGER,
+
+                targets JSON,
+                mode INTEGER,
+
+                FOREIGN KEY(source) REFERENCES cards(cardid)
+            )
+        "},
+        (),
+    )?;
+
+    Ok(db)
+}
+
 fn main() -> anyhow::Result<()> {
     let cards = load_cards()?;
     dbg!(&cards);
+
+    let db = prepare_db()?;
+
+    let mut all_players = AllPlayers::default();
+
+    let player = all_players.new_player();
+
+    let card1 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    card1.mark_damage(&db, 1)?;
+    dbg!(card1.marked_damage(&db))?;
+    dbg!(Battlefield::end_turn(&db))?;
+    dbg!(card1.marked_damage(&db))?;
+    card1.move_to_battlefield(&db)?;
+    dbg!(Battlefield::end_turn(&db))?;
+    dbg!(card1.marked_damage(&db))?;
 
     Ok(())
 }

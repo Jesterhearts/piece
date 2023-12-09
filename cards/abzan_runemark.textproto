@@ -13,21 +13,17 @@ oracle_text:  "Enchant creature\n"
 enchant {
   modifiers { 
     modifier { 
-      add_power_toughness {
-        power: 2
-        toughness: 2
-      }
+      add_power: 2
+      add_toughness: 2
     }
     controller { any {} }
     duration { until_source_leaves_battlefield {} }
-    restrictions { single_target {} }
   }
   modifiers {
-    modifier { vigilance { } }
+    modifier { add_vigilance: true }
     controller { any {} }
     duration { until_source_leaves_battlefield {} }
-    restrictions { single_target {} }
-        restrictions { controller_controls_black_or_green {} }
+    restrictions { controller_controls_black_or_green {} }
   }
   restrictions { of_type { types { creature {} } } }
 }

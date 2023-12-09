@@ -9,29 +9,18 @@ import "effects.proto";
 import "targets.proto";
 import "types.proto";
 
-message CastingModifier {
-  message CannotBeCountered {
-  }
-  message SplitSecond {
-  }
-
-  oneof modifier {
-    CannotBeCountered cannot_be_countered = 1;
-    SplitSecond split_second = 2;
-  }
-}
-
 message Card {
   string name = 1;
   repeated types.Type types = 2;
   repeated types.Subtype subtypes = 3;
 
   cost.CastingCost cost = 4;
-  repeated CastingModifier casting_modifiers = 5;
-  repeated color.Color colors = 6;
+  bool split_second = 5;
+  bool cannot_be_countered = 6;
 
-  string oracle_text = 7;
-  string flavor_text = 8;
+  repeated color.Color colors = 7;
+
+  string oracle_text = 8;
 
   optional abilities.Enchant enchant = 9;
 
@@ -39,12 +28,15 @@ message Card {
 
   repeated abilities.ETBAbility etb_abilities = 11;
   repeated abilities.StaticAbility static_abilities = 12;
-  repeated abilities.ActivatedAbility activated_abilities = 13;
+  repeated effects.ActivatedAbility activated_abilities = 13;
   repeated abilities.TriggeredAbility triggered_abilities = 14;
 
   optional int32 power = 15;
   optional int32 toughness = 16;
 
-  bool hexproof = 17;
-  bool shroud = 18;
+  bool vigilance = 17;
+  bool flying = 18;
+  bool flash = 19;
+  bool hexproof = 20;
+  bool shroud = 21;
 }
