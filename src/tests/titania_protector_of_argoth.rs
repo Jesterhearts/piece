@@ -25,7 +25,7 @@ fn etb() -> anyhow::Result<()> {
     land.move_to_graveyard(&db)?;
 
     let titania = CardId::upload(&db, &cards, player, "Titania, Protector of Argoth")?;
-    let results = Battlefield::add(&db, titania, vec![])?;
+    let results = Battlefield::add_from_stack(&db, titania, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
@@ -55,7 +55,7 @@ fn graveyard_trigger() -> anyhow::Result<()> {
     land.move_to_battlefield(&db)?;
 
     let titania = CardId::upload(&db, &cards, player, "Titania, Protector of Argoth")?;
-    let results = Battlefield::add(&db, titania, vec![])?;
+    let results = Battlefield::add_from_stack(&db, titania, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToBattlefield {

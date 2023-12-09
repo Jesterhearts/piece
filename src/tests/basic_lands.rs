@@ -23,7 +23,7 @@ fn plains() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add(&db, card, vec![])?;
+    Battlefield::add_from_stack(&db, card, vec![])?;
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
     Battlefield::maybe_resolve(&db, &mut all_players, results)?;
 
@@ -49,7 +49,7 @@ fn island() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add(&db, card, vec![])?;
+    Battlefield::add_from_stack(&db, card, vec![])?;
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
     Battlefield::maybe_resolve(&db, &mut all_players, results)?;
 
@@ -73,7 +73,7 @@ fn swamp() -> anyhow::Result<()> {
         [*AbilityId::land_abilities(&db).get(&Subtype::Swamp).unwrap()]
     );
 
-    Battlefield::add(&db, card, vec![])?;
+    Battlefield::add_from_stack(&db, card, vec![])?;
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
     Battlefield::maybe_resolve(&db, &mut all_players, results)?;
 
@@ -99,7 +99,7 @@ fn mountain() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add(&db, card, vec![])?;
+    Battlefield::add_from_stack(&db, card, vec![])?;
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
     Battlefield::maybe_resolve(&db, &mut all_players, results)?;
 
@@ -125,7 +125,7 @@ fn forest() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add(&db, card, vec![])?;
+    Battlefield::add_from_stack(&db, card, vec![])?;
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
     Battlefield::maybe_resolve(&db, &mut all_players, results)?;
 

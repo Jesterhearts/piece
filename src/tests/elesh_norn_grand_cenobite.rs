@@ -14,12 +14,12 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let elesh = CardId::upload(&db, &cards, player, "Elesh Norn, Grand Cenobite")?;
-    let results = Battlefield::add(&db, elesh, vec![])?;
+    let results = Battlefield::add_from_stack(&db, elesh, vec![])?;
     let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
     let bear = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add(&db, bear, vec![])?;
+    let results = Battlefield::add_from_stack(&db, bear, vec![])?;
     assert_eq!(results, []);
 
     assert_eq!(elesh.power(&db)?, Some(4));

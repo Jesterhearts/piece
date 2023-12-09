@@ -22,7 +22,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
-    let results = Battlefield::add(&db, card, vec![])?;
+    let results = Battlefield::add_from_stack(&db, card, vec![])?;
     assert_eq!(results, []);
 
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
@@ -113,7 +113,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
     let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    Battlefield::add(&db, card1, vec![])?;
+    Battlefield::add_from_stack(&db, card1, vec![])?;
 
     card2.move_to_stack(&db, HashSet::default())?;
     counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
@@ -146,7 +146,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let card2 = CardId::upload(&db, &cards, player2, "Alpine Grizzly")?;
     let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    Battlefield::add(&db, card1, vec![])?;
+    Battlefield::add_from_stack(&db, card1, vec![])?;
 
     card2.move_to_stack(&db, HashSet::default())?;
     counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;

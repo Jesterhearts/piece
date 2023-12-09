@@ -25,9 +25,9 @@ fn resolves_shift() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
     let bear3 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
 
-    let results = Battlefield::add(&db, bear1, vec![])?;
+    let results = Battlefield::add_from_stack(&db, bear1, vec![])?;
     assert_eq!(results, []);
-    let results = Battlefield::add(&db, bear2, vec![])?;
+    let results = Battlefield::add_from_stack(&db, bear2, vec![])?;
     assert_eq!(results, []);
 
     all_players[player].deck.place_on_top(&db, bear3)?;

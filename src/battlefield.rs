@@ -158,7 +158,7 @@ impl Battlefield {
         Ok(results)
     }
 
-    pub fn add(
+    pub fn add_from_stack(
         db: &Connection,
         source_card_id: CardId,
         targets: Vec<CardId>,
@@ -258,6 +258,15 @@ impl Battlefield {
         }
 
         source_card_id.move_to_battlefield(db)?;
+
+        for trigger in TriggerId::active_triggers_of_type(db, TriggerSource::EntersTheBattlefield)?
+        {
+            if matches!(trigger.location_from(db)?, triggers::Location::Anywhere)
+                && source_card_id.types_intersect(db, &trigger.for_types(db)?)?
+            {
+                results.push(UnresolvedActionResult::AddTriggerToStack(trigger))
+            }
+        }
 
         Ok(results)
     }
@@ -634,7 +643,7 @@ impl Battlefield {
             ActionResult::ReturnFromGraveyardToBattlefield { targets } => {
                 let mut pending = vec![];
                 for target in targets {
-                    pending.extend(Self::add(db, target, vec![])?);
+                    pending.extend(Self::add_from_stack(db, target, vec![])?);
                 }
 
                 return Ok(pending);

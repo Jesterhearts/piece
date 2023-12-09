@@ -1,0 +1,35 @@
+name: "Mace of the Valiant"
+cost {
+  mana_costs { generic { count: 2} }
+  mana_costs { white {} }
+}
+oracle_text:  "Equippd creature gets +1/+1 for each"
+              "charge counter on Mace of the Valiant"
+              "and has vigilance.\n"
+              "Whenever a creature enters the"
+              "battlefield under your control, put a"
+              "charge counter on Mace of the Valiant."
+activated_abilities {
+  cost { mana_costs { generic { count: 3 } } }
+  effects {
+    equip {
+      modifiers {
+        add_dynamic_power_toughness {
+          number_of_counters_on_this {
+            counter { charge {} }
+          }
+        }
+      }
+    }
+  }
+}
+triggered_abilities {
+  trigger {
+    source { enters_the_battlefield {} }
+    from { anywhere{} }
+    types{ creature{} }
+  }
+  effects {
+    gain_counter { counter { charge {} } }
+  }
+}

@@ -28,7 +28,7 @@ fn etb() -> anyhow::Result<()> {
     all_players[player].deck.place_on_top(&db, nonland)?;
 
     let glowspore = CardId::upload(&db, &cards, player, "Glowspore Shaman")?;
-    let results = Battlefield::add(&db, glowspore, vec![])?;
+    let results = Battlefield::add_from_stack(&db, glowspore, vec![])?;
     assert_eq!(
         results,
         [

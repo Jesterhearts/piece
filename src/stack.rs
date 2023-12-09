@@ -689,7 +689,7 @@ impl Stack {
         for result in results {
             match result {
                 StackResult::AddToBattlefield(card) => {
-                    pending.extend(Battlefield::add(db, card, vec![])?);
+                    pending.extend(Battlefield::add_from_stack(db, card, vec![])?);
                 }
                 StackResult::ApplyToBattlefield(modifier) => {
                     modifier.activate(db)?;
@@ -729,7 +729,7 @@ impl Stack {
                 }
                 StackResult::CreateToken { source, token } => {
                     let id = CardId::upload_token(db, source.controller(db)?, token)?;
-                    pending.extend(Battlefield::add(db, id, vec![])?);
+                    pending.extend(Battlefield::add_from_stack(db, id, vec![])?);
                 }
                 StackResult::DamageTarget { quantity, target } => {
                     target.mark_damage(db, quantity)?;

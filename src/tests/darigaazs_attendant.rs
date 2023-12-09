@@ -18,7 +18,7 @@ fn sacrifice_draw_gain_mana() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let attendant = CardId::upload(&db, &cards, player, "Darigaaz's Attendant")?;
-    let results = Battlefield::add(&db, attendant, vec![])?;
+    let results = Battlefield::add_from_stack(&db, attendant, vec![])?;
     assert_eq!(results, []);
 
     let results = Battlefield::activate_ability(&db, &mut all_players, attendant, 0)?;

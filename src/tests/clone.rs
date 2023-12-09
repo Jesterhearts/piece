@@ -17,11 +17,11 @@ fn etb_clones() -> anyhow::Result<()> {
     let player = all_players.new_player();
 
     let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add(&db, creature, vec![])?;
+    let results = Battlefield::add_from_stack(&db, creature, vec![])?;
     assert_eq!(results, []);
 
     let clone = CardId::upload(&db, &cards, player, "Clone")?;
-    let results = Battlefield::add(&db, clone, vec![])?;
+    let results = Battlefield::add_from_stack(&db, clone, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::CloneCreatureNonTargeting {
@@ -61,7 +61,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let player = all_players.new_player();
 
     let clone = CardId::upload(&db, &cards, player, "Clone")?;
-    let results = Battlefield::add(&db, clone, vec![])?;
+    let results = Battlefield::add_from_stack(&db, clone, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::CloneCreatureNonTargeting {

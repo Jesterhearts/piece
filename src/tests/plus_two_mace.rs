@@ -21,10 +21,10 @@ fn equipment_works() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let equipment = CardId::upload(&db, &cards, player, "+2 Mace")?;
-    let _ = Battlefield::add(&db, equipment, vec![])?;
+    let _ = Battlefield::add_from_stack(&db, equipment, vec![])?;
 
     let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let _ = Battlefield::add(&db, creature, vec![])?;
+    let _ = Battlefield::add_from_stack(&db, creature, vec![])?;
 
     let results = Battlefield::activate_ability(&db, &mut all_players, equipment, 0)?;
     assert_eq!(
@@ -56,7 +56,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db)?, Some(4));
 
     let creature2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let _ = Battlefield::add(&db, creature2, vec![])?;
+    let _ = Battlefield::add_from_stack(&db, creature2, vec![])?;
 
     assert_eq!(creature2.power(&db)?, Some(4));
     assert_eq!(creature2.toughness(&db)?, Some(2));

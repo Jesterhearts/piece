@@ -33,7 +33,7 @@ fn etb() -> anyhow::Result<()> {
 
     let recruiter = CardId::upload(&db, &cards, player, "Recruiter of the Guard")?;
     recruiter.move_to_hand(&db)?;
-    let results = Battlefield::add(&db, recruiter, vec![])?;
+    let results = Battlefield::add_from_stack(&db, recruiter, vec![])?;
     assert_eq!(
         results,
         [UnresolvedActionResult::TutorLibrary {

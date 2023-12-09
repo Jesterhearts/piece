@@ -21,11 +21,11 @@ fn adds_land_types() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let land = CardId::upload(&db, &cards, player, "Forest")?;
-    let results = Battlefield::add(&db, land, vec![])?;
+    let results = Battlefield::add_from_stack(&db, land, vec![])?;
     assert_eq!(results, []);
 
     let card = CardId::upload(&db, &cards, player, "Dryad of the Ilysian Grove")?;
-    let results = Battlefield::add(&db, card, vec![])?;
+    let results = Battlefield::add_from_stack(&db, card, vec![])?;
     assert!(matches!(
         results.as_slice(),
         [UnresolvedActionResult::AddModifier { .. }]

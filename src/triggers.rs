@@ -37,6 +37,7 @@ impl From<&protogen::triggers::location::Location> for Location {
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerSource {
     PutIntoGraveyard,
+    EntersTheBattlefield,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,6 +80,9 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
         match value {
             protogen::triggers::trigger_source::Trigger::PutIntoGraveyard(_) => {
                 Self::PutIntoGraveyard
+            }
+            protogen::triggers::trigger_source::Trigger::EntersTheBattlefield(_) => {
+                Self::EntersTheBattlefield
             }
         }
     }

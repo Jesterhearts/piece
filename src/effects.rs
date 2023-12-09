@@ -483,6 +483,7 @@ impl TryFrom<&protogen::effects::triggered_effect::Effect> for TriggeredEffect {
             protogen::effects::triggered_effect::Effect::CreateToken(token) => {
                 Ok(Self::CreateToken(token.try_into()?))
             }
+            protogen::effects::triggered_effect::Effect::GainCounter(_) => todo!(),
         }
     }
 }

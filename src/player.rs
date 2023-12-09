@@ -304,7 +304,7 @@ impl Player {
     pub fn manifest(&mut self, db: &Connection) -> anyhow::Result<Vec<UnresolvedActionResult>> {
         if let Some(manifested) = self.deck.draw() {
             manifested.manifest(db)?;
-            Battlefield::add(db, manifested, vec![])
+            Battlefield::add_from_stack(db, manifested, vec![])
         } else {
             Ok(vec![])
         }

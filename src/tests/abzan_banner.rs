@@ -18,7 +18,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&db, &cards, player, "Abzan Banner")?;
-    let results = Battlefield::add(&db, card, vec![])?;
+    let results = Battlefield::add_from_stack(&db, card, vec![])?;
     assert_eq!(results, []);
 
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 1)?;
@@ -55,7 +55,7 @@ fn add_mana() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&db, &cards, player, "Abzan Banner")?;
-    let results = Battlefield::add(&db, card, vec![])?;
+    let results = Battlefield::add_from_stack(&db, card, vec![])?;
     assert_eq!(results, []);
 
     let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;

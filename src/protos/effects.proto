@@ -5,6 +5,7 @@ package effects;
 import "color.proto";
 import "controller.proto";
 import "cost.proto";
+import "counters.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
@@ -89,24 +90,36 @@ message ExtraLandsPerTurn {
   int32 count = 1;
 }
 
+message DynamicPowerToughness {
+  message NumberOfCountersOnThis {
+    counters.Counter counter = 1;
+  }
+
+  oneof source {
+    NumberOfCountersOnThis number_of_counters_on_this = 2;
+  }
+}
+
 message ModifyBattlefield {
   optional int32 base_power = 1;
   optional int32 base_toughness = 2;
 
-  repeated types.Type add_types = 3;
-  repeated types.Subtype add_subtypes = 4;
+  optional DynamicPowerToughness add_dynamic_power_toughness = 3;
 
-  optional int32 add_power = 5;
-  optional int32 add_toughness = 6;
+  repeated types.Type add_types = 4;
+  repeated types.Subtype add_subtypes = 5;
 
-  optional ActivatedAbility add_ability = 7;
+  optional int32 add_power = 6;
+  optional int32 add_toughness = 7;
 
-  bool remove_all_subtypes = 8;
+  optional ActivatedAbility add_ability = 8;
 
-  bool entire_battlefield = 9;
-  bool global = 10;
+  bool remove_all_subtypes = 9;
 
-  bool add_vigilance = 11;
+  bool entire_battlefield = 10;
+  bool global = 11;
+
+  bool add_vigilance = 12;
 }
 
 message BattlefieldModifier {
@@ -152,17 +165,22 @@ message DealDamage {
 
 message ActivatedAbilityEffect {
   oneof effect {
-    effects.BattlefieldModifier battlefield_modifier = 1;
-    effects.ControllerDrawCards controller_draw_cards = 2;
-    effects.CounterSpell counter_spell = 3;
-    effects.Equip equip = 4;
-    effects.GainMana gain_mana = 5;
+    BattlefieldModifier battlefield_modifier = 1;
+    ControllerDrawCards controller_draw_cards = 2;
+    CounterSpell counter_spell = 3;
+    Equip equip = 4;
+    GainMana gain_mana = 5;
   }
+}
+
+message GainCounter {
+  counters.Counter counter = 1;
 }
 
 message TriggeredEffect {  
   oneof effect {
     CreateToken create_token = 1;
+    GainCounter gain_counter = 2;
   }
 }
 

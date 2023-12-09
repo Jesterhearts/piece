@@ -17,11 +17,11 @@ fn aura_works() -> anyhow::Result<()> {
     let player = all_players.new_player();
 
     let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add(&db, creature, vec![])?;
+    let results = Battlefield::add_from_stack(&db, creature, vec![])?;
     assert_eq!(results, []);
 
     let aura = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
-    let results = Battlefield::add(&db, aura, vec![creature])?;
+    let results = Battlefield::add_from_stack(&db, aura, vec![creature])?;
     assert_eq!(results, []);
 
     assert_eq!(creature.power(&db)?, Some(6));
@@ -29,7 +29,7 @@ fn aura_works() -> anyhow::Result<()> {
     assert!(creature.vigilance(&db)?);
 
     let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add(&db, card2, vec![])?;
+    let results = Battlefield::add_from_stack(&db, card2, vec![])?;
     assert_eq!(results, []);
 
     assert_eq!(card2.power(&db)?, Some(4));
@@ -56,11 +56,11 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     let player = all_players.new_player();
 
     let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add(&db, creature, vec![])?;
+    let results = Battlefield::add_from_stack(&db, creature, vec![])?;
     assert_eq!(results, []);
 
     let aura = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
-    let results = Battlefield::add(&db, aura, vec![creature])?;
+    let results = Battlefield::add_from_stack(&db, aura, vec![creature])?;
     assert_eq!(results, []);
 
     assert_eq!(creature.power(&db)?, Some(6));
@@ -94,10 +94,10 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     let player = all_players.new_player();
 
     let creature = CardId::upload(&db, &cards, player, "Recruiter of the Guard")?;
-    let _ = Battlefield::add(&db, creature, vec![])?;
+    let _ = Battlefield::add_from_stack(&db, creature, vec![])?;
 
     let aura = CardId::upload(&db, &cards, player, "Abzan Runemark")?;
-    let results = Battlefield::add(&db, aura, vec![creature])?;
+    let results = Battlefield::add_from_stack(&db, aura, vec![creature])?;
     assert_eq!(results, []);
 
     assert_eq!(creature.power(&db)?, Some(3));
@@ -105,7 +105,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     assert!(!creature.vigilance(&db)?);
 
     let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add(&db, card2, vec![])?;
+    let results = Battlefield::add_from_stack(&db, card2, vec![])?;
     assert_eq!(results, []);
 
     assert_eq!(card2.power(&db)?, Some(4));

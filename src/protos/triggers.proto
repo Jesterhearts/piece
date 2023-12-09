@@ -22,9 +22,12 @@ message Location {
 message TriggerSource  {
   message PutIntoGraveyard {
   }
+  message EntersTheBattlefield {
+  }
 
   oneof trigger {
     PutIntoGraveyard put_into_graveyard = 1;
+    EntersTheBattlefield enters_the_battlefield = 2;
   }
 }
 

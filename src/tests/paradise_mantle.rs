@@ -21,10 +21,10 @@ pub fn adds_ability() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let equipment = CardId::upload(&db, &cards, player, "Paradise Mantle")?;
-    let _ = Battlefield::add(&db, equipment, vec![])?;
+    let _ = Battlefield::add_from_stack(&db, equipment, vec![])?;
 
     let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let _ = Battlefield::add(&db, creature, vec![])?;
+    let _ = Battlefield::add_from_stack(&db, creature, vec![])?;
 
     assert_eq!(creature.activated_abilities(&db)?, []);
 
