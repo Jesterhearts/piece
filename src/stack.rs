@@ -4,14 +4,13 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    abilities::ActivatedAbilityEffect,
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
-    effects::{spell, BattlefieldModifier, EffectDuration, GainMana, Token, TriggeredEffect},
+    effects::{BattlefieldModifier, Counter, Effect, EffectDuration, GainMana, Token},
     in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
     mana::Mana,
     player::{AllPlayers, PlayerId},
-    targets::Restriction,
+    targets::{Restriction, SpellTarget},
     types::Type,
 };
 
@@ -48,6 +47,10 @@ pub enum StackResult {
     CreateToken {
         source: CardId,
         token: Token,
+    },
+    AddCounter {
+        source: CardId,
+        counter: Counter,
     },
 }
 
@@ -316,367 +319,329 @@ impl Stack {
 
         let in_stack = Self::in_stack(db)?;
 
-        let mut result = vec![];
+        let mut results = vec![];
 
-        match next.ty {
-            Entry::Card(resolving_card) => {
-                for effect in resolving_card.effects(db)? {
-                    let effect = if effect.threshold.is_some()
-                        && Battlefield::number_of_cards_in_graveyard(
-                            db,
-                            resolving_card.controller(db)?,
-                        )? >= 7
-                    {
-                        effect.threshold.unwrap()
-                    } else {
-                        effect.effect
-                    };
+        let (apply_to_self, effects, controller, resolving_card, source) = match next.ty {
+            Entry::Card(card) => (
+                false,
+                card.effects(db)?,
+                card.controller(db)?,
+                Some(card),
+                card,
+            ),
+            Entry::Ability(ability) => (
+                ability.apply_to_self(db)?,
+                ability.effects(db)?,
+                ability.controller(db)?,
+                None,
+                ability.source(db)?,
+            ),
+            Entry::Trigger(trigger) => {
+                let listener = trigger.listener(db)?;
+                (
+                    false,
+                    trigger.effects(db)?,
+                    listener.controller(db)?,
+                    None,
+                    listener,
+                )
+            }
+        };
 
-                    match effect {
-                        spell::Effect::CounterSpell {
-                            target: restrictions,
-                        } => {
-                            if next.targets.is_empty() {
-                                return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
-                            }
-
-                            for target in next.targets.iter() {
-                                match target {
-                                    ActiveTarget::Stack { id } => {
-                                        let Some(maybe_target) = in_stack.get(id) else {
-                                            // Spell has left the stack already
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        };
-
-                                        match maybe_target {
-                                            Entry::Card(maybe_target) => {
-                                                if !maybe_target.can_be_countered(
-                                                    db,
-                                                    resolving_card.controller(db)?,
-                                                    &restrictions,
-                                                )? {
-                                                    // Spell is no longer a valid target.
-                                                    return Ok(vec![
-                                                        StackResult::StackToGraveyard(
-                                                            resolving_card,
-                                                        ),
-                                                    ]);
-                                                }
-                                            }
-                                            Entry::Ability(_) => {
-                                                // Vanilla counterspells can't counter activated abilities.
-                                                return Ok(vec![StackResult::StackToGraveyard(
-                                                    resolving_card,
-                                                )]);
-                                            }
-                                            Entry::Trigger(_) => {
-                                                // Vanilla counterspells can't counter triggered abilities.
-                                                return Ok(vec![StackResult::StackToGraveyard(
-                                                    resolving_card,
-                                                )]);
-                                            }
-                                        }
-
-                                        // If we reach here, we know the spell can be countered.
-                                        result.push(StackResult::SpellCountered {
-                                            id: *maybe_target,
-                                        });
-                                    }
-                                    ActiveTarget::Battlefield { .. } => {
-                                        // Cards on the battlefield aren't valid targets of counterspells
-                                        return Ok(vec![StackResult::StackToGraveyard(
-                                            resolving_card,
-                                        )]);
-                                    }
-                                }
-                            }
-                        }
-                        spell::Effect::GainMana { mana } => {
-                            if !gain_mana(
-                                resolving_card.controller(db)?,
-                                &mana,
-                                next.mode,
-                                &mut result,
-                            ) {
-                                return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
-                            }
-                        }
-                        spell::Effect::BattlefieldModifier(modifier) => {
-                            result.push(StackResult::ApplyToBattlefield(
-                                ModifierId::upload_single_modifier(
-                                    db,
-                                    resolving_card,
-                                    &modifier,
-                                    true,
-                                )?,
-                            ));
-                        }
-                        spell::Effect::ControllerDrawCards(count) => {
-                            result.push(StackResult::DrawCards {
-                                player: resolving_card.controller(db)?,
-                                count,
-                            });
-                        }
-                        spell::Effect::ModifyCreature(modifier) => {
-                            let modifier = ModifierId::upload_single_modifier(
-                                db,
-                                resolving_card,
-                                &modifier,
-                                true,
-                            )?;
-
-                            let mut targets = vec![];
-                            for target in next.targets.iter() {
-                                match target {
-                                    ActiveTarget::Stack { .. } => {
-                                        // Stack is not a valid target.
-                                        return Ok(vec![StackResult::StackToGraveyard(
-                                            resolving_card,
-                                        )]);
-                                    }
-                                    ActiveTarget::Battlefield { id } => {
-                                        targets.push(id);
-                                    }
-                                }
-                            }
-
-                            for target in targets {
-                                target.apply_modifier(db, modifier)?;
-                            }
-                        }
-                        spell::Effect::ExileTargetCreature => {
-                            for target in next.targets.iter() {
-                                match target {
-                                    ActiveTarget::Stack { .. } => {
-                                        return Ok(vec![StackResult::StackToGraveyard(
-                                            resolving_card,
-                                        )]);
-                                    }
-                                    ActiveTarget::Battlefield { id } => {
-                                        if !id.is_in_location(db, Location::Battlefield)? {
-                                            // Permanent no longer on battlefield.
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        if !id
-                                            .can_be_targeted(db, resolving_card.controller(db)?)?
-                                        {
-                                            // Card is no longer a valid target.
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        if !id
-                                            .types_intersect(db, &HashSet::from([Type::Creature]))?
-                                        {
-                                            // Target isn't a creature
-
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        result.push(StackResult::ExileTarget(*id));
-                                    }
-                                }
-                            }
-                        }
-                        spell::Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                            for target in next.targets.iter() {
-                                match target {
-                                    ActiveTarget::Stack { .. } => {
-                                        return Ok(vec![StackResult::StackToGraveyard(
-                                            resolving_card,
-                                        )]);
-                                    }
-                                    ActiveTarget::Battlefield { id } => {
-                                        if !id.is_in_location(db, Location::Battlefield)? {
-                                            // Permanent no longer on battlefield.
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        if !id
-                                            .can_be_targeted(db, resolving_card.controller(db)?)?
-                                        {
-                                            // Card is no longer a valid target.
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        if !id
-                                            .types_intersect(db, &HashSet::from([Type::Creature]))?
-                                        {
-                                            // Target isn't a creature
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        result.push(StackResult::ExileTarget(*id));
-                                        result.push(StackResult::ManifestTopOfLibrary(
-                                            id.controller(db)?,
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                        spell::Effect::DealDamage(dmg) => {
-                            for target in next.targets.iter() {
-                                match target {
-                                    ActiveTarget::Stack { .. } => {
-                                        return Ok(vec![StackResult::StackToGraveyard(
-                                            resolving_card,
-                                        )]);
-                                    }
-                                    ActiveTarget::Battlefield { id } => {
-                                        if !id.is_in_location(db, Location::Battlefield)? {
-                                            // Permanent no longer on battlefield.
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        if !id
-                                            .can_be_targeted(db, resolving_card.controller(db)?)?
-                                        {
-                                            // Card is no longer a valid target.
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        if !id.passes_restrictions(
-                                            db,
-                                            resolving_card,
-                                            resolving_card.controller(db)?,
-                                            Controller::Any,
-                                            &dmg.restrictions,
-                                        )? {
-                                            return Ok(vec![StackResult::StackToGraveyard(
-                                                resolving_card,
-                                            )]);
-                                        }
-
-                                        result.push(StackResult::DamageTarget {
-                                            quantity: dmg.quantity,
-                                            target: *id,
-                                        });
-                                    }
-                                }
-                            }
+        for effect in effects {
+            match effect.into_effect(db, controller)? {
+                Effect::CounterSpell {
+                    target: restrictions,
+                } => {
+                    if !counter_spell(
+                        db,
+                        &in_stack,
+                        controller,
+                        &next.targets,
+                        restrictions,
+                        &mut results,
+                    )? {
+                        if let Some(resolving_card) = resolving_card {
+                            return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                        } else {
+                            return Ok(vec![]);
                         }
                     }
                 }
-
-                if resolving_card.is_permanent(db)? {
-                    result.push(StackResult::AddToBattlefield(resolving_card));
-                } else {
-                    result.push(StackResult::StackToGraveyard(resolving_card));
+                Effect::GainMana { mana } => {
+                    if !gain_mana(controller, &mana, next.mode, &mut results) {
+                        if let Some(resolving_card) = resolving_card {
+                            return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                        } else {
+                            return Ok(vec![]);
+                        }
+                    }
                 }
+                Effect::BattlefieldModifier(modifier) => {
+                    if apply_to_self {
+                        let modifier =
+                            ModifierId::upload_single_modifier(db, source, &modifier, true)?;
+                        results.push(StackResult::ApplyModifierToTarget {
+                            modifier,
+                            target: source,
+                        });
+                    } else {
+                        results.push(StackResult::ApplyToBattlefield(
+                            ModifierId::upload_single_modifier(db, source, &modifier, true)?,
+                        ));
+                    }
+                }
+                Effect::ControllerDrawCards(count) => {
+                    results.push(StackResult::DrawCards {
+                        player: controller,
+                        count,
+                    });
+                }
+                Effect::ModifyCreature(modifier) => {
+                    let modifier = ModifierId::upload_single_modifier(db, source, &modifier, true)?;
 
-                Ok(result)
-            }
-            Entry::Ability(ability) => {
-                for effect in ability.effects(db)? {
-                    match effect {
-                        ActivatedAbilityEffect::CounterSpell { target: _ } => todo!(),
-                        ActivatedAbilityEffect::GainMana { mana } => {
-                            if !gain_mana(ability.controller(db)?, &mana, next.mode, &mut result) {
-                                return Ok(vec![]);
-                            }
-                        }
-                        ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
-                            let modifier = ModifierId::upload_single_modifier(
-                                db,
-                                ability.source(db)?,
-                                &modifier,
-                                true,
-                            )?;
-                            if ability.apply_to_self(db)? {
-                                result.push(StackResult::ApplyModifierToTarget {
-                                    modifier,
-                                    target: ability.source(db)?,
-                                });
-                            } else {
-                                result.push(StackResult::ApplyToBattlefield(modifier));
-                            }
-                        }
-                        ActivatedAbilityEffect::ControllerDrawCards(count) => {
-                            result.push(StackResult::DrawCards {
-                                player: ability.controller(db)?,
-                                count,
-                            });
-                        }
-                        ActivatedAbilityEffect::Equip(modifiers) => {
-                            if next.targets.is_empty() {
-                                // Effect fizzles due to lack of target.
-                                return Ok(vec![]);
-                            }
-
-                            assert_eq!(next.targets.len(), 1);
-
-                            match next.targets.iter().next().unwrap() {
-                                ActiveTarget::Stack { .. } => {
-                                    // Can't equip things on the stack
+                    let mut targets = vec![];
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                // Stack is not a valid target.
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
                                     return Ok(vec![]);
                                 }
-                                ActiveTarget::Battlefield { id } => {
-                                    if !id.can_be_targeted(db, ability.controller(db)?)? {
-                                        // Card is not a valid target, spell fizzles.
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                targets.push(id);
+                            }
+                        }
+                    }
+
+                    for target in targets {
+                        results.push(StackResult::ApplyModifierToTarget {
+                            modifier,
+                            target: *target,
+                        });
+                    }
+                }
+                Effect::ExileTargetCreature => {
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location(db, Location::Battlefield)? {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
                                         return Ok(vec![]);
                                     }
+                                }
 
-                                    for modifier in modifiers {
-                                        let modifier = ModifierId::upload_single_modifier(
-                                            db,
-                                            ability.source(db)?,
-                                            &BattlefieldModifier {
-                                                modifier,
-                                                controller: Controller::You,
-                                                duration:
-                                                    EffectDuration::UntilSourceLeavesBattlefield,
-                                                restrictions: vec![Restriction::OfType {
-                                                    types: HashSet::from([Type::Creature]),
-                                                    subtypes: Default::default(),
-                                                }],
-                                            },
-                                            true,
-                                        )?;
-
-                                        result.push(StackResult::ModifyCreatures {
-                                            targets: vec![*id],
-                                            modifier,
-                                        });
+                                if !id.can_be_targeted(db, controller)? {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
                                     }
                                 }
+
+                                if !id.types_intersect(db, &HashSet::from([Type::Creature]))? {
+                                    // Target isn't a creature
+
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                results.push(StackResult::ExileTarget(*id));
                             }
                         }
                     }
                 }
-                Ok(result)
-            }
-            Entry::Trigger(trigger) => {
-                for effect in trigger.effects(db)? {
-                    match effect {
-                        TriggeredEffect::CreateToken(token) => {
-                            result.push(StackResult::CreateToken {
-                                source: trigger.listener(db)?,
-                                token,
-                            });
+                Effect::ExileTargetCreatureManifestTopOfLibrary => {
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location(db, Location::Battlefield)? {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.can_be_targeted(db, controller)? {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.types_intersect(db, &HashSet::from([Type::Creature]))? {
+                                    // Target isn't a creature
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                results.push(StackResult::ExileTarget(*id));
+                                results.push(StackResult::ManifestTopOfLibrary(id.controller(db)?));
+                            }
                         }
                     }
                 }
-                Ok(result)
+                Effect::DealDamage(dmg) => {
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location(db, Location::Battlefield)? {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.can_be_targeted(db, controller)? {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.passes_restrictions(
+                                    db,
+                                    source,
+                                    controller,
+                                    Controller::Any,
+                                    &dmg.restrictions,
+                                )? {
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                results.push(StackResult::DamageTarget {
+                                    quantity: dmg.quantity,
+                                    target: *id,
+                                });
+                            }
+                        }
+                    }
+                }
+                Effect::Equip(modifiers) => {
+                    if next.targets.is_empty() {
+                        // Effect fizzles due to lack of target.
+                        return Ok(vec![]);
+                    }
+
+                    assert_eq!(next.targets.len(), 1);
+
+                    match next.targets.iter().next().unwrap() {
+                        ActiveTarget::Stack { .. } => {
+                            // Can't equip things on the stack
+                            return Ok(vec![]);
+                        }
+                        ActiveTarget::Battlefield { id } => {
+                            if !id.can_be_targeted(db, controller)? {
+                                // Card is not a valid target, spell fizzles.
+                                return Ok(vec![]);
+                            }
+
+                            for modifier in modifiers {
+                                let modifier = ModifierId::upload_single_modifier(
+                                    db,
+                                    source,
+                                    &BattlefieldModifier {
+                                        modifier,
+                                        controller: Controller::You,
+                                        duration: EffectDuration::UntilSourceLeavesBattlefield,
+                                        restrictions: vec![Restriction::OfType {
+                                            types: HashSet::from([Type::Creature]),
+                                            subtypes: Default::default(),
+                                        }],
+                                    },
+                                    true,
+                                )?;
+
+                                results.push(StackResult::ModifyCreatures {
+                                    targets: vec![*id],
+                                    modifier,
+                                });
+                            }
+                        }
+                    }
+                }
+                Effect::CreateToken(token) => {
+                    results.push(StackResult::CreateToken { source, token });
+                }
+                Effect::GainCounter(counter) => {
+                    results.push(StackResult::AddCounter { source, counter });
+                }
             }
         }
+
+        if let Some(resolving_card) = resolving_card {
+            if resolving_card.is_permanent(db)? {
+                results.push(StackResult::AddToBattlefield(resolving_card));
+            } else {
+                results.push(StackResult::StackToGraveyard(resolving_card));
+            }
+        }
+
+        Ok(results)
     }
 
     pub fn apply_results(
@@ -734,11 +699,63 @@ impl Stack {
                 StackResult::DamageTarget { quantity, target } => {
                     target.mark_damage(db, quantity)?;
                 }
+                StackResult::AddCounter { .. } => {
+                    todo!()
+                }
             }
         }
 
         Ok(pending)
     }
+}
+
+fn counter_spell(
+    db: &Connection,
+    in_stack: &HashMap<usize, Entry>,
+    controller: PlayerId,
+    targets: &HashSet<ActiveTarget>,
+    restrictions: SpellTarget,
+    result: &mut Vec<StackResult>,
+) -> anyhow::Result<bool> {
+    if targets.is_empty() {
+        return Ok(false);
+    }
+    for target in targets.iter() {
+        match target {
+            ActiveTarget::Stack { id } => {
+                let Some(maybe_target) = in_stack.get(id) else {
+                    // Spell has left the stack already
+                    return Ok(false);
+                };
+
+                match maybe_target {
+                    Entry::Card(maybe_target) => {
+                        if !maybe_target.can_be_countered(db, controller, &restrictions)? {
+                            // Spell is no longer a valid target.
+                            return Ok(false);
+                        }
+                    }
+                    Entry::Ability(_) => {
+                        // Vanilla counterspells can't counter activated abilities.
+                        return Ok(false);
+                    }
+                    Entry::Trigger(_) => {
+                        // Vanilla counterspells can't counter triggered abilities.
+                        return Ok(false);
+                    }
+                }
+
+                // If we reach here, we know the spell can be countered.
+                result.push(StackResult::SpellCountered { id: *maybe_target });
+            }
+            ActiveTarget::Battlefield { .. } => {
+                // Cards on the battlefield aren't valid targets of counterspells
+                return Ok(false);
+            }
+        }
+    }
+
+    Ok(true)
 }
 
 fn gain_mana(

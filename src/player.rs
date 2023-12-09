@@ -278,10 +278,6 @@ impl Player {
             }
         }
 
-        if card.requires_target(db)? && target.is_none() {
-            return Ok(None);
-        }
-
         if card.is_land(db)? && self.lands_played >= Self::lands_per_turn(db)? {
             return Ok(None);
         }

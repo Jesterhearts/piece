@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility, TriggeredAbility},
     cost::CastingCost,
-    effects::{SpellEffect, Token, TokenCreature},
+    effects::{AnyEffect, Token, TokenCreature},
     in_play::{AbilityId, TriggerId},
     protogen,
     types::{Subtype, Type},
@@ -94,7 +94,7 @@ pub struct Card {
     pub enchant: Option<Enchant>,
 
     pub etb_abilities: Vec<ETBAbility>,
-    pub effects: Vec<SpellEffect>,
+    pub effects: Vec<AnyEffect>,
 
     pub static_abilities: Vec<StaticAbility>,
 
@@ -153,7 +153,7 @@ impl TryFrom<protogen::card::Card> for Card {
             effects: value
                 .effects
                 .iter()
-                .map(SpellEffect::try_from)
+                .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             static_abilities: value
                 .static_abilities

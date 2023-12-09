@@ -428,10 +428,11 @@ impl Battlefield {
                     ability,
                     valid_targets,
                 } => {
+                    let controller = source.controller(db)?;
                     let wants_targets: usize = ability
                         .effects(db)?
                         .into_iter()
-                        .map(|effect| effect.wants_targets())
+                        .map(|effect| effect.wants_targets(db, controller).unwrap_or_default())
                         .max()
                         .unwrap();
                     if wants_targets >= valid_targets.len() {

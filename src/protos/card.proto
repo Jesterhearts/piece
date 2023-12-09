@@ -24,7 +24,7 @@ message Card {
 
   optional abilities.Enchant enchant = 9;
 
-  repeated effects.SpellEffect effects = 10;
+  repeated effects.Effect effects = 10;
 
   repeated abilities.ETBAbility etb_abilities = 11;
   repeated abilities.StaticAbility static_abilities = 12;

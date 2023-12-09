@@ -10,9 +10,7 @@ use rusqlite::{types::FromSql, Connection, ToSql};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    abilities::{
-        ActivatedAbility, ActivatedAbilityEffect, ETBAbility, StaticAbility, TriggeredAbility,
-    },
+    abilities::{ActivatedAbility, ETBAbility, StaticAbility, TriggeredAbility},
     battlefield::Battlefield,
     card::{
         ActivatedAbilityModifier, Card, Color, StaticAbilityModifier, TriggeredAbilityModifier,
@@ -20,7 +18,7 @@ use crate::{
     controller::Controller,
     cost::{AbilityCost, CastingCost},
     effects::{
-        spell, BattlefieldModifier, EffectDuration, GainMana, SpellEffect, Token, TriggeredEffect,
+        AnyEffect, BattlefieldModifier, DealDamage, Effect, EffectDuration, GainMana, Token,
     },
     mana::Mana,
     player::PlayerId,
@@ -706,7 +704,7 @@ impl CardId {
         Ok(())
     }
 
-    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<SpellEffect>> {
+    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<AnyEffect>> {
         Ok(db.query_row(
             "SELECT effects FROM cards WHERE cardid = (?1)",
             (if let Some(cloning) = self.cloning(db)? {
@@ -1151,8 +1149,8 @@ impl CardId {
             }
 
             for effect in ability.effects {
-                match effect {
-                    ActivatedAbilityEffect::GainMana { mana } => match mana {
+                match effect.into_effect(db, self.controller(db)?)? {
+                    Effect::GainMana { mana } => match mana {
                         GainMana::Specific { gains } => {
                             for gain in gains.iter() {
                                 identity.insert(gain.color());
@@ -1518,22 +1516,16 @@ impl CardId {
         let creatures = Battlefield::creatures(db)?;
 
         for effect in self.effects(db)? {
-            let effect = if effect.threshold.is_some()
-                && Battlefield::number_of_cards_in_graveyard(db, self.controller(db)?)? >= 7
-            {
-                effect.threshold.unwrap()
-            } else {
-                effect.effect
-            };
+            let effect = effect.into_effect(db, self.controller(db)?)?;
 
             match effect {
-                spell::Effect::CounterSpell { target } => {
+                Effect::CounterSpell { target } => {
                     targets_for_counterspell(db, self.controller(db)?, target, &mut targets)?;
                 }
-                spell::Effect::GainMana { .. } => {}
-                spell::Effect::BattlefieldModifier(_) => {}
-                spell::Effect::ControllerDrawCards(_) => {}
-                spell::Effect::ModifyCreature(modifier) => {
+                Effect::GainMana { .. } => {}
+                Effect::BattlefieldModifier(_) => {}
+                Effect::ControllerDrawCards(_) => {}
+                Effect::ModifyCreature(modifier) => {
                     targets_for_battlefield_modifier(
                         db,
                         self,
@@ -1543,37 +1535,35 @@ impl CardId {
                         &mut targets,
                     )?;
                 }
-                spell::Effect::ExileTargetCreature => {
+                Effect::ExileTargetCreature => {
                     for creature in creatures.iter() {
                         if creature.can_be_targeted(db, self.controller(db)?)? {
                             targets.insert(ActiveTarget::Battlefield { id: *creature });
                         }
                     }
                 }
-                spell::Effect::ExileTargetCreatureManifestTopOfLibrary => {
+                Effect::ExileTargetCreatureManifestTopOfLibrary => {
                     for creature in creatures.iter() {
                         if creature.can_be_targeted(db, self.controller(db)?)? {
                             targets.insert(ActiveTarget::Battlefield { id: *creature });
                         }
                     }
                 }
-                spell::Effect::DealDamage(dmg) => {
-                    // TODO players & plainswalkers
-                    for creature in creatures.iter() {
-                        let controller = self.controller(db)?;
-                        if creature.can_be_targeted(db, controller)?
-                            && creature.passes_restrictions(
-                                db,
-                                self,
-                                controller,
-                                Controller::Any,
-                                &dmg.restrictions,
-                            )?
-                        {
-                            targets.insert(ActiveTarget::Battlefield { id: *creature });
-                        }
-                    }
+                Effect::DealDamage(dmg) => {
+                    self.targets_for_damage(&creatures, db, dmg, &mut targets)?;
                 }
+                Effect::CreateToken(_) => {}
+                Effect::Equip(_) => {
+                    targets_for_battlefield_modifier(
+                        db,
+                        self,
+                        None,
+                        &creatures,
+                        self.controller(db)?,
+                        &mut targets,
+                    )?;
+                }
+                Effect::GainCounter(_) => {}
             }
         }
 
@@ -1582,6 +1572,31 @@ impl CardId {
         }
 
         Ok(targets)
+    }
+
+    fn targets_for_damage(
+        self,
+        creatures: &[CardId],
+        db: &Connection,
+        dmg: DealDamage,
+        targets: &mut HashSet<ActiveTarget>,
+    ) -> anyhow::Result<()> {
+        for creature in creatures.iter() {
+            let controller = self.controller(db)?;
+            if creature.can_be_targeted(db, controller)?
+                && creature.passes_restrictions(
+                    db,
+                    self,
+                    controller,
+                    Controller::Any,
+                    &dmg.restrictions,
+                )?
+            {
+                targets.insert(ActiveTarget::Battlefield { id: *creature });
+            }
+        }
+
+        Ok(())
     }
 
     pub fn targets_for_ability(
@@ -1594,18 +1609,48 @@ impl CardId {
         let ability = ability.ability(db)?;
         if !ability.apply_to_self {
             for effect in ability.effects {
-                match effect {
-                    ActivatedAbilityEffect::CounterSpell { target } => {
-                        targets_for_counterspell(db, self.controller(db)?, target, targets)?;
+                let controller = self.controller(db)?;
+                match effect.into_effect(db, controller)? {
+                    Effect::CounterSpell { target } => {
+                        targets_for_counterspell(db, controller, target, targets)?;
                     }
-                    ActivatedAbilityEffect::GainMana { .. } => {}
-                    ActivatedAbilityEffect::BattlefieldModifier(_) => {}
-                    ActivatedAbilityEffect::ControllerDrawCards(_) => {}
-                    ActivatedAbilityEffect::Equip(_) => {
+                    Effect::GainMana { .. } => {}
+                    Effect::BattlefieldModifier(_) => {}
+                    Effect::ControllerDrawCards(_) => {}
+                    Effect::Equip(_) => {
                         targets_for_battlefield_modifier(
                             db,
                             self,
                             None,
+                            creatures,
+                            self.controller(db)?,
+                            targets,
+                        )?;
+                    }
+                    Effect::CreateToken(_) => todo!(),
+                    Effect::DealDamage(dmg) => {
+                        self.targets_for_damage(creatures, db, dmg, targets)?;
+                    }
+                    Effect::ExileTargetCreature => {
+                        for creature in creatures.iter() {
+                            if creature.can_be_targeted(db, self.controller(db)?)? {
+                                targets.insert(ActiveTarget::Battlefield { id: *creature });
+                            }
+                        }
+                    }
+                    Effect::ExileTargetCreatureManifestTopOfLibrary => {
+                        for creature in creatures.iter() {
+                            if creature.can_be_targeted(db, self.controller(db)?)? {
+                                targets.insert(ActiveTarget::Battlefield { id: *creature });
+                            }
+                        }
+                    }
+                    Effect::GainCounter(_) => {}
+                    Effect::ModifyCreature(modifier) => {
+                        targets_for_battlefield_modifier(
+                            db,
+                            self,
+                            Some(&modifier),
                             creatures,
                             self.controller(db)?,
                             targets,
@@ -1821,10 +1866,6 @@ impl CardId {
         )?)
     }
 
-    pub fn requires_target(self, _db: &Connection) -> anyhow::Result<bool> {
-        todo!()
-    }
-
     pub fn is_land(self, db: &Connection) -> anyhow::Result<bool> {
         self.types_intersect(db, &HashSet::from([Type::Land, Type::BasicLand]))
     }
@@ -1838,7 +1879,7 @@ impl CardId {
         Ok(())
     }
 
-    pub(crate) fn is_permanent(self, db: &Connection) -> anyhow::Result<bool> {
+    pub fn is_permanent(self, db: &Connection) -> anyhow::Result<bool> {
         Ok(!self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))?)
     }
 }
@@ -2081,10 +2122,13 @@ impl AbilityId {
                             additional_cost: vec![],
                         })
                         .unwrap(),
-                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                            mana: GainMana::Specific {
-                                gains: vec![Mana::White],
+                        serde_json::to_string(&[AnyEffect {
+                            effect: Effect::GainMana {
+                                mana: GainMana::Specific {
+                                    gains: vec![Mana::White],
+                                },
                             },
+                            threshold: None,
                         }])
                         .unwrap(),
                         false,
@@ -2107,10 +2151,13 @@ impl AbilityId {
                             additional_cost: vec![],
                         })
                         .unwrap(),
-                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                            mana: GainMana::Specific {
-                                gains: vec![Mana::Blue],
+                        serde_json::to_string(&[AnyEffect {
+                            effect: Effect::GainMana {
+                                mana: GainMana::Specific {
+                                    gains: vec![Mana::Blue],
+                                },
                             },
+                            threshold: None,
                         }])
                         .unwrap(),
                         false,
@@ -2133,10 +2180,13 @@ impl AbilityId {
                             additional_cost: vec![],
                         })
                         .unwrap(),
-                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                            mana: GainMana::Specific {
-                                gains: vec![Mana::Black],
+                        serde_json::to_string(&[AnyEffect {
+                            effect: Effect::GainMana {
+                                mana: GainMana::Specific {
+                                    gains: vec![Mana::Black],
+                                },
                             },
+                            threshold: None,
                         }])
                         .unwrap(),
                         false,
@@ -2159,10 +2209,13 @@ impl AbilityId {
                             additional_cost: vec![],
                         })
                         .unwrap(),
-                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                            mana: GainMana::Specific {
-                                gains: vec![Mana::Red],
+                        serde_json::to_string(&[AnyEffect {
+                            effect: Effect::GainMana {
+                                mana: GainMana::Specific {
+                                    gains: vec![Mana::Red],
+                                },
                             },
+                            threshold: None,
                         }])
                         .unwrap(),
                         false,
@@ -2185,10 +2238,13 @@ impl AbilityId {
                             additional_cost: vec![],
                         })
                         .unwrap(),
-                        serde_json::to_string(&vec![ActivatedAbilityEffect::GainMana {
-                            mana: GainMana::Specific {
-                                gains: vec![Mana::Green],
+                        serde_json::to_string(&[AnyEffect {
+                            effect: Effect::GainMana {
+                                mana: GainMana::Specific {
+                                    gains: vec![Mana::Green],
+                                },
                             },
+                            threshold: None,
                         }])
                         .unwrap(),
                         false,
@@ -2257,7 +2313,7 @@ impl AbilityId {
         )?)
     }
 
-    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<ActivatedAbilityEffect>> {
+    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<AnyEffect>> {
         Ok(db.query_row(
             "SELECT effects FROM abilities WHERE abilityid = (?1)",
             (self,),
@@ -2545,7 +2601,7 @@ impl TriggerId {
         )?)
     }
 
-    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<TriggeredEffect>> {
+    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<AnyEffect>> {
         Ok(db.query_row(
             "SELECT effects FROM triggers WHERE triggerid = (?1)",
             (self,),

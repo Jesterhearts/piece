@@ -41,5 +41,5 @@ message StaticAbility {
 
 message TriggeredAbility {  
   triggers.Trigger trigger = 1;
-  repeated effects.TriggeredEffect effects = 2;
+  repeated effects.Effect effects = 2;
 }

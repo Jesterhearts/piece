@@ -12,7 +12,7 @@ import "types.proto";
 
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
-  repeated ActivatedAbilityEffect effects = 2;
+  repeated Effect effects = 2;
   bool apply_to_self = 3;
 }
 
@@ -163,39 +163,25 @@ message DealDamage {
   repeated targets.Restriction restrictions = 2;
 }
 
-message ActivatedAbilityEffect {
-  oneof effect {
-    BattlefieldModifier battlefield_modifier = 1;
-    ControllerDrawCards controller_draw_cards = 2;
-    CounterSpell counter_spell = 3;
-    Equip equip = 4;
-    GainMana gain_mana = 5;
-  }
-}
-
 message GainCounter {
   counters.Counter counter = 1;
 }
 
-message TriggeredEffect {  
-  oneof effect {
-    CreateToken create_token = 1;
-    GainCounter gain_counter = 2;
-  }
-}
-
-message SpellEffect {
+message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
     BattlefieldModifier modify_creature = 2;
     ControllerDrawCards controller_draw_cards = 3;
     CounterSpell counter_spell = 4;
-    DealDamage deal_damage = 5;
-    ExileTargetCreature exile_target_creature = 6;
-    ExileTargetCreatureManifestTopOfLibrary
-      exile_target_creature_manifest_top_of_library = 7;
-    GainMana gain_mana = 8;
+    CreateToken create_token = 5;
+    DealDamage deal_damage = 6;
+    Equip equip = 7;
+    ExileTargetCreature exile_target_creature = 8;
+    ExileTargetCreatureManifestTopOfLibrary 
+      exile_target_creature_manifest_top_of_library = 9;
+    GainCounter gain_counter = 10;
+    GainMana gain_mana = 11;
   }
 
-  SpellEffect threshold = 9;
+  optional Effect threshold = 12;
 }

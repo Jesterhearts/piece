@@ -1,15 +1,18 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     abilities::ActivatedAbility,
+    battlefield::Battlefield,
     card::Color,
     controller::Controller,
     mana::Mana,
+    player::PlayerId,
     protogen,
-    targets::Restriction,
+    targets::{Restriction, SpellTarget},
     types::{Subtype, Type},
 };
 
@@ -306,88 +309,134 @@ impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
     }
 }
 
-pub mod spell {
-    use serde::{Deserialize, Serialize};
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub enum Effect {
+    BattlefieldModifier(BattlefieldModifier),
+    ControllerDrawCards(usize),
+    CounterSpell { target: SpellTarget },
+    CreateToken(Token),
+    DealDamage(DealDamage),
+    Equip(Vec<ModifyBattlefield>),
+    ExileTargetCreature,
+    ExileTargetCreatureManifestTopOfLibrary,
+    GainCounter(Counter),
+    GainMana { mana: GainMana },
+    ModifyCreature(BattlefieldModifier),
+}
 
-    use crate::{
-        effects::{BattlefieldModifier, DealDamage, GainMana},
-        protogen,
-        targets::SpellTarget,
-    };
+impl TryFrom<&protogen::effects::effect::Effect> for Effect {
+    type Error = anyhow::Error;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-    pub enum Effect {
-        CounterSpell { target: SpellTarget },
-        GainMana { mana: GainMana },
-        BattlefieldModifier(BattlefieldModifier),
-        ControllerDrawCards(usize),
-        ModifyCreature(BattlefieldModifier),
-        ExileTargetCreature,
-        ExileTargetCreatureManifestTopOfLibrary,
-        DealDamage(DealDamage),
-    }
-
-    impl TryFrom<&protogen::effects::spell_effect::Effect> for Effect {
-        type Error = anyhow::Error;
-
-        fn try_from(value: &protogen::effects::spell_effect::Effect) -> Result<Self, Self::Error> {
-            match value {
-            protogen::effects::spell_effect::Effect::CounterSpell(counter) => {
-                Ok(Self::CounterSpell {
-                    target: counter.target.as_ref().unwrap_or_default().try_into()?,
-                })
-            }
-            protogen::effects::spell_effect::Effect::GainMana(gain) => Ok(Self::GainMana {
+    fn try_from(value: &protogen::effects::effect::Effect) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::effect::Effect::CounterSpell(counter) => Ok(Self::CounterSpell {
+                target: counter.target.as_ref().unwrap_or_default().try_into()?,
+            }),
+            protogen::effects::effect::Effect::GainMana(gain) => Ok(Self::GainMana {
                 mana: GainMana::try_from(gain)?,
             }),
-            protogen::effects::spell_effect::Effect::BattlefieldModifier(modifier) => {
+            protogen::effects::effect::Effect::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
-            protogen::effects::spell_effect::Effect::ControllerDrawCards(draw) => {
+            protogen::effects::effect::Effect::ControllerDrawCards(draw) => {
                 Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
             }
-            protogen::effects::spell_effect::Effect::ModifyCreature(modifier) => {
+            protogen::effects::effect::Effect::ModifyCreature(modifier) => {
                 Ok(Self::ModifyCreature(modifier.try_into()?))
             }
-            protogen::effects::spell_effect::Effect::ExileTargetCreature(_) => {
+            protogen::effects::effect::Effect::ExileTargetCreature(_) => {
                 Ok(Self::ExileTargetCreature)
             }
-            protogen::effects::spell_effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
+            protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
                 Ok(Self::ExileTargetCreatureManifestTopOfLibrary)
             }
-            protogen::effects::spell_effect::Effect::DealDamage(dmg) => {
+            protogen::effects::effect::Effect::DealDamage(dmg) => {
                 Ok(Self::DealDamage(dmg.try_into()?))
             }
-        }
+            protogen::effects::effect::Effect::CreateToken(token) => {
+                Ok(Self::CreateToken(token.try_into()?))
+            }
+            protogen::effects::effect::Effect::Equip(equip) => Ok(Self::Equip(
+                equip
+                    .modifiers
+                    .iter()
+                    .map(ModifyBattlefield::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            )),
+            protogen::effects::effect::Effect::GainCounter(counter) => Ok(Self::GainCounter(
+                counter.counter.get_or_default().try_into()?,
+            )),
         }
     }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
-pub struct SpellEffect {
-    pub effect: spell::Effect,
-    pub threshold: Option<spell::Effect>,
+pub struct AnyEffect {
+    pub effect: Effect,
+    pub threshold: Option<Effect>,
 }
 
-impl TryFrom<&protogen::effects::SpellEffect> for SpellEffect {
+impl TryFrom<&protogen::effects::Effect> for AnyEffect {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::SpellEffect) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::Effect) -> Result<Self, Self::Error> {
         Ok(Self {
             effect: value
                 .effect
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-                .and_then(spell::Effect::try_from)?,
+                .and_then(Effect::try_from)?,
             threshold: value.threshold.as_ref().map_or(Ok(None), |threshold| {
                 threshold
                     .effect
                     .as_ref()
                     .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-                    .and_then(spell::Effect::try_from)
+                    .and_then(Effect::try_from)
                     .map(Some)
             })?,
         })
+    }
+}
+
+impl AnyEffect {
+    pub fn effect(&self, db: &Connection, controller: PlayerId) -> anyhow::Result<&Effect> {
+        if self.threshold.is_some()
+            && Battlefield::number_of_cards_in_graveyard(db, controller)? >= 7
+        {
+            Ok(self.threshold.as_ref().unwrap())
+        } else {
+            Ok(&self.effect)
+        }
+    }
+
+    pub fn into_effect(self, db: &Connection, controller: PlayerId) -> anyhow::Result<Effect> {
+        if self.threshold.is_some()
+            && Battlefield::number_of_cards_in_graveyard(db, controller)? >= 7
+        {
+            Ok(self.threshold.unwrap())
+        } else {
+            Ok(self.effect)
+        }
+    }
+
+    pub(crate) fn wants_targets(
+        &self,
+        db: &Connection,
+        controller: PlayerId,
+    ) -> anyhow::Result<usize> {
+        match self.effect(db, controller)? {
+            Effect::BattlefieldModifier(_) => Ok(0),
+            Effect::ControllerDrawCards(_) => Ok(0),
+            Effect::CounterSpell { .. } => Ok(1),
+            Effect::CreateToken(_) => Ok(0),
+            Effect::DealDamage(_) => Ok(1),
+            Effect::Equip(_) => Ok(1),
+            Effect::ExileTargetCreature => Ok(1),
+            Effect::ExileTargetCreatureManifestTopOfLibrary => Ok(1),
+            Effect::GainCounter(_) => Ok(0),
+            Effect::GainMana { .. } => Ok(0),
+            Effect::ModifyCreature(_) => Ok(1),
+        }
     }
 }
 
@@ -459,31 +508,30 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub enum TriggeredEffect {
-    CreateToken(Token),
+pub enum Counter {
+    Charge,
+    P1P1,
+    M1M1,
 }
 
-impl TryFrom<&protogen::effects::TriggeredEffect> for TriggeredEffect {
+impl TryFrom<&protogen::counters::Counter> for Counter {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::TriggeredEffect) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::counters::Counter) -> Result<Self, Self::Error> {
         value
-            .effect
+            .type_
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected triggered effect to havev an effect set"))
-            .and_then(Self::try_from)
+            .ok_or_else(|| anyhow!("Expected counter to have a type specified"))
+            .map(Self::from)
     }
 }
 
-impl TryFrom<&protogen::effects::triggered_effect::Effect> for TriggeredEffect {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::triggered_effect::Effect) -> Result<Self, Self::Error> {
+impl From<&protogen::counters::counter::Type> for Counter {
+    fn from(value: &protogen::counters::counter::Type) -> Self {
         match value {
-            protogen::effects::triggered_effect::Effect::CreateToken(token) => {
-                Ok(Self::CreateToken(token.try_into()?))
-            }
-            protogen::effects::triggered_effect::Effect::GainCounter(_) => todo!(),
+            protogen::counters::counter::Type::Charge(_) => Self::Charge,
+            protogen::counters::counter::Type::P1p1(_) => Self::P1P1,
+            protogen::counters::counter::Type::M1m1(_) => Self::M1M1,
         }
     }
 }
