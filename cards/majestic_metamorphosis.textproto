@@ -8,8 +8,6 @@ oracle_text:  "Until end of turn, target artifact or"
               "creature becomes a 4/4 Angel artifact"
               "creature and gains flying.\n"
               "Draw a card"
-flavor_text:  "New Capenna's statues hold Old"
-              "Capenna's secrets."
 effects {
   modify_creature {
     modifier {

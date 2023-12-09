@@ -4,12 +4,10 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    abilities::ActivatedAbilityEffect,
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
-    effects::{
-        spell, ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, Token,
-        TriggeredEffect,
-    },
+    effects::{spell, BattlefieldModifier, EffectDuration, GainMana, Token, TriggeredEffect},
     in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
     mana::Mana,
     player::{AllPlayers, PlayerId},
@@ -631,12 +629,12 @@ impl Stack {
                                     return Ok(vec![]);
                                 }
                                 ActiveTarget::Battlefield { id } => {
-                                    for modifier in modifiers {
-                                        if !id.can_be_targeted(db, ability.controller(db)?)? {
-                                            // Card is not a valid target, spell fizzles.
-                                            return Ok(vec![]);
-                                        }
+                                    if !id.can_be_targeted(db, ability.controller(db)?)? {
+                                        // Card is not a valid target, spell fizzles.
+                                        return Ok(vec![]);
+                                    }
 
+                                    for modifier in modifiers {
                                         let modifier = ModifierId::upload_single_modifier(
                                             db,
                                             ability.source(db)?,

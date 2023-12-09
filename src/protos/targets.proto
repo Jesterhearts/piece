@@ -41,10 +41,10 @@ message Restriction {
   }
 
   oneof restriction {
-    NotSelf not_self = 1;
-    Self self = 2;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 1;
+    NotSelf not_self = 2;
     OfType of_type = 3;
-    Toughness toughness = 4;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 5;
+    Self self = 4;
+    Toughness toughness = 5;
   }
 }

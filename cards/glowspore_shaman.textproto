@@ -10,7 +10,6 @@ oracle_text:  "When Glowspore Shaman enters the"
               "battlefield, mill three cards. You may"
               "put a land card from your graveyard"
               "on top of your library."
-flavor_text: "From death she grows living grandeur."
 power: 3
 toughness: 1
 etb_abilities {

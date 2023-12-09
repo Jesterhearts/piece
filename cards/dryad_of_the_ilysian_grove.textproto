@@ -11,9 +11,6 @@ oracle_text:  "You may play an additional land on each"
               "of your turns.\n"
               "Lands you control are every basic land"
               "type in addition to their other types."
-flavor_text:  "\"Vine-wreathed, he nurtures life among"
-              "the dead.\"\n"
-              "-Psemilla, Meletian poet"
 static_abilities {
   battlefield_modifier {
     modifier {

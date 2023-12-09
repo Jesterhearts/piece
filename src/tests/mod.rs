@@ -14,3 +14,4 @@ mod reality_shift;
 mod recruiter_of_the_guard;
 mod thermal_blast;
 mod titania_protector_of_argoth;
+mod paradise_mantle;

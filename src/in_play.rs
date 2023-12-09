@@ -10,7 +10,9 @@ use rusqlite::{types::FromSql, Connection, ToSql};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    abilities::{ActivatedAbility, ETBAbility, StaticAbility, TriggeredAbility},
+    abilities::{
+        ActivatedAbility, ActivatedAbilityEffect, ETBAbility, StaticAbility, TriggeredAbility,
+    },
     battlefield::Battlefield,
     card::{
         ActivatedAbilityModifier, Card, Color, StaticAbilityModifier, TriggeredAbilityModifier,
@@ -18,8 +20,7 @@ use crate::{
     controller::Controller,
     cost::{AbilityCost, CastingCost},
     effects::{
-        spell, ActivatedAbilityEffect, BattlefieldModifier, EffectDuration, GainMana, SpellEffect,
-        Token, TriggeredEffect,
+        spell, BattlefieldModifier, EffectDuration, GainMana, SpellEffect, Token, TriggeredEffect,
     },
     mana::Mana,
     player::PlayerId,
@@ -1440,18 +1441,7 @@ impl CardId {
         if !card.activated_abilities.is_empty() {
             let mut ability_ids = vec![];
             for ability in card.activated_abilities.iter() {
-                let id = AbilityId::new();
-                db.execute(
-                    INSERT_ABILITIES_SQL,
-                    (
-                        id,
-                        cardid,
-                        ability.apply_to_self,
-                        serde_json::to_string(&ability.cost)?,
-                        serde_json::to_string(&ability.effects)?,
-                        false,
-                    ),
-                )?;
+                let id = AbilityId::upload_ability(db, cardid, ability)?;
 
                 ability_ids.push(id);
             }
@@ -2013,6 +2003,22 @@ fn upload_modifier(
         )?;
     }
 
+    if let Some(ability) = &modifier.modifier.add_ability {
+        db.execute(
+            indoc! {"
+                UPDATE modifiers
+                SET activated_ability_modifier = (?2)
+                WHERE modifiers.modifierid = (?1)
+            "},
+            (
+                modifierid,
+                serde_json::to_string(&ActivatedAbilityModifier::Add(AbilityId::upload_ability(
+                    db, source, ability,
+                )?))?,
+            ),
+        )?;
+    }
+
     Ok(modifierid)
 }
 
@@ -2034,6 +2040,27 @@ impl FromSql for AbilityId {
 impl AbilityId {
     pub fn new() -> Self {
         Self(NEXT_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
+    }
+
+    pub fn upload_ability(
+        db: &Connection,
+        cardid: CardId,
+        ability: &ActivatedAbility,
+    ) -> anyhow::Result<AbilityId> {
+        let id = AbilityId::new();
+        db.execute(
+            INSERT_ABILITIES_SQL,
+            (
+                id,
+                cardid,
+                ability.apply_to_self,
+                serde_json::to_string(&ability.cost)?,
+                serde_json::to_string(&ability.effects)?,
+                false,
+            ),
+        )?;
+
+        Ok(id)
     }
 
     pub fn land_abilities(db: &Connection) -> HashMap<Subtype, Self> {
@@ -2249,6 +2276,11 @@ impl AbilityId {
     pub(crate) fn controller(self, db: &Connection) -> anyhow::Result<PlayerId> {
         self.source(db)?.controller(db)
     }
+
+    fn delete(self, db: &Connection) -> anyhow::Result<()> {
+        db.execute("DELETE FROM abilities WHERE abilityid = (?1)", (self,))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash, Default)]
@@ -2271,7 +2303,7 @@ impl ModifierId {
         Self(NEXT_MODIFIER_ID.fetch_add(1, Ordering::Relaxed))
     }
 
-    fn remove_all_abilities(self, db: &Connection) -> Result<(), anyhow::Error> {
+    pub fn remove_all_abilities(self, db: &Connection) -> Result<(), anyhow::Error> {
         db.execute(
             indoc! {"
                 UPDATE modifiers
@@ -2313,6 +2345,25 @@ impl ModifierId {
     }
 
     pub fn modifying(self, db: &Connection) -> anyhow::Result<Vec<CardId>> {
+        Ok(db.query_row(
+            indoc! {"
+                    SELECT modifying FROM modifiers WHERE modifierid = (?1)
+                "},
+            (self,),
+            |row| {
+                Ok(row
+                    .get::<_, Option<String>>(0)?
+                    .as_ref()
+                    .map(|s| serde_json::from_str(s).unwrap())
+                    .unwrap_or_default())
+            },
+        )?)
+    }
+
+    pub fn ability_modifier(
+        self,
+        db: &Connection,
+    ) -> anyhow::Result<Option<ActivatedAbilityModifier>> {
         Ok(db.query_row(
             indoc! {"
                     SELECT modifying FROM modifiers WHERE modifierid = (?1)
@@ -2376,6 +2427,10 @@ impl ModifierId {
         )?;
 
         if is_temporary.unwrap_or_default() && modifying.is_empty() {
+            if let Some(ActivatedAbilityModifier::Add(ability)) = self.ability_modifier(db)? {
+                ability.delete(db)?;
+            }
+
             db.execute("DELETE FROM modifiers WHERE modifierid = (?1)", (self,))?;
         } else {
             db.execute(

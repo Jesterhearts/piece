@@ -3,10 +3,17 @@ syntax = "proto3";
 package effects;
 
 import "color.proto";
+import "cost.proto";
 import "controller.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
+
+message ActivatedAbility {
+  cost.AbilityCost cost = 1;
+  repeated ActivatedAbilityEffect effects = 2;
+  bool apply_to_self = 3;
+}
 
 message Destination {
   message Hand {
@@ -92,12 +99,14 @@ message ModifyBattlefield {
   optional int32 add_power = 5;
   optional int32 add_toughness = 6;
 
-  bool remove_all_subtypes = 7;
+  optional ActivatedAbility add_ability = 7;
 
-  bool entire_battlefield = 8;
-  bool global = 9;
+  bool remove_all_subtypes = 8;
 
-  bool add_vigilance = 10;
+  bool entire_battlefield = 9;
+  bool global = 10;
+
+  bool add_vigilance = 11;
 }
 
 message BattlefieldModifier {
@@ -143,11 +152,11 @@ message DealDamage {
 
 message ActivatedAbilityEffect {
   oneof effect {
-    CounterSpell counter_spell = 1;
-    GainMana gain_mana = 2;
-    BattlefieldModifier battlefield_modifier = 3;
-    ControllerDrawCards controller_draw_cards = 4;
-    Equip equip = 5;
+    effects.BattlefieldModifier battlefield_modifier = 1;
+    effects.ControllerDrawCards controller_draw_cards = 2;
+    effects.CounterSpell counter_spell = 3;
+    effects.Equip equip = 4;
+    effects.GainMana gain_mana = 5;
   }
 }
 
@@ -159,15 +168,15 @@ message TriggeredEffect {
 
 message SpellEffect {
   oneof effect {
-    CounterSpell counter_spell = 1;
-    GainMana gain_mana = 2;
-    BattlefieldModifier battlefield_modifier = 3;
-    BattlefieldModifier modify_creature = 4;
-    ControllerDrawCards controller_draw_cards = 5;
+    BattlefieldModifier battlefield_modifier = 1;
+    BattlefieldModifier modify_creature = 2;
+    ControllerDrawCards controller_draw_cards = 3;
+    CounterSpell counter_spell = 4;
+    DealDamage deal_damage = 5;
     ExileTargetCreature exile_target_creature = 6;
     ExileTargetCreatureManifestTopOfLibrary
       exile_target_creature_manifest_top_of_library = 7;
-    DealDamage deal_damage = 8;
+    GainMana gain_mana = 8;
   }
 
   SpellEffect threshold = 9;

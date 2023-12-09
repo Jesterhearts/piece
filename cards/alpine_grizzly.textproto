@@ -5,7 +5,5 @@ cost {
 }
 types { creature {} }
 subtypes { bear {} }
-flavor_text:  "The Temur welcome bears into the clan, fighting alongside them in battle. The"
-              "relationship dates back to when they labored side by side under Sultai rule."
 power: 4
 toughness: 2

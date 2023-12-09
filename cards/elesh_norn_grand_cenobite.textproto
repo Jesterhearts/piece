@@ -10,9 +10,6 @@ cost {
 oracle_text:  "Vigilance\n"
               "Other creatures you control get +2/+2\n"
               "Creatures your opponents control get -2/-2\n"
-flavor_text:  "\"The Gitaxians whisper among themselves"
-              "of other worlds. If they exist, we must bring"
-              "Phyrexia's magnificence to them.\""
 vigilance: true
 static_abilities {
   battlefield_modifier {

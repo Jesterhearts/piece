@@ -90,7 +90,6 @@ pub struct Card {
     pub colors: HashSet<Color>,
 
     pub oracle_text: String,
-    pub flavor_text: String,
 
     pub enchant: Option<Enchant>,
 
@@ -142,7 +141,6 @@ impl TryFrom<protogen::card::Card> for Card {
                 .map(Color::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             oracle_text: value.oracle_text,
-            flavor_text: value.flavor_text,
             enchant: value
                 .enchant
                 .as_ref()

@@ -4,11 +4,12 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    abilities::ActivatedAbility,
     card::Color,
     controller::Controller,
     mana::Mana,
     protogen,
-    targets::{Restriction, SpellTarget},
+    targets::Restriction,
     types::{Subtype, Type},
 };
 
@@ -206,6 +207,8 @@ pub struct ModifyBattlefield {
     pub add_types: HashSet<Type>,
     pub add_subtypes: HashSet<Subtype>,
 
+    pub add_ability: Option<ActivatedAbility>,
+
     pub remove_all_subtypes: bool,
     pub remove_all_abilities: bool,
 
@@ -234,6 +237,10 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .iter()
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
+            add_ability: value
+                .add_ability
+                .as_ref()
+                .map_or(Ok(None), |v| v.try_into().map(Some))?,
             remove_all_subtypes: value.remove_all_subtypes,
             remove_all_abilities: false,
             entire_battlefield: value.entire_battlefield,
@@ -381,75 +388,6 @@ impl TryFrom<&protogen::effects::SpellEffect> for SpellEffect {
                     .map(Some)
             })?,
         })
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
-pub enum ActivatedAbilityEffect {
-    CounterSpell { target: SpellTarget },
-    GainMana { mana: GainMana },
-    BattlefieldModifier(BattlefieldModifier),
-    ControllerDrawCards(usize),
-    Equip(Vec<ModifyBattlefield>),
-}
-
-impl ActivatedAbilityEffect {
-    pub fn wants_targets(&self) -> usize {
-        match self {
-            ActivatedAbilityEffect::CounterSpell { .. } => 1,
-            ActivatedAbilityEffect::GainMana { .. } => 0,
-            ActivatedAbilityEffect::BattlefieldModifier(_) => 0,
-            ActivatedAbilityEffect::ControllerDrawCards(_) => 0,
-            ActivatedAbilityEffect::Equip(_) => 1,
-        }
-    }
-}
-
-impl TryFrom<&protogen::effects::ActivatedAbilityEffect> for ActivatedAbilityEffect {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ActivatedAbilityEffect) -> Result<Self, Self::Error> {
-        value
-            .effect
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-            .and_then(Self::try_from)
-    }
-}
-
-impl TryFrom<&protogen::effects::activated_ability_effect::Effect> for ActivatedAbilityEffect {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::activated_ability_effect::Effect,
-    ) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::activated_ability_effect::Effect::CounterSpell(counter) => {
-                Ok(Self::CounterSpell {
-                    target: counter.target.as_ref().unwrap_or_default().try_into()?,
-                })
-            }
-            protogen::effects::activated_ability_effect::Effect::GainMana(gain) => {
-                Ok(Self::GainMana {
-                    mana: GainMana::try_from(gain)?,
-                })
-            }
-            protogen::effects::activated_ability_effect::Effect::BattlefieldModifier(modifier) => {
-                Ok(Self::BattlefieldModifier(modifier.try_into()?))
-            }
-            protogen::effects::activated_ability_effect::Effect::ControllerDrawCards(draw) => {
-                Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
-            }
-            protogen::effects::activated_ability_effect::Effect::Equip(modifier) => {
-                Ok(Self::Equip(
-                    modifier
-                        .modifiers
-                        .iter()
-                        .map(ModifyBattlefield::try_from)
-                        .collect::<anyhow::Result<Vec<_>>>()?,
-                ))
-            }
-        }
     }
 }
 

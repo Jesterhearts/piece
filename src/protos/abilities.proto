@@ -39,12 +39,6 @@ message StaticAbility {
   }
 }
 
-message ActivatedAbility {
-  cost.AbilityCost cost = 1;
-  repeated effects.ActivatedAbilityEffect effects = 2;
-  bool apply_to_self = 3;
-}
-
 message TriggeredAbility {  
   triggers.Trigger trigger = 1;
   repeated effects.TriggeredEffect effects = 2;
