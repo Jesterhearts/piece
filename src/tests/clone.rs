@@ -3,25 +3,25 @@ use pretty_assertions::assert_eq;
 use crate::{
     battlefield::{ActionResult, Battlefield, UnresolvedActionResult},
     in_play::CardId,
+    in_play::Database,
     load_cards,
     player::AllPlayers,
-    prepare_db,
 };
 
 #[test]
 fn etb_clones() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let db = prepare_db()?;
+    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player();
 
-    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let results = Battlefield::add_from_stack(&db, creature, vec![])?;
+    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let results = Battlefield::add_from_stack(&mut db, creature, vec![]);
     assert_eq!(results, []);
 
-    let clone = CardId::upload(&db, &cards, player, "Clone")?;
-    let results = Battlefield::add_from_stack(&db, clone, vec![])?;
+    let clone = CardId::upload(&mut db, &cards, player, "Clone");
+    let results = Battlefield::add_from_stack(&mut db, clone, vec![]);
     assert_eq!(
         results,
         [UnresolvedActionResult::CloneCreatureNonTargeting {
@@ -44,10 +44,10 @@ fn etb_clones() -> anyhow::Result<()> {
         })
         .collect();
 
-    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
-    assert_eq!(clone.cloning(&db)?, Some(creature));
+    assert_eq!(clone.cloning(&mut db), Some(creature.into()));
 
     Ok(())
 }
@@ -55,13 +55,13 @@ fn etb_clones() -> anyhow::Result<()> {
 #[test]
 fn etb_no_targets_dies() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let db = prepare_db()?;
+    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player();
 
-    let clone = CardId::upload(&db, &cards, player, "Clone")?;
-    let results = Battlefield::add_from_stack(&db, clone, vec![])?;
+    let clone = CardId::upload(&mut db, &cards, player, "Clone");
+    let results = Battlefield::add_from_stack(&mut db, clone, vec![]);
     assert_eq!(
         results,
         [UnresolvedActionResult::CloneCreatureNonTargeting {
@@ -84,10 +84,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         })
         .collect();
 
-    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
-    let results = Battlefield::check_sba(&db)?;
+    let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(clone)]);
 
     Ok(())

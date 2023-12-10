@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
 
 use crate::{protogen, types::Type};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub enum Location {
     Anywhere,
     Battlefield,
@@ -34,13 +34,23 @@ impl From<&protogen::triggers::location::Location> for Location {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub mod source {
+    use bevy_ecs::component::Component;
+
+    #[derive(Debug, Component)]
+    pub struct PutIntoGraveyard;
+
+    #[derive(Debug, Component)]
+    pub struct EntersTheBattlefield;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub enum TriggerSource {
     PutIntoGraveyard,
     EntersTheBattlefield,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct Trigger {
     pub trigger: TriggerSource,
     pub from: Location,

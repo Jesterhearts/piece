@@ -5,9 +5,9 @@ use pretty_assertions::assert_eq;
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     in_play::CardId,
+    in_play::Database,
     load_cards,
     player::AllPlayers,
-    prepare_db,
     stack::{Stack, StackResult},
     types::Type,
 };
@@ -15,17 +15,17 @@ use crate::{
 #[test]
 fn etb() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let db = prepare_db()?;
+    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player();
     all_players[player].infinite_mana();
 
-    let land = CardId::upload(&db, &cards, player, "Forest")?;
-    land.move_to_graveyard(&db)?;
+    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    land.move_to_graveyard(&mut db);
 
-    let titania = CardId::upload(&db, &cards, player, "Titania, Protector of Argoth")?;
-    let results = Battlefield::add_from_stack(&db, titania, vec![])?;
+    let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
+    let results = Battlefield::add_from_stack(&mut db, titania, vec![]);
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
@@ -36,7 +36,7 @@ fn etb() -> anyhow::Result<()> {
         }]
     );
 
-    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
     Ok(())
@@ -45,17 +45,17 @@ fn etb() -> anyhow::Result<()> {
 #[test]
 fn graveyard_trigger() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let db = prepare_db()?;
+    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player();
     all_players[player].infinite_mana();
 
-    let land = CardId::upload(&db, &cards, player, "Forest")?;
-    land.move_to_battlefield(&db)?;
+    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    land.move_to_battlefield(&mut db);
 
-    let titania = CardId::upload(&db, &cards, player, "Titania, Protector of Argoth")?;
-    let results = Battlefield::add_from_stack(&db, titania, vec![])?;
+    let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
+    let results = Battlefield::add_from_stack(&mut db, titania, vec![]);
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
@@ -66,7 +66,7 @@ fn graveyard_trigger() -> anyhow::Result<()> {
         }]
     );
 
-    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
@@ -77,24 +77,24 @@ fn graveyard_trigger() -> anyhow::Result<()> {
         }]
     );
 
-    let results = Battlefield::permanent_to_graveyard(&db, land)?;
+    let results = Battlefield::permanent_to_graveyard(&mut db, land);
     assert!(matches!(
         results.as_slice(),
         [UnresolvedActionResult::AddTriggerToStack(_)]
     ));
 
-    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
-    let results = Stack::resolve_1(&db)?;
+    let results = Stack::resolve_1(&mut db);
     assert!(matches!(
         results.as_slice(),
         [StackResult::CreateToken { .. }]
     ));
-    let results = Stack::apply_results(&db, &mut all_players, results)?;
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
-    assert_eq!(Battlefield::creatures(&db)?.len(), 2);
+    assert_eq!(Battlefield::creatures(&mut db).len(), 2);
 
     Ok(())
 }

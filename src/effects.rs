@@ -1,22 +1,23 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
+use derive_more::{Deref, DerefMut};
 
 use crate::{
     abilities::ActivatedAbility,
     battlefield::Battlefield,
     card::Color,
-    controller::Controller,
+    controller::ControllerRestriction,
+    in_play::Database,
     mana::Mana,
-    player::PlayerId,
+    player::Controller,
     protogen,
     targets::{Restriction, SpellTarget},
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Destination {
     Hand,
     TopOfLibrary,
@@ -45,7 +46,7 @@ impl From<&protogen::effects::destination::Destination> for Destination {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TutorLibrary {
     pub restrictions: Vec<Restriction>,
     pub destination: Destination,
@@ -68,10 +69,10 @@ impl TryFrom<&protogen::effects::TutorLibrary> for TutorLibrary {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mill {
     pub count: usize,
-    pub target: Controller,
+    pub target: ControllerRestriction,
 }
 
 impl TryFrom<&protogen::effects::Mill> for Mill {
@@ -85,10 +86,10 @@ impl TryFrom<&protogen::effects::Mill> for Mill {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReturnFromGraveyardToLibrary {
     pub count: usize,
-    pub controller: Controller,
+    pub controller: ControllerRestriction,
     pub types: HashSet<Type>,
 }
 
@@ -110,7 +111,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGra
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReturnFromGraveyardToBattlefield {
     pub count: usize,
     pub types: HashSet<Type>,
@@ -135,7 +136,13 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
+pub struct UntilEndOfTurn;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
+pub struct UntilSourceLeavesBattlefield;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
@@ -152,7 +159,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
@@ -199,7 +206,7 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
 pub enum DynamicPowerToughness {
     NumberOfCountersOnThis(Counter),
 }
@@ -232,7 +239,7 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPow
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct ModifyBattlefield {
     pub base_power: Option<i32>,
     pub base_toughness: Option<i32>,
@@ -292,10 +299,10 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BattlefieldModifier {
     pub modifier: ModifyBattlefield,
-    pub controller: Controller,
+    pub controller: ControllerRestriction,
     pub duration: EffectDuration,
     pub restrictions: Vec<Restriction>,
 }
@@ -327,7 +334,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct DealDamage {
     pub quantity: usize,
     pub restrictions: Vec<Restriction>,
@@ -348,7 +355,7 @@ impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
@@ -359,6 +366,7 @@ pub enum Effect {
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
     GainCounter(Counter),
+    // TODO this shouldn't use the stack and should be its own field
     GainMana { mana: GainMana },
     ModifyCreature(BattlefieldModifier),
 }
@@ -369,7 +377,11 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
     fn try_from(value: &protogen::effects::effect::Effect) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::effect::Effect::CounterSpell(counter) => Ok(Self::CounterSpell {
-                target: counter.target.as_ref().unwrap_or_default().try_into()?,
+                target: counter
+                    .valid_target
+                    .as_ref()
+                    .unwrap_or_default()
+                    .try_into()?,
             }),
             protogen::effects::effect::Effect::GainMana(gain) => Ok(Self::GainMana {
                 mana: GainMana::try_from(gain)?,
@@ -409,7 +421,10 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Deref, DerefMut, Component, Default)]
+pub struct Effects(pub Vec<AnyEffect>);
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AnyEffect {
     pub effect: Effect,
     pub threshold: Option<Effect>,
@@ -438,48 +453,44 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
 }
 
 impl AnyEffect {
-    pub fn effect(&self, db: &Connection, controller: PlayerId) -> anyhow::Result<&Effect> {
+    pub fn effect(&self, db: &mut Database, controller: Controller) -> &Effect {
         if self.threshold.is_some()
-            && Battlefield::number_of_cards_in_graveyard(db, controller)? >= 7
+            && Battlefield::number_of_cards_in_graveyard(db, controller) >= 7
         {
-            Ok(self.threshold.as_ref().unwrap())
+            self.threshold.as_ref().unwrap()
         } else {
-            Ok(&self.effect)
+            &self.effect
         }
     }
 
-    pub fn into_effect(self, db: &Connection, controller: PlayerId) -> anyhow::Result<Effect> {
+    pub fn into_effect(self, db: &mut Database, controller: Controller) -> Effect {
         if self.threshold.is_some()
-            && Battlefield::number_of_cards_in_graveyard(db, controller)? >= 7
+            && Battlefield::number_of_cards_in_graveyard(db, controller) >= 7
         {
-            Ok(self.threshold.unwrap())
+            self.threshold.unwrap()
         } else {
-            Ok(self.effect)
+            self.effect
         }
     }
 
-    pub(crate) fn wants_targets(
-        &self,
-        db: &Connection,
-        controller: PlayerId,
-    ) -> anyhow::Result<usize> {
-        match self.effect(db, controller)? {
-            Effect::BattlefieldModifier(_) => Ok(0),
-            Effect::ControllerDrawCards(_) => Ok(0),
-            Effect::CounterSpell { .. } => Ok(1),
-            Effect::CreateToken(_) => Ok(0),
-            Effect::DealDamage(_) => Ok(1),
-            Effect::Equip(_) => Ok(1),
-            Effect::ExileTargetCreature => Ok(1),
-            Effect::ExileTargetCreatureManifestTopOfLibrary => Ok(1),
-            Effect::GainCounter(_) => Ok(0),
-            Effect::GainMana { .. } => Ok(0),
-            Effect::ModifyCreature(_) => Ok(1),
+    pub(crate) fn wants_targets(&self, db: &mut Database, controller: Controller) -> usize {
+        match self.effect(db, controller) {
+            Effect::BattlefieldModifier(_) => 0,
+            Effect::ControllerDrawCards(_) => 0,
+            Effect::CounterSpell { .. } => 1,
+            Effect::CreateToken(_) => 0,
+            Effect::DealDamage(_) => 1,
+            Effect::Equip(_) => 1,
+            Effect::ExileTargetCreature => 1,
+            Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
+            Effect::GainCounter(_) => 0,
+            Effect::GainMana { .. } => 0,
+            Effect::ModifyCreature(_) => 1,
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenCreature {
     pub name: String,
     pub types: HashSet<Type>,
@@ -517,7 +528,7 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Creature(TokenCreature),
 }
@@ -546,7 +557,20 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub mod counter {
+    use bevy_ecs::component::Component;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Default)]
+    pub struct Charge;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Default)]
+    pub struct P1P1;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Default)]
+    pub struct M1M1;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Counter {
     Charge,
     P1P1,

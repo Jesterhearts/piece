@@ -4,38 +4,43 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use derive_more::From;
-use indoc::indoc;
-use rusqlite::{types::FromSql, Connection, ToSql};
-use serde::{Deserialize, Serialize};
+use bevy_ecs::{
+    component::Component,
+    entity::Entity,
+    query::{Or, With},
+    world::World,
+};
+use derive_more::{Deref, DerefMut, From};
+use itertools::Itertools;
 
 use crate::{
-    abilities::{ActivatedAbility, ETBAbility, StaticAbility, TriggeredAbility},
+    abilities::{
+        ActivatedAbilities, ActivatedAbility, ApplyToSelf, ETBAbilities, StaticAbilities,
+        StaticAbility, Triggers,
+    },
     battlefield::Battlefield,
     card::{
-        ActivatedAbilityModifier, Card, Color, StaticAbilityModifier, TriggeredAbilityModifier,
+        ActivatedAbilityModifier, AddColors, AddHexproof, AddPower, AddShroud, AddToughness,
+        AddVigilance, BasePower, BasePowerModifier, BaseToughness, BaseToughnessModifier,
+        CannotBeCountered, Card, Color, Colors, Hexproof, MarkedDamage, Name, RemoveFlash,
+        RemoveHexproof, RemoveShroud, RemoveVigilance, Shroud, SplitSecond, StaticAbilityModifier,
+        TriggeredAbilities, TriggeredAbilityModifier, Vigilance,
     },
-    controller::Controller,
+    controller::ControllerRestriction,
     cost::{AbilityCost, CastingCost},
     effects::{
-        AnyEffect, BattlefieldModifier, Counter, DealDamage, DynamicPowerToughness, Effect,
-        EffectDuration, GainMana, Token,
+        counter, AnyEffect, BattlefieldModifier, Counter, DealDamage, DynamicPowerToughness,
+        Effect, EffectDuration, Effects, GainMana, Token, UntilEndOfTurn,
+        UntilSourceLeavesBattlefield,
     },
     mana::Mana,
-    player::PlayerId,
-    stack::{ActiveTarget, Stack},
-    targets::{Comparison, Restriction, SpellTarget},
-    triggers::{self, Trigger, TriggerSource},
-    types::{Subtype, Type},
+    player::{Controller, Owner},
+    stack::{ActiveTarget, Stack, Targets},
+    targets::{Comparison, Restriction, Restrictions, SpellTarget},
+    triggers::{source, Location, TriggerSource},
+    types::{AddSubtypes, AddTypes, RemoveAllSubtypes, Subtype, Subtypes, Type, Types},
     Cards,
 };
-
-static NEXT_CARD_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_MODIFIER_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_ABILITY_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_AURA_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_TRIGGER_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_COUNTER_ID: AtomicUsize = AtomicUsize::new(0);
 
 static NEXT_MODIFIER_SEQ: AtomicUsize = AtomicUsize::new(0);
 /// Starts at 1 because 0 should never be a valid stack id.
@@ -44,727 +49,612 @@ static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_HAND_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SequenceNumber(usize);
+
 thread_local! {
     static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, AbilityId>> = OnceCell::new();
 }
 
-static UPLOAD_CARD_SQL: &str = indoc! {"
-    INSERT INTO cards (
-        cardid,
-        marked_damage,
-        location,
-        name,
-        owner,
-        controller,
-        tapped,
-        manifested,
-        face_down,
-        token,
-        cannot_be_countered,
-        split_second
-    ) VALUES (
-        (?1),
-        (?2),
-        (?3),
-        (?4),
-        (?5),
-        (?6),
-        (?7),
-        (?8),
-        (?9),
-        (?10),
-        (?11),
-        (?12)
-    );
-"};
+#[derive(Debug, Component)]
+pub struct Active;
 
-static UPLOAD_MODIFIER_SQL: &str = indoc! {"
-    INSERT INTO modifiers (
-        modifierid,
-        duration,
-        is_temporary,
-        controller,
-        restrictions,
-        global,
-        entire_battlefield,
-        active
-    ) VALUES (
-        (?1),
-        (?2),
-        (?3),
-        (?4),
-        (?5),
-        (?6),
-        (?7),
-        (?8)
-    )
-"};
+#[derive(Debug, Component)]
+pub struct Tapped;
 
-static INSERT_ABILITIES_SQL: &str = indoc! {"
-    INSERT INTO abilities (
-        abilityid,
-        source,
-        apply_to_self,
-        cost,
-        effects,
-        in_stack
-    ) VALUES (
-        (?1),
-        (?2),
-        (?3),
-        (?4),
-        (?5),
-        (?6)
-    )"
-};
+#[derive(Debug, Component)]
+pub struct Temporary;
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-pub enum Location {
-    Library,
-    Hand,
-    Stack,
-    Battlefield,
-    Graveyard,
-    Exile,
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Global;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct EntireBattlefield;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
+pub struct InLibrary;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
+pub struct InHand(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Hash)]
+pub struct InStack(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
+pub struct OnBattlefield(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
+pub struct InGraveyard(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
+pub struct InExile;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct IsToken;
+
+#[derive(Debug, Clone, Component, Deref, DerefMut, Default)]
+pub struct Modifying(HashSet<CardId>);
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct FaceDown;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Manifested;
+
+pub fn cards<Location: Component + Ord>(db: &mut Database) -> Vec<CardId> {
+    db.query::<(Entity, &Location)>()
+        .iter(db)
+        .sorted_by_key(|(_, loc)| *loc)
+        .map(|(card, _)| CardId(card))
+        .collect()
 }
 
-impl Location {
-    pub fn cards_in(&self, db: &Connection) -> anyhow::Result<Vec<CardId>> {
-        let mut results = vec![];
-        let mut in_location = db.prepare(indoc! {"
-            SELECT cardid
-            FROM cards
-            WHERE location = (?1)
-            ORDER BY location_seq ASC
-        "})?;
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Deref, Component)]
+pub struct CardId(Entity);
 
-        for row in in_location.query_map((serde_json::to_string(self)?,), |row| row.get(0))? {
-            results.push(row?)
-        }
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Deref, Component)]
+pub struct Cloning(Entity);
 
-        Ok(results)
+impl From<CardId> for Cloning {
+    fn from(value: CardId) -> Self {
+        Self(value.0)
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy, Hash, Default, From)]
-pub struct CardId(usize);
-
-impl FromSql for CardId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
+impl PartialEq<CardId> for Cloning {
+    fn eq(&self, other: &CardId) -> bool {
+        self.0 == other.0
     }
 }
 
-impl ToSql for CardId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
-    }
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct CardDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct ModifierDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct TriggerDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct ActivatedAbilityDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct StaticAbilityDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct AurasDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct CountersDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
+pub struct Database {
+    #[deref]
+    #[deref_mut]
+    pub cards: CardDb,
+    pub modifiers: ModifierDb,
+    pub triggers: TriggerDb,
+    pub abilities: ActivatedAbilityDb,
+    pub static_abilities: StaticAbilityDb,
+    pub auras: AurasDb,
+    pub counters: CountersDb,
 }
 
 impl CardId {
-    pub fn new() -> Self {
-        Self(NEXT_CARD_ID.fetch_add(1, Ordering::Relaxed))
+    pub fn is_in_location<Location: Component + Ord>(self, world: &World) -> bool {
+        world.get::<Location>(self.0).is_some()
     }
 
-    pub fn is_in_location(self, db: &Connection, location: Location) -> anyhow::Result<bool> {
-        let mut in_location = db.prepare(indoc! {"
-            SELECT NULL
-            FROM cards
-            WHERE cardid = (?1)
-                AND location = (?2)
-        "})?;
-
-        let mut in_location = in_location.query((self, serde_json::to_string(&location)?))?;
-        Ok(in_location.next()?.is_some())
+    pub fn is_token(self, db: &mut Database) -> bool {
+        db.get::<IsToken>(self.0).is_some()
     }
 
-    pub fn move_to_hand(self, db: &Connection) -> anyhow::Result<()> {
-        self.remove_all_modifiers(db)?;
-        TriggerId::deactivate_all_for_card(db, self)?;
-        self.deactivate_modifiers(db)?;
-
-        db.execute(
-            indoc! { "
-                UPDATE cards
-                SET location = (?2),
-                    location_seq = (?3),
-                    controller = owner
-                WHERE cards.cardid = (?1)
-            "},
-            (
-                self,
-                serde_json::to_string(&Location::Hand)?,
-                NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed),
-            ),
-        )?;
-
-        // TODO tokens go poof
-
-        Ok(())
+    pub fn facedown(self, db: &mut Database) -> bool {
+        db.get::<FaceDown>(self.0).is_some()
     }
 
-    pub fn move_to_stack(
-        self,
-        db: &Connection,
-        targets: HashSet<ActiveTarget>,
-    ) -> anyhow::Result<()> {
-        if Stack::split_second(db)? {
-            return Ok(());
+    pub fn move_to_hand(self, db: &mut Database) {
+        if self.is_token(db) {
+            db.cards.despawn(self.0);
+        } else {
+            self.remove_all_modifiers(db);
+            TriggerId::deactivate_all_for_card(db, self);
+            self.deactivate_modifiers(db);
+
+            let owner = self.owner(db);
+            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+
+            db.entity_mut(self.0)
+                .remove::<InLibrary>()
+                .remove::<InHand>()
+                .remove::<InStack>()
+                .remove::<OnBattlefield>()
+                .remove::<InGraveyard>()
+                .remove::<InExile>()
+                .insert(InHand(NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed)));
+        }
+    }
+
+    pub fn move_to_stack(self, db: &mut Database, targets: HashSet<ActiveTarget>) {
+        if Stack::split_second(db) {
+            return;
         }
 
-        db.execute(
-            indoc! { "
-                UPDATE cards
-                SET location = (?2),
-                    location_seq = (?3),
-                    targets = (?4)
-                WHERE cards.cardid = (?1)
-            "},
-            (
-                self,
-                serde_json::to_string(&Location::Stack)?,
-                NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
-                serde_json::to_string(&targets)?,
-            ),
-        )?;
+        if self.is_token(db) {
+            db.cards.despawn(self.0);
+        } else {
+            self.remove_all_modifiers(db);
+            TriggerId::deactivate_all_for_card(db, self);
+            self.deactivate_modifiers(db);
 
-        Ok(())
+            let owner = self.owner(db);
+            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+
+            db.entity_mut(self.0)
+                .remove::<InLibrary>()
+                .remove::<InHand>()
+                .remove::<InStack>()
+                .remove::<OnBattlefield>()
+                .remove::<InGraveyard>()
+                .remove::<InExile>()
+                .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
+                .insert(Targets(targets));
+        }
     }
 
-    pub fn move_to_battlefield(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE cards SET location = (?2), location_seq = (?3) WHERE cards.cardid = (?1)",
-            (
-                self,
-                serde_json::to_string(&Location::Battlefield)?,
+    pub fn move_to_battlefield(self, db: &mut Database) {
+        db.cards
+            .entity_mut(self.0)
+            .remove::<InLibrary>()
+            .remove::<InHand>()
+            .remove::<InStack>()
+            .remove::<OnBattlefield>()
+            .remove::<InGraveyard>()
+            .remove::<InExile>()
+            .insert(OnBattlefield(
                 NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
-            ),
-        )?;
+            ));
 
-        TriggerId::activate_all_for_card(db, self)?;
-
-        Ok(())
+        TriggerId::activate_all_for_card(db, self);
     }
 
-    pub fn move_to_graveyard(self, db: &Connection) -> anyhow::Result<()> {
-        self.remove_all_modifiers(db)?;
-        TriggerId::deactivate_all_for_card(db, self)?;
-        self.deactivate_modifiers(db)?;
+    pub fn move_to_graveyard(self, db: &mut Database) {
+        if self.is_token(db) {
+            db.cards.despawn(self.0);
+        } else {
+            self.remove_all_modifiers(db);
+            TriggerId::deactivate_all_for_card(db, self);
+            self.deactivate_modifiers(db);
 
-        db.execute(
-            indoc! { "
-                UPDATE cards
-                SET location = (?2),
-                    location_seq = (?3),
-                    controller = owner
-                WHERE cards.cardid = (?1)
-            "},
-            (
-                self,
-                serde_json::to_string(&Location::Graveyard)?,
-                NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
-            ),
-        )?;
+            let owner = self.owner(db);
+            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
-        // TODO tokens go poof
-
-        Ok(())
+            db.entity_mut(self.0)
+                .remove::<InLibrary>()
+                .remove::<InHand>()
+                .remove::<InStack>()
+                .remove::<OnBattlefield>()
+                .remove::<InGraveyard>()
+                .remove::<InExile>()
+                .insert(InGraveyard(
+                    NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
+                ));
+        }
     }
 
-    pub fn move_to_library(self, db: &Connection) -> anyhow::Result<()> {
-        self.remove_all_modifiers(db)?;
-        TriggerId::deactivate_all_for_card(db, self)?;
-        self.deactivate_modifiers(db)?;
+    pub fn move_to_library(self, db: &mut Database) {
+        if self.is_token(db) {
+            db.cards.despawn(self.0);
+        } else {
+            self.remove_all_modifiers(db);
+            TriggerId::deactivate_all_for_card(db, self);
+            self.deactivate_modifiers(db);
 
-        db.execute(
-            indoc! { "
-                UPDATE cards
-                SET location = (?2),
-                    location_seq = (?3),
-                    controller = owner
-                WHERE cards.cardid = (?1)
-            "},
-            (
-                self,
-                serde_json::to_string(&Location::Library)?,
-                NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
-            ),
-        )?;
+            let owner = self.owner(db);
+            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
-        // TODO tokens go poof
-
-        Ok(())
+            db.entity_mut(self.0)
+                .remove::<InLibrary>()
+                .remove::<InHand>()
+                .remove::<InStack>()
+                .remove::<OnBattlefield>()
+                .remove::<InGraveyard>()
+                .remove::<InExile>()
+                .insert(InLibrary);
+        }
     }
 
-    pub fn move_to_exile(self, db: &Connection) -> anyhow::Result<()> {
-        self.remove_all_modifiers(db)?;
-        TriggerId::deactivate_all_for_card(db, self)?;
-        self.deactivate_modifiers(db)?;
+    pub fn move_to_exile(self, db: &mut Database) {
+        if self.is_token(db) {
+            db.cards.despawn(self.0);
+        } else {
+            self.remove_all_modifiers(db);
+            TriggerId::deactivate_all_for_card(db, self);
+            self.deactivate_modifiers(db);
 
-        db.execute(
-            "UPDATE cards SET location = (?2), controller = owner WHERE cards.cardid = (?1)",
-            (self, serde_json::to_string(&Location::Exile)?),
-        )?;
+            let owner = self.owner(db);
+            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
-        // TODO tokens go poof
-
-        Ok(())
+            db.entity_mut(self.0)
+                .remove::<InLibrary>()
+                .remove::<InHand>()
+                .remove::<InStack>()
+                .remove::<OnBattlefield>()
+                .remove::<InGraveyard>()
+                .remove::<InExile>()
+                .insert(InExile);
+        }
     }
 
-    pub fn remove_all_modifiers(self, db: &Connection) -> anyhow::Result<()> {
-        let mut statement = db.prepare(indoc! {"
-                SELECT modifierid, modifying
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE json_each.value = (?1)
-            "})?;
-
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, ModifierId>(0)?,
-                serde_json::from_str::<HashSet<CardId>>(&row.get::<_, String>(1)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (modifierid, mut modifying) = row?;
+    pub fn remove_all_modifiers(self, db: &mut Database) {
+        for mut modifying in db
+            .modifiers
+            .query::<&mut Modifying>()
+            .iter_mut(&mut db.modifiers)
+        {
             modifying.remove(&self);
-
-            db.execute(
-                indoc! { "
-                    UPDATE modifiers
-                    SET modifying = (?2)
-                    WHERE modifiers.modifierid = (?1)
-                "},
-                (modifierid, serde_json::to_string(&modifying)?),
-            )?;
-
-            modifierid.deactivate(db)?;
         }
-
-        Ok(())
     }
 
-    pub fn remove_modifier(self, db: &Connection, modifier: ModifierId) -> anyhow::Result<()> {
-        let mut modifying = db.query_row(
-            indoc! {"
-                SELECT modifying
-                FROM modifiers 
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifier,),
-            |row| Ok(serde_json::from_str::<HashSet<CardId>>(&row.get::<_, String>(0)?).unwrap()),
-        )?;
-
-        modifying.remove(&self);
-        db.execute(
-            "UPDATE modifiers SET modifying = (?2) WHERE modifierid = (?1)",
-            (modifier, serde_json::to_string(&modifying)?),
-        )?;
-
-        modifier.deactivate(db)?;
-
-        Ok(())
+    pub fn remove_modifier(self, db: &mut Database, modifier: ModifierId) {
+        db.modifiers
+            .get_mut::<Modifying>(modifier.0)
+            .unwrap()
+            .remove(&self);
     }
 
-    pub fn modifiers(self, db: &Connection) -> anyhow::Result<Vec<ModifierId>> {
-        let mut statement = db.prepare(indoc! {"
-                SELECT modifierid
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE json_each.value = (?1)
-            "})?;
-
-        let rows = statement.query_map((self,), |row| row.get(0))?;
-
-        let mut modifiers = vec![];
-        for row in rows {
-            modifiers.push(row?);
-        }
-
-        Ok(modifiers)
-    }
-
-    pub fn deactivate_modifiers(&self, db: &Connection) -> anyhow::Result<()> {
-        let mut statement = db.prepare(indoc! {"
-                SELECT modifierid
-                FROM modifiers
-                WHERE source = (?1)
-                    AND duration = (?2)
-            "})?;
-
-        let rows = statement.query_map(
-            (
-                self,
-                serde_json::to_string(&EffectDuration::UntilSourceLeavesBattlefield)?,
-            ),
-            |row| row.get::<_, ModifierId>(0),
-        )?;
-
-        for row in rows {
-            row?.detach_all(db)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn triggered_abilities(self, db: &Connection) -> anyhow::Result<Vec<TriggerId>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
-
-        let mut abilities: Vec<TriggerId> = if face_down {
-            vec![]
-        } else {
-            db.query_row(
-                "SELECT triggered_abilities FROM cards WHERE cardid = (?1)",
-                (if let Some(cloning) = self.cloning(db)? {
-                    cloning
+    pub fn modifiers(self, db: &mut Database) -> Vec<ModifierId> {
+        db.modifiers
+            .query::<(Entity, &Modifying)>()
+            .iter(&db.modifiers)
+            .filter_map(|(entity, modifying)| {
+                if modifying.contains(&self) {
+                    Some(ModifierId(entity))
                 } else {
-                    self
-                },),
-                |row| {
-                    Ok(row
-                        .get::<_, Option<String>>(0)?
-                        .map(|row| serde_json::from_str(&row).unwrap())
-                        .unwrap_or_default())
-                },
-            )?
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn deactivate_modifiers(self, db: &mut Database) {
+        let mut entities = vec![];
+
+        for (entity, source, mut modifying) in db.modifiers.query_filtered::<(Entity, &CardId, &mut Modifying), With<UntilSourceLeavesBattlefield>>().iter_mut(&mut db.modifiers) {
+            if *source == self {
+                modifying.clear();
+                entities.push(entity);
+            }
+        }
+
+        for entity in entities {
+            ModifierId(entity).deactivate(db);
+        }
+    }
+
+    pub fn triggered_abilities(self, db: &mut Database) -> Vec<TriggerId> {
+        let face_down = self.facedown(db);
+
+        let mut triggers = if face_down {
+            vec![]
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<TriggeredAbilities>(cloning.0).unwrap().0.clone()
+        } else {
+            db.get::<TriggeredAbilities>(self.0).unwrap().0.clone()
         };
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq
-                FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT triggered_ability_modifier, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                &TriggeredAbilityModifier,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &ModifierSeq,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+            ), With<Active>>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, active_seq, _, _, _)| *active_seq)
+            .filter_map(
+                |(
+                    modifier,
+                    source,
+                    controller,
+                    restrictions,
+                    _,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((*modifier, *source, *controller, restrictions.clone()))
+                    }
+                },
+            )
+            .collect_vec();
 
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?
-                    .map(|row| serde_json::from_str(&row).unwrap()),
-                row.get(1)?,
-                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (modifier, source, controller_restriction, restrictions) = row?;
-
+        for (modifier, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
             if self.passes_restrictions(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-            )? {
-                if let Some(modifier) = modifier {
-                    match modifier {
-                        TriggeredAbilityModifier::RemoveAll => abilities.clear(),
-                        TriggeredAbilityModifier::Add(ability) => {
-                            abilities.push(ability);
-                        }
+            ) {
+                match modifier {
+                    TriggeredAbilityModifier::RemoveAll => triggers.clear(),
+                    TriggeredAbilityModifier::Add(ability) => {
+                        triggers.push(ability);
                     }
                 }
             }
         }
 
-        Ok(abilities)
+        triggers
     }
 
-    pub fn etb_abilities(self, db: &Connection) -> anyhow::Result<Vec<ETBAbility>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
-
-        if face_down {
-            return Ok(vec![]);
+    pub fn etb_abilities(self, db: &mut Database) -> Option<ETBAbilities> {
+        if self.facedown(db) {
+            return None;
         }
 
-        Ok(db.query_row(
-            "SELECT etb FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| {
-                Ok(row
-                    .get::<_, Option<String>>(0)?
-                    .map(|row| serde_json::from_str(&row).unwrap())
-                    .unwrap_or_default())
-            },
-        )?)
+        if let Some(cloning) = self.cloning(db) {
+            db.get::<ETBAbilities>(cloning.0).cloned()
+        } else {
+            db.get::<ETBAbilities>(self.0).cloned()
+        }
     }
 
-    pub fn static_abilities(self, db: &Connection) -> anyhow::Result<Vec<StaticAbility>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
+    pub fn static_abilities(self, db: &mut Database) -> Vec<StaticAbility> {
+        let face_down = self.facedown(db);
 
-        let mut abilities: Vec<StaticAbility> = if face_down {
+        let mut abilities = if face_down {
             vec![]
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<StaticAbilities>(cloning.0)
+                .cloned()
+                .unwrap_or_default()
+                .0
         } else {
-            db.query_row(
-                "SELECT abilities FROM cards WHERE cardid = (?1)",
-                (if let Some(cloning) = self.cloning(db)? {
-                    cloning
-                } else {
-                    self
-                },),
-                |row| {
-                    Ok(row
-                        .get::<_, Option<String>>(0)?
-                        .map(|row| serde_json::from_str(&row).unwrap())
-                        .unwrap_or_default())
-                },
-            )?
+            db.get::<StaticAbilities>(self.0)
+                .cloned()
+                .unwrap_or_default()
+                .0
         };
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT static_ability_modifier, source, controller, restrictions, active_seq
-                FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT static_ability_modifier, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                &StaticAbilityModifier,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &ModifierSeq,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+            ), With<Active>>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, active_seq, _, _, _)| *active_seq)
+            .filter_map(
+                |(
+                    modifier,
+                    source,
+                    controller,
+                    restrictions,
+                    _,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((modifier.clone(), *source, *controller, restrictions.clone()))
+                    }
+                },
+            )
+            .collect_vec();
 
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?
-                    .map(|row| serde_json::from_str(&row).unwrap()),
-                row.get(1)?,
-                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (modifier, source, controller_restriction, restrictions) = row?;
-
+        for (modifier, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
             if self.passes_restrictions(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-            )? {
-                if let Some(modifier) = modifier {
-                    match modifier {
-                        StaticAbilityModifier::RemoveAll => abilities.clear(),
-                        StaticAbilityModifier::Add(ability) => {
-                            abilities.push(ability);
-                        }
+            ) {
+                match modifier {
+                    StaticAbilityModifier::RemoveAll => abilities.clear(),
+                    StaticAbilityModifier::Add(ability) => {
+                        abilities.push(ability);
                     }
                 }
             }
         }
 
-        Ok(abilities)
+        abilities
     }
+    pub fn activated_abilities(self, db: &mut Database) -> Vec<AbilityId> {
+        let face_down = self.facedown(db);
 
-    pub fn activated_abilities(self, db: &Connection) -> anyhow::Result<Vec<AbilityId>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
-
-        let mut abilities: Vec<AbilityId> = if face_down {
+        let mut abilities = if face_down {
             vec![]
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<ActivatedAbilities>(cloning.0)
+                .cloned()
+                .unwrap_or_default()
+                .0
         } else {
-            db.query_row(
-                "SELECT activated_abilities FROM cards WHERE cardid = (?1)",
-                (if let Some(cloning) = self.cloning(db)? {
-                    cloning
-                } else {
-                    self
-                },),
-                |row| {
-                    Ok(row
-                        .get::<_, Option<String>>(0)?
-                        .map(|row| serde_json::from_str(&row).unwrap())
-                        .unwrap_or_default())
-                },
-            )?
+            db.get::<ActivatedAbilities>(self.0)
+                .cloned()
+                .unwrap_or_default()
+                .0
         };
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT activated_ability_modifier, source, controller, restrictions, active_seq FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT activated_ability_modifier, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                &ActivatedAbilityModifier,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &ModifierSeq,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+            ), With<Active>>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, active_seq, _, _, _)| *active_seq)
+            .filter_map(
+                |(
+                    modifier,
+                    source,
+                    controller,
+                    restrictions,
+                    _,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((*modifier, *source, *controller, restrictions.clone()))
+                    }
+                },
+            )
+            .collect_vec();
 
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?
-                    .map(|row| serde_json::from_str(&row).unwrap()),
-                row.get(1)?,
-                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (modifier, source, controller_restriction, restrictions) = row?;
-
+        for (modifier, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
             if self.passes_restrictions(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-            )? {
-                if let Some(modifier) = modifier {
-                    match modifier {
-                        ActivatedAbilityModifier::RemoveAll => abilities.clear(),
-                        ActivatedAbilityModifier::Add(ability) => {
-                            abilities.push(ability);
-                        }
+            ) {
+                match modifier {
+                    ActivatedAbilityModifier::RemoveAll => abilities.clear(),
+                    ActivatedAbilityModifier::Add(ability) => {
+                        abilities.push(ability);
                     }
                 }
             }
         }
 
         let land_abilities = AbilityId::land_abilities(db);
-        for ty in self.subtypes(db)? {
+        for ty in self.subtypes(db) {
             if let Some(ability) = land_abilities.get(&ty) {
                 abilities.push(*ability);
             }
         }
 
-        Ok(abilities)
+        abilities
     }
 
-    pub fn controller(self, db: &Connection) -> anyhow::Result<PlayerId> {
-        Ok(db.query_row(
-            "SELECT controller FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn controller(self, db: &mut Database) -> Controller {
+        db.get::<Controller>(self.0).copied().unwrap()
     }
 
-    pub fn owner(self, db: &Connection) -> anyhow::Result<PlayerId> {
-        Ok(db.query_row(
-            "SELECT owner FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn owner(self, db: &mut Database) -> Owner {
+        db.get::<Owner>(self.0).copied().unwrap()
     }
 
-    pub fn apply_modifier(self, db: &Connection, modifier: ModifierId) -> anyhow::Result<()> {
-        let modifying = db.query_row(
-            "SELECT modifying FROM modifiers WHERE modifierid = (?1)",
-            (modifier,),
-            |row| row.get::<_, Option<String>>(0),
-        )?;
-
-        let modifying = if let Some(modifying) = modifying {
-            let mut modifying: Vec<CardId> = serde_json::from_str(&modifying)?;
-            modifying.push(self);
-            modifying
-        } else {
-            vec![self]
-        };
-
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET modifying = (?2)
-                WHERE modifierid = (?1)
-            "},
-            (modifier, serde_json::to_string(&modifying)?),
-        )?;
-
-        modifier.activate(db)?;
-
-        Ok(())
+    pub fn apply_modifier(self, db: &mut Database, modifier: ModifierId) {
+        db.modifiers
+            .get_mut::<Modifying>(modifier.0)
+            .unwrap()
+            .insert(self);
+        modifier.activate(db);
     }
 
-    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<AnyEffect>> {
-        Ok(db.query_row(
-            "SELECT effects FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| {
-                Ok(row
-                    .get::<_, Option<String>>(0)?
-                    .map(|row| serde_json::from_str(&row).unwrap())
-                    .unwrap_or_default())
-            },
-        )?)
+    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+        db.get::<Effects>(self.0).cloned().unwrap_or_default().0
     }
 
     pub fn passes_restrictions(
         self,
-        db: &Connection,
+        db: &mut Database,
         source: CardId,
-        controller: PlayerId,
-        controller_restriction: Controller,
+        controller: Controller,
+        controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
-    ) -> Result<bool, anyhow::Error> {
+    ) -> bool {
+        let types = self.types(db);
+        let subtypes = self.subtypes(db);
+
         self.passes_restrictions_given_types(
             db,
             source,
             controller,
             controller_restriction,
             restrictions,
-            &self.types(db)?,
-            &self.subtypes(db)?,
+            &types,
+            &subtypes,
         )
     }
 
     #[allow(clippy::too_many_arguments)]
     fn passes_restrictions_given_types(
         self,
-        db: &Connection,
+        db: &mut Database,
         source: CardId,
-        controller: PlayerId,
-        controller_restriction: Controller,
+        controller: Controller,
+        controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
         self_types: &HashSet<Type>,
         self_subtypes: &HashSet<Subtype>,
-    ) -> Result<bool, anyhow::Error> {
+    ) -> bool {
         match controller_restriction {
-            Controller::Any => {}
-            Controller::You => {
-                let source_controller = source.controller(db)?;
+            ControllerRestriction::Any => {}
+            ControllerRestriction::You => {
+                let source_controller = source.controller(db);
                 if source_controller != controller {
-                    return Ok(false);
+                    return false;
                 }
             }
-            Controller::Opponent => {
-                let source_controller = source.controller(db)?;
+            ControllerRestriction::Opponent => {
+                let source_controller = source.controller(db);
                 if source_controller == controller {
-                    return Ok(false);
+                    return false;
                 }
             }
         }
@@ -773,27 +663,27 @@ impl CardId {
             match restriction {
                 Restriction::NotSelf => {
                     if source == self {
-                        return Ok(false);
+                        return false;
                     }
                 }
                 Restriction::Self_ => {
                     if source != self {
-                        return Ok(false);
+                        return false;
                     }
                 }
                 Restriction::OfType { types, subtypes } => {
                     if !types.is_empty() && self_types.is_disjoint(types) {
-                        return Ok(false);
+                        return false;
                     }
 
                     if !subtypes.is_empty() && self_subtypes.is_disjoint(subtypes) {
-                        return Ok(false);
+                        return false;
                     }
                 }
                 Restriction::Toughness(comparison) => {
-                    let toughness = self.toughness(db)?;
+                    let toughness = self.toughness(db);
                     if toughness.is_none() {
-                        return Ok(false);
+                        return false;
                     }
 
                     let toughness = toughness.unwrap();
@@ -801,132 +691,133 @@ impl CardId {
                         Comparison::LessThan(target) => toughness < *target,
                         Comparison::LessThanOrEqual(target) => toughness <= *target,
                     } {
-                        return Ok(false);
+                        return false;
                     }
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
-                    let controller = self.controller(db)?;
-                    let colors = Battlefield::controlled_colors(db, controller)?;
+                    let controller = self.controller(db);
+                    let colors = Battlefield::controlled_colors(db, controller);
                     if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
-                        return Ok(false);
+                        return false;
                     }
                 }
             }
         }
 
-        Ok(true)
+        true
     }
 
-    pub fn apply_aura(self, db: &Connection, aura: AuraId) -> anyhow::Result<()> {
-        let modifiers = aura.modifiers(db)?;
+    pub fn apply_aura(self, db: &mut Database, aura: AuraId) {
+        let modifiers = aura.modifiers(db);
 
-        for modifier in modifiers {
-            self.apply_modifier(db, modifier)?;
+        for modifier in modifiers.iter() {
+            self.apply_modifier(db, *modifier);
         }
-
-        Ok(())
     }
 
-    pub fn marked_damage(self, db: &Connection) -> anyhow::Result<i32> {
-        Ok(db.query_row(
-            "SELECT marked_damage FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn marked_damage(self, db: &mut Database) -> i32 {
+        db.get::<MarkedDamage>(self.0)
+            .copied()
+            .unwrap_or_default()
+            .0
     }
 
-    pub fn mark_damage(self, db: &Connection, amount: usize) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE cards SET marked_damage = marked_damage + (?2) WHERE cardid = (?1)",
-            (self, amount),
-        )?;
-        Ok(())
-    }
-
-    pub fn clear_damage(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE cards SET marked_damage = 0 WHERE cardid = (?1)",
-            (self,),
-        )?;
-        Ok(())
-    }
-
-    pub fn power(self, db: &Connection) -> anyhow::Result<Option<i32>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
-
-        if face_down {
-            return Ok(Some(2));
+    pub fn mark_damage(self, db: &mut Database, amount: usize) {
+        if let Some(mut marked) = db.get_mut::<MarkedDamage>(self.0) {
+            **marked += amount as i32;
+        } else {
+            db.entity_mut(self.0).insert(MarkedDamage(amount as i32));
         }
+    }
 
-        let mut base: Option<i32> = db.query_row(
-            "SELECT power FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| row.get(0),
-        )?;
+    pub fn clear_damage(self, db: &mut Database) {
+        if let Some(mut marked) = db.get_mut::<MarkedDamage>(self.0) {
+            **marked = 0;
+        }
+    }
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT
-                    base_power_modifier,
-                    dynamic_add_power_toughness,
-                    add_power_modifier,
+    pub fn power(self, db: &mut Database) -> Option<i32> {
+        let mut base: Option<i32> = if self.facedown(db) {
+            Some(2)
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<BasePower>(cloning.0).map(|bp| bp.0)
+        } else {
+            db.get::<BasePower>(self.0).map(|bp| bp.0)
+        };
+
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&BasePowerModifier>,
+                Option<&DynamicPowerToughness>,
+                Option<&AddPower>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (
+                With<Active>,
+                Or<(&BasePowerModifier, &DynamicPowerToughness, &AddPower)>,
+            )>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    base,
+                    dynamic,
+                    add,
                     source,
-                    controller,
+                    restriction,
                     restrictions,
-                    active_seq
-                FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
-
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<i32>>(0)?,
-                row.get::<_, Option<String>>(1)?
-                    .map(|col| serde_json::from_str::<DynamicPowerToughness>(&col).unwrap()),
-                row.get::<_, Option<i32>>(2)?,
-                row.get(3)?,
-                serde_json::from_str(&row.get::<_, String>(4)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(5)?).unwrap(),
-            ))
-        })?;
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            base.copied(),
+                            dynamic.copied(),
+                            add.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
 
         let mut add = 0;
 
-        for row in rows {
-            let (base_mod, dynamic_add_mod, add_mod, source, controller_restriction, restrictions) =
-                row?;
-
+        for (base_mod, dynamic_add_mod, add_mod, source, controller_restriction, restrictions) in
+            modifiers
+        {
+            let controller = source.controller(db);
             if self.passes_restrictions(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-            )? {
+            ) {
                 if let Some(base_mod) = base_mod {
-                    base = Some(base_mod);
+                    base = Some(base_mod.0);
                 }
-                add += add_mod.unwrap_or_default();
+                add += *add_mod.unwrap_or_default();
 
                 if let Some(dynamic) = dynamic_add_mod {
                     match dynamic {
                         DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
-                            let to_add = CounterId::counters_on(db, source, counter)?;
+                            let to_add = CounterId::counters_on(db, source, counter);
                             add += to_add as i32;
                         }
                     }
@@ -934,243 +825,192 @@ impl CardId {
             }
         }
 
-        Ok(base.map(|base| base + add))
+        base.map(|base| base + add)
     }
 
-    pub fn toughness(self, db: &Connection) -> anyhow::Result<Option<i32>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
+    pub fn toughness(self, db: &mut Database) -> Option<i32> {
+        let mut base: Option<i32> = if self.facedown(db) {
+            Some(2)
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<BaseToughness>(cloning.0).map(|bp| bp.0)
+        } else {
+            db.get::<BaseToughness>(self.0).map(|bp| bp.0)
+        };
 
-        if face_down {
-            return Ok(Some(2));
-        }
-
-        let mut base: Option<i32> = db.query_row(
-            "SELECT toughness FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| row.get(0),
-        )?;
-
-        let mut statement = db.prepare(indoc! {"
-                SELECT base_toughness_modifier, add_toughness_modifier, source, controller, restrictions, active_seq
-                FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT base_toughness_modifier, add_toughness_modifier, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
-
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
-                serde_json::from_str(&row.get::<_, String>(4)?).unwrap(),
-            ))
-        })?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&BaseToughnessModifier>,
+                Option<&DynamicPowerToughness>,
+                Option<&AddToughness>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (
+                With<Active>,
+                Or<(
+                    &BaseToughnessModifier,
+                    &DynamicPowerToughness,
+                    &AddToughness,
+                )>,
+            )>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    base,
+                    dynamic,
+                    add,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            base.copied(),
+                            dynamic.copied(),
+                            add.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
 
         let mut add = 0;
 
-        for row in rows {
-            let (base_mod, add_mod, source, controller_restriction, restrictions): (
-                Option<i32>,
-                Option<i32>,
-                _,
-                _,
-                Vec<Restriction>,
-            ) = row?;
-
+        for (base_mod, dynamic_add_mod, add_mod, source, controller_restriction, restrictions) in
+            modifiers
+        {
+            let controller = source.controller(db);
             if self.passes_restrictions(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-            )? {
+            ) {
                 if let Some(base_mod) = base_mod {
-                    base = Some(base_mod);
+                    base = Some(base_mod.0);
                 }
-                add += add_mod.unwrap_or_default();
+                add += *add_mod.unwrap_or_default();
+
+                if let Some(dynamic) = dynamic_add_mod {
+                    match dynamic {
+                        DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
+                            let to_add = CounterId::counters_on(db, source, counter);
+                            add += to_add as i32;
+                        }
+                    }
+                }
             }
         }
 
-        Ok(base.map(|base| base + add))
+        base.map(|base| base + add)
     }
 
-    pub fn vigilance(&self, db: &Connection) -> anyhow::Result<bool> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
+    pub fn aura(self, db: &mut Database) -> Option<AuraId> {
+        db.get::<AuraId>(self.0).copied()
+    }
 
-        let mut vigilance = if face_down {
-            false
+    pub fn colors(self, db: &mut Database) -> HashSet<Color> {
+        let mut colors = if let Some(cloning) = self.cloning(db) {
+            db.get::<Colors>(cloning.0).unwrap().0.clone()
         } else {
-            db.query_row(
-                "SELECT vigilance FROM cards WHERE cardid = (?1)",
-                (self,),
-                |row| row.get::<_, Option<bool>>(0),
-            )?
-            .unwrap_or_default()
+            db.get::<Colors>(self.0).unwrap().0.clone()
         };
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT add_vigilance, remove_vigilance, source, controller, restrictions, active_seq
-                FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT add_vigilance, remove_vigilance, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
-
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<bool>>(0)?,
-                row.get::<_, Option<bool>>(1)?,
-                row.get(2)?,
-                serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
-                serde_json::from_str(&row.get::<_, String>(4)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (add, remove, source, controller_restriction, restrictions): (
-                _,
-                _,
-                _,
-                _,
-                Vec<Restriction>,
-            ) = row?;
-
-            if self.passes_restrictions(
-                db,
-                source,
-                source.controller(db)?,
-                controller_restriction,
-                &restrictions,
-            )? {
-                if add.unwrap_or_default() {
-                    vigilance = true;
-                }
-                if remove.unwrap_or_default() {
-                    vigilance = false;
-                }
-            }
-        }
-
-        Ok(vigilance)
-    }
-
-    pub fn location(self, db: &Connection) -> anyhow::Result<Location> {
-        Ok(db.query_row(
-            "SELECT location FROM cards WHERE cards.cardid = (?1)",
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
-    }
-
-    pub fn aura(self, db: &Connection) -> anyhow::Result<Option<AuraId>> {
-        Ok(db.query_row(
-            indoc! {"
-                SELECT aura FROM cards WHERE cards.cardid = (?1)
-            "},
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| row.get(0),
-        )?)
-    }
-
-    pub fn colors(self, db: &Connection) -> anyhow::Result<HashSet<Color>> {
-        let (mut colors, cost): (HashSet<Color>, CastingCost) = db.query_row(
-            "SELECT colors, casting_cost FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| {
-                Ok((
-                    serde_json::from_str(&row.get::<_, String>(0)?).unwrap(),
-                    serde_json::from_str(&row.get::<_, String>(1)?).unwrap(),
-                ))
-            },
-        )?;
+        let cost = if let Some(cloning) = self.cloning(db) {
+            db.get::<CastingCost>(cloning.0).unwrap()
+        } else {
+            db.get::<CastingCost>(self.0).unwrap()
+        };
 
         colors.extend(cost.colors());
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT color_modifiers, source, controller, restrictions, active_seq FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                ) AND color_modifiers IS NOT NULL
-                UNION
-                SELECT color_modifiers, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1) AND color_modifiers IS NOT NULL
-                ORDER BY active_seq ASC
-            "})?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                &AddColors,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), With<Active>>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((add.clone(), *source, *restriction, restrictions.clone()))
+                    }
+                },
+            )
+            .collect_vec();
 
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                serde_json::from_str::<HashSet<Color>>(&row.get::<_, String>(0)?).unwrap(),
-                row.get(1)?,
-                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (add_colors, source, controller_restriction, restrictions) = row?;
-
+        for (add, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
             if self.passes_restrictions(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-            )? {
-                colors.extend(add_colors);
+            ) {
+                colors.extend(add.iter());
             }
         }
 
-        Ok(colors)
+        colors
     }
 
-    pub fn color_identity(self, db: &Connection) -> anyhow::Result<HashSet<Color>> {
-        let mut identity = self.colors(db)?;
+    pub fn color_identity(self, db: &mut Database) -> anyhow::Result<HashSet<Color>> {
+        let mut identity = db.get::<Colors>(self.0).unwrap().0.clone();
 
-        for ability in self.activated_abilities(db)? {
-            let ability = ability.ability(db)?;
+        let abilities = db.get::<ActivatedAbilities>(self.0).cloned().unwrap();
+
+        for ability in abilities.iter() {
+            let ability = ability.ability(db);
             for mana in ability.cost.mana_cost {
                 let color = mana.color();
                 identity.insert(color);
             }
 
             for effect in ability.effects {
-                match effect.into_effect(db, self.controller(db)?)? {
+                let controller = self.controller(db);
+                match effect.into_effect(db, controller) {
                     Effect::GainMana { mana } => match mana {
                         GainMana::Specific { gains } => {
                             for gain in gains.iter() {
@@ -1193,355 +1033,302 @@ impl CardId {
         Ok(identity)
     }
 
-    pub fn types_intersect(self, db: &Connection, types: &HashSet<Type>) -> anyhow::Result<bool> {
-        Ok(types.is_empty() || !self.types(db)?.is_disjoint(types))
+    pub fn types_intersect(self, db: &mut Database, types: &HashSet<Type>) -> bool {
+        types.is_empty() || !self.types(db).is_disjoint(types)
     }
 
-    pub fn types(self, db: &Connection) -> anyhow::Result<HashSet<Type>> {
-        let mut types: HashSet<Type> = db.query_row(
-            "SELECT types FROM cards WHERE cardid = (?1)",
-            (if let Some(cloning) = self.cloning(db)? {
-                cloning
-            } else {
-                self
-            },),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?;
-
-        let mut statement = db.prepare(indoc! {"
-                SELECT type_modifiers, source, controller, restrictions, active_seq FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                ) AND type_modifiers IS NOT NULL
-                UNION
-                SELECT type_modifiers, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1) AND type_modifiers IS NOT NULL
-                ORDER BY active_seq ASC
-            "})?;
-
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                serde_json::from_str::<HashSet<Type>>(&row.get::<_, String>(0)?).unwrap(),
-                row.get(1)?,
-                serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(3)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (add_types, source, controller_restriction, restrictions) = row?;
-
-            if self.passes_restrictions_given_types(
-                db,
-                source,
-                source.controller(db)?,
-                controller_restriction,
-                &restrictions,
-                &types,
-                &self.subtypes(db)?,
-            )? {
-                types.extend(add_types);
-            }
-        }
-
-        Ok(types)
-    }
-
-    pub fn subtypes_intersect(
-        self,
-        db: &Connection,
-        types: &HashSet<Subtype>,
-    ) -> anyhow::Result<bool> {
-        Ok(types.is_empty() || !self.subtypes(db)?.is_disjoint(types))
-    }
-
-    pub fn subtypes(self, db: &Connection) -> anyhow::Result<HashSet<Subtype>> {
-        let face_down: bool = db.query_row(
-            "SELECT face_down FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?;
-
-        let mut types: HashSet<Subtype> = if face_down {
-            Default::default()
+    pub fn types(self, db: &mut Database) -> HashSet<Type> {
+        let mut types = if let Some(cloning) = self.cloning(db) {
+            db.get::<Types>(cloning.0).unwrap().0.clone()
         } else {
-            db.query_row(
-                "SELECT subtypes FROM cards WHERE cardid = (?1)",
-                (if let Some(cloning) = self.cloning(db)? {
-                    cloning
-                } else {
-                    self
-                },),
-                |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-            )?
+            db.get::<Types>(self.0).unwrap().0.clone()
         };
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT subtype_modifiers, remove_all_subtypes, source, controller, restrictions, active_seq
-                FROM modifiers
-                WHERE active AND (
-                    global
-                    OR entire_battlefield
-                )
-                UNION
-                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions, active_seq
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND json_each.value = (?1)
-                ORDER BY active_seq ASC
-            "})?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                &AddTypes,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), With<Active>>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((add.clone(), *source, *restriction, restrictions.clone()))
+                    }
+                },
+            )
+            .collect_vec();
 
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?
-                    .map(|row| serde_json::from_str::<HashSet<Subtype>>(&row).unwrap()),
-                row.get::<_, Option<bool>>(1)?,
-                row.get(2)?,
-                serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(4)?).unwrap(),
-            ))
-        })?;
-
-        for row in rows {
-            let (add_types, remove_all, source, controller_restriction, restrictions) = row?;
+        for (add, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
+            let subtypes = self.subtypes(db);
 
             if self.passes_restrictions_given_types(
                 db,
                 source,
-                source.controller(db)?,
+                controller,
                 controller_restriction,
                 &restrictions,
-                &self.types(db)?,
                 &types,
-            )? {
-                if remove_all.unwrap_or_default() {
-                    types.clear();
-                }
+                &subtypes,
+            ) {
+                types.extend(add.0.into_iter());
+            }
+        }
 
-                if let Some(add_types) = add_types {
-                    types.extend(add_types);
+        types
+    }
+
+    pub fn subtypes_intersect(self, db: &mut Database, types: &HashSet<Subtype>) -> bool {
+        types.is_empty() || !self.subtypes(db).is_disjoint(types)
+    }
+
+    pub fn subtypes(self, db: &mut Database) -> HashSet<Subtype> {
+        let mut subtypes = if self.facedown(db) {
+            HashSet::default()
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<Subtypes>(cloning.0).unwrap().0.clone()
+        } else {
+            db.get::<Subtypes>(self.0).unwrap().0.clone()
+        };
+
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&AddSubtypes>,
+                Option<&RemoveAllSubtypes>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (With<Active>, Or<(&AddSubtypes, &RemoveAllSubtypes)>)>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    remove,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            add.cloned(),
+                            remove.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
+
+        for (add, remove, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
+            let types = self.types(db);
+
+            if self.passes_restrictions_given_types(
+                db,
+                source,
+                controller,
+                controller_restriction,
+                &restrictions,
+                &types,
+                &subtypes,
+            ) {
+                if remove.is_some() {
+                    subtypes.clear();
+                }
+                if let Some(add) = add {
+                    subtypes.extend(add.0.into_iter());
                 }
             }
         }
 
-        Ok(types)
+        subtypes
     }
 
-    pub fn upload(
-        db: &Connection,
-        cards: &Cards,
-        player: PlayerId,
-        name: &str,
-    ) -> anyhow::Result<CardId> {
+    pub fn upload(db: &mut Database, cards: &Cards, player: Owner, name: &str) -> CardId {
         let card = cards.get(name).expect("Valid card name");
 
-        Self::upload_card(db, card, player, Location::Library, false)
+        Self::upload_card(db, card, player, InLibrary, false)
     }
 
-    pub fn upload_token(db: &Connection, player: PlayerId, token: Token) -> anyhow::Result<CardId> {
+    pub fn upload_token(db: &mut Database, player: Owner, token: Token) -> CardId {
         let card: Card = token.into();
 
-        Self::upload_card(db, &card, player, Location::Battlefield, true)
+        Self::upload_card(
+            db,
+            &card,
+            player,
+            OnBattlefield(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed)),
+            true,
+        )
     }
 
-    fn upload_card(
-        db: &Connection,
+    fn upload_card<Location: Component>(
+        db: &mut Database,
         card: &Card,
-        player: PlayerId,
+        player: Owner,
         destination: Location,
         is_token: bool,
-    ) -> anyhow::Result<CardId> {
-        let cardid = CardId::new();
-        db.execute(
-            UPLOAD_CARD_SQL,
-            (
-                cardid,
-                0,
-                serde_json::to_string(&destination)?,
-                card.name.clone(),
-                player,
-                player,
-                false,
-                false,
-                false,
-                is_token,
-                card.cannot_be_countered,
-                card.split_second,
-            ),
-        )?;
+    ) -> CardId {
+        let mut entity = db.spawn((
+            destination,
+            Name(card.name.clone()),
+            player,
+            Controller::from(player),
+            card.cost.clone(),
+            Types(card.types.clone()),
+            Subtypes(card.subtypes.clone()),
+            Colors(card.colors.clone()),
+        ));
 
-        db.execute(
-            indoc! {"
-            UPDATE cards
-            SET casting_cost = (?2),
-                power = (?3),
-                toughness = (?4),
-                types = (?5),
-                subtypes = (?6),
-                colors = (?7)
-            WHERE cards.cardid = (?1)
-        "},
-            (
-                cardid,
-                serde_json::to_string(&card.cost)?,
-                card.power,
-                card.toughness,
-                serde_json::to_string(&card.types)?,
-                serde_json::to_string(&card.subtypes)?,
-                serde_json::to_string(&card.colors)?,
-            ),
-        )?;
+        if is_token {
+            entity.insert(IsToken);
+        }
 
-        if let Some(enchant) = &card.enchant {
-            let mut statement = db.prepare(UPLOAD_MODIFIER_SQL)?;
+        if let Some(power) = card.power {
+            entity.insert(BasePower(power as i32));
+        }
 
-            let mut modifierids = vec![];
-            for modifier in enchant.modifiers.iter() {
-                let modifierid = upload_modifier(&mut statement, cardid, modifier, db, false)?;
-                modifierids.push(modifierid);
-            }
+        if let Some(toughness) = card.toughness {
+            entity.insert(BaseToughness(toughness as i32));
+        }
 
-            let auraid = AuraId::new();
-            db.execute(
-                indoc! {"
-                    INSERT INTO auras (auraid, modifiers, restrictions) VALUES (?1, ?2, ?3)
-                "},
-                (
-                    auraid,
-                    serde_json::to_string(&modifierids)?,
-                    serde_json::to_string(&enchant.restrictions)?,
-                ),
-            )?;
+        if card.cannot_be_countered {
+            entity.insert(CannotBeCountered);
+        }
 
-            db.execute(
-                indoc! {"
-                    UPDATE cards
-                    SET aura = (?2)
-                    WHERE cards.cardid = (?1)
-                "},
-                (cardid, auraid),
-            )?;
+        if card.split_second {
+            entity.insert(SplitSecond);
         }
 
         if !card.effects.is_empty() {
-            db.execute(
-                indoc! {"
-                    UPDATE cards
-                    SET effects = (?2)
-                    WHERE cards.cardid = (?1)
-                "},
-                (cardid, serde_json::to_string(&card.effects)?),
-            )?;
+            entity.insert(Effects(card.effects.clone()));
         }
 
         if !card.etb_abilities.is_empty() {
-            db.execute(
-                indoc! {"
-                    UPDATE cards
-                    SET etb = (?2)
-                    WHERE cards.cardid = (?1)
-                "},
-                (cardid, serde_json::to_string(&card.etb_abilities)?),
-            )?;
+            entity.insert(ETBAbilities(card.etb_abilities.clone()));
         }
 
-        if !card.static_abilities.is_empty() {
-            db.execute(
-                indoc! {"
-                    UPDATE cards
-                    SET abilities = (?2)
-                    WHERE cards.cardid = (?1)
-                "},
-                (cardid, serde_json::to_string(&card.static_abilities)?),
-            )?;
-        }
+        let cardid = CardId(entity.id());
 
         if !card.activated_abilities.is_empty() {
             let mut ability_ids = vec![];
             for ability in card.activated_abilities.iter() {
-                let id = AbilityId::upload_ability(db, cardid, ability)?;
+                let id = AbilityId::upload_ability(db, cardid, ability);
 
                 ability_ids.push(id);
             }
 
-            db.execute(
-                indoc! {"
-                    UPDATE cards
-                    SET activated_abilities = (?2)
-                    WHERE cards.cardid = (?1)
-                "},
-                (cardid, serde_json::to_string(&ability_ids)?),
-            )?;
+            db.entity_mut(cardid.0)
+                .insert(ActivatedAbilities(ability_ids));
+        }
+
+        if !card.static_abilities.is_empty() {
+            db.entity_mut(cardid.0)
+                .insert(StaticAbilities(card.static_abilities.clone()));
+        }
+
+        if let Some(enchant) = &card.enchant {
+            let mut modifierids = vec![];
+            for modifier in enchant.modifiers.iter() {
+                let modifierid = upload_modifier(db, cardid, modifier, false);
+                modifierids.push(modifierid);
+            }
+
+            let auraid = AuraId(
+                db.auras
+                    .spawn((
+                        Modifiers(modifierids),
+                        Restrictions(enchant.restrictions.clone()),
+                    ))
+                    .id(),
+            );
+
+            db.entity_mut(cardid.0).insert(auraid);
         }
 
         if !card.triggered_abilities.is_empty() {
             let mut trigger_ids = vec![];
             for ability in card.triggered_abilities.iter() {
-                let triggerid = TriggerId::new();
-                trigger_ids.push(triggerid);
+                let mut entity = db.triggers.spawn((
+                    cardid,
+                    ability.trigger.from,
+                    Effects(ability.effects.clone()),
+                    Types(ability.trigger.for_types.clone()),
+                ));
 
-                db.execute(
-                    indoc! {"
-                        INSERT INTO triggers (
-                            triggerid,
-                            listener,
-                            source,
-                            location_from,
-                            for_types,
-                            effects,
-                            active,
-                            in_stack
-                        ) VALUES (
-                            (?1),
-                            (?2),
-                            (?3),
-                            (?4),
-                            (?5),
-                            (?6),
-                            (?7),
-                            (?8)
-                        )"},
-                    (
-                        triggerid,
-                        cardid,
-                        serde_json::to_string(&ability.trigger.trigger)?,
-                        serde_json::to_string(&ability.trigger.from)?,
-                        serde_json::to_string(&ability.trigger.for_types)?,
-                        serde_json::to_string(&ability.effects)?,
-                        false,
-                        false,
-                    ),
-                )?;
+                match ability.trigger.trigger {
+                    TriggerSource::PutIntoGraveyard => {
+                        entity.insert(source::PutIntoGraveyard);
+                    }
+                    TriggerSource::EntersTheBattlefield => {
+                        entity.insert(source::EntersTheBattlefield);
+                    }
+                }
+
+                trigger_ids.push(TriggerId(entity.id()));
             }
 
-            db.execute(
-                "UPDATE cards SET triggered_abilities = (?2) WHERE cards.cardid = (?1)",
-                (cardid, serde_json::to_string(&trigger_ids)?),
-            )?;
+            db.entity_mut(cardid.0).insert(Triggers(trigger_ids));
         }
 
-        Ok(cardid)
+        cardid
     }
 
-    pub fn cost(self, db: &Connection) -> anyhow::Result<CastingCost> {
-        Ok(db.query_row(
-            "SELECT casting_cost FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
+    pub fn cost(self, db: &mut Database) -> &CastingCost {
+        db.get::<CastingCost>(self.0).unwrap()
     }
 
-    pub fn valid_targets(self, db: &Connection) -> anyhow::Result<HashSet<ActiveTarget>> {
+    pub fn valid_targets(self, db: &mut Database) -> HashSet<ActiveTarget> {
         let mut targets = HashSet::default();
-        let creatures = Battlefield::creatures(db)?;
+        let creatures = Battlefield::creatures(db);
 
-        for effect in self.effects(db)? {
-            let effect = effect.into_effect(db, self.controller(db)?)?;
+        for effect in self.effects(db) {
+            let controller = self.controller(db);
+            let effect = effect.effect(db, controller);
 
             match effect {
                 Effect::CounterSpell { target } => {
-                    targets_for_counterspell(db, self.controller(db)?, target, &mut targets)?;
+                    targets_for_counterspell(db, controller, target, &mut targets);
                 }
                 Effect::GainMana { .. } => {}
                 Effect::BattlefieldModifier(_) => {}
@@ -1550,28 +1337,28 @@ impl CardId {
                     targets_for_battlefield_modifier(
                         db,
                         self,
-                        Some(&modifier),
+                        Some(modifier),
                         &creatures,
-                        self.controller(db)?,
+                        controller,
                         &mut targets,
-                    )?;
+                    );
                 }
                 Effect::ExileTargetCreature => {
                     for creature in creatures.iter() {
-                        if creature.can_be_targeted(db, self.controller(db)?)? {
+                        if creature.can_be_targeted(db, controller) {
                             targets.insert(ActiveTarget::Battlefield { id: *creature });
                         }
                     }
                 }
                 Effect::ExileTargetCreatureManifestTopOfLibrary => {
                     for creature in creatures.iter() {
-                        if creature.can_be_targeted(db, self.controller(db)?)? {
+                        if creature.can_be_targeted(db, controller) {
                             targets.insert(ActiveTarget::Battlefield { id: *creature });
                         }
                     }
                 }
                 Effect::DealDamage(dmg) => {
-                    self.targets_for_damage(&creatures, db, dmg, &mut targets)?;
+                    self.targets_for_damage(&creatures, db, dmg, &mut targets);
                 }
                 Effect::CreateToken(_) => {}
                 Effect::Equip(_) => {
@@ -1580,88 +1367,81 @@ impl CardId {
                         self,
                         None,
                         &creatures,
-                        self.controller(db)?,
+                        controller,
                         &mut targets,
-                    )?;
+                    );
                 }
                 Effect::GainCounter(_) => {}
             }
         }
 
-        for ability in self.activated_abilities(db)? {
-            self.targets_for_ability(db, ability, &creatures, &mut targets)?;
+        for ability in self.activated_abilities(db) {
+            self.targets_for_ability(db, ability, &creatures, &mut targets);
         }
 
-        Ok(targets)
+        targets
     }
 
     fn targets_for_damage(
         self,
         creatures: &[CardId],
-        db: &Connection,
-        dmg: DealDamage,
+        db: &mut Database,
+        dmg: &DealDamage,
         targets: &mut HashSet<ActiveTarget>,
-    ) -> anyhow::Result<()> {
+    ) {
         for creature in creatures.iter() {
-            let controller = self.controller(db)?;
-            if creature.can_be_targeted(db, controller)?
+            let controller = self.controller(db);
+            if creature.can_be_targeted(db, controller)
                 && creature.passes_restrictions(
                     db,
                     self,
                     controller,
-                    Controller::Any,
+                    ControllerRestriction::Any,
                     &dmg.restrictions,
-                )?
+                )
             {
                 targets.insert(ActiveTarget::Battlefield { id: *creature });
             }
         }
-
-        Ok(())
     }
 
     pub fn targets_for_ability(
         self,
-        db: &Connection,
+        db: &mut Database,
         ability: AbilityId,
         creatures: &[CardId],
         targets: &mut HashSet<ActiveTarget>,
-    ) -> Result<(), anyhow::Error> {
-        let ability = ability.ability(db)?;
+    ) {
+        let ability = ability.ability(db);
         if !ability.apply_to_self {
             for effect in ability.effects {
-                let controller = self.controller(db)?;
-                match effect.into_effect(db, controller)? {
+                let controller = self.controller(db);
+                match effect.into_effect(db, controller) {
                     Effect::CounterSpell { target } => {
-                        targets_for_counterspell(db, controller, target, targets)?;
+                        targets_for_counterspell(db, controller, &target, targets);
                     }
                     Effect::GainMana { .. } => {}
                     Effect::BattlefieldModifier(_) => {}
                     Effect::ControllerDrawCards(_) => {}
                     Effect::Equip(_) => {
                         targets_for_battlefield_modifier(
-                            db,
-                            self,
-                            None,
-                            creatures,
-                            self.controller(db)?,
-                            targets,
-                        )?;
+                            db, self, None, creatures, controller, targets,
+                        );
                     }
                     Effect::CreateToken(_) => todo!(),
                     Effect::DealDamage(dmg) => {
-                        self.targets_for_damage(creatures, db, dmg, targets)?;
+                        self.targets_for_damage(creatures, db, &dmg, targets);
                     }
                     Effect::ExileTargetCreature => {
                         for creature in creatures.iter() {
-                            if creature.can_be_targeted(db, self.controller(db)?)? {
+                            if creature.can_be_targeted(db, controller) {
                                 targets.insert(ActiveTarget::Battlefield { id: *creature });
                             }
                         }
                     }
                     Effect::ExileTargetCreatureManifestTopOfLibrary => {
                         for creature in creatures.iter() {
-                            if creature.can_be_targeted(db, self.controller(db)?)? {
+                            if creature.can_be_targeted(db, controller) {
                                 targets.insert(ActiveTarget::Battlefield { id: *creature });
                             }
                         }
@@ -1673,29 +1453,23 @@ impl CardId {
                             self,
                             Some(&modifier),
                             creatures,
-                            self.controller(db)?,
+                            controller,
                             targets,
-                        )?;
+                        );
                     }
                 }
             }
         }
-
-        Ok(())
     }
 
     pub fn can_be_countered(
         self,
-        db: &Connection,
-        caster: PlayerId,
+        db: &mut Database,
+        caster: Controller,
         target: &SpellTarget,
-    ) -> anyhow::Result<bool> {
-        if db.query_row(
-            "SELECT cannot_be_countered FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )? {
-            return Ok(false);
+    ) -> bool {
+        if db.get::<CannotBeCountered>(self.0).is_some() {
+            return false;
         }
 
         let SpellTarget {
@@ -1705,44 +1479,45 @@ impl CardId {
         } = target;
 
         match controller {
-            Controller::You => {
-                if caster != self.controller(db)? {
-                    return Ok(false);
+            ControllerRestriction::You => {
+                if caster != self.controller(db) {
+                    return false;
                 }
             }
-            Controller::Opponent => {
-                if caster == self.controller(db)? {
-                    return Ok(false);
+            ControllerRestriction::Opponent => {
+                if caster == self.controller(db) {
+                    return false;
                 }
             }
-            Controller::Any => {}
+            ControllerRestriction::Any => {}
         };
 
-        if !types.is_empty() && !self.types_intersect(db, types)? {
-            return Ok(false);
+        if !types.is_empty() && !self.types_intersect(db, types) {
+            return false;
         }
 
-        if !self.subtypes_intersect(db, subtypes)? {
-            return Ok(false);
+        if !self.subtypes_intersect(db, subtypes) {
+            return false;
         }
 
-        for (ability, ability_controller) in Battlefield::static_abilities(db)? {
+        let colors = self.colors(db);
+        for (ability, ability_controller) in Battlefield::static_abilities(db) {
             match &ability {
                 StaticAbility::GreenCannotBeCountered { controller } => {
-                    if self.colors(db)?.contains(&Color::Green) {
+                    if colors.contains(&Color::Green) {
                         match controller {
-                            Controller::You => {
-                                if ability_controller == self.controller(db)? {
-                                    return Ok(false);
+                            ControllerRestriction::You => {
+                                if ability_controller == self.controller(db) {
+                                    return false;
                                 }
                             }
-                            Controller::Opponent => {
-                                if ability_controller != self.controller(db)? {
-                                    return Ok(false);
+                            ControllerRestriction::Opponent => {
+                                if ability_controller != self.controller(db) {
+                                    return false;
                                 }
                             }
-                            Controller::Any => {
-                                return Ok(false);
+                            ControllerRestriction::Any => {
+                                return false;
                             }
                         }
                     }
@@ -1752,537 +1527,518 @@ impl CardId {
             }
         }
 
-        Ok(true)
+        true
     }
 
-    pub fn can_be_targeted(self, db: &Connection, caster: PlayerId) -> anyhow::Result<bool> {
-        if self.shroud(db)? {
-            return Ok(false);
+    pub fn can_be_targeted(self, db: &mut Database, caster: Controller) -> bool {
+        if self.shroud(db) {
+            return false;
         }
 
-        if self.hexproof(db)? && self.controller(db)? != caster {
-            return Ok(false);
+        if self.hexproof(db) && self.controller(db) != caster {
+            return false;
         }
 
         // TODO protection
 
-        Ok(true)
+        true
     }
 
-    pub fn can_be_sacrificed(self, _db: &Connection) -> anyhow::Result<bool> {
-        Ok(true)
+    pub fn can_be_sacrificed(self, _db: &mut Database) -> bool {
+        // TODO
+        true
     }
 
-    pub fn shroud(self, db: &Connection) -> anyhow::Result<bool> {
-        let mut has_shroud = db
-            .query_row(
-                "SELECT shroud FROM cards WHERE cardid = (?1)",
-                (self,),
-                |row| row.get::<_, Option<bool>>(0),
-            )?
-            .unwrap_or_default();
+    pub fn vigilance(self, db: &mut Database) -> bool {
+        let mut ability = if self.facedown(db) {
+            false
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<Vigilance>(cloning.0).is_some()
+        } else {
+            db.get::<Vigilance>(self.0).is_some()
+        };
 
-        let mut statement = db.prepare(indoc! {"
-                SELECT add_shroud, remove_shroud
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
-                    OR entire_battlefield
-                )
-                ORDER BY active_seq ASC
-            "})?;
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&AddVigilance>,
+                Option<&RemoveVigilance>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (With<Active>, Or<(&AddVigilance, &RemoveVigilance)>)>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    remove,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            add.copied(),
+                            remove.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
 
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<bool>>(0)?.unwrap_or_default(),
-                row.get::<_, Option<bool>>(1)?.unwrap_or_default(),
-            ))
-        })?;
-
-        for row in rows {
-            let (add_shroud, remove_shroud) = row?;
-            if add_shroud {
-                has_shroud = true;
-            }
-            if remove_shroud {
-                has_shroud = false;
-            }
-        }
-
-        Ok(has_shroud)
-    }
-
-    pub fn hexproof(self, db: &Connection) -> anyhow::Result<bool> {
-        let mut has_hexproof = db
-            .query_row(
-                "SELECT hexproof FROM cards WHERE cardid = (?1)",
-                (self,),
-                |row| row.get::<_, Option<bool>>(0),
-            )?
-            .unwrap_or_default();
-
-        let mut statement = db.prepare(indoc! {"
-                SELECT add_hexproof, remove_hexproof
-                FROM modifiers, json_each(modifiers.modifying)
-                WHERE active AND (
-                    json_each.value = (?1)
-                    OR global
-                    OR entire_battlefield
-                )
-                ORDER BY active_seq ASC
-            "})?;
-
-        let rows = statement.query_map((self,), |row| {
-            Ok((
-                row.get::<_, Option<bool>>(0)?.unwrap_or_default(),
-                row.get::<_, Option<bool>>(1)?.unwrap_or_default(),
-            ))
-        })?;
-
-        for row in rows {
-            let (add_hexproof, remove_hexproof) = row?;
-            if add_hexproof {
-                has_hexproof = true;
-            }
-            if remove_hexproof {
-                has_hexproof = false;
+        for (add, remove, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
+            if self.passes_restrictions(
+                db,
+                source,
+                controller,
+                controller_restriction,
+                &restrictions,
+            ) {
+                if remove.is_some() {
+                    ability = false;
+                }
+                if add.is_some() {
+                    ability = true;
+                }
             }
         }
 
-        Ok(has_hexproof)
+        ability
     }
 
-    pub fn tapped(self, db: &Connection) -> anyhow::Result<bool> {
-        Ok(db.query_row(
-            "SELECT tapped FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn shroud(self, db: &mut Database) -> bool {
+        let mut ability = if self.facedown(db) {
+            false
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<Shroud>(cloning.0).is_some()
+        } else {
+            db.get::<Shroud>(self.0).is_some()
+        };
+
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&AddShroud>,
+                Option<&RemoveShroud>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (With<Active>, Or<(&AddShroud, &RemoveShroud)>)>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    remove,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            add.copied(),
+                            remove.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
+
+        for (add, remove, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
+            if self.passes_restrictions(
+                db,
+                source,
+                controller,
+                controller_restriction,
+                &restrictions,
+            ) {
+                if remove.is_some() {
+                    ability = false;
+                }
+                if add.is_some() {
+                    ability = true;
+                }
+            }
+        }
+
+        ability
     }
 
-    pub fn tap(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE cards SET tapped = TRUE WHERE cardid = (?1)",
-            (self,),
-        )?;
+    pub fn hexproof(self, db: &mut Database) -> bool {
+        let mut ability = if self.facedown(db) {
+            false
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<Hexproof>(cloning.0).is_some()
+        } else {
+            db.get::<Hexproof>(self.0).is_some()
+        };
 
-        Ok(())
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&AddHexproof>,
+                Option<&RemoveHexproof>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (With<Active>, Or<(&AddHexproof, &RemoveHexproof)>)>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    remove,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            add.copied(),
+                            remove.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
+
+        for (add, remove, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
+            if self.passes_restrictions(
+                db,
+                source,
+                controller,
+                controller_restriction,
+                &restrictions,
+            ) {
+                if remove.is_some() {
+                    ability = false;
+                }
+                if add.is_some() {
+                    ability = true;
+                }
+            }
+        }
+
+        ability
     }
 
-    pub fn clone_card(&self, db: &Connection, source: CardId) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE cards SET cloning = (?2) WHERE cardid = (?1)",
-            (self, source),
-        )?;
-
-        Ok(())
+    pub fn tapped(self, db: &mut Database) -> bool {
+        db.get::<Tapped>(self.0).is_some()
     }
 
-    pub fn cloning(self, db: &Connection) -> anyhow::Result<Option<CardId>> {
-        Ok(db.query_row(
-            "SELECT cloning FROM cards WHERE cardid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn tap(self, db: &mut Database) {
+        db.entity_mut(self.0).insert(Tapped);
     }
 
-    pub fn is_land(self, db: &Connection) -> anyhow::Result<bool> {
+    pub fn clone_card(&self, db: &mut Database, source: CardId) {
+        db.entity_mut(self.0).insert(Cloning(source.0));
+    }
+
+    pub fn cloning(self, db: &mut Database) -> Option<Cloning> {
+        db.get::<Cloning>(self.0).copied()
+    }
+
+    pub fn is_land(self, db: &mut Database) -> bool {
         self.types_intersect(db, &HashSet::from([Type::Land, Type::BasicLand]))
     }
 
-    pub(crate) fn manifest(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE cards SET manifested = TRUE, face_down = TRUE WHERE cardid = (?1)",
-            (self,),
-        )?;
-
-        Ok(())
+    pub(crate) fn manifest(self, db: &mut Database) {
+        db.entity_mut(self.0).insert(Manifested).insert(FaceDown);
     }
 
-    pub fn is_permanent(self, db: &Connection) -> anyhow::Result<bool> {
-        Ok(!self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))?)
+    pub fn is_permanent(self, db: &mut Database) -> bool {
+        !self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy, Hash, Default)]
-pub struct AuraId(usize);
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Component)]
+pub struct AuraId(Entity);
 
 impl AuraId {
-    pub fn modifiers(self, db: &Connection) -> anyhow::Result<Vec<ModifierId>> {
-        Ok(db.query_row(
-            indoc! {"
-                    SELECT modifiers FROM auras WHERE auraid = (?1)
-                "},
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
+    pub fn modifiers(self, db: &mut Database) -> Modifiers {
+        db.auras.get::<Modifiers>(self.0).cloned().unwrap()
     }
 
-    pub fn is_attached(self, db: &Connection) -> anyhow::Result<bool> {
-        let modifiers = self.modifiers(db)?;
-        for modifier in modifiers {
-            if !modifier.modifying(db)?.is_empty() {
-                return Ok(true);
+    pub fn is_attached(self, db: &mut Database) -> bool {
+        let modifiers = self.modifiers(db);
+        for modifier in modifiers.iter() {
+            if !modifier.modifying(db).is_empty() {
+                return true;
             }
         }
 
-        Ok(false)
-    }
-}
-
-impl ToSql for AuraId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
-    }
-}
-
-impl FromSql for AuraId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
-    }
-}
-
-impl AuraId {
-    pub fn new() -> Self {
-        Self(NEXT_AURA_ID.fetch_add(1, Ordering::Relaxed))
+        false
     }
 }
 
 fn upload_modifier(
-    statement: &mut rusqlite::Statement<'_>,
+    db: &mut Database,
     source: CardId,
     modifier: &BattlefieldModifier,
-    db: &Connection,
     temporary: bool,
-) -> Result<ModifierId, anyhow::Error> {
-    let modifierid = ModifierId::new();
+) -> ModifierId {
+    let mut entity = db.modifiers.spawn((
+        modifier.controller,
+        Restrictions(modifier.restrictions.clone()),
+        source,
+        Modifying::default(),
+    ));
 
-    statement.execute((
-        modifierid,
-        serde_json::to_string(&modifier.duration)?,
-        temporary,
-        serde_json::to_string(&modifier.controller)?,
-        serde_json::to_string(&modifier.restrictions)?,
-        modifier.modifier.global,
-        modifier.modifier.entire_battlefield,
-        false,
-    ))?;
+    if temporary {
+        entity.insert(Temporary);
+    }
 
-    db.execute(
-        "UPDATE modifiers SET source = (?2) WHERE modifierid = (?1)",
-        (modifierid, source),
-    )?;
+    match modifier.duration {
+        EffectDuration::UntilEndOfTurn => {
+            entity.insert(UntilEndOfTurn);
+        }
+        EffectDuration::UntilSourceLeavesBattlefield => {
+            entity.insert(UntilSourceLeavesBattlefield);
+        }
+    }
+
+    if modifier.modifier.global {
+        entity.insert(Global);
+    }
+
+    if modifier.modifier.entire_battlefield {
+        entity.insert(EntireBattlefield);
+    }
 
     if let Some(power) = modifier.modifier.base_power {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET base_power_modifier = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, power),
-        )?;
+        entity.insert(BasePowerModifier(power));
     }
+
     if let Some(toughness) = modifier.modifier.base_toughness {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET base_toughness_modifier = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, toughness),
-        )?;
+        entity.insert(BaseToughnessModifier(toughness));
     }
+
     if let Some(dynamic) = &modifier.modifier.dynamic_power_toughness {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET dynamic_add_power_toughness = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, serde_json::to_string(dynamic)?),
-        )?;
+        entity.insert(*dynamic);
     }
+
     if let Some(power) = modifier.modifier.add_power {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET add_power_modifier = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, power),
-        )?;
+        entity.insert(AddPower(power));
     }
+
     if let Some(toughness) = modifier.modifier.add_toughness {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET add_toughness_modifier = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, toughness),
-        )?;
+        entity.insert(AddToughness(toughness));
     }
+
     if !modifier.modifier.add_types.is_empty() {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET type_modifiers = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (
-                modifierid,
-                serde_json::to_string(&modifier.modifier.add_types)?,
-            ),
-        )?;
+        entity.insert(AddTypes(modifier.modifier.add_types.clone()));
     }
+
     if !modifier.modifier.add_subtypes.is_empty() {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET subtype_modifiers = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (
-                modifierid,
-                serde_json::to_string(&modifier.modifier.add_subtypes)?,
-            ),
-        )?;
+        entity.insert(AddSubtypes(modifier.modifier.add_subtypes.clone()));
     }
+
     if modifier.modifier.remove_all_subtypes {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET remove_all_subtypes = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, true),
-        )?;
-    }
-    if modifier.modifier.remove_all_abilities {
-        modifierid.remove_all_abilities(db)?;
+        entity.insert(RemoveAllSubtypes);
     }
 
     if modifier.modifier.add_vigilance {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET add_vigilance = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (modifierid, true),
-        )?;
+        entity.insert(AddVigilance);
     }
+
+    let modifierid = ModifierId(entity.id());
 
     if let Some(ability) = &modifier.modifier.add_ability {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET activated_ability_modifier = (?2)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (
-                modifierid,
-                serde_json::to_string(&ActivatedAbilityModifier::Add(AbilityId::upload_ability(
-                    db, source, ability,
-                )?))?,
-            ),
-        )?;
+        let id = AbilityId::upload_ability(db, source, ability);
+        db.modifiers
+            .entity_mut(modifierid.0)
+            .insert(ActivatedAbilityModifier::Add(id));
     }
 
-    Ok(modifierid)
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash, Default, From)]
-pub struct AbilityId(usize);
-
-impl ToSql for AbilityId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
+    if modifier.modifier.remove_all_abilities {
+        modifierid.remove_all_abilities(db);
     }
+
+    modifierid
 }
 
-impl FromSql for AbilityId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
-    }
-}
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
+pub struct AbilityId(Entity);
 
 impl AbilityId {
-    pub fn new() -> Self {
-        Self(NEXT_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
-    }
-
     pub fn upload_ability(
-        db: &Connection,
+        db: &mut Database,
         cardid: CardId,
         ability: &ActivatedAbility,
-    ) -> anyhow::Result<AbilityId> {
-        let id = AbilityId::new();
-        db.execute(
-            INSERT_ABILITIES_SQL,
-            (
-                id,
-                cardid,
-                ability.apply_to_self,
-                serde_json::to_string(&ability.cost)?,
-                serde_json::to_string(&ability.effects)?,
-                false,
-            ),
-        )?;
+    ) -> AbilityId {
+        let mut entity = db.abilities.spawn((
+            cardid,
+            ability.cost.clone(),
+            Effects(ability.effects.clone()),
+        ));
 
-        Ok(id)
+        if ability.apply_to_self {
+            entity.insert(ApplyToSelf);
+        }
+
+        Self(entity.id())
     }
 
-    pub fn land_abilities(db: &Connection) -> HashMap<Subtype, Self> {
+    pub fn land_abilities(db: &mut Database) -> HashMap<Subtype, Self> {
         INIT_LAND_ABILITIES.with(|init| {
             init.get_or_init(|| {
                 let mut abilities = HashMap::new();
 
-                let id = AbilityId::new();
-                db.execute(
-                    INSERT_ABILITIES_SQL,
-                    (
-                        id,
-                        Option::<CardId>::None,
-                        false,
-                        serde_json::to_string(&AbilityCost {
-                            mana_cost: vec![],
-                            tap: true,
-                            additional_cost: vec![],
-                        })
-                        .unwrap(),
-                        serde_json::to_string(&[AnyEffect {
-                            effect: Effect::GainMana {
-                                mana: GainMana::Specific {
-                                    gains: vec![Mana::White],
-                                },
+                let id = AbilityId(
+                    db.abilities
+                        .spawn((
+                            AbilityCost {
+                                mana_cost: vec![],
+                                tap: true,
+                                additional_cost: vec![],
                             },
-                            threshold: None,
-                        }])
-                        .unwrap(),
-                        false,
-                    ),
-                )
-                .unwrap();
-
+                            Effects(vec![AnyEffect {
+                                effect: Effect::GainMana {
+                                    mana: GainMana::Specific {
+                                        gains: vec![Mana::White],
+                                    },
+                                },
+                                threshold: None,
+                            }]),
+                        ))
+                        .id(),
+                );
                 abilities.insert(Subtype::Plains, id);
 
-                let id = AbilityId::new();
-                db.execute(
-                    INSERT_ABILITIES_SQL,
-                    (
-                        id,
-                        Option::<CardId>::None,
-                        false,
-                        serde_json::to_string(&AbilityCost {
-                            mana_cost: vec![],
-                            tap: true,
-                            additional_cost: vec![],
-                        })
-                        .unwrap(),
-                        serde_json::to_string(&[AnyEffect {
-                            effect: Effect::GainMana {
-                                mana: GainMana::Specific {
-                                    gains: vec![Mana::Blue],
-                                },
+                let id = AbilityId(
+                    db.abilities
+                        .spawn((
+                            AbilityCost {
+                                mana_cost: vec![],
+                                tap: true,
+                                additional_cost: vec![],
                             },
-                            threshold: None,
-                        }])
-                        .unwrap(),
-                        false,
-                    ),
-                )
-                .unwrap();
-
+                            Effects(vec![AnyEffect {
+                                effect: Effect::GainMana {
+                                    mana: GainMana::Specific {
+                                        gains: vec![Mana::Blue],
+                                    },
+                                },
+                                threshold: None,
+                            }]),
+                        ))
+                        .id(),
+                );
                 abilities.insert(Subtype::Island, id);
 
-                let id = AbilityId::new();
-                db.execute(
-                    INSERT_ABILITIES_SQL,
-                    (
-                        id,
-                        Option::<CardId>::None,
-                        false,
-                        serde_json::to_string(&AbilityCost {
-                            mana_cost: vec![],
-                            tap: true,
-                            additional_cost: vec![],
-                        })
-                        .unwrap(),
-                        serde_json::to_string(&[AnyEffect {
-                            effect: Effect::GainMana {
-                                mana: GainMana::Specific {
-                                    gains: vec![Mana::Black],
-                                },
+                let id = AbilityId(
+                    db.abilities
+                        .spawn((
+                            AbilityCost {
+                                mana_cost: vec![],
+                                tap: true,
+                                additional_cost: vec![],
                             },
-                            threshold: None,
-                        }])
-                        .unwrap(),
-                        false,
-                    ),
-                )
-                .unwrap();
-
+                            Effects(vec![AnyEffect {
+                                effect: Effect::GainMana {
+                                    mana: GainMana::Specific {
+                                        gains: vec![Mana::Black],
+                                    },
+                                },
+                                threshold: None,
+                            }]),
+                        ))
+                        .id(),
+                );
                 abilities.insert(Subtype::Swamp, id);
 
-                let id = AbilityId::new();
-                db.execute(
-                    INSERT_ABILITIES_SQL,
-                    (
-                        id,
-                        Option::<CardId>::None,
-                        false,
-                        serde_json::to_string(&AbilityCost {
-                            mana_cost: vec![],
-                            tap: true,
-                            additional_cost: vec![],
-                        })
-                        .unwrap(),
-                        serde_json::to_string(&[AnyEffect {
-                            effect: Effect::GainMana {
-                                mana: GainMana::Specific {
-                                    gains: vec![Mana::Red],
-                                },
+                let id = AbilityId(
+                    db.abilities
+                        .spawn((
+                            AbilityCost {
+                                mana_cost: vec![],
+                                tap: true,
+                                additional_cost: vec![],
                             },
-                            threshold: None,
-                        }])
-                        .unwrap(),
-                        false,
-                    ),
-                )
-                .unwrap();
-
+                            Effects(vec![AnyEffect {
+                                effect: Effect::GainMana {
+                                    mana: GainMana::Specific {
+                                        gains: vec![Mana::Red],
+                                    },
+                                },
+                                threshold: None,
+                            }]),
+                        ))
+                        .id(),
+                );
                 abilities.insert(Subtype::Mountain, id);
 
-                let id = AbilityId::new();
-                db.execute(
-                    INSERT_ABILITIES_SQL,
-                    (
-                        id,
-                        Option::<CardId>::None,
-                        false,
-                        serde_json::to_string(&AbilityCost {
-                            mana_cost: vec![],
-                            tap: true,
-                            additional_cost: vec![],
-                        })
-                        .unwrap(),
-                        serde_json::to_string(&[AnyEffect {
-                            effect: Effect::GainMana {
-                                mana: GainMana::Specific {
-                                    gains: vec![Mana::Green],
-                                },
+                let id = AbilityId(
+                    db.abilities
+                        .spawn((
+                            AbilityCost {
+                                mana_cost: vec![],
+                                tap: true,
+                                additional_cost: vec![],
                             },
-                            threshold: None,
-                        }])
-                        .unwrap(),
-                        false,
-                    ),
-                )
-                .unwrap();
-
+                            Effects(vec![AnyEffect {
+                                effect: Effect::GainMana {
+                                    mana: GainMana::Specific {
+                                        gains: vec![Mana::Green],
+                                    },
+                                },
+                                threshold: None,
+                            }]),
+                        ))
+                        .id(),
+                );
                 abilities.insert(Subtype::Forest, id);
 
                 abilities
@@ -2291,525 +2047,323 @@ impl AbilityId {
         })
     }
 
-    pub fn move_to_stack(
-        self,
-        db: &Connection,
-        source: CardId,
-        targets: HashSet<ActiveTarget>,
-    ) -> anyhow::Result<()> {
-        if Stack::split_second(db)? {
-            return Ok(());
+    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: HashSet<ActiveTarget>) {
+        if Stack::split_second(db) {
+            return;
         }
 
-        db.execute(
-            indoc! {"
-                UPDATE abilities
-                SET in_stack = TRUE,
-                    stack_seq = (?2),
-                    targets = (?3),
-                    source = (?4)
-                WHERE abilities.abilityid = (?1)
-            "},
-            (
-                self,
-                NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
-                serde_json::to_string(&targets)?,
-                // This is a hack to make land types work, probably need something better here
-                source,
-            ),
-        )?;
-
-        Ok(())
+        db.abilities
+            .entity_mut(self.0)
+            .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
+            .insert(Targets(targets))
+            // This is a hack to make land types work, probably need something better here
+            .insert(source);
     }
 
-    pub fn ability(self, db: &Connection) -> anyhow::Result<ActivatedAbility> {
-        Ok(db.query_row(
-            "SELECT cost, effects, apply_to_self FROM abilities WHERE abilityid = (?1)",
-            (self,),
-            |row| {
-                Ok(ActivatedAbility {
-                    cost: serde_json::from_str(&row.get::<_, String>(0)?).unwrap(),
-                    effects: serde_json::from_str(&row.get::<_, String>(1)?).unwrap(),
-                    apply_to_self: row.get(2)?,
-                })
-            },
-        )?)
+    pub fn ability(self, db: &mut Database) -> ActivatedAbility {
+        let (cost, effects, apply_to_self) = db
+            .abilities
+            .query::<(Entity, &AbilityCost, &Effects, Option<&ApplyToSelf>)>()
+            .iter(&db.abilities)
+            .filter_map(|(e, cost, effect, apply_to_self)| {
+                if Self(e) == self {
+                    Some((cost, effect, apply_to_self))
+                } else {
+                    None
+                }
+            })
+            .next()
+            .unwrap();
+
+        ActivatedAbility {
+            cost: cost.clone(),
+            effects: effects.0.clone(),
+            apply_to_self: apply_to_self.is_some(),
+        }
     }
 
-    pub fn apply_to_self(self, db: &Connection) -> anyhow::Result<bool> {
-        Ok(db.query_row(
-            "SELECT  apply_to_self FROM abilities WHERE abilityid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn apply_to_self(self, db: &mut Database) -> bool {
+        db.abilities.get::<ApplyToSelf>(self.0).is_some()
     }
 
-    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<AnyEffect>> {
-        Ok(db.query_row(
-            "SELECT effects FROM abilities WHERE abilityid = (?1)",
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
+    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+        db.abilities
+            .get::<Effects>(self.0)
+            .cloned()
+            .unwrap_or_default()
+            .0
     }
 
-    pub fn source(self, db: &Connection) -> anyhow::Result<CardId> {
-        Ok(db.query_row(
-            "SELECT source FROM abilities WHERE abilityid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn source(self, db: &mut Database) -> CardId {
+        db.abilities.get::<CardId>(self.0).copied().unwrap()
     }
 
-    pub(crate) fn controller(self, db: &Connection) -> anyhow::Result<PlayerId> {
-        self.source(db)?.controller(db)
+    pub(crate) fn controller(self, db: &mut Database) -> Controller {
+        self.source(db).controller(db)
     }
 
-    fn delete(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute("DELETE FROM abilities WHERE abilityid = (?1)", (self,))?;
-        Ok(())
+    fn delete(self, db: &mut Database) {
+        db.abilities.despawn(self.0);
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash, Default)]
-pub struct ModifierId(usize);
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord, Component)]
+pub struct ModifierSeq(usize);
 
-impl ToSql for ModifierId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
+impl ModifierSeq {
+    pub fn next() -> Self {
+        Self(NEXT_MODIFIER_SEQ.fetch_add(1, Ordering::Relaxed))
     }
 }
 
-impl FromSql for ModifierId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
-    }
-}
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Default, Component, Deref, DerefMut)]
+pub struct Modifiers(pub Vec<ModifierId>);
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
+pub struct ModifierId(Entity);
 
 impl ModifierId {
-    pub fn new() -> Self {
-        Self(NEXT_MODIFIER_ID.fetch_add(1, Ordering::Relaxed))
+    pub fn remove_all_abilities(self, db: &mut Database) {
+        db.modifiers
+            .entity_mut(self.0)
+            .insert(ActivatedAbilityModifier::RemoveAll)
+            .insert(StaticAbilityModifier::RemoveAll)
+            .insert(TriggeredAbilityModifier::RemoveAll)
+            .insert(RemoveVigilance)
+            .insert(RemoveFlash)
+            .insert(RemoveHexproof)
+            .insert(RemoveShroud);
     }
 
-    pub fn remove_all_abilities(self, db: &Connection) -> Result<(), anyhow::Error> {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET activated_ability_modifier = (?2),
-                    static_ability_modifier = (?3),
-                    triggered_ability_modifier = (?4)
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (
-                self,
-                serde_json::to_string(&ActivatedAbilityModifier::RemoveAll)?,
-                serde_json::to_string(&StaticAbilityModifier::RemoveAll)?,
-                serde_json::to_string(&TriggeredAbilityModifier::RemoveAll)?,
-            ),
-        )?;
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET remove_vigilance = TRUE,
-                    remove_flash = TRUE,
-                    remove_hexproof = TRUE,
-                    remove_shroud = TRUE
-                WHERE modifiers.modifierid = (?1)
-            "},
-            (self,),
-        )?;
-
-        Ok(())
-    }
-
-    pub fn upload_single_modifier(
-        db: &Connection,
+    pub fn upload_temporary_modifier(
+        db: &mut Database,
         cardid: CardId,
         modifier: &BattlefieldModifier,
-        temporary: bool,
-    ) -> anyhow::Result<ModifierId> {
-        let mut statement = db.prepare(UPLOAD_MODIFIER_SQL)?;
-        upload_modifier(&mut statement, cardid, modifier, db, temporary)
+    ) -> ModifierId {
+        upload_modifier(db, cardid, modifier, true)
     }
 
-    pub fn modifying(self, db: &Connection) -> anyhow::Result<Vec<CardId>> {
-        Ok(db.query_row(
-            indoc! {"
-                    SELECT modifying FROM modifiers WHERE modifierid = (?1)
-                "},
-            (self,),
-            |row| {
-                Ok(row
-                    .get::<_, Option<String>>(0)?
-                    .as_ref()
-                    .map(|s| serde_json::from_str(s).unwrap())
-                    .unwrap_or_default())
-            },
-        )?)
+    pub fn modifying(self, db: &mut Database) -> &Modifying {
+        db.modifiers.get::<Modifying>(self.0).unwrap()
     }
 
-    pub fn ability_modifier(
-        self,
-        db: &Connection,
-    ) -> anyhow::Result<Option<ActivatedAbilityModifier>> {
-        Ok(db.query_row(
-            indoc! {"
-                    SELECT modifying FROM modifiers WHERE modifierid = (?1)
-                "},
-            (self,),
-            |row| {
-                Ok(row
-                    .get::<_, Option<String>>(0)?
-                    .as_ref()
-                    .map(|s| serde_json::from_str(s).unwrap())
-                    .unwrap_or_default())
-            },
-        )?)
+    pub fn ability_modifier(self, db: &mut Database) -> Option<&ActivatedAbilityModifier> {
+        db.modifiers.get::<ActivatedAbilityModifier>(self.0)
     }
 
-    pub fn active_modifiers(db: &Connection) -> anyhow::Result<Vec<ModifierId>> {
-        let mut statement = db.prepare(indoc! {"
-            SELECT modifierid FROM modifiers WHERE modifiers.active
-        "})?;
-
-        let rows = statement.query_map((), |row| row.get(0))?;
-        rows.into_iter()
-            .map(|v| Ok(v?))
-            .collect::<anyhow::Result<_>>()
+    pub fn activate(self, db: &mut Database) {
+        db.modifiers
+            .entity_mut(self.0)
+            .insert(Active)
+            .insert(ModifierSeq(
+                NEXT_MODIFIER_SEQ.fetch_add(1, Ordering::Relaxed),
+            ));
     }
 
-    pub fn activate(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET active = TRUE
-                WHERE modifierid = (?1)
-            "},
-            (self,),
-        )?;
-        db.execute(
-            indoc! {"
-                UPDATE modifiers
-                SET active_seq = (?2)
-                WHERE modifierid = (?1) AND active_seq IS NULL
-            "},
-            (self, NEXT_MODIFIER_SEQ.fetch_add(1, Ordering::Relaxed)),
-        )?;
+    pub fn deactivate(self, db: &mut Database) {
+        let is_temporary = db.modifiers.get::<Temporary>(self.0).is_some();
+        let modifying = self.modifying(db);
 
-        Ok(())
-    }
-
-    pub fn deactivate(self, db: &Connection) -> anyhow::Result<()> {
-        let (is_temporary, modifying) = db.query_row(
-            "SELECT is_temporary, modifying FROM modifiers WHERE modifierid = (?1)",
-            (self,),
-            |row| {
-                Ok((
-                    row.get::<_, Option<bool>>(0)?,
-                    row.get::<_, Option<String>>(1)?
-                        .as_ref()
-                        .map(|s| serde_json::from_str::<Vec<CardId>>(s).unwrap())
-                        .unwrap_or_default(),
-                ))
-            },
-        )?;
-
-        if is_temporary.unwrap_or_default() && modifying.is_empty() {
-            if let Some(ActivatedAbilityModifier::Add(ability)) = self.ability_modifier(db)? {
-                ability.delete(db)?;
+        if is_temporary && modifying.is_empty() {
+            if let Some(ActivatedAbilityModifier::Add(ability)) = self.ability_modifier(db) {
+                ability.delete(db);
             }
 
-            db.execute("DELETE FROM modifiers WHERE modifierid = (?1)", (self,))?;
+            db.modifiers.despawn(self.0);
         } else {
-            db.execute(
-                indoc! {"
-                    UPDATE modifiers
-                    SET active = FALSE
-                    WHERE modifiers.modifierid = (?1)
-                "},
-                (self,),
-            )?;
+            db.modifiers.entity_mut(self.0).remove::<Active>();
         }
-
-        Ok(())
     }
 
-    pub fn detach_all(&self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            "UPDATE modifiers SET modifying = NULL WHERE modifierid = (?1)",
-            (self,),
-        )?;
-        self.deactivate(db)
+    pub fn detach_all(&self, db: &mut Database) {
+        db.modifiers.get_mut::<Modifying>(self.0).unwrap().clear();
+        self.deactivate(db);
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash, Default, From)]
-pub struct TriggerId(usize);
-
-impl ToSql for TriggerId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
-    }
-}
-
-impl FromSql for TriggerId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
-    }
-}
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
+pub struct TriggerId(Entity);
 
 impl TriggerId {
-    pub fn new() -> Self {
-        Self(NEXT_TRIGGER_ID.fetch_add(1, Ordering::Relaxed))
-    }
-
-    pub fn move_to_stack(
-        self,
-        db: &Connection,
-        targets: HashSet<ActiveTarget>,
-    ) -> anyhow::Result<()> {
-        if Stack::split_second(db)? {
-            return Ok(());
+    pub fn move_to_stack(self, db: &mut Database, targets: HashSet<ActiveTarget>) {
+        if Stack::split_second(db) {
+            return;
         }
 
-        db.execute(
-            indoc! {"
-                UPDATE triggers 
-                SET in_stack = TRUE,
-                    stack_seq = (?2),
-                    targets = (?3)
-                WHERE triggers.triggerid = (?1)
-            "},
-            (
-                self,
-                NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
-                serde_json::to_string(&targets)?,
-            ),
-        )?;
-
-        Ok(())
+        db.triggers
+            .entity_mut(self.0)
+            .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
+            .insert(Targets(targets));
     }
 
-    pub fn location_from(self, db: &Connection) -> anyhow::Result<triggers::Location> {
-        Ok(db.query_row(
-            "SELECT location_from FROM triggers WHERE triggerid = (?1)",
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
+    pub fn location_from(self, db: &mut Database) -> Location {
+        db.triggers.get::<Location>(self.0).copied().unwrap()
     }
 
-    pub fn for_types(self, db: &Connection) -> anyhow::Result<HashSet<Type>> {
-        Ok(db.query_row(
-            "SELECT for_types FROM triggers WHERE triggerid = (?1)",
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
+    pub fn for_types(self, db: &mut Database) -> Types {
+        db.triggers.get::<Types>(self.0).cloned().unwrap()
     }
 
-    pub fn listener(self, db: &Connection) -> anyhow::Result<CardId> {
-        Ok(db.query_row(
-            "SELECT listener FROM triggers WHERE triggerid = (?1)",
-            (self,),
-            |row| row.get(0),
-        )?)
+    pub fn listener(self, db: &mut Database) -> CardId {
+        db.triggers.get::<CardId>(self.0).copied().unwrap()
     }
 
-    pub fn triggered_ability(self, db: &Connection) -> anyhow::Result<TriggeredAbility> {
-        Ok(db.query_row(
-            indoc! {"
-                    SELECT source, location_from, for_types, effects FROM triggers WHERE triggerid = (?1)
-                "},
-            (self,),
-            |row| {
-                Ok(TriggeredAbility {
-                    trigger: Trigger {
-                        trigger: serde_json::from_str(&row.get::<_, String>(0)?).unwrap(),
-                        from: serde_json::from_str(&row.get::<_, String>(1)?).unwrap(),
-                        for_types: serde_json::from_str(&row.get::<_, String>(2)?).unwrap(),
-                    },
-                    effects: serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
-                })
-            },
-        )?)
+    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+        db.triggers
+            .get::<Effects>(self.0)
+            .cloned()
+            .unwrap_or_default()
+            .0
     }
 
-    pub fn effects(self, db: &Connection) -> anyhow::Result<Vec<AnyEffect>> {
-        Ok(db.query_row(
-            "SELECT effects FROM triggers WHERE triggerid = (?1)",
-            (self,),
-            |row| Ok(serde_json::from_str(&row.get::<_, String>(0)?).unwrap()),
-        )?)
-    }
-
-    pub fn active_triggers_of_type(
-        db: &Connection,
-        trigger: TriggerSource,
-    ) -> anyhow::Result<Vec<TriggerId>> {
+    pub fn active_triggers_of_source<Source: Component>(db: &mut Database) -> Vec<TriggerId> {
         let mut results = vec![];
-        let mut of_type = db.prepare("SELECT triggerid FROM triggers WHERE source = (?1)")?;
-        for row in of_type.query_map((serde_json::to_string(&trigger)?,), |row| row.get(0))? {
-            results.push(row?);
+        let mut of_type = db
+            .triggers
+            .query_filtered::<Entity, (With<Source>, With<Active>)>();
+
+        for id in of_type.iter(&db.triggers) {
+            results.push(Self(id));
         }
 
-        Ok(results)
+        results
     }
 
-    pub fn activate_all_for_card(db: &Connection, cardid: CardId) -> anyhow::Result<()> {
-        db.execute(
-            indoc! {"
-                UPDATE triggers
-                SET active = TRUE
-                WHERE listener = (?1)
-            "},
-            (cardid,),
-        )?;
+    pub fn activate_all_for_card(db: &mut Database, cardid: CardId) {
+        let entities = db
+            .triggers
+            .query::<(Entity, &CardId)>()
+            .iter(&db.triggers)
+            .filter_map(|(entity, source)| {
+                if cardid == *source {
+                    Some(entity)
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
 
-        Ok(())
+        for entity in entities {
+            db.triggers.entity_mut(entity).insert(Active);
+        }
     }
 
-    pub fn deactivate_all_for_card(db: &Connection, cardid: CardId) -> anyhow::Result<()> {
-        db.execute(
-            indoc! {"
-                UPDATE triggers
-                SET active = FALSE
-                WHERE listener = (?1)
-            "},
-            (cardid,),
-        )?;
+    pub fn deactivate_all_for_card(db: &mut Database, cardid: CardId) {
+        let entities = db
+            .triggers
+            .query_filtered::<(Entity, &CardId), With<Active>>()
+            .iter(&db.triggers)
+            .filter_map(|(entity, listener)| {
+                if *listener == cardid {
+                    Some(entity)
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
 
-        Ok(())
-    }
-
-    pub fn activate(self, db: &Connection) -> anyhow::Result<()> {
-        db.execute(
-            indoc! {"
-                UPDATE triggers
-                SET active = TRUE
-                WHERE triggerid = (?1)
-            "},
-            (self,),
-        )?;
-
-        Ok(())
+        for entity in entities {
+            db.triggers.entity_mut(entity).remove::<Active>();
+        }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash, Default)]
-pub struct CounterId(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deref, DerefMut, Component)]
+pub struct Count(pub usize);
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct CounterId(Entity);
 
 impl CounterId {
-    pub fn new() -> Self {
-        Self(NEXT_COUNTER_ID.fetch_add(1, Ordering::Relaxed))
-    }
-
-    pub fn add_counters(
-        db: &Connection,
-        card: CardId,
-        counter: Counter,
-        count: usize,
-    ) -> anyhow::Result<()> {
-        let mut existing = db.prepare(indoc! {"
-                SELECT counterid, count
-                FROM counters
-                WHERE is_on = (?1)
-                    AND type = (?2)
-        "})?;
-
-        let mut rows = existing.query_map((card, serde_json::to_string(&counter)?), |row| {
-            Ok((row.get::<_, CounterId>(0)?, row.get::<_, usize>(1)?))
-        })?;
-
-        if let Some((id, existing_count)) = rows.next().map_or(Ok(None), |v| v.map(Some))? {
-            db.execute(
-                "UPDATE counters SET count = (?2) WHERE counterid = (?1)",
-                (id, existing_count + count),
-            )?;
-        } else {
-            db.execute(
-                indoc! {"
-                    INSERT INTO counters (
-                        is_on, type, count
-                    ) VALUES (
-                        (?1), (?2), (?3)
-                    )
-                "},
-                (card, serde_json::to_string(&counter)?, count),
-            )?;
+    pub fn add_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
+        match counter {
+            Counter::Charge => Self::add_counters_of_type::<counter::Charge>(db, card, count),
+            Counter::P1P1 => Self::add_counters_of_type::<counter::P1P1>(db, card, count),
+            Counter::M1M1 => Self::add_counters_of_type::<counter::M1M1>(db, card, count),
         }
-
-        Ok(())
     }
 
-    pub fn counters_on(db: &Connection, card: CardId, counter: Counter) -> anyhow::Result<usize> {
-        let mut existing = db.prepare(indoc! {"
-                SELECT count
-                FROM counters
-                WHERE is_on = (?1)
-                    AND type = (?2)
-        "})?;
+    pub fn add_counters_of_type<Type: Component + Default>(
+        db: &mut Database,
+        card: CardId,
+        count: usize,
+    ) {
+        let existing = db
+            .counters
+            .query_filtered::<(&CardId, &mut Count), With<Type>>()
+            .iter_mut(&mut db.counters)
+            .find_map(
+                |(is_on, count)| {
+                    if card == *is_on {
+                        Some(count)
+                    } else {
+                        None
+                    }
+                },
+            );
 
-        let mut rows = existing.query_map((card, serde_json::to_string(&counter)?), |row| {
-            row.get::<_, usize>(0)
-        })?;
-
-        Ok(rows
-            .next()
-            .map_or(Ok(None), |v| v.map(Some))?
-            .unwrap_or_default())
+        if let Some(mut existing_count) = existing {
+            **existing_count += count;
+        } else {
+            db.counters.spawn((card, Count(count), Type::default()));
+        }
     }
-}
 
-impl ToSql for CounterId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
+    pub fn counters_on(db: &mut Database, card: CardId, counter: Counter) -> usize {
+        match counter {
+            Counter::Charge => Self::counters_of_type_on::<counter::Charge>(db, card),
+            Counter::P1P1 => Self::counters_of_type_on::<counter::P1P1>(db, card),
+            Counter::M1M1 => Self::counters_of_type_on::<counter::M1M1>(db, card),
+        }
     }
-}
 
-impl FromSql for CounterId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
+    pub fn counters_of_type_on<Type: Component>(db: &mut Database, card: CardId) -> usize {
+        db.counters
+            .query_filtered::<(&CardId, &Count), With<Type>>()
+            .iter_mut(&mut db.counters)
+            .find_map(
+                |(is_on, count)| {
+                    if card == *is_on {
+                        Some(**count)
+                    } else {
+                        None
+                    }
+                },
+            )
+            .unwrap_or_default()
     }
 }
 
 fn targets_for_counterspell(
-    db: &Connection,
-    caster: PlayerId,
-    target: SpellTarget,
+    db: &mut Database,
+    caster: Controller,
+    target: &SpellTarget,
     targets: &mut HashSet<ActiveTarget>,
-) -> anyhow::Result<()> {
-    let mut cards_in_stack: Vec<(CardId, usize)> = vec![];
-    let mut in_location = db.prepare(indoc! {"
-            SELECT (cardid, location_seq)
-            FROM cards
-            WHERE location = (?1)
-            ORDER BY location_seq ASC
-        "})?;
-
-    for row in in_location.query_map((serde_json::to_string(&Location::Stack)?,), |row| {
-        Ok((row.get(0)?, row.get(1)?))
-    })? {
-        let (card, location_seq) = row?;
-        cards_in_stack.push((card, location_seq))
-    }
+) {
+    let cards_in_stack = db
+        .query::<(Entity, &InStack)>()
+        .iter(db)
+        .map(|(entity, in_stack)| (CardId(entity), *in_stack))
+        .sorted_by_key(|(_, in_stack)| *in_stack)
+        .collect_vec();
 
     for (card, stack_id) in cards_in_stack {
-        if card.can_be_countered(db, caster, &target)? {
+        if card.can_be_countered(db, caster, target) {
             targets.insert(ActiveTarget::Stack { id: stack_id });
         }
     }
-
-    Ok(())
 }
 
 fn targets_for_battlefield_modifier(
-    db: &Connection,
+    db: &mut Database,
     source: CardId,
     modifier: Option<&BattlefieldModifier>,
     creatures: &[CardId],
-    caster: PlayerId,
+    caster: Controller,
     targets: &mut HashSet<ActiveTarget>,
-) -> anyhow::Result<()> {
+) {
     for creature in creatures.iter() {
-        if creature.can_be_targeted(db, caster)?
+        if creature.can_be_targeted(db, caster)
             && (modifier.is_none()
                 || creature.passes_restrictions(
                     db,
@@ -2817,11 +2371,9 @@ fn targets_for_battlefield_modifier(
                     caster,
                     modifier.unwrap().controller,
                     &modifier.unwrap().restrictions,
-                )?)
+                ))
         {
             targets.insert(ActiveTarget::Battlefield { id: *creature });
         }
     }
-
-    Ok(())
 }

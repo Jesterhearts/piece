@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
+use derive_more::{Deref, DerefMut};
 
 use crate::{
     abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility, TriggeredAbility},
@@ -12,7 +13,22 @@ use crate::{
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+pub struct SplitSecond;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+pub struct CannotBeCountered;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Component)]
+pub struct TriggeredAbilities(pub Vec<TriggerId>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct Colors(pub HashSet<Color>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct AddColors(pub HashSet<Color>);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     White,
     Blue,
@@ -47,35 +63,110 @@ impl From<&protogen::color::color::Color> for Color {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeModifier {
     RemoveAll,
     Add(HashSet<Type>),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubtypeModifier {
     RemoveAll,
     Add(HashSet<Subtype>),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub enum StaticAbilityModifier {
     RemoveAll,
     Add(StaticAbility),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub enum ActivatedAbilityModifier {
     RemoveAll,
     Add(AbilityId),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub enum TriggeredAbilityModifier {
     RemoveAll,
     Add(TriggerId),
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct Name(pub String);
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
+)]
+pub struct MarkedDamage(pub i32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct BasePower(pub i32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct BasePowerModifier(pub i32);
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
+)]
+pub struct AddPower(pub i32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct BaseToughness(pub i32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct BaseToughnessModifier(pub i32);
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
+)]
+pub struct AddToughness(pub i32);
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Vigilance;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct AddVigilance;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct RemoveVigilance;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Flying;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct AddFlying;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct RemoveFlying;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Flash;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct AddFlash;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct RemoveFlash;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Hexproof;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct AddHexproof;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct RemoveHexproof;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Shroud;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct AddShroud;
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct RemoveShroud;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Card {

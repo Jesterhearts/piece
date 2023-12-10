@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
 
 use crate::{card::Color, mana::Mana, protogen};
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct CastingCost {
     pub mana_cost: Vec<Mana>,
 }
@@ -30,7 +30,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
     SacrificeThis,
 }
@@ -55,7 +55,7 @@ impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct AbilityCost {
     pub mana_cost: Vec<Mana>,
     pub tap: bool,

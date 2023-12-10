@@ -4,29 +4,30 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     in_play::CardId,
+    in_play::Database,
     load_cards,
     player::AllPlayers,
-    prepare_db,
     stack::{Entry, Stack, StackResult},
 };
 
 #[test]
 fn resolves_counterspells() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let db = prepare_db()?;
+    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player();
 
-    let counterspell_1 = CardId::upload(&db, &cards, player, "Counterspell")?;
-    let counterspell_2 = CardId::upload(&db, &cards, player, "Counterspell")?;
+    let counterspell_1 = CardId::upload(&mut db, &cards, player, "Counterspell");
+    let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    counterspell_1.move_to_stack(&db, Default::default())?;
-    counterspell_2.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
+    counterspell_1.move_to_stack(&mut db, Default::default());
+    let targets = HashSet::from([Stack::target_nth(&mut db, 0)]);
+    counterspell_2.move_to_stack(&mut db, targets);
 
-    assert_eq!(Stack::in_stack(&db)?.len(), 2);
+    assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
-    let results = Stack::resolve_1(&db)?;
+    let results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
@@ -36,10 +37,10 @@ fn resolves_counterspells() -> anyhow::Result<()> {
             StackResult::StackToGraveyard(counterspell_2)
         ]
     );
-    let results = Stack::apply_results(&db, &mut all_players, results)?;
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
-    assert!(Stack::is_empty(&db)?);
+    assert!(Stack::is_empty(&mut db));
 
     Ok(())
 }
