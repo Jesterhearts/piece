@@ -199,6 +199,39 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub enum DynamicPowerToughness {
+    NumberOfCountersOnThis(Counter),
+}
+
+impl TryFrom<&protogen::effects::DynamicPowerToughness> for DynamicPowerToughness {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::DynamicPowerToughness) -> Result<Self, Self::Error> {
+        value
+            .source
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected dynamic p/t to have a source set"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPowerToughness {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::dynamic_power_toughness::Source,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::dynamic_power_toughness::Source::NumberOfCountersOnThis(counter) => {
+                Ok(Self::NumberOfCountersOnThis(
+                    counter.counter.get_or_default().try_into()?,
+                ))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Default)]
 pub struct ModifyBattlefield {
     pub base_power: Option<i32>,
@@ -206,6 +239,8 @@ pub struct ModifyBattlefield {
 
     pub add_power: Option<i32>,
     pub add_toughness: Option<i32>,
+
+    pub dynamic_power_toughness: Option<DynamicPowerToughness>,
 
     pub add_types: HashSet<Type>,
     pub add_subtypes: HashSet<Subtype>,
@@ -230,6 +265,10 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
             base_toughness: value.base_toughness,
             add_power: value.add_power,
             add_toughness: value.add_toughness,
+            dynamic_power_toughness: value
+                .add_dynamic_power_toughness
+                .as_ref()
+                .map_or(Ok(None), |pt| pt.try_into().map(Some))?,
             add_types: value
                 .add_types
                 .iter()

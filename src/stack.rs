@@ -7,7 +7,7 @@ use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
     effects::{BattlefieldModifier, Counter, Effect, EffectDuration, GainMana, Token},
-    in_play::{AbilityId, CardId, Location, ModifierId, TriggerId},
+    in_play::{AbilityId, CardId, CounterId, Location, ModifierId, TriggerId},
     mana::Mana,
     player::{AllPlayers, PlayerId},
     targets::{Restriction, SpellTarget},
@@ -48,9 +48,10 @@ pub enum StackResult {
         source: CardId,
         token: Token,
     },
-    AddCounter {
-        source: CardId,
+    AddCounters {
+        target: CardId,
         counter: Counter,
+        count: usize,
     },
 }
 
@@ -628,7 +629,11 @@ impl Stack {
                     results.push(StackResult::CreateToken { source, token });
                 }
                 Effect::GainCounter(counter) => {
-                    results.push(StackResult::AddCounter { source, counter });
+                    results.push(StackResult::AddCounters {
+                        target: source,
+                        counter,
+                        count: 1,
+                    });
                 }
             }
         }
@@ -699,8 +704,12 @@ impl Stack {
                 StackResult::DamageTarget { quantity, target } => {
                     target.mark_damage(db, quantity)?;
                 }
-                StackResult::AddCounter { .. } => {
-                    todo!()
+                StackResult::AddCounters {
+                    target,
+                    counter,
+                    count,
+                } => {
+                    CounterId::add_counters(db, target, counter, count)?;
                 }
             }
         }

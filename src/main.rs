@@ -7,7 +7,13 @@ use include_dir::{include_dir, Dir};
 use indoc::indoc;
 use rusqlite::Connection;
 
-use crate::{battlefield::Battlefield, card::Card, in_play::CardId, player::AllPlayers};
+use crate::{
+    battlefield::Battlefield,
+    card::Card,
+    effects::Counter,
+    in_play::{CardId, CounterId},
+    player::AllPlayers,
+};
 
 pub mod abilities;
 pub mod battlefield;
@@ -145,6 +151,8 @@ fn prepare_db() -> anyhow::Result<Connection> {
             
             base_power_modifier INTEGER,
             base_toughness_modifier INTEGER,
+
+            dynamic_add_power_toughess JSON,
             
             add_power_modifier INTEGER,
             add_toughness_modifier INTEGER,
@@ -233,6 +241,21 @@ fn prepare_db() -> anyhow::Result<Connection> {
         (),
     )?;
 
+    db.execute(
+        indoc! {"
+            CREATE TABLE counters (
+                counterid INTEGER PRIMARY KEY,
+                is_on INTEGER NOT NULL,
+
+                type JSON NOT NULL,
+                count INTEGER NOT NULL,
+
+                FOREIGN KEY(is_on) REFERENCES cards(cardid)
+            )
+        "},
+        (),
+    )?;
+
     Ok(db)
 }
 
@@ -246,14 +269,10 @@ fn main() -> anyhow::Result<()> {
 
     let player = all_players.new_player();
 
-    let card1 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    card1.mark_damage(&db, 1)?;
-    dbg!(card1.marked_damage(&db))?;
-    dbg!(Battlefield::end_turn(&db))?;
-    dbg!(card1.marked_damage(&db))?;
-    card1.move_to_battlefield(&db)?;
-    dbg!(Battlefield::end_turn(&db))?;
-    dbg!(card1.marked_damage(&db))?;
+    let card1 = CardId::upload(&db, &cards, player, "Mace of the Valiant")?;
+
+    CounterId::add_counters(&db, card1, Counter::P1P1, 1)?;
+    dbg!(CounterId::counters_on(&db, card1, Counter::P1P1))?;
 
     Ok(())
 }

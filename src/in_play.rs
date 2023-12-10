@@ -18,7 +18,8 @@ use crate::{
     controller::Controller,
     cost::{AbilityCost, CastingCost},
     effects::{
-        AnyEffect, BattlefieldModifier, DealDamage, Effect, EffectDuration, GainMana, Token,
+        AnyEffect, BattlefieldModifier, Counter, DealDamage, DynamicPowerToughness, Effect,
+        EffectDuration, GainMana, Token,
     },
     mana::Mana,
     player::PlayerId,
@@ -34,6 +35,7 @@ static NEXT_MODIFIER_ID: AtomicUsize = AtomicUsize::new(0);
 static NEXT_ABILITY_ID: AtomicUsize = AtomicUsize::new(0);
 static NEXT_AURA_ID: AtomicUsize = AtomicUsize::new(0);
 static NEXT_TRIGGER_ID: AtomicUsize = AtomicUsize::new(0);
+static NEXT_COUNTER_ID: AtomicUsize = AtomicUsize::new(0);
 
 static NEXT_MODIFIER_SEQ: AtomicUsize = AtomicUsize::new(0);
 /// Starts at 1 because 0 should never be a valid stack id.
@@ -871,7 +873,14 @@ impl CardId {
         )?;
 
         let mut statement = db.prepare(indoc! {"
-                SELECT base_power_modifier, add_power_modifier, source, controller, restrictions, active_seq
+                SELECT
+                    base_power_modifier,
+                    dynamic_add_power_toughness,
+                    add_power_modifier,
+                    source,
+                    controller,
+                    restrictions,
+                    active_seq
                 FROM modifiers
                 WHERE active AND (
                     global
@@ -887,17 +896,20 @@ impl CardId {
         let rows = statement.query_map((self,), |row| {
             Ok((
                 row.get::<_, Option<i32>>(0)?,
-                row.get::<_, Option<i32>>(1)?,
-                row.get(2)?,
-                serde_json::from_str(&row.get::<_, String>(3)?).unwrap(),
-                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(4)?).unwrap(),
+                row.get::<_, Option<String>>(1)?
+                    .map(|col| serde_json::from_str::<DynamicPowerToughness>(&col).unwrap()),
+                row.get::<_, Option<i32>>(2)?,
+                row.get(3)?,
+                serde_json::from_str(&row.get::<_, String>(4)?).unwrap(),
+                serde_json::from_str::<Vec<_>>(&row.get::<_, String>(5)?).unwrap(),
             ))
         })?;
 
         let mut add = 0;
 
         for row in rows {
-            let (base_mod, add_mod, source, controller_restriction, restrictions) = row?;
+            let (base_mod, dynamic_add_mod, add_mod, source, controller_restriction, restrictions) =
+                row?;
 
             if self.passes_restrictions(
                 db,
@@ -910,6 +922,15 @@ impl CardId {
                     base = Some(base_mod);
                 }
                 add += add_mod.unwrap_or_default();
+
+                if let Some(dynamic) = dynamic_add_mod {
+                    match dynamic {
+                        DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
+                            let to_add = CounterId::counters_on(db, source, counter)?;
+                            add += to_add as i32;
+                        }
+                    }
+                }
             }
         }
 
@@ -1973,6 +1994,16 @@ fn upload_modifier(
             (modifierid, toughness),
         )?;
     }
+    if let Some(dynamic) = &modifier.modifier.dynamic_power_toughness {
+        db.execute(
+            indoc! {"
+                UPDATE modifiers
+                SET dynamic_add_power_toughness = (?2)
+                WHERE modifiers.modifierid = (?1)
+            "},
+            (modifierid, serde_json::to_string(dynamic)?),
+        )?;
+    }
     if let Some(power) = modifier.modifier.add_power {
         db.execute(
             indoc! {"
@@ -2659,6 +2690,83 @@ impl TriggerId {
         )?;
 
         Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash, Default)]
+pub struct CounterId(usize);
+
+impl CounterId {
+    pub fn new() -> Self {
+        Self(NEXT_COUNTER_ID.fetch_add(1, Ordering::Relaxed))
+    }
+
+    pub fn add_counters(
+        db: &Connection,
+        card: CardId,
+        counter: Counter,
+        count: usize,
+    ) -> anyhow::Result<()> {
+        let mut existing = db.prepare(indoc! {"
+                SELECT counterid, count
+                FROM counters
+                WHERE is_on = (?1)
+                    AND type = (?2)
+        "})?;
+
+        let mut rows = existing.query_map((card, serde_json::to_string(&counter)?), |row| {
+            Ok((row.get::<_, CounterId>(0)?, row.get::<_, usize>(1)?))
+        })?;
+
+        if let Some((id, existing_count)) = rows.next().map_or(Ok(None), |v| v.map(Some))? {
+            db.execute(
+                "UPDATE counters SET count = (?2) WHERE counterid = (?1)",
+                (id, existing_count + count),
+            )?;
+        } else {
+            db.execute(
+                indoc! {"
+                    INSERT INTO counters (
+                        is_on, type, count
+                    ) VALUES (
+                        (?1), (?2), (?3)
+                    )
+                "},
+                (card, serde_json::to_string(&counter)?, count),
+            )?;
+        }
+
+        Ok(())
+    }
+
+    pub fn counters_on(db: &Connection, card: CardId, counter: Counter) -> anyhow::Result<usize> {
+        let mut existing = db.prepare(indoc! {"
+                SELECT count
+                FROM counters
+                WHERE is_on = (?1)
+                    AND type = (?2)
+        "})?;
+
+        let mut rows = existing.query_map((card, serde_json::to_string(&counter)?), |row| {
+            row.get::<_, usize>(0)
+        })?;
+
+        Ok(rows
+            .next()
+            .map_or(Ok(None), |v| v.map(Some))?
+            .unwrap_or_default())
+    }
+}
+
+impl ToSql for CounterId {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        self.0.to_sql()
+    }
+}
+
+impl FromSql for CounterId {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        Ok(Self(usize::column_result(value)?))
     }
 }
 
