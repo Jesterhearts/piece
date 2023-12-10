@@ -23,24 +23,30 @@ message Type {
   }
 
   oneof ty {
-    BasicLand basic_land = 1;
-    Land land = 2;
-    Instant instant = 3;
-    Sorcery sorcery = 4;
-    Creature creature = 5;
     Artifact artifact = 6;
-    Enchantment enchantment = 7;
+    BasicLand basic_land = 1;
     Battle battle = 8;
+    Creature creature = 5;
+    Enchantment enchantment = 7;
+    Instant instant = 3;
+    Land land = 2;
     Legendary legendary = 9;
+    Sorcery sorcery = 4;
   }
 }
 
 message Subtype {
+  message Angel {
+  }
   message Aura {
   }
   message Bear {
   }
   message Dinosaur {
+  }
+  message Dryad {
+  }
+  message Elemental {
   }
   message Elf {
   }
@@ -48,35 +54,52 @@ message Subtype {
   }
   message Forest {
   }
+  message Golem {
+  }
+  message Human {
+  }
   message Island {
   }
   message Mountain {
+  }
+  message Nymph {
   }
   message Plains {
   }
   message Praetor {
   }
+  message Shade {
+  }
   message Shaman {
   }
   message Shapeshifter {
   }
+  message Soldier {
+  }
   message Swamp {
   }
 
-
   oneof subtype {
-    Aura aura = 1;
-    Bear bear = 2;
-    Dinosaur dinosaur = 3;
-    Elf elf = 4;
-    Equipment equipment = 5;
-    Forest forest = 6;
-    Island island = 7;
-    Mountain mountain = 8;
-    Plains plains = 9;
-    Praetor praetor = 10;
-    Shaman shaman = 11;
-    Shapeshifter shapeshifter = 12;
-    Swamp swamp = 13;
+    Angel angel = 1;
+    Aura aura = 2;
+    Bear bear = 3;
+    Dinosaur dinosaur = 4;
+    Dryad dryad = 5;
+    Elemental elemental = 6;
+    Elf elf = 7;
+    Equipment equipment = 8;
+    Forest forest = 9;
+    Golem golem = 10;
+    Human human = 11;
+    Island island = 12;
+    Mountain mountain = 13;
+    Nymph nymph = 14;
+    Plains plains = 15;
+    Praetor praetor = 16;
+    Shade shade = 17;
+    Shaman shaman = 18;
+    Shapeshifter shapeshifter = 19;
+    Soldier soldier = 20;
+    Swamp swamp = 21;
   }
 }

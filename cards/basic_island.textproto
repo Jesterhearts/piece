@@ -2,13 +2,3 @@ name: "Island"
 cost { }
 types { basic_land {} }
 subtypes { island {} }
-activated_abilities {
-  cost {
-    tap: true
-  }
-  effects {
-    gain_mana {
-      specific { gains { blue {} } }
-    }
-  }
-}

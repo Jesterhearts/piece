@@ -1,10 +1,5 @@
 fn main() {
-    for path in std::fs::read_dir("src/protos")
-        .unwrap()
-        .map(|f| f.unwrap().path())
-    {
-        println!("cargo:rerun-if-changed={}", path.to_string_lossy());
-    }
+    println!("cargo:rerun-if-changed=src/protos");
 
     let out_dir_env = std::env::var_os("OUT_DIR").unwrap();
     let out_dir = std::path::Path::new(&out_dir_env);

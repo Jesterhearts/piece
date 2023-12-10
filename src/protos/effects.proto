@@ -2,13 +2,55 @@ syntax = "proto3";
 
 package effects;
 
+import "color.proto";
 import "controller.proto";
+import "cost.proto";
+import "counters.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
-message Vigilance {
+message ActivatedAbility {
+  cost.AbilityCost cost = 1;
+  repeated Effect effects = 2;
+  bool apply_to_self = 3;
+}
+
+message Destination {
+  message Hand {
+  }
+  message TopOfLibrary {
+  }
+  message Battlefield {
+  }
+
+  oneof destination {
+    Hand hand = 1;
+    TopOfLibrary top_of_library = 2;
+    Battlefield battlefield = 3;
+  }
+}
+
+message TutorLibrary {
   repeated targets.Restriction restrictions = 1;
+  Destination destination = 2;
+  bool reveal = 3;
+}
+
+message Mill {
+  int32 count = 1;
+  controller.Controller target = 2;
+}
+
+message ReturnFromGraveyardToLibrary {
+  int32 count = 1;
+  controller.Controller controller = 2;
+  repeated types.Type types = 3;
+}
+
+message ReturnFromGraveyardToBattlefield {
+  int32 count = 1;
+  repeated types.Type types = 2;
 }
 
 message Duration {
@@ -16,13 +58,10 @@ message Duration {
   }
   message UntilSourceLeavesBattlefield {
   }
-  message UntilUnattached {
-  }
 
   oneof duration {
     UntilEndOfTurn until_end_of_turn = 1;
     UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
-    UntilUnattached until_unattached = 3;
   }
 }
 
@@ -42,42 +81,67 @@ message GainMana {
   }
 
   oneof gain {
-    Specific specific = 1;
-    Choice choice = 2;
+    Specific specific = 2;
+    Choice choice = 3;
   }
 }
 
-message ModifyBasePowerToughness {
-  repeated types.Subtype targets = 1;
-  int32 power = 2;
-  int32 toughness = 3;
-  repeated targets.Restriction restrictions = 4;
+message ExtraLandsPerTurn {
+  int32 count = 1;
 }
 
-message ModifyCreatureTypes {
-  repeated types.Subtype targets = 1;
-  repeated types.Subtype types = 2;
-  repeated targets.Restriction restrictions = 3;
-}
+message DynamicPowerToughness {
+  message NumberOfCountersOnThis {
+    counters.Counter counter = 1;
+  }
 
-message RemoveAllSubtypes {
-  repeated targets.Restriction restrictions = 1;
+  oneof source {
+    NumberOfCountersOnThis number_of_counters_on_this = 2;
+  }
 }
 
 message ModifyBattlefield {
-  oneof modifier {
-    ModifyBasePowerToughness modify_base_power_toughness = 1;
-    ModifyCreatureTypes modify_creature_types = 2;
-    AddPowerToughness add_power_toughness = 3;
-    RemoveAllSubtypes remove_all_subtypes = 4;
-    Vigilance vigilance = 5;
-  }
+  optional int32 base_power = 1;
+  optional int32 base_toughness = 2;
+
+  optional DynamicPowerToughness add_dynamic_power_toughness = 3;
+
+  repeated types.Type add_types = 4;
+  repeated types.Subtype add_subtypes = 5;
+
+  optional int32 add_power = 6;
+  optional int32 add_toughness = 7;
+
+  optional ActivatedAbility add_ability = 8;
+
+  bool remove_all_subtypes = 9;
+
+  bool entire_battlefield = 10;
+  bool global = 11;
+
+  bool add_vigilance = 12;
 }
 
 message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
   controller.Controller controller = 2;
   Duration duration = 3;
+  repeated targets.Restriction restrictions = 4;
+}
+
+message CreateToken {
+  message Creature {
+    string name = 1;
+    repeated types.Type types = 2;
+    repeated types.Subtype subtypes = 3;
+    repeated color.Color colors = 4;
+    int32 power = 5;
+    int32 toughness = 6;
+  }
+
+  oneof token {
+    Creature creature = 7;
+  }
 }
 
 message ControllerDrawCards {
@@ -88,39 +152,36 @@ message Equip {
   repeated ModifyBattlefield modifiers = 1;
 }
 
-message AddPowerToughness {
-  int32 power = 1;
-  int32 toughness = 2;
-  repeated targets.Restriction restrictions = 3;
-}
-
 message ExileTargetCreature {
 }
 
 message ExileTargetCreatureManifestTopOfLibrary {
 }
 
-message ActivatedAbilityEffect {
-  oneof effect {
-    CounterSpell counter_spell = 1;
-    GainMana gain_mana = 2;
-    BattlefieldModifier battlefield_modifier = 3;
-    ControllerDrawCards controller_draw_cards = 4;
-    Equip equip = 5;
-    AddPowerToughness add_power_toughness_to_target = 6;
-  }
+message DealDamage {
+  int32 quantity = 1;
+  repeated targets.Restriction restrictions = 2;
 }
 
-message SpellEffect {
+message GainCounter {
+  counters.Counter counter = 1;
+}
+
+message Effect {
   oneof effect {
-    CounterSpell counter_spell = 1;
-    GainMana gain_mana = 2;
-    BattlefieldModifier battlefield_modifier = 3;
-    BattlefieldModifier modify_creature = 4;
-    ControllerDrawCards controller_draw_cards = 5;
-    AddPowerToughness add_power_toughness_to_target = 6;
-    ExileTargetCreature exile_target_creature = 7;
-    ExileTargetCreatureManifestTopOfLibrary
-      exile_target_creature_manifest_top_of_library = 8;
+    BattlefieldModifier battlefield_modifier = 1;
+    BattlefieldModifier modify_creature = 2;
+    ControllerDrawCards controller_draw_cards = 3;
+    CounterSpell counter_spell = 4;
+    CreateToken create_token = 5;
+    DealDamage deal_damage = 6;
+    Equip equip = 7;
+    ExileTargetCreature exile_target_creature = 8;
+    ExileTargetCreatureManifestTopOfLibrary 
+      exile_target_creature_manifest_top_of_library = 9;
+    GainCounter gain_counter = 10;
+    GainMana gain_mana = 11;
   }
+
+  optional Effect threshold = 12;
 }

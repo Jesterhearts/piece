@@ -1,12 +1,19 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
-use enumset::{EnumSet, EnumSetType};
+use serde::{Deserialize, Serialize};
 
-use crate::{mana::Mana, protogen};
+use crate::{card::Color, mana::Mana, protogen};
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
 pub struct CastingCost {
     pub mana_cost: Vec<Mana>,
+}
+
+impl CastingCost {
+    pub fn colors(&self) -> HashSet<Color> {
+        self.mana_cost.iter().map(|mana| mana.color()).collect()
+    }
 }
 
 impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
@@ -23,7 +30,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     }
 }
 
-#[derive(Debug, EnumSetType)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
     SacrificeThis,
 }
@@ -48,12 +55,11 @@ impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AbilityCost {
     pub mana_cost: Vec<Mana>,
     pub tap: bool,
-    pub untap: bool,
-    pub additional_cost: EnumSet<AdditionalCost>,
+    pub additional_cost: Vec<AdditionalCost>,
 }
 
 impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
@@ -67,12 +73,11 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
                 .map(Mana::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             tap: value.tap.unwrap_or_default(),
-            untap: false,
             additional_cost: value
                 .additional_costs
                 .iter()
                 .map(AdditionalCost::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }
 }

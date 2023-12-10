@@ -9,9 +9,7 @@ oracle_text:  "This spell can't be countered.\n"
               "Green spells you control can't be countered\n"
               "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and"
               "toughness 5/5 and becomes a dinosaur in addition to its other creature types."
-casting_modifiers {
-  cannot_be_countered {}
-}
+cannot_be_countered: true
 static_abilities {
   green_cannot_be_countered {
     controller { you {} }
@@ -26,26 +24,14 @@ activated_abilities {
   effects {
     battlefield_modifier { 
       modifier {
-        modify_base_power_toughness {
-          targets { elf {} }
-          power: 5
-          toughness: 5
-        }
+        base_power: 5
+        base_toughness: 5
+        entire_battlefield: true
+        add_subtypes { dinosaur {} }
       }
       controller { you {} }
       duration { until_end_of_turn {} }
-    }
-  }
-  effects {
-    battlefield_modifier { 
-      modifier {
-        modify_creature_types {
-          targets { elf {} }
-          types { dinosaur {} }
-        }
-      }
-      controller { you {} }
-      duration { until_end_of_turn {} }
+      restrictions { of_type { subtypes { elf {} } } }
     }
   }
 }

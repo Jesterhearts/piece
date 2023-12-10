@@ -1,37 +1,29 @@
 #![allow(clippy::single_match)]
-#![allow(clippy::type_complexity)]
-#![allow(clippy::too_many_arguments)]
 
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
-use bevy_ecs::{
-    entity::Entity,
-    event::{Event, Events},
-    world::World,
-};
 use include_dir::{include_dir, Dir};
+use indoc::indoc;
+use rusqlite::Connection;
 
 use crate::{
-    battlefield::{
-        ActivateAbilityEvent, Battlefield, EtbEvent, PermanentToGraveyardEvent,
-        StackToGraveyardEvent,
-    },
+    battlefield::Battlefield,
     card::Card,
-    stack::{AddToStackEvent, Stack, StackResult},
+    effects::Counter,
+    in_play::{CardId, CounterId},
+    player::AllPlayers,
 };
 
-#[cfg(test)]
-pub mod tests;
-
 pub mod abilities;
-pub mod activated_ability;
 pub mod battlefield;
 pub mod card;
 pub mod controller;
 pub mod cost;
 pub mod deck;
 pub mod effects;
+pub mod hand;
+pub mod in_play;
 pub mod mana;
 pub mod player;
 pub mod protogen;
@@ -39,23 +31,9 @@ pub mod stack;
 pub mod targets;
 pub mod types;
 
-#[derive(Debug, Event)]
-pub enum FollowupWork {
-    ChooseTargetThenEtb {
-        valid_targets: Vec<Entity>,
-        targets_for: Entity,
-        up_to: usize,
-    },
-
-    Etb {
-        events: Vec<EtbEvent>,
-    },
-
-    Graveyard {
-        battlefield: Vec<PermanentToGraveyardEvent>,
-        stack: Vec<StackToGraveyardEvent>,
-    },
-}
+#[cfg(test)]
+pub mod tests;
+pub mod triggers;
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
@@ -85,30 +63,216 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     Ok(cards)
 }
 
-pub fn init_world() -> World {
-    let stack = Stack::default();
-    let battlefield = Battlefield::default();
+fn prepare_db() -> anyhow::Result<Connection> {
+    let db = Connection::open_in_memory()?;
 
-    let mut world = World::default();
-    world.insert_resource(battlefield);
-    world.insert_resource(stack);
+    db.execute(
+        indoc! {"
+            CREATE TABLE auras (
+                auraid INTEGER PRIMARY KEY,
+                modifiers JSON,
 
-    // Keep sorted
-    world.init_resource::<Events<ActivateAbilityEvent>>();
-    world.init_resource::<Events<AddToStackEvent>>();
-    world.init_resource::<Events<EtbEvent>>();
-    world.init_resource::<Events<FollowupWork>>();
-    world.init_resource::<Events<PermanentToGraveyardEvent>>();
-    world.init_resource::<Events<StackResult>>();
-    world.init_resource::<Events<StackToGraveyardEvent>>();
+                restrictions JSON
+            );"},
+        (),
+    )?;
 
-    world
+    db.execute(
+        indoc! { "
+        CREATE TABLE cards (
+            cardid INTEGER PRIMARY KEY,
+            aura INTEGER,
+
+            marked_damage INTEGER NOT NULL,
+
+            cloning INTEGER,
+
+            location JSON NOT NULL,
+            location_seq INTEGER,
+
+            name TEXT NOT NULL,
+
+            owner INTEGER NOT NULL,
+            controller INTEGER NOT NULL,
+
+            tapped BOOLEAN NOT NULL,
+            manifested BOOLEAN NOT NULL,
+            face_down BOOLEAN NOT NULL,
+            token BOOLEAN NOT NULL,
+
+            casting_cost JSON,
+            cannot_be_countered BOOLEAN NOT NULL,
+            split_second BOOLEAN NOT NULL,
+
+            effects JSON,
+
+            power INTEGER,
+            toughness INTEGER,
+
+            types JSON,
+            subtypes JSON,
+            
+            colors JSON,
+
+            etb JSON,
+            abilities JSON,
+            activated_abilities JSON,
+            triggered_abilities JSON,
+
+            vigilance BOOLEAN,
+            flying BOOLEAN,
+            flash BOOLEAN,
+            hexproof BOOLEAN,
+            shroud BOOLEAN,
+
+            targets JSON,
+            mode INTEGER,
+            
+            FOREIGN KEY(aura) REFERENCES auras(auraid)
+        );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! { "
+        CREATE TABLE modifiers (
+            modifierid INTEGER PRIMARY KEY,
+            source INTEGER,
+
+            is_temporary BOOLEAN NOT NULL,
+            
+            type_modifiers JSON,
+            subtype_modifiers JSON,
+            remove_all_subtypes BOOLEAN,
+            
+            color_modifiers JSON,
+            
+            ability_modifiers JSON,
+            
+            base_power_modifier INTEGER,
+            base_toughness_modifier INTEGER,
+
+            dynamic_add_power_toughess JSON,
+            
+            add_power_modifier INTEGER,
+            add_toughness_modifier INTEGER,
+
+            activated_ability_modifier JSON,
+            static_ability_modifier JSON,
+            triggered_ability_modifier JSON,
+            
+            add_vigilance BOOLEAN,
+            remove_vigilance BOOLEAN,
+
+            add_flying BOOLEAN,
+            remove_flying BOOLEAN,
+
+            add_flash BOOLEAN,
+            remove_flash BOOLEAN,
+
+            add_hexproof BOOLEAN,
+            remove_hexproof BOOLEAN,
+
+            add_shroud BOOLEAN,
+            remove_shroud BOOLEAN,
+            
+            controller JSON NOT NULL,
+            duration JSON NOT NULL,
+            restrictions JSON NOT NULL,
+
+            global BOOLEAN NOT NULL,
+            entire_battlefield BOOLEAN NOT NULL,
+
+            active BOOLEAN NOT NULL,
+            active_seq INTEGER,
+
+            modifying JSON,
+
+            FOREIGN KEY(source) REFERENCES cards(cardid)
+        );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! {"
+            CREATE TABLE triggers (
+                triggerid INTEGER PRIMARY KEY,
+                listener INTEGER NOT NULL,
+
+                source JSON NOT NULL,
+                location_from JSON NOT NULL,
+                for_types JSON NOT NULL,
+
+                effects JSON NOT NULL,
+
+                active BOOLEAN NOT NULL,
+
+                in_stack BOOLEAN NOT NULL,
+                stack_seq INTEGER,
+
+                targets JSON,
+                mode INTEGER,
+
+                FOREIGN KEY(listener) REFERENCES cards(cardid)
+            );"},
+        (),
+    )?;
+
+    db.execute(
+        indoc! {"
+            CREATE TABLE abilities (
+                abilityid INTEGER PRIMARY KEY,
+                source INTEGER,
+
+                cost JSON NOT NULL,
+                effects JSON NOT NULL,
+
+                apply_to_self BOOLEAN NOT NULL,
+
+                in_stack BOOLEAN NOT NULL,
+                stack_seq INTEGER,
+
+                targets JSON,
+                mode INTEGER,
+
+                FOREIGN KEY(source) REFERENCES cards(cardid)
+            )
+        "},
+        (),
+    )?;
+
+    db.execute(
+        indoc! {"
+            CREATE TABLE counters (
+                counterid INTEGER PRIMARY KEY,
+                is_on INTEGER NOT NULL,
+
+                type JSON NOT NULL,
+                count INTEGER NOT NULL,
+
+                FOREIGN KEY(is_on) REFERENCES cards(cardid)
+            )
+        "},
+        (),
+    )?;
+
+    Ok(db)
 }
 
 fn main() -> anyhow::Result<()> {
     let cards = load_cards()?;
     dbg!(&cards);
-    dbg!(cards.get("Elesh Norn, Grand Cenobite"));
+
+    let db = prepare_db()?;
+
+    let mut all_players = AllPlayers::default();
+
+    let player = all_players.new_player();
+
+    let card1 = CardId::upload(&db, &cards, player, "Mace of the Valiant")?;
+
+    CounterId::add_counters(&db, card1, Counter::P1P1, 1)?;
+    dbg!(CounterId::counters_on(&db, card1, Counter::P1P1))?;
 
     Ok(())
 }

@@ -1,26 +1,28 @@
 use anyhow::anyhow;
-use bevy_ecs::{component::Component, entity::Entity};
-use derive_more::Deref;
-use enumset::EnumSet;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     controller::Controller,
     cost::AbilityCost,
-    effects::{ActivatedAbilityEffect, BattlefieldModifier},
+    effects::{
+        AnyEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
+        ReturnFromGraveyardToLibrary, TutorLibrary,
+    },
     protogen,
     targets::Restriction,
+    triggers::Trigger,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
-    pub restrictions: EnumSet<Restriction>,
+    pub restrictions: Vec<Restriction>,
 }
 
-impl TryFrom<&protogen::abilities::static_ability::Enchant> for Enchant {
+impl TryFrom<&protogen::abilities::Enchant> for Enchant {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::abilities::static_ability::Enchant) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::abilities::Enchant) -> Result<Self, Self::Error> {
         Ok(Self {
             modifiers: value
                 .modifiers
@@ -36,12 +38,13 @@ impl TryFrom<&protogen::abilities::static_ability::Enchant> for Enchant {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Component, Deref)]
-pub struct Copying(pub Entity);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
+    Mill(Mill),
+    ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
+    ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
+    TutorLibrary(TutorLibrary),
 }
 
 impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
@@ -52,26 +55,39 @@ impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
             .ability
             .as_ref()
             .ok_or_else(|| anyhow!("Expected etb ability to have an ability specified"))
-            .map(Self::from)
+            .and_then(Self::try_from)
     }
 }
 
-impl From<&protogen::abilities::etbability::Ability> for ETBAbility {
-    fn from(value: &protogen::abilities::etbability::Ability) -> Self {
+impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::abilities::etbability::Ability) -> Result<Self, Self::Error> {
         match value {
             protogen::abilities::etbability::Ability::CopyOfAnyCreature(_) => {
-                Self::CopyOfAnyCreature
+                Ok(Self::CopyOfAnyCreature)
+            }
+            protogen::abilities::etbability::Ability::Mill(mill) => {
+                Ok(Self::Mill(mill.try_into()?))
+            }
+            protogen::abilities::etbability::Ability::ReturnFromGraveyardToLibrary(ret) => {
+                Ok(Self::ReturnFromGraveyardToLibrary(ret.try_into()?))
+            }
+            protogen::abilities::etbability::Ability::ReturnFromGraveyardToBattlefield(ret) => {
+                Ok(Self::ReturnFromGraveyardToBattlefield(ret.try_into()?))
+            }
+            protogen::abilities::etbability::Ability::TutorLibrary(tutor) => {
+                Ok(Self::TutorLibrary(tutor.try_into()?))
             }
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: Controller },
-    Vigilance,
     BattlefieldModifier(BattlefieldModifier),
-    Enchant(Enchant),
+    ExtraLandsPerTurn(usize),
 }
 
 impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
@@ -104,24 +120,24 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
             protogen::abilities::static_ability::Ability::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
-            protogen::abilities::static_ability::Ability::Vigilance(_) => Ok(Self::Vigilance),
-            protogen::abilities::static_ability::Ability::Enchant(enchant) => {
-                Ok(Self::Enchant(enchant.try_into()?))
+            protogen::abilities::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
+                Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
             }
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
-    pub effects: Vec<ActivatedAbilityEffect>,
+    pub effects: Vec<AnyEffect>,
+    pub apply_to_self: bool,
 }
 
-impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
+impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::abilities::ActivatedAbility) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::ActivatedAbility) -> Result<Self, Self::Error> {
         Ok(Self {
             cost: value
                 .cost
@@ -131,7 +147,29 @@ impl TryFrom<&protogen::abilities::ActivatedAbility> for ActivatedAbility {
             effects: value
                 .effects
                 .iter()
-                .map(ActivatedAbilityEffect::try_from)
+                .map(AnyEffect::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            apply_to_self: value.apply_to_self,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TriggeredAbility {
+    pub trigger: Trigger,
+    pub effects: Vec<AnyEffect>,
+}
+
+impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::abilities::TriggeredAbility) -> Result<Self, Self::Error> {
+        Ok(Self {
+            trigger: value.trigger.get_or_default().try_into()?,
+            effects: value
+                .effects
+                .iter()
+                .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }

@@ -4,10 +4,10 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefield,
-    deck::{Deck, DeckDefinition},
-    in_play::{AllCards, AllModifiers},
+    in_play::{CardId, Location},
     load_cards,
-    player::Player,
+    player::AllPlayers,
+    prepare_db,
     stack::{ActiveTarget, Stack, StackResult},
     types::Subtype,
 };
@@ -15,57 +15,50 @@ use crate::{
 #[test]
 fn resolves_shift() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let player1 = Owner::new_ref(Deck::empty());
-    let player2 = Owner::new_ref(Deck::empty());
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut battlefield = Battlefield::default();
-    let mut stack = Stack::default();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Annul".to_owned(), 1);
-    all_cards.build_deck_for_player(&cards, &deck, player1.clone());
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let creature = all_cards.add(&cards, player1.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    let bear1 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let bear2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let bear3 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
 
-    let shift = all_cards.add(&cards, player2.clone(), "Reality Shift");
+    let results = Battlefield::add_from_stack(&db, bear1, vec![])?;
+    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack(&db, bear2, vec![])?;
+    assert_eq!(results, []);
 
-    stack.push_card(
-        &all_cards,
-        shift,
-        Some(ActiveTarget::Battlefield { id: creature }),
-        None,
-    );
+    all_players[player].deck.place_on_top(&db, bear3)?;
 
-    let results = stack.resolve_1(&all_cards, &battlefield);
+    let shift = CardId::upload(&db, &cards, player, "Reality Shift")?;
+    shift.move_to_stack(
+        &db,
+        HashSet::from([ActiveTarget::Battlefield { id: bear1 }]),
+    )?;
+
+    let results = Stack::resolve_1(&db)?;
     assert_eq!(
         results,
         [
-            StackResult::ExileTarget(creature),
-            StackResult::ManifestTopOfLibrary(player1.clone())
+            StackResult::ExileTarget(bear1),
+            StackResult::ManifestTopOfLibrary(player),
+            StackResult::StackToGraveyard(shift),
         ]
     );
+    let results = Stack::apply_results(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
 
-    stack.apply_results(&mut all_cards, &mut modifiers, &mut battlefield, results);
+    assert_eq!(Location::Exile.cards_in(&db)?, [bear1]);
 
-    let creature = all_cards.add(&cards, player1.clone(), "Alpine Grizzly");
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, creature);
+    assert_eq!(bear2.power(&db)?, Some(4));
+    assert_eq!(bear2.toughness(&db)?, Some(2));
+    assert_eq!(bear2.subtypes(&db)?, HashSet::from([Subtype::Bear]));
 
-    assert_eq!(
-        all_cards[creature].card.subtypes(),
-        HashSet::from([Subtype::Bear])
-    );
-    assert_eq!(all_cards[creature].card.power(), 4);
-    assert_eq!(all_cards[creature].card.toughness(), 2);
-
-    let creature = battlefield.select_card(0);
-
-    assert_eq!(all_cards[creature].card.subtypes(), Default::default());
-    assert_eq!(all_cards[creature].card.power(), 2);
-    assert_eq!(all_cards[creature].card.toughness(), 2);
-    assert!(all_cards[creature].face_down);
-    assert!(all_cards[creature].manifested);
+    assert_eq!(bear3.power(&db)?, Some(2));
+    assert_eq!(bear3.toughness(&db)?, Some(2));
+    assert_eq!(bear3.subtypes(&db)?, Default::default());
 
     Ok(())
 }

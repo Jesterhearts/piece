@@ -1,73 +1,101 @@
 use std::collections::HashSet;
 
-use bevy_ecs::{
-    query::With,
-    system::{Query, RunSystemOnce},
-};
-use enumset::{enum_set, EnumSet};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{self, ActivateAbilityEvent, Battlefield, BattlefieldId},
-    card::{
-        CardName, CardSubtypes, ModifyingPower, ModifyingSubtypeSet, ModifyingSubtypes,
-        ModifyingToughness, Power, PowerModifier, Toughness, ToughnessModifier,
-    },
-    deck::{Deck, DeckDefinition},
-    init_world, load_cards,
-    player::{ManaPool, Owner},
-    stack::{self, AddToStackEvent, Stack, StackEntry, Targets},
+    battlefield::{Battlefield, UnresolvedActionResult},
+    in_play::CardId,
+    load_cards,
+    player::AllPlayers,
+    prepare_db,
+    stack::{Entry, Stack, StackResult},
     types::Subtype,
 };
 
 #[test]
+fn modify_base_p_t_works() -> anyhow::Result<()> {
+    let cards = load_cards()?;
+    let db = prepare_db()?;
+
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
+
+    let card = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let results = Battlefield::add_from_stack(&db, card, vec![])?;
+    assert_eq!(results, []);
+
+    let results = Battlefield::activate_ability(&db, &mut all_players, card, 0)?;
+
+    assert_eq!(
+        results,
+        [UnresolvedActionResult::AddAbilityToStack {
+            source: card,
+            ability: card
+                .activated_abilities(&db)?
+                .first()
+                .copied()
+                .unwrap_or_default(),
+            valid_targets: Default::default(),
+        }]
+    );
+
+    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
+
+    let results = Stack::resolve_1(&db)?;
+    assert!(matches!(
+        results.as_slice(),
+        [StackResult::ApplyToBattlefield(_),]
+    ));
+
+    let results = Stack::apply_results(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
+
+    assert_eq!(card.power(&db)?, Some(5));
+    assert_eq!(card.toughness(&db)?, Some(5));
+    assert_eq!(
+        card.subtypes(&db)?,
+        HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
+    );
+
+    Battlefield::end_turn(&db)?;
+
+    assert_eq!(card.power(&db)?, Some(1));
+    assert_eq!(card.toughness(&db)?, Some(1));
+    assert_eq!(
+        card.subtypes(&db)?,
+        HashSet::from([Subtype::Elf, Subtype::Shaman])
+    );
+
+    Ok(())
+}
+
+#[test]
 fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut world = init_world();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Allosaurus Shepherd", 1);
-    deck.add_card("Counterspell", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let counterspell = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-    let creature = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    let card = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(creature),
-        target: None,
-        choice: None,
-    });
-    world.run_system_once(stack::add_to_stack);
+    card.move_to_stack(&db, HashSet::default())?;
+    counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(counterspell),
-        target: world
-            .resource::<Stack>()
-            .target_nth(0)
-            .map(|target| Targets::Stack(vec![target])),
-        choice: None,
-    });
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    world.run_system_once(stack::add_to_stack);
-    assert_eq!(world.resource::<Stack>().len(), 2);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
+    Stack::apply_results(&db, &mut all_players, results)?;
 
-    world.run_system_once(stack::resolve_1);
-    assert_eq!(world.resource::<Stack>().len(), 1);
+    assert_eq!(Stack::in_stack(&db)?.len(), 1);
 
-    world.run_system_once(stack::resolve_1);
-    assert!(world.resource::<Stack>().is_empty());
-
-    world.resource::<Battlefield>();
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::AddToBattlefield(card)]);
 
     Ok(())
 }
@@ -75,77 +103,31 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 #[test]
 fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut world = init_world();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Allosaurus Shepherd", 1);
-    deck.add_card("Alpine Grizzly", 1);
-    deck.add_card("Counterspell", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let counterspell = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-    let bear = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-    let creature = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    let card1 = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let card2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(creature),
-        target: None,
-        choice: None,
-    });
+    Battlefield::add_from_stack(&db, card1, vec![])?;
 
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
+    card2.move_to_stack(&db, HashSet::default())?;
+    counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(bear),
-        target: None,
-        choice: None,
-    });
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    world.run_system_once(stack::add_to_stack);
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
+    Stack::apply_results(&db, &mut all_players, results)?;
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(counterspell),
-        target: world
-            .resource::<Stack>()
-            .target_nth(0)
-            .map(|target| Targets::Stack(vec![target])),
-        choice: None,
-    });
+    assert_eq!(Stack::in_stack(&db)?.len(), 1);
 
-    world.run_system_once(stack::add_to_stack);
-
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
-
-    assert!(!world.resource::<Stack>().is_empty());
-
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
-
-    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
-    let on_battlefield = on_battlefield
-        .iter(&world)
-        .map(|card| (**card).clone())
-        .collect::<HashSet<_>>();
-
-    assert_eq!(on_battlefield.len(), 2);
-    assert!(on_battlefield.contains("Allosaurus Shepherd"));
-    assert!(on_battlefield.contains("Alpine Grizzly"));
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(results, [StackResult::AddToBattlefield(card2)]);
 
     Ok(())
 }
@@ -153,157 +135,37 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 #[test]
 fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut world = init_world();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Allosaurus Shepherd", 1);
-    deck.add_card("Counterspell", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    let player2 = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let counterspell = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-    let creature = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    let card1 = CardId::upload(&db, &cards, player, "Allosaurus Shepherd")?;
+    let card2 = CardId::upload(&db, &cards, player2, "Alpine Grizzly")?;
+    let counterspell = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Alpine Grizzly", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
-    let bear = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    Battlefield::add_from_stack(&db, card1, vec![])?;
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(creature),
-        target: None,
-        choice: None,
-    });
+    card2.move_to_stack(&db, HashSet::default())?;
+    counterspell.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(bear),
-        target: None,
-        choice: None,
-    });
-
-    world.run_system_once(stack::add_to_stack);
-
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(counterspell),
-        target: world
-            .resource::<Stack>()
-            .target_nth(0)
-            .map(|target| Targets::Stack(vec![target])),
-        choice: None,
-    });
-
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
-
-    assert!(world.resource::<Stack>().is_empty());
-
-    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
-    let on_battlefield = on_battlefield
-        .iter(&world)
-        .map(|card| (**card).clone())
-        .collect::<HashSet<_>>();
-
-    assert_eq!(on_battlefield.len(), 1);
-    assert!(on_battlefield.contains("Allosaurus Shepherd"));
-
-    Ok(())
-}
-
-#[test]
-fn modify_base_p_t_works() -> anyhow::Result<()> {
-    let cards = load_cards()?;
-    let mut world = init_world();
-
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Allosaurus Shepherd", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
-
-    let mut mana_pool = world.query::<&mut ManaPool>().single_mut(&mut world);
-    mana_pool.infinite();
-
-    let creature = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(creature),
-        target: None,
-        choice: None,
-    });
-
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
-
-    world.send_event(ActivateAbilityEvent {
-        card: creature,
-        index: 0,
-        targets: vec![],
-        choice: None,
-    });
-
-    world.run_system_once(battlefield::activate_ability);
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-
-    fn query_pt(
-        query: Query<(
-            &CardSubtypes,
-            &Toughness,
-            &Power,
-            &ModifyingSubtypes,
-            &ModifyingToughness,
-            &ModifyingPower,
-        )>,
-        toughness_modifiers: Query<&ToughnessModifier>,
-        power_modifiers: Query<&PowerModifier>,
-        subtype_modifiers: Query<&ModifyingSubtypeSet>,
-    ) -> (EnumSet<Subtype>, Option<i32>, Option<i32>) {
-        let (subtypes, toughness, power, subtypes_mod, toughness_mod, power_mod) = query.single();
-        (
-            subtypes_mod.union(subtypes, &subtype_modifiers),
-            toughness_mod.toughness(toughness, &toughness_modifiers),
-            power_mod.power(power, &power_modifiers),
-        )
-    }
-
-    let result = world.run_system_once(query_pt);
+    let results = Stack::resolve_1(&db)?;
     assert_eq!(
-        result,
-        (
-            enum_set!(Subtype::Elf | Subtype::Shaman | Subtype::Dinosaur),
-            Some(5),
-            Some(5)
-        )
+        results,
+        [
+            StackResult::SpellCountered {
+                id: Entry::Card(card2)
+            },
+            StackResult::StackToGraveyard(counterspell)
+        ]
     );
+    Stack::apply_results(&db, &mut all_players, results)?;
 
-    world.run_system_once(battlefield::end_turn);
-    let result = world.run_system_once(query_pt);
-    assert_eq!(
-        result,
-        (enum_set!(Subtype::Elf | Subtype::Shaman), Some(1), Some(1))
-    );
+    assert!(Stack::is_empty(&db)?);
 
     Ok(())
 }

@@ -5,6 +5,20 @@ package targets;
 import "controller.proto";
 import "types.proto";
 
+message Comparison {
+  message LessThan {
+    int32 value = 1;
+  }
+  message LessThanOrEqual {
+    int32 value = 1;
+  }
+  
+  oneof value {
+    LessThan less_than = 1;
+    LessThanOrEqual less_than_or_equal = 2;
+  }
+}
+
 message SpellTarget {
   controller.Controller controller = 1;
   repeated types.Type types = 2;
@@ -14,17 +28,23 @@ message SpellTarget {
 message Restriction {
   message NotSelf {
   }
-  message SingleTarget {
+  message OfType {
+    repeated types.Type types = 1;
+    repeated types.Subtype subtypes = 2;
   }
-  message CreaturesOnly {
-  } 
+  message Self {
+  }
+  message Toughness {
+    Comparison comparison = 1;
+  }
   message ControllerControlsBlackOrGreen {
   }
 
   oneof restriction {
-    NotSelf not_self = 1;
-    SingleTarget single_target = 2;
-    CreaturesOnly creatures_only = 3;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 4;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 1;
+    NotSelf not_self = 2;
+    OfType of_type = 3;
+    Self self = 4;
+    Toughness toughness = 5;
   }
 }

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package counters;
+
+message Counter {
+  message Charge {
+  }
+  message P1P1 {
+  }
+  message M1M1 {
+  }
+
+  oneof type {
+    Charge charge = 1;
+    P1P1 p1p1 = 2;
+    M1M1 m1m1 = 3;
+  }
+}

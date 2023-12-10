@@ -1,0 +1,28 @@
+name: "Glowspore Shaman"
+cost {
+  mana_costs { black {} }
+  mana_costs { green {} }
+}
+types { creature {} }
+subtypes { elf {} }
+subtypes { shaman {} }
+oracle_text:  "When Glowspore Shaman enters the"
+              "battlefield, mill three cards. You may"
+              "put a land card from your graveyard"
+              "on top of your library."
+power: 3
+toughness: 1
+etb_abilities {
+  mill {
+    count: 3 
+    target { you {} }
+  }
+}
+etb_abilities {
+  return_from_graveyard_to_library {
+    count: 1
+    controller { you {} }
+    types { land {} }
+    types { basic_land {} }
+  }
+}

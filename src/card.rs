@@ -1,142 +1,18 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
-use bevy_ecs::{bundle::Bundle, component::Component, entity::Entity, system::Query};
-use derive_more::{Deref, DerefMut, From};
-use enumset::{EnumSet, EnumSetType};
-use indexmap::IndexSet;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    abilities::{ActivatedAbility, ETBAbility, StaticAbility},
+    abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility, TriggeredAbility},
     cost::CastingCost,
-    effects::SpellEffect,
+    effects::{AnyEffect, Token, TokenCreature},
+    in_play::{AbilityId, TriggerId},
     protogen,
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Component)]
-pub enum ModifyingTypeSet {
-    Adding(EnumSet<Type>),
-    RemovingAll,
-    Subtracting(EnumSet<Type>),
-}
-
-#[derive(Debug, Component)]
-pub enum ModifyingSubtypeSet {
-    Adding(EnumSet<Subtype>),
-    RemovingAll,
-    Subtracting(EnumSet<Subtype>),
-}
-
-#[derive(Debug, Component, Deref, DerefMut, From)]
-pub struct ModifyingTypes(pub IndexSet<Entity>);
-
-impl ModifyingTypes {
-    pub fn union(&self, base: &CardTypes, query: &Query<&ModifyingTypeSet>) -> EnumSet<Type> {
-        let mut types = **base;
-        for entity in self.0.iter().copied() {
-            let modifier = query.get(entity).unwrap();
-            match modifier {
-                ModifyingTypeSet::Adding(adding) => {
-                    types.insert_all(*adding);
-                }
-                ModifyingTypeSet::RemovingAll => types.clear(),
-                ModifyingTypeSet::Subtracting(subtracting) => {
-                    types.remove_all(*subtracting);
-                }
-            }
-        }
-
-        types
-    }
-}
-
-#[derive(Debug, Component, Deref, DerefMut, From)]
-pub struct ModifyingSubtypes(pub IndexSet<Entity>);
-
-impl ModifyingSubtypes {
-    pub fn union(
-        &self,
-        base: &CardSubtypes,
-        query: &Query<&ModifyingSubtypeSet>,
-    ) -> EnumSet<Subtype> {
-        let mut types = **base;
-        for entity in self.0.iter().copied() {
-            let modifier = query.get(entity).unwrap();
-            match modifier {
-                ModifyingSubtypeSet::Adding(adding) => {
-                    types.insert_all(*adding);
-                }
-                ModifyingSubtypeSet::RemovingAll => types.clear(),
-                ModifyingSubtypeSet::Subtracting(subtracting) => {
-                    types.remove_all(*subtracting);
-                }
-            }
-        }
-
-        types
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component)]
-pub enum PowerModifier {
-    SetBase(i32),
-    Add(i32),
-}
-
-#[derive(Debug, Component, Deref, DerefMut, From)]
-pub struct ModifyingPower(IndexSet<Entity>);
-
-impl ModifyingPower {
-    pub fn power(&self, power: &Power, query: &Query<&PowerModifier>) -> Option<i32> {
-        let mut base = **power;
-        let mut add = 0;
-        for modifier in self.0.iter().copied() {
-            match query.get(modifier).unwrap() {
-                PowerModifier::SetBase(new_base) => {
-                    base = Some(*new_base);
-                }
-                PowerModifier::Add(also_add) => {
-                    add += also_add;
-                }
-            }
-        }
-
-        base.map(|base| base + add)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component)]
-pub enum ToughnessModifier {
-    SetBase(i32),
-    Add(i32),
-}
-
-#[derive(Debug, Component, Deref, DerefMut, From)]
-pub struct ModifyingToughness(IndexSet<Entity>);
-
-impl ModifyingToughness {
-    pub fn toughness(
-        &self,
-        toughness: &Toughness,
-        modifiers: &Query<&ToughnessModifier>,
-    ) -> Option<i32> {
-        let mut base = **toughness;
-        let mut add = 0;
-        for modifier in self.0.iter().copied() {
-            match modifiers.get(modifier).unwrap() {
-                ToughnessModifier::SetBase(new_base) => {
-                    base = Some(*new_base);
-                }
-                ToughnessModifier::Add(also_add) => {
-                    add += also_add;
-                }
-            }
-        }
-
-        base.map(|base| base + add)
-    }
-}
-
-#[derive(Debug, EnumSetType)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     White,
     Blue,
@@ -146,10 +22,10 @@ pub enum Color {
     Colorless,
 }
 
-impl TryFrom<&protogen::card::Color> for Color {
+impl TryFrom<&protogen::color::Color> for Color {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::card::Color) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::color::Color) -> Result<Self, Self::Error> {
         value
             .color
             .as_ref()
@@ -158,117 +34,82 @@ impl TryFrom<&protogen::card::Color> for Color {
     }
 }
 
-impl From<&protogen::card::color::Color> for Color {
-    fn from(value: &protogen::card::color::Color) -> Self {
+impl From<&protogen::color::color::Color> for Color {
+    fn from(value: &protogen::color::color::Color) -> Self {
         match value {
-            protogen::card::color::Color::White(_) => Self::White,
-            protogen::card::color::Color::Blue(_) => Self::Blue,
-            protogen::card::color::Color::Black(_) => Self::Black,
-            protogen::card::color::Color::Red(_) => Self::Red,
-            protogen::card::color::Color::Green(_) => Self::Green,
-            protogen::card::color::Color::Colorless(_) => Self::Colorless,
+            protogen::color::color::Color::White(_) => Self::White,
+            protogen::color::color::Color::Blue(_) => Self::Blue,
+            protogen::color::color::Color::Black(_) => Self::Black,
+            protogen::color::color::Color::Red(_) => Self::Red,
+            protogen::color::color::Color::Green(_) => Self::Green,
+            protogen::color::color::Color::Colorless(_) => Self::Colorless,
         }
     }
 }
 
-#[derive(Debug, EnumSetType)]
-pub enum CastingModifier {
-    CannotBeCountered,
-    SplitSecond,
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum TypeModifier {
+    RemoveAll,
+    Add(HashSet<Type>),
 }
 
-impl TryFrom<&protogen::card::CastingModifier> for CastingModifier {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::card::CastingModifier) -> Result<Self, Self::Error> {
-        value
-            .modifier
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected modifier to have a modifier specified"))
-            .map(Self::from)
-    }
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum SubtypeModifier {
+    RemoveAll,
+    Add(HashSet<Subtype>),
 }
 
-impl From<&protogen::card::casting_modifier::Modifier> for CastingModifier {
-    fn from(value: &protogen::card::casting_modifier::Modifier) -> Self {
-        match value {
-            protogen::card::casting_modifier::Modifier::CannotBeCountered(_) => {
-                Self::CannotBeCountered
-            }
-            protogen::card::casting_modifier::Modifier::SplitSecond(_) => Self::SplitSecond,
-        }
-    }
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub enum StaticAbilityModifier {
+    RemoveAll,
+    Add(StaticAbility),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct CardName(String);
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub enum ActivatedAbilityModifier {
+    RemoveAll,
+    Add(AbilityId),
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct CardTypes(EnumSet<Type>);
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub enum TriggeredAbilityModifier {
+    RemoveAll,
+    Add(TriggerId),
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct CardSubtypes(EnumSet<Subtype>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct OracleText(String);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct FlavorText(String);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct CastingModifiers(EnumSet<CastingModifier>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct Colors(EnumSet<Color>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct ETBAbilities(Vec<ETBAbility>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct SpellEffects(Vec<SpellEffect>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct StaticAbilities(Vec<StaticAbility>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct ActivatedAbilities(Vec<ActivatedAbility>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct Power(Option<i32>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct Toughness(Option<i32>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct Hexproof(bool);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, From, Component)]
-pub struct Shroud(bool);
-
-#[derive(Debug, Clone, PartialEq, Eq, Bundle)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Card {
-    pub name: CardName,
-    pub types: CardTypes,
-    pub subtypes: CardSubtypes,
+    pub name: String,
+    pub types: HashSet<Type>,
+    pub subtypes: HashSet<Subtype>,
 
     pub cost: CastingCost,
-    pub casting_modifiers: CastingModifiers,
-    pub colors: Colors,
+    pub split_second: bool,
+    pub cannot_be_countered: bool,
 
-    pub oracle_text: OracleText,
-    pub flavor_text: FlavorText,
+    pub colors: HashSet<Color>,
 
-    pub etb_abilities: ETBAbilities,
-    pub effects: SpellEffects,
+    pub oracle_text: String,
 
-    pub static_abilities: StaticAbilities,
-    pub activated_abilities: ActivatedAbilities,
+    pub enchant: Option<Enchant>,
 
-    pub power: Power,
-    pub toughness: Toughness,
+    pub etb_abilities: Vec<ETBAbility>,
+    pub effects: Vec<AnyEffect>,
 
-    pub hexproof: Hexproof,
-    pub shroud: Shroud,
+    pub static_abilities: Vec<StaticAbility>,
+
+    pub activated_abilities: Vec<ActivatedAbility>,
+
+    pub triggered_abilities: Vec<TriggeredAbility>,
+
+    pub power: Option<usize>,
+    pub toughness: Option<usize>,
+
+    pub vigilance: bool,
+    pub flying: bool,
+    pub flash: bool,
+    pub hexproof: bool,
+    pub shroud: bool,
 }
 
 impl TryFrom<protogen::card::Card> for Card {
@@ -276,128 +117,97 @@ impl TryFrom<protogen::card::Card> for Card {
 
     fn try_from(value: protogen::card::Card) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name.into(),
+            name: value.name,
             types: value
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?
-                .into(),
+                .collect::<anyhow::Result<HashSet<_>>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?
-                .into(),
+                .collect::<anyhow::Result<HashSet<_>>>()?,
             cost: value
                 .cost
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected a casting cost"))?
                 .try_into()?,
-            casting_modifiers: value
-                .casting_modifiers
-                .iter()
-                .map(CastingModifier::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?
-                .into(),
+            split_second: value.split_second,
+            cannot_be_countered: value.cannot_be_countered,
             colors: value
                 .colors
                 .iter()
                 .map(Color::try_from)
-                .collect::<anyhow::Result<EnumSet<_>>>()?
-                .into(),
-            oracle_text: value.oracle_text.into(),
-            flavor_text: value.flavor_text.into(),
+                .collect::<anyhow::Result<HashSet<_>>>()?,
+            oracle_text: value.oracle_text,
+            enchant: value
+                .enchant
+                .as_ref()
+                .map_or(Ok(None), |enchant| enchant.try_into().map(Some))?,
             etb_abilities: value
                 .etb_abilities
                 .iter()
                 .map(ETBAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?
-                .into(),
+                .collect::<anyhow::Result<Vec<_>>>()?,
             effects: value
                 .effects
                 .iter()
-                .map(SpellEffect::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?
-                .into(),
+                .map(AnyEffect::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
             static_abilities: value
                 .static_abilities
                 .iter()
                 .map(StaticAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?
-                .into(),
+                .collect::<anyhow::Result<Vec<_>>>()?,
             activated_abilities: value
                 .activated_abilities
                 .iter()
                 .map(ActivatedAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?
-                .into(),
-            power: value.power.into(),
-            toughness: value.toughness.into(),
-            hexproof: value.hexproof.into(),
-            shroud: value.shroud.into(),
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            triggered_abilities: value
+                .triggered_abilities
+                .iter()
+                .map(TriggeredAbility::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            power: value
+                .power
+                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                    Ok(usize::try_from(v).map(Some)?)
+                })?,
+            toughness: value
+                .toughness
+                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
+                    Ok(usize::try_from(v).map(Some)?)
+                })?,
+            vigilance: value.vigilance,
+            flying: value.flying,
+            flash: value.flash,
+            hexproof: value.hexproof,
+            shroud: value.shroud,
         })
     }
 }
 
-impl Card {
-    pub fn colors(cost: &CastingCost, colors: &Colors) -> EnumSet<Color> {
-        let mut derived_colors = EnumSet::default();
-        for mana in cost.mana_cost.iter() {
-            let color = mana.color();
-            derived_colors.insert(color);
+impl From<Token> for Card {
+    fn from(value: Token) -> Self {
+        match value {
+            Token::Creature(TokenCreature {
+                name,
+                types,
+                subtypes,
+                colors,
+                power,
+                toughness,
+            }) => Self {
+                name,
+                types,
+                subtypes,
+                colors,
+                power: Some(power),
+                toughness: Some(toughness),
+                ..Default::default()
+            },
         }
-        for color in colors.iter() {
-            derived_colors.insert(color);
-        }
-
-        derived_colors
-    }
-
-    pub fn color_identity(
-        cost: &CastingCost,
-        colors: &Colors,
-        activated_abilities: &ActivatedAbilities,
-    ) -> EnumSet<Color> {
-        let mut identity = Self::colors(cost, colors);
-
-        for ability in activated_abilities.iter() {
-            for mana in ability.cost.mana_cost.iter() {
-                let color = mana.color();
-                identity.insert(color);
-            }
-        }
-
-        identity
-    }
-
-    pub fn uses_stack(&self) -> bool {
-        !self.is_land()
-    }
-
-    pub fn is_land(&self) -> bool {
-        self.types
-            .iter()
-            .any(|ty| matches!(ty, Type::BasicLand | Type::Land))
-    }
-
-    pub fn is_permanent(types: &CardTypes) -> bool {
-        types.iter().any(|ty| ty.is_permanent())
-    }
-
-    pub fn requires_target(effects: &SpellEffects) -> bool {
-        for effect in effects.iter() {
-            match effect {
-                SpellEffect::CounterSpell { .. } => return true,
-                SpellEffect::GainMana { .. } => {}
-                SpellEffect::BattlefieldModifier(_) => {}
-                SpellEffect::ControllerDrawCards(_) => {}
-                SpellEffect::AddPowerToughnessToTarget(_) => return true,
-                SpellEffect::ModifyCreature(_) => return true,
-                SpellEffect::ExileTargetCreature => return true,
-                SpellEffect::ExileTargetCreatureManifestTopOfLibrary => return false,
-            }
-        }
-        false
     }
 }

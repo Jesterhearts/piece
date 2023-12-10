@@ -1,55 +1,70 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
-use bevy_ecs::{component::Component, entity::Entity, world::World};
-use indexmap::IndexMap;
 use rand::{seq::SliceRandom, thread_rng};
+use rusqlite::Connection;
 
-use crate::{
-    player::{Controller, Owner},
-    Cards,
-};
+use crate::{in_play::CardId, player::PlayerId, Cards};
 
 #[derive(Debug, Default)]
 pub struct DeckDefinition {
-    pub cards: IndexMap<String, usize>,
+    pub cards: HashMap<String, usize>,
 }
 
 impl DeckDefinition {
-    pub fn add_card(&mut self, name: impl AsRef<str>, count: usize) {
-        self.cards.insert(name.as_ref().to_owned(), count);
+    pub fn add_card(&mut self, name: String, count: usize) {
+        self.cards.insert(name, count);
     }
-}
 
-#[derive(Debug, Component)]
-pub struct Deck {
-    pub cards: VecDeque<Entity>,
-}
-
-impl Deck {
-    pub fn add_to_world(
-        world: &mut World,
-        player: Owner,
-        card_definitions: &Cards,
-        definition: &DeckDefinition,
-    ) {
-        let mut cards = VecDeque::default();
-        for (name, count) in definition.cards.iter() {
+    pub fn build_deck(
+        &self,
+        cards: &Cards,
+        db: &Connection,
+        player: PlayerId,
+    ) -> anyhow::Result<Deck> {
+        let mut deck = VecDeque::default();
+        for (card, count) in self.cards.iter() {
             for _ in 0..*count {
-                let card = card_definitions.get(name).expect("Valid card name");
-                let mut entity = world.spawn(card.clone());
-                entity.insert(player).insert(Controller::from(player));
-                cards.push_back(entity.id());
+                let id = CardId::upload(db, cards, player, card)?;
+                deck.push_back(id);
             }
         }
 
-        world.entity_mut(*player).insert(Self { cards });
+        Ok(Deck::new(deck))
+    }
+}
+
+#[derive(Debug)]
+pub struct Deck {
+    pub cards: VecDeque<CardId>,
+}
+
+impl Deck {
+    pub fn empty() -> Self {
+        Self {
+            cards: Default::default(),
+        }
+    }
+
+    pub fn new(cards: VecDeque<CardId>) -> Self {
+        Self { cards }
     }
 
     pub fn shuffle(&mut self) {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
-    pub fn draw(&mut self) -> Option<Entity> {
+    pub fn place_on_top(&mut self, db: &Connection, card: CardId) -> anyhow::Result<()> {
+        card.move_to_library(db)?;
+        self.cards.push_back(card);
+
+        Ok(())
+    }
+
+    pub fn draw(&mut self) -> Option<CardId> {
         self.cards.pop_back()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.cards.len()
     }
 }

@@ -1,8 +1,9 @@
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 
 use crate::{card::Color, protogen};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Mana {
     White,
     Blue,

@@ -1,102 +1,53 @@
-use std::collections::HashSet;
-
-use bevy_ecs::{event::Events, query::With, system::RunSystemOnce};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{self, BattlefieldId, EtbEvent},
-    card::CardName,
-    deck::{Deck, DeckDefinition},
-    init_world, load_cards,
-    player::Owner,
-    stack::{self, AddToStackEvent, StackEntry},
-    FollowupWork,
+    battlefield::{ActionResult, Battlefield, UnresolvedActionResult},
+    in_play::CardId,
+    load_cards,
+    player::AllPlayers,
+    prepare_db,
 };
 
 #[test]
 fn etb_clones() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut world = init_world();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Clone", 1);
-    deck.add_card("Alpine Grizzly", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let bear = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-    let clone = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add_from_stack(&db, creature, vec![])?;
+    assert_eq!(results, []);
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(bear),
-        target: None,
-        choice: None,
-    });
+    let clone = CardId::upload(&db, &cards, player, "Clone")?;
+    let results = Battlefield::add_from_stack(&db, clone, vec![])?;
+    assert_eq!(
+        results,
+        [UnresolvedActionResult::CloneCreatureNonTargeting {
+            source: clone,
+            valid_targets: vec![creature]
+        }]
+    );
 
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
+    let results = results
+        .into_iter()
+        .map(|result| match result {
+            UnresolvedActionResult::CloneCreatureNonTargeting {
+                source,
+                mut valid_targets,
+            } => ActionResult::CloneCreatureNonTargeting {
+                source,
+                target: valid_targets.pop(),
+            },
+            _ => unreachable!(),
+        })
+        .collect();
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(clone),
-        target: None,
-        choice: None,
-    });
+    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
 
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
-
-    for followup in world
-        .resource_mut::<Events<FollowupWork>>()
-        .drain()
-        .collect::<Vec<_>>()
-    {
-        match followup {
-            FollowupWork::ChooseTargetThenEtb {
-                valid_targets,
-                targets_for,
-                up_to,
-            } => {
-                assert_eq!(up_to, 1);
-                assert_eq!(valid_targets.len(), 1);
-                world.send_event(EtbEvent {
-                    card: targets_for,
-                    targets: Some(valid_targets),
-                })
-            }
-            FollowupWork::Etb { events } => {
-                assert!(events.is_empty());
-            }
-            FollowupWork::Graveyard { battlefield, stack } => {
-                assert!(battlefield.is_empty());
-                assert!(stack.is_empty());
-            }
-        }
-    }
-
-    world.run_system_once(battlefield::handle_events);
-
-    world.run_system_once(battlefield::handle_sba);
-    world.run_system_once(battlefield::handle_events);
-
-    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
-    let on_battlefield = on_battlefield
-        .iter(&world)
-        .map(|card| (**card).clone())
-        .collect::<HashSet<_>>();
-
-    assert_eq!(on_battlefield.len(), 2);
-    assert!(on_battlefield.contains("Alpine Grizzly"));
-    assert!(on_battlefield.contains("Clone"));
+    assert_eq!(clone.cloning(&db)?, Some(creature));
 
     Ok(())
 }
@@ -104,78 +55,40 @@ fn etb_clones() -> anyhow::Result<()> {
 #[test]
 fn etb_no_targets_dies() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut world = init_world();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Clone", 1);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let clone = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    let clone = CardId::upload(&db, &cards, player, "Clone")?;
+    let results = Battlefield::add_from_stack(&db, clone, vec![])?;
+    assert_eq!(
+        results,
+        [UnresolvedActionResult::CloneCreatureNonTargeting {
+            source: clone,
+            valid_targets: vec![]
+        }]
+    );
 
-    world.send_event(AddToStackEvent {
-        entry: StackEntry::Spell(clone),
-        target: None,
-        choice: None,
-    });
+    let results = results
+        .into_iter()
+        .map(|result| match result {
+            UnresolvedActionResult::CloneCreatureNonTargeting {
+                source,
+                mut valid_targets,
+            } => ActionResult::CloneCreatureNonTargeting {
+                source,
+                target: valid_targets.pop(),
+            },
+            _ => unreachable!(),
+        })
+        .collect();
 
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-    world.run_system_once(battlefield::handle_events);
+    let results = Battlefield::apply_action_results(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
 
-    for followup in world
-        .resource_mut::<Events<FollowupWork>>()
-        .drain()
-        .collect::<Vec<_>>()
-    {
-        match followup {
-            FollowupWork::ChooseTargetThenEtb {
-                valid_targets,
-                targets_for,
-                up_to,
-            } => {
-                assert_eq!(up_to, 1);
-                assert_eq!(valid_targets.len(), 0);
-                world.send_event(EtbEvent {
-                    card: targets_for,
-                    targets: Some(vec![]),
-                })
-            }
-            FollowupWork::Etb { events } => {
-                assert!(events.is_empty());
-            }
-            FollowupWork::Graveyard { battlefield, stack } => {
-                assert!(battlefield.is_empty());
-                assert!(stack.is_empty());
-            }
-        }
-    }
-
-    world.run_system_once(battlefield::handle_events);
-
-    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
-    let on_battlefield = on_battlefield
-        .iter(&world)
-        .map(|card| (**card).clone())
-        .collect::<HashSet<_>>();
-
-    assert_eq!(on_battlefield.len(), 1);
-    assert!(on_battlefield.contains("Clone"));
-
-    world.run_system_once(battlefield::handle_sba);
-    world.run_system_once(battlefield::handle_events);
-
-    let mut on_battlefield = world.query_filtered::<&CardName, With<BattlefieldId>>();
-    let on_battlefield = on_battlefield
-        .iter(&world)
-        .map(|card| (**card).clone())
-        .collect::<HashSet<_>>();
-
-    assert!(on_battlefield.is_empty());
+    let results = Battlefield::check_sba(&db)?;
+    assert_eq!(results, [ActionResult::PermanentToGraveyard(clone)]);
 
     Ok(())
 }

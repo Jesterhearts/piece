@@ -1,44 +1,38 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
-    deck::Deck,
-    in_play::{AllCards, AllModifiers},
-    load_cards,
-    player::Player,
-    stack::Stack,
+    battlefield::Battlefield, in_play::CardId, load_cards, player::AllPlayers, prepare_db,
 };
 
 #[test]
 fn modifies_battlefield() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut all_cards = AllCards::default();
-    let mut modifiers = AllModifiers::default();
-    let mut stack = Stack::default();
-    let mut battlefield = Battlefield::default();
-    let player = Owner::new_ref(Deck::empty());
+    let db = prepare_db()?;
 
-    let elesh = all_cards.add(&cards, player.clone(), "Elesh Norn, Grand Cenobite");
-    let bear = all_cards.add(&cards, player.clone(), "Alpine Grizzly");
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+    all_players[player].infinite_mana();
 
-    let results = battlefield.add(&mut all_cards, &mut modifiers, elesh);
-    battlefield.apply_action_results(&mut all_cards, &mut modifiers, &mut stack, results);
+    let elesh = CardId::upload(&db, &cards, player, "Elesh Norn, Grand Cenobite")?;
+    let results = Battlefield::add_from_stack(&db, elesh, vec![])?;
+    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
 
-    let _ = battlefield.add(&mut all_cards, &mut modifiers, bear);
+    let bear = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
+    let results = Battlefield::add_from_stack(&db, bear, vec![])?;
+    assert_eq!(results, []);
 
-    let card = &all_cards[elesh].card;
-    assert_eq!(card.power(), 4);
-    assert_eq!(card.toughness(), 7);
+    assert_eq!(elesh.power(&db)?, Some(4));
+    assert_eq!(elesh.toughness(&db)?, Some(7));
 
-    let card = &all_cards[bear].card;
-    assert_eq!(card.power(), 6);
-    assert_eq!(card.toughness(), 4);
+    assert_eq!(bear.power(&db)?, Some(6));
+    assert_eq!(bear.toughness(&db)?, Some(4));
 
-    battlefield.permanent_to_graveyard(&mut all_cards, &mut modifiers, &mut stack, elesh);
+    let results = Battlefield::permanent_to_graveyard(&db, elesh)?;
+    assert_eq!(results, []);
 
-    let card = &all_cards[bear].card;
-    assert_eq!(card.power(), 4);
-    assert_eq!(card.toughness(), 2);
+    assert_eq!(bear.power(&db)?, Some(4));
+    assert_eq!(bear.toughness(&db)?, Some(2));
 
     Ok(())
 }

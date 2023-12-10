@@ -1,0 +1,30 @@
+name: "Majestic Metamorphosis"
+cost {
+  mana_costs { generic { count: 2 } }
+  mana_costs { blue {} }
+}
+types { instant {} }
+oracle_text:  "Until end of turn, target artifact or"
+              "creature becomes a 4/4 Angel artifact"
+              "creature and gains flying.\n"
+              "Draw a card"
+effects {
+  modify_creature {
+    modifier {
+        base_power: 4
+        base_toughness: 4
+        add_types { creature {} }
+        add_types { artifact {} }
+        add_subtypes { angel {} }
+    }
+    controller { any {} }
+    duration { until_end_of_turn {} }
+    restrictions { of_type {
+      types { creature {} }
+      types { artifact {} }
+    } }
+  }
+}
+effects {
+  controller_draw_cards { count: 1 }
+}

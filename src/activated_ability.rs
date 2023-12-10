@@ -1,9 +1,10 @@
-use bevy_ecs::{component::Component, entity::Entity};
+use serde::{Deserialize, Serialize};
 
-use crate::effects::ActivatedAbilityEffect;
+use crate::{card::Effect, mana::Cost};
 
-#[derive(Debug, Component)]
-pub struct ActiveAbility {
-    pub source: Entity,
-    pub effects: Vec<ActivatedAbilityEffect>,
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct Ability {
+    pub cost: Cost,
+    pub effects: Vec<Effect>,
 }

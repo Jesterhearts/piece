@@ -1,56 +1,45 @@
-use bevy_ecs::system::RunSystemOnce;
+use std::collections::HashSet;
+
+use pretty_assertions::assert_eq;
 
 use crate::{
-    deck::{Deck, DeckDefinition},
-    init_world, load_cards,
-    player::Owner,
-    stack::{self, AddToStackEvent, Stack},
+    in_play::CardId,
+    load_cards,
+    player::AllPlayers,
+    prepare_db,
+    stack::{Entry, Stack, StackResult},
 };
 
 #[test]
 fn resolves_counterspells() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let mut world = init_world();
+    let db = prepare_db()?;
 
-    let mut deck = DeckDefinition::default();
-    deck.add_card("Counterspell", 2);
-    let player = Owner::new(&mut world);
-    Deck::add_to_world(&mut world, player, &cards, &deck);
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
 
-    let counterspell_1 = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
-    let counterspell_2 = world
-        .query::<&mut Deck>()
-        .single_mut(&mut world)
-        .draw()
-        .unwrap();
+    let counterspell_1 = CardId::upload(&db, &cards, player, "Counterspell")?;
+    let counterspell_2 = CardId::upload(&db, &cards, player, "Counterspell")?;
 
-    world.send_event(AddToStackEvent {
-        entry: stack::StackEntry::Spell(counterspell_1),
-        target: None,
-        choice: None,
-    });
+    counterspell_1.move_to_stack(&db, Default::default())?;
+    counterspell_2.move_to_stack(&db, HashSet::from([Stack::target_nth(&db, 0)?]))?;
 
-    world.run_system_once(stack::add_to_stack);
+    assert_eq!(Stack::in_stack(&db)?.len(), 2);
 
-    let target = world
-        .resource::<Stack>()
-        .target_nth(0)
-        .expect("Should have a spell on the stack");
+    let results = Stack::resolve_1(&db)?;
+    assert_eq!(
+        results,
+        [
+            StackResult::SpellCountered {
+                id: Entry::Card(counterspell_1)
+            },
+            StackResult::StackToGraveyard(counterspell_2)
+        ]
+    );
+    let results = Stack::apply_results(&db, &mut all_players, results)?;
+    assert_eq!(results, []);
 
-    world.send_event(AddToStackEvent {
-        entry: stack::StackEntry::Spell(counterspell_2),
-        target: Some(stack::Targets::Stack(vec![target])),
-        choice: None,
-    });
-
-    world.run_system_once(stack::add_to_stack);
-    world.run_system_once(stack::resolve_1);
-
-    assert!(world.resource::<Stack>().is_empty());
+    assert!(Stack::is_empty(&db)?);
 
     Ok(())
 }

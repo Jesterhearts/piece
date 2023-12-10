@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[test]
-fn equipment_works() -> anyhow::Result<()> {
+pub fn adds_ability() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let db = prepare_db()?;
 
@@ -20,11 +20,13 @@ fn equipment_works() -> anyhow::Result<()> {
     let player = all_players.new_player();
     all_players[player].infinite_mana();
 
-    let equipment = CardId::upload(&db, &cards, player, "+2 Mace")?;
+    let equipment = CardId::upload(&db, &cards, player, "Paradise Mantle")?;
     let _ = Battlefield::add_from_stack(&db, equipment, vec![])?;
 
     let creature = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
     let _ = Battlefield::add_from_stack(&db, creature, vec![])?;
+
+    assert_eq!(creature.activated_abilities(&db)?, []);
 
     let results = Battlefield::activate_ability(&db, &mut all_players, equipment, 0)?;
     assert_eq!(
@@ -52,22 +54,7 @@ fn equipment_works() -> anyhow::Result<()> {
     let results = Stack::apply_results(&db, &mut all_players, results)?;
     assert_eq!(results, []);
 
-    assert_eq!(creature.power(&db)?, Some(6));
-    assert_eq!(creature.toughness(&db)?, Some(4));
-
-    let creature2 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
-    let _ = Battlefield::add_from_stack(&db, creature2, vec![])?;
-
-    assert_eq!(creature2.power(&db)?, Some(4));
-    assert_eq!(creature2.toughness(&db)?, Some(2));
-
-    let results = Battlefield::permanent_to_graveyard(&db, equipment)?;
-    assert_eq!(results, []);
-
-    assert_eq!(creature.power(&db)?, Some(4));
-    assert_eq!(creature.toughness(&db)?, Some(2));
-
-    assert!(Battlefield::no_modifiers(&db)?);
+    assert_eq!(creature.activated_abilities(&db)?.len(), 1);
 
     Ok(())
 }

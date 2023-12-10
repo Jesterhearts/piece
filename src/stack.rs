@@ -1,730 +1,832 @@
-use bevy_ecs::{
-    component::Component,
-    entity::Entity,
-    event::{Event, EventWriter, Events},
-    query::{With, Without},
-    system::{Commands, Query, ResMut, Resource},
-};
-use derive_more::Deref;
-use indexmap::{IndexMap, IndexSet};
+use std::collections::{HashMap, HashSet};
+
+use rusqlite::Connection;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    abilities::StaticAbility,
-    activated_ability::ActiveAbility,
-    battlefield::{Battlefield, BattlefieldId, EtbEvent, GraveyardId, StackToGraveyardEvent},
-    card::{
-        Card, CardSubtypes, CardTypes, CastingModifier, CastingModifiers, Color, Colors,
-        ModifyingPower, ModifyingSubtypeSet, ModifyingSubtypes, ModifyingToughness,
-        ModifyingTypeSet, ModifyingTypes, PowerModifier, SpellEffects, StaticAbilities,
-        ToughnessModifier,
-    },
+    battlefield::{Battlefield, UnresolvedActionResult},
     controller::Controller,
-    cost::CastingCost,
-    deck::Deck,
-    effects::{ActivatedAbilityEffect, GainMana, ModifyBattlefield, SpellEffect},
-    player::{self, InHand, ManaPool, Owner},
+    effects::{BattlefieldModifier, Counter, Effect, EffectDuration, GainMana, Token},
+    in_play::{AbilityId, CardId, CounterId, Location, ModifierId, TriggerId},
+    mana::Mana,
+    player::{AllPlayers, PlayerId},
     targets::{Restriction, SpellTarget},
     types::Type,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct StackId(usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Deref)]
-pub struct Choice(pub usize);
-
-#[derive(Debug, Clone, Component)]
-pub enum Targets {
-    Stack(Vec<StackId>),
-    Battlefield(Vec<BattlefieldId>),
-    Graveyard(Vec<GraveyardId>),
-    Player(Vec<Owner>),
-    Entities(Vec<Entity>),
-}
-
-impl Targets {
-    pub fn len(&self) -> usize {
-        match self {
-            Targets::Stack(targets) => targets.len(),
-            Targets::Battlefield(targets) => targets.len(),
-            Targets::Graveyard(targets) => targets.len(),
-            Targets::Player(targets) => targets.len(),
-            Targets::Entities(targets) => targets.len(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum StackEntry {
-    Spell(Entity),
-    ActivatedAbility(Entity),
-    TriggeredAbility(Entity),
-}
-
-impl StackEntry {
-    fn entity(&self) -> Entity {
-        match self {
-            StackEntry::Spell(e)
-            | StackEntry::ActivatedAbility(e)
-            | StackEntry::TriggeredAbility(e) => *e,
-        }
-    }
-}
-
-#[derive(Debug, Event)]
+#[derive(Debug, PartialEq)]
 pub enum StackResult {
-    StackToGraveyard(Entity),
-    StackToBattlefield(Entity),
+    AddToBattlefield(CardId),
+    StackToGraveyard(CardId),
+    ApplyToBattlefield(ModifierId),
+    ApplyModifierToTarget {
+        modifier: ModifierId,
+        target: CardId,
+    },
+    ExileTarget(CardId),
+    DamageTarget {
+        quantity: usize,
+        target: CardId,
+    },
+    ManifestTopOfLibrary(PlayerId),
+    ModifyCreatures {
+        targets: Vec<CardId>,
+        modifier: ModifierId,
+    },
+    SpellCountered {
+        id: Entry,
+    },
+    DrawCards {
+        player: PlayerId,
+        count: usize,
+    },
+    GainMana {
+        player: PlayerId,
+        mana: HashMap<Mana, usize>,
+    },
+    CreateToken {
+        source: CardId,
+        token: Token,
+    },
+    AddCounters {
+        target: CardId,
+        counter: Counter,
+        count: usize,
+    },
 }
 
-#[derive(Debug, Event)]
-pub struct AddToStackEvent {
-    pub entry: StackEntry,
-    pub target: Option<Targets>,
-    pub choice: Option<usize>,
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum ActiveTarget {
+    Stack { id: usize },
+    Battlefield { id: CardId },
 }
 
-#[derive(Debug, Default, Resource)]
-pub struct Stack {
-    entries: IndexMap<StackId, StackEntry>,
-    next_id: usize,
-    pub split_second: bool,
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub enum Entry {
+    Card(CardId),
+    Ability(AbilityId),
+    Trigger(TriggerId),
 }
+
+#[derive(Debug, Clone)]
+pub struct StackEntry {
+    pub ty: Entry,
+    pub targets: HashSet<ActiveTarget>,
+    pub mode: Option<usize>,
+}
+
+#[derive(Debug)]
+pub struct Stack;
 
 impl Stack {
-    fn next_id(&mut self) -> StackId {
-        let id = self.next_id;
-        self.next_id += 1;
-        StackId(id)
+    pub fn split_second(db: &Connection) -> anyhow::Result<bool> {
+        let mut query =
+            db.prepare("SELECT NULL FROM cards WHERE location = (?1) AND split_second")?;
+        let mut query = query.query((serde_json::to_string(&Location::Stack)?,))?;
+
+        Ok(query.next()?.is_some())
     }
 
-    pub fn target_nth(&self, nth: usize) -> Option<StackId> {
-        self.entries.get_index(nth).map(|(id, _)| *id)
-    }
+    pub fn target_nth(db: &Connection, nth: usize) -> anyhow::Result<ActiveTarget> {
+        let mut cards_in_stack = db.prepare(
+            "SELECT location_seq FROM cards WHERE location = (?1) ORDER BY location_seq ASC",
+        )?;
+        let mut abilities_in_stack = db.prepare(
+            "SELECT stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC",
+        )?;
+        let mut triggers_in_stack = db.prepare(
+            "SELECT stack_seq FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq ASC",
+        )?;
 
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
+        let mut cards_in_stack = cards_in_stack
+            .query_map((serde_json::to_string(&Location::Stack)?,), |row| {
+                row.get::<_, usize>(0)
+            })?
+            .map(|value| value.unwrap())
+            .peekable();
 
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-}
+        let mut abilities_in_stack = abilities_in_stack
+            .query_map((), |row| row.get::<_, usize>(0))?
+            .map(|value| value.unwrap())
+            .peekable();
 
-pub fn add_to_stack(
-    mut stack: ResMut<Stack>,
-    mut commands: Commands,
-    mut queue: ResMut<Events<AddToStackEvent>>,
-    cards: Query<&CastingModifiers>,
-) {
-    for entry in queue.drain() {
-        let entity = entry.entry.entity();
-        let id = stack.next_id();
-        stack.entries.insert(id, entry.entry);
-        commands.entity(entity).insert(id);
-        if let Some(target) = entry.target {
-            commands.entity(entity).insert(target);
-        }
-        if let Some(choice) = entry.choice {
-            commands.entity(entity).insert(Choice(choice));
-        }
+        let mut triggers_in_stack = triggers_in_stack
+            .query_map((), |row| row.get::<_, usize>(0))?
+            .map(|value| value.unwrap())
+            .peekable();
 
-        match entry.entry {
-            StackEntry::Spell(entity) => {
-                if cards
-                    .get(entity)
-                    .unwrap()
-                    .contains(CastingModifier::SplitSecond)
-                {
-                    stack.split_second = true;
-                    break;
+        let mut target = 0;
+        for _ in 0..=nth {
+            let (max, index) = [
+                (cards_in_stack.peek(), 0),
+                (abilities_in_stack.peek(), 1),
+                (triggers_in_stack.peek(), 2),
+            ]
+            .into_iter()
+            .max_by_key(|(index, _)| index.copied().unwrap_or_default())
+            .unwrap();
+
+            target = target.max(max.copied().unwrap_or_default());
+
+            match index {
+                0 => {
+                    cards_in_stack.next();
                 }
+                1 => {
+                    abilities_in_stack.next();
+                }
+                2 => {
+                    triggers_in_stack.next();
+                }
+                _ => unreachable!(),
             }
-            StackEntry::ActivatedAbility(_) => {}
-            StackEntry::TriggeredAbility(_) => {}
+        }
+
+        Ok(ActiveTarget::Stack { id: target })
+    }
+
+    pub fn in_stack(db: &Connection) -> anyhow::Result<HashMap<usize, Entry>> {
+        let mut cards_in_stack =
+            db.prepare("SELECT cardid, location_seq FROM cards WHERE location = (?1)")?;
+        let mut abilities_in_stack =
+            db.prepare("SELECT abilityid, stack_seq FROM abilities WHERE in_stack = TRUE")?;
+        let mut triggers_in_stack =
+            db.prepare("SELECT triggerid, stack_seq FROM triggers WHERE in_stack = TRUE")?;
+
+        let mut cards_in_stack = cards_in_stack
+            .query_map((serde_json::to_string(&Location::Stack)?,), |row| {
+                Ok((row.get::<_, usize>(0)?, row.get::<_, usize>(1)?))
+            })?
+            .map(|value| value.unwrap())
+            .peekable();
+
+        let mut abilities_in_stack = abilities_in_stack
+            .query_map((), |row| {
+                Ok((row.get::<_, usize>(0)?, row.get::<_, usize>(1)?))
+            })?
+            .map(|value| value.unwrap())
+            .peekable();
+
+        let mut triggers_in_stack = triggers_in_stack
+            .query_map((), |row| {
+                Ok((row.get::<_, usize>(0)?, row.get::<_, usize>(1)?))
+            })?
+            .map(|value| value.unwrap())
+            .peekable();
+
+        let mut in_stack = HashMap::default();
+        while cards_in_stack.peek().is_some()
+            || abilities_in_stack.peek().is_some()
+            || triggers_in_stack.peek().is_some()
+        {
+            let (max, index) = [
+                (cards_in_stack.next(), 0),
+                (abilities_in_stack.next(), 1),
+                (triggers_in_stack.next(), 2),
+            ]
+            .into_iter()
+            .max_by_key(|(index, _)| index.map(|(_, seq)| seq).unwrap_or_default())
+            .unwrap();
+
+            match index {
+                0 => {
+                    in_stack.insert(
+                        max.map(|(_, seq)| seq).unwrap(),
+                        max.map(|(id, _)| Entry::Card(id.into())).unwrap(),
+                    );
+                }
+                1 => {
+                    in_stack.insert(
+                        max.map(|(_, seq)| seq).unwrap(),
+                        max.map(|(id, _)| Entry::Ability(id.into())).unwrap(),
+                    );
+                }
+                2 => {
+                    in_stack.insert(
+                        max.map(|(_, seq)| seq).unwrap(),
+                        max.map(|(id, _)| Entry::Trigger(id.into())).unwrap(),
+                    );
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(in_stack)
+    }
+
+    fn pop(db: &Connection) -> anyhow::Result<Option<StackEntry>> {
+        let mut cards_in_stack = db.prepare(
+            "SELECT cardid, targets, mode, location_seq FROM cards WHERE location = (?1) ORDER BY location_seq DESC",
+        )?;
+        let mut abilities_in_stack = db.prepare(
+            "SELECT abilityid, targets, mode, stack_seq FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq DESC",
+        )?;
+
+        let mut triggers_in_stack = db.prepare(
+            "SELECT triggerid, targets, mode, stack_seq FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq DESC",
+        )?;
+
+        let mut cards_in_stack = cards_in_stack
+            .query_map((serde_json::to_string(&Location::Stack)?,), |row| {
+                Ok((
+                    row.get::<_, usize>(0)?,
+                    serde_json::from_str::<HashSet<ActiveTarget>>(&row.get::<_, String>(1)?)
+                        .unwrap(),
+                    row.get::<_, Option<usize>>(2)?,
+                    row.get::<_, usize>(3)?,
+                ))
+            })?
+            .map(|value| value.unwrap());
+
+        let mut abilities_in_stack = abilities_in_stack
+            .query_map((), |row| {
+                Ok((
+                    row.get::<_, usize>(0)?,
+                    serde_json::from_str::<HashSet<ActiveTarget>>(&row.get::<_, String>(1)?)
+                        .unwrap(),
+                    row.get::<_, Option<usize>>(2)?,
+                    row.get::<_, usize>(3)?,
+                ))
+            })?
+            .map(|value| value.unwrap());
+
+        let mut triggers_in_stack = triggers_in_stack
+            .query_map((), |row| {
+                Ok((
+                    row.get::<_, usize>(0)?,
+                    serde_json::from_str::<HashSet<ActiveTarget>>(&row.get::<_, String>(1)?)
+                        .unwrap(),
+                    row.get::<_, Option<usize>>(2)?,
+                    row.get::<_, usize>(3)?,
+                ))
+            })?
+            .map(|value| value.unwrap());
+
+        let (max, index) = [
+            (cards_in_stack.next(), 0),
+            (abilities_in_stack.next(), 1),
+            (triggers_in_stack.next(), 2),
+        ]
+        .into_iter()
+        .max_by_key(|(index, _)| {
+            index
+                .as_ref()
+                .map(|(_, _, _, seq)| *seq)
+                .unwrap_or_default()
+        })
+        .unwrap();
+
+        match index {
+            0 => Ok(max.map(|(id, targets, mode, _)| StackEntry {
+                ty: Entry::Card(CardId::from(id)),
+                targets,
+                mode,
+            })),
+            1 => Ok(max.map(|(id, targets, mode, _)| StackEntry {
+                ty: Entry::Ability(AbilityId::from(id)),
+                targets,
+                mode,
+            })),
+            2 => Ok(max.map(|(id, targets, mode, _)| StackEntry {
+                ty: Entry::Trigger(TriggerId::from(id)),
+                targets,
+                mode,
+            })),
+            _ => unreachable!(),
         }
     }
 
-    assert!(queue.is_empty());
-}
+    pub fn is_empty(db: &Connection) -> anyhow::Result<bool> {
+        let mut cards_in_stack =
+            db.prepare("SELECT NULL FROM cards WHERE location = (?1) ORDER BY location_seq ASC")?;
+        let mut abilities_in_stack =
+            db.prepare("SELECT NULL FROM abilities WHERE in_stack = TRUE ORDER BY stack_seq ASC")?;
 
-pub fn resolve_1(
-    mut stack: ResMut<Stack>,
-    mut battlefield: ResMut<Battlefield>,
-    mut etb_events: EventWriter<EtbEvent>,
-    stack_to_graveyard_events: EventWriter<StackToGraveyardEvent>,
-    mut commands: Commands,
-    cards_in_stack: Query<
-        (
-            &StackId,
-            &player::Controller,
-            &player::Owner,
-            &SpellEffects,
-            &CastingModifiers,
-            &CastingCost,
-            &Colors,
-            &CardTypes,
-            &CardSubtypes,
-            Option<&ModifyingTypes>,
-            Option<&ModifyingSubtypes>,
-            Option<&Targets>,
-            Option<&Choice>,
-        ),
-        (With<StackId>, Without<BattlefieldId>),
-    >,
-    mut cards_on_battlefield: Query<
-        (
-            Entity,
-            &player::Controller,
-            &CardTypes,
-            &CardSubtypes,
-            &CastingCost,
-            &Colors,
-            Option<&mut ModifyingPower>,
-            Option<&mut ModifyingToughness>,
-            Option<&mut ModifyingSubtypes>,
-        ),
-        (With<BattlefieldId>, Without<StackId>),
-    >,
-    type_modifiers: Query<&ModifyingTypeSet>,
-    subtype_modifiers: Query<&ModifyingSubtypeSet>,
-    static_abilities: Query<(&StaticAbilities, &player::Controller)>,
-    active_abilities: Query<(
-        &player::Controller,
-        &ActiveAbility,
-        Option<&Targets>,
-        Option<&Choice>,
-    )>,
-    mut mana_pools: Query<(&mut ManaPool, &mut Deck)>,
-) {
-    let Some((_, entry)) = stack.entries.pop() else {
-        return;
-    };
+        let mut triggers_in_stack =
+            db.prepare("SELECT NULL FROM triggers WHERE in_stack = TRUE ORDER BY stack_seq ASC")?;
 
-    let mut pending: Vec<
-        Box<
-            dyn FnOnce(
-                &mut Commands,
-                &mut Stack,
-                &mut Battlefield,
-                &mut EventWriter<EtbEvent>,
-                &mut ManaPool,
-                &mut Deck,
+        Ok(cards_in_stack
+            .query((serde_json::to_string(&Location::Stack)?,))?
+            .next()?
+            .is_none()
+            && abilities_in_stack.query(())?.next()?.is_none()
+            && triggers_in_stack.query(())?.next()?.is_none())
+    }
+
+    pub fn resolve_1(db: &Connection) -> anyhow::Result<Vec<StackResult>> {
+        let Some(next) = Self::pop(db)? else {
+            return Ok(vec![]);
+        };
+
+        let in_stack = Self::in_stack(db)?;
+
+        let mut results = vec![];
+
+        let (apply_to_self, effects, controller, resolving_card, source) = match next.ty {
+            Entry::Card(card) => (
+                false,
+                card.effects(db)?,
+                card.controller(db)?,
+                Some(card),
+                card,
             ),
-        >,
-    > = vec![];
-
-    let controller = match entry {
-        StackEntry::Spell(entity) => {
-            let (
-                _,
-                spell_controller,
-                spell_owner,
-                effects,
-                _,
-                _,
-                _,
-                types,
-                _,
-                _,
-                _,
-                maybe_target,
-                maybe_choice,
-            ) = cards_in_stack.get(entity).unwrap();
-            commands
-                .entity(entity)
-                .remove::<StackId>()
-                .insert(player::Controller::from(*spell_owner));
-
-            let stack_to_graveyard_events =
-                scopeguard::guard_on_success(stack_to_graveyard_events, |mut events| {
-                    events.send(StackToGraveyardEvent { card: entity });
-                });
-
-            if Card::requires_target(effects) && maybe_target.is_none() {
-                return;
+            Entry::Ability(ability) => (
+                ability.apply_to_self(db)?,
+                ability.effects(db)?,
+                ability.controller(db)?,
+                None,
+                ability.source(db)?,
+            ),
+            Entry::Trigger(trigger) => {
+                let listener = trigger.listener(db)?;
+                (
+                    false,
+                    trigger.effects(db)?,
+                    listener.controller(db)?,
+                    None,
+                    listener,
+                )
             }
+        };
 
-            for effect in effects.iter() {
-                match effect {
-                    SpellEffect::CounterSpell {
-                        valid_target:
-                            SpellTarget {
-                                controller,
-                                types,
-                                subtypes,
-                            },
-                    } => {
-                        if !resolve_counterspell(
-                            maybe_target,
-                            &cards_in_stack,
-                            &stack,
-                            &static_abilities,
-                            controller,
-                            spell_controller,
-                            types,
-                            &type_modifiers,
-                            subtypes,
-                            &subtype_modifiers,
-                            &mut pending,
-                        ) {
-                            return;
+        for effect in effects {
+            match effect.into_effect(db, controller)? {
+                Effect::CounterSpell {
+                    target: restrictions,
+                } => {
+                    if !counter_spell(
+                        db,
+                        &in_stack,
+                        controller,
+                        &next.targets,
+                        restrictions,
+                        &mut results,
+                    )? {
+                        if let Some(resolving_card) = resolving_card {
+                            return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                        } else {
+                            return Ok(vec![]);
                         }
                     }
-                    SpellEffect::GainMana { mana } => {
-                        if !gain_mana(mana, &mut pending, maybe_choice) {
-                            return;
-                        }
-                    }
-                    SpellEffect::BattlefieldModifier(modifier) => {
-                        if !apply_battlefield_modifier(
-                            &mut commands,
-                            modifier,
-                            &mut cards_on_battlefield,
-                            spell_controller,
-                            maybe_target,
-                            None,
-                        ) {
-                            return;
-                        }
-                    }
-                    SpellEffect::ControllerDrawCards(_) => todo!(),
-                    SpellEffect::AddPowerToughnessToTarget(_) => todo!(),
-                    SpellEffect::ModifyCreature(_) => todo!(),
-                    SpellEffect::ExileTargetCreature => todo!(),
-                    SpellEffect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
                 }
-            }
-
-            if Card::is_permanent(types) {
-                let _ = scopeguard::ScopeGuard::into_inner(stack_to_graveyard_events);
-                pending.push(Box::new(move |_, _, _, etb_events, _, _| {
-                    etb_events.send(EtbEvent {
-                        card: entity,
-                        targets: None,
+                Effect::GainMana { mana } => {
+                    if !gain_mana(controller, &mana, next.mode, &mut results) {
+                        if let Some(resolving_card) = resolving_card {
+                            return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                        } else {
+                            return Ok(vec![]);
+                        }
+                    }
+                }
+                Effect::BattlefieldModifier(modifier) => {
+                    if apply_to_self {
+                        let modifier =
+                            ModifierId::upload_single_modifier(db, source, &modifier, true)?;
+                        results.push(StackResult::ApplyModifierToTarget {
+                            modifier,
+                            target: source,
+                        });
+                    } else {
+                        results.push(StackResult::ApplyToBattlefield(
+                            ModifierId::upload_single_modifier(db, source, &modifier, true)?,
+                        ));
+                    }
+                }
+                Effect::ControllerDrawCards(count) => {
+                    results.push(StackResult::DrawCards {
+                        player: controller,
+                        count,
                     });
-                }));
-            }
+                }
+                Effect::ModifyCreature(modifier) => {
+                    let modifier = ModifierId::upload_single_modifier(db, source, &modifier, true)?;
 
-            *spell_controller
-        }
-        StackEntry::ActivatedAbility(ability) => {
-            let (ability_controller, ability, maybe_target, maybe_choice) =
-                active_abilities.get(ability).unwrap();
-
-            for effect in ability.effects.iter() {
-                match effect {
-                    ActivatedAbilityEffect::CounterSpell {
-                        valid_target:
-                            SpellTarget {
-                                controller,
-                                types,
-                                subtypes,
-                            },
-                    } => {
-                        if !resolve_counterspell(
-                            maybe_target,
-                            &cards_in_stack,
-                            &stack,
-                            &static_abilities,
-                            controller,
-                            ability_controller,
-                            types,
-                            &type_modifiers,
-                            subtypes,
-                            &subtype_modifiers,
-                            &mut pending,
-                        ) {
-                            return;
-                        }
-                    }
-                    ActivatedAbilityEffect::GainMana { mana } => {
-                        if !gain_mana(mana, &mut pending, maybe_choice) {
-                            return;
-                        }
-                    }
-                    ActivatedAbilityEffect::BattlefieldModifier(modifier) => {
-                        if !apply_battlefield_modifier(
-                            &mut commands,
-                            modifier,
-                            &mut cards_on_battlefield,
-                            ability_controller,
-                            maybe_target,
-                            Some(ability.source),
-                        ) {
-                            return;
-                        }
-                    }
-                    &ActivatedAbilityEffect::ControllerDrawCards(count) => {
-                        pending.push(Box::new(move |commands, _, _, _, _, deck| {
-                            for _ in 0..count {
-                                let Some(card) = deck.draw() else {
-                                    todo!();
-                                };
-
-                                commands.entity(card).insert(InHand);
+                    let mut targets = vec![];
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                // Stack is not a valid target.
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
                             }
-                        }));
+                            ActiveTarget::Battlefield { id } => {
+                                targets.push(id);
+                            }
+                        }
                     }
-                    ActivatedAbilityEffect::Equip(_) => todo!(),
-                    ActivatedAbilityEffect::AddPowerToughnessToTarget(_) => todo!(),
+
+                    for target in targets {
+                        results.push(StackResult::ApplyModifierToTarget {
+                            modifier,
+                            target: *target,
+                        });
+                    }
+                }
+                Effect::ExileTargetCreature => {
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location(db, Location::Battlefield)? {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.can_be_targeted(db, controller)? {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.types_intersect(db, &HashSet::from([Type::Creature]))? {
+                                    // Target isn't a creature
+
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                results.push(StackResult::ExileTarget(*id));
+                            }
+                        }
+                    }
+                }
+                Effect::ExileTargetCreatureManifestTopOfLibrary => {
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location(db, Location::Battlefield)? {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.can_be_targeted(db, controller)? {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.types_intersect(db, &HashSet::from([Type::Creature]))? {
+                                    // Target isn't a creature
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                results.push(StackResult::ExileTarget(*id));
+                                results.push(StackResult::ManifestTopOfLibrary(id.controller(db)?));
+                            }
+                        }
+                    }
+                }
+                Effect::DealDamage(dmg) => {
+                    for target in next.targets.iter() {
+                        match target {
+                            ActiveTarget::Stack { .. } => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return Ok(vec![StackResult::StackToGraveyard(resolving_card)]);
+                                } else {
+                                    return Ok(vec![]);
+                                }
+                            }
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location(db, Location::Battlefield)? {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.can_be_targeted(db, controller)? {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                if !id.passes_restrictions(
+                                    db,
+                                    source,
+                                    controller,
+                                    Controller::Any,
+                                    &dmg.restrictions,
+                                )? {
+                                    if let Some(resolving_card) = resolving_card {
+                                        return Ok(vec![StackResult::StackToGraveyard(
+                                            resolving_card,
+                                        )]);
+                                    } else {
+                                        return Ok(vec![]);
+                                    }
+                                }
+
+                                results.push(StackResult::DamageTarget {
+                                    quantity: dmg.quantity,
+                                    target: *id,
+                                });
+                            }
+                        }
+                    }
+                }
+                Effect::Equip(modifiers) => {
+                    if next.targets.is_empty() {
+                        // Effect fizzles due to lack of target.
+                        return Ok(vec![]);
+                    }
+
+                    assert_eq!(next.targets.len(), 1);
+
+                    match next.targets.iter().next().unwrap() {
+                        ActiveTarget::Stack { .. } => {
+                            // Can't equip things on the stack
+                            return Ok(vec![]);
+                        }
+                        ActiveTarget::Battlefield { id } => {
+                            if !id.can_be_targeted(db, controller)? {
+                                // Card is not a valid target, spell fizzles.
+                                return Ok(vec![]);
+                            }
+
+                            for modifier in modifiers {
+                                let modifier = ModifierId::upload_single_modifier(
+                                    db,
+                                    source,
+                                    &BattlefieldModifier {
+                                        modifier,
+                                        controller: Controller::You,
+                                        duration: EffectDuration::UntilSourceLeavesBattlefield,
+                                        restrictions: vec![Restriction::OfType {
+                                            types: HashSet::from([Type::Creature]),
+                                            subtypes: Default::default(),
+                                        }],
+                                    },
+                                    true,
+                                )?;
+
+                                results.push(StackResult::ModifyCreatures {
+                                    targets: vec![*id],
+                                    modifier,
+                                });
+                            }
+                        }
+                    }
+                }
+                Effect::CreateToken(token) => {
+                    results.push(StackResult::CreateToken { source, token });
+                }
+                Effect::GainCounter(counter) => {
+                    results.push(StackResult::AddCounters {
+                        target: source,
+                        counter,
+                        count: 1,
+                    });
                 }
             }
-            *ability_controller
         }
-        StackEntry::TriggeredAbility(_) => todo!(),
-    };
 
-    for pend in pending {
-        let (mut mana_pool, mut deck) = mana_pools
-            .get_mut(*controller)
-            .expect("Players should have mana pools");
-        pend(
-            &mut commands,
-            &mut stack,
-            &mut battlefield,
-            &mut etb_events,
-            &mut mana_pool,
-            &mut deck,
-        );
+        if let Some(resolving_card) = resolving_card {
+            if resolving_card.is_permanent(db)? {
+                results.push(StackResult::AddToBattlefield(resolving_card));
+            } else {
+                results.push(StackResult::StackToGraveyard(resolving_card));
+            }
+        }
+
+        Ok(results)
     }
+
+    pub fn apply_results(
+        db: &Connection,
+        all_players: &mut AllPlayers,
+        results: Vec<StackResult>,
+    ) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+        let mut pending = vec![];
+
+        for result in results {
+            match result {
+                StackResult::AddToBattlefield(card) => {
+                    pending.extend(Battlefield::add_from_stack(db, card, vec![])?);
+                }
+                StackResult::ApplyToBattlefield(modifier) => {
+                    modifier.activate(db)?;
+                }
+                StackResult::ExileTarget(target) => {
+                    pending.extend(Battlefield::exile(db, target)?);
+                }
+                StackResult::ManifestTopOfLibrary(player) => {
+                    pending.extend(all_players[player].manifest(db)?);
+                }
+                StackResult::ModifyCreatures { targets, modifier } => {
+                    for target in targets {
+                        target.apply_modifier(db, modifier)?;
+                    }
+                }
+                StackResult::SpellCountered { id } => match id {
+                    Entry::Card(card) => {
+                        pending.extend(Battlefield::stack_to_graveyard(db, card)?);
+                    }
+                    Entry::Ability(_) | Entry::Trigger(_) => unreachable!(),
+                },
+                StackResult::DrawCards { player, count } => {
+                    all_players[player].draw(db, count)?;
+                }
+                StackResult::GainMana { player, mana } => {
+                    for (mana, count) in mana {
+                        for _ in 0..count {
+                            all_players[player].mana_pool.apply(mana);
+                        }
+                    }
+                }
+                StackResult::StackToGraveyard(card) => {
+                    pending.extend(Battlefield::stack_to_graveyard(db, card)?);
+                }
+                StackResult::ApplyModifierToTarget { modifier, target } => {
+                    target.apply_modifier(db, modifier)?;
+                }
+                StackResult::CreateToken { source, token } => {
+                    let id = CardId::upload_token(db, source.controller(db)?, token)?;
+                    pending.extend(Battlefield::add_from_stack(db, id, vec![])?);
+                }
+                StackResult::DamageTarget { quantity, target } => {
+                    target.mark_damage(db, quantity)?;
+                }
+                StackResult::AddCounters {
+                    target,
+                    counter,
+                    count,
+                } => {
+                    CounterId::add_counters(db, target, counter, count)?;
+                }
+            }
+        }
+
+        Ok(pending)
+    }
+}
+
+fn counter_spell(
+    db: &Connection,
+    in_stack: &HashMap<usize, Entry>,
+    controller: PlayerId,
+    targets: &HashSet<ActiveTarget>,
+    restrictions: SpellTarget,
+    result: &mut Vec<StackResult>,
+) -> anyhow::Result<bool> {
+    if targets.is_empty() {
+        return Ok(false);
+    }
+    for target in targets.iter() {
+        match target {
+            ActiveTarget::Stack { id } => {
+                let Some(maybe_target) = in_stack.get(id) else {
+                    // Spell has left the stack already
+                    return Ok(false);
+                };
+
+                match maybe_target {
+                    Entry::Card(maybe_target) => {
+                        if !maybe_target.can_be_countered(db, controller, &restrictions)? {
+                            // Spell is no longer a valid target.
+                            return Ok(false);
+                        }
+                    }
+                    Entry::Ability(_) => {
+                        // Vanilla counterspells can't counter activated abilities.
+                        return Ok(false);
+                    }
+                    Entry::Trigger(_) => {
+                        // Vanilla counterspells can't counter triggered abilities.
+                        return Ok(false);
+                    }
+                }
+
+                // If we reach here, we know the spell can be countered.
+                result.push(StackResult::SpellCountered { id: *maybe_target });
+            }
+            ActiveTarget::Battlefield { .. } => {
+                // Cards on the battlefield aren't valid targets of counterspells
+                return Ok(false);
+            }
+        }
+    }
+
+    Ok(true)
 }
 
 fn gain_mana(
+    controller: PlayerId,
     mana: &GainMana,
-    pending: &mut Vec<
-        Box<
-            dyn FnOnce(
-                &mut Commands<'_, '_>,
-                &mut Stack,
-                &mut Battlefield,
-                &mut EventWriter<'_, EtbEvent>,
-                &mut ManaPool,
-                &mut Deck,
-            ),
-        >,
-    >,
-    maybe_choice: Option<&Choice>,
+    mode: Option<usize>,
+    result: &mut Vec<StackResult>,
 ) -> bool {
+    let mut manas = HashMap::default();
     match mana {
         GainMana::Specific { gains } => {
-            let gains = gains.clone();
-            pending.push(Box::new(move |_, _, _, _, mana_pool, _| {
-                for mana in gains {
-                    mana_pool.apply(mana);
-                }
-            }));
+            for gain in gains.iter() {
+                *manas.entry(*gain).or_default() += 1;
+            }
         }
         GainMana::Choice { choices } => {
-            let Some(choice) = maybe_choice else {
+            let Some(mode) = mode else {
+                // No mode selected for modal ability.
                 return false;
             };
 
-            let choice = choices[**choice].clone();
-            pending.push(Box::new(move |_, _, _, _, mana_pool, _| {
-                for mana in choice {
-                    mana_pool.apply(mana);
-                }
-            }));
+            for gain in choices[mode].iter() {
+                *manas.entry(*gain).or_default() += 1;
+            }
         }
     };
+
+    result.push(StackResult::GainMana {
+        player: controller,
+        mana: manas,
+    });
 
     true
 }
 
-#[must_use]
-fn apply_battlefield_modifier(
-    commands: &mut Commands,
-    modifier: &crate::effects::BattlefieldModifier,
-    cards_on_battlefield: &mut Query<
-        (
-            Entity,
-            &player::Controller,
-            &CardTypes,
-            &CardSubtypes,
-            &CastingCost,
-            &Colors,
-            Option<&mut ModifyingPower>,
-            Option<&mut ModifyingToughness>,
-            Option<&mut ModifyingSubtypes>,
-        ),
-        (With<BattlefieldId>, Without<StackId>),
-    >,
-    spell_controller: &player::Controller,
-    maybe_target: Option<&Targets>,
-    maybe_source: Option<Entity>,
-) -> bool {
-    let modifier_id = commands
-        .spawn(modifier.clone())
-        .insert(modifier.duration)
-        .id();
-    let controls_black_or_green =
-        cards_on_battlefield
-            .iter()
-            .any(|(_, controller, _, _, cost, colors, _, _, _)| {
-                if spell_controller != controller {
-                    return false;
-                }
-
-                let colors = Card::colors(cost, colors);
-                colors.contains(Color::Black) || colors.contains(Color::Green)
-            });
-
-    'cards: for (entity, _, types, subtypes, _, _, power_mod, toughness_mod, subtypes_mod) in
-        cards_on_battlefield.iter_mut()
-    {
-        for restriction in modifier.restrictions().iter() {
-            match restriction {
-                Restriction::NotSelf => {
-                    if maybe_source.is_some() && maybe_source.unwrap() == entity {
-                        continue 'cards;
-                    }
-                }
-                Restriction::SingleTarget => {
-                    if maybe_target.is_none() || maybe_target.unwrap().len() != 1 {
-                        return false;
-                    }
-                }
-                Restriction::CreaturesOnly => {
-                    if !types.contains(Type::Creature) {
-                        continue 'cards;
-                    }
-                }
-                Restriction::ControllerControlsBlackOrGreen => {
-                    if !controls_black_or_green {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        match &modifier.modifier {
-            ModifyBattlefield::ModifyBasePowerToughness(modifier) => {
-                if modifier.targets.is_disjoint(**subtypes) {
-                    continue 'cards;
-                }
-
-                commands
-                    .entity(modifier_id)
-                    .insert(PowerModifier::SetBase(modifier.power));
-                commands
-                    .entity(modifier_id)
-                    .insert(ToughnessModifier::SetBase(modifier.toughness));
-
-                if let Some(mut power_mod) = power_mod {
-                    power_mod.insert(modifier_id);
-                } else {
-                    commands
-                        .entity(entity)
-                        .insert(ModifyingPower::from(IndexSet::from([modifier_id])));
-                }
-
-                if let Some(mut toughness_mod) = toughness_mod {
-                    toughness_mod.insert(modifier_id);
-                } else {
-                    commands
-                        .entity(entity)
-                        .insert(ModifyingToughness::from(IndexSet::from([modifier_id])));
-                }
-            }
-            ModifyBattlefield::AddCreatureSubtypes(modifier) => {
-                if modifier.targets.is_disjoint(**subtypes) {
-                    continue 'cards;
-                }
-
-                commands
-                    .entity(modifier_id)
-                    .insert(ModifyingSubtypeSet::Adding(modifier.types));
-
-                if let Some(mut subtypes_mod) = subtypes_mod {
-                    subtypes_mod.insert(modifier_id);
-                } else {
-                    commands
-                        .entity(entity)
-                        .insert(ModifyingSubtypes::from(IndexSet::from([modifier_id])));
-                }
-            }
-            ModifyBattlefield::RemoveAllSubtypes(_) => todo!(),
-            ModifyBattlefield::AddPowerToughness(_) => todo!(),
-            ModifyBattlefield::Vigilance(_) => todo!(),
-        }
-    }
-    true
-}
-
-#[must_use]
-fn resolve_counterspell(
-    maybe_target: Option<&Targets>,
-    cards_in_stack: &Query<
-        (
-            &StackId,
-            &player::Controller,
-            &Owner,
-            &SpellEffects,
-            &CastingModifiers,
-            &CastingCost,
-            &Colors,
-            &CardTypes,
-            &CardSubtypes,
-            Option<&ModifyingTypes>,
-            Option<&ModifyingSubtypes>,
-            Option<&Targets>,
-            Option<&Choice>,
-        ),
-        (With<StackId>, Without<BattlefieldId>),
-    >,
-    stack: &ResMut<Stack>,
-    static_abilities: &Query<(&StaticAbilities, &player::Controller)>,
-    controller: &Controller,
-    spell_controller: &player::Controller,
-    types: &enumset::EnumSet<Type>,
-    type_modifiers: &Query<&ModifyingTypeSet>,
-    subtypes: &enumset::EnumSet<crate::types::Subtype>,
-    subtype_modifiers: &Query<&ModifyingSubtypeSet>,
-    pending: &mut Vec<
-        Box<
-            dyn FnOnce(
-                &mut Commands,
-                &mut Stack,
-                &mut Battlefield,
-                &mut EventWriter<EtbEvent>,
-                &mut ManaPool,
-                &mut Deck,
-            ),
-        >,
-    >,
-) -> bool {
-    let stack_targets = match maybe_target.expect("Validated target exists") {
-        Targets::Stack(targets) => targets.clone(),
-        Targets::Entities(targets) => targets
-            .iter()
-            .filter_map(|target| cards_in_stack.get(*target).ok().map(|t| *t.0))
-            .collect::<Vec<_>>(),
-        _ => {
-            // Only the stack is a valid target for counterspells
-            return false;
-        }
+#[cfg(test)]
+mod tests {
+    use crate::{
+        in_play::CardId,
+        load_cards,
+        player::AllPlayers,
+        prepare_db,
+        stack::{Stack, StackResult},
     };
 
-    let mut had_target = false;
-    'targets: for stack_target in stack_targets {
-        let Some(target) = stack.entries.get(&stack_target) else {
-            continue 'targets;
-        };
+    #[test]
+    fn resolves_creatures() -> anyhow::Result<()> {
+        let cards = load_cards()?;
+        let db = prepare_db()?;
+        let mut all_players = AllPlayers::default();
+        let player = all_players.new_player();
+        let card1 = CardId::upload(&db, &cards, player, "Alpine Grizzly")?;
 
-        let entity_target = match target {
-            StackEntry::Spell(target) => *target,
-            _ => {
-                // Only spells are a valid target for counterspells
-                continue 'targets;
-            }
-        };
+        card1.move_to_stack(&db, Default::default())?;
 
-        let Some((
-            _,
-            target_controller,
-            target_owner,
-            _,
-            casting_modifiers,
-            casting_cost,
-            colors,
-            card_types,
-            card_subtypes,
-            modifying_types,
-            modifying_subtypes,
-            _,
-            _,
-        )) = cards_in_stack.get(entity_target).ok()
-        else {
-            continue 'targets;
-        };
+        let results = Stack::resolve_1(&db)?;
 
-        if casting_modifiers.contains(CastingModifier::CannotBeCountered) {
-            continue 'targets;
-        }
+        assert_eq!(results, [StackResult::AddToBattlefield(card1)]);
+        Stack::apply_results(&db, &mut all_players, results)?;
 
-        for (abilities, ability_controller) in static_abilities.iter() {
-            for ability in abilities.iter() {
-                match ability {
-                    StaticAbility::GreenCannotBeCountered { controller } => {
-                        if Card::colors(casting_cost, colors).contains(Color::Green) {
-                            match controller {
-                                Controller::Any => {
-                                    continue 'targets;
-                                }
-                                Controller::You => {
-                                    if ability_controller == target_controller {
-                                        continue 'targets;
-                                    }
-                                }
-                                Controller::Opponent => {
-                                    if ability_controller != target_controller {
-                                        continue 'targets;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    StaticAbility::Vigilance => {}
-                    StaticAbility::BattlefieldModifier(_) => {}
-                    StaticAbility::Enchant(_) => {}
-                }
-            }
-        }
+        assert!(Stack::is_empty(&db)?);
 
-        match controller {
-            Controller::Any => {}
-            Controller::You => {
-                if spell_controller != target_controller {
-                    continue 'targets;
-                }
-            }
-            Controller::Opponent => {
-                if spell_controller == target_controller {
-                    continue 'targets;
-                }
-            }
-        }
-
-        if !types.is_empty() {
-            let card_types = modifying_types
-                .map(|types| types.union(card_types, type_modifiers))
-                .unwrap_or_else(|| **card_types);
-
-            if card_types.intersection(*types).is_empty() {
-                continue 'targets;
-            }
-        }
-
-        if !subtypes.is_empty() {
-            let card_types = modifying_subtypes
-                .map(|types| types.union(card_subtypes, subtype_modifiers))
-                .unwrap_or_else(|| **card_subtypes);
-
-            if card_types.intersection(*subtypes).is_empty() {
-                continue 'targets;
-            }
-        }
-
-        had_target = true;
-
-        let target_owner = *target_owner;
-        pending.push(Box::new(move |commands, stack, battlefield, _, _, _| {
-            commands
-                .entity(entity_target)
-                .remove::<StackId>()
-                .insert(player::Controller::from(target_owner));
-            stack.entries.remove(&stack_target);
-
-            commands
-                .entity(entity_target)
-                .insert(battlefield.next_graveyard_id());
-        }))
+        Ok(())
     }
-
-    had_target
 }
