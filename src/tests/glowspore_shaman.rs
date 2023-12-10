@@ -4,31 +4,31 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
-    controller::Controller,
+    controller::ControllerRestriction,
     in_play::CardId,
+    in_play::Database,
     load_cards,
     player::AllPlayers,
-    prepare_db,
     types::Type,
 };
 
 #[test]
 fn etb() -> anyhow::Result<()> {
     let cards = load_cards()?;
-    let db = prepare_db()?;
+    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player();
     all_players[player].infinite_mana();
 
-    let land = CardId::upload(&db, &cards, player, "Forest")?;
-    let nonland = CardId::upload(&db, &cards, player, "Annul")?;
+    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    let nonland = CardId::upload(&mut db, &cards, player, "Annul");
 
-    all_players[player].deck.place_on_top(&db, land)?;
-    all_players[player].deck.place_on_top(&db, nonland)?;
+    all_players[player].deck.place_on_top(&mut db, land);
+    all_players[player].deck.place_on_top(&mut db, nonland);
 
-    let glowspore = CardId::upload(&db, &cards, player, "Glowspore Shaman")?;
-    let results = Battlefield::add_from_stack(&db, glowspore, vec![])?;
+    let glowspore = CardId::upload(&mut db, &cards, player, "Glowspore Shaman");
+    let results = Battlefield::add_from_stack(&mut db, glowspore, vec![]);
     assert_eq!(
         results,
         [
@@ -39,26 +39,26 @@ fn etb() -> anyhow::Result<()> {
             UnresolvedActionResult::ReturnFromGraveyardToLibrary {
                 source: glowspore,
                 count: 1,
-                controller: Controller::You,
+                controller: ControllerRestriction::You,
                 types: HashSet::from([Type::Land, Type::BasicLand]),
                 valid_targets: vec![]
             }
         ]
     );
 
-    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToLibrary {
             source: glowspore,
             count: 1,
-            controller: Controller::You,
+            controller: ControllerRestriction::You,
             types: HashSet::from([Type::Land, Type::BasicLand]),
             valid_targets: vec![land]
         }]
     );
 
-    let results = Battlefield::maybe_resolve(&db, &mut all_players, results)?;
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
     Ok(())

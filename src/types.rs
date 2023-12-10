@@ -1,9 +1,18 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
+use derive_more::{Deref, DerefMut};
 
 use crate::protogen;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub struct Types(pub HashSet<Type>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct AddTypes(pub HashSet<Type>);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Type {
     BasicLand,
     Land,
@@ -50,7 +59,16 @@ impl Type {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct Subtypes(pub HashSet<Subtype>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct AddSubtypes(pub HashSet<Subtype>);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub struct RemoveAllSubtypes;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Subtype {
     Angel,
     Aura,

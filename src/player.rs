@@ -4,59 +4,67 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use indoc::indoc;
-use rusqlite::{types::FromSql, Connection, ToSql};
+use bevy_ecs::{component::Component, entity::Entity};
+use itertools::Itertools;
 
 use crate::{
     abilities::StaticAbility,
     battlefield::{Battlefield, UnresolvedActionResult},
     deck::Deck,
-    in_play::{CardId, Location},
+    in_play::{cards, CardId, Database, InHand},
     mana::Mana,
     stack::ActiveTarget,
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-pub struct PlayerId(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+pub struct Owner(usize);
 
-impl PlayerId {
-    fn new() -> Self {
-        Self(NEXT_PLAYER_ID.fetch_add(1, Ordering::Relaxed))
-    }
-
-    pub(crate) fn get_cards_in_zone(
-        &self,
-        db: &Connection,
-        location: Location,
-    ) -> anyhow::Result<Vec<CardId>> {
-        let mut results = vec![];
-        let mut in_location = db.prepare(indoc! {"
-            SELECT cardid
-            FROM cards
-            WHERE controller = (?1) AND location = (?2)
-            ORDER BY location_seq ASC
-        "})?;
-        for row in
-            in_location.query_map((self, serde_json::to_string(&location)?), |row| row.get(0))?
-        {
-            results.push(row?)
-        }
-
-        Ok(results)
+impl From<Controller> for Owner {
+    fn from(value: Controller) -> Self {
+        Self(value.0)
     }
 }
 
-impl FromSql for PlayerId {
-    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(Self(usize::column_result(value)?))
+impl Owner {
+    pub fn get_cards<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
+        db.query::<(Entity, &Owner, &Zone)>()
+            .iter(db)
+            .sorted_by_key(|(_, _, zone)| *zone)
+            .filter_map(|(card, owner, _)| {
+                if self == *owner {
+                    Some(card.into())
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
     }
 }
 
-impl ToSql for PlayerId {
-    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        self.0.to_sql()
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+pub struct Controller(usize);
+
+impl From<Owner> for Controller {
+    fn from(value: Owner) -> Self {
+        Self(value.0)
+    }
+}
+
+impl Controller {
+    pub fn get_cards<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
+        db.query::<(Entity, &Controller, &Zone)>()
+            .iter(db)
+            .sorted_by_key(|(_, _, zone)| *zone)
+            .filter_map(|(card, owner, _)| {
+                if self == *owner {
+                    Some(card.into())
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
     }
 }
 
@@ -159,29 +167,45 @@ impl ManaPool {
     }
 }
 
-impl Index<PlayerId> for AllPlayers {
+impl Index<Owner> for AllPlayers {
     type Output = Player;
 
-    fn index(&self, index: PlayerId) -> &Self::Output {
+    fn index(&self, index: Owner) -> &Self::Output {
         self.players.get(&index).expect("Valid player id")
     }
 }
 
-impl IndexMut<PlayerId> for AllPlayers {
-    fn index_mut(&mut self, index: PlayerId) -> &mut Self::Output {
+impl IndexMut<Owner> for AllPlayers {
+    fn index_mut(&mut self, index: Owner) -> &mut Self::Output {
         self.players.get_mut(&index).expect("Valid player id")
+    }
+}
+
+impl Index<Controller> for AllPlayers {
+    type Output = Player;
+
+    fn index(&self, index: Controller) -> &Self::Output {
+        self.players.get(&index.into()).expect("Valid player id")
+    }
+}
+
+impl IndexMut<Controller> for AllPlayers {
+    fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
+        self.players
+            .get_mut(&index.into())
+            .expect("Valid player id")
     }
 }
 
 #[derive(Debug, Default)]
 pub struct AllPlayers {
-    players: HashMap<PlayerId, Player>,
+    players: HashMap<Owner, Player>,
 }
 
 impl AllPlayers {
     #[must_use]
-    pub fn new_player(&mut self) -> PlayerId {
-        let id = PlayerId::new();
+    pub fn new_player(&mut self) -> Owner {
+        let id = Owner(NEXT_PLAYER_ID.fetch_add(1, Ordering::Relaxed));
         self.players.insert(
             id,
             Player {
@@ -195,14 +219,8 @@ impl AllPlayers {
         id
     }
 
-    pub fn all_players(db: &Connection) -> anyhow::Result<HashSet<PlayerId>> {
-        let mut result = HashSet::default();
-        let mut owners = db.prepare("SELECT DISTINCT owner FROM cards")?;
-        for row in owners.query_map((), |row| row.get(0))? {
-            result.insert(row?);
-        }
-
-        Ok(result)
+    pub fn all_players(db: &mut Database) -> HashSet<Owner> {
+        db.query::<&Owner>().iter(db).copied().collect()
     }
 }
 
@@ -226,59 +244,57 @@ impl Player {
         self.mana_pool.colorless_mana = usize::MAX;
     }
 
-    pub fn draw_initial_hand(&mut self, db: &Connection) -> anyhow::Result<()> {
+    pub fn draw_initial_hand(&mut self, db: &mut Database) {
         for _ in 0..7 {
             let card = self
                 .deck
                 .draw()
                 .expect("Decks should have at least 7 cards");
 
-            card.move_to_hand(db)?;
+            card.move_to_hand(db);
         }
-
-        Ok(())
     }
 
-    pub fn draw(&mut self, db: &Connection, count: usize) -> anyhow::Result<bool> {
+    pub fn draw(&mut self, db: &mut Database, count: usize) -> bool {
         if self.deck.len() < count {
-            return Ok(false);
+            return false;
         }
 
         for _ in 0..count {
             let card = self.deck.draw().expect("Validated deck size");
-            card.move_to_hand(db)?;
+            card.move_to_hand(db);
         }
 
-        Ok(true)
+        true
     }
 
     /// Returns Some if the card can be played
     pub fn play_card(
         &mut self,
-        db: &Connection,
+        db: &mut Database,
         index: usize,
         target: Option<ActiveTarget>,
     ) -> anyhow::Result<Option<CardId>> {
-        let cards = Location::Hand.cards_in(db)?;
+        let cards = cards::<InHand>(db);
         let card = cards[index];
         let mana_pool = self.mana_pool;
 
-        for mana in card.cost(db)?.mana_cost.into_iter() {
-            if !self.mana_pool.spend(mana) {
+        for mana in card.cost(db).mana_cost.iter() {
+            if !self.mana_pool.spend(*mana) {
                 self.mana_pool = mana_pool;
                 return Ok(None);
             }
         }
 
         if let Some(target) = target {
-            let targets = card.valid_targets(db)?;
+            let targets = card.valid_targets(db);
             if !targets.contains(&target) {
                 self.mana_pool = mana_pool;
                 return Ok(None);
             }
         }
 
-        if card.is_land(db)? && self.lands_played >= Self::lands_per_turn(db)? {
+        if card.is_land(db) && self.lands_played >= Self::lands_per_turn(db) {
             return Ok(None);
         }
 
@@ -297,22 +313,22 @@ impl Player {
         true
     }
 
-    pub fn manifest(&mut self, db: &Connection) -> anyhow::Result<Vec<UnresolvedActionResult>> {
+    pub fn manifest(&mut self, db: &mut Database) -> Vec<UnresolvedActionResult> {
         if let Some(manifested) = self.deck.draw() {
-            manifested.manifest(db)?;
+            manifested.manifest(db);
             Battlefield::add_from_stack(db, manifested, vec![])
         } else {
-            Ok(vec![])
+            vec![]
         }
     }
 
-    pub fn lands_per_turn(db: &Connection) -> Result<usize, anyhow::Error> {
-        Ok(1 + Battlefield::static_abilities(db)?
+    pub fn lands_per_turn(db: &mut Database) -> usize {
+        1 + Battlefield::static_abilities(db)
             .into_iter()
             .filter_map(|(ability, _)| match ability {
                 StaticAbility::ExtraLandsPerTurn(count) => Some(count),
                 _ => None,
             })
-            .sum::<usize>())
+            .sum::<usize>()
     }
 }

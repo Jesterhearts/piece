@@ -1,15 +1,16 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
+use derive_more::{Deref, DerefMut};
 
 use crate::{
-    controller::Controller,
+    controller::ControllerRestriction,
     protogen,
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Comparison {
     LessThan(i32),
     LessThanOrEqual(i32),
@@ -38,9 +39,9 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SpellTarget {
-    pub controller: Controller,
+    pub controller: ControllerRestriction,
     pub types: HashSet<Type>,
     pub subtypes: HashSet<Subtype>,
 }
@@ -54,7 +55,7 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
                 .controller
                 .controller
                 .as_ref()
-                .map(Controller::from)
+                .map(ControllerRestriction::from)
                 .unwrap_or_default(),
             types: value
                 .types
@@ -70,7 +71,10 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct Restrictions(pub Vec<Restriction>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Restriction {
     NotSelf,
     Self_,

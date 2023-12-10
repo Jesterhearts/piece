@@ -1,13 +1,15 @@
 use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
+use bevy_ecs::component::Component;
+use derive_more::{Deref, DerefMut};
 
 use crate::{
-    controller::Controller,
+    controller::ControllerRestriction,
     cost::AbilityCost,
     effects::{
         AnyEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
         ReturnFromGraveyardToLibrary, TutorLibrary,
     },
+    in_play::{AbilityId, TriggerId},
     protogen,
     targets::Restriction,
     triggers::Trigger,
@@ -38,7 +40,10 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct ETBAbilities(pub Vec<ETBAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
     CopyOfAnyCreature,
     Mill(Mill),
@@ -83,9 +88,12 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
+pub struct StaticAbilities(pub Vec<StaticAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
-    GreenCannotBeCountered { controller: Controller },
+    GreenCannotBeCountered { controller: ControllerRestriction },
     BattlefieldModifier(BattlefieldModifier),
     ExtraLandsPerTurn(usize),
 }
@@ -113,7 +121,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                         .controller
                         .controller
                         .as_ref()
-                        .map(Controller::from)
+                        .map(ControllerRestriction::from)
                         .unwrap_or_default(),
                 })
             }
@@ -127,7 +135,13 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut, Default)]
+pub struct ActivatedAbilities(pub Vec<AbilityId>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub struct ApplyToSelf;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<AnyEffect>,
@@ -153,6 +167,9 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
         })
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
+pub struct Triggers(pub Vec<TriggerId>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggeredAbility {
