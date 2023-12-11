@@ -40,4 +40,5 @@ message Card {
   bool flash = 20;
   bool hexproof = 21;
   bool shroud = 22;
+  bool haste = 23;
 }

@@ -3,7 +3,7 @@ cost {
   mana_costs { generic { count: 2} }
   mana_costs { white {} }
 }
-oracle_text:  "Equippd creature gets +1/+1 for each"
+oracle_text:  "Equiped creature gets +1/+1 for each"
               "charge counter on Mace of the Valiant"
               "and has vigilance.\n"
               "Whenever a creature enters the"

@@ -144,10 +144,17 @@ message CreateToken {
     repeated color.Color colors = 4;
     int32 power = 5;
     int32 toughness = 6;
+
+    bool vigilance = 7;
+    bool flying = 8;
+    bool flash = 9;
+    bool hexproof = 10;
+    bool shroud = 11;
+    bool haste = 12;
   }
 
   oneof token {
-    Creature creature = 7;
+    Creature creature = 13;
   }
 }
 
