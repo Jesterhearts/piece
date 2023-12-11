@@ -22,8 +22,8 @@ message GainMana {
   }
 
   oneof gain {
-    Specific specific = 2;
-    Choice choice = 3;
+    Specific specific = 1;
+    Choice choice = 2;
   }
 }
 
@@ -118,14 +118,15 @@ message ModifyBattlefield {
   optional int32 add_toughness = 7;
 
   optional ActivatedAbility add_ability = 8;
-  optional GainManaAbility gain_mana = 0;
+  optional GainManaAbility gain_mana = 9;
 
-  bool remove_all_subtypes = 9;
+  bool remove_all_subtypes = 10;
 
-  bool entire_battlefield = 10;
-  bool global = 11;
+  bool entire_battlefield = 11;
+  bool global = 12;
 
-  bool add_vigilance = 12;
+  bool add_vigilance = 13;
+  bool add_flying = 14;
 }
 
 message BattlefieldModifier {

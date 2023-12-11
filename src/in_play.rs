@@ -20,11 +20,12 @@ use crate::{
     },
     battlefield::Battlefield,
     card::{
-        ActivatedAbilityModifier, AddColors, AddHexproof, AddPower, AddShroud, AddToughness,
-        AddVigilance, BasePower, BasePowerModifier, BaseToughness, BaseToughnessModifier,
-        CannotBeCountered, Card, Color, Colors, Hexproof, MarkedDamage, Name, RemoveFlash,
-        RemoveHexproof, RemoveShroud, RemoveVigilance, Shroud, SplitSecond, StaticAbilityModifier,
-        TriggeredAbilities, TriggeredAbilityModifier, Vigilance,
+        ActivatedAbilityModifier, AddColors, AddFlying, AddHexproof, AddPower, AddShroud,
+        AddToughness, AddVigilance, BasePower, BasePowerModifier, BaseToughness,
+        BaseToughnessModifier, CannotBeCountered, Card, Color, Colors, Flying, Hexproof,
+        MarkedDamage, Name, RemoveFlash, RemoveFlying, RemoveHexproof, RemoveShroud,
+        RemoveVigilance, Shroud, SplitSecond, StaticAbilityModifier, TriggeredAbilities,
+        TriggeredAbilityModifier, Vigilance,
     },
     controller::ControllerRestriction,
     cost::{AbilityCost, CastingCost},
@@ -1078,7 +1079,6 @@ impl CardId {
 
         for (add, source, controller_restriction, restrictions) in modifiers {
             let controller = source.controller(db);
-            let subtypes = self.subtypes(db);
 
             if self.passes_restrictions_given_types(
                 db,
@@ -1087,7 +1087,7 @@ impl CardId {
                 controller_restriction,
                 &restrictions,
                 &types,
-                &subtypes,
+                &Default::default(),
             ) {
                 types.extend(add.0.into_iter());
             }
@@ -1783,6 +1783,81 @@ impl CardId {
         ability
     }
 
+    pub fn flying(self, db: &mut Database) -> bool {
+        let mut ability = if self.facedown(db) {
+            false
+        } else if let Some(cloning) = self.cloning(db) {
+            db.get::<Flying>(cloning.0).is_some()
+        } else {
+            db.get::<Flying>(self.0).is_some()
+        };
+
+        let modifiers = db
+            .modifiers
+            .query_filtered::<(
+                Option<&AddFlying>,
+                Option<&RemoveFlying>,
+                &CardId,
+                &ControllerRestriction,
+                &Restrictions,
+                &Modifying,
+                Option<&Global>,
+                Option<&EntireBattlefield>,
+                &ModifierSeq,
+            ), (With<Active>, Or<(&AddFlying, &RemoveFlying)>)>()
+            .iter(&db.modifiers)
+            .sorted_by_key(|(_, _, _, _, _, _, _, _, seq)| *seq)
+            .filter_map(
+                |(
+                    add,
+                    remove,
+                    source,
+                    restriction,
+                    restrictions,
+                    modifying,
+                    global,
+                    entire_battlefield,
+                    _,
+                )| {
+                    if !(global.is_some()
+                        || entire_battlefield.is_some()
+                        || modifying.contains(&self))
+                    {
+                        None
+                    } else {
+                        Some((
+                            add.copied(),
+                            remove.copied(),
+                            *source,
+                            *restriction,
+                            restrictions.clone(),
+                        ))
+                    }
+                },
+            )
+            .collect_vec();
+
+        for (add, remove, source, controller_restriction, restrictions) in modifiers {
+            let controller = source.controller(db);
+            if self.passes_restrictions(
+                db,
+                source,
+                controller,
+                controller_restriction,
+                &restrictions,
+            ) {
+                if remove.is_some() {
+                    ability = false;
+                }
+                if add.is_some() {
+                    ability = true;
+                }
+            }
+        }
+
+        ability
+    }
+
     pub fn tapped(self, db: &mut Database) -> bool {
         db.get::<Tapped>(self.0).is_some()
     }
@@ -1900,6 +1975,10 @@ fn upload_modifier(
 
     if modifier.modifier.add_vigilance {
         entity.insert(AddVigilance);
+    }
+
+    if modifier.modifier.add_flying {
+        entity.insert(AddFlying);
     }
 
     let modifierid = ModifierId(entity.id());

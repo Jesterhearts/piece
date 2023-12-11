@@ -214,6 +214,7 @@ pub struct ModifyBattlefield {
     pub global: bool,
 
     pub add_vigilance: bool,
+    pub add_flying: bool,
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -252,6 +253,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
             entire_battlefield: value.entire_battlefield,
             global: value.global,
             add_vigilance: value.add_vigilance,
+            add_flying: value.add_flying,
         })
     }
 }
