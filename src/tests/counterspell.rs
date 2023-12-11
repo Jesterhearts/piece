@@ -16,7 +16,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
 
     let counterspell_1 = CardId::upload(&mut db, &cards, player, "Counterspell");
     let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");

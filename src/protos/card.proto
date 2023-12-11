@@ -31,14 +31,15 @@ message Card {
   repeated effects.ActivatedAbility activated_abilities = 13;
   repeated abilities.TriggeredAbility triggered_abilities = 14;
   repeated effects.GainManaAbility mana_gains = 15;
+  repeated effects.ReplacementEffect replacement_effects = 16;
 
-  optional int32 power = 16;
-  optional int32 toughness = 17;
+  optional int32 power = 17;
+  optional int32 toughness = 18;
 
-  bool vigilance = 18;
-  bool flying = 19;
-  bool flash = 20;
-  bool hexproof = 21;
-  bool shroud = 22;
-  bool haste = 23;
+  bool vigilance = 19;
+  bool flying = 20;
+  bool flash = 21;
+  bool hexproof = 22;
+  bool shroud = 23;
+  bool haste = 24;
 }

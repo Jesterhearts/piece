@@ -84,6 +84,7 @@ pub enum Restriction {
     },
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
+    ControllerHandEmpty,
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {
@@ -122,6 +123,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             ),
             protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
                 Ok(Self::ControllerControlsBlackOrGreen)
+            }
+            protogen::targets::restriction::Restriction::ControllerHandEmpty(_) => {
+                Ok(Self::ControllerHandEmpty)
             }
         }
     }

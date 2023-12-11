@@ -96,12 +96,12 @@ message ExtraLandsPerTurn {
 }
 
 message DynamicPowerToughness {
-  message NumberOfCountersOnThis {
-    counters.Counter counter = 1;
+  oneof source {
+    NumberOfCountersOnThis number_of_counters_on_this = 1;
   }
 
-  oneof source {
-    NumberOfCountersOnThis number_of_counters_on_this = 2;
+  message NumberOfCountersOnThis {
+    counters.Counter counter = 1;
   }
 }
 
@@ -137,6 +137,10 @@ message BattlefieldModifier {
 }
 
 message CreateToken {
+  oneof token {
+    Creature creature = 1;
+  }
+
   message Creature {
     string name = 1;
     repeated types.Type types = 2;
@@ -151,10 +155,6 @@ message CreateToken {
     bool hexproof = 10;
     bool shroud = 11;
     bool haste = 12;
-  }
-
-  oneof token {
-    Creature creature = 13;
   }
 }
 
@@ -181,20 +181,37 @@ message GainCounter {
   counters.Counter counter = 1;
 }
 
+message ControllerLosesLife {
+  int32 count = 1;
+}
+
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
     BattlefieldModifier modify_creature = 2;
     ControllerDrawCards controller_draw_cards = 3;
-    CounterSpell counter_spell = 4;
-    CreateToken create_token = 5;
-    DealDamage deal_damage = 6;
-    Equip equip = 7;
-    ExileTargetCreature exile_target_creature = 8;
+    ControllerLosesLife controller_loses_life = 4;
+    CounterSpell counter_spell = 5;
+    CreateToken create_token = 6;
+    DealDamage deal_damage = 7;
+    Equip equip = 8;
+    ExileTargetCreature exile_target_creature = 9;
     ExileTargetCreatureManifestTopOfLibrary 
-      exile_target_creature_manifest_top_of_library = 9;
-    GainCounter gain_counter = 10;
+      exile_target_creature_manifest_top_of_library = 10;
+    GainCounter gain_counter = 11;
   }
 
-  optional Effect threshold = 11;
+  optional Effect threshold = 12;
+}
+
+message ReplacementEffect {
+  message Draw {
+  }
+
+  oneof replacing {
+    Draw draw = 1;
+  }
+
+  repeated targets.Restriction restrictions = 2;
+  repeated Effect effects = 3;
 }

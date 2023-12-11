@@ -23,15 +23,15 @@ message Type {
   }
 
   oneof ty {
-    Artifact artifact = 6;
-    BasicLand basic_land = 1;
-    Battle battle = 8;
-    Creature creature = 5;
-    Enchantment enchantment = 7;
-    Instant instant = 3;
-    Land land = 2;
-    Legendary legendary = 9;
-    Sorcery sorcery = 4;
+    Artifact artifact = 1;
+    BasicLand basic_land = 2;
+    Battle battle = 3;
+    Creature creature = 4;
+    Enchantment enchantment = 5;
+    Instant instant = 6;
+    Land land = 7;
+    Legendary legendary = 8;
+    Sorcery sorcery = 9;
   }
 }
 
@@ -78,6 +78,10 @@ message Subtype {
   }
   message Swamp {
   }
+  message Wizard {
+  }
+  message Zombie {
+  }
 
   oneof subtype {
     Angel angel = 1;
@@ -101,5 +105,7 @@ message Subtype {
     Shapeshifter shapeshifter = 19;
     Soldier soldier = 20;
     Swamp swamp = 21;
+    Wizard wizard = 22;
+    Zombie zombie = 23;
   }
 }

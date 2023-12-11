@@ -91,6 +91,8 @@ pub enum Subtype {
     Shapeshifter,
     Soldier,
     Swamp,
+    Wizard,
+    Zombie,
 }
 
 impl TryFrom<&protogen::types::Subtype> for Subtype {
@@ -129,6 +131,8 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Shapeshifter(_) => Self::Shapeshifter,
             protogen::types::subtype::Subtype::Soldier(_) => Self::Soldier,
             protogen::types::subtype::Subtype::Swamp(_) => Self::Swamp,
+            protogen::types::subtype::Subtype::Wizard(_) => Self::Wizard,
+            protogen::types::subtype::Subtype::Zombie(_) => Self::Zombie,
         }
     }
 }

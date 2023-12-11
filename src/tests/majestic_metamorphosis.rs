@@ -16,7 +16,7 @@ pub fn metamorphosis() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
     let results = Battlefield::add_from_stack(&mut db, mantle, vec![]);
@@ -61,7 +61,7 @@ pub fn metamorphosis_bear() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let results = Battlefield::add_from_stack(&mut db, bear, vec![]);

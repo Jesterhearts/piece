@@ -701,6 +701,11 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::ControllerHandEmpty => {
+                    if controller.has_cards::<InHand>(db) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1334,55 +1339,7 @@ impl CardId {
         let creatures = Battlefield::creatures(db);
 
         for effect in self.effects(db) {
-            let controller = self.controller(db);
-            let effect = effect.effect(db, controller);
-
-            match effect {
-                Effect::CounterSpell { target } => {
-                    targets_for_counterspell(db, controller, target, &mut targets);
-                }
-                Effect::BattlefieldModifier(_) => {}
-                Effect::ControllerDrawCards(_) => {}
-                Effect::ModifyCreature(modifier) => {
-                    targets_for_battlefield_modifier(
-                        db,
-                        self,
-                        Some(modifier),
-                        &creatures,
-                        controller,
-                        &mut targets,
-                    );
-                }
-                Effect::ExileTargetCreature => {
-                    for creature in creatures.iter() {
-                        if creature.can_be_targeted(db, controller) {
-                            targets.insert(ActiveTarget::Battlefield { id: *creature });
-                        }
-                    }
-                }
-                Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                    for creature in creatures.iter() {
-                        if creature.can_be_targeted(db, controller) {
-                            targets.insert(ActiveTarget::Battlefield { id: *creature });
-                        }
-                    }
-                }
-                Effect::DealDamage(dmg) => {
-                    self.targets_for_damage(&creatures, db, dmg, &mut targets);
-                }
-                Effect::CreateToken(_) => {}
-                Effect::Equip(_) => {
-                    targets_for_battlefield_modifier(
-                        db,
-                        self,
-                        None,
-                        &creatures,
-                        controller,
-                        &mut targets,
-                    );
-                }
-                Effect::GainCounter(_) => {}
-            }
+            self.targets_for_effect(db, effect, &mut targets, &creatures);
         }
 
         for ability in self.activated_abilities(db) {
@@ -1425,49 +1382,58 @@ impl CardId {
         let ability = ability.ability(db);
         if !ability.apply_to_self() {
             for effect in ability.into_effects() {
-                let controller = self.controller(db);
-                match effect.into_effect(db, controller) {
-                    Effect::CounterSpell { target } => {
-                        targets_for_counterspell(db, controller, &target, targets);
-                    }
-                    Effect::BattlefieldModifier(_) => {}
-                    Effect::ControllerDrawCards(_) => {}
-                    Effect::Equip(_) => {
-                        targets_for_battlefield_modifier(
-                            db, self, None, creatures, controller, targets,
-                        );
-                    }
-                    Effect::CreateToken(_) => {}
-                    Effect::DealDamage(dmg) => {
-                        self.targets_for_damage(creatures, db, &dmg, targets);
-                    }
-                    Effect::ExileTargetCreature => {
-                        for creature in creatures.iter() {
-                            if creature.can_be_targeted(db, controller) {
-                                targets.insert(ActiveTarget::Battlefield { id: *creature });
-                            }
-                        }
-                    }
-                    Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                        for creature in creatures.iter() {
-                            if creature.can_be_targeted(db, controller) {
-                                targets.insert(ActiveTarget::Battlefield { id: *creature });
-                            }
-                        }
-                    }
-                    Effect::GainCounter(_) => {}
-                    Effect::ModifyCreature(modifier) => {
-                        targets_for_battlefield_modifier(
-                            db,
-                            self,
-                            Some(&modifier),
-                            creatures,
-                            controller,
-                            targets,
-                        );
+                self.targets_for_effect(db, effect, targets, creatures);
+            }
+        }
+    }
+
+    fn targets_for_effect(
+        self,
+        db: &mut Database,
+        effect: AnyEffect,
+        targets: &mut HashSet<ActiveTarget>,
+        creatures: &[CardId],
+    ) {
+        let controller = self.controller(db);
+        match effect.into_effect(db, controller) {
+            Effect::CounterSpell { target } => {
+                targets_for_counterspell(db, controller, &target, targets);
+            }
+            Effect::BattlefieldModifier(_) => {}
+            Effect::ControllerDrawCards(_) => {}
+            Effect::Equip(_) => {
+                targets_for_battlefield_modifier(db, self, None, creatures, controller, targets);
+            }
+            Effect::CreateToken(_) => {}
+            Effect::DealDamage(dmg) => {
+                self.targets_for_damage(creatures, db, &dmg, targets);
+            }
+            Effect::ExileTargetCreature => {
+                for creature in creatures.iter() {
+                    if creature.can_be_targeted(db, controller) {
+                        targets.insert(ActiveTarget::Battlefield { id: *creature });
                     }
                 }
             }
+            Effect::ExileTargetCreatureManifestTopOfLibrary => {
+                for creature in creatures.iter() {
+                    if creature.can_be_targeted(db, controller) {
+                        targets.insert(ActiveTarget::Battlefield { id: *creature });
+                    }
+                }
+            }
+            Effect::GainCounter(_) => {}
+            Effect::ModifyCreature(modifier) => {
+                targets_for_battlefield_modifier(
+                    db,
+                    self,
+                    Some(&modifier),
+                    creatures,
+                    controller,
+                    targets,
+                );
+            }
+            Effect::ControllerLosesLife(_) => {}
         }
     }
 

@@ -18,7 +18,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
@@ -73,7 +73,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
@@ -103,7 +103,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
     all_players[player].infinite_mana();
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
@@ -137,8 +137,8 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
-    let player2 = all_players.new_player();
+    let player = all_players.new_player(20);
+    let player2 = all_players.new_player(20);
     all_players[player].infinite_mana();
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");

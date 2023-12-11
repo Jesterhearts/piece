@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
 
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
 

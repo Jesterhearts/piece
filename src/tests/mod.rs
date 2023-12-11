@@ -2,6 +2,7 @@ mod abzan_banner;
 mod abzan_runemark;
 mod allosuarus_shepherd;
 mod basic_lands;
+mod blood_scrivener;
 mod clone;
 mod counterspell;
 mod darigaazs_attendant;

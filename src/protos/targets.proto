@@ -39,12 +39,15 @@ message Restriction {
   }
   message ControllerControlsBlackOrGreen {
   }
+  message ControllerHandEmpty {
+  }
 
   oneof restriction {
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 1;
-    NotSelf not_self = 2;
-    OfType of_type = 3;
-    Self self = 4;
-    Toughness toughness = 5;
+    ControllerHandEmpty controller_hand_empty = 2;
+    NotSelf not_self = 3;
+    OfType of_type = 4;
+    Self self = 5;
+    Toughness toughness = 6;
   }
 }

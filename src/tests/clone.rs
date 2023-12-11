@@ -14,7 +14,7 @@ fn etb_clones() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let results = Battlefield::add_from_stack(&mut db, creature, vec![]);
@@ -58,7 +58,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
     let results = Battlefield::add_from_stack(&mut db, clone, vec![]);

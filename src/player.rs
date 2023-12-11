@@ -66,6 +66,12 @@ impl Controller {
             })
             .collect_vec()
     }
+
+    pub fn has_cards<Zone: Component + Ord>(self, db: &mut Database) -> bool {
+        db.query::<&Controller>()
+            .iter(db)
+            .any(|owner| self == *owner)
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -204,12 +210,13 @@ pub struct AllPlayers {
 
 impl AllPlayers {
     #[must_use]
-    pub fn new_player(&mut self) -> Owner {
+    pub fn new_player(&mut self, life_total: i32) -> Owner {
         let id = Owner(NEXT_PLAYER_ID.fetch_add(1, Ordering::Relaxed));
         self.players.insert(
             id,
             Player {
                 hexproof: false,
+                life_total,
                 lands_played: 0,
                 mana_pool: Default::default(),
                 deck: Deck::empty(),
@@ -229,6 +236,8 @@ pub struct Player {
     pub hexproof: bool,
     pub lands_played: usize,
     pub mana_pool: ManaPool,
+
+    pub life_total: i32,
 
     pub deck: Deck,
 }
@@ -255,14 +264,14 @@ impl Player {
         }
     }
 
+    #[must_use]
     pub fn draw(&mut self, db: &mut Database, count: usize) -> bool {
-        if self.deck.len() < count {
-            return false;
-        }
-
         for _ in 0..count {
-            let card = self.deck.draw().expect("Validated deck size");
-            card.move_to_hand(db);
+            if let Some(card) = self.deck.draw() {
+                card.move_to_hand(db);
+            } else {
+                return false;
+            }
         }
 
         true

@@ -318,6 +318,7 @@ impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
+    ControllerLosesLife(usize),
     CounterSpell { target: SpellTarget },
     CreateToken(Token),
     DealDamage(DealDamage),
@@ -371,6 +372,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::GainCounter(counter) => Ok(Self::GainCounter(
                 counter.counter.get_or_default().try_into()?,
             )),
+            protogen::effects::effect::Effect::ControllerLosesLife(value) => {
+                Ok(Self::ControllerLosesLife(usize::try_from(value.count)?))
+            }
         }
     }
 }
@@ -439,6 +443,7 @@ impl AnyEffect {
             Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
             Effect::GainCounter(_) => 0,
             Effect::ModifyCreature(_) => 1,
+            Effect::ControllerLosesLife(_) => 0,
         }
     }
 }

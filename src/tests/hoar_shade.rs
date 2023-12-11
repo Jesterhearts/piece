@@ -15,7 +15,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player();
+    let player = all_players.new_player(20);
     all_players[player].infinite_mana();
 
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");

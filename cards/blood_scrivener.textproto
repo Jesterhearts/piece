@@ -1,0 +1,22 @@
+name: "Blood Scrivener"
+cost {
+  mana_costs { generic {count: 1} }
+  mana_costs { black {} }
+}
+types { creature {} }
+subtypes { zombie {} }
+subtypes { wizard {} }
+replacement_effects { 
+  draw {}
+  restrictions {
+    controller_hand_empty {}
+  }
+  effects {
+    controller_draw_cards { count: 2 }
+  }
+  effects {
+    controller_loses_life { count: 1 }
+  }
+}
+power: 2
+toughness: 1

@@ -57,6 +57,10 @@ pub enum StackResult {
         counter: Counter,
         count: usize,
     },
+    LoseLife {
+        target: Controller,
+        count: usize,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
@@ -486,6 +490,10 @@ impl Stack {
                         count: 1,
                     });
                 }
+                Effect::ControllerLosesLife(count) => results.push(StackResult::LoseLife {
+                    target: source.controller(db),
+                    count,
+                }),
             }
         }
 
@@ -533,7 +541,9 @@ impl Stack {
                     Entry::Ability(_) | Entry::Trigger(_) => unreachable!(),
                 },
                 StackResult::DrawCards { player, count } => {
-                    all_players[player].draw(db, count);
+                    if !all_players[player].draw(db, count) {
+                        todo!()
+                    }
                 }
                 StackResult::GainMana { player, mana } => {
                     for (mana, count) in mana {
@@ -562,6 +572,9 @@ impl Stack {
                     count,
                 } => {
                     CounterId::add_counters(db, target, counter, count);
+                }
+                StackResult::LoseLife { target, count } => {
+                    all_players[target].life_total -= count as i32;
                 }
             }
         }
@@ -633,7 +646,7 @@ mod tests {
         let cards = load_cards()?;
         let mut db = Database::default();
         let mut all_players = AllPlayers::default();
-        let player = all_players.new_player();
+        let player = all_players.new_player(20);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
         card1.move_to_stack(&mut db, Default::default());

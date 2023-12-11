@@ -60,7 +60,11 @@ impl Deck {
         self.cards.pop_back()
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.cards.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cards.is_empty()
     }
 }
