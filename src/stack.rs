@@ -189,6 +189,7 @@ impl Stack {
             .is_none()
     }
 
+    #[must_use]
     pub fn resolve_1(db: &mut Database) -> Vec<StackResult> {
         let Some(next) = Self::pop(db) else {
             return vec![];

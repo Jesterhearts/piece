@@ -9,6 +9,7 @@ mod dryad_of_the_ilysian_grove;
 mod elesh_norn_grand_cenobite;
 mod glowspore_shaman;
 mod hoar_shade;
+mod mace_of_the_valiant;
 mod majestic_metamorphosis;
 mod paradise_mantle;
 mod plus_two_mace;

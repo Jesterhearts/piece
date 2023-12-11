@@ -158,6 +158,7 @@ impl Battlefield {
         results
     }
 
+    #[must_use]
     pub fn add_from_stack(
         db: &mut Database,
         source_card_id: CardId,
@@ -332,6 +333,7 @@ impl Battlefield {
         cards::<OnBattlefield>(db)[index]
     }
 
+    #[must_use]
     pub fn activate_ability(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -402,6 +404,7 @@ impl Battlefield {
     }
 
     /// Attempts to automatically resolve any unresolved actions and _recomputes targets for pending actions.
+    #[must_use]
     pub fn maybe_resolve(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -603,6 +606,7 @@ impl Battlefield {
         pending
     }
 
+    #[must_use]
     pub fn apply_action_results(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -617,6 +621,7 @@ impl Battlefield {
         pending
     }
 
+    #[must_use]
     fn apply_action_result(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -653,7 +658,7 @@ impl Battlefield {
                     for _ in 0..count {
                         let card_id = deck.draw();
                         if let Some(card_id) = card_id {
-                            Self::library_to_graveyard(db, card_id);
+                            return Self::library_to_graveyard(db, card_id);
                         }
                     }
                 }
@@ -676,6 +681,7 @@ impl Battlefield {
         vec![]
     }
 
+    #[must_use]
     pub fn permanent_to_graveyard(
         db: &mut Database,
         target: CardId,
@@ -699,6 +705,7 @@ impl Battlefield {
         pending
     }
 
+    #[must_use]
     pub fn library_to_graveyard(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
         let mut pending = vec![];
 
@@ -719,6 +726,7 @@ impl Battlefield {
         pending
     }
 
+    #[must_use]
     pub fn stack_to_graveyard(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
         let mut pending = vec![];
 
@@ -736,6 +744,7 @@ impl Battlefield {
         pending
     }
 
+    #[must_use]
     pub fn exile(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
         target.move_to_exile(db);
 

@@ -23,9 +23,11 @@ fn plains() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add_from_stack(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
+    assert_eq!(results, []);
     let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
     Stack::apply_results(&mut db, &mut all_players, results);
@@ -49,9 +51,11 @@ fn island() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add_from_stack(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
+    assert_eq!(results, []);
     let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
     Stack::apply_results(&mut db, &mut all_players, results);
@@ -75,9 +79,11 @@ fn swamp() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add_from_stack(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
+    assert_eq!(results, []);
     let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
     Stack::apply_results(&mut db, &mut all_players, results);
@@ -101,9 +107,11 @@ fn mountain() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add_from_stack(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
+    assert_eq!(results, []);
     let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
     Stack::apply_results(&mut db, &mut all_players, results);
@@ -127,9 +135,11 @@ fn forest() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    Battlefield::add_from_stack(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
+    assert_eq!(results, []);
     let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
     Stack::apply_results(&mut db, &mut all_players, results);

@@ -55,3 +55,48 @@ pub fn metamorphosis() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+pub fn metamorphosis_bear() -> anyhow::Result<()> {
+    let cards = load_cards()?;
+    let mut db = Database::default();
+    let mut all_players = AllPlayers::default();
+    let player = all_players.new_player();
+
+    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let results = Battlefield::add_from_stack(&mut db, bear, vec![]);
+    assert_eq!(results, []);
+
+    let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
+
+    majestic.move_to_stack(
+        &mut db,
+        HashSet::from([ActiveTarget::Battlefield { id: bear }]),
+    );
+
+    let results = Stack::resolve_1(&mut db);
+    assert!(matches!(
+        results.as_slice(),
+        [
+            StackResult::ApplyModifierToTarget { .. },
+            StackResult::DrawCards { .. },
+            StackResult::StackToGraveyard { .. },
+        ]
+    ));
+
+    Stack::apply_results(&mut db, &mut all_players, results);
+
+    assert_eq!(bear.power(&mut db), Some(4));
+    assert_eq!(bear.toughness(&mut db), Some(4));
+    assert_eq!(
+        bear.subtypes(&mut db),
+        HashSet::from([Subtype::Bear, Subtype::Angel])
+    );
+    assert_eq!(
+        bear.types(&mut db),
+        HashSet::from([Type::Artifact, Type::Creature])
+    );
+    assert!(bear.flying(&mut db));
+
+    Ok(())
+}
