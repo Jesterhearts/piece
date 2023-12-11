@@ -10,6 +10,28 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
+message GainMana {
+  message GainMana {
+    repeated mana.Mana gains = 1;
+  }
+  message Specific {
+    repeated mana.Mana gains = 1;
+  }
+  message Choice {
+    repeated GainMana choices = 1;
+  }
+
+  oneof gain {
+    Specific specific = 2;
+    Choice choice = 3;
+  }
+}
+
+message GainManaAbility {
+  cost.AbilityCost cost = 1;
+  GainMana gain_mana = 2;
+}
+
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
@@ -69,23 +91,6 @@ message CounterSpell {
   targets.SpellTarget valid_target = 1;
 }
 
-message GainMana {
-  message GainMana {
-    repeated mana.Mana gains = 1;
-  }
-  message Specific {
-    repeated mana.Mana gains = 1;
-  }
-  message Choice {
-    repeated GainMana choices = 1;
-  }
-
-  oneof gain {
-    Specific specific = 2;
-    Choice choice = 3;
-  }
-}
-
 message ExtraLandsPerTurn {
   int32 count = 1;
 }
@@ -113,6 +118,7 @@ message ModifyBattlefield {
   optional int32 add_toughness = 7;
 
   optional ActivatedAbility add_ability = 8;
+  optional GainManaAbility gain_mana = 0;
 
   bool remove_all_subtypes = 9;
 
@@ -180,8 +186,7 @@ message Effect {
     ExileTargetCreatureManifestTopOfLibrary 
       exile_target_creature_manifest_top_of_library = 9;
     GainCounter gain_counter = 10;
-    GainMana gain_mana = 11;
   }
 
-  optional Effect threshold = 12;
+  optional Effect threshold = 11;
 }

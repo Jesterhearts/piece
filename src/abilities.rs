@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
@@ -10,6 +12,7 @@ use crate::{
         ReturnFromGraveyardToLibrary, TutorLibrary,
     },
     in_play::{AbilityId, TriggerId},
+    mana::Mana,
     protogen,
     targets::Restriction,
     triggers::Trigger,
@@ -190,4 +193,122 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Component)]
+pub enum GainMana {
+    Specific { gains: Vec<Mana> },
+    Choice { choices: Vec<Vec<Mana>> },
+}
+
+impl TryFrom<&protogen::effects::GainMana> for GainMana {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::GainMana) -> Result<Self, Self::Error> {
+        value
+            .gain
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
+            .and_then(GainMana::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::gain_mana::Gain) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::gain_mana::Gain::Specific(specific) => Ok(Self::Specific {
+                gains: specific
+                    .gains
+                    .iter()
+                    .map(Mana::try_from)
+                    .collect::<anyhow::Result<Vec<_>>>()?,
+            }),
+            protogen::effects::gain_mana::Gain::Choice(choice) => Ok(Self::Choice {
+                choices: choice
+                    .choices
+                    .iter()
+                    .map(|choice| {
+                        choice
+                            .gains
+                            .iter()
+                            .map(Mana::try_from)
+                            .collect::<anyhow::Result<Vec<_>>>()
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()?,
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub struct GainManaAbilities(pub Vec<GainManaAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub struct GainManaAbility {
+    pub cost: AbilityCost,
+    pub gain: GainMana,
+}
+
+impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::GainManaAbility) -> Result<Self, Self::Error> {
+        Ok(Self {
+            cost: value.cost.get_or_default().try_into()?,
+            gain: value.gain_mana.get_or_default().try_into()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub enum Ability {
+    Activated(ActivatedAbility),
+    Mana(GainManaAbility),
+}
+impl Ability {
+    pub(crate) fn cost(&self) -> &AbilityCost {
+        match self {
+            Ability::Activated(ActivatedAbility { cost, .. })
+            | Ability::Mana(GainManaAbility { cost, .. }) => cost,
+        }
+    }
+
+    pub(crate) fn apply_to_self(&self) -> bool {
+        match self {
+            Ability::Activated(ActivatedAbility { apply_to_self, .. }) => *apply_to_self,
+            Ability::Mana(_) => false,
+        }
+    }
+
+    pub(crate) fn into_effects(self) -> Vec<AnyEffect> {
+        match self {
+            Ability::Activated(ActivatedAbility { effects, .. }) => effects,
+            Ability::Mana(_) => vec![],
+        }
+    }
+}
+
+pub fn compute_mana_gain(mana: &GainMana, mode: Option<usize>) -> Option<HashMap<Mana, usize>> {
+    let mut manas: HashMap<Mana, usize> = HashMap::default();
+    match mana {
+        GainMana::Specific { gains } => {
+            for gain in gains.iter() {
+                *manas.entry(*gain).or_default() += 1;
+            }
+        }
+        GainMana::Choice { choices } => {
+            let Some(mode) = mode else {
+                // No mode selected for modal ability.
+                return None;
+            };
+
+            for gain in choices[mode].iter() {
+                *manas.entry(*gain).or_default() += 1;
+            }
+        }
+    };
+
+    Some(manas)
 }

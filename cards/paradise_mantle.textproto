@@ -11,16 +11,14 @@ activated_abilities {
   effects {
     equip {
       modifiers {
-        add_ability {
-          effects {
-            gain_mana {
-              choice {
-                choices { gains { white{} } }
-                choices { gains { blue{} } }
-                choices { gains { black{} } }
-                choices { gains { red{} } }
-                choices { gains { green{} } }
-              }
+        gain_mana {
+          gain_mana {
+            choice {
+              choices { gains { white{} } }
+              choices { gains { blue{} } }
+              choices { gains { black{} } }
+              choices { gains { red{} } }
+              choices { gains { green{} } }
             }
           }
           cost { tap: true }

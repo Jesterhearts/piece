@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[test]
-fn sacrifice_draw_gain_mana() -> anyhow::Result<()> {
+fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
 
@@ -26,14 +26,14 @@ fn sacrifice_draw_gain_mana() -> anyhow::Result<()> {
         results,
         [
             UnresolvedActionResult::PermanentToGraveyard(attendant),
-            UnresolvedActionResult::AddAbilityToStack {
+            UnresolvedActionResult::GainMana {
                 source: attendant,
                 ability: attendant
                     .activated_abilities(&mut db)
                     .first()
                     .copied()
                     .unwrap(),
-                valid_targets: Default::default(),
+                mode: None,
             }
         ]
     );

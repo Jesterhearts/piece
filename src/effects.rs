@@ -5,12 +5,11 @@ use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 
 use crate::{
-    abilities::ActivatedAbility,
+    abilities::{ActivatedAbility, GainManaAbility},
     battlefield::Battlefield,
     card::Color,
     controller::ControllerRestriction,
     in_play::Database,
-    mana::Mana,
     player::Controller,
     protogen,
     targets::{Restriction, SpellTarget},
@@ -159,53 +158,6 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum GainMana {
-    Specific { gains: Vec<Mana> },
-    Choice { choices: Vec<Vec<Mana>> },
-}
-
-impl TryFrom<&protogen::effects::GainMana> for GainMana {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::GainMana) -> Result<Self, Self::Error> {
-        value
-            .gain
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
-            .and_then(GainMana::try_from)
-    }
-}
-
-impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::gain_mana::Gain) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::gain_mana::Gain::Specific(specific) => Ok(Self::Specific {
-                gains: specific
-                    .gains
-                    .iter()
-                    .map(Mana::try_from)
-                    .collect::<anyhow::Result<Vec<_>>>()?,
-            }),
-            protogen::effects::gain_mana::Gain::Choice(choice) => Ok(Self::Choice {
-                choices: choice
-                    .choices
-                    .iter()
-                    .map(|choice| {
-                        choice
-                            .gains
-                            .iter()
-                            .map(Mana::try_from)
-                            .collect::<anyhow::Result<Vec<_>>>()
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()?,
-            }),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
 pub enum DynamicPowerToughness {
     NumberOfCountersOnThis(Counter),
@@ -253,6 +205,7 @@ pub struct ModifyBattlefield {
     pub add_subtypes: HashSet<Subtype>,
 
     pub add_ability: Option<ActivatedAbility>,
+    pub gain_mana: Option<GainManaAbility>,
 
     pub remove_all_subtypes: bool,
     pub remove_all_abilities: bool,
@@ -288,6 +241,10 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             add_ability: value
                 .add_ability
+                .as_ref()
+                .map_or(Ok(None), |v| v.try_into().map(Some))?,
+            gain_mana: value
+                .gain_mana
                 .as_ref()
                 .map_or(Ok(None), |v| v.try_into().map(Some))?,
             remove_all_subtypes: value.remove_all_subtypes,
@@ -366,8 +323,6 @@ pub enum Effect {
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
     GainCounter(Counter),
-    // TODO this shouldn't use the stack and should be its own field
-    GainMana { mana: GainMana },
     ModifyCreature(BattlefieldModifier),
 }
 
@@ -382,9 +337,6 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                     .as_ref()
                     .unwrap_or_default()
                     .try_into()?,
-            }),
-            protogen::effects::effect::Effect::GainMana(gain) => Ok(Self::GainMana {
-                mana: GainMana::try_from(gain)?,
             }),
             protogen::effects::effect::Effect::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
@@ -484,7 +436,6 @@ impl AnyEffect {
             Effect::ExileTargetCreature => 1,
             Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
             Effect::GainCounter(_) => 0,
-            Effect::GainMana { .. } => 0,
             Effect::ModifyCreature(_) => 1,
         }
     }

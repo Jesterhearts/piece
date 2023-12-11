@@ -20,7 +20,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let results = Battlefield::add_from_stack(&mut db, card, vec![]);
     assert_eq!(results, []);
 
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 1);
+    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
     assert_eq!(
         results,
         [
@@ -28,7 +28,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
             UnresolvedActionResult::PermanentToGraveyard(card),
             UnresolvedActionResult::AddAbilityToStack {
                 source: card,
-                ability: card.activated_abilities(&mut db).last().copied().unwrap(),
+                ability: card.activated_abilities(&mut db).first().copied().unwrap(),
                 valid_targets: Default::default(),
             }
         ]
@@ -53,22 +53,29 @@ fn add_mana() -> anyhow::Result<()> {
     let results = Battlefield::add_from_stack(&mut db, card, vec![]);
     assert_eq!(results, []);
 
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 1);
 
     assert_eq!(
         results,
         [
             UnresolvedActionResult::TapPermanent(card),
-            UnresolvedActionResult::AddAbilityToStack {
+            UnresolvedActionResult::GainMana {
                 source: card,
-                ability: card.activated_abilities(&mut db).first().copied().unwrap(),
-                valid_targets: Default::default(),
+                ability: card.activated_abilities(&mut db).last().copied().unwrap(),
+                mode: None,
             }
         ]
     );
 
     let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert_eq!(
+        results,
+        [UnresolvedActionResult::GainMana {
+            source: card,
+            ability: card.activated_abilities(&mut db).last().copied().unwrap(),
+            mode: None,
+        }]
+    );
 
     Ok(())
 }

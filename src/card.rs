@@ -5,7 +5,9 @@ use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 
 use crate::{
-    abilities::{ActivatedAbility, ETBAbility, Enchant, StaticAbility, TriggeredAbility},
+    abilities::{
+        ActivatedAbility, ETBAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility,
+    },
     cost::CastingCost,
     effects::{AnyEffect, Token, TokenCreature},
     in_play::{AbilityId, TriggerId},
@@ -193,6 +195,8 @@ pub struct Card {
 
     pub triggered_abilities: Vec<TriggeredAbility>,
 
+    pub mana_gains: Vec<GainManaAbility>,
+
     pub power: Option<usize>,
     pub toughness: Option<usize>,
 
@@ -260,6 +264,11 @@ impl TryFrom<protogen::card::Card> for Card {
                 .triggered_abilities
                 .iter()
                 .map(TriggeredAbility::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
+            mana_gains: value
+                .mana_gains
+                .iter()
+                .map(GainManaAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             power: value
                 .power

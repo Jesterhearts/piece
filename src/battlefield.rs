@@ -4,7 +4,7 @@ use bevy_ecs::{entity::Entity, query::With};
 use itertools::Itertools;
 
 use crate::{
-    abilities::{ETBAbility, StaticAbility},
+    abilities::{compute_mana_gain, Ability, ETBAbility, StaticAbility},
     card::Color,
     controller::ControllerRestriction,
     cost::AdditionalCost,
@@ -31,6 +31,11 @@ pub enum UnresolvedActionResult {
         source: CardId,
         ability: AbilityId,
         valid_targets: HashSet<ActiveTarget>,
+    },
+    GainMana {
+        source: CardId,
+        ability: AbilityId,
+        mode: Option<usize>,
     },
     AddTriggerToStack(TriggerId),
     CloneCreatureNonTargeting {
@@ -343,7 +348,7 @@ impl Battlefield {
         let ability_id = card.activated_abilities(db)[index];
         let ability = ability_id.ability(db);
 
-        if ability.cost.tap {
+        if ability.cost().tap {
             if card.tapped(db) {
                 return vec![];
             }
@@ -351,7 +356,7 @@ impl Battlefield {
             results.push(UnresolvedActionResult::TapPermanent(card));
         }
 
-        for cost in ability.cost.additional_cost.iter() {
+        for cost in ability.cost().additional_cost.iter() {
             match cost {
                 AdditionalCost::SacrificeThis => {
                     if !card.can_be_sacrificed(db) {
@@ -363,15 +368,23 @@ impl Battlefield {
             }
         }
 
-        if !all_players[card.controller(db)].spend_mana(&ability.cost.mana_cost) {
+        if !all_players[card.controller(db)].spend_mana(&ability.cost().mana_cost) {
             return vec![];
         }
 
-        results.push(UnresolvedActionResult::AddAbilityToStack {
-            source: card,
-            ability: ability_id,
-            valid_targets: card.valid_targets(db),
-        });
+        if let Ability::Mana(_) = ability {
+            results.push(UnresolvedActionResult::GainMana {
+                source: card,
+                ability: ability_id,
+                mode: None,
+            });
+        } else {
+            results.push(UnresolvedActionResult::AddAbilityToStack {
+                source: card,
+                ability: ability_id,
+                valid_targets: card.valid_targets(db),
+            });
+        }
 
         results
     }
@@ -564,6 +577,26 @@ impl Battlefield {
                         reveal,
                         restrictions,
                     });
+                }
+                UnresolvedActionResult::GainMana {
+                    source,
+                    ability,
+                    mode,
+                } => {
+                    if let Some(mana) = compute_mana_gain(&ability.gain_mana_ability(db).gain, mode)
+                    {
+                        for (mana, count) in mana {
+                            for _ in 0..count {
+                                all_players[source.controller(db)].mana_pool.apply(mana);
+                            }
+                        }
+                    } else {
+                        pending.push(UnresolvedActionResult::GainMana {
+                            source,
+                            ability,
+                            mode,
+                        });
+                    }
                 }
             }
         }

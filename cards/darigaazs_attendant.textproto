@@ -7,18 +7,16 @@ types { creature {} }
 subtypes { golem {} }
 oracle_text:  "{1}, Sacrifice Darigaaz's Attendant:"
               "Add {B}{R}{G}."
-activated_abilities {
+mana_gains {
   cost {
     mana_costs { generic { count: 1} }
     additional_costs { sacrifice_this {} }
   }
-  effects {
-    gain_mana {
-      specific {
-        gains { black{} }
-        gains { red{} }
-        gains { green {} }
-      }
+  gain_mana {
+    specific {
+      gains { black{} }
+      gains { red{} }
+      gains { green {} }
     }
   }
 }

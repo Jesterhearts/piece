@@ -8,7 +8,7 @@ use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
     card::SplitSecond,
     controller::ControllerRestriction,
-    effects::{BattlefieldModifier, Counter, Effect, EffectDuration, GainMana, Token},
+    effects::{BattlefieldModifier, Counter, Effect, EffectDuration, Token},
     in_play::{
         AbilityId, CardId, CounterId, Database, InStack, ModifierId, OnBattlefield, TriggerId,
     },
@@ -238,15 +238,6 @@ impl Stack {
                         &restrictions,
                         &mut results,
                     ) {
-                        if let Some(resolving_card) = resolving_card {
-                            return vec![StackResult::StackToGraveyard(resolving_card)];
-                        } else {
-                            return vec![];
-                        }
-                    }
-                }
-                Effect::GainMana { mana } => {
-                    if !gain_mana(controller, &mana, next.mode, &mut results) {
                         if let Some(resolving_card) = resolving_card {
                             return vec![StackResult::StackToGraveyard(resolving_card)];
                         } else {
@@ -623,39 +614,6 @@ fn counter_spell(
             }
         }
     }
-
-    true
-}
-
-fn gain_mana(
-    controller: Controller,
-    mana: &GainMana,
-    mode: Option<usize>,
-    result: &mut Vec<StackResult>,
-) -> bool {
-    let mut manas = HashMap::default();
-    match mana {
-        GainMana::Specific { gains } => {
-            for gain in gains.iter() {
-                *manas.entry(*gain).or_default() += 1;
-            }
-        }
-        GainMana::Choice { choices } => {
-            let Some(mode) = mode else {
-                // No mode selected for modal ability.
-                return false;
-            };
-
-            for gain in choices[mode].iter() {
-                *manas.entry(*gain).or_default() += 1;
-            }
-        }
-    };
-
-    result.push(StackResult::GainMana {
-        player: controller,
-        mana: manas,
-    });
 
     true
 }

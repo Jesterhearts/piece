@@ -81,13 +81,13 @@ pub struct ManaPool {
 impl ManaPool {
     pub fn apply(&mut self, mana: Mana) {
         match mana {
-            Mana::White => self.white_mana += 1,
-            Mana::Blue => self.blue_mana += 1,
-            Mana::Black => self.black_mana += 1,
-            Mana::Red => self.red_mana += 1,
-            Mana::Green => self.green_mana += 1,
-            Mana::Colorless => self.colorless_mana += 1,
-            Mana::Generic(count) => self.colorless_mana += count,
+            Mana::White => self.white_mana = self.white_mana.saturating_add(1),
+            Mana::Blue => self.blue_mana = self.blue_mana.saturating_add(1),
+            Mana::Black => self.black_mana = self.black_mana.saturating_add(1),
+            Mana::Red => self.red_mana = self.red_mana.saturating_add(1),
+            Mana::Green => self.green_mana = self.green_mana.saturating_add(1),
+            Mana::Colorless => self.colorless_mana = self.colorless_mana.saturating_add(1),
+            Mana::Generic(count) => self.colorless_mana = self.colorless_mana.saturating_add(count),
         }
     }
 

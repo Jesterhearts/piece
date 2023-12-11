@@ -15,8 +15,8 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{
-        ActivatedAbilities, ActivatedAbility, ApplyToSelf, ETBAbilities, StaticAbilities,
-        StaticAbility, Triggers,
+        Ability, ActivatedAbilities, ActivatedAbility, ApplyToSelf, ETBAbilities, GainMana,
+        GainManaAbility, StaticAbilities, StaticAbility, Triggers,
     },
     battlefield::Battlefield,
     card::{
@@ -30,8 +30,7 @@ use crate::{
     cost::{AbilityCost, CastingCost},
     effects::{
         counter, AnyEffect, BattlefieldModifier, Counter, DealDamage, DynamicPowerToughness,
-        Effect, EffectDuration, Effects, GainMana, Token, UntilEndOfTurn,
-        UntilSourceLeavesBattlefield,
+        Effect, EffectDuration, Effects, Token, UntilEndOfTurn, UntilSourceLeavesBattlefield,
     },
     mana::Mana,
     player::{Controller, Owner},
@@ -996,41 +995,37 @@ impl CardId {
         colors
     }
 
-    pub fn color_identity(self, db: &mut Database) -> anyhow::Result<HashSet<Color>> {
+    pub fn color_identity(self, db: &mut Database) -> HashSet<Color> {
         let mut identity = db.get::<Colors>(self.0).unwrap().0.clone();
 
         let abilities = db.get::<ActivatedAbilities>(self.0).cloned().unwrap();
 
         for ability in abilities.iter() {
             let ability = ability.ability(db);
-            for mana in ability.cost.mana_cost {
+            for mana in ability.cost().mana_cost.iter() {
                 let color = mana.color();
                 identity.insert(color);
             }
 
-            for effect in ability.effects {
-                let controller = self.controller(db);
-                match effect.into_effect(db, controller) {
-                    Effect::GainMana { mana } => match mana {
-                        GainMana::Specific { gains } => {
-                            for gain in gains.iter() {
-                                identity.insert(gain.color());
+            if let Ability::Mana(mana) = ability {
+                match mana.gain {
+                    GainMana::Specific { gains } => {
+                        for gain in gains.iter() {
+                            identity.insert(gain.color());
+                        }
+                    }
+                    GainMana::Choice { choices } => {
+                        for choice in choices.iter() {
+                            for mana in choice.iter() {
+                                identity.insert(mana.color());
                             }
                         }
-                        GainMana::Choice { choices } => {
-                            for choice in choices.iter() {
-                                for mana in choice.iter() {
-                                    identity.insert(mana.color());
-                                }
-                            }
-                        }
-                    },
-                    _ => {}
+                    }
                 }
             }
         }
 
-        Ok(identity)
+        identity
     }
 
     pub fn types_intersect(self, db: &mut Database, types: &HashSet<Type>) -> bool {
@@ -1253,7 +1248,7 @@ impl CardId {
         if !card.activated_abilities.is_empty() {
             let mut ability_ids = vec![];
             for ability in card.activated_abilities.iter() {
-                let id = AbilityId::upload_ability(db, cardid, ability);
+                let id = AbilityId::upload_ability(db, cardid, Ability::Activated(ability.clone()));
 
                 ability_ids.push(id);
             }
@@ -1284,6 +1279,22 @@ impl CardId {
             );
 
             db.entity_mut(cardid.0).insert(auraid);
+        }
+
+        if !card.mana_gains.is_empty() {
+            let mut ability_ids = vec![];
+            for gain_mana in card.mana_gains.iter() {
+                let id = AbilityId::upload_ability(db, cardid, Ability::Mana(gain_mana.clone()));
+
+                ability_ids.push(id);
+            }
+
+            if let Some(mut abilities) = db.get_mut::<ActivatedAbilities>(cardid.0) {
+                abilities.extend(ability_ids);
+            } else {
+                db.entity_mut(cardid.0)
+                    .insert(ActivatedAbilities(ability_ids));
+            }
         }
 
         if !card.triggered_abilities.is_empty() {
@@ -1330,7 +1341,6 @@ impl CardId {
                 Effect::CounterSpell { target } => {
                     targets_for_counterspell(db, controller, target, &mut targets);
                 }
-                Effect::GainMana { .. } => {}
                 Effect::BattlefieldModifier(_) => {}
                 Effect::ControllerDrawCards(_) => {}
                 Effect::ModifyCreature(modifier) => {
@@ -1413,14 +1423,13 @@ impl CardId {
         targets: &mut HashSet<ActiveTarget>,
     ) {
         let ability = ability.ability(db);
-        if !ability.apply_to_self {
-            for effect in ability.effects {
+        if !ability.apply_to_self() {
+            for effect in ability.into_effects() {
                 let controller = self.controller(db);
                 match effect.into_effect(db, controller) {
                     Effect::CounterSpell { target } => {
                         targets_for_counterspell(db, controller, &target, targets);
                     }
-                    Effect::GainMana { .. } => {}
                     Effect::BattlefieldModifier(_) => {}
                     Effect::ControllerDrawCards(_) => {}
                     Effect::Equip(_) => {
@@ -1896,7 +1905,14 @@ fn upload_modifier(
     let modifierid = ModifierId(entity.id());
 
     if let Some(ability) = &modifier.modifier.add_ability {
-        let id = AbilityId::upload_ability(db, source, ability);
+        let id = AbilityId::upload_ability(db, source, Ability::Activated(ability.clone()));
+        db.modifiers
+            .entity_mut(modifierid.0)
+            .insert(ActivatedAbilityModifier::Add(id));
+    }
+
+    if let Some(ability) = &modifier.modifier.gain_mana {
+        let id = AbilityId::upload_ability(db, source, Ability::Mana(ability.clone()));
         db.modifiers
             .entity_mut(modifierid.0)
             .insert(ActivatedAbilityModifier::Add(id));
@@ -1913,22 +1929,25 @@ fn upload_modifier(
 pub struct AbilityId(Entity);
 
 impl AbilityId {
-    pub fn upload_ability(
-        db: &mut Database,
-        cardid: CardId,
-        ability: &ActivatedAbility,
-    ) -> AbilityId {
-        let mut entity = db.abilities.spawn((
-            cardid,
-            ability.cost.clone(),
-            Effects(ability.effects.clone()),
-        ));
+    pub fn upload_ability(db: &mut Database, cardid: CardId, ability: Ability) -> AbilityId {
+        match ability {
+            Ability::Activated(ability) => {
+                let mut entity =
+                    db.abilities
+                        .spawn((cardid, ability.cost, Effects(ability.effects)));
 
-        if ability.apply_to_self {
-            entity.insert(ApplyToSelf);
+                if ability.apply_to_self {
+                    entity.insert(ApplyToSelf);
+                }
+
+                Self(entity.id())
+            }
+            Ability::Mana(ability) => {
+                let entity = db.abilities.spawn((cardid, ability.cost, ability.gain));
+
+                Self(entity.id())
+            }
         }
-
-        Self(entity.id())
     }
 
     pub fn land_abilities(db: &mut Database) -> HashMap<Subtype, Self> {
@@ -1944,14 +1963,9 @@ impl AbilityId {
                                 tap: true,
                                 additional_cost: vec![],
                             },
-                            Effects(vec![AnyEffect {
-                                effect: Effect::GainMana {
-                                    mana: GainMana::Specific {
-                                        gains: vec![Mana::White],
-                                    },
-                                },
-                                threshold: None,
-                            }]),
+                            GainMana::Specific {
+                                gains: vec![Mana::White],
+                            },
                         ))
                         .id(),
                 );
@@ -1965,14 +1979,9 @@ impl AbilityId {
                                 tap: true,
                                 additional_cost: vec![],
                             },
-                            Effects(vec![AnyEffect {
-                                effect: Effect::GainMana {
-                                    mana: GainMana::Specific {
-                                        gains: vec![Mana::Blue],
-                                    },
-                                },
-                                threshold: None,
-                            }]),
+                            GainMana::Specific {
+                                gains: vec![Mana::Blue],
+                            },
                         ))
                         .id(),
                 );
@@ -1986,14 +1995,9 @@ impl AbilityId {
                                 tap: true,
                                 additional_cost: vec![],
                             },
-                            Effects(vec![AnyEffect {
-                                effect: Effect::GainMana {
-                                    mana: GainMana::Specific {
-                                        gains: vec![Mana::Black],
-                                    },
-                                },
-                                threshold: None,
-                            }]),
+                            GainMana::Specific {
+                                gains: vec![Mana::Black],
+                            },
                         ))
                         .id(),
                 );
@@ -2007,14 +2011,9 @@ impl AbilityId {
                                 tap: true,
                                 additional_cost: vec![],
                             },
-                            Effects(vec![AnyEffect {
-                                effect: Effect::GainMana {
-                                    mana: GainMana::Specific {
-                                        gains: vec![Mana::Red],
-                                    },
-                                },
-                                threshold: None,
-                            }]),
+                            GainMana::Specific {
+                                gains: vec![Mana::Red],
+                            },
                         ))
                         .id(),
                 );
@@ -2028,14 +2027,9 @@ impl AbilityId {
                                 tap: true,
                                 additional_cost: vec![],
                             },
-                            Effects(vec![AnyEffect {
-                                effect: Effect::GainMana {
-                                    mana: GainMana::Specific {
-                                        gains: vec![Mana::Green],
-                                    },
-                                },
-                                threshold: None,
-                            }]),
+                            GainMana::Specific {
+                                gains: vec![Mana::Green],
+                            },
                         ))
                         .id(),
                 );
@@ -2060,8 +2054,8 @@ impl AbilityId {
             .insert(source);
     }
 
-    pub fn ability(self, db: &mut Database) -> ActivatedAbility {
-        let (cost, effects, apply_to_self) = db
+    pub fn ability(self, db: &mut Database) -> Ability {
+        if let Some((cost, effects, apply_to_self)) = db
             .abilities
             .query::<(Entity, &AbilityCost, &Effects, Option<&ApplyToSelf>)>()
             .iter(&db.abilities)
@@ -2073,12 +2067,35 @@ impl AbilityId {
                 }
             })
             .next()
+        {
+            Ability::Activated(ActivatedAbility {
+                cost: cost.clone(),
+                effects: effects.0.clone(),
+                apply_to_self: apply_to_self.is_some(),
+            })
+        } else {
+            Ability::Mana(self.gain_mana_ability(db))
+        }
+    }
+
+    pub fn gain_mana_ability(self, db: &mut Database) -> GainManaAbility {
+        let (cost, gain) = db
+            .abilities
+            .query::<(Entity, &AbilityCost, &GainMana)>()
+            .iter(&db.abilities)
+            .filter_map(|(e, cost, effect)| {
+                if Self(e) == self {
+                    Some((cost, effect))
+                } else {
+                    None
+                }
+            })
+            .next()
             .unwrap();
 
-        ActivatedAbility {
+        GainManaAbility {
             cost: cost.clone(),
-            effects: effects.0.clone(),
-            apply_to_self: apply_to_self.is_some(),
+            gain: gain.clone(),
         }
     }
 
