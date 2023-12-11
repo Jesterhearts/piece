@@ -1437,7 +1437,7 @@ impl CardId {
                             db, self, None, creatures, controller, targets,
                         );
                     }
-                    Effect::CreateToken(_) => todo!(),
+                    Effect::CreateToken(_) => {}
                     Effect::DealDamage(dmg) => {
                         self.targets_for_damage(creatures, db, &dmg, targets);
                     }

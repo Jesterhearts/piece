@@ -192,7 +192,6 @@ impl Battlefield {
                             HashSet::from([source_card_id.controller(db).into()])
                         }
                         ControllerRestriction::Opponent => {
-                            // TODO this could probably be a query if I was smarter at sql
                             let mut all = AllPlayers::all_players(db);
                             all.remove(&source_card_id.controller(db).into());
                             all
@@ -772,7 +771,6 @@ fn compute_graveyard_targets(
         ControllerRestriction::Any => AllPlayers::all_players(db),
         ControllerRestriction::You => HashSet::from([source_card.controller(db).into()]),
         ControllerRestriction::Opponent => {
-            // TODO this could probably be a query if I was smarter at sql
             let mut all = AllPlayers::all_players(db);
             all.remove(&source_card.controller(db).into());
             all
