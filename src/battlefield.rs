@@ -27,6 +27,10 @@ use crate::{
 pub enum UnresolvedActionResult {
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
+    LoseLife {
+        target: Controller,
+        count: usize,
+    },
     AddAbilityToStack {
         source: CardId,
         ability: AbilityId,
@@ -97,6 +101,10 @@ pub enum ActionResult {
     },
     ReturnFromGraveyardToBattlefield {
         targets: Vec<CardId>,
+    },
+    LoseLife {
+        target: Controller,
+        count: usize,
     },
 }
 
@@ -512,6 +520,9 @@ impl Battlefield {
 
                 return pending;
             }
+            ActionResult::LoseLife { target, count } => {
+                all_players[target].life_total -= count as i32;
+            }
         }
 
         vec![]
@@ -759,6 +770,9 @@ impl Battlefield {
                             mode,
                         });
                     }
+                }
+                UnresolvedActionResult::LoseLife { target, count } => {
+                    resolved.push(ActionResult::LoseLife { target, count })
                 }
             }
         }

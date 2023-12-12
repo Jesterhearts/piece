@@ -4,14 +4,16 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use bevy_ecs::{component::Component, entity::Entity};
+use bevy_ecs::{component::Component, entity::Entity, query::With};
 use itertools::Itertools;
 
 use crate::{
     abilities::StaticAbility,
     battlefield::{Battlefield, UnresolvedActionResult},
+    controller::ControllerRestriction,
     deck::Deck,
-    in_play::{cards, CardId, Database, InHand},
+    effects::{Effect, ReplaceDraw},
+    in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
     mana::Mana,
     stack::ActiveTarget,
 };
@@ -67,8 +69,8 @@ impl Controller {
             .collect_vec()
     }
 
-    pub fn has_cards<Zone: Component + Ord>(self, db: &mut Database) -> bool {
-        db.query::<&Controller>()
+    pub fn has_cards<Zone: Component>(self, db: &mut Database) -> bool {
+        db.query_filtered::<&Controller, With<Zone>>()
             .iter(db)
             .any(|owner| self == *owner)
     }
@@ -265,16 +267,76 @@ impl Player {
     }
 
     #[must_use]
-    pub fn draw(&mut self, db: &mut Database, count: usize) -> bool {
+    pub fn draw(&mut self, db: &mut Database, count: usize) -> Vec<UnresolvedActionResult> {
+        let mut results = vec![];
+
         for _ in 0..count {
-            if let Some(card) = self.deck.draw() {
+            let replacements = ReplacementEffectId::watching::<ReplaceDraw>(db);
+            if !replacements.is_empty() {
+                self.draw_internal(db, &mut replacements.into_iter(), 1, &mut results);
+            } else if let Some(card) = self.deck.draw() {
                 card.move_to_hand(db);
             } else {
-                return false;
+                return results;
             }
         }
 
-        true
+        results
+    }
+
+    fn draw_internal(
+        &mut self,
+        db: &mut Database,
+        replacements: &mut impl ExactSizeIterator<Item = ReplacementEffectId>,
+        count: usize,
+        results: &mut Vec<UnresolvedActionResult>,
+    ) {
+        for _ in 0..count {
+            if replacements.len() > 0 {
+                while let Some(replacement) = replacements.next() {
+                    let source = replacement.source(db);
+                    let controller = replacement.source(db).controller(db);
+                    let restrictions = replacement.restrictions(db);
+                    if !source.passes_restrictions(
+                        db,
+                        source,
+                        controller,
+                        ControllerRestriction::Any,
+                        &restrictions,
+                    ) {
+                        dbg!("did not pass restrictions");
+                        continue;
+                    }
+
+                    for effect in replacement.effects(db) {
+                        match effect.into_effect(db, controller) {
+                            Effect::BattlefieldModifier(_) => todo!(),
+                            Effect::ControllerDrawCards(count) => {
+                                self.draw_internal(db, replacements, count, results);
+                            }
+                            Effect::ControllerLosesLife(count) => {
+                                results.push(UnresolvedActionResult::LoseLife {
+                                    target: controller,
+                                    count,
+                                });
+                            }
+                            Effect::CounterSpell { .. } => todo!(),
+                            Effect::CreateToken(_) => todo!(),
+                            Effect::DealDamage(_) => todo!(),
+                            Effect::Equip(_) => todo!(),
+                            Effect::ExileTargetCreature => todo!(),
+                            Effect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
+                            Effect::GainCounter(_) => todo!(),
+                            Effect::ModifyCreature(_) => todo!(),
+                        }
+                    }
+                }
+            } else if let Some(card) = self.deck.draw() {
+                card.move_to_hand(db);
+            } else {
+                return;
+            }
+        }
     }
 
     /// Returns Some if the card can be played

@@ -75,6 +75,7 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
+            ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
             let owner = self.owner(db);
@@ -101,6 +102,7 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
+            ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
             let owner = self.owner(db);
@@ -132,6 +134,7 @@ impl CardId {
             ));
 
         TriggerId::activate_all_for_card(db, self);
+        ReplacementEffectId::activate_all_for_card(db, self);
     }
 
     pub fn move_to_graveyard(self, db: &mut Database) {
@@ -140,6 +143,7 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
+            ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
             let owner = self.owner(db);
@@ -164,6 +168,7 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
+            ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
             let owner = self.owner(db);
@@ -186,6 +191,7 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
+            ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
             let owner = self.owner(db);
@@ -952,7 +958,9 @@ impl CardId {
         if !card.replacement_effects.is_empty() {
             let mut ids = vec![];
             for effect in card.replacement_effects.iter() {
-                ids.push(ReplacementEffectId::upload_replacement_effect(db, effect));
+                ids.push(ReplacementEffectId::upload_replacement_effect(
+                    db, effect, cardid,
+                ));
             }
 
             db.entity_mut(cardid.0).insert(ReplacementEffects(ids));
