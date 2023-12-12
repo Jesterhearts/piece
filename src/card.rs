@@ -10,7 +10,7 @@ use crate::{
         ActivatedAbility, ETBAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility,
     },
     cost::CastingCost,
-    effects::{AnyEffect, Token, TokenCreature},
+    effects::{AnyEffect, ReplacementEffect, Token, TokenCreature},
     in_play::{AbilityId, TriggerId},
     protogen,
     types::{Subtype, Type},
@@ -340,6 +340,8 @@ pub struct Card {
 
     pub triggered_abilities: Vec<TriggeredAbility>,
 
+    pub replacement_effects: Vec<ReplacementEffect>,
+
     pub mana_gains: Vec<GainManaAbility>,
 
     pub power: Option<usize>,
@@ -406,6 +408,11 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(TriggeredAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            replacement_effects: value
+                .replacement_effects
+                .iter()
+                .map(ReplacementEffect::try_from)
+                .collect::<anyhow::Result<_>>()?,
             mana_gains: value
                 .mana_gains
                 .iter()

@@ -9,7 +9,7 @@ use crate::{
     battlefield::Battlefield,
     card::{Color, Keyword},
     controller::ControllerRestriction,
-    in_play::Database,
+    in_play::{Database, ReplacementEffectId},
     player::Controller,
     protogen,
     targets::{Restriction, SpellTarget},
@@ -441,7 +441,7 @@ impl AnyEffect {
         }
     }
 
-    pub(crate) fn wants_targets(&self, db: &mut Database, controller: Controller) -> usize {
+    pub fn wants_targets(&self, db: &mut Database, controller: Controller) -> usize {
         match self.effect(db, controller) {
             Effect::BattlefieldModifier(_) => 0,
             Effect::ControllerDrawCards(_) => 0,
@@ -564,5 +564,57 @@ impl From<&protogen::counters::counter::Type> for Counter {
             protogen::counters::counter::Type::P1p1(_) => Self::P1P1,
             protogen::counters::counter::Type::M1m1(_) => Self::M1M1,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub struct ReplaceDraw;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Replacing {
+    Draw,
+}
+
+impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
+    fn from(value: &protogen::effects::replacement_effect::Replacing) -> Self {
+        match value {
+            protogen::effects::replacement_effect::Replacing::Draw(_) => Self::Draw,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
+pub struct ReplacementEffects(pub Vec<ReplacementEffectId>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplacementEffect {
+    pub replacing: Replacing,
+    pub restrictions: Vec<Restriction>,
+    pub effects: Vec<AnyEffect>,
+}
+
+impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ReplacementEffect) -> Result<Self, Self::Error> {
+        Ok(Self {
+            replacing: value
+                .replacing
+                .as_ref()
+                .ok_or_else(|| {
+                    anyhow!("Expected replacement effect to have a replacement specified")
+                })
+                .map(Replacing::from)?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
+            effects: value
+                .effects
+                .iter()
+                .map(AnyEffect::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
     }
 }

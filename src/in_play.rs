@@ -27,7 +27,8 @@ use crate::{
     cost::{AbilityCost, CastingCost},
     effects::{
         counter, AnyEffect, BattlefieldModifier, Counter, DealDamage, DynamicPowerToughness,
-        Effect, EffectDuration, Effects, Token, UntilEndOfTurn, UntilSourceLeavesBattlefield,
+        Effect, EffectDuration, Effects, ReplaceDraw, ReplacementEffect, ReplacementEffects,
+        Replacing, Token, UntilEndOfTurn, UntilSourceLeavesBattlefield,
     },
     mana::Mana,
     player::{Controller, Owner},
@@ -161,6 +162,9 @@ pub struct AurasDb(World);
 pub struct CountersDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
+pub struct ReplacementDb(World);
+
+#[derive(Debug, Deref, DerefMut, Default)]
 pub struct Database {
     #[deref]
     #[deref_mut]
@@ -171,6 +175,7 @@ pub struct Database {
     pub static_abilities: StaticAbilityDb,
     pub auras: AurasDb,
     pub counters: CountersDb,
+    pub replacement_effects: ReplacementDb,
 }
 
 impl CardId {
@@ -1066,6 +1071,15 @@ impl CardId {
             db.entity_mut(cardid.0).insert(Triggers(trigger_ids));
         }
 
+        if !card.replacement_effects.is_empty() {
+            let mut ids = vec![];
+            for effect in card.replacement_effects.iter() {
+                ids.push(ReplacementEffectId::upload_replacement_effect(db, effect));
+            }
+
+            db.entity_mut(cardid.0).insert(ReplacementEffects(ids));
+        }
+
         cardid.apply_modifiers_layered(db);
         cardid
     }
@@ -1284,7 +1298,7 @@ impl CardId {
         self.types_intersect(db, &HashSet::from([Type::Land, Type::BasicLand]))
     }
 
-    pub(crate) fn manifest(self, db: &mut Database) {
+    pub fn manifest(self, db: &mut Database) {
         db.entity_mut(self.0).insert(Manifested).insert(FaceDown);
     }
 
@@ -1637,7 +1651,7 @@ impl AbilityId {
         db.abilities.get::<CardId>(self.0).copied().unwrap()
     }
 
-    pub(crate) fn controller(self, db: &mut Database) -> Controller {
+    pub fn controller(self, db: &mut Database) -> Controller {
         self.source(db).controller(db)
     }
 
@@ -2004,5 +2018,25 @@ fn targets_for_battlefield_modifier(
         {
             targets.insert(ActiveTarget::Battlefield { id: *creature });
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReplacementEffectId(Entity);
+
+impl ReplacementEffectId {
+    pub fn upload_replacement_effect(db: &mut Database, effect: &ReplacementEffect) -> Self {
+        let mut entity = db.replacement_effects.spawn((
+            Restrictions(effect.restrictions.clone()),
+            Effects(effect.effects.clone()),
+        ));
+
+        match effect.replacing {
+            Replacing::Draw => {
+                entity.insert(ReplaceDraw);
+            }
+        }
+
+        Self(entity.id())
     }
 }

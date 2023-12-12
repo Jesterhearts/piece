@@ -283,21 +283,21 @@ pub enum Ability {
     Mana(GainManaAbility),
 }
 impl Ability {
-    pub(crate) fn cost(&self) -> &AbilityCost {
+    pub fn cost(&self) -> &AbilityCost {
         match self {
             Ability::Activated(ActivatedAbility { cost, .. })
             | Ability::Mana(GainManaAbility { cost, .. }) => cost,
         }
     }
 
-    pub(crate) fn apply_to_self(&self) -> bool {
+    pub fn apply_to_self(&self) -> bool {
         match self {
             Ability::Activated(ActivatedAbility { apply_to_self, .. }) => *apply_to_self,
             Ability::Mana(_) => false,
         }
     }
 
-    pub(crate) fn into_effects(self) -> Vec<AnyEffect> {
+    pub fn into_effects(self) -> Vec<AnyEffect> {
         match self {
             Ability::Activated(ActivatedAbility { effects, .. }) => effects,
             Ability::Mana(_) => vec![],
