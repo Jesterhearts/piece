@@ -47,7 +47,6 @@ fn etb() -> anyhow::Result<()> {
     );
 
     let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(
         results,
         [UnresolvedActionResult::ReturnFromGraveyardToLibrary {

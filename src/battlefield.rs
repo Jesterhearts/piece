@@ -419,166 +419,18 @@ impl Battlefield {
         let mut pending = vec![];
         let mut resolved = vec![];
 
-        for result in results {
-            match result {
-                UnresolvedActionResult::TapPermanent(cardid) => {
-                    resolved.push(ActionResult::TapPermanent(cardid));
-                }
-                UnresolvedActionResult::PermanentToGraveyard(cardid) => {
-                    resolved.push(ActionResult::PermanentToGraveyard(cardid));
-                }
-                UnresolvedActionResult::AddAbilityToStack {
-                    source,
-                    ability,
-                    valid_targets,
-                } => {
-                    let controller = source.controller(db);
-                    let wants_targets: usize = ability
-                        .effects(db)
-                        .iter()
-                        .map(|effect| effect.wants_targets(db, controller))
-                        .max()
-                        .unwrap_or_default();
+        Self::attempt_to_resolve(db, all_players, results, &mut resolved, &mut pending);
+        let applied_results = Self::apply_action_results(db, all_players, resolved);
+        if applied_results.is_empty() && !pending.is_empty() {
+            let mut new_pending = vec![];
+            let mut resolved = vec![];
+            Self::attempt_to_resolve(db, all_players, pending, &mut resolved, &mut new_pending);
+            new_pending.extend(Self::apply_action_results(db, all_players, resolved));
 
-                    if wants_targets >= valid_targets.len() {
-                        resolved.push(ActionResult::AddAbilityToStack {
-                            source,
-                            ability,
-                            targets: valid_targets,
-                        });
-                    } else {
-                        let mut valid_targets = Default::default();
-                        let creatures = Self::creatures(db);
-                        source.targets_for_ability(db, ability, &creatures, &mut valid_targets);
-
-                        pending.push(UnresolvedActionResult::AddAbilityToStack {
-                            source,
-                            ability,
-                            valid_targets,
-                        });
-                    }
-                }
-                UnresolvedActionResult::AddTriggerToStack(trigger, source) => {
-                    resolved.push(ActionResult::AddTriggerToStack(trigger, source));
-                }
-                UnresolvedActionResult::CloneCreatureNonTargeting {
-                    source,
-                    valid_targets,
-                } => {
-                    pending.push(UnresolvedActionResult::CloneCreatureNonTargeting {
-                        source,
-                        valid_targets,
-                    });
-                }
-                UnresolvedActionResult::AddModifier { modifier } => {
-                    resolved.push(ActionResult::AddModifier { modifier });
-                }
-                UnresolvedActionResult::Mill {
-                    count,
-                    valid_targets,
-                } => {
-                    if valid_targets.len() == 1 {
-                        resolved.push(ActionResult::Mill {
-                            count,
-                            targets: valid_targets,
-                        });
-                    } else {
-                        pending.push(UnresolvedActionResult::Mill {
-                            count,
-                            valid_targets,
-                        });
-                    }
-                }
-                UnresolvedActionResult::ReturnFromGraveyardToLibrary {
-                    source,
-                    count,
-                    controller,
-                    types,
-                    valid_targets,
-                } => {
-                    if valid_targets.len() == count {
-                        resolved.push(ActionResult::ReturnFromGraveyardToLibrary {
-                            targets: valid_targets,
-                        });
-                    } else {
-                        let valid_targets =
-                            compute_graveyard_targets(db, controller, source, &types);
-                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
-                            source,
-                            count,
-                            controller,
-                            types,
-                            valid_targets,
-                        })
-                    }
-                }
-                UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
-                    source,
-                    count,
-                    types,
-                    valid_targets,
-                } => {
-                    if valid_targets.len() == count {
-                        resolved.push(ActionResult::ReturnFromGraveyardToBattlefield {
-                            targets: valid_targets,
-                        });
-                    } else {
-                        let valid_targets = compute_graveyard_targets(
-                            db,
-                            ControllerRestriction::You,
-                            source,
-                            &types,
-                        );
-                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
-                            source,
-                            count,
-                            types,
-                            valid_targets,
-                        })
-                    }
-                }
-                UnresolvedActionResult::TutorLibrary {
-                    source,
-                    destination,
-                    targets: _,
-                    reveal,
-                    restrictions,
-                } => {
-                    let controller = source.controller(db);
-                    let targets = compute_deck_targets(db, controller, &restrictions);
-
-                    pending.push(UnresolvedActionResult::TutorLibrary {
-                        source,
-                        destination,
-                        targets,
-                        reveal,
-                        restrictions,
-                    });
-                }
-                UnresolvedActionResult::GainMana {
-                    source,
-                    ability,
-                    mode,
-                } => {
-                    if let Some(mana) = compute_mana_gain(&ability.gain_mana_ability(db).gain, mode)
-                    {
-                        for (mana, count) in mana {
-                            for _ in 0..count {
-                                all_players[source.controller(db)].mana_pool.apply(mana);
-                            }
-                        }
-                    } else {
-                        pending.push(UnresolvedActionResult::GainMana {
-                            source,
-                            ability,
-                            mode,
-                        });
-                    }
-                }
-            }
+            pending = new_pending;
+        } else {
+            pending.extend(applied_results);
         }
-
-        pending.extend(Self::apply_action_results(db, all_players, resolved));
 
         pending
     }
@@ -744,6 +596,173 @@ impl Battlefield {
 
         vec![]
     }
+
+    fn attempt_to_resolve(
+        db: &mut Database,
+        all_players: &mut AllPlayers,
+        results: Vec<UnresolvedActionResult>,
+        resolved: &mut Vec<ActionResult>,
+        pending: &mut Vec<UnresolvedActionResult>,
+    ) {
+        for result in results {
+            match result {
+                UnresolvedActionResult::TapPermanent(cardid) => {
+                    resolved.push(ActionResult::TapPermanent(cardid));
+                }
+                UnresolvedActionResult::PermanentToGraveyard(cardid) => {
+                    resolved.push(ActionResult::PermanentToGraveyard(cardid));
+                }
+                UnresolvedActionResult::AddAbilityToStack {
+                    source,
+                    ability,
+                    valid_targets,
+                } => {
+                    let controller = source.controller(db);
+                    let wants_targets: usize = ability
+                        .effects(db)
+                        .iter()
+                        .map(|effect| effect.wants_targets(db, controller))
+                        .max()
+                        .unwrap_or_default();
+
+                    if wants_targets >= valid_targets.len() {
+                        resolved.push(ActionResult::AddAbilityToStack {
+                            source,
+                            ability,
+                            targets: valid_targets,
+                        });
+                    } else {
+                        let mut valid_targets = Default::default();
+                        let creatures = Self::creatures(db);
+                        source.targets_for_ability(db, ability, &creatures, &mut valid_targets);
+
+                        pending.push(UnresolvedActionResult::AddAbilityToStack {
+                            source,
+                            ability,
+                            valid_targets,
+                        });
+                    }
+                }
+                UnresolvedActionResult::AddTriggerToStack(trigger, source) => {
+                    resolved.push(ActionResult::AddTriggerToStack(trigger, source));
+                }
+                UnresolvedActionResult::CloneCreatureNonTargeting {
+                    source,
+                    valid_targets,
+                } => {
+                    pending.push(UnresolvedActionResult::CloneCreatureNonTargeting {
+                        source,
+                        valid_targets,
+                    });
+                }
+                UnresolvedActionResult::AddModifier { modifier } => {
+                    resolved.push(ActionResult::AddModifier { modifier });
+                }
+                UnresolvedActionResult::Mill {
+                    count,
+                    valid_targets,
+                } => {
+                    if valid_targets.len() == 1 {
+                        resolved.push(ActionResult::Mill {
+                            count,
+                            targets: valid_targets,
+                        });
+                    } else {
+                        pending.push(UnresolvedActionResult::Mill {
+                            count,
+                            valid_targets,
+                        });
+                    }
+                }
+                UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+                    source,
+                    count,
+                    controller,
+                    types,
+                    valid_targets,
+                } => {
+                    if valid_targets.len() == count {
+                        resolved.push(ActionResult::ReturnFromGraveyardToLibrary {
+                            targets: valid_targets,
+                        });
+                    } else {
+                        let valid_targets =
+                            compute_graveyard_targets(db, controller, source, &types);
+                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
+                            source,
+                            count,
+                            controller,
+                            types,
+                            valid_targets,
+                        })
+                    }
+                }
+                UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                    source,
+                    count,
+                    types,
+                    valid_targets,
+                } => {
+                    if valid_targets.len() == count {
+                        resolved.push(ActionResult::ReturnFromGraveyardToBattlefield {
+                            targets: valid_targets,
+                        });
+                    } else {
+                        let valid_targets = compute_graveyard_targets(
+                            db,
+                            ControllerRestriction::You,
+                            source,
+                            &types,
+                        );
+                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
+                            source,
+                            count,
+                            types,
+                            valid_targets,
+                        })
+                    }
+                }
+                UnresolvedActionResult::TutorLibrary {
+                    source,
+                    destination,
+                    targets: _,
+                    reveal,
+                    restrictions,
+                } => {
+                    let controller = source.controller(db);
+                    let targets = compute_deck_targets(db, controller, &restrictions);
+
+                    pending.push(UnresolvedActionResult::TutorLibrary {
+                        source,
+                        destination,
+                        targets,
+                        reveal,
+                        restrictions,
+                    });
+                }
+                UnresolvedActionResult::GainMana {
+                    source,
+                    ability,
+                    mode,
+                } => {
+                    if let Some(mana) = compute_mana_gain(&ability.gain_mana_ability(db).gain, mode)
+                    {
+                        for (mana, count) in mana {
+                            for _ in 0..count {
+                                all_players[source.controller(db)].mana_pool.apply(mana);
+                            }
+                        }
+                    } else {
+                        pending.push(UnresolvedActionResult::GainMana {
+                            source,
+                            ability,
+                            mode,
+                        });
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn compute_deck_targets(
@@ -782,7 +801,7 @@ fn compute_graveyard_targets(
     let mut target_cards = vec![];
 
     for target in targets {
-        let cards_in_graveyard = dbg!(target.get_cards::<InGraveyard>(db));
+        let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
         for card in cards_in_graveyard {
             if card.types_intersect(db, types) {
                 target_cards.push(card);
