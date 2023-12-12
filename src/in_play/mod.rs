@@ -917,7 +917,7 @@ impl ReplacementEffectId {
             .clone()
     }
 
-    pub(crate) fn source(self, db: &mut Database) -> CardId {
+    pub fn source(self, db: &mut Database) -> CardId {
         db.replacement_effects
             .get::<CardId>(self.0)
             .copied()

@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[test]
-pub fn metamorphosis() -> anyhow::Result<()> {
+fn metamorphosis() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
@@ -59,7 +59,7 @@ pub fn metamorphosis() -> anyhow::Result<()> {
 }
 
 #[test]
-pub fn metamorphosis_bear() -> anyhow::Result<()> {
+fn metamorphosis_bear() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();

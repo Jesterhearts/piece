@@ -431,7 +431,7 @@ impl TryFrom<protogen::card::Card> for Card {
             keywords: value
                 .keywords
                 .split(',')
-                .filter(|s| !s.is_empty())
+                .filter(|s| !s.trim().is_empty())
                 .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
                 .collect::<anyhow::Result<_>>()?,
         })
@@ -448,6 +448,7 @@ impl From<Token> for Card {
                 colors,
                 power,
                 toughness,
+                keywords,
             }) => Self {
                 name,
                 types,
@@ -455,6 +456,7 @@ impl From<Token> for Card {
                 colors,
                 power: Some(power),
                 toughness: Some(toughness),
+                keywords,
                 ..Default::default()
             },
         }

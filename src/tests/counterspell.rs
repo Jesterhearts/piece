@@ -3,11 +3,12 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
+    battlefield::Battlefield,
     in_play::CardId,
     in_play::Database,
     load_cards,
     player::AllPlayers,
-    stack::{Entry, Stack, StackResult}, battlefield::Battlefield,
+    stack::{Entry, Stack, StackResult},
 };
 
 #[test]

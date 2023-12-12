@@ -464,6 +464,7 @@ pub struct TokenCreature {
     pub types: HashSet<Type>,
     pub subtypes: HashSet<Subtype>,
     pub colors: HashSet<Color>,
+    pub keywords: HashSet<Keyword>,
     pub power: usize,
     pub toughness: usize,
 }
@@ -490,6 +491,12 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
                 .iter()
                 .map(Color::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
+            keywords: value
+                .keywords
+                .split(',')
+                .filter(|s| !s.trim().is_empty())
+                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .collect::<anyhow::Result<_>>()?,
             power: usize::try_from(value.power)?,
             toughness: usize::try_from(value.toughness)?,
         })

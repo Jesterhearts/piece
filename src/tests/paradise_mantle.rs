@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[test]
-pub fn adds_ability() -> anyhow::Result<()> {
+fn adds_ability() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
 

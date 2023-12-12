@@ -25,11 +25,11 @@ pub mod player;
 pub mod protogen;
 pub mod stack;
 pub mod targets;
+pub mod triggers;
 pub mod types;
 
 #[cfg(test)]
-pub mod tests;
-pub mod triggers;
+mod tests;
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
