@@ -13,7 +13,7 @@ use crate::{
         TutorLibrary, UntilEndOfTurn,
     },
     in_play::{
-        cards, AbilityId, Active, CardId, Database, InGraveyard, InLibrary, ModifierId,
+        all_cards, cards, AbilityId, Active, CardId, Database, InGraveyard, InLibrary, ModifierId,
         OnBattlefield, TriggerId,
     },
     player::{AllPlayers, Controller, Owner},
@@ -37,7 +37,7 @@ pub enum UnresolvedActionResult {
         ability: AbilityId,
         mode: Option<usize>,
     },
-    AddTriggerToStack(TriggerId),
+    AddTriggerToStack(TriggerId, CardId),
     CloneCreatureNonTargeting {
         source: CardId,
         valid_targets: Vec<CardId>,
@@ -80,7 +80,7 @@ pub enum ActionResult {
         ability: AbilityId,
         targets: HashSet<ActiveTarget>,
     },
-    AddTriggerToStack(TriggerId),
+    AddTriggerToStack(TriggerId, CardId),
     CloneCreatureNonTargeting {
         source: CardId,
         target: Option<CardId>,
@@ -172,11 +172,7 @@ impl Battlefield {
             }
         }
 
-        for etb in source_card_id
-            .etb_abilities(db)
-            .iter()
-            .flat_map(|abilities| abilities.iter())
-        {
+        for etb in source_card_id.etb_abilities(db).iter() {
             match etb {
                 ETBAbility::CopyOfAnyCreature => {
                     assert!(targets.is_empty());
@@ -273,9 +269,15 @@ impl Battlefield {
             if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
                 let for_types = trigger.for_types(db);
                 if source_card_id.types_intersect(db, &for_types) {
-                    results.push(UnresolvedActionResult::AddTriggerToStack(trigger))
+                    for source in trigger.listeners(db) {
+                        results.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                    }
                 }
             }
+        }
+
+        for card in all_cards(db) {
+            card.apply_modifiers_layered(db);
         }
 
         results
@@ -308,6 +310,10 @@ impl Battlefield {
 
         for modifier in all_modifiers {
             modifier.detach_all(db);
+        }
+
+        for card in all_cards(db) {
+            card.apply_modifiers_layered(db);
         }
     }
 
@@ -411,22 +417,15 @@ impl Battlefield {
         results: Vec<UnresolvedActionResult>,
     ) -> Vec<UnresolvedActionResult> {
         let mut pending = vec![];
+        let mut resolved = vec![];
 
         for result in results {
             match result {
                 UnresolvedActionResult::TapPermanent(cardid) => {
-                    pending.extend(Self::apply_action_result(
-                        db,
-                        all_players,
-                        ActionResult::TapPermanent(cardid),
-                    ));
+                    resolved.push(ActionResult::TapPermanent(cardid));
                 }
                 UnresolvedActionResult::PermanentToGraveyard(cardid) => {
-                    pending.extend(Self::apply_action_result(
-                        db,
-                        all_players,
-                        ActionResult::PermanentToGraveyard(cardid),
-                    ));
+                    resolved.push(ActionResult::PermanentToGraveyard(cardid));
                 }
                 UnresolvedActionResult::AddAbilityToStack {
                     source,
@@ -442,15 +441,11 @@ impl Battlefield {
                         .unwrap_or_default();
 
                     if wants_targets >= valid_targets.len() {
-                        pending.extend(Self::apply_action_result(
-                            db,
-                            all_players,
-                            ActionResult::AddAbilityToStack {
-                                source,
-                                ability,
-                                targets: valid_targets,
-                            },
-                        ));
+                        resolved.push(ActionResult::AddAbilityToStack {
+                            source,
+                            ability,
+                            targets: valid_targets,
+                        });
                     } else {
                         let mut valid_targets = Default::default();
                         let creatures = Self::creatures(db);
@@ -463,12 +458,8 @@ impl Battlefield {
                         });
                     }
                 }
-                UnresolvedActionResult::AddTriggerToStack(trigger) => {
-                    pending.extend(Self::apply_action_result(
-                        db,
-                        all_players,
-                        ActionResult::AddTriggerToStack(trigger),
-                    ));
+                UnresolvedActionResult::AddTriggerToStack(trigger, source) => {
+                    resolved.push(ActionResult::AddTriggerToStack(trigger, source));
                 }
                 UnresolvedActionResult::CloneCreatureNonTargeting {
                     source,
@@ -480,25 +471,17 @@ impl Battlefield {
                     });
                 }
                 UnresolvedActionResult::AddModifier { modifier } => {
-                    pending.extend(Self::apply_action_result(
-                        db,
-                        all_players,
-                        ActionResult::AddModifier { modifier },
-                    ));
+                    resolved.push(ActionResult::AddModifier { modifier });
                 }
                 UnresolvedActionResult::Mill {
                     count,
                     valid_targets,
                 } => {
                     if valid_targets.len() == 1 {
-                        pending.extend(Self::apply_action_result(
-                            db,
-                            all_players,
-                            ActionResult::Mill {
-                                count,
-                                targets: valid_targets,
-                            },
-                        ));
+                        resolved.push(ActionResult::Mill {
+                            count,
+                            targets: valid_targets,
+                        });
                     } else {
                         pending.push(UnresolvedActionResult::Mill {
                             count,
@@ -514,13 +497,9 @@ impl Battlefield {
                     valid_targets,
                 } => {
                     if valid_targets.len() == count {
-                        pending.extend(Self::apply_action_result(
-                            db,
-                            all_players,
-                            ActionResult::ReturnFromGraveyardToLibrary {
-                                targets: valid_targets,
-                            },
-                        ));
+                        resolved.push(ActionResult::ReturnFromGraveyardToLibrary {
+                            targets: valid_targets,
+                        });
                     } else {
                         let valid_targets =
                             compute_graveyard_targets(db, controller, source, &types);
@@ -540,13 +519,9 @@ impl Battlefield {
                     valid_targets,
                 } => {
                     if valid_targets.len() == count {
-                        pending.extend(Self::apply_action_result(
-                            db,
-                            all_players,
-                            ActionResult::ReturnFromGraveyardToBattlefield {
-                                targets: valid_targets,
-                            },
-                        ));
+                        resolved.push(ActionResult::ReturnFromGraveyardToBattlefield {
+                            targets: valid_targets,
+                        });
                     } else {
                         let valid_targets = compute_graveyard_targets(
                             db,
@@ -603,6 +578,8 @@ impl Battlefield {
             }
         }
 
+        pending.extend(Self::apply_action_results(db, all_players, resolved));
+
         pending
     }
 
@@ -616,6 +593,10 @@ impl Battlefield {
 
         for result in results {
             pending.extend(Self::apply_action_result(db, all_players, result));
+        }
+
+        for card in all_cards(db) {
+            card.apply_modifiers_layered(db);
         }
 
         pending
@@ -641,8 +622,8 @@ impl Battlefield {
             } => {
                 ability.move_to_stack(db, source, targets);
             }
-            ActionResult::AddTriggerToStack(trigger) => {
-                trigger.move_to_stack(db, Default::default());
+            ActionResult::AddTriggerToStack(trigger, source) => {
+                trigger.move_to_stack(db, source, Default::default());
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let Some(target) = target {
@@ -653,15 +634,18 @@ impl Battlefield {
                 modifier.activate(db);
             }
             ActionResult::Mill { count, targets } => {
+                let mut pending = vec![];
                 for target in targets {
                     let deck = &mut all_players[target].deck;
                     for _ in 0..count {
                         let card_id = deck.draw();
                         if let Some(card_id) = card_id {
-                            return Self::library_to_graveyard(db, card_id);
+                            pending.extend(Self::library_to_graveyard(db, card_id));
                         }
                     }
                 }
+
+                return pending;
             }
             ActionResult::ReturnFromGraveyardToLibrary { targets } => {
                 for target in targets {
@@ -695,12 +679,18 @@ impl Battlefield {
             ) {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {
-                    pending.push(UnresolvedActionResult::AddTriggerToStack(trigger))
+                    for source in trigger.listeners(db) {
+                        pending.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                    }
                 }
             }
         }
 
         target.move_to_graveyard(db);
+
+        for card in all_cards(db) {
+            card.apply_modifiers_layered(db);
+        }
 
         pending
     }
@@ -716,7 +706,9 @@ impl Battlefield {
             ) {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {
-                    pending.push(UnresolvedActionResult::AddTriggerToStack(trigger))
+                    for source in trigger.listeners(db) {
+                        pending.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                    }
                 }
             }
         }
@@ -734,7 +726,9 @@ impl Battlefield {
             if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {
-                    pending.push(UnresolvedActionResult::AddTriggerToStack(trigger))
+                    for source in trigger.listeners(db) {
+                        pending.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                    }
                 }
             }
         }
@@ -788,7 +782,7 @@ fn compute_graveyard_targets(
     let mut target_cards = vec![];
 
     for target in targets {
-        let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
+        let cards_in_graveyard = dbg!(target.get_cards::<InGraveyard>(db));
         for card in cards_in_graveyard {
             if card.types_intersect(db, types) {
                 target_cards.push(card);

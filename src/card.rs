@@ -1,8 +1,9 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use strum::{EnumIter, EnumString, IntoEnumIterator};
 
 use crate::{
     abilities::{
@@ -15,17 +16,200 @@ use crate::{
     types::{Subtype, Type},
 };
 
+#[derive(Debug, Clone, Deref, DerefMut, Component)]
+pub struct Keywords(pub HashSet<Keyword>);
+
+#[derive(Debug, Clone, Deref, DerefMut, Component)]
+pub struct ModifiedKeywords(pub HashSet<Keyword>);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumString)]
+#[strum(ascii_case_insensitive)]
+pub enum Keyword {
+    Absorb,
+    Affinity,
+    Afflict,
+    Afterlife,
+    Aftermath,
+    Amplify,
+    Annihilator,
+    Ascend,
+    Assist,
+    AuraSwap,
+    Awaken,
+    Backup,
+    Banding,
+    Bargain,
+    BattleCry,
+    Bestow,
+    Blitz,
+    Bloodthirst,
+    Boast,
+    Bushido,
+    Buyback,
+    Cascade,
+    Casualty,
+    Champion,
+    Changeling,
+    Cipher,
+    Cleave,
+    Companion,
+    Compleated,
+    Conspire,
+    Convoke,
+    Craft,
+    Crew,
+    CumulativeUpkeep,
+    Cycling,
+    Dash,
+    DayboundandNightbound,
+    Deathtouch,
+    Decayed,
+    Defender,
+    Delve,
+    Demonstrate,
+    Dethrone,
+    Devoid,
+    Devour,
+    Disturb,
+    DoubleStrike,
+    Dredge,
+    Echo,
+    Embalm,
+    Emerge,
+    Enchant,
+    Encore,
+    Enlist,
+    Entwine,
+    Epic,
+    Equip,
+    Escalate,
+    Escape,
+    Eternalize,
+    Evoke,
+    Evolve,
+    Exalted,
+    Exploit,
+    Extort,
+    Fabricate,
+    Fading,
+    Fear,
+    FirstStrike,
+    Flanking,
+    Flash,
+    Flashback,
+    Flying,
+    Forecast,
+    Foretell,
+    ForMirrodin,
+    Fortify,
+    Frenzy,
+    Fuse,
+    Graft,
+    Gravestorm,
+    Haste,
+    Haunt,
+    Hexproof,
+    HiddenAgenda,
+    Hideaway,
+    Horsemanship,
+    Improvise,
+    Indestructible,
+    Infect,
+    Ingest,
+    Intimidate,
+    JumpStart,
+    Kicker,
+    Landwalk,
+    LevelUp,
+    Lifelink,
+    LivingMetal,
+    LivingWeapon,
+    Madness,
+    Melee,
+    Menace,
+    Mentor,
+    Miracle,
+    Modular,
+    MoreThanMeetstheEye,
+    Morph,
+    Mutate,
+    Myriad,
+    Ninjutsu,
+    Offering,
+    Outlast,
+    Overload,
+    Partner,
+    Persist,
+    Phasing,
+    Poisonous,
+    Protection,
+    Prototype,
+    Provoke,
+    Prowess,
+    Prowl,
+    Rampage,
+    Ravenous,
+    Reach,
+    ReadAhead,
+    Rebound,
+    Reconfigure,
+    Recover,
+    Reinforce,
+    Renown,
+    Replicate,
+    Retrace,
+    Riot,
+    Ripple,
+    Scavenge,
+    Shadow,
+    Shroud,
+    Skulk,
+    Soulbond,
+    Soulshift,
+    SpaceSculptor,
+    Spectacle,
+    Splice,
+    SplitSecond,
+    Squad,
+    Storm,
+    Sunburst,
+    Surge,
+    Suspend,
+    TotemArmor,
+    Toxic,
+    Training,
+    Trample,
+    Transfigure,
+    Transmute,
+    Tribute,
+    Undaunted,
+    Undying,
+    Unearth,
+    Unleash,
+    Vanishing,
+    Vigilance,
+    Visit,
+    Ward,
+    Wither,
+}
+
+impl Keyword {
+    pub fn all() -> HashSet<Keyword> {
+        Keyword::iter().collect()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 pub struct SplitSecond;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 pub struct CannotBeCountered;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Component)]
-pub struct TriggeredAbilities(pub Vec<TriggerId>);
-
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct Colors(pub HashSet<Color>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct ModifiedColors(pub HashSet<Color>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct AddColors(pub HashSet<Color>);
@@ -65,18 +249,6 @@ impl From<&protogen::color::color::Color> for Color {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeModifier {
-    RemoveAll,
-    Add(HashSet<Type>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SubtypeModifier {
-    RemoveAll,
-    Add(HashSet<Subtype>),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub enum StaticAbilityModifier {
     RemoveAll,
@@ -95,6 +267,12 @@ pub enum TriggeredAbilityModifier {
     Add(TriggerId),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub enum EtbAbilityModifier {
+    RemoveAll,
+    Add(ETBAbility),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub struct Name(pub String);
 
@@ -105,6 +283,9 @@ pub struct MarkedDamage(pub i32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub struct BasePower(pub i32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct ModifiedBasePower(pub i32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub struct BasePowerModifier(pub i32);
@@ -118,6 +299,9 @@ pub struct AddPower(pub i32);
 pub struct BaseToughness(pub i32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct ModifiedBaseToughness(pub i32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub struct BaseToughnessModifier(pub i32);
 
 #[derive(
@@ -125,50 +309,11 @@ pub struct BaseToughnessModifier(pub i32);
 )]
 pub struct AddToughness(pub i32);
 
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Vigilance;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct AddVigilance;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct RemoveVigilance;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Flying;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct AddFlying;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct RemoveFlying;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Flash;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct AddFlash;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct RemoveFlash;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Hexproof;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct AddHexproof;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct RemoveHexproof;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Shroud;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct AddShroud;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct RemoveShroud;
+#[derive(Debug, Clone, Component)]
+pub enum ModifyKeywords {
+    Remove(HashSet<Keyword>),
+    Add(HashSet<Keyword>),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Card {
@@ -200,11 +345,7 @@ pub struct Card {
     pub power: Option<usize>,
     pub toughness: Option<usize>,
 
-    pub vigilance: bool,
-    pub flying: bool,
-    pub flash: bool,
-    pub hexproof: bool,
-    pub shroud: bool,
+    pub keywords: HashSet<Keyword>,
 }
 
 impl TryFrom<protogen::card::Card> for Card {
@@ -280,11 +421,12 @@ impl TryFrom<protogen::card::Card> for Card {
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
                     Ok(usize::try_from(v).map(Some)?)
                 })?,
-            vigilance: value.vigilance,
-            flying: value.flying,
-            flash: value.flash,
-            hexproof: value.hexproof,
-            shroud: value.shroud,
+            keywords: value
+                .keywords
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }

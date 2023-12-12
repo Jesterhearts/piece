@@ -30,7 +30,9 @@ fn plains() -> anyhow::Result<()> {
     assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(all_players[player].mana_pool.white_mana, 1);
 
     Ok(())
@@ -58,7 +60,9 @@ fn island() -> anyhow::Result<()> {
     assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(all_players[player].mana_pool.blue_mana, 1);
 
     Ok(())
@@ -86,7 +90,9 @@ fn swamp() -> anyhow::Result<()> {
     assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(all_players[player].mana_pool.black_mana, 1);
 
     Ok(())
@@ -114,7 +120,9 @@ fn mountain() -> anyhow::Result<()> {
     assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(all_players[player].mana_pool.red_mana, 1);
 
     Ok(())
@@ -142,7 +150,9 @@ fn forest() -> anyhow::Result<()> {
     assert_eq!(results, []);
 
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(all_players[player].mana_pool.green_mana, 1);
 
     Ok(())

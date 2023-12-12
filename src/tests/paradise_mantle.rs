@@ -52,6 +52,7 @@ pub fn adds_ability() -> anyhow::Result<()> {
     ));
 
     let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
     assert_eq!(creature.activated_abilities(&mut db).len(), 1);

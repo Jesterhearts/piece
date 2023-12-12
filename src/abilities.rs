@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
@@ -11,7 +11,7 @@ use crate::{
         AnyEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
         ReturnFromGraveyardToLibrary, TutorLibrary,
     },
-    in_play::{AbilityId, TriggerId},
+    in_play::{AbilityId, CardId, TriggerId},
     mana::Mana,
     protogen,
     targets::Restriction,
@@ -45,6 +45,9 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct ETBAbilities(pub Vec<ETBAbility>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+pub struct ModifiedETBAbilities(pub Vec<ETBAbility>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ETBAbility {
@@ -94,6 +97,9 @@ impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
 pub struct StaticAbilities(pub Vec<StaticAbility>);
 
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
+pub struct ModifiedStaticAbilities(pub Vec<StaticAbility>);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
     GreenCannotBeCountered { controller: ControllerRestriction },
@@ -141,6 +147,9 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut, Default)]
 pub struct ActivatedAbilities(pub Vec<AbilityId>);
 
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut, Default)]
+pub struct ModifiedActivatedAbilities(pub Vec<AbilityId>);
+
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct ApplyToSelf;
 
@@ -173,6 +182,12 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
 pub struct Triggers(pub Vec<TriggerId>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
+pub struct ModifiedTriggers(pub Vec<TriggerId>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
+pub struct TriggerListeners(pub HashSet<CardId>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggeredAbility {

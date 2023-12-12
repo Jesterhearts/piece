@@ -15,7 +15,7 @@ effects {
       colors { red {} }
       power: 1
       toughness: 1
-      haste: true
+      keywords: "Haste"
     }
   }
 }

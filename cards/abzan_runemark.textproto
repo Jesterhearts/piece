@@ -20,7 +20,7 @@ enchant {
     duration { until_source_leaves_battlefield {} }
   }
   modifiers {
-    modifier { add_vigilance: true }
+    modifier { add_keywords: "Vigilance" }
     controller { any {} }
     duration { until_source_leaves_battlefield {} }
     restrictions { controller_controls_black_or_green {} }

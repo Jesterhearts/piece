@@ -10,7 +10,7 @@ cost {
 oracle_text:  "Vigilance\n"
               "Other creatures you control get +2/+2\n"
               "Creatures your opponents control get -2/-2\n"
-vigilance: true
+keywords: "Vigilance"
 static_abilities {
   battlefield_modifier {
     modifier {

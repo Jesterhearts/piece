@@ -13,8 +13,7 @@ itertools = "0.12.0"
 protobuf = "3.3.0"
 rand = "0.8.5"
 scopeguard = "1.2.0"
-serde = { version = "1.0.193", features = [ "derive" ] }
-serde_json = "1.0.108"
+strum = { version = "0.25.0", features = [ "derive" ] }
 
 
 [build-dependencies]

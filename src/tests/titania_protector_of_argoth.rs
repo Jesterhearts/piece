@@ -80,7 +80,7 @@ fn graveyard_trigger() -> anyhow::Result<()> {
     let results = Battlefield::permanent_to_graveyard(&mut db, land);
     assert!(matches!(
         results.as_slice(),
-        [UnresolvedActionResult::AddTriggerToStack(_)]
+        [UnresolvedActionResult::AddTriggerToStack(_, _)]
     ));
 
     let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
@@ -92,6 +92,7 @@ fn graveyard_trigger() -> anyhow::Result<()> {
         [StackResult::CreateToken { .. }]
     ));
     let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
     assert_eq!(Battlefield::creatures(&mut db).len(), 2);

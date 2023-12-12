@@ -39,7 +39,9 @@ pub fn metamorphosis() -> anyhow::Result<()> {
         ]
     ));
 
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert_eq!(mantle.power(&mut db), Some(4));
     assert_eq!(mantle.toughness(&mut db), Some(4));
@@ -84,7 +86,9 @@ pub fn metamorphosis_bear() -> anyhow::Result<()> {
         ]
     ));
 
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert_eq!(bear.power(&mut db), Some(4));
     assert_eq!(bear.toughness(&mut db), Some(4));

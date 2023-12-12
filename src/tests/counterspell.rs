@@ -7,7 +7,7 @@ use crate::{
     in_play::Database,
     load_cards,
     player::AllPlayers,
-    stack::{Entry, Stack, StackResult},
+    stack::{Entry, Stack, StackResult}, battlefield::Battlefield,
 };
 
 #[test]
@@ -38,6 +38,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
         ]
     );
     let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
     assert!(Stack::is_empty(&mut db));

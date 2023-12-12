@@ -1,13 +1,13 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility},
     battlefield::Battlefield,
-    card::Color,
+    card::{Color, Keyword},
     controller::ControllerRestriction,
     in_play::Database,
     player::Controller,
@@ -213,8 +213,8 @@ pub struct ModifyBattlefield {
     pub entire_battlefield: bool,
     pub global: bool,
 
-    pub add_vigilance: bool,
-    pub add_flying: bool,
+    pub add_keywords: HashSet<Keyword>,
+    pub remove_keywords: HashSet<Keyword>,
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -252,8 +252,18 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
             remove_all_abilities: false,
             entire_battlefield: value.entire_battlefield,
             global: value.global,
-            add_vigilance: value.add_vigilance,
-            add_flying: value.add_flying,
+            add_keywords: value
+                .add_keywords
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .collect::<anyhow::Result<_>>()?,
+            remove_keywords: value
+                .remove_keywords
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }

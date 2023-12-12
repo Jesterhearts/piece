@@ -36,10 +36,5 @@ message Card {
   optional int32 power = 17;
   optional int32 toughness = 18;
 
-  bool vigilance = 19;
-  bool flying = 20;
-  bool flash = 21;
-  bool hexproof = 22;
-  bool shroud = 23;
-  bool haste = 24;
+  string keywords = 19;
 }

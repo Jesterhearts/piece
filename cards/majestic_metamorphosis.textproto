@@ -16,7 +16,7 @@ effects {
         add_types { creature {} }
         add_types { artifact {} }
         add_subtypes { angel {} }
-        add_flying: true
+        add_keywords: "Flying"
     }
     controller { any {} }
     duration { until_end_of_turn {} }

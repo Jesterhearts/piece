@@ -46,6 +46,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     ));
 
     let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
 
     assert_eq!(card.power(&mut db), Some(5));
@@ -87,7 +88,9 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
@@ -121,7 +124,9 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
@@ -164,7 +169,9 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
             StackResult::StackToGraveyard(counterspell)
         ]
     );
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert!(Stack::is_empty(&mut db));
 

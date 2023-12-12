@@ -41,7 +41,9 @@ fn damages_target() -> anyhow::Result<()> {
         ]
     );
 
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(bear.marked_damage(&mut db), 3);
 
     let results = Battlefield::check_sba(&mut db);
@@ -88,7 +90,9 @@ fn damages_target_threshold() -> anyhow::Result<()> {
         ]
     );
 
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(bear.marked_damage(&mut db), 5);
 
     let results = Battlefield::check_sba(&mut db);
@@ -137,7 +141,9 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
         ]
     );
 
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
     assert_eq!(bear.marked_damage(&mut db), 3);
 
     let results = Battlefield::check_sba(&mut db);

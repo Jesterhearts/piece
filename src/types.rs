@@ -9,6 +9,9 @@ use crate::protogen;
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
 pub struct Types(pub HashSet<Type>);
 
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub struct ModifiedTypes(pub HashSet<Type>);
+
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct AddTypes(pub HashSet<Type>);
 
@@ -61,6 +64,9 @@ impl Type {
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct Subtypes(pub HashSet<Subtype>);
+
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub struct ModifiedSubtypes(pub HashSet<Subtype>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct AddSubtypes(pub HashSet<Subtype>);

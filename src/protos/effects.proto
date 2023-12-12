@@ -125,8 +125,8 @@ message ModifyBattlefield {
   bool entire_battlefield = 11;
   bool global = 12;
 
-  bool add_vigilance = 13;
-  bool add_flying = 14;
+  string add_keywords = 13;
+  string remove_keywords = 14;
 }
 
 message BattlefieldModifier {
@@ -149,12 +149,7 @@ message CreateToken {
     int32 power = 5;
     int32 toughness = 6;
 
-    bool vigilance = 7;
-    bool flying = 8;
-    bool flash = 9;
-    bool hexproof = 10;
-    bool shroud = 11;
-    bool haste = 12;
+    string keywords = 7;
   }
 }
 

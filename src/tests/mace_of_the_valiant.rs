@@ -32,7 +32,9 @@ fn mace() -> anyhow::Result<()> {
     let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert_eq!(bear.power(&mut db), Some(4));
     assert_eq!(bear.toughness(&mut db), Some(2));
@@ -41,12 +43,14 @@ fn mace() -> anyhow::Result<()> {
     let results = Battlefield::add_from_stack(&mut db, bear2, vec![]);
     assert!(matches!(
         results.as_slice(),
-        [UnresolvedActionResult::AddTriggerToStack(_)]
+        [UnresolvedActionResult::AddTriggerToStack(_, _)]
     ));
     let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
     assert_eq!(results, []);
     let results = Stack::resolve_1(&mut db);
-    Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Stack::apply_results(&mut db, &mut all_players, results);
+    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+    assert_eq!(results, []);
 
     assert_eq!(bear.power(&mut db), Some(5));
     assert_eq!(bear.toughness(&mut db), Some(3));

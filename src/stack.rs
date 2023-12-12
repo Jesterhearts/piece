@@ -11,6 +11,7 @@ use crate::{
     effects::{BattlefieldModifier, Counter, Effect, EffectDuration, Token},
     in_play::{
         AbilityId, CardId, CounterId, Database, InStack, ModifierId, OnBattlefield, TriggerId,
+        TriggerInStack,
     },
     mana::Mana,
     player::{AllPlayers, Controller},
@@ -76,7 +77,7 @@ pub enum ActiveTarget {
 pub enum Entry {
     Card(CardId),
     Ability(AbilityId),
-    Trigger(TriggerId),
+    Trigger(TriggerId, CardId),
 }
 
 #[derive(Debug, Clone, Copy, Deref, DerefMut, Component)]
@@ -126,9 +127,9 @@ impl Stack {
             )
             .chain(
                 db.triggers
-                    .query::<(&InStack, Entity)>()
+                    .query::<(&TriggerInStack, Entity)>()
                     .iter(&db.triggers)
-                    .map(|(seq, entity)| (*seq, Entry::Trigger(entity.into()))),
+                    .map(|(seq, entity)| ((*seq).into(), Entry::Trigger(entity.into(), seq.1))),
             )
             .sorted_by_key(|(seq, _)| *seq)
             .collect()
@@ -165,13 +166,13 @@ impl Stack {
             )
             .chain(
                 db.triggers
-                    .query::<(&InStack, Entity, &Targets, Option<&Mode>)>()
+                    .query::<(&TriggerInStack, Entity, &Targets, Option<&Mode>)>()
                     .iter(&db.triggers)
                     .map(|(seq, entity, targets, mode)| {
                         (
-                            *seq,
+                            (*seq).into(),
                             StackEntry {
-                                ty: Entry::Trigger(entity.into()),
+                                ty: Entry::Trigger(entity.into(), seq.1),
                                 targets: targets.0.clone(),
                                 mode: mode.map(|mode| mode.0),
                             },
@@ -218,16 +219,13 @@ impl Stack {
                 None,
                 ability.source(db),
             ),
-            Entry::Trigger(trigger) => {
-                let listener = trigger.listener(db);
-                (
-                    false,
-                    trigger.effects(db),
-                    listener.controller(db),
-                    None,
-                    listener,
-                )
-            }
+            Entry::Trigger(trigger, source) => (
+                false,
+                trigger.effects(db),
+                source.controller(db),
+                None,
+                source,
+            ),
         };
 
         for effect in effects {
@@ -508,6 +506,7 @@ impl Stack {
         results
     }
 
+    #[must_use]
     pub fn apply_results(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -538,12 +537,10 @@ impl Stack {
                     Entry::Card(card) => {
                         pending.extend(Battlefield::stack_to_graveyard(db, card));
                     }
-                    Entry::Ability(_) | Entry::Trigger(_) => unreachable!(),
+                    Entry::Ability(_) | Entry::Trigger(_, _) => unreachable!(),
                 },
                 StackResult::DrawCards { player, count } => {
-                    if !all_players[player].draw(db, count) {
-                        todo!()
-                    }
+                    let _ = all_players[player].draw(db, count);
                 }
                 StackResult::GainMana { player, mana } => {
                     for (mana, count) in mana {
@@ -613,7 +610,7 @@ fn counter_spell(
                         // Vanilla counterspells can't counter activated abilities.
                         return false;
                     }
-                    Entry::Trigger(_) => {
+                    Entry::Trigger(_, _) => {
                         // Vanilla counterspells can't counter triggered abilities.
                         return false;
                     }
@@ -635,6 +632,7 @@ fn counter_spell(
 #[cfg(test)]
 mod tests {
     use crate::{
+        battlefield::Battlefield,
         in_play::{CardId, Database},
         load_cards,
         player::AllPlayers,
@@ -654,7 +652,9 @@ mod tests {
         let results = Stack::resolve_1(&mut db);
 
         assert_eq!(results, [StackResult::AddToBattlefield(card1)]);
-        Stack::apply_results(&mut db, &mut all_players, results);
+        let results = Stack::apply_results(&mut db, &mut all_players, results);
+        let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
+        assert_eq!(results, []);
 
         assert!(Stack::is_empty(&mut db));
 
