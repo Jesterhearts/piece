@@ -177,6 +177,35 @@ impl ManaPool {
         .max()
         .unwrap()
     }
+
+    pub(crate) fn pools_display(&self) -> Vec<String> {
+        let symbols = [
+            Mana::White,
+            Mana::Blue,
+            Mana::Black,
+            Mana::Red,
+            Mana::Green,
+            Mana::Colorless,
+        ];
+        let pools = [
+            &self.white_mana,
+            &self.blue_mana,
+            &self.black_mana,
+            &self.red_mana,
+            &self.green_mana,
+            &self.colorless_mana,
+        ];
+
+        let mut results = vec![];
+        for (symbol, amount) in symbols.into_iter().zip(pools) {
+            let mut result = String::default();
+            symbol.push_mana_symbol(&mut result);
+            result.push_str(&format!(": {}", amount));
+            results.push(result)
+        }
+
+        results
+    }
 }
 
 impl Index<Owner> for AllPlayers {

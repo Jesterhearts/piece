@@ -173,10 +173,15 @@ fn main() -> anyhow::Result<()> {
                         .constraints([Constraint::Percentage(12), Constraint::Percentage(88)])
                         .split(area);
 
-                    let layout = Layout::default()
+                    let battlefield_layout = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([Constraint::Min(1), Constraint::Length(5)])
                         .split(stack_and_battlefield[1]);
+
+                    let stack_and_mana = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([Constraint::Min(1), Constraint::Length(12)])
+                        .split(stack_and_battlefield[0]);
 
                     let entries = Stack::entries(&mut db);
                     let entries_len = entries.len();
@@ -195,7 +200,19 @@ fn main() -> anyhow::Result<()> {
                                 .collect_vec(),
                         )
                         .block(Block::default().borders(Borders::ALL).title(" Stack ")),
-                        stack_and_battlefield[0],
+                        stack_and_mana[0],
+                    );
+                    frame.render_widget(
+                        List::new(
+                            all_players[player]
+                                .mana_pool
+                                .pools_display()
+                                .into_iter()
+                                .map(ListItem::new)
+                                .collect_vec(),
+                        )
+                        .block(Block::default().borders(Borders::ALL)),
+                        stack_and_mana[1],
                     );
 
                     frame.render_stateful_widget(
@@ -206,7 +223,7 @@ fn main() -> anyhow::Result<()> {
                             last_hover,
                             last_click,
                         },
-                        layout[0],
+                        battlefield_layout[0],
                         &mut selected_state,
                     );
 
@@ -215,7 +232,7 @@ fn main() -> anyhow::Result<()> {
                             db: &mut db,
                             card: selected_state.selected,
                         },
-                        layout[1],
+                        battlefield_layout[1],
                         &mut horizontal_list_state,
                     );
                 }
