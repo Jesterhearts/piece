@@ -21,7 +21,7 @@ impl Mana {
             Mana::Black => result.push('💀'),
             Mana::Red => result.push('🔺'),
             Mana::Green => result.push('🌳'),
-            Mana::Colorless => result.push('◇'),
+            Mana::Colorless => result.push('⟡'),
             Mana::Generic(count) => result.push_str(&format!("{}", count)),
         }
     }
