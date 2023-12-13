@@ -15,25 +15,25 @@ message Card {
   repeated types.Subtype subtypes = 3;
 
   cost.CastingCost cost = 4;
-  bool cannot_be_countered = 6;
+  bool cannot_be_countered = 5;
 
-  repeated color.Color colors = 7;
+  repeated color.Color colors = 6;
 
-  string oracle_text = 8;
+  string oracle_text = 7;
 
-  optional abilities.Enchant enchant = 9;
+  optional abilities.Enchant enchant = 8;
 
-  repeated effects.Effect effects = 10;
+  repeated effects.Effect effects = 9;
 
-  repeated abilities.ETBAbility etb_abilities = 11;
-  repeated abilities.StaticAbility static_abilities = 12;
-  repeated effects.ActivatedAbility activated_abilities = 13;
-  repeated abilities.TriggeredAbility triggered_abilities = 14;
-  repeated effects.GainManaAbility mana_gains = 15;
-  repeated effects.ReplacementEffect replacement_effects = 16;
+  repeated abilities.ETBAbility etb_abilities = 10;
+  repeated abilities.StaticAbility static_abilities = 11;
+  repeated effects.ActivatedAbility activated_abilities = 12;
+  repeated abilities.TriggeredAbility triggered_abilities = 13;
+  repeated effects.GainManaAbility mana_gains = 14;
+  repeated effects.ReplacementEffect replacement_effects = 15;
 
-  optional int32 power = 17;
-  optional int32 toughness = 18;
+  optional int32 power = 16;
+  optional int32 toughness = 17;
 
-  string keywords = 19;
+  string keywords = 18;
 }
