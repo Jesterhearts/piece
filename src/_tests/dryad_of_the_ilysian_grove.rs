@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, UnresolvedActionResult},
+    battlefield::{Battlefield, PendingResults, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -21,17 +21,13 @@ fn adds_land_types() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
-    let results = Battlefield::add_from_stack(&mut db, land, vec![]);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, land, vec![]);
+    assert_eq!(results, PendingResults::default());
 
     let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert!(matches!(
-        results.as_slice(),
-        [UnresolvedActionResult::AddModifier { .. }]
-    ));
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Player::lands_per_turn(&mut db), 2);
 

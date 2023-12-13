@@ -3,12 +3,13 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
+    battlefield::ActionResult,
     card::{Color, Keyword},
     effects::{Token, TokenCreature},
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
-    stack::{Stack, StackResult},
+    stack::Stack,
     types::{Subtype, Type},
 };
 
@@ -22,14 +23,14 @@ fn creates_tokens() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
-    card.move_to_stack(&mut db, HashSet::default());
+    card.move_to_stack(&mut db, vec![]);
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
-            StackResult::CreateToken {
-                source: card,
+            ActionResult::CreateToken {
+                source: player.into(),
                 token: Token::Creature(TokenCreature {
                     name: "Dinosaur".to_owned(),
                     types: HashSet::from([Type::Creature]),
@@ -40,8 +41,8 @@ fn creates_tokens() -> anyhow::Result<()> {
                     toughness: 1
                 })
             },
-            StackResult::CreateToken {
-                source: card,
+            ActionResult::CreateToken {
+                source: player.into(),
                 token: Token::Creature(TokenCreature {
                     name: "Human Soldier".to_owned(),
                     types: HashSet::from([Type::Creature]),
@@ -52,7 +53,7 @@ fn creates_tokens() -> anyhow::Result<()> {
                     toughness: 1,
                 })
             },
-            StackResult::StackToGraveyard(card),
+            ActionResult::StackToGraveyard(card),
         ]
     );
 

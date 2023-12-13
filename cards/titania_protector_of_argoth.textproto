@@ -7,13 +7,13 @@ cost {
 types { legendary {} }
 types { creature {} }
 subtypes { elemental {} }
-oracle_text:  "When Titania, Protector of Argoth"
-              "enters the battlefield, return target"
-              "land card from your graveyard to the"
+oracle_text:  "When Titania, Protector of Argoth "
+              "enters the battlefield, return target "
+              "land card from your graveyard to the "
               "battlefield.\n"
-              "Whenever a land you control is put"
-              "into a graveyard from the battlefield,"
-              "create a 5/3 green Elemental creature"
+              "Whenever a land you control is put "
+              "into a graveyard from the battlefield, "
+              "create a 5/3 green Elemental creature "
               "token."
 power: 5
 toughness: 3
@@ -42,4 +42,8 @@ triggered_abilities {
       }
     }
   }
+  oracle_text:  "Whenever a land you control is put "
+                "into a graveyard from the battlefield, "
+                "create a 5/3 green Elemental creature "
+                "token."
 }

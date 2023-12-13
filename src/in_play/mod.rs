@@ -9,6 +9,7 @@ use std::{
 use bevy_ecs::{component::Component, entity::Entity, query::With, world::World};
 use derive_more::{Deref, DerefMut, From};
 use itertools::Itertools;
+use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{
@@ -16,8 +17,8 @@ use crate::{
     },
     card::{
         ActivatedAbilityModifier, AddColors, AddPower, AddToughness, BasePowerModifier,
-        BaseToughnessModifier, EtbAbilityModifier, Keyword, ModifyKeywords, StaticAbilityModifier,
-        TriggeredAbilityModifier,
+        BaseToughnessModifier, EtbAbilityModifier, Keyword, ModifyKeywords, OracleText,
+        StaticAbilityModifier, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::AbilityCost,
@@ -45,8 +46,16 @@ static NEXT_REPLACEMENT_SEQ: AtomicUsize = AtomicUsize::new(0);
 /// Starts at 1 because 0 should never be a valid stack id.
 static NEXT_STACK_SEQ: AtomicUsize = AtomicUsize::new(1);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SequenceNumber(usize);
+static UNIQUE_ID: AtomicUsize = AtomicUsize::new(1);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
+pub struct UniqueId(usize);
+
+impl UniqueId {
+    pub fn new() -> Self {
+        Self(UNIQUE_ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
 
 thread_local! {
     static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, AbilityId>> = OnceCell::new();
@@ -76,9 +85,63 @@ pub struct InHand(usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Hash)]
 pub struct InStack(usize);
 
+impl InStack {
+    pub fn title(self, db: &mut Database) -> String {
+        if let Some(found) = db
+            .query::<(Entity, &InStack)>()
+            .iter(db)
+            .find_map(|(card, loc)| {
+                if *loc == self {
+                    Some(CardId(card))
+                } else {
+                    None
+                }
+            })
+        {
+            return format!("Stack ({}): {}", self, found.name(db));
+        }
+
+        if let Some(found) = db
+            .abilities
+            .query::<(Entity, &InStack)>()
+            .iter(&db.abilities)
+            .find_map(|(ability, loc)| {
+                if *loc == self {
+                    Some(AbilityId(ability))
+                } else {
+                    None
+                }
+            })
+        {
+            return format!("Stack ({}): {}", self, found.short_text(db));
+        }
+
+        let found = db
+            .triggers
+            .query::<(Entity, &InStack)>()
+            .iter(&db.triggers)
+            .find_map(|(trigger, loc)| {
+                if *loc == self {
+                    Some(TriggerId(trigger))
+                } else {
+                    None
+                }
+            })
+            .expect("Should have a valid stack target");
+
+        found.short_text(db)
+    }
+}
+
 impl From<TriggerInStack> for InStack {
     fn from(value: TriggerInStack) -> Self {
         Self(value.0)
+    }
+}
+
+impl std::fmt::Display for InStack {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
@@ -290,6 +353,10 @@ impl AbilityId {
                     entity.insert(ApplyToSelf);
                 }
 
+                if !ability.oracle_text.is_empty() {
+                    entity.insert(OracleText(ability.oracle_text.clone()));
+                }
+
                 Self(entity.id())
             }
             Ability::Mana(ability) => {
@@ -391,7 +458,7 @@ impl AbilityId {
         })
     }
 
-    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: HashSet<ActiveTarget>) {
+    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<ActiveTarget>) {
         if Stack::split_second(db) {
             return;
         }
@@ -405,13 +472,19 @@ impl AbilityId {
     }
 
     pub fn ability(self, db: &mut Database) -> Ability {
-        if let Some((cost, effects, apply_to_self)) = db
+        if let Some((cost, effects, text, apply_to_self)) = db
             .abilities
-            .query::<(Entity, &AbilityCost, &Effects, Option<&ApplyToSelf>)>()
+            .query::<(
+                Entity,
+                &AbilityCost,
+                &Effects,
+                Option<&OracleText>,
+                Option<&ApplyToSelf>,
+            )>()
             .iter(&db.abilities)
-            .filter_map(|(e, cost, effect, apply_to_self)| {
+            .filter_map(|(e, cost, effect, text, apply_to_self)| {
                 if Self(e) == self {
-                    Some((cost, effect, apply_to_self))
+                    Some((cost, effect, text, apply_to_self))
                 } else {
                     None
                 }
@@ -422,6 +495,7 @@ impl AbilityId {
                 cost: cost.clone(),
                 effects: effects.0.clone(),
                 apply_to_self: apply_to_self.is_some(),
+                oracle_text: text.map(|t| t.0.clone()).unwrap_or_default(),
             })
         } else {
             Ability::Mana(self.gain_mana_ability(db))
@@ -449,6 +523,15 @@ impl AbilityId {
         }
     }
 
+    pub fn text(self, db: &mut Database) -> String {
+        match self.ability(db) {
+            Ability::Activated(activated) => {
+                format!("{}: {}", activated.cost.text(), activated.oracle_text)
+            }
+            Ability::Mana(ability) => ability.text(),
+        }
+    }
+
     pub fn apply_to_self(self, db: &mut Database) -> bool {
         db.abilities.get::<ApplyToSelf>(self.0).is_some()
     }
@@ -471,6 +554,16 @@ impl AbilityId {
 
     fn delete(self, db: &mut Database) {
         db.abilities.despawn(self.0);
+    }
+
+    fn short_text(self, db: &mut Database) -> String {
+        let mut text = self.text(db);
+        if text.len() > 10 {
+            text.truncate(10);
+            text.push_str("...");
+        }
+
+        text
     }
 }
 
@@ -618,7 +711,7 @@ impl ModifierId {
 pub struct TriggerId(Entity);
 
 impl TriggerId {
-    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: HashSet<ActiveTarget>) {
+    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<ActiveTarget>) {
         if Stack::split_second(db) {
             return;
         }
@@ -723,6 +816,15 @@ impl TriggerId {
             .unwrap()
             .insert(listener);
     }
+
+    fn short_text(self, db: &mut Database) -> String {
+        let mut text = db.triggers.get::<OracleText>(self.0).unwrap().0.clone();
+        if text.len() > 10 {
+            text.truncate(10);
+            text.push_str("...")
+        }
+        text
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deref, DerefMut, Component)]
@@ -789,13 +891,30 @@ impl CounterId {
             )
             .unwrap_or_default()
     }
+
+    pub fn counter_text_on(db: &mut Database, card: CardId) -> Vec<String> {
+        let mut results = vec![];
+
+        for counter in Counter::iter() {
+            let amount = Self::counters_on(db, card, counter);
+            if amount > 0 {
+                results.push(match counter {
+                    Counter::Charge => format!("Charge x{}", amount),
+                    Counter::P1P1 => format!("+1/+1 x{}", amount),
+                    Counter::M1M1 => format!("-1/-1 x{}", amount),
+                });
+            }
+        }
+
+        results
+    }
 }
 
 fn targets_for_counterspell(
     db: &mut Database,
     caster: Controller,
     target: &SpellTarget,
-    targets: &mut HashSet<ActiveTarget>,
+    targets: &mut Vec<ActiveTarget>,
 ) {
     let cards_in_stack = db
         .query::<(Entity, &InStack)>()
@@ -804,9 +923,9 @@ fn targets_for_counterspell(
         .sorted_by_key(|(_, in_stack)| *in_stack)
         .collect_vec();
 
-    for (card, stack_id) in cards_in_stack {
+    for (card, stack_id) in cards_in_stack.into_iter() {
         if card.can_be_countered(db, caster, target) {
-            targets.insert(ActiveTarget::Stack { id: stack_id });
+            targets.push(ActiveTarget::Stack { id: stack_id });
         }
     }
 }
@@ -817,7 +936,7 @@ fn targets_for_battlefield_modifier(
     modifier: Option<&BattlefieldModifier>,
     creatures: &[CardId],
     caster: Controller,
-    targets: &mut HashSet<ActiveTarget>,
+    targets: &mut Vec<ActiveTarget>,
 ) {
     for creature in creatures.iter() {
         if creature.can_be_targeted(db, caster)
@@ -830,7 +949,7 @@ fn targets_for_battlefield_modifier(
                     &modifier.unwrap().restrictions,
                 ))
         {
-            targets.insert(ActiveTarget::Battlefield { id: *creature });
+            targets.push(ActiveTarget::Battlefield { id: *creature });
         }
     }
 }

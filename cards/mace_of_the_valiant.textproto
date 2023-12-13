@@ -3,11 +3,11 @@ cost {
   mana_costs { generic { count: 2} }
   mana_costs { white {} }
 }
-oracle_text:  "Equiped creature gets +1/+1 for each"
-              "charge counter on Mace of the Valiant"
+oracle_text:  "Equipped creature gets +1/+1 for each "
+              "charge counter on Mace of the Valiant "
               "and has vigilance.\n"
-              "Whenever a creature enters the"
-              "battlefield under your control, put a"
+              "Whenever a creature enters the "
+              "battlefield under your control, put a "
               "charge counter on Mace of the Valiant."
 activated_abilities {
   cost { mana_costs { generic { count: 3 } } }
@@ -22,6 +22,7 @@ activated_abilities {
       }
     }
   }
+  oracle_text: "Equip"
 }
 triggered_abilities {
   trigger {

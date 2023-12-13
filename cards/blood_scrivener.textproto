@@ -6,6 +6,9 @@ cost {
 types { creature {} }
 subtypes { zombie {} }
 subtypes { wizard {} }
+oracle_text:  "If you would draw a card while you have no "
+              "cards in hand, instead you draw two cards "
+              "and you lose 1 life."
 replacement_effects { 
   draw {}
   restrictions {

@@ -6,9 +6,9 @@ cost {
 types { creature {} }
 subtypes { elf {} }
 subtypes { shaman {} }
-oracle_text:  "When Glowspore Shaman enters the"
-              "battlefield, mill three cards. You may"
-              "put a land card from your graveyard"
+oracle_text:  "When Glowspore Shaman enters the "
+              "battlefield, mill three cards. You may "
+              "put a land card from your graveyard "
               "on top of your library."
 power: 3
 toughness: 1

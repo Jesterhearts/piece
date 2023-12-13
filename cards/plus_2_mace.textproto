@@ -16,4 +16,5 @@ activated_abilities {
       }
     }
   }
+  oracle_text: "Equip"
 }

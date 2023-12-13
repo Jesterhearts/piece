@@ -9,7 +9,7 @@ use itertools::Itertools;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{Battlefield, UnresolvedActionResult},
+    battlefield::{ActionResult, Battlefield, PendingResults},
     controller::ControllerRestriction,
     deck::Deck,
     effects::{Effect, ReplaceDraw},
@@ -42,6 +42,10 @@ impl Owner {
                 }
             })
             .collect_vec()
+    }
+
+    pub fn name(self, _db: &mut Database) -> String {
+        "Player".to_string()
     }
 }
 
@@ -245,7 +249,6 @@ pub struct Player {
 }
 
 impl Player {
-    #[cfg(test)]
     pub fn infinite_mana(&mut self) {
         self.mana_pool.white_mana = usize::MAX;
         self.mana_pool.blue_mana = usize::MAX;
@@ -267,8 +270,8 @@ impl Player {
     }
 
     #[must_use]
-    pub fn draw(&mut self, db: &mut Database, count: usize) -> Vec<UnresolvedActionResult> {
-        let mut results = vec![];
+    pub fn draw(&mut self, db: &mut Database, count: usize) -> PendingResults {
+        let mut results = PendingResults::default();
 
         for _ in 0..count {
             let replacements = ReplacementEffectId::watching::<ReplaceDraw>(db);
@@ -289,7 +292,7 @@ impl Player {
         db: &mut Database,
         replacements: &mut impl ExactSizeIterator<Item = ReplacementEffectId>,
         count: usize,
-        results: &mut Vec<UnresolvedActionResult>,
+        results: &mut PendingResults,
     ) {
         for _ in 0..count {
             if replacements.len() > 0 {
@@ -304,7 +307,6 @@ impl Player {
                         ControllerRestriction::Any,
                         &restrictions,
                     ) {
-                        dbg!("did not pass restrictions");
                         continue;
                     }
 
@@ -315,7 +317,7 @@ impl Player {
                                 self.draw_internal(db, replacements, count, results);
                             }
                             Effect::ControllerLosesLife(count) => {
-                                results.push(UnresolvedActionResult::LoseLife {
+                                results.push_resolved(ActionResult::LoseLife {
                                     target: controller,
                                     count,
                                 });
@@ -328,6 +330,11 @@ impl Player {
                             Effect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
                             Effect::GainCounter(_) => todo!(),
                             Effect::ModifyCreature(_) => todo!(),
+                            Effect::CopyOfAnyCreatureNonTargeting => todo!(),
+                            Effect::Mill(_) => todo!(),
+                            Effect::ReturnFromGraveyardToBattlefield(_) => todo!(),
+                            Effect::ReturnFromGraveyardToLibrary(_) => todo!(),
+                            Effect::TutorLibrary(_) => todo!(),
                         }
                     }
                 }
@@ -384,12 +391,12 @@ impl Player {
         true
     }
 
-    pub fn manifest(&mut self, db: &mut Database) -> Vec<UnresolvedActionResult> {
+    pub fn manifest(&mut self, db: &mut Database) -> PendingResults {
         if let Some(manifested) = self.deck.draw() {
             manifested.manifest(db);
-            Battlefield::add_from_stack(db, manifested, vec![])
+            Battlefield::add_from_stack_or_hand(db, manifested, vec![])
         } else {
-            vec![]
+            PendingResults::default()
         }
     }
 

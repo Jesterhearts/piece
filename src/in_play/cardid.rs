@@ -6,31 +6,33 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{
-        Ability, ActivatedAbilities, ETBAbilities, ETBAbility, GainMana,
-        ModifiedActivatedAbilities, ModifiedETBAbilities, ModifiedStaticAbilities,
-        ModifiedTriggers, StaticAbilities, StaticAbility, TriggerListeners, Triggers,
+        Ability, ActivatedAbilities, ETBAbilities, GainMana, ModifiedActivatedAbilities,
+        ModifiedETBAbilities, ModifiedStaticAbilities, ModifiedTriggers, StaticAbilities,
+        StaticAbility, TriggerListeners, Triggers,
     },
-    battlefield::Battlefield,
+    battlefield::{compute_deck_targets, compute_graveyard_targets, Battlefield},
     card::{
         keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BasePower,
         BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, Keyword,
         Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
-        ModifiedKeywords, ModifyKeywords, Name, StaticAbilityModifier, TriggeredAbilityModifier,
+        ModifiedKeywords, ModifyKeywords, Name, OracleText, StaticAbilityModifier,
+        TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::CastingCost,
     effects::{
         effect_duration::UntilSourceLeavesBattlefield, AnyEffect, DealDamage,
-        DynamicPowerToughness, Effect, Effects, ReplacementEffects, Token,
+        DynamicPowerToughness, Effect, Effects, Mill, ReplacementEffects,
+        ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
         targets_for_battlefield_modifier, targets_for_counterspell, upload_modifier, AbilityId,
         Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global, InExile,
         InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq,
-        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId,
+        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId, UniqueId,
         NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
-    player::{Controller, Owner},
+    player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Stack, Targets},
     targets::{Comparison, Restriction, Restrictions, SpellTarget},
     triggers::{trigger_source, TriggerSource},
@@ -57,6 +59,10 @@ impl PartialEq<CardId> for Cloning {
 }
 
 impl CardId {
+    pub fn id(self, db: &Database) -> usize {
+        db.get::<UniqueId>(self.0).unwrap().0
+    }
+
     pub fn is_in_location<Location: Component + Ord>(self, database: &Database) -> bool {
         database.get::<Location>(self.0).is_some()
     }
@@ -92,7 +98,7 @@ impl CardId {
         }
     }
 
-    pub fn move_to_stack(self, db: &mut Database, targets: HashSet<ActiveTarget>) {
+    pub fn move_to_stack(self, db: &mut Database, targets: Vec<ActiveTarget>) {
         if Stack::split_second(db) {
             return;
         }
@@ -545,7 +551,7 @@ impl CardId {
             .insert(ModifiedActivatedAbilities(activated_abilities));
     }
 
-    pub fn etb_abilities(self, db: &mut Database) -> Vec<ETBAbility> {
+    pub fn etb_abilities(self, db: &mut Database) -> Vec<Effect> {
         db.get::<ModifiedETBAbilities>(self.0)
             .cloned()
             .map(|m| m.0)
@@ -720,14 +726,14 @@ impl CardId {
         }
     }
 
-    pub fn power(self, db: &mut Database) -> Option<i32> {
+    pub fn power(self, db: &Database) -> Option<i32> {
         db.get::<ModifiedBasePower>(self.0)
             .map(|bp| bp.0)
             .or_else(|| db.get::<BasePower>(self.0).map(|bp| bp.0))
             .map(|bp| bp + db.get::<AddPower>(self.0).map(|a| a.0).unwrap_or_default())
     }
 
-    pub fn toughness(self, db: &mut Database) -> Option<i32> {
+    pub fn toughness(self, db: &Database) -> Option<i32> {
         db.get::<ModifiedBaseToughness>(self.0)
             .map(|bp| bp.0)
             .or_else(|| db.get::<BaseToughness>(self.0).map(|bt| bt.0))
@@ -839,6 +845,7 @@ impl CardId {
         let mut entity = db.spawn((
             destination,
             Name(card.name.clone()),
+            OracleText(card.oracle_text.clone()),
             player,
             Controller::from(player),
             card.cost.clone(),
@@ -846,6 +853,7 @@ impl CardId {
             Subtypes(card.subtypes.clone()),
             Colors(card.colors.clone()),
             Keywords(card.keywords.clone()),
+            UniqueId::new(),
         ));
 
         if is_token {
@@ -938,6 +946,7 @@ impl CardId {
                     ability.trigger.from,
                     Effects(ability.effects.clone()),
                     Types(ability.trigger.for_types.clone()),
+                    OracleText(ability.oracle_text.clone()),
                 ));
 
                 match ability.trigger.trigger {
@@ -970,16 +979,18 @@ impl CardId {
         cardid
     }
 
-    pub fn cost(self, db: &mut Database) -> &CastingCost {
+    pub fn cost(self, db: &Database) -> &CastingCost {
         db.get::<CastingCost>(self.0).unwrap()
     }
 
-    pub fn valid_targets(self, db: &mut Database) -> HashSet<ActiveTarget> {
-        let mut targets = HashSet::default();
+    pub fn valid_targets(self, db: &mut Database) -> Vec<ActiveTarget> {
+        let mut targets = vec![];
         let creatures = Battlefield::creatures(db);
 
+        let controller = self.controller(db);
         for effect in self.effects(db) {
-            self.targets_for_effect(db, effect, &mut targets, &creatures);
+            let effect = effect.into_effect(db, controller);
+            self.targets_for_effect(db, controller, &effect, &creatures, &mut targets);
         }
 
         for ability in self.activated_abilities(db) {
@@ -994,7 +1005,7 @@ impl CardId {
         creatures: &[CardId],
         db: &mut Database,
         dmg: &DealDamage,
-        targets: &mut HashSet<ActiveTarget>,
+        targets: &mut Vec<ActiveTarget>,
     ) {
         for creature in creatures.iter() {
             let controller = self.controller(db);
@@ -1007,7 +1018,7 @@ impl CardId {
                     &dmg.restrictions,
                 )
             {
-                targets.insert(ActiveTarget::Battlefield { id: *creature });
+                targets.push(ActiveTarget::Battlefield { id: *creature });
             }
         }
     }
@@ -1017,27 +1028,29 @@ impl CardId {
         db: &mut Database,
         ability: AbilityId,
         creatures: &[CardId],
-        targets: &mut HashSet<ActiveTarget>,
+        targets: &mut Vec<ActiveTarget>,
     ) {
         let ability = ability.ability(db);
+        let controller = self.controller(db);
         if !ability.apply_to_self() {
             for effect in ability.into_effects() {
-                self.targets_for_effect(db, effect, targets, creatures);
+                let effect = effect.into_effect(db, controller);
+                self.targets_for_effect(db, controller, &effect, creatures, targets);
             }
         }
     }
 
-    fn targets_for_effect(
+    pub fn targets_for_effect(
         self,
         db: &mut Database,
-        effect: AnyEffect,
-        targets: &mut HashSet<ActiveTarget>,
+        controller: Controller,
+        effect: &Effect,
         creatures: &[CardId],
+        targets: &mut Vec<ActiveTarget>,
     ) {
-        let controller = self.controller(db);
-        match effect.into_effect(db, controller) {
+        match effect {
             Effect::CounterSpell { target } => {
-                targets_for_counterspell(db, controller, &target, targets);
+                targets_for_counterspell(db, controller, target, targets);
             }
             Effect::BattlefieldModifier(_) => {}
             Effect::ControllerDrawCards(_) => {}
@@ -1046,19 +1059,19 @@ impl CardId {
             }
             Effect::CreateToken(_) => {}
             Effect::DealDamage(dmg) => {
-                self.targets_for_damage(creatures, db, &dmg, targets);
+                self.targets_for_damage(creatures, db, dmg, targets);
             }
             Effect::ExileTargetCreature => {
                 for creature in creatures.iter() {
                     if creature.can_be_targeted(db, controller) {
-                        targets.insert(ActiveTarget::Battlefield { id: *creature });
+                        targets.push(ActiveTarget::Battlefield { id: *creature });
                     }
                 }
             }
             Effect::ExileTargetCreatureManifestTopOfLibrary => {
                 for creature in creatures.iter() {
                     if creature.can_be_targeted(db, controller) {
-                        targets.insert(ActiveTarget::Battlefield { id: *creature });
+                        targets.push(ActiveTarget::Battlefield { id: *creature });
                     }
                 }
             }
@@ -1067,13 +1080,61 @@ impl CardId {
                 targets_for_battlefield_modifier(
                     db,
                     self,
-                    Some(&modifier),
+                    Some(modifier),
                     creatures,
                     controller,
                     targets,
                 );
             }
             Effect::ControllerLosesLife(_) => {}
+            Effect::CopyOfAnyCreatureNonTargeting => {
+                for creature in creatures.iter() {
+                    targets.push(ActiveTarget::Battlefield { id: *creature });
+                }
+            }
+            Effect::Mill(Mill { target, .. }) => {
+                targets.extend(
+                    match target {
+                        ControllerRestriction::Any => AllPlayers::all_players(db),
+                        ControllerRestriction::You => HashSet::from([controller.into()]),
+                        ControllerRestriction::Opponent => {
+                            let mut all = AllPlayers::all_players(db);
+                            all.remove(&controller.into());
+                            all
+                        }
+                    }
+                    .into_iter()
+                    .map(|player| ActiveTarget::Player { id: player }),
+                );
+            }
+            Effect::ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield {
+                types,
+                ..
+            }) => {
+                targets.extend(
+                    compute_graveyard_targets(db, ControllerRestriction::You, self, types)
+                        .into_iter()
+                        .map(|card| ActiveTarget::Graveyard { id: card }),
+                );
+            }
+            Effect::ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary {
+                controller,
+                types,
+                ..
+            }) => {
+                targets.extend(
+                    compute_graveyard_targets(db, *controller, self, types)
+                        .into_iter()
+                        .map(|card| ActiveTarget::Graveyard { id: card }),
+                );
+            }
+            Effect::TutorLibrary(TutorLibrary { restrictions, .. }) => {
+                targets.extend(
+                    compute_deck_targets(db, controller, restrictions)
+                        .into_iter()
+                        .map(|card| ActiveTarget::Library { id: card }),
+                );
+            }
         }
     }
 
@@ -1215,8 +1276,20 @@ impl CardId {
         self.keywords(db).contains(&Keyword::Vigilance)
     }
 
-    pub fn name(self, db: &mut Database) -> String {
+    pub fn name(self, db: &Database) -> String {
         db.get::<Name>(self.0).unwrap().0.clone()
+    }
+
+    pub fn oracle_text(self, db: &Database) -> String {
+        db.get::<OracleText>(self.0).unwrap().0.clone()
+    }
+
+    pub fn name_ref(self, db: &Database) -> &String {
+        &db.get::<Name>(self.0).unwrap().0
+    }
+
+    pub fn oracle_text_ref(self, db: &Database) -> &String {
+        &db.get::<OracleText>(self.0).unwrap().0
     }
 
     pub fn split_second(self, db: &mut Database) -> bool {
@@ -1225,5 +1298,35 @@ impl CardId {
 
     pub fn cannot_be_countered(&self, db: &mut Database) -> bool {
         db.get::<CannotBeCountered>(self.0).is_some()
+    }
+
+    pub(crate) fn abilities_text(self, db: &mut Database) -> String {
+        self.activated_abilities(db)
+            .into_iter()
+            .map(|ability| ability.text(db))
+            .join("\n")
+    }
+
+    pub(crate) fn pt_text(&self, db: &Database) -> Option<String> {
+        let power = self.power(db);
+        let toughness = self.toughness(db);
+
+        if let Some(power) = power {
+            let toughness = toughness.expect("Should never have toughness without power");
+            Some(format!("{}/{}", power, toughness))
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn modified_by(&self, db: &mut Database) -> Vec<String> {
+        let mut results = vec![];
+
+        let modifiers = self.modifiers(db);
+        for modifier in modifiers {
+            results.push(modifier.source(db).name(db));
+        }
+
+        results
     }
 }

@@ -7,8 +7,6 @@ cost {
 }
 oracle_text:  "This spell can't be countered.\n"
               "Green spells you control can't be countered\n"
-              "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and"
-              "toughness 5/5 and becomes a dinosaur in addition to its other creature types."
 cannot_be_countered: true
 static_abilities {
   green_cannot_be_countered {
@@ -17,10 +15,12 @@ static_abilities {
 }
 activated_abilities {
   cost {
-    mana_costs { green {} }
-    mana_costs { green {} }
     mana_costs { generic { count: 4} }
+    mana_costs { green {} }
+    mana_costs { green {} }
   }
+  oracle_text:  "Until end of turn, each Elf creature you control has base power and "
+                "toughness 5/5 and becomes a dinosaur in addition to its other creature types."
   effects {
     battlefield_modifier { 
       modifier {

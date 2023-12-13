@@ -8,20 +8,6 @@ import "effects.proto";
 import "targets.proto";
 import "triggers.proto";
 
-message ETBAbility {
-  message CopyOfAnyCreature {
-  }
-
-  oneof ability {
-    CopyOfAnyCreature copy_of_any_creature = 1;
-    effects.Mill mill = 2;
-    effects.ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 3;
-    effects.ReturnFromGraveyardToBattlefield 
-      return_from_graveyard_to_battlefield = 4;
-    effects.TutorLibrary tutor_library = 5;
-  }
-}
-
 message Enchant {
   repeated effects.BattlefieldModifier modifiers = 1;
   repeated targets.Restriction restrictions = 2;
@@ -42,4 +28,5 @@ message StaticAbility {
 message TriggeredAbility {  
   triggers.Trigger trigger = 1;
   repeated effects.Effect effects = 2;
+  string oracle_text = 3;
 }

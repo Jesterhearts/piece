@@ -1,108 +1,491 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use bevy_ecs::{entity::Entity, query::With};
 use itertools::Itertools;
 
 use crate::{
-    abilities::{compute_mana_gain, Ability, ETBAbility, StaticAbility},
+    abilities::{Ability, GainMana, GainManaAbility, StaticAbility},
     card::Color,
     controller::ControllerRestriction,
     cost::AdditionalCost,
     effects::{
-        effect_duration::UntilEndOfTurn, Destination, Mill, ReturnFromGraveyardToBattlefield,
-        ReturnFromGraveyardToLibrary, TutorLibrary,
+        effect_duration::UntilEndOfTurn, BattlefieldModifier, Counter, Effect, EffectDuration,
+        Mill, Token,
     },
     in_play::{
-        all_cards, cards, AbilityId, Active, CardId, Database, InGraveyard, InLibrary, ModifierId,
-        OnBattlefield, TriggerId,
+        all_cards, cards, AbilityId, Active, CardId, CounterId, Database, InGraveyard, InLibrary,
+        ModifierId, OnBattlefield, TriggerId,
     },
-    player::{AllPlayers, Controller, Owner},
-    stack::{ActiveTarget, Stack},
+    mana::Mana,
+    player::{AllPlayers, Controller},
+    stack::{ActiveTarget, Entry, Stack},
     targets::Restriction,
     triggers::{self, trigger_source},
     types::Type,
 };
 
+#[derive(Debug, PartialEq, Eq)]
+
+pub enum ResolutionResult {
+    Complete,
+    TryAgain,
+    PendingChoice,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingResult {
+    pub apply_immediately: Vec<ActionResult>,
+    pub then_resolve: VecDeque<UnresolvedAction>,
+    pub recompute: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PendingResults {
+    pub results: VecDeque<PendingResult>,
+}
+
+impl PendingResults {
+    pub fn push_resolved(&mut self, action: ActionResult) {
+        if let Some(last) = self.results.back_mut() {
+            if !last.then_resolve.is_empty() {
+                self.results.push_back(PendingResult {
+                    apply_immediately: vec![action],
+                    then_resolve: Default::default(),
+                    recompute: false,
+                });
+            } else {
+                last.apply_immediately.push(action);
+            }
+        } else {
+            self.results.push_back(PendingResult {
+                apply_immediately: vec![action],
+                then_resolve: Default::default(),
+                recompute: false,
+            });
+        }
+    }
+
+    pub fn push_unresolved(&mut self, action: UnresolvedAction) {
+        if let Some(last) = self.results.back_mut() {
+            if !last.apply_immediately.is_empty() || !last.then_resolve.is_empty() {
+                last.recompute = true;
+            }
+            last.then_resolve.push_back(action);
+        } else {
+            self.results.push_back(PendingResult {
+                apply_immediately: Default::default(),
+                then_resolve: VecDeque::from([action]),
+                recompute: false,
+            });
+        }
+    }
+
+    pub fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<String> {
+        if let Some(to_resolve) = self.results.front() {
+            if let Some(to_resolve) = to_resolve.then_resolve.front() {
+                to_resolve.choices(db, all_players)
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        }
+    }
+
+    #[must_use]
+    pub fn resolve(
+        &mut self,
+        db: &mut Database,
+        all_players: &mut AllPlayers,
+        choice: Option<usize>,
+    ) -> ResolutionResult {
+        if self.results.is_empty() {
+            return ResolutionResult::Complete;
+        }
+
+        let first = self.results.front_mut().unwrap();
+        let results = Battlefield::apply_action_results(db, all_players, &first.apply_immediately);
+        first.apply_immediately.clear();
+
+        let extra = if let Some(to_resolve) = first.then_resolve.front_mut() {
+            let actions = to_resolve.resolve(db, choice);
+            if !actions.is_empty() {
+                first.then_resolve.pop_front();
+                Battlefield::apply_action_results(db, all_players, &actions)
+            } else {
+                self.extend(results);
+                return ResolutionResult::PendingChoice;
+            }
+        } else {
+            PendingResults::default()
+        };
+
+        if first.recompute {
+            for to_resolve in first.then_resolve.iter_mut() {
+                to_resolve.compute_targets(db);
+            }
+        }
+
+        if first.then_resolve.is_empty() {
+            self.results.pop_front();
+        }
+
+        self.extend(results);
+        self.extend(extra);
+
+        if self.results.is_empty() {
+            ResolutionResult::Complete
+        } else {
+            ResolutionResult::TryAgain
+        }
+    }
+
+    pub(crate) fn extend(&mut self, results: PendingResults) {
+        self.results.extend(results.results);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnresolvedActionResult {
-    TapPermanent(CardId),
-    PermanentToGraveyard(CardId),
-    LoseLife {
-        target: Controller,
-        count: usize,
-    },
-    AddAbilityToStack {
-        source: CardId,
-        ability: AbilityId,
-        valid_targets: HashSet<ActiveTarget>,
-    },
-    GainMana {
-        source: CardId,
-        ability: AbilityId,
-        mode: Option<usize>,
-    },
-    AddTriggerToStack(TriggerId, CardId),
-    CloneCreatureNonTargeting {
-        source: CardId,
-        valid_targets: Vec<CardId>,
-    },
-    AddModifier {
-        modifier: ModifierId,
-    },
-    Mill {
-        count: usize,
-        valid_targets: HashSet<Owner>,
-    },
-    ReturnFromGraveyardToLibrary {
-        source: CardId,
-        count: usize,
-        controller: ControllerRestriction,
-        types: HashSet<Type>,
-        valid_targets: Vec<CardId>,
-    },
-    ReturnFromGraveyardToBattlefield {
-        source: CardId,
-        count: usize,
-        types: HashSet<Type>,
-        valid_targets: Vec<CardId>,
-    },
-    TutorLibrary {
-        source: CardId,
-        destination: Destination,
-        targets: Vec<CardId>,
-        reveal: bool,
-        restrictions: Vec<Restriction>,
-    },
+    Effect(Effect),
+    Ability(AbilityId),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnresolvedAction {
+    pub source: CardId,
+    pub result: UnresolvedActionResult,
+    pub valid_targets: Vec<ActiveTarget>,
+    pub choices: Vec<Option<usize>>,
+    pub optional: bool,
+}
+
+impl UnresolvedAction {
+    pub fn compute_targets(&mut self, db: &mut Database) {
+        let controller = self.source.controller(db);
+        match &self.result {
+            UnresolvedActionResult::Effect(effect) => {
+                let creatures = Battlefield::creatures(db);
+
+                let mut valid_targets = vec![];
+                self.source.targets_for_effect(
+                    db,
+                    controller,
+                    effect,
+                    &creatures,
+                    &mut valid_targets,
+                );
+
+                self.valid_targets = valid_targets;
+            }
+            UnresolvedActionResult::Ability(ability) => {
+                let ability = ability.ability(db);
+                let creatures = Battlefield::creatures(db);
+
+                let mut valid_targets = vec![];
+                for effect in ability.into_effects() {
+                    let effect = effect.into_effect(db, controller);
+
+                    self.source.targets_for_effect(
+                        db,
+                        controller,
+                        &effect,
+                        &creatures,
+                        &mut valid_targets,
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn choices(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<String> {
+        match &self.result {
+            UnresolvedActionResult::Effect(effect) => {
+                effect.choices(db, all_players, &self.valid_targets)
+            }
+            UnresolvedActionResult::Ability(ability) => {
+                let controller = self.source.controller(db);
+                ability
+                    .ability(db)
+                    .choices(db, all_players, controller, &self.valid_targets)
+            }
+        }
+    }
+
+    pub fn resolve(&mut self, db: &mut Database, choice: Option<usize>) -> Vec<ActionResult> {
+        self.choices.push(choice);
+
+        match &self.result {
+            UnresolvedActionResult::Effect(effect) => match effect {
+                Effect::CopyOfAnyCreatureNonTargeting => {
+                    assert_eq!(self.choices.len(), 1);
+
+                    vec![ActionResult::CloneCreatureNonTargeting {
+                        source: self.source,
+                        target: choice.map(|choice| self.valid_targets[choice]),
+                    }]
+                }
+                Effect::CounterSpell { .. } => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+
+                    todo!()
+                }
+                Effect::CreateToken(token) => vec![ActionResult::CreateToken {
+                    source: self.source.controller(db),
+                    token: token.clone(),
+                }],
+                Effect::DealDamage(_) => todo!(),
+                Effect::Equip(modifiers) => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+                    let mut results = vec![];
+
+                    // Hack.
+                    self.source.deactivate_modifiers(db);
+                    for modifier in modifiers {
+                        let id = ModifierId::upload_temporary_modifier(
+                            db,
+                            self.source,
+                            &BattlefieldModifier {
+                                modifier: modifier.clone(),
+                                controller: ControllerRestriction::You,
+                                duration: EffectDuration::UntilSourceLeavesBattlefield,
+                                restrictions: vec![],
+                            },
+                        );
+                        results.push(ActionResult::ApplyModifierToTarget {
+                            modifier: id,
+                            target: self.valid_targets[choice.unwrap()],
+                        })
+                    }
+
+                    results
+                }
+                Effect::ExileTargetCreature => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+
+                    vec![ActionResult::ExileTarget(
+                        self.valid_targets[choice.unwrap()],
+                    )]
+                }
+                Effect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
+                Effect::GainCounter(_) => todo!(),
+                Effect::Mill(Mill { count, .. }) => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+
+                    let targets = self
+                        .choices
+                        .iter()
+                        .filter(|target| target.is_some())
+                        .count();
+                    let wants_targets = effect.wants_targets();
+                    if targets >= wants_targets || targets >= self.valid_targets.len() {
+                        let targets = self
+                            .choices
+                            .iter()
+                            .filter_map(|target| *target)
+                            .map(|target| self.valid_targets[target])
+                            .collect_vec();
+
+                        vec![ActionResult::Mill {
+                            count: *count,
+                            targets,
+                        }]
+                    } else {
+                        vec![]
+                    }
+                }
+                Effect::ModifyCreature(_) => todo!(),
+                Effect::ReturnFromGraveyardToBattlefield(_) => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+
+                    let targets = self
+                        .choices
+                        .iter()
+                        .filter(|target| target.is_some())
+                        .count();
+                    let wants_targets = effect.wants_targets();
+                    if targets >= wants_targets || targets >= self.valid_targets.len() {
+                        let targets = self
+                            .choices
+                            .iter()
+                            .filter_map(|target| *target)
+                            .map(|target| self.valid_targets[target])
+                            .collect_vec();
+
+                        vec![ActionResult::ReturnFromGraveyardToBattlefield { targets }]
+                    } else {
+                        vec![]
+                    }
+                }
+                Effect::ReturnFromGraveyardToLibrary(_) => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+
+                    let targets = self
+                        .choices
+                        .iter()
+                        .filter(|target| target.is_some())
+                        .count();
+                    let wants_targets = effect.wants_targets();
+                    if targets >= wants_targets || targets >= self.valid_targets.len() {
+                        let targets = self
+                            .choices
+                            .iter()
+                            .filter_map(|target| *target)
+                            .map(|target| self.valid_targets[target])
+                            .collect_vec();
+
+                        vec![ActionResult::ReturnFromGraveyardToLibrary { targets }]
+                    } else {
+                        vec![]
+                    }
+                }
+                Effect::TutorLibrary(_) => todo!(),
+                Effect::BattlefieldModifier(_)
+                | Effect::ControllerDrawCards(_)
+                | Effect::ControllerLosesLife(_) => {
+                    unreachable!()
+                }
+            },
+            UnresolvedActionResult::Ability(ability) => {
+                if let Ability::Mana(GainManaAbility { gain, .. }) = ability.ability(db) {
+                    match gain {
+                        GainMana::Specific { gains } => {
+                            vec![ActionResult::GainMana {
+                                gain: gains,
+                                target: self.source.controller(db),
+                            }]
+                        }
+                        GainMana::Choice { choices } => {
+                            assert_eq!(self.choices.len(), 1);
+                            if choice.is_none() {
+                                self.choices.pop();
+                                return vec![];
+                            }
+
+                            vec![ActionResult::GainMana {
+                                gain: choices[choice.unwrap()].clone(),
+                                target: self.source.controller(db),
+                            }]
+                        }
+                    }
+                } else {
+                    let controller = self.source.controller(db);
+                    let wants_targets = ability
+                        .effects(db)
+                        .into_iter()
+                        .map(|effect| effect.wants_targets(db, controller))
+                        .sum::<usize>();
+
+                    let targets = self
+                        .choices
+                        .iter()
+                        .filter(|target| target.is_some())
+                        .count();
+                    if targets >= wants_targets {
+                        let targets = self
+                            .choices
+                            .iter()
+                            .filter_map(|target| *target)
+                            .map(|target| self.valid_targets[target])
+                            .collect_vec();
+
+                        vec![ActionResult::AddAbilityToStack {
+                            source: self.source,
+                            ability: *ability,
+                            targets,
+                        }]
+                    } else {
+                        vec![]
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionResult {
+    AddToBattlefield(CardId),
+    StackToGraveyard(CardId),
+    ApplyToBattlefield(ModifierId),
+    ApplyModifierToTarget {
+        modifier: ModifierId,
+        target: ActiveTarget,
+    },
+    ExileTarget(ActiveTarget),
+    DamageTarget {
+        quantity: usize,
+        target: ActiveTarget,
+    },
+    ManifestTopOfLibrary(Controller),
+    ModifyCreatures {
+        targets: Vec<ActiveTarget>,
+        modifier: ModifierId,
+    },
+    SpellCountered {
+        id: Entry,
+    },
+    AddCounters {
+        target: CardId,
+        counter: Counter,
+        count: usize,
+    },
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
     AddAbilityToStack {
         source: CardId,
         ability: AbilityId,
-        targets: HashSet<ActiveTarget>,
+        targets: Vec<ActiveTarget>,
     },
     AddTriggerToStack(TriggerId, CardId),
     CloneCreatureNonTargeting {
         source: CardId,
-        target: Option<CardId>,
+        target: Option<ActiveTarget>,
     },
     AddModifier {
         modifier: ModifierId,
     },
     Mill {
         count: usize,
-        targets: HashSet<Owner>,
+        targets: Vec<ActiveTarget>,
     },
     ReturnFromGraveyardToLibrary {
-        targets: Vec<CardId>,
+        targets: Vec<ActiveTarget>,
     },
     ReturnFromGraveyardToBattlefield {
-        targets: Vec<CardId>,
+        targets: Vec<ActiveTarget>,
     },
     LoseLife {
+        target: Controller,
+        count: usize,
+    },
+    GainMana {
+        gain: Vec<Mana>,
+        target: Controller,
+    },
+    CreateToken {
+        source: Controller,
+        token: Token,
+    },
+    DrawCards {
         target: Controller,
         count: usize,
     },
@@ -156,7 +539,7 @@ impl Battlefield {
 
         let mut results = vec![];
 
-        for card in on_battlefield {
+        for card in on_battlefield.into_iter() {
             let types = card.types(db);
             if types.contains(&Type::Creature) {
                 results.push(card);
@@ -167,95 +550,16 @@ impl Battlefield {
     }
 
     #[must_use]
-    pub fn add_from_stack(
+    pub fn add_from_stack_or_hand(
         db: &mut Database,
         source_card_id: CardId,
         targets: Vec<CardId>,
-    ) -> Vec<UnresolvedActionResult> {
-        let mut results = vec![];
+    ) -> PendingResults {
+        let mut results = PendingResults::default();
 
         if let Some(aura) = source_card_id.aura(db) {
             for target in targets.iter() {
                 target.apply_aura(db, aura);
-            }
-        }
-
-        for etb in source_card_id.etb_abilities(db).iter() {
-            match etb {
-                ETBAbility::CopyOfAnyCreature => {
-                    assert!(targets.is_empty());
-
-                    results.push(UnresolvedActionResult::CloneCreatureNonTargeting {
-                        source: source_card_id,
-                        valid_targets: Self::creatures(db),
-                    });
-                }
-                ETBAbility::Mill(Mill { count, target }) => {
-                    let targets = match target {
-                        ControllerRestriction::Any => AllPlayers::all_players(db),
-                        ControllerRestriction::You => {
-                            HashSet::from([source_card_id.controller(db).into()])
-                        }
-                        ControllerRestriction::Opponent => {
-                            let mut all = AllPlayers::all_players(db);
-                            all.remove(&source_card_id.controller(db).into());
-                            all
-                        }
-                    };
-
-                    results.push(UnresolvedActionResult::Mill {
-                        count: *count,
-                        valid_targets: targets,
-                    })
-                }
-                ETBAbility::ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary {
-                    count,
-                    controller,
-                    types,
-                }) => {
-                    let valid_targets =
-                        compute_graveyard_targets(db, *controller, source_card_id, types);
-
-                    results.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
-                        source: source_card_id,
-                        count: *count,
-                        controller: *controller,
-                        types: types.clone(),
-                        valid_targets,
-                    });
-                }
-                ETBAbility::ReturnFromGraveyardToBattlefield(
-                    ReturnFromGraveyardToBattlefield { count, types },
-                ) => {
-                    let valid_targets = compute_graveyard_targets(
-                        db,
-                        ControllerRestriction::You,
-                        source_card_id,
-                        types,
-                    );
-
-                    results.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
-                        source: source_card_id,
-                        count: *count,
-                        types: types.clone(),
-                        valid_targets,
-                    });
-                }
-                ETBAbility::TutorLibrary(TutorLibrary {
-                    restrictions,
-                    destination,
-                    reveal,
-                }) => {
-                    let controller = source_card_id.controller(db);
-                    let targets = compute_deck_targets(db, controller, restrictions);
-                    results.push(UnresolvedActionResult::TutorLibrary {
-                        source: source_card_id,
-                        destination: *destination,
-                        targets,
-                        reveal: *reveal,
-                        restrictions: restrictions.clone(),
-                    });
-                }
             }
         }
 
@@ -265,10 +569,15 @@ impl Battlefield {
                 StaticAbility::BattlefieldModifier(modifier) => {
                     let modifier =
                         ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
-                    results.push(UnresolvedActionResult::AddModifier { modifier })
+                    results.push_resolved(ActionResult::AddModifier { modifier })
                 }
                 StaticAbility::ExtraLandsPerTurn(_) => {}
             }
+        }
+
+        let controller = source_card_id.controller(db);
+        for effect in source_card_id.etb_abilities(db) {
+            Self::push_effect_results(db, source_card_id, controller, effect, &mut results);
         }
 
         source_card_id.move_to_battlefield(db);
@@ -280,7 +589,7 @@ impl Battlefield {
                 let for_types = trigger.for_types(db);
                 if source_card_id.types_intersect(db, &for_types) {
                     for source in trigger.listeners(db) {
-                        results.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                        results.push_resolved(ActionResult::AddTriggerToStack(trigger, source))
                     }
                 }
             }
@@ -355,51 +664,75 @@ impl Battlefield {
         all_players: &mut AllPlayers,
         card: CardId,
         index: usize,
-    ) -> Vec<UnresolvedActionResult> {
+    ) -> PendingResults {
         if Stack::split_second(db) {
-            return vec![];
+            return PendingResults::default();
         }
 
-        let mut results = vec![];
+        let mut results = PendingResults::default();
 
         let ability_id = card.activated_abilities(db)[index];
         let ability = ability_id.ability(db);
 
         if ability.cost().tap {
             if card.tapped(db) {
-                return vec![];
+                return PendingResults::default();
             }
 
-            results.push(UnresolvedActionResult::TapPermanent(card));
+            results.push_resolved(ActionResult::TapPermanent(card));
         }
 
         for cost in ability.cost().additional_cost.iter() {
             match cost {
                 AdditionalCost::SacrificeThis => {
                     if !card.can_be_sacrificed(db) {
-                        return vec![];
+                        return PendingResults::default();
                     }
 
-                    results.push(UnresolvedActionResult::PermanentToGraveyard(card));
+                    results.push_resolved(ActionResult::PermanentToGraveyard(card));
                 }
             }
         }
 
         if !all_players[card.controller(db)].spend_mana(&ability.cost().mana_cost) {
-            return vec![];
+            return PendingResults::default();
         }
 
-        if let Ability::Mana(_) = ability {
-            results.push(UnresolvedActionResult::GainMana {
-                source: card,
-                ability: ability_id,
-                mode: None,
-            });
+        if let Ability::Mana(gain) = ability {
+            match gain.gain {
+                GainMana::Specific { gains } => {
+                    results.push_resolved(ActionResult::GainMana {
+                        target: card.controller(db),
+                        gain: gains,
+                    });
+                }
+                GainMana::Choice { .. } => {
+                    results.push_unresolved(UnresolvedAction {
+                        source: card,
+                        result: UnresolvedActionResult::Ability(ability_id),
+                        optional: false,
+                        valid_targets: vec![],
+                        choices: vec![],
+                    });
+                }
+            }
         } else {
-            results.push(UnresolvedActionResult::AddAbilityToStack {
+            let controller = card.controller(db);
+
+            let creatures = Self::creatures(db);
+            let mut valid_targets = vec![];
+            for effect in ability.into_effects() {
+                let effect = effect.into_effect(db, controller);
+                card.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+            }
+
+            results.push_unresolved(UnresolvedAction {
                 source: card,
-                ability: ability_id,
-                valid_targets: card.valid_targets(db),
+                result: UnresolvedActionResult::Ability(ability_id),
+                // TODO this isn't always true for many abilities.
+                optional: false,
+                valid_targets,
+                choices: vec![],
             });
         }
 
@@ -419,41 +752,15 @@ impl Battlefield {
         result
     }
 
-    /// Attempts to automatically resolve any unresolved actions and _recomputes targets for pending actions.
-    #[must_use]
-    pub fn maybe_resolve(
-        db: &mut Database,
-        all_players: &mut AllPlayers,
-        results: Vec<UnresolvedActionResult>,
-    ) -> Vec<UnresolvedActionResult> {
-        let mut pending = vec![];
-        let mut resolved = vec![];
-
-        Self::attempt_to_resolve(db, all_players, results, &mut resolved, &mut pending);
-        let applied_results = Self::apply_action_results(db, all_players, resolved);
-        if applied_results.is_empty() && !pending.is_empty() {
-            let mut new_pending = vec![];
-            let mut resolved = vec![];
-            Self::attempt_to_resolve(db, all_players, pending, &mut resolved, &mut new_pending);
-            new_pending.extend(Self::apply_action_results(db, all_players, resolved));
-
-            pending = new_pending;
-        } else {
-            pending.extend(applied_results);
-        }
-
-        pending
-    }
-
     #[must_use]
     pub fn apply_action_results(
         db: &mut Database,
         all_players: &mut AllPlayers,
-        results: Vec<ActionResult>,
-    ) -> Vec<UnresolvedActionResult> {
-        let mut pending = vec![];
+        results: &[ActionResult],
+    ) -> PendingResults {
+        let mut pending = PendingResults::default();
 
-        for result in results {
+        for result in results.iter() {
             pending.extend(Self::apply_action_result(db, all_players, result));
         }
 
@@ -468,38 +775,42 @@ impl Battlefield {
     fn apply_action_result(
         db: &mut Database,
         all_players: &mut AllPlayers,
-        result: ActionResult,
-    ) -> Vec<UnresolvedActionResult> {
+        result: &ActionResult,
+    ) -> PendingResults {
         match result {
             ActionResult::TapPermanent(card_id) => {
                 card_id.tap(db);
             }
             ActionResult::PermanentToGraveyard(card_id) => {
-                return Self::permanent_to_graveyard(db, card_id);
+                return Self::permanent_to_graveyard(db, *card_id);
             }
             ActionResult::AddAbilityToStack {
                 source,
                 ability,
                 targets,
             } => {
-                ability.move_to_stack(db, source, targets);
+                ability.move_to_stack(db, *source, targets.clone());
             }
             ActionResult::AddTriggerToStack(trigger, source) => {
-                trigger.move_to_stack(db, source, Default::default());
+                trigger.move_to_stack(db, *source, Default::default());
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
-                if let Some(target) = target {
-                    source.clone_card(db, target);
+                if let Some(ActiveTarget::Battlefield { id: target }) = target {
+                    source.clone_card(db, *target);
                 }
             }
             ActionResult::AddModifier { modifier } => {
                 modifier.activate(db);
             }
             ActionResult::Mill { count, targets } => {
-                let mut pending = vec![];
+                let mut pending = PendingResults::default();
                 for target in targets {
-                    let deck = &mut all_players[target].deck;
-                    for _ in 0..count {
+                    let ActiveTarget::Player { id: target } = target else {
+                        unreachable!()
+                    };
+
+                    let deck = &mut all_players[*target].deck;
+                    for _ in 0..*count {
                         let card_id = deck.draw();
                         if let Some(card_id) = card_id {
                             pending.extend(Self::library_to_graveyard(db, card_id));
@@ -511,31 +822,98 @@ impl Battlefield {
             }
             ActionResult::ReturnFromGraveyardToLibrary { targets } => {
                 for target in targets {
-                    all_players[target.owner(db)].deck.place_on_top(db, target);
+                    let ActiveTarget::Graveyard { id: target } = target else {
+                        unreachable!()
+                    };
+
+                    all_players[target.owner(db)].deck.place_on_top(db, *target);
                 }
             }
             ActionResult::ReturnFromGraveyardToBattlefield { targets } => {
-                let mut pending = vec![];
+                let mut pending = PendingResults::default();
                 for target in targets {
-                    pending.extend(Self::add_from_stack(db, target, vec![]));
+                    let ActiveTarget::Graveyard { id: target } = target else {
+                        unreachable!()
+                    };
+                    pending.extend(Self::add_from_stack_or_hand(db, *target, vec![]));
                 }
 
                 return pending;
             }
             ActionResult::LoseLife { target, count } => {
-                all_players[target].life_total -= count as i32;
+                all_players[*target].life_total -= *count as i32;
+            }
+            ActionResult::GainMana { gain, target } => {
+                for mana in gain {
+                    all_players[*target].mana_pool.apply(*mana)
+                }
+            }
+            ActionResult::CreateToken { source, token } => {
+                let card = CardId::upload_token(db, (*source).into(), token.clone());
+                return Battlefield::add_from_stack_or_hand(db, card, vec![]);
+            }
+            ActionResult::DrawCards { target, count } => {
+                let _ = all_players[*target].draw(db, *count);
+            }
+            ActionResult::AddToBattlefield(card) => {
+                return Battlefield::add_from_stack_or_hand(db, *card, vec![]);
+            }
+            ActionResult::StackToGraveyard(card) => {
+                return Battlefield::stack_to_graveyard(db, *card);
+            }
+            ActionResult::ApplyToBattlefield(modifier) => {
+                modifier.activate(db);
+            }
+            ActionResult::ApplyModifierToTarget { modifier, target } => {
+                let ActiveTarget::Battlefield { id: target } = target else {
+                    unreachable!()
+                };
+                target.apply_modifier(db, *modifier);
+            }
+            ActionResult::ExileTarget(target) => {
+                let ActiveTarget::Battlefield { id: target } = target else {
+                    unreachable!()
+                };
+                return Battlefield::exile(db, *target);
+            }
+            ActionResult::DamageTarget { quantity, target } => {
+                let ActiveTarget::Battlefield { id: target } = target else {
+                    unreachable!()
+                };
+                target.mark_damage(db, *quantity);
+            }
+            ActionResult::ManifestTopOfLibrary(player) => {
+                return all_players[*player].manifest(db);
+            }
+            ActionResult::ModifyCreatures { targets, modifier } => {
+                for target in targets {
+                    let ActiveTarget::Battlefield { id: target } = target else {
+                        unreachable!()
+                    };
+                    target.apply_modifier(db, *modifier);
+                }
+            }
+            ActionResult::SpellCountered { id } => match id {
+                Entry::Card(card) => {
+                    return Battlefield::stack_to_graveyard(db, *card);
+                }
+                Entry::Ability(_) | Entry::Trigger(_, _) => unreachable!(),
+            },
+            ActionResult::AddCounters {
+                target,
+                counter,
+                count,
+            } => {
+                CounterId::add_counters(db, *target, *counter, *count);
             }
         }
 
-        vec![]
+        PendingResults::default()
     }
 
     #[must_use]
-    pub fn permanent_to_graveyard(
-        db: &mut Database,
-        target: CardId,
-    ) -> Vec<UnresolvedActionResult> {
-        let mut pending = vec![];
+    pub fn permanent_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+        let mut pending = PendingResults::default();
 
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
         {
@@ -546,7 +924,7 @@ impl Battlefield {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {
                     for source in trigger.listeners(db) {
-                        pending.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                        pending.push_resolved(ActionResult::AddTriggerToStack(trigger, source))
                     }
                 }
             }
@@ -562,8 +940,8 @@ impl Battlefield {
     }
 
     #[must_use]
-    pub fn library_to_graveyard(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
-        let mut pending = vec![];
+    pub fn library_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+        let mut pending = PendingResults::default();
 
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
         {
@@ -574,7 +952,7 @@ impl Battlefield {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {
                     for source in trigger.listeners(db) {
-                        pending.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                        pending.push_resolved(ActionResult::AddTriggerToStack(trigger, source))
                     }
                 }
             }
@@ -586,8 +964,8 @@ impl Battlefield {
     }
 
     #[must_use]
-    pub fn stack_to_graveyard(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
-        let mut pending = vec![];
+    pub fn stack_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+        let mut pending = PendingResults::default();
 
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
         {
@@ -595,7 +973,7 @@ impl Battlefield {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {
                     for source in trigger.listeners(db) {
-                        pending.push(UnresolvedActionResult::AddTriggerToStack(trigger, source))
+                        pending.push_resolved(ActionResult::AddTriggerToStack(trigger, source))
                     }
                 }
             }
@@ -607,184 +985,104 @@ impl Battlefield {
     }
 
     #[must_use]
-    pub fn exile(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
+    pub fn exile(db: &mut Database, target: CardId) -> PendingResults {
         target.move_to_exile(db);
 
-        vec![]
+        PendingResults::default()
     }
 
-    fn attempt_to_resolve(
+    fn push_effect_results(
         db: &mut Database,
-        all_players: &mut AllPlayers,
-        results: Vec<UnresolvedActionResult>,
-        resolved: &mut Vec<ActionResult>,
-        pending: &mut Vec<UnresolvedActionResult>,
+        source: CardId,
+        controller: Controller,
+        effect: Effect,
+        results: &mut PendingResults,
     ) {
-        for result in results {
-            match result {
-                UnresolvedActionResult::TapPermanent(cardid) => {
-                    resolved.push(ActionResult::TapPermanent(cardid));
-                }
-                UnresolvedActionResult::PermanentToGraveyard(cardid) => {
-                    resolved.push(ActionResult::PermanentToGraveyard(cardid));
-                }
-                UnresolvedActionResult::AddAbilityToStack {
-                    source,
-                    ability,
-                    valid_targets,
-                } => {
-                    let controller = source.controller(db);
-                    let wants_targets: usize = ability
-                        .effects(db)
-                        .iter()
-                        .map(|effect| effect.wants_targets(db, controller))
-                        .max()
-                        .unwrap_or_default();
-
-                    if wants_targets >= valid_targets.len() {
-                        resolved.push(ActionResult::AddAbilityToStack {
-                            source,
-                            ability,
-                            targets: valid_targets,
-                        });
-                    } else {
-                        let mut valid_targets = Default::default();
-                        let creatures = Self::creatures(db);
-                        source.targets_for_ability(db, ability, &creatures, &mut valid_targets);
-
-                        pending.push(UnresolvedActionResult::AddAbilityToStack {
-                            source,
-                            ability,
-                            valid_targets,
-                        });
-                    }
-                }
-                UnresolvedActionResult::AddTriggerToStack(trigger, source) => {
-                    resolved.push(ActionResult::AddTriggerToStack(trigger, source));
-                }
-                UnresolvedActionResult::CloneCreatureNonTargeting {
-                    source,
-                    valid_targets,
-                } => {
-                    pending.push(UnresolvedActionResult::CloneCreatureNonTargeting {
-                        source,
-                        valid_targets,
-                    });
-                }
-                UnresolvedActionResult::AddModifier { modifier } => {
-                    resolved.push(ActionResult::AddModifier { modifier });
-                }
-                UnresolvedActionResult::Mill {
+        match effect {
+            Effect::BattlefieldModifier(modifier) => {
+                results.push_resolved(ActionResult::AddModifier {
+                    modifier: ModifierId::upload_temporary_modifier(db, source, &modifier),
+                });
+            }
+            Effect::ControllerDrawCards(count) => {
+                results.push_resolved(ActionResult::DrawCards {
+                    target: controller,
                     count,
-                    valid_targets,
-                } => {
-                    if valid_targets.len() == 1 {
-                        resolved.push(ActionResult::Mill {
-                            count,
-                            targets: valid_targets,
-                        });
-                    } else {
-                        pending.push(UnresolvedActionResult::Mill {
-                            count,
-                            valid_targets,
-                        });
-                    }
-                }
-                UnresolvedActionResult::ReturnFromGraveyardToLibrary {
-                    source,
+                });
+            }
+            Effect::ControllerLosesLife(count) => {
+                results.push_resolved(ActionResult::LoseLife {
+                    target: controller,
                     count,
-                    controller,
-                    types,
-                    valid_targets,
-                } => {
-                    if valid_targets.len() == count {
-                        resolved.push(ActionResult::ReturnFromGraveyardToLibrary {
-                            targets: valid_targets,
-                        });
-                    } else {
-                        let valid_targets =
-                            compute_graveyard_targets(db, controller, source, &types);
-                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToLibrary {
-                            source,
-                            count,
-                            controller,
-                            types,
-                            valid_targets,
-                        })
-                    }
-                }
-                UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
-                    source,
-                    count,
-                    types,
-                    valid_targets,
-                } => {
-                    if valid_targets.len() == count {
-                        resolved.push(ActionResult::ReturnFromGraveyardToBattlefield {
-                            targets: valid_targets,
-                        });
-                    } else {
-                        let valid_targets = compute_graveyard_targets(
-                            db,
-                            ControllerRestriction::You,
-                            source,
-                            &types,
-                        );
-                        pending.push(UnresolvedActionResult::ReturnFromGraveyardToBattlefield {
-                            source,
-                            count,
-                            types,
-                            valid_targets,
-                        })
-                    }
-                }
-                UnresolvedActionResult::TutorLibrary {
-                    source,
-                    destination,
-                    targets: _,
-                    reveal,
-                    restrictions,
-                } => {
-                    let controller = source.controller(db);
-                    let targets = compute_deck_targets(db, controller, &restrictions);
+                });
+            }
+            Effect::CreateToken(token) => {
+                results.push_resolved(ActionResult::CreateToken {
+                    source: controller,
+                    token,
+                });
+            }
+            Effect::GainCounter(counter) => {
+                results.push_resolved(ActionResult::AddCounters {
+                    target: source,
+                    counter,
+                    count: 1,
+                });
+            }
+            Effect::CopyOfAnyCreatureNonTargeting => {
+                let creatures = Self::creatures(db);
+                let mut valid_targets = vec![];
+                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
 
-                    pending.push(UnresolvedActionResult::TutorLibrary {
-                        source,
-                        destination,
-                        targets,
-                        reveal,
-                        restrictions,
-                    });
-                }
-                UnresolvedActionResult::GainMana {
+                results.push_unresolved(UnresolvedAction {
                     source,
-                    ability,
-                    mode,
-                } => {
-                    if let Some(mana) = compute_mana_gain(&ability.gain_mana_ability(db).gain, mode)
-                    {
-                        for (mana, count) in mana {
-                            for _ in 0..count {
-                                all_players[source.controller(db)].mana_pool.apply(mana);
-                            }
-                        }
-                    } else {
-                        pending.push(UnresolvedActionResult::GainMana {
-                            source,
-                            ability,
-                            mode,
-                        });
-                    }
-                }
-                UnresolvedActionResult::LoseLife { target, count } => {
-                    resolved.push(ActionResult::LoseLife { target, count })
-                }
+                    result: UnresolvedActionResult::Effect(effect),
+                    optional: true,
+                    valid_targets,
+                    choices: vec![],
+                })
+            }
+            Effect::TutorLibrary(_) => {
+                let creatures = Self::creatures(db);
+                let mut valid_targets = vec![];
+                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+
+                results.push_unresolved(UnresolvedAction {
+                    source,
+                    result: UnresolvedActionResult::Effect(effect),
+                    // TODO this isn't always true
+                    optional: true,
+                    valid_targets,
+                    choices: vec![],
+                })
+            }
+            Effect::CounterSpell { .. }
+            | Effect::DealDamage(_)
+            | Effect::Equip(_)
+            | Effect::ExileTargetCreature
+            | Effect::ExileTargetCreatureManifestTopOfLibrary
+            | Effect::Mill(_)
+            | Effect::ModifyCreature(_)
+            | Effect::ReturnFromGraveyardToBattlefield(_)
+            | Effect::ReturnFromGraveyardToLibrary(_) => {
+                let creatures = Self::creatures(db);
+                let mut valid_targets = vec![];
+                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+
+                results.push_unresolved(UnresolvedAction {
+                    source,
+                    result: UnresolvedActionResult::Effect(effect),
+                    // TODO this isn't always true for many effects.
+                    optional: false,
+                    valid_targets,
+                    choices: vec![],
+                })
             }
         }
     }
 }
 
-fn compute_deck_targets(
+pub fn compute_deck_targets(
     db: &mut Database,
     player: Controller,
     restrictions: &[Restriction],
@@ -802,7 +1100,7 @@ fn compute_deck_targets(
     results
 }
 
-fn compute_graveyard_targets(
+pub fn compute_graveyard_targets(
     db: &mut Database,
     controller: ControllerRestriction,
     source_card: CardId,
@@ -819,7 +1117,7 @@ fn compute_graveyard_targets(
     };
     let mut target_cards = vec![];
 
-    for target in targets {
+    for target in targets.into_iter() {
         let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
         for card in cards_in_graveyard {
             if card.types_intersect(db, types) {

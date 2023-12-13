@@ -25,7 +25,7 @@ message Card {
 
   repeated effects.Effect effects = 9;
 
-  repeated abilities.ETBAbility etb_abilities = 10;
+  repeated effects.Effect etb_abilities = 10;
   repeated abilities.StaticAbility static_abilities = 11;
   repeated effects.ActivatedAbility activated_abilities = 12;
   repeated abilities.TriggeredAbility triggered_abilities = 13;

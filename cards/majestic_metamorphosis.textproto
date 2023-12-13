@@ -4,8 +4,8 @@ cost {
   mana_costs { blue {} }
 }
 types { instant {} }
-oracle_text:  "Until end of turn, target artifact or"
-              "creature becomes a 4/4 Angel artifact"
+oracle_text:  "Until end of turn, target artifact or "
+              "creature becomes a 4/4 Angel artifact "
               "creature and gains flying.\n"
               "Draw a card"
 effects {
