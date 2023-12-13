@@ -84,6 +84,10 @@ impl<'db> StatefulWidget for Card<'db> {
             block = block.white().bold();
         }
 
+        if self.card.tapped(self.db) {
+            block = block.italic();
+        }
+
         let inner_area = block.inner(area);
         block.render(area, buf);
         let area = inner_area;
@@ -102,9 +106,13 @@ impl<'db> StatefulWidget for Card<'db> {
             .chain(counters)
             .join("\n");
 
-        Paragraph::new(paragraph)
-            .wrap(Wrap { trim: false })
-            .render(area, buf)
+        let mut paragraph = Paragraph::new(paragraph).wrap(Wrap { trim: false });
+
+        if self.card.tapped(self.db) {
+            paragraph = paragraph.italic();
+        }
+
+        paragraph.render(area, buf)
     }
 }
 

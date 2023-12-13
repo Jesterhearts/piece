@@ -33,4 +33,7 @@ triggered_abilities {
   effects {
     gain_counter { counter { charge {} } }
   }
+  oracle_text:  "Whenever a creature enters the "
+                "battlefield under your control, put a "
+                "charge counter on Mace of the Valiant."
 }

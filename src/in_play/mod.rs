@@ -3,6 +3,7 @@ mod cardid;
 use std::{
     cell::OnceCell,
     collections::{HashMap, HashSet},
+    ops::Neg,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -85,6 +86,14 @@ pub struct InHand(usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Hash)]
 pub struct InStack(usize);
 
+impl Neg for InStack {
+    type Output = i32;
+
+    fn neg(self) -> Self::Output {
+        -(self.0 as i32)
+    }
+}
+
 impl InStack {
     pub fn title(self, db: &mut Database) -> String {
         if let Some(found) = db
@@ -135,7 +144,7 @@ impl InStack {
 
 impl From<TriggerInStack> for InStack {
     fn from(value: TriggerInStack) -> Self {
-        Self(value.0)
+        Self(value.seq)
     }
 }
 
@@ -146,7 +155,19 @@ impl std::fmt::Display for InStack {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Hash)]
-pub struct TriggerInStack(pub usize, pub CardId);
+pub struct TriggerInStack {
+    pub seq: usize,
+    pub source: CardId,
+    pub trigger: TriggerId,
+}
+
+impl Neg for TriggerInStack {
+    type Output = i32;
+
+    fn neg(self) -> Self::Output {
+        -(self.seq as i32)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
 pub struct OnBattlefield(usize);
@@ -338,7 +359,7 @@ fn upload_modifier(
     modifierid
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
 pub struct AbilityId(Entity);
 
 impl AbilityId {
@@ -463,12 +484,17 @@ impl AbilityId {
             return;
         }
 
-        db.abilities
-            .entity_mut(self.0)
-            .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
-            .insert(Targets(targets))
+        db.abilities.spawn((
+            self,
+            InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)),
+            Targets(targets),
             // This is a hack to make land types work, probably need something better here
-            .insert(source);
+            source,
+        ));
+    }
+
+    pub fn remove_from_stack(self, db: &mut Database) {
+        db.abilities.despawn(self.0);
     }
 
     pub fn ability(self, db: &mut Database) -> Ability {
@@ -707,7 +733,7 @@ impl ModifierId {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
 pub struct TriggerId(Entity);
 
 impl TriggerId {
@@ -716,13 +742,18 @@ impl TriggerId {
             return;
         }
 
-        db.triggers
-            .entity_mut(self.0)
-            .insert(TriggerInStack(
-                NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
+        db.triggers.spawn((
+            TriggerInStack {
+                seq: NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
                 source,
-            ))
-            .insert(Targets(targets));
+                trigger: self,
+            },
+            Targets(targets),
+        ));
+    }
+
+    pub fn remove_from_stack(self, db: &mut Database) {
+        db.triggers.despawn(self.0);
     }
 
     pub fn location_from(self, db: &mut Database) -> Location {
@@ -817,7 +848,7 @@ impl TriggerId {
             .insert(listener);
     }
 
-    fn short_text(self, db: &mut Database) -> String {
+    pub fn short_text(self, db: &mut Database) -> String {
         let mut text = db.triggers.get::<OracleText>(self.0).unwrap().0.clone();
         if text.len() > 10 {
             text.truncate(10);

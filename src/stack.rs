@@ -51,8 +51,15 @@ impl ActiveTarget {
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Entry {
     Card(CardId),
-    Ability(AbilityId),
-    Trigger(TriggerId, CardId),
+    Ability {
+        in_stack: AbilityId,
+        source: AbilityId,
+    },
+    Trigger {
+        in_stack: TriggerId,
+        source: TriggerId,
+        card_source: CardId,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Deref, DerefMut, Component)]
@@ -63,6 +70,32 @@ pub struct StackEntry {
     pub ty: Entry,
     pub targets: Vec<ActiveTarget>,
     pub mode: Option<usize>,
+}
+
+impl StackEntry {
+    pub fn remove_from_stack(&self, db: &mut Database) {
+        match self.ty {
+            Entry::Card(_) => {}
+            Entry::Ability { in_stack, .. } => in_stack.remove_from_stack(db),
+            Entry::Trigger { in_stack, .. } => in_stack.remove_from_stack(db),
+        }
+    }
+
+    pub fn display(&self, db: &mut Database) -> String {
+        match self.ty {
+            Entry::Card(card) => card.name(db),
+            Entry::Ability { source, .. } => {
+                format!("{}\n{}", source.source(db).name(db), source.text(db))
+            }
+            Entry::Trigger {
+                source,
+                card_source,
+                ..
+            } => {
+                format!("{}\n{}", card_source.name(db), source.short_text(db))
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -81,12 +114,23 @@ impl Stack {
             .cards
             .query::<&InStack>()
             .iter(&db.cards)
-            .chain(db.abilities.query::<&InStack>().iter(&db.abilities))
-            .chain(db.triggers.query::<&InStack>().iter(&db.triggers))
+            .copied()
+            .chain(
+                db.abilities
+                    .query::<&InStack>()
+                    .iter(&db.abilities)
+                    .copied(),
+            )
             .sorted()
+            .chain(
+                db.triggers
+                    .query::<&TriggerInStack>()
+                    .iter(&db.triggers)
+                    .map(|seq| (*seq).into()),
+            )
             .collect_vec()[nth];
 
-        ActiveTarget::Stack { id: *nth }
+        ActiveTarget::Stack { id: nth }
     }
 
     pub fn in_stack(db: &mut Database) -> HashMap<InStack, Entry> {
@@ -96,18 +140,91 @@ impl Stack {
             .map(|(seq, entity)| (*seq, Entry::Card(entity.into())))
             .chain(
                 db.abilities
-                    .query::<(&InStack, Entity)>()
+                    .query::<(&InStack, Entity, &AbilityId)>()
                     .iter(&db.abilities)
-                    .map(|(seq, entity)| (*seq, Entry::Ability(entity.into()))),
+                    .map(|(seq, entity, source)| {
+                        (
+                            *seq,
+                            Entry::Ability {
+                                in_stack: entity.into(),
+                                source: *source,
+                            },
+                        )
+                    }),
             )
             .chain(
                 db.triggers
                     .query::<(&TriggerInStack, Entity)>()
                     .iter(&db.triggers)
-                    .map(|(seq, entity)| ((*seq).into(), Entry::Trigger(entity.into(), seq.1))),
+                    .map(|(seq, entity)| {
+                        (
+                            (*seq).into(),
+                            Entry::Trigger {
+                                in_stack: TriggerId::from(entity),
+                                source: seq.trigger,
+                                card_source: seq.source,
+                            },
+                        )
+                    }),
             )
             .sorted_by_key(|(seq, _)| *seq)
             .collect()
+    }
+
+    pub fn entries(db: &mut Database) -> Vec<StackEntry> {
+        db.cards
+            .query::<(&InStack, Entity, &Targets, Option<&Mode>)>()
+            .iter(&db.cards)
+            .map(|(seq, entity, targets, mode)| {
+                (
+                    *seq,
+                    StackEntry {
+                        ty: Entry::Card(entity.into()),
+                        targets: targets.0.clone(),
+                        mode: mode.map(|mode| mode.0),
+                    },
+                )
+            })
+            .chain(
+                db.abilities
+                    .query::<(&InStack, Entity, &AbilityId, &Targets, Option<&Mode>)>()
+                    .iter(&db.abilities)
+                    .map(|(seq, entity, source, targets, mode)| {
+                        (
+                            *seq,
+                            StackEntry {
+                                ty: Entry::Ability {
+                                    in_stack: entity.into(),
+                                    source: *source,
+                                },
+                                targets: targets.0.clone(),
+                                mode: mode.map(|mode| mode.0),
+                            },
+                        )
+                    }),
+            )
+            .chain(
+                db.triggers
+                    .query::<(&TriggerInStack, Entity, &Targets, Option<&Mode>)>()
+                    .iter(&db.triggers)
+                    .map(|(seq, entity, targets, mode)| {
+                        (
+                            (*seq).into(),
+                            StackEntry {
+                                ty: Entry::Trigger {
+                                    in_stack: TriggerId::from(entity),
+                                    source: seq.trigger,
+                                    card_source: seq.source,
+                                },
+                                targets: targets.0.clone(),
+                                mode: mode.map(|mode| mode.0),
+                            },
+                        )
+                    }),
+            )
+            .sorted_by_key(|(seq, _)| -*seq)
+            .map(|(_, entry)| entry)
+            .collect_vec()
     }
 
     fn pop(db: &mut Database) -> Option<StackEntry> {
@@ -126,13 +243,16 @@ impl Stack {
             })
             .chain(
                 db.abilities
-                    .query::<(&InStack, Entity, &Targets, Option<&Mode>)>()
+                    .query::<(&InStack, Entity, &AbilityId, &Targets, Option<&Mode>)>()
                     .iter(&db.abilities)
-                    .map(|(seq, entity, targets, mode)| {
+                    .map(|(seq, entity, source, targets, mode)| {
                         (
                             *seq,
                             StackEntry {
-                                ty: Entry::Ability(entity.into()),
+                                ty: Entry::Ability {
+                                    in_stack: entity.into(),
+                                    source: *source,
+                                },
                                 targets: targets.0.clone(),
                                 mode: mode.map(|mode| mode.0),
                             },
@@ -141,13 +261,17 @@ impl Stack {
             )
             .chain(
                 db.triggers
-                    .query::<(&TriggerInStack, Entity, &Targets, Option<&Mode>)>()
+                    .query::<(Entity, &TriggerInStack, &Targets, Option<&Mode>)>()
                     .iter(&db.triggers)
-                    .map(|(seq, entity, targets, mode)| {
+                    .map(|(entity, seq, targets, mode)| {
                         (
                             (*seq).into(),
                             StackEntry {
-                                ty: Entry::Trigger(entity.into(), seq.1),
+                                ty: Entry::Trigger {
+                                    in_stack: TriggerId::from(entity),
+                                    source: seq.trigger,
+                                    card_source: seq.source,
+                                },
                                 targets: targets.0.clone(),
                                 mode: mode.map(|mode| mode.0),
                             },
@@ -156,15 +280,26 @@ impl Stack {
             )
             .sorted_by_key(|(seq, _)| *seq)
             .last()
-            .map(|(_, entry)| entry)
+            .map(|(_, entry)| {
+                entry.remove_from_stack(db);
+                entry
+            })
     }
 
     pub fn is_empty(db: &mut Database) -> bool {
         db.cards
-            .query::<&InStack>()
+            .query_filtered::<(), With<InStack>>()
             .iter(&db.cards)
-            .chain(db.abilities.query::<&InStack>().iter(&db.abilities))
-            .chain(db.triggers.query::<&InStack>().iter(&db.triggers))
+            .chain(
+                db.abilities
+                    .query_filtered::<(), With<InStack>>()
+                    .iter(&db.abilities),
+            )
+            .chain(
+                db.triggers
+                    .query_filtered::<(), With<TriggerInStack>>()
+                    .iter(&db.triggers),
+            )
             .next()
             .is_none()
     }
@@ -187,19 +322,23 @@ impl Stack {
                 Some(card),
                 card,
             ),
-            Entry::Ability(ability) => (
-                ability.apply_to_self(db),
-                ability.effects(db),
-                ability.controller(db),
-                None,
-                ability.source(db),
-            ),
-            Entry::Trigger(trigger, source) => (
-                false,
-                trigger.effects(db),
+            Entry::Ability { source, .. } => (
+                source.apply_to_self(db),
+                source.effects(db),
                 source.controller(db),
                 None,
+                source.source(db),
+            ),
+            Entry::Trigger {
                 source,
+                card_source,
+                ..
+            } => (
+                false,
+                source.effects(db),
+                card_source.controller(db),
+                None,
+                card_source,
             ),
         };
 
@@ -548,11 +687,11 @@ fn counter_spell(
                             return false;
                         }
                     }
-                    Entry::Ability(_) => {
+                    Entry::Ability { .. } => {
                         // Vanilla counterspells can't counter activated abilities.
                         return false;
                     }
-                    Entry::Trigger(_, _) => {
+                    Entry::Trigger { .. } => {
                         // Vanilla counterspells can't counter triggered abilities.
                         return false;
                     }

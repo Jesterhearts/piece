@@ -25,6 +25,7 @@ use crate::{
     card::Card,
     in_play::{CardId, Database},
     player::AllPlayers,
+    stack::Stack,
     ui::{horizontal_list::HorizontalListState, CardSelectionState},
 };
 
@@ -133,6 +134,12 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
+    while !Stack::is_empty(&mut db) {
+        let results = Stack::resolve_1(&mut db);
+        let result = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+        assert_eq!(result, PendingResults::default());
+    }
+
     stdout()
         .execute(EnterAlternateScreen)?
         .execute(EnableMouseCapture)?;
@@ -148,28 +155,54 @@ fn main() -> anyhow::Result<()> {
     let mut last_hover = None;
     let mut key_selected = None;
     let mut to_resolve: Option<PendingResults> = None;
-    let mut choice = None;
+    let mut choice;
 
     let mut selected_state = CardSelectionState::default();
     let mut horizontal_list_state = HorizontalListState::default();
     let mut selection_list_state = ListState::default();
 
     loop {
+        choice = None;
         terminal.draw(|frame| {
             let area = frame.size();
 
             match state {
                 UiState::Battlefield => {
+                    let stack_and_battlefield = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Percentage(12), Constraint::Percentage(88)])
+                        .split(area);
+
                     let layout = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([Constraint::Min(1), Constraint::Length(5)])
-                        .split(area);
+                        .split(stack_and_battlefield[1]);
+
+                    let entries = Stack::entries(&mut db);
+                    let entries_len = entries.len();
+
+                    frame.render_widget(
+                        List::new(
+                            entries
+                                .into_iter()
+                                .map(|e| e.display(&mut db))
+                                .map(ListItem::new)
+                                .interleave(
+                                    std::iter::repeat("━━━━━━━━━━")
+                                        .map(ListItem::new)
+                                        .take(entries_len),
+                                )
+                                .collect_vec(),
+                        )
+                        .block(Block::default().borders(Borders::ALL).title(" Stack ")),
+                        stack_and_battlefield[0],
+                    );
 
                     frame.render_stateful_widget(
                         ui::Battlefield {
                             db: &mut db,
                             owner: player,
-                            player_name: "Player".to_string(),
+                            player_name: " Player".to_string(),
                             last_hover,
                             last_click,
                         },
@@ -273,6 +306,19 @@ fn main() -> anyhow::Result<()> {
                             selection_list_state.select(Some(selected.saturating_add(1)));
                         }
                         KeyCode::Enter => {
+                            if to_resolve.is_none() && !Stack::is_empty(&mut db) {
+                                let results = Stack::resolve_1(&mut db);
+                                let results = Battlefield::apply_action_results(
+                                    &mut db,
+                                    &mut all_players,
+                                    &results,
+                                );
+                                if !results.is_empty() {
+                                    to_resolve = Some(results);
+                                    state = UiState::SelectingOptions;
+                                }
+                            }
+
                             choice = selection_list_state.selected();
                         }
                         _ => {}
@@ -320,6 +366,7 @@ fn main() -> anyhow::Result<()> {
                     .resolve(&mut db, &mut all_players, choice)
                 {
                     battlefield::ResolutionResult::Complete => {
+                        to_resolve = None;
                         state = UiState::Battlefield;
                         break;
                     }

@@ -143,6 +143,10 @@ impl PendingResults {
     pub(crate) fn extend(&mut self, results: PendingResults) {
         self.results.extend(results.results);
     }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.results.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -897,7 +901,7 @@ impl Battlefield {
                 Entry::Card(card) => {
                     return Battlefield::stack_to_graveyard(db, *card);
                 }
-                Entry::Ability(_) | Entry::Trigger(_, _) => unreachable!(),
+                Entry::Ability { .. } | Entry::Trigger { .. } => unreachable!(),
             },
             ActionResult::AddCounters {
                 target,
