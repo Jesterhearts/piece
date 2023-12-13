@@ -10,6 +10,7 @@ use crate::{
     card::{Color, Keyword},
     controller::ControllerRestriction,
     in_play::{Database, ReplacementEffectId},
+    newtype_enum::newtype_enum,
     player::Controller,
     protogen,
     targets::{Restriction, SpellTarget},
@@ -135,16 +136,12 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
-pub struct UntilEndOfTurn;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
-pub struct UntilSourceLeavesBattlefield;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+newtype_enum! {
+#[derive(Debug, PartialEq, Eq, Clone, Copy, bevy_ecs::component::Component)]
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
+}
 }
 
 impl From<&protogen::effects::duration::Duration> for EffectDuration {

@@ -20,8 +20,8 @@ use crate::{
     controller::ControllerRestriction,
     cost::CastingCost,
     effects::{
-        AnyEffect, DealDamage, DynamicPowerToughness, Effect, Effects, ReplacementEffects, Token,
-        UntilSourceLeavesBattlefield,
+        effect_duration::UntilSourceLeavesBattlefield, AnyEffect, DealDamage,
+        DynamicPowerToughness, Effect, Effects, ReplacementEffects, Token,
     },
     in_play::{
         targets_for_battlefield_modifier, targets_for_counterspell, upload_modifier, AbilityId,
@@ -33,7 +33,7 @@ use crate::{
     player::{Controller, Owner},
     stack::{ActiveTarget, Stack, Targets},
     targets::{Comparison, Restriction, Restrictions, SpellTarget},
-    triggers::{source, TriggerSource},
+    triggers::{trigger_source, TriggerSource},
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
     Cards,
 };
@@ -942,10 +942,10 @@ impl CardId {
 
                 match ability.trigger.trigger {
                     TriggerSource::PutIntoGraveyard => {
-                        entity.insert(source::PutIntoGraveyard);
+                        entity.insert(trigger_source::PutIntoGraveyard);
                     }
                     TriggerSource::EntersTheBattlefield => {
-                        entity.insert(source::EntersTheBattlefield);
+                        entity.insert(trigger_source::EntersTheBattlefield);
                     }
                 }
 

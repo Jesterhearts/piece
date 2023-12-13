@@ -9,8 +9,8 @@ use crate::{
     controller::ControllerRestriction,
     cost::AdditionalCost,
     effects::{
-        Destination, Mill, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary,
-        TutorLibrary, UntilEndOfTurn,
+        effect_duration::UntilEndOfTurn, Destination, Mill, ReturnFromGraveyardToBattlefield,
+        ReturnFromGraveyardToLibrary, TutorLibrary,
     },
     in_play::{
         all_cards, cards, AbilityId, Active, CardId, Database, InGraveyard, InLibrary, ModifierId,
@@ -19,7 +19,7 @@ use crate::{
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Stack},
     targets::Restriction,
-    triggers::{self, source},
+    triggers::{self, trigger_source},
     types::Type,
 };
 
@@ -273,7 +273,9 @@ impl Battlefield {
 
         source_card_id.move_to_battlefield(db);
 
-        for trigger in TriggerId::active_triggers_of_source::<source::EntersTheBattlefield>(db) {
+        for trigger in
+            TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
+        {
             if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
                 let for_types = trigger.for_types(db);
                 if source_card_id.types_intersect(db, &for_types) {
@@ -535,7 +537,8 @@ impl Battlefield {
     ) -> Vec<UnresolvedActionResult> {
         let mut pending = vec![];
 
-        for trigger in TriggerId::active_triggers_of_source::<source::PutIntoGraveyard>(db) {
+        for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
+        {
             if matches!(
                 trigger.location_from(db),
                 triggers::Location::Anywhere | triggers::Location::Battlefield
@@ -562,7 +565,8 @@ impl Battlefield {
     pub fn library_to_graveyard(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
         let mut pending = vec![];
 
-        for trigger in TriggerId::active_triggers_of_source::<source::PutIntoGraveyard>(db) {
+        for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
+        {
             if matches!(
                 trigger.location_from(db),
                 triggers::Location::Anywhere | triggers::Location::Library
@@ -585,7 +589,8 @@ impl Battlefield {
     pub fn stack_to_graveyard(db: &mut Database, target: CardId) -> Vec<UnresolvedActionResult> {
         let mut pending = vec![];
 
-        for trigger in TriggerId::active_triggers_of_source::<source::PutIntoGraveyard>(db) {
+        for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
+        {
             if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
                 let for_types = trigger.for_types(db);
                 if target.types_intersect(db, &for_types) {

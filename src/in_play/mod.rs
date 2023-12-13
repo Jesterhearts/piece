@@ -22,9 +22,10 @@ use crate::{
     controller::ControllerRestriction,
     cost::AbilityCost,
     effects::{
-        counter, AnyEffect, BattlefieldModifier, Counter, DynamicPowerToughness, EffectDuration,
-        Effects, ReplaceDraw, ReplacementEffect, Replacing, UntilEndOfTurn,
-        UntilSourceLeavesBattlefield,
+        counter,
+        effect_duration::{UntilEndOfTurn, UntilSourceLeavesBattlefield},
+        AnyEffect, BattlefieldModifier, Counter, DynamicPowerToughness, EffectDuration, Effects,
+        ReplaceDraw, ReplacementEffect, Replacing,
     },
     mana::Mana,
     player::Controller,

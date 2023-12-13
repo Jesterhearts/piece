@@ -1,15 +1,16 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
 
-use crate::{protogen, types::Type};
+use crate::{newtype_enum::newtype_enum, protogen, types::Type};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+newtype_enum! {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
 pub enum Location {
     Anywhere,
     Battlefield,
     Library,
+}
 }
 
 impl TryFrom<&protogen::triggers::Location> for Location {
@@ -34,23 +35,15 @@ impl From<&protogen::triggers::location::Location> for Location {
     }
 }
 
-pub mod source {
-    use bevy_ecs::component::Component;
-
-    #[derive(Debug, Component)]
-    pub struct PutIntoGraveyard;
-
-    #[derive(Debug, Component)]
-    pub struct EntersTheBattlefield;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+newtype_enum! {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
 pub enum TriggerSource {
     PutIntoGraveyard,
     EntersTheBattlefield,
 }
+}
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
 pub struct Trigger {
     pub trigger: TriggerSource,
     pub from: Location,

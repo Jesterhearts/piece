@@ -21,6 +21,7 @@ pub mod deck;
 pub mod effects;
 pub mod in_play;
 pub mod mana;
+pub mod newtype_enum;
 pub mod player;
 pub mod protogen;
 pub mod stack;
