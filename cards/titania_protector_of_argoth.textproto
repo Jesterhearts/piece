@@ -10,11 +10,7 @@ subtypes { elemental {} }
 oracle_text:  "When Titania, Protector of Argoth "
               "enters the battlefield, return target "
               "land card from your graveyard to the "
-              "battlefield.\n"
-              "Whenever a land you control is put "
-              "into a graveyard from the battlefield, "
-              "create a 5/3 green Elemental creature "
-              "token."
+              "battlefield."
 power: 5
 toughness: 3
 etb_abilities {

@@ -794,22 +794,25 @@ impl TriggerId {
     }
 
     pub fn activate_all_for_card(db: &mut Database, cardid: CardId) {
-        let entities = db
-            .triggers
+        let entities = Self::all_for_card(db, cardid);
+
+        for entity in entities {
+            db.triggers.entity_mut(entity.0).insert(Active);
+        }
+    }
+
+    pub fn all_for_card(db: &mut Database, cardid: CardId) -> Vec<TriggerId> {
+        db.triggers
             .query::<(Entity, &TriggerListeners)>()
             .iter(&db.triggers)
             .filter_map(|(entity, listeners)| {
                 if listeners.contains(&cardid) {
-                    Some(entity)
+                    Some(Self(entity))
                 } else {
                     None
                 }
             })
-            .collect_vec();
-
-        for entity in entities {
-            db.triggers.entity_mut(entity).insert(Active);
-        }
+            .collect_vec()
     }
 
     pub fn unsubscribe_all_for_card(db: &mut Database, cardid: CardId) {
@@ -848,8 +851,12 @@ impl TriggerId {
             .insert(listener);
     }
 
-    pub fn short_text(self, db: &mut Database) -> String {
-        let mut text = db.triggers.get::<OracleText>(self.0).unwrap().0.clone();
+    pub fn text(self, db: &Database) -> String {
+        db.triggers.get::<OracleText>(self.0).unwrap().0.clone()
+    }
+
+    pub fn short_text(self, db: &Database) -> String {
+        let mut text = self.text(db);
         if text.len() > 10 {
             text.truncate(10);
             text.push_str("...")

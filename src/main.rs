@@ -17,7 +17,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Terminal},
     style::{Style, Stylize},
-    widgets::{Block, Borders, List, ListItem, ListState},
+    widgets::{block::Title, Block, Borders, List, ListItem, ListState},
 };
 
 use crate::{
@@ -78,9 +78,12 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     Ok(cards)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum UiState {
     Battlefield,
+    BattlefieldPreview,
     SelectingOptions,
+    ExaminingCard(CardId),
 }
 
 fn main() -> anyhow::Result<()> {
@@ -134,6 +137,14 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
+    let card6 = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card6, vec![]);
+    let _ = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::Complete
+    );
+
     while !Stack::is_empty(&mut db) {
         let results = Stack::resolve_1(&mut db);
         let result = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
@@ -148,6 +159,7 @@ fn main() -> anyhow::Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
     terminal.clear()?;
 
+    let mut previous_state = vec![];
     let mut state = UiState::Battlefield;
 
     let mut last_down = None;
@@ -164,10 +176,18 @@ fn main() -> anyhow::Result<()> {
     loop {
         choice = None;
         terminal.draw(|frame| {
-            let area = frame.size();
+            let mut area = frame.size();
 
             match state {
-                UiState::Battlefield => {
+                UiState::Battlefield | UiState::BattlefieldPreview => {
+                    if matches!(state, UiState::BattlefieldPreview) {
+                        let block = Block::default()
+                            .title(Title::from(" PREVIEW "))
+                            .italic()
+                            .borders(Borders::all());
+                        area = block.inner(area);
+                        frame.render_widget(block, area);
+                    }
                     let stack_and_battlefield = Layout::default()
                         .direction(Direction::Horizontal)
                         .constraints([Constraint::Percentage(12), Constraint::Percentage(88)])
@@ -183,19 +203,14 @@ fn main() -> anyhow::Result<()> {
                         .constraints([Constraint::Min(1), Constraint::Length(12)])
                         .split(stack_and_battlefield[0]);
 
-                    let entries = Stack::entries(&mut db);
-                    let entries_len = entries.len();
-
                     frame.render_widget(
                         List::new(
-                            entries
+                            Stack::entries(&mut db)
                                 .into_iter()
                                 .map(|e| e.display(&mut db))
                                 .map(ListItem::new)
-                                .interleave(
-                                    std::iter::repeat("━━━━━━━━━━")
-                                        .map(ListItem::new)
-                                        .take(entries_len),
+                                .interleave_shortest(
+                                    std::iter::repeat("━━━━━━━━━━").map(ListItem::new),
                                 )
                                 .collect_vec(),
                         )
@@ -219,7 +234,7 @@ fn main() -> anyhow::Result<()> {
                         ui::Battlefield {
                             db: &mut db,
                             owner: player,
-                            player_name: " Player".to_string(),
+                            player_name: " Player ".to_string(),
                             last_hover,
                             last_click,
                         },
@@ -258,6 +273,22 @@ fn main() -> anyhow::Result<()> {
                         &mut selection_list_state,
                     );
                 }
+                UiState::ExaminingCard(card) => {
+                    let title = card.name(&db);
+                    let pt = card.pt_text(&db);
+                    frame.render_stateful_widget(
+                        ui::Card {
+                            db: &mut db,
+                            card,
+                            title,
+                            pt,
+                            last_hover: None,
+                            last_click: None,
+                        },
+                        area,
+                        &mut CardSelectionState::default(),
+                    );
+                }
             }
         })?;
 
@@ -269,7 +300,7 @@ fn main() -> anyhow::Result<()> {
                 last_click = None;
                 last_hover = None;
             } else if let event::Event::Mouse(mouse) = event {
-                if let MouseEventKind::Down(MouseButton::Left) = mouse.kind {
+                if let MouseEventKind::Down(_) = mouse.kind {
                     last_down = Some((mouse.row, mouse.column));
                     last_click = None;
                 } else if let MouseEventKind::Up(MouseButton::Left) = mouse.kind {
@@ -277,11 +308,17 @@ fn main() -> anyhow::Result<()> {
                         last_click = Some((mouse.row, mouse.column));
                         key_selected = None;
                     }
+                } else if let MouseEventKind::Up(MouseButton::Right) = mouse.kind {
+                    if last_down == Some((mouse.row, mouse.column)) {
+                        if let Some(hovered) = selected_state.hovered {
+                            previous_state.push(state);
+                            state = UiState::ExaminingCard(hovered);
+                        }
+                    }
                 } else if let MouseEventKind::Moved = mouse.kind {
                     last_hover = Some((mouse.row, mouse.column));
                 }
-            }
-            if let event::Event::Key(key) = event {
+            } else if let event::Event::Key(key) = event {
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
                     break;
                 }
@@ -336,7 +373,22 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
+                            if matches!(
+                                state,
+                                UiState::ExaminingCard(_) | UiState::BattlefieldPreview
+                            ) {
+                                state = previous_state.pop().unwrap_or(UiState::Battlefield);
+                            }
+
                             choice = selection_list_state.selected();
+                        }
+                        KeyCode::Esc => {
+                            if matches!(state, UiState::SelectingOptions) {
+                                previous_state.push(state);
+                                state = UiState::BattlefieldPreview;
+                            } else if !matches!(state, UiState::SelectingOptions) {
+                                state = previous_state.pop().unwrap_or(UiState::Battlefield);
+                            }
                         }
                         _ => {}
                     }
@@ -393,6 +445,8 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
             },
+            UiState::ExaminingCard(_) => {}
+            UiState::BattlefieldPreview => {}
         }
     }
 

@@ -21,6 +21,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct CardSelectionState {
     pub selected: Option<CardId>,
+    pub hovered: Option<CardId>,
 }
 
 pub struct Card<'db> {
@@ -69,13 +70,14 @@ impl<'db> StatefulWidget for Card<'db> {
 
         if let Some(pt) = self.pt {
             block = block.title(
-                Title::from(pt)
+                Title::from(format!(" {} ", pt))
                     .position(Position::Bottom)
                     .alignment(Alignment::Right),
             )
         }
 
         if hovered {
+            state.hovered = Some(self.card);
             block = block.on_dark_gray();
         }
 
@@ -92,18 +94,24 @@ impl<'db> StatefulWidget for Card<'db> {
         block.render(area, buf);
         let area = inner_area;
 
-        let mana_abilities = self.card.abilities_text(self.db);
+        let abilities = self.card.abilities_text(self.db);
+        let triggers = self.card.triggers_text(self.db);
         let modified_by = self.card.modified_by(self.db);
         let is_modified = !modified_by.is_empty();
         let counters = CounterId::counter_text_on(self.db, self.card);
         let has_counters = !counters.is_empty();
 
         let paragraph = std::iter::once(self.card.oracle_text(self.db))
-            .chain(std::iter::once(mana_abilities))
+            .chain(std::iter::once(String::default()))
+            .chain(triggers)
+            .chain(std::iter::once(String::default()))
+            .chain(std::iter::once(abilities))
+            .chain(std::iter::once(String::default()))
             .chain(std::iter::once("Modified by:".to_string()).filter(|_| is_modified))
             .chain(modified_by)
+            .chain(std::iter::once(String::default()))
             .chain(std::iter::once("Counters:".to_string()).filter(|_| has_counters))
-            .chain(counters)
+            .chain(counters.into_iter().map(|counter| format!("  {}", counter)))
             .join("\n");
 
         let mut paragraph = Paragraph::new(paragraph).wrap(Wrap { trim: false });

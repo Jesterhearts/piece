@@ -5,10 +5,7 @@ cost {
 }
 oracle_text:  "Equipped creature gets +1/+1 for each "
               "charge counter on Mace of the Valiant "
-              "and has vigilance.\n"
-              "Whenever a creature enters the "
-              "battlefield under your control, put a "
-              "charge counter on Mace of the Valiant."
+              "and has vigilance."
 activated_abilities {
   cost { mana_costs { generic { count: 3 } } }
   effects {

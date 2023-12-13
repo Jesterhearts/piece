@@ -1300,14 +1300,14 @@ impl CardId {
         db.get::<CannotBeCountered>(self.0).is_some()
     }
 
-    pub(crate) fn abilities_text(self, db: &mut Database) -> String {
+    pub fn abilities_text(self, db: &mut Database) -> String {
         self.activated_abilities(db)
             .into_iter()
             .map(|ability| ability.text(db))
             .join("\n")
     }
 
-    pub(crate) fn pt_text(&self, db: &Database) -> Option<String> {
+    pub fn pt_text(&self, db: &Database) -> Option<String> {
         let power = self.power(db);
         let toughness = self.toughness(db);
 
@@ -1319,12 +1319,23 @@ impl CardId {
         }
     }
 
-    pub(crate) fn modified_by(&self, db: &mut Database) -> Vec<String> {
+    pub fn modified_by(&self, db: &mut Database) -> Vec<String> {
         let mut results = vec![];
 
         let modifiers = self.modifiers(db);
         for modifier in modifiers {
             results.push(modifier.source(db).name(db));
+        }
+
+        results
+    }
+
+    pub fn triggers_text(self, db: &mut Database) -> Vec<String> {
+        let triggers = TriggerId::all_for_card(db, self);
+
+        let mut results = vec![];
+        for trigger in triggers {
+            results.push(trigger.text(db))
         }
 
         results

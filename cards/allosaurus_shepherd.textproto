@@ -6,7 +6,7 @@ cost {
   mana_costs { green {} }
 }
 oracle_text:  "This spell can't be countered.\n"
-              "Green spells you control can't be countered\n"
+              "Green spells you control can't be countered"
 cannot_be_countered: true
 static_abilities {
   green_cannot_be_countered {
