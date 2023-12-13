@@ -1,5 +1,6 @@
 pub mod horizontal_list;
 pub mod linewrap;
+pub mod list;
 
 use itertools::Itertools;
 use ratatui::{

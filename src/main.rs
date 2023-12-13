@@ -16,17 +16,22 @@ use itertools::Itertools;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Terminal},
-    style::{Style, Stylize},
-    widgets::{block::Title, Block, Borders, List, ListItem, ListState},
+    style::Stylize,
+    text::Span,
+    widgets::{block::Title, Block, Borders},
 };
 
 use crate::{
     battlefield::{Battlefield, PendingResults, ResolutionResult},
     card::Card,
-    in_play::{CardId, Database},
+    in_play::{CardId, Database, InGraveyard},
     player::AllPlayers,
     stack::Stack,
-    ui::{horizontal_list::HorizontalListState, CardSelectionState},
+    ui::{
+        horizontal_list::HorizontalListState,
+        list::{List, ListState},
+        CardSelectionState,
+    },
 };
 
 #[cfg(test)]
@@ -173,6 +178,10 @@ fn main() -> anyhow::Result<()> {
     let mut horizontal_list_state = HorizontalListState::default();
     let mut horizontal_list_page = 0;
     let mut selection_list_state = ListState::default();
+    let mut stack_list_offset = 0;
+    let mut mana_list_offset = 0;
+    let mut graveyard_list_offset = 0;
+    let mut selection_list_offset = 0;
 
     loop {
         choice = None;
@@ -189,47 +198,71 @@ fn main() -> anyhow::Result<()> {
                         area = block.inner(area);
                         frame.render_widget(block, area);
                     }
-                    let stack_and_battlefield = Layout::default()
+                    let stack_battlefield_graveyard = Layout::default()
                         .direction(Direction::Horizontal)
-                        .constraints([Constraint::Percentage(12), Constraint::Percentage(88)])
+                        .constraints([
+                            Constraint::Percentage(12),
+                            Constraint::Percentage(76),
+                            Constraint::Percentage(12),
+                        ])
                         .split(area);
 
                     let battlefield_layout = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([Constraint::Min(1), Constraint::Length(5)])
-                        .split(stack_and_battlefield[1]);
+                        .split(stack_battlefield_graveyard[1]);
 
                     let stack_and_mana = Layout::default()
                         .direction(Direction::Vertical)
-                        .constraints([Constraint::Min(1), Constraint::Length(12)])
-                        .split(stack_and_battlefield[0]);
+                        .constraints([Constraint::Min(1), Constraint::Length(16)])
+                        .split(stack_battlefield_graveyard[0]);
 
-                    frame.render_widget(
-                        List::new(
-                            Stack::entries(&mut db)
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Stack ".to_owned(),
+                            items: Stack::entries(&mut db)
                                 .into_iter()
-                                .map(|e| e.display(&mut db))
-                                .map(ListItem::new)
-                                .interleave_shortest(
-                                    std::iter::repeat("━━━━━━━━━━").map(ListItem::new),
-                                )
+                                .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
+                                .map(Span::from)
                                 .collect_vec(),
-                        )
-                        .block(Block::default().borders(Borders::ALL).title(" Stack ")),
+                            last_hover,
+                            last_click,
+                            offset: stack_list_offset,
+                        },
                         stack_and_mana[0],
+                        &mut state,
                     );
-                    frame.render_widget(
-                        List::new(
-                            all_players[player]
+
+                    if state.selected_up {
+                        stack_list_offset = stack_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        stack_list_offset += 1;
+                    }
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Mana ".to_owned(),
+                            items: all_players[player]
                                 .mana_pool
                                 .pools_display()
                                 .into_iter()
-                                .map(ListItem::new)
+                                .map(Span::from)
                                 .collect_vec(),
-                        )
-                        .block(Block::default().borders(Borders::ALL)),
+                            last_hover,
+                            last_click,
+                            offset: mana_list_offset,
+                        },
                         stack_and_mana[1],
+                        &mut state,
                     );
+
+                    if state.selected_up {
+                        mana_list_offset = mana_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        mana_list_offset += 1;
+                    }
 
                     frame.render_stateful_widget(
                         ui::Battlefield {
@@ -252,28 +285,57 @@ fn main() -> anyhow::Result<()> {
                         battlefield_layout[1],
                         &mut horizontal_list_state,
                     );
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Graveyard ".to_owned(),
+                            items: player
+                                .get_cards::<InGraveyard>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .map(Span::from)
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: graveyard_list_offset,
+                        },
+                        stack_battlefield_graveyard[2],
+                        &mut state,
+                    );
+
+                    if state.selected_up {
+                        graveyard_list_offset = graveyard_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        graveyard_list_offset += 1;
+                    }
                 }
                 UiState::SelectingOptions => {
-                    if selection_list_state.selected().is_none() {
-                        selection_list_state.select(Some(0));
+                    if selection_list_state.selected.is_none() {
+                        selection_list_state.selected = Some(0);
                     }
                     let options = to_resolve.as_ref().unwrap().options(&mut db, &all_players);
-                    if selection_list_state.selected().unwrap_or_default() >= options.len() {
-                        selection_list_state.select(Some(options.len() - 1));
+                    if selection_list_state.selected.unwrap_or_default() >= options.len() {
+                        selection_list_state.selected = Some(options.len() - 1);
                     }
 
                     frame.render_stateful_widget(
-                        List::new(options.into_iter().map(ListItem::new).collect_vec())
-                            .highlight_symbol("> ")
-                            .highlight_style(Style::new().bold().white())
-                            .block(
-                                Block::default()
-                                    .title(" Select an option ")
-                                    .borders(Borders::ALL),
-                            ),
+                        List {
+                            title: " Select an option ".to_owned(),
+                            items: options.into_iter().map(Span::from).collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: selection_list_offset,
+                        },
                         area,
                         &mut selection_list_state,
                     );
+
+                    if selection_list_state.selected_up {
+                        selection_list_offset = mana_list_offset.saturating_sub(1);
+                    } else if selection_list_state.selected_down {
+                        selection_list_offset += 1;
+                    }
                 }
                 UiState::ExaminingCard(card) => {
                     let title = card.name(&db);
@@ -294,14 +356,11 @@ fn main() -> anyhow::Result<()> {
             }
         })?;
 
+        last_click = None;
         if event::poll(std::time::Duration::from_millis(16))? {
             let event = event::read()?;
 
-            if let event::Event::Resize(_, _) = event {
-                last_down = None;
-                last_click = None;
-                last_hover = None;
-            } else if let event::Event::Mouse(mouse) = event {
+            if let event::Event::Mouse(mouse) = event {
                 if let MouseEventKind::Down(_) = mouse.kind {
                     last_down = Some((mouse.row, mouse.column));
                     last_click = None;
@@ -354,12 +413,12 @@ fn main() -> anyhow::Result<()> {
                             key_selected = Some(8);
                         }
                         KeyCode::Up => {
-                            let selected = selection_list_state.selected().unwrap_or_default();
-                            selection_list_state.select(Some(selected.saturating_sub(1)));
+                            let selected = selection_list_state.selected.unwrap_or_default();
+                            selection_list_state.selected = Some(selected.saturating_sub(1));
                         }
                         KeyCode::Down => {
-                            let selected = selection_list_state.selected().unwrap_or_default();
-                            selection_list_state.select(Some(selected.saturating_add(1)));
+                            let selected = selection_list_state.selected.unwrap_or_default();
+                            selection_list_state.selected = Some(selected.saturating_add(1));
                         }
                         KeyCode::Left => {
                             horizontal_list_page = horizontal_list_page.saturating_sub(1);
@@ -379,6 +438,7 @@ fn main() -> anyhow::Result<()> {
                                 );
                                 if !results.is_empty() {
                                     to_resolve = Some(results);
+                                    selection_list_offset = 0;
                                     state = UiState::SelectingOptions;
                                 }
                             }
@@ -390,7 +450,7 @@ fn main() -> anyhow::Result<()> {
                                 state = previous_state.pop().unwrap_or(UiState::Battlefield);
                             }
 
-                            choice = selection_list_state.selected();
+                            choice = selection_list_state.selected;
                         }
                         KeyCode::Esc => {
                             if matches!(state, UiState::SelectingOptions) {
@@ -429,6 +489,7 @@ fn main() -> anyhow::Result<()> {
                                     battlefield::ResolutionResult::TryAgain => {}
                                     battlefield::ResolutionResult::PendingChoice => {
                                         to_resolve = Some(results);
+                                        selection_list_offset = 0;
                                         state = UiState::SelectingOptions;
                                         break;
                                     }

@@ -85,14 +85,14 @@ impl StackEntry {
         match self.ty {
             Entry::Card(card) => card.name(db),
             Entry::Ability { source, .. } => {
-                format!("{}\n{}", source.source(db).name(db), source.text(db))
+                format!("{}: {}", source.source(db).name(db), source.text(db))
             }
             Entry::Trigger {
                 source,
                 card_source,
                 ..
             } => {
-                format!("{}\n{}", card_source.name(db), source.short_text(db))
+                format!("{}: {}", card_source.name(db), source.short_text(db))
             }
         }
     }
@@ -171,7 +171,7 @@ impl Stack {
             .collect()
     }
 
-    pub fn entries(db: &mut Database) -> Vec<StackEntry> {
+    pub fn entries(db: &mut Database) -> Vec<(InStack, StackEntry)> {
         db.cards
             .query::<(&InStack, Entity, &Targets, Option<&Mode>)>()
             .iter(&db.cards)
@@ -223,7 +223,6 @@ impl Stack {
                     }),
             )
             .sorted_by_key(|(seq, _)| -*seq)
-            .map(|(_, entry)| entry)
             .collect_vec()
     }
 
