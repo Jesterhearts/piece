@@ -12,10 +12,10 @@ use crate::{
     },
     battlefield::Battlefield,
     card::{
-        ActivatedAbilityModifier, AddPower, AddToughness, BasePower, BaseToughness,
-        CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, Keyword, Keywords,
-        MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors, ModifiedKeywords,
-        ModifyKeywords, Name, SplitSecond, StaticAbilityModifier, TriggeredAbilityModifier,
+        keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BasePower,
+        BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, Keyword,
+        Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
+        ModifiedKeywords, ModifyKeywords, Name, StaticAbilityModifier, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::CastingCost,
@@ -864,7 +864,7 @@ impl CardId {
             entity.insert(CannotBeCountered);
         }
 
-        if card.split_second {
+        if card.keywords.contains(&Keyword::SplitSecond) {
             entity.insert(SplitSecond);
         }
 

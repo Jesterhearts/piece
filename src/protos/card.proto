@@ -15,7 +15,6 @@ message Card {
   repeated types.Subtype subtypes = 3;
 
   cost.CastingCost cost = 4;
-  bool split_second = 5;
   bool cannot_be_countered = 6;
 
   repeated color.Color colors = 7;

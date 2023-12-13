@@ -3,7 +3,7 @@ use std::{collections::HashSet, str::FromStr};
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
-use strum::{EnumIter, EnumString, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{
@@ -12,6 +12,7 @@ use crate::{
     cost::CastingCost,
     effects::{AnyEffect, ReplacementEffect, Token, TokenCreature},
     in_play::{AbilityId, TriggerId},
+    newtype_enum::newtype_enum,
     protogen,
     types::{Subtype, Type},
 };
@@ -22,7 +23,10 @@ pub struct Keywords(pub HashSet<Keyword>);
 #[derive(Debug, Clone, Deref, DerefMut, Component)]
 pub struct ModifiedKeywords(pub HashSet<Keyword>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, EnumString)]
+#[rustfmt::skip]
+newtype_enum!{
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, bevy_ecs::component::Component)]
+#[derive(strum::EnumIter, strum::EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum Keyword {
     Absorb,
@@ -192,15 +196,13 @@ pub enum Keyword {
     Ward,
     Wither,
 }
+}
 
 impl Keyword {
     pub fn all() -> HashSet<Keyword> {
         Keyword::iter().collect()
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
-pub struct SplitSecond;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 pub struct CannotBeCountered;
@@ -322,7 +324,6 @@ pub struct Card {
     pub subtypes: HashSet<Subtype>,
 
     pub cost: CastingCost,
-    pub split_second: bool,
     pub cannot_be_countered: bool,
 
     pub colors: HashSet<Color>,
@@ -371,7 +372,6 @@ impl TryFrom<protogen::card::Card> for Card {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected a casting cost"))?
                 .try_into()?,
-            split_second: value.split_second,
             cannot_be_countered: value.cannot_be_countered,
             colors: value
                 .colors

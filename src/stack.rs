@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{Battlefield, UnresolvedActionResult},
-    card::SplitSecond,
+    card::keyword::SplitSecond,
     controller::ControllerRestriction,
     effects::{BattlefieldModifier, Counter, Effect, EffectDuration, Token},
     in_play::{
