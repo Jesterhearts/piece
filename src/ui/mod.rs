@@ -94,22 +94,27 @@ impl<'db> StatefulWidget for Card<'db> {
         block.render(area, buf);
         let area = inner_area;
 
-        let abilities = self.card.abilities_text(self.db);
+        let oracle_text = self.card.oracle_text(self.db);
+        let has_oracle_text = !oracle_text.is_empty();
         let triggers = self.card.triggers_text(self.db);
+        let has_triggers = !triggers.is_empty();
+        let abilities = self.card.abilities_text(self.db);
+        let has_abilities = !abilities.is_empty();
         let modified_by = self.card.modified_by(self.db);
         let is_modified = !modified_by.is_empty();
         let counters = CounterId::counter_text_on(self.db, self.card);
         let has_counters = !counters.is_empty();
 
-        let paragraph = std::iter::once(self.card.oracle_text(self.db))
-            .chain(std::iter::once(String::default()))
+        let paragraph = std::iter::once(oracle_text)
+            .chain(std::iter::once(String::default()).filter(|_| has_oracle_text))
             .chain(triggers)
-            .chain(std::iter::once(String::default()))
+            .chain(std::iter::once(String::default()).filter(|_| has_triggers))
             .chain(std::iter::once(abilities))
             .chain(std::iter::once(String::default()))
+            .chain(std::iter::once(String::default()).filter(|_| has_abilities))
             .chain(std::iter::once("Modified by:".to_string()).filter(|_| is_modified))
             .chain(modified_by)
-            .chain(std::iter::once(String::default()))
+            .chain(std::iter::once(String::default()).filter(|_| is_modified))
             .chain(std::iter::once("Counters:".to_string()).filter(|_| has_counters))
             .chain(counters.into_iter().map(|counter| format!("  {}", counter)))
             .join("\n");
@@ -219,6 +224,7 @@ impl<'db> StatefulWidget for Battlefield<'db> {
 pub struct SelectedAbilities<'db> {
     pub db: &'db mut Database,
     pub card: Option<CardId>,
+    pub page: u16,
 }
 
 impl<'db> StatefulWidget for SelectedAbilities<'db> {
@@ -239,6 +245,7 @@ impl<'db> StatefulWidget for SelectedAbilities<'db> {
                     .map(Span::from)
                     .collect_vec(),
             )
+            .page(self.page)
             .render(area, buf, state);
         }
     }

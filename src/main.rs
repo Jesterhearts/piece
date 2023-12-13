@@ -171,6 +171,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut selected_state = CardSelectionState::default();
     let mut horizontal_list_state = HorizontalListState::default();
+    let mut horizontal_list_page = 0;
     let mut selection_list_state = ListState::default();
 
     loop {
@@ -246,6 +247,7 @@ fn main() -> anyhow::Result<()> {
                         ui::SelectedAbilities {
                             db: &mut db,
                             card: selected_state.selected,
+                            page: horizontal_list_page,
                         },
                         battlefield_layout[1],
                         &mut horizontal_list_state,
@@ -358,6 +360,14 @@ fn main() -> anyhow::Result<()> {
                         KeyCode::Down => {
                             let selected = selection_list_state.selected().unwrap_or_default();
                             selection_list_state.select(Some(selected.saturating_add(1)));
+                        }
+                        KeyCode::Left => {
+                            horizontal_list_page = horizontal_list_page.saturating_sub(1);
+                        }
+                        KeyCode::Right => {
+                            if horizontal_list_state.has_overflow {
+                                horizontal_list_page += 1;
+                            }
                         }
                         KeyCode::Enter => {
                             if to_resolve.is_none() && !Stack::is_empty(&mut db) {
