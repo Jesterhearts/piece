@@ -12,6 +12,7 @@ mana_abilities {
 activated_abilities {
   cost {
     mana_costs { generic { count: 2 } }
+    additional_costs{ sacrifice_this{} } 
     tap: true
   }
   effects {
@@ -19,7 +20,7 @@ activated_abilities {
       restrictions { 
         of_type { subtypes { forest {} } }
       }
-      destination { battlefield {} }
+      destination { battlefield { enters_tapped: true } }
     }
   }
   effects {
@@ -27,7 +28,9 @@ activated_abilities {
       restrictions { 
         of_type { subtypes { plains {} } }
       }
-      destination { battlefield {} }
+      destination { battlefield { enters_tapped: true } }
     }
   }
+  oracle_text:  "Search your library for a Forest card and a Plains cards, "
+                "put them onto the battlefield tapped, then shuffle."
 }

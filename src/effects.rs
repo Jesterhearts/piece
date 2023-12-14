@@ -23,7 +23,7 @@ use crate::{
 pub enum Destination {
     Hand,
     TopOfLibrary,
-    Battlefield,
+    Battlefield { enters_tapped: bool },
 }
 
 impl TryFrom<&protogen::effects::Destination> for Destination {
@@ -43,7 +43,11 @@ impl From<&protogen::effects::destination::Destination> for Destination {
         match value {
             protogen::effects::destination::Destination::Hand(_) => Self::Hand,
             protogen::effects::destination::Destination::TopOfLibrary(_) => Self::TopOfLibrary,
-            protogen::effects::destination::Destination::Battlefield(_) => Self::Battlefield,
+            protogen::effects::destination::Destination::Battlefield(battlefield) => {
+                Self::Battlefield {
+                    enters_tapped: battlefield.enters_tapped,
+                }
+            }
         }
     }
 }

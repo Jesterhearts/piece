@@ -24,7 +24,7 @@ use ratatui::{
 use crate::{
     battlefield::{Battlefield, PendingResults, ResolutionResult},
     card::Card,
-    in_play::{CardId, Database, InGraveyard, InHand},
+    in_play::{CardId, Database, InGraveyard, InHand, OnBattlefield},
     player::AllPlayers,
     stack::Stack,
     ui::{
@@ -114,6 +114,7 @@ enum UiState {
         player2_graveyard_list_offset: usize,
     },
     SelectingOptions {
+        to_resolve: PendingResults,
         selection_list_state: ListState,
         selection_list_offset: usize,
     },
@@ -172,8 +173,18 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
-    let card6 = CardId::upload(&mut db, &cards, player1, "Titania, Protector of Argoth");
-    card6.move_to_hand(&mut db);
+    let card6 = CardId::upload(&mut db, &cards, player1, "Krosan Verge");
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card6, vec![]);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::Complete
+    );
+
+    let card7 = CardId::upload(&mut db, &cards, player1, "Titania, Protector of Argoth");
+    card7.move_to_hand(&mut db);
+
+    let card8 = CardId::upload(&mut db, &cards, player1, "Forest");
+    all_players[player1].deck.place_on_top(&mut db, card8);
 
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);
@@ -209,7 +220,6 @@ fn main() -> anyhow::Result<()> {
     let mut last_click = None;
     let mut last_hover = None;
     let mut key_selected = None;
-    let mut to_resolve: Option<PendingResults> = None;
     let mut choice;
 
     loop {
@@ -262,7 +272,10 @@ fn main() -> anyhow::Result<()> {
 
                         frame.render_stateful_widget(
                             HorizontalList::new(
-                                ["Pass"].into_iter().map(Span::from).collect_vec(),
+                                ["Pass", "(Debug) Untap all"]
+                                    .into_iter()
+                                    .map(Span::from)
+                                    .collect_vec(),
                                 last_hover,
                                 last_click,
                             )
@@ -508,11 +521,16 @@ fn main() -> anyhow::Result<()> {
                 UiState::SelectingOptions {
                     selection_list_offset,
                     selection_list_state,
+                    to_resolve,
                 } => {
                     if selection_list_state.selected.is_none() {
                         selection_list_state.selected = Some(0);
                     }
-                    let options = to_resolve.as_ref().unwrap().options(&mut db, &all_players);
+                    let mut options = to_resolve.options(&mut db, &all_players);
+                    if to_resolve.is_optional(&mut db) {
+                        options.insert(0, "None".to_owned());
+                    }
+
                     if selection_list_state.selected.unwrap_or_default() >= options.len() {
                         selection_list_state.selected = Some(options.len() - 1);
                     }
@@ -826,14 +844,16 @@ fn main() -> anyhow::Result<()> {
                             };
                         }
                         KeyCode::Enter => {
-                            if to_resolve.is_none() && !Stack::is_empty(&mut db) {
+                            if !matches!(state, UiState::SelectingOptions { .. })
+                                && !Stack::is_empty(&mut db)
+                            {
                                 let mut results = Stack::resolve_1(&mut db);
                                 if results.only_immediate_results() {
                                     let result = results.resolve(&mut db, &mut all_players, None);
                                     assert_eq!(result, ResolutionResult::Complete);
                                 } else if !results.is_empty() {
-                                    to_resolve = Some(results);
                                     state = UiState::SelectingOptions {
+                                        to_resolve: results,
                                         selection_list_state: ListState::default(),
                                         selection_list_offset: 0,
                                     };
@@ -908,7 +928,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
-        match &state {
+        match &mut state {
             UiState::Battlefield {
                 phase_options_selection_state:
                     HorizontalListState {
@@ -931,17 +951,25 @@ fn main() -> anyhow::Result<()> {
                 ..
             } => {
                 if phases_hovered.is_some() {
-                    if let Some(0) = key_selected.map(|offset| phases_start_index + offset) {
-                        todo!()
+                    if let Some(index) = key_selected.map(|offset| *phases_start_index + offset) {
+                        match index {
+                            0 => todo!(),
+                            1 => {
+                                for card in in_play::cards::<OnBattlefield>(&mut db) {
+                                    card.untap(&mut db);
+                                }
+                            }
+                            _ => {}
+                        }
                     }
                 } else if hand_hovered.is_some() {
-                    if let Some(selected) = key_selected.map(|offset| hand_start_index + offset) {
+                    if let Some(selected) = key_selected.map(|offset| *hand_start_index + offset) {
                         state =
                             UiState::ExaminingCard(player1.get_cards::<InHand>(&mut db)[selected]);
                     }
                 } else if let Some(card) = selected_state.selected {
                     let abilities = card.activated_abilities(&mut db);
-                    if let Some(selected) = key_selected.map(|offset| actions_start_index + offset)
+                    if let Some(selected) = key_selected.map(|offset| *actions_start_index + offset)
                     {
                         if selected < abilities.len() {
                             let mut results = Battlefield::activate_ability(
@@ -957,8 +985,8 @@ fn main() -> anyhow::Result<()> {
                                     }
                                     battlefield::ResolutionResult::TryAgain => {}
                                     battlefield::ResolutionResult::PendingChoice => {
-                                        to_resolve = Some(results);
                                         state = UiState::SelectingOptions {
+                                            to_resolve: results,
                                             selection_list_state: ListState::default(),
                                             selection_list_offset: 0,
                                         };
@@ -970,14 +998,16 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            UiState::SelectingOptions { .. } => loop {
-                match to_resolve
-                    .as_mut()
-                    .unwrap()
-                    .resolve(&mut db, &mut all_players, choice)
-                {
+            UiState::SelectingOptions { to_resolve, .. } => loop {
+                if to_resolve.is_optional(&mut db) && choice.is_some() {
+                    if choice == Some(0) {
+                        choice = None
+                    } else {
+                        choice = Some(choice.unwrap() - 1);
+                    }
+                }
+                match to_resolve.resolve(&mut db, &mut all_players, choice) {
                     battlefield::ResolutionResult::Complete => {
-                        to_resolve = None;
                         state = UiState::Battlefield {
                             phase_options_selection_state: HorizontalListState::default(),
                             phase_options_list_page: 0,

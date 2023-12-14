@@ -45,6 +45,7 @@ message Destination {
   message TopOfLibrary {
   }
   message Battlefield {
+    bool enters_tapped = 1;
   }
 
   oneof destination {

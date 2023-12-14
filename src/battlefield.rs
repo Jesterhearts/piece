@@ -92,6 +92,19 @@ impl PendingResults {
         }
     }
 
+    pub fn is_optional(&self, db: &mut Database) -> bool {
+        if let Some(to_resolve) = self.results.front() {
+            if let Some(to_resolve) = to_resolve.then_resolve.front() {
+                to_resolve.optional
+                    || to_resolve.result.wants_targets(db) >= to_resolve.choices.len()
+            } else {
+                true
+            }
+        } else {
+            true
+        }
+    }
+
     pub fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<String> {
         if let Some(to_resolve) = self.results.front() {
             if let Some(to_resolve) = to_resolve.then_resolve.front() {
@@ -171,6 +184,24 @@ pub enum UnresolvedActionResult {
     Effect(Effect),
     Attach(AuraId, CardId),
     Ability(AbilityId),
+}
+
+impl UnresolvedActionResult {
+    fn wants_targets(&self, db: &mut Database) -> usize {
+        match self {
+            UnresolvedActionResult::Effect(effect) => effect.wants_targets(),
+            UnresolvedActionResult::Attach(_, _) => 1,
+            UnresolvedActionResult::Ability(ability) => {
+                let effects = ability.effects(db);
+                let controller = ability.controller(db);
+                effects
+                    .into_iter()
+                    .map(|effect| effect.into_effect(db, controller))
+                    .map(|effect| effect.wants_targets())
+                    .sum()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -432,12 +463,17 @@ impl UnresolvedAction {
                                 }
                             }
                             Destination::TopOfLibrary => todo!(),
-                            Destination::Battlefield => {
+                            Destination::Battlefield { enters_tapped } => {
                                 for card in targets.iter() {
-                                    results.push(ActionResult::AddToBattlefieldFromLibrary(*card));
+                                    results.push(ActionResult::AddToBattlefieldFromLibrary {
+                                        card: *card,
+                                        enters_tapped: *enters_tapped,
+                                    });
                                 }
                             }
                         }
+
+                        results.push(ActionResult::Shuffle(self.source.owner(db)));
 
                         results
                     } else {
@@ -528,7 +564,10 @@ pub enum ActionResult {
     MoveToHandFromLibrary(CardId),
     Shuffle(Owner),
     AddToBattlefield(CardId),
-    AddToBattlefieldFromLibrary(CardId),
+    AddToBattlefieldFromLibrary {
+        card: CardId,
+        enters_tapped: bool,
+    },
     StackToGraveyard(CardId),
     ApplyToBattlefield(ModifierId),
     ApplyAuraToTarget {
@@ -715,7 +754,11 @@ impl Battlefield {
     }
 
     #[must_use]
-    pub fn add_from_library(db: &mut Database, source_card_id: CardId) -> PendingResults {
+    pub fn add_from_library(
+        db: &mut Database,
+        source_card_id: CardId,
+        enters_tapped: bool,
+    ) -> PendingResults {
         let mut results = PendingResults::default();
 
         if let Some(aura) = source_card_id.aura(db) {
@@ -745,7 +788,7 @@ impl Battlefield {
             Self::push_effect_results(db, source_card_id, controller, effect, &mut results);
         }
 
-        if source_card_id.etb_tapped(db) {
+        if enters_tapped || source_card_id.etb_tapped(db) {
             source_card_id.tap(db);
         }
         source_card_id.move_to_battlefield(db);
@@ -827,10 +870,6 @@ impl Battlefield {
         }
 
         result
-    }
-
-    pub fn select_card(db: &mut Database, index: usize) -> CardId {
-        cards::<OnBattlefield>(db)[index]
     }
 
     #[must_use]
@@ -1088,8 +1127,11 @@ impl Battlefield {
                 card.move_to_hand(db);
                 all_players[card.controller(db)].deck.remove(*card);
             }
-            ActionResult::AddToBattlefieldFromLibrary(card) => {
-                return Battlefield::add_from_library(db, *card);
+            ActionResult::AddToBattlefieldFromLibrary {
+                card,
+                enters_tapped,
+            } => {
+                return Battlefield::add_from_library(db, *card, *enters_tapped);
             }
             ActionResult::Shuffle(owner) => {
                 all_players[*owner].deck.shuffle();
