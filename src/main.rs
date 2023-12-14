@@ -653,6 +653,66 @@ fn main() -> anyhow::Result<()> {
                     }
                 } else if let MouseEventKind::Moved = mouse.kind {
                     last_hover = Some((mouse.row, mouse.column));
+                } else if let MouseEventKind::ScrollUp | MouseEventKind::ScrollLeft = mouse.kind {
+                    if let UiState::Battlefield {
+                        phase_options_selection_state:
+                            HorizontalListState {
+                                hovered: phases_hovered,
+                                ..
+                            },
+                        phase_options_list_page,
+                        action_list_page,
+                        hand_selection_state:
+                            HorizontalListState {
+                                hovered: hand_hovered,
+                                ..
+                            },
+                        hand_list_page,
+                        ..
+                    } = &mut state
+                    {
+                        if hand_hovered.is_some() {
+                            *hand_list_page = hand_list_page.saturating_sub(1);
+                        } else if phases_hovered.is_some() {
+                            *phase_options_list_page = phase_options_list_page.saturating_sub(1);
+                        } else {
+                            *action_list_page = action_list_page.saturating_sub(1);
+                        }
+                    };
+                } else if let MouseEventKind::ScrollDown | MouseEventKind::ScrollRight = mouse.kind
+                {
+                    if let UiState::Battlefield {
+                        phase_options_selection_state:
+                            HorizontalListState {
+                                hovered: phases_hovered,
+                                has_overflow: phases_has_overflow,
+                                ..
+                            },
+                        phase_options_list_page,
+                        action_selection_state:
+                            HorizontalListState {
+                                has_overflow: actions_has_overflow,
+                                ..
+                            },
+                        action_list_page,
+                        hand_selection_state:
+                            HorizontalListState {
+                                hovered: hand_hovered,
+                                has_overflow: hand_has_overflow,
+                                ..
+                            },
+                        hand_list_page,
+                        ..
+                    } = &mut state
+                    {
+                        if hand_hovered.is_some() && *hand_has_overflow {
+                            *hand_list_page += 1;
+                        } else if phases_hovered.is_some() && *phases_has_overflow {
+                            *phase_options_list_page += 1;
+                        } else if *actions_has_overflow {
+                            *action_list_page += 1;
+                        }
+                    };
                 }
             } else if let event::Event::Key(key) = event {
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
