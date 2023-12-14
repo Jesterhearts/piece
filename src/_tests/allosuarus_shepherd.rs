@@ -1,14 +1,17 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, UnresolvedActionResult},
+    battlefield::{
+        ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult,
+        UnresolvedAction, UnresolvedActionResult,
+    },
     in_play::CardId,
     in_play::Database,
     load_cards,
     player::AllPlayers,
-    stack::{Entry, Stack, StackResult},
+    stack::{Entry, Stack},
     types::Subtype,
 };
 
@@ -22,35 +25,44 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    assert_eq!(results, PendingResults::default());
 
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
 
     assert_eq!(
         results,
-        [UnresolvedActionResult::AddAbilityToStack {
-            source: card,
-            ability: card.activated_abilities(&mut db).first().copied().unwrap(),
-            valid_targets: Default::default(),
-        }]
+        PendingResults {
+            results: VecDeque::from([PendingResult {
+                apply_immediately: vec![],
+                then_resolve: VecDeque::from([UnresolvedAction {
+                    source: card,
+                    result: UnresolvedActionResult::Ability(
+                        card.activated_abilities(&mut db).first().copied().unwrap()
+                    ),
+                    valid_targets: vec![],
+                    choices: vec![],
+                    optional: false,
+                }]),
+                recompute: false
+            }])
+        }
     );
 
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let results = Stack::resolve_1(&mut db);
     assert!(matches!(
         results.as_slice(),
-        [StackResult::ApplyToBattlefield(_),]
+        [ActionResult::ApplyToBattlefield(_),]
     ));
 
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
 
-    assert_eq!(card.power(&mut db), Some(5));
-    assert_eq!(card.toughness(&mut db), Some(5));
+    assert_eq!(card.power(&db), Some(5));
+    assert_eq!(card.toughness(&db), Some(5));
     assert_eq!(
         card.subtypes(&mut db),
         HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
@@ -58,8 +70,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     Battlefield::end_turn(&mut db);
 
-    assert_eq!(card.power(&mut db), Some(1));
-    assert_eq!(card.toughness(&mut db), Some(1));
+    assert_eq!(card.power(&db), Some(1));
+    assert_eq!(card.toughness(&db), Some(1));
     assert_eq!(
         card.subtypes(&mut db),
         HashSet::from([Subtype::Elf, Subtype::Shaman])
@@ -80,22 +92,21 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    card.move_to_stack(&mut db, HashSet::default());
-    let targets = HashSet::from([Stack::target_nth(&mut db, 0)]);
+    card.move_to_stack(&mut db, vec![]);
+    let targets = vec![Stack::target_nth(&mut db, 0)];
     counterspell.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert_eq!(results, [ActionResult::StackToGraveyard(counterspell)]);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [StackResult::AddToBattlefield(card)]);
+    assert_eq!(results, [ActionResult::AddToBattlefield(card)]);
 
     Ok(())
 }
@@ -113,25 +124,24 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let results = Battlefield::add_from_stack(&mut db, card1, vec![]);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card1, vec![]);
+    assert_eq!(results, PendingResults::default());
 
-    card2.move_to_stack(&mut db, HashSet::default());
-    let targets = HashSet::from([Stack::target_nth(&mut db, 0)]);
+    card2.move_to_stack(&mut db, vec![]);
+    let targets = vec![Stack::target_nth(&mut db, 0)];
     counterspell.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [StackResult::StackToGraveyard(counterspell)]);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert_eq!(results, [ActionResult::StackToGraveyard(counterspell)]);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [StackResult::AddToBattlefield(card2)]);
+    assert_eq!(results, [ActionResult::AddToBattlefield(card2)]);
 
     Ok(())
 }
@@ -150,11 +160,11 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let results = Battlefield::add_from_stack(&mut db, card1, vec![]);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card1, vec![]);
+    assert_eq!(results, PendingResults::default());
 
-    card2.move_to_stack(&mut db, HashSet::default());
-    let targets = HashSet::from([Stack::target_nth(&mut db, 0)]);
+    card2.move_to_stack(&mut db, vec![]);
+    let targets = vec![Stack::target_nth(&mut db, 0)];
     counterspell.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
@@ -163,15 +173,14 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     assert_eq!(
         results,
         [
-            StackResult::SpellCountered {
+            ActionResult::SpellCountered {
                 id: Entry::Card(card2)
             },
-            StackResult::StackToGraveyard(counterspell)
+            ActionResult::StackToGraveyard(counterspell)
         ]
     );
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
 
     assert!(Stack::is_empty(&mut db));
 

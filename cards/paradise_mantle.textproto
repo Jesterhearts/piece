@@ -4,7 +4,7 @@ cost {
 }
 types { artifact{} }
 subtypes { equipment{} }
-oracle_text:  "Equipped creature has \"{T}: Add one"
+oracle_text:  "Equipped creature has \"{T}: Add one "
               "mana of any color.\""
 activated_abilities {
   cost { mana_costs { generic { count: 1 } } }
@@ -26,4 +26,5 @@ activated_abilities {
       }
     }
   }
+  oracle_text: "Equip"
 }

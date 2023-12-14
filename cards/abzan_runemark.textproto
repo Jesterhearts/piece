@@ -7,11 +7,11 @@ cost {
 }
 oracle_text:  "Enchant creature\n"
               "Enchanted creature gets +2/+2\n"
-              "Enchanted creature has vigilance as"
-              "long as you control a black or green"
+              "Enchanted creature has vigilance as "
+              "long as you control a black or green "
               "permanent."
 enchant {
-  modifiers { 
+  modifiers {
     modifier { 
       add_power: 2
       add_toughness: 2

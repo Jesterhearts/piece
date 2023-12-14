@@ -13,6 +13,20 @@ pub enum Mana {
     Generic(usize),
 }
 
+impl Mana {
+    pub fn push_mana_symbol(self, result: &mut String) {
+        match self {
+            Mana::White => result.push('🔆'),
+            Mana::Blue => result.push('💧'),
+            Mana::Black => result.push('💀'),
+            Mana::Red => result.push('🔺'),
+            Mana::Green => result.push('🌳'),
+            Mana::Colorless => result.push('⟡'),
+            Mana::Generic(count) => result.push_str(&format!("{}", count)),
+        }
+    }
+}
+
 impl TryFrom<&protogen::cost::ManaCost> for Mana {
     type Error = anyhow::Error;
 

@@ -36,6 +36,7 @@ message ActivatedAbility {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
   bool apply_to_self = 3;
+  string oracle_text = 4;
 }
 
 message Destination {
@@ -180,23 +181,30 @@ message ControllerLosesLife {
   int32 count = 1;
 }
 
+message CopyOfAnyCreatureNonTargeting { }
+
+
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
     BattlefieldModifier modify_creature = 2;
     ControllerDrawCards controller_draw_cards = 3;
     ControllerLosesLife controller_loses_life = 4;
-    CounterSpell counter_spell = 5;
-    CreateToken create_token = 6;
-    DealDamage deal_damage = 7;
-    Equip equip = 8;
-    ExileTargetCreature exile_target_creature = 9;
-    ExileTargetCreatureManifestTopOfLibrary 
-      exile_target_creature_manifest_top_of_library = 10;
-    GainCounter gain_counter = 11;
+    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 5;
+    CounterSpell counter_spell = 6;
+    CreateToken create_token = 7;
+    DealDamage deal_damage = 8;
+    effects.Mill mill = 9;
+    effects.ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 10;
+    effects.ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 11;
+    effects.TutorLibrary tutor_library = 12;
+    Equip equip = 13;
+    ExileTargetCreature exile_target_creature = 14;
+    ExileTargetCreatureManifestTopOfLibrary exile_target_creature_manifest_top_of_library = 15;
+    GainCounter gain_counter = 16;
   }
 
-  optional Effect threshold = 12;
+  optional Effect threshold = 17;
 }
 
 message ReplacementEffect {

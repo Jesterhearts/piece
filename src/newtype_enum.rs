@@ -22,6 +22,7 @@ macro_rules! newtype_enum {
             $v mod [< $name:snake:lower >] {
                 $(
                     #[derive $d]
+                    #[derive(Default)]
                     pub struct $case;
                 )+
             }
@@ -30,11 +31,11 @@ macro_rules! newtype_enum {
     {
         #[derive $d:tt]
         #[derive $d2:tt]
-        #[$extra:ident $e:tt]
+        $(#[$extra:ident $e:tt])?
         $v:vis enum $name:ident { $($case:ident,)+ }} => {
             #[derive $d]
             #[derive $d2]
-            #[$extra $e]
+            $(#[$extra $e])?
             $v enum $name {
                 $($case,)+
             }
@@ -43,6 +44,7 @@ macro_rules! newtype_enum {
                 $v mod [< $name:snake:lower >] {
                     $(
                         #[derive $d]
+                        #[derive(Default)]
                         pub struct $case;
                     )+
                 }

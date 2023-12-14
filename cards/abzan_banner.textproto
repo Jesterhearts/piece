@@ -6,9 +6,7 @@ cost {
     }
   }
 }
-types { artifact {} } 
-oracle_text:  "{T}: Add {W}, {B}, or {G} to your mana pool.\n"
-              "{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card."
+types { artifact {} }
 mana_gains {
   cost {
     tap: true
@@ -34,4 +32,5 @@ activated_abilities {
       count: 1
     }
   }
+  oracle_text: "Draw a card."
 }

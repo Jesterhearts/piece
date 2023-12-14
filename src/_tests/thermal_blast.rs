@@ -1,14 +1,12 @@
-use std::collections::HashSet;
-
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield},
+    battlefield::{ActionResult, Battlefield, PendingResults, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
     player::AllPlayers,
-    stack::{ActiveTarget, Stack, StackResult},
+    stack::{ActiveTarget, Stack},
 };
 
 #[test]
@@ -24,32 +22,29 @@ fn damages_target() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    blast.move_to_stack(
-        &mut db,
-        HashSet::from([ActiveTarget::Battlefield { id: bear }]),
-    );
+    blast.move_to_stack(&mut db, vec![ActiveTarget::Battlefield { id: bear }]);
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
-            StackResult::DamageTarget {
+            ActionResult::DamageTarget {
                 quantity: 3,
-                target: bear
+                target: ActiveTarget::Battlefield { id: bear }
             },
-            StackResult::StackToGraveyard(blast)
+            ActionResult::StackToGraveyard(blast)
         ]
     );
 
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let mut results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&mut db), 3);
 
     let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
     assert_eq!(Battlefield::creatures(&mut db), []);
 
     Ok(())
@@ -73,32 +68,29 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    blast.move_to_stack(
-        &mut db,
-        HashSet::from([ActiveTarget::Battlefield { id: bear }]),
-    );
+    blast.move_to_stack(&mut db, vec![ActiveTarget::Battlefield { id: bear }]);
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
-            StackResult::DamageTarget {
+            ActionResult::DamageTarget {
                 quantity: 5,
-                target: bear
+                target: ActiveTarget::Battlefield { id: bear }
             },
-            StackResult::StackToGraveyard(blast)
+            ActionResult::StackToGraveyard(blast)
         ]
     );
 
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let mut results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&mut db), 5);
 
     let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
     assert_eq!(Battlefield::creatures(&mut db), []);
 
     Ok(())
@@ -124,32 +116,29 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    blast.move_to_stack(
-        &mut db,
-        HashSet::from([ActiveTarget::Battlefield { id: bear }]),
-    );
+    blast.move_to_stack(&mut db, vec![ActiveTarget::Battlefield { id: bear }]);
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
-            StackResult::DamageTarget {
+            ActionResult::DamageTarget {
                 quantity: 3,
-                target: bear
+                target: ActiveTarget::Battlefield { id: bear }
             },
-            StackResult::StackToGraveyard(blast)
+            ActionResult::StackToGraveyard(blast)
         ]
     );
 
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let mut results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&mut db), 3);
 
     let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
     assert_eq!(Battlefield::creatures(&mut db), []);
 
     Ok(())

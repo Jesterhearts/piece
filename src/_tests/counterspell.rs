@@ -1,14 +1,13 @@
-use std::collections::HashSet;
-
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::{ActionResult, PendingResults},
     in_play::CardId,
     in_play::Database,
     load_cards,
     player::AllPlayers,
-    stack::{Entry, Stack, StackResult},
+    stack::{Entry, Stack},
+    Battlefield,
 };
 
 #[test]
@@ -23,7 +22,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");
 
     counterspell_1.move_to_stack(&mut db, Default::default());
-    let targets = HashSet::from([Stack::target_nth(&mut db, 0)]);
+    let targets = vec![Stack::target_nth(&mut db, 0)];
     counterspell_2.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
@@ -32,15 +31,14 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     assert_eq!(
         results,
         [
-            StackResult::SpellCountered {
+            ActionResult::SpellCountered {
                 id: Entry::Card(counterspell_1)
             },
-            StackResult::StackToGraveyard(counterspell_2)
+            ActionResult::StackToGraveyard(counterspell_2)
         ]
     );
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
+    assert_eq!(results, PendingResults::default());
 
     assert!(Stack::is_empty(&mut db));
 

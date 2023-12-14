@@ -7,9 +7,9 @@ types { enchantment{} }
 types { creature{} }
 subtypes { nymph {} }
 subtypes { dryad {} }
-oracle_text:  "You may play an additional land on each"
+oracle_text:  "You may play an additional land on each "
               "of your turns.\n"
-              "Lands you control are every basic land"
+              "Lands you control are every basic land "
               "type in addition to their other types."
 static_abilities {
   battlefield_modifier {

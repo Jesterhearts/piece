@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
+use itertools::Itertools;
 
 use crate::{card::Color, mana::Mana, protogen};
 
@@ -13,6 +14,16 @@ pub struct CastingCost {
 impl CastingCost {
     pub fn colors(&self) -> HashSet<Color> {
         self.mana_cost.iter().map(|mana| mana.color()).collect()
+    }
+
+    pub fn text(&self) -> String {
+        let mut result = String::default();
+
+        for mana in self.mana_cost.iter() {
+            mana.push_mana_symbol(&mut result);
+        }
+
+        result
     }
 }
 
@@ -33,6 +44,14 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
     SacrificeThis,
+}
+
+impl AdditionalCost {
+    pub fn text(&self) -> String {
+        match self {
+            AdditionalCost::SacrificeThis => "Sacrifice this".to_owned(),
+        }
+    }
 }
 
 impl TryFrom<&protogen::cost::AdditionalCost> for AdditionalCost {
@@ -60,6 +79,28 @@ pub struct AbilityCost {
     pub mana_cost: Vec<Mana>,
     pub tap: bool,
     pub additional_cost: Vec<AdditionalCost>,
+}
+impl AbilityCost {
+    pub fn text(&self) -> String {
+        std::iter::once(
+            self.mana_cost
+                .iter()
+                .map(|c| {
+                    let mut result = String::default();
+                    c.push_mana_symbol(&mut result);
+                    result
+                })
+                .join(""),
+        )
+        .filter(|t| !t.is_empty())
+        .chain(
+            std::iter::once(self.tap)
+                .filter(|t| *t)
+                .map(|_| "↩".to_owned()),
+        )
+        .chain(self.additional_cost.iter().map(|cost| cost.text()))
+        .join(", ")
+    }
 }
 
 impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {

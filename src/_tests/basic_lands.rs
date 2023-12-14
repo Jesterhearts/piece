@@ -1,5 +1,5 @@
 use crate::{
-    battlefield::Battlefield,
+    battlefield::{Battlefield, PendingResults, ResolutionResult},
     in_play::Database,
     in_play::{AbilityId, CardId},
     load_cards,
@@ -23,16 +23,14 @@ fn plains() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert_eq!(results, []);
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert!(Stack::is_empty(&mut db));
+
     assert_eq!(all_players[player].mana_pool.white_mana, 1);
 
     Ok(())
@@ -53,16 +51,13 @@ fn island() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert_eq!(results, []);
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert!(Stack::is_empty(&mut db));
     assert_eq!(all_players[player].mana_pool.blue_mana, 1);
 
     Ok(())
@@ -83,16 +78,14 @@ fn swamp() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert_eq!(results, []);
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert!(Stack::is_empty(&mut db));
+
     assert_eq!(all_players[player].mana_pool.black_mana, 1);
 
     Ok(())
@@ -113,16 +106,13 @@ fn mountain() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert_eq!(results, []);
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert!(Stack::is_empty(&mut db));
     assert_eq!(all_players[player].mana_pool.red_mana, 1);
 
     Ok(())
@@ -143,16 +133,13 @@ fn forest() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack(&mut db, card, vec![]);
-    assert_eq!(results, []);
-    let results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Stack::apply_results(&mut db, &mut all_players, results);
-    let results = Battlefield::maybe_resolve(&mut db, &mut all_players, results);
-    assert_eq!(results, []);
+    assert!(Stack::is_empty(&mut db));
     assert_eq!(all_players[player].mana_pool.green_mana, 1);
 
     Ok(())

@@ -6,11 +6,9 @@ use derive_more::{Deref, DerefMut};
 use strum::IntoEnumIterator;
 
 use crate::{
-    abilities::{
-        ActivatedAbility, ETBAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility,
-    },
+    abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::CastingCost,
-    effects::{AnyEffect, ReplacementEffect, Token, TokenCreature},
+    effects::{AnyEffect, Effect, ReplacementEffect, Token, TokenCreature},
     in_play::{AbilityId, TriggerId},
     newtype_enum::newtype_enum,
     protogen,
@@ -272,11 +270,14 @@ pub enum TriggeredAbilityModifier {
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub enum EtbAbilityModifier {
     RemoveAll,
-    Add(ETBAbility),
+    Add(Effect),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub struct Name(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
+pub struct OracleText(pub String);
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
@@ -332,7 +333,7 @@ pub struct Card {
 
     pub enchant: Option<Enchant>,
 
-    pub etb_abilities: Vec<ETBAbility>,
+    pub etb_abilities: Vec<Effect>,
     pub effects: Vec<AnyEffect>,
 
     pub static_abilities: Vec<StaticAbility>,
@@ -386,7 +387,7 @@ impl TryFrom<protogen::card::Card> for Card {
             etb_abilities: value
                 .etb_abilities
                 .iter()
-                .map(ETBAbility::try_from)
+                .map(Effect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             effects: value
                 .effects

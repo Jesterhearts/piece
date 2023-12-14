@@ -3,17 +3,17 @@ use std::collections::{HashMap, HashSet};
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use itertools::Itertools;
 
 use crate::{
     controller::ControllerRestriction,
     cost::AbilityCost,
-    effects::{
-        AnyEffect, BattlefieldModifier, Mill, ReturnFromGraveyardToBattlefield,
-        ReturnFromGraveyardToLibrary, TutorLibrary,
-    },
-    in_play::{AbilityId, CardId, TriggerId},
+    effects::{AnyEffect, BattlefieldModifier, Effect},
+    in_play::{AbilityId, CardId, Database, TriggerId},
     mana::Mana,
+    player::{AllPlayers, Controller},
     protogen,
+    stack::ActiveTarget,
     targets::Restriction,
     triggers::Trigger,
 };
@@ -44,55 +44,10 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct ETBAbilities(pub Vec<ETBAbility>);
+pub struct ETBAbilities(pub Vec<Effect>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct ModifiedETBAbilities(pub Vec<ETBAbility>);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ETBAbility {
-    CopyOfAnyCreature,
-    Mill(Mill),
-    ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
-    ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
-    TutorLibrary(TutorLibrary),
-}
-
-impl TryFrom<&protogen::abilities::ETBAbility> for ETBAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::abilities::ETBAbility) -> Result<Self, Self::Error> {
-        value
-            .ability
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected etb ability to have an ability specified"))
-            .and_then(Self::try_from)
-    }
-}
-
-impl TryFrom<&protogen::abilities::etbability::Ability> for ETBAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::abilities::etbability::Ability) -> Result<Self, Self::Error> {
-        match value {
-            protogen::abilities::etbability::Ability::CopyOfAnyCreature(_) => {
-                Ok(Self::CopyOfAnyCreature)
-            }
-            protogen::abilities::etbability::Ability::Mill(mill) => {
-                Ok(Self::Mill(mill.try_into()?))
-            }
-            protogen::abilities::etbability::Ability::ReturnFromGraveyardToLibrary(ret) => {
-                Ok(Self::ReturnFromGraveyardToLibrary(ret.try_into()?))
-            }
-            protogen::abilities::etbability::Ability::ReturnFromGraveyardToBattlefield(ret) => {
-                Ok(Self::ReturnFromGraveyardToBattlefield(ret.try_into()?))
-            }
-            protogen::abilities::etbability::Ability::TutorLibrary(tutor) => {
-                Ok(Self::TutorLibrary(tutor.try_into()?))
-            }
-        }
-    }
-}
+pub struct ModifiedETBAbilities(pub Vec<Effect>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
 pub struct StaticAbilities(pub Vec<StaticAbility>);
@@ -158,6 +113,7 @@ pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<AnyEffect>,
     pub apply_to_self: bool,
+    pub oracle_text: String,
 }
 
 impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
@@ -176,6 +132,7 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             apply_to_self: value.apply_to_self,
+            oracle_text: value.oracle_text.clone(),
         })
     }
 }
@@ -193,6 +150,7 @@ pub struct TriggerListeners(pub HashSet<CardId>);
 pub struct TriggeredAbility {
     pub trigger: Trigger,
     pub effects: Vec<AnyEffect>,
+    pub oracle_text: String,
 }
 
 impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
@@ -206,6 +164,7 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            oracle_text: value.oracle_text.clone(),
         })
     }
 }
@@ -214,6 +173,37 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
 pub enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
+}
+impl GainMana {
+    fn text(&self) -> String {
+        match self {
+            GainMana::Specific { gains } => {
+                let mut result = "Add ".to_string();
+                for mana in gains {
+                    mana.push_mana_symbol(&mut result);
+                }
+                result
+            }
+            GainMana::Choice { choices } => {
+                let mut result = "Add one of ".to_string();
+
+                result.push_str(
+                    &choices
+                        .iter()
+                        .map(|choice| {
+                            let mut result = String::default();
+                            for mana in choice.iter() {
+                                mana.push_mana_symbol(&mut result);
+                            }
+                            result
+                        })
+                        .join(", "),
+                );
+
+                result
+            }
+        }
+    }
 }
 
 impl TryFrom<&protogen::effects::GainMana> for GainMana {
@@ -257,13 +247,18 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct GainManaAbilities(pub Vec<GainManaAbility>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct GainManaAbility {
     pub cost: AbilityCost,
     pub gain: GainMana,
+}
+impl GainManaAbility {
+    pub fn text(&self) -> String {
+        format!("{}: {}", self.cost.text(), self.gain.text())
+    }
 }
 
 impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
@@ -301,6 +296,49 @@ impl Ability {
         match self {
             Ability::Activated(ActivatedAbility { effects, .. }) => effects,
             Ability::Mana(_) => vec![],
+        }
+    }
+
+    pub(crate) fn choices(
+        &self,
+        db: &mut Database,
+        all_players: &AllPlayers,
+        controller: Controller,
+        targets: &[ActiveTarget],
+    ) -> Vec<String> {
+        match self {
+            Ability::Activated(activated) => {
+                let mut results = vec![];
+                for effect in activated.effects.iter() {
+                    results.extend(
+                        effect
+                            .effect(db, controller)
+                            .choices(db, all_players, targets),
+                    );
+                }
+
+                results
+            }
+            Ability::Mana(mana) => match &mana.gain {
+                GainMana::Specific { gains } => {
+                    let mut result = "Add ".to_string();
+                    for mana in gains {
+                        mana.push_mana_symbol(&mut result);
+                    }
+                    vec![result]
+                }
+                GainMana::Choice { choices } => {
+                    let mut result = vec![];
+                    for choice in choices {
+                        let mut add = "Add ".to_string();
+                        for mana in choice {
+                            mana.push_mana_symbol(&mut add);
+                        }
+                        result.push(add)
+                    }
+                    result
+                }
+            },
         }
     }
 }

@@ -3,18 +3,20 @@ use std::{collections::HashSet, str::FromStr};
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use itertools::Itertools;
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility},
-    battlefield::Battlefield,
     card::{Color, Keyword},
     controller::ControllerRestriction,
     in_play::{Database, ReplacementEffectId},
     newtype_enum::newtype_enum,
-    player::Controller,
+    player::{AllPlayers, Controller},
     protogen,
+    stack::ActiveTarget,
     targets::{Restriction, SpellTarget},
     types::{Subtype, Type},
+    Battlefield,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -326,6 +328,7 @@ pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
     ControllerLosesLife(usize),
+    CopyOfAnyCreatureNonTargeting,
     CounterSpell { target: SpellTarget },
     CreateToken(Token),
     DealDamage(DealDamage),
@@ -333,7 +336,63 @@ pub enum Effect {
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
     GainCounter(Counter),
+    Mill(Mill),
     ModifyCreature(BattlefieldModifier),
+    ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
+    ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
+    TutorLibrary(TutorLibrary),
+}
+
+impl Effect {
+    pub fn choices(
+        &self,
+        db: &mut Database,
+        all_players: &AllPlayers,
+        targets: &[ActiveTarget],
+    ) -> Vec<String> {
+        targets
+            .iter()
+            .map(|target| target.display(db, all_players))
+            .collect_vec()
+    }
+
+    pub fn wants_targets(&self) -> usize {
+        match self {
+            Effect::BattlefieldModifier(_) => 0,
+            Effect::ControllerDrawCards(_) => 0,
+            Effect::CounterSpell { .. } => 1,
+            Effect::CreateToken(_) => 0,
+            Effect::DealDamage(_) => 1,
+            Effect::Equip(_) => 1,
+            Effect::ExileTargetCreature => 1,
+            Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
+            Effect::GainCounter(_) => 0,
+            Effect::ModifyCreature(_) => 1,
+            Effect::ControllerLosesLife(_) => 0,
+            Effect::CopyOfAnyCreatureNonTargeting => 1,
+            Effect::Mill(_) => 1,
+            Effect::ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield {
+                count,
+                ..
+            }) => *count,
+            Effect::ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary {
+                count, ..
+            }) => *count,
+            Effect::TutorLibrary(_) => 1,
+        }
+    }
+}
+
+impl TryFrom<&protogen::effects::Effect> for Effect {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Effect) -> Result<Self, Self::Error> {
+        value
+            .effect
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
+            .and_then(Self::try_from)
+    }
 }
 
 impl TryFrom<&protogen::effects::effect::Effect> for Effect {
@@ -381,6 +440,19 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             )),
             protogen::effects::effect::Effect::ControllerLosesLife(value) => {
                 Ok(Self::ControllerLosesLife(usize::try_from(value.count)?))
+            }
+            protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(_) => {
+                Ok(Self::CopyOfAnyCreatureNonTargeting)
+            }
+            protogen::effects::effect::Effect::Mill(mill) => Ok(Self::Mill(mill.try_into()?)),
+            protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(ret) => {
+                Ok(Self::ReturnFromGraveyardToBattlefield(ret.try_into()?))
+            }
+            protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(ret) => {
+                Ok(Self::ReturnFromGraveyardToLibrary(ret.try_into()?))
+            }
+            protogen::effects::effect::Effect::TutorLibrary(tutor) => {
+                Ok(Self::TutorLibrary(tutor.try_into()?))
             }
         }
     }
@@ -439,19 +511,8 @@ impl AnyEffect {
     }
 
     pub fn wants_targets(&self, db: &mut Database, controller: Controller) -> usize {
-        match self.effect(db, controller) {
-            Effect::BattlefieldModifier(_) => 0,
-            Effect::ControllerDrawCards(_) => 0,
-            Effect::CounterSpell { .. } => 1,
-            Effect::CreateToken(_) => 0,
-            Effect::DealDamage(_) => 1,
-            Effect::Equip(_) => 1,
-            Effect::ExileTargetCreature => 1,
-            Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
-            Effect::GainCounter(_) => 0,
-            Effect::ModifyCreature(_) => 1,
-            Effect::ControllerLosesLife(_) => 0,
-        }
+        let effect = self.effect(db, controller);
+        effect.wants_targets()
     }
 }
 
@@ -529,24 +590,14 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
     }
 }
 
-pub mod counter {
-    use bevy_ecs::component::Component;
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Default)]
-    pub struct Charge;
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Default)]
-    pub struct P1P1;
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Default)]
-    pub struct M1M1;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+newtype_enum! {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+#[derive(strum::EnumIter)]
 pub enum Counter {
     Charge,
     P1P1,
     M1M1,
+}
 }
 
 impl TryFrom<&protogen::counters::Counter> for Counter {

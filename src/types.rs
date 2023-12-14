@@ -15,7 +15,7 @@ pub struct ModifiedTypes(pub HashSet<Type>);
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct AddTypes(pub HashSet<Type>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum Type {
     BasicLand,
     Land,
@@ -74,7 +74,7 @@ pub struct AddSubtypes(pub HashSet<Subtype>);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct RemoveAllSubtypes;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum Subtype {
     Angel,
     Aura,
