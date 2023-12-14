@@ -561,7 +561,6 @@ fn main() -> anyhow::Result<()> {
             if let event::Event::Mouse(mouse) = event {
                 if let MouseEventKind::Down(_) = mouse.kind {
                     last_down = Some((mouse.row, mouse.column));
-                    last_click = None;
                 } else if let MouseEventKind::Up(MouseButton::Left) = mouse.kind {
                     if last_down == Some((mouse.row, mouse.column)) {
                         last_click = Some((mouse.row, mouse.column));
@@ -569,37 +568,28 @@ fn main() -> anyhow::Result<()> {
                             action_selection_state:
                                 HorizontalListState {
                                     hovered: Some(hovered),
-                                    start_index,
                                     ..
                                 },
                             ..
-                        } = &state
-                        {
-                            key_selected = Some(*start_index + *hovered)
-                        } else if let UiState::Battlefield {
+                        }
+                        | UiState::Battlefield {
                             hand_selection_state:
                                 HorizontalListState {
                                     hovered: Some(hovered),
-                                    start_index,
                                     ..
                                 },
                             ..
-                        } = &state
-                        {
-                            key_selected = Some(*start_index + *hovered);
-                        } else if let UiState::Battlefield {
+                        }
+                        | UiState::Battlefield {
                             phase_options_selection_state:
                                 HorizontalListState {
                                     hovered: Some(hovered),
                                     ..
                                 },
                             ..
-                        } = state
+                        } = &state
                         {
-                            match hovered {
-                                0 => todo!(),
-                                _ => {}
-                            }
+                            key_selected = Some(*hovered)
                         } else if let UiState::SelectingOptions {
                             selection_list_state: ListState { hovered, .. },
                             ..
