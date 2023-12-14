@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Modifier, Style},
+    style::{Modifier, Style, Stylize},
     text::Span,
     widgets::{Block, StatefulWidget, Widget},
 };
@@ -12,6 +12,7 @@ const ITEMS_PER_PAGE: usize = 9;
 
 #[derive(Debug, Default)]
 pub struct HorizontalListState {
+    pub hovered: Option<usize>,
     pub start_index: usize,
     pub count: Option<usize>,
     pub has_overflow: bool,
@@ -24,15 +25,17 @@ pub struct HorizontalList<'a> {
     items: Vec<Span<'a>>,
     style: Style,
     page: u16,
+    last_hover: Option<(u16, u16)>,
 }
 
 impl<'a> HorizontalList<'a> {
-    pub fn new(items: Vec<Span<'a>>) -> Self {
+    pub fn new(items: Vec<Span<'a>>, last_hover: Option<(u16, u16)>) -> Self {
         Self {
             block: None,
             items,
             style: Default::default(),
             page: 0,
+            last_hover,
         }
     }
 
@@ -144,6 +147,25 @@ impl StatefulWidget for HorizontalList<'_> {
                 }
 
                 x = initial_x + max_width;
+
+                if let Some(hover) = self.last_hover {
+                    if hover.0 >= y
+                        && hover.0 < list_area.bottom()
+                        && hover.1 >= initial_x
+                        && hover.1 < x
+                    {
+                        state.hovered = Some(index);
+                        buf.set_style(
+                            Rect {
+                                x: initial_x,
+                                y,
+                                width: max_width,
+                                height: y_offset,
+                            },
+                            Style::default().on_dark_gray(),
+                        );
+                    }
+                }
 
                 let pos = buf.set_span(x, y, &Span::from(" "), list_area.right() - x);
                 x = pos.0;

@@ -111,7 +111,6 @@ impl<'db> StatefulWidget for Card<'db> {
             .chain(triggers)
             .chain(std::iter::once(String::default()).filter(|_| has_triggers))
             .chain(std::iter::once(abilities))
-            .chain(std::iter::once(String::default()))
             .chain(std::iter::once(String::default()).filter(|_| has_abilities))
             .chain(std::iter::once("Modified by:".to_string()).filter(|_| is_modified))
             .chain(modified_by)
@@ -147,6 +146,8 @@ impl<'db> StatefulWidget for Battlefield<'db> {
         buf: &mut ratatui::prelude::Buffer,
         state: &mut Self::State,
     ) {
+        state.hovered = None;
+
         let block = Block::default()
             .title(self.player_name)
             .border_type(BorderType::Double)
@@ -226,6 +227,7 @@ pub struct SelectedAbilities<'db> {
     pub db: &'db mut Database,
     pub card: Option<CardId>,
     pub page: u16,
+    pub last_hover: Option<(u16, u16)>,
 }
 
 impl<'db> StatefulWidget for SelectedAbilities<'db> {
@@ -245,6 +247,7 @@ impl<'db> StatefulWidget for SelectedAbilities<'db> {
                     .map(|ability| ability.text(self.db))
                     .map(Span::from)
                     .collect_vec(),
+                self.last_hover,
             )
             .page(self.page)
             .render(area, buf, state);
