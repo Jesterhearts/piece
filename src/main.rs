@@ -264,11 +264,20 @@ fn main() -> anyhow::Result<()> {
                             HorizontalList::new(
                                 ["Pass"].into_iter().map(Span::from).collect_vec(),
                                 last_hover,
+                                last_click,
                             )
                             .page(*phase_options_list_page),
                             phase_options_rest[0],
                             phase_options_selection_state,
                         );
+
+                        if phase_options_selection_state.has_overflow
+                            && phase_options_selection_state.right_clicked
+                        {
+                            *phase_options_list_page += 1
+                        } else if phase_options_selection_state.left_clicked {
+                            *phase_options_list_page = phase_options_list_page.saturating_sub(1);
+                        }
 
                         area = phase_options_rest[1];
                     }
@@ -402,10 +411,17 @@ fn main() -> anyhow::Result<()> {
                             card: selected_state.selected,
                             page: *action_list_page,
                             last_hover,
+                            last_click,
                         },
                         battlefield_layout[2],
                         action_selection_state,
                     );
+
+                    if action_selection_state.has_overflow && action_selection_state.right_clicked {
+                        *action_list_page += 1
+                    } else if action_selection_state.left_clicked {
+                        *action_list_page = action_list_page.saturating_sub(1);
+                    }
 
                     frame.render_stateful_widget(
                         HorizontalList::new(
@@ -416,6 +432,7 @@ fn main() -> anyhow::Result<()> {
                                 .map(Span::from)
                                 .collect_vec(),
                             last_hover,
+                            last_click,
                         )
                         .page(*hand_list_page)
                         .block(
@@ -426,6 +443,12 @@ fn main() -> anyhow::Result<()> {
                         battlefield_layout[3],
                         hand_selection_state,
                     );
+
+                    if hand_selection_state.has_overflow && hand_selection_state.right_clicked {
+                        *hand_list_page += 1
+                    } else if hand_selection_state.left_clicked {
+                        *hand_list_page = hand_list_page.saturating_sub(1);
+                    }
 
                     let graveyards = Layout::default()
                         .direction(Direction::Vertical)

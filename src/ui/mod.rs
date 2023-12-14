@@ -69,6 +69,22 @@ impl<'db> StatefulWidget for Card<'db> {
             .title(Title::from(self.title).position(Position::Top))
             .borders(Borders::ALL);
 
+        let types = self.card.types(self.db);
+        let subtypes = self.card.subtypes(self.db);
+
+        let typeline = std::iter::once(types.iter().map(|ty| ty.as_ref()).join(" "))
+            .chain(
+                std::iter::once(subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+                    .filter(|s| !s.is_empty()),
+            )
+            .join(" - ");
+
+        block = block.title(
+            Title::from(format!(" {} ", typeline))
+                .position(Position::Bottom)
+                .alignment(Alignment::Left),
+        );
+
         if let Some(pt) = self.pt {
             block = block.title(
                 Title::from(format!(" {} ", pt))
@@ -228,6 +244,7 @@ pub struct SelectedAbilities<'db> {
     pub card: Option<CardId>,
     pub page: u16,
     pub last_hover: Option<(u16, u16)>,
+    pub last_click: Option<(u16, u16)>,
 }
 
 impl<'db> StatefulWidget for SelectedAbilities<'db> {
@@ -248,6 +265,7 @@ impl<'db> StatefulWidget for SelectedAbilities<'db> {
                     .map(Span::from)
                     .collect_vec(),
                 self.last_hover,
+                self.last_click,
             )
             .page(self.page)
             .render(area, buf, state);

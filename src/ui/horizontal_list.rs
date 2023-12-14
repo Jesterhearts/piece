@@ -16,6 +16,8 @@ pub struct HorizontalListState {
     pub start_index: usize,
     pub count: Option<usize>,
     pub has_overflow: bool,
+    pub left_clicked: bool,
+    pub right_clicked: bool,
 }
 
 /// A horizontal list, numbers the items based on their displayed position.
@@ -26,16 +28,22 @@ pub struct HorizontalList<'a> {
     style: Style,
     page: u16,
     last_hover: Option<(u16, u16)>,
+    last_click: Option<(u16, u16)>,
 }
 
 impl<'a> HorizontalList<'a> {
-    pub fn new(items: Vec<Span<'a>>, last_hover: Option<(u16, u16)>) -> Self {
+    pub fn new(
+        items: Vec<Span<'a>>,
+        last_hover: Option<(u16, u16)>,
+        last_click: Option<(u16, u16)>,
+    ) -> Self {
         Self {
             block: None,
             items,
             style: Default::default(),
             page: 0,
             last_hover,
+            last_click,
         }
     }
 
@@ -80,8 +88,29 @@ impl StatefulWidget for HorizontalList<'_> {
 
         let y = list_area.top();
         let mut x = list_area.left();
-        let mut remaining_width = list_area.width - 3;
+        let mut remaining_width = list_area.width - 5 /* 3 for ... 2 for < and > */;
         let mut item_index = 1;
+
+        buf.set_string(x, y, "🡄", Style::default());
+        buf.set_string(list_area.right() - 1, y, "🡆", Style::default());
+        x += 1;
+
+        if let Some(click) = self.last_click {
+            if click.0 >= list_area.top()
+                && click.0 < list_area.bottom()
+                && click.1 >= list_area.left()
+                && click.1 < list_area.left() + 1
+            {
+                state.left_clicked = true;
+            }
+            if click.0 >= list_area.top()
+                && click.0 < list_area.bottom()
+                && click.1 >= list_area.right() - 1
+                && click.1 < list_area.right()
+            {
+                state.right_clicked = true;
+            }
+        }
 
         let mut current_page = 0;
 
@@ -90,7 +119,7 @@ impl StatefulWidget for HorizontalList<'_> {
             const NUMBER_WIDTH: u16 = 4;
             // We separate with " "
             const ITEM_SPACING: u16 = 1;
-            let item_width = (item.width() as u16)
+            let mut item_width = (item.width() as u16)
                 .saturating_add(NUMBER_WIDTH)
                 .saturating_add(ITEM_SPACING)
                 .min(list_area.width - 3);
@@ -99,9 +128,19 @@ impl StatefulWidget for HorizontalList<'_> {
                 break;
             }
 
+            if remaining_width == list_area.width - 5 && item_width > remaining_width {
+                let mut graphemes = item.styled_graphemes(Style::default());
+                let mut lines = WordWrapper::new(&mut graphemes, list_area.right() - 1 - x, true);
+                let mut max = 0;
+                while let Some(line) = lines.next_line() {
+                    max = line.1.max(max);
+                }
+                item_width = max;
+            }
+
             if item_width > remaining_width {
                 current_page += 1;
-                remaining_width = list_area.width - 3;
+                remaining_width = list_area.width - 5;
                 if current_page == self.page {
                     state.start_index = index;
                 }
@@ -124,7 +163,7 @@ impl StatefulWidget for HorizontalList<'_> {
                 x = pos.0;
 
                 let mut graphemes = item.styled_graphemes(Style::default());
-                let mut lines = WordWrapper::new(&mut graphemes, list_area.right() - x, true);
+                let mut lines = WordWrapper::new(&mut graphemes, list_area.right() - 1 - x, true);
 
                 let initial_x = x;
                 let mut max_width = 0;

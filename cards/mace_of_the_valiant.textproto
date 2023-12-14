@@ -3,6 +3,8 @@ cost {
   mana_costs { generic { count: 2} }
   mana_costs { white {} }
 }
+types { artifact{} }
+subtypes { equipment{} }
 oracle_text:  "Equipped creature gets +1/+1 for each "
               "charge counter on Mace of the Valiant "
               "and has vigilance."
