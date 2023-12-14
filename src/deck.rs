@@ -67,4 +67,8 @@ impl Deck {
     pub fn is_empty(&self) -> bool {
         self.cards.is_empty()
     }
+
+    pub fn remove(&mut self, card: CardId) {
+        self.cards.retain(|deck| *deck != card);
+    }
 }

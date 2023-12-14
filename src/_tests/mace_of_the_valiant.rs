@@ -28,9 +28,9 @@ fn mace() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(2));
@@ -40,9 +40,9 @@ fn mace() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(5));
     assert_eq!(bear.toughness(&db), Some(3));

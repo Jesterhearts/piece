@@ -7,7 +7,7 @@ cost {
   }
 }
 types { artifact {} }
-mana_gains {
+mana_abilities {
   cost {
     tap: true
   }

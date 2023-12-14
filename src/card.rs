@@ -202,6 +202,9 @@ impl Keyword {
     }
 }
 
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Revealed;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 pub struct CannotBeCountered;
 
@@ -312,6 +315,9 @@ pub struct BaseToughnessModifier(pub i32);
 )]
 pub struct AddToughness(pub i32);
 
+#[derive(Debug, Clone, Copy, Component)]
+pub struct EtbTapped;
+
 #[derive(Debug, Clone, Component)]
 pub enum ModifyKeywords {
     Remove(HashSet<Keyword>),
@@ -344,10 +350,12 @@ pub struct Card {
 
     pub replacement_effects: Vec<ReplacementEffect>,
 
-    pub mana_gains: Vec<GainManaAbility>,
+    pub mana_abilities: Vec<GainManaAbility>,
 
     pub power: Option<usize>,
     pub toughness: Option<usize>,
+
+    pub etb_tapped: bool,
 
     pub keywords: HashSet<Keyword>,
 }
@@ -368,11 +376,7 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
-            cost: value
-                .cost
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected a casting cost"))?
-                .try_into()?,
+            cost: value.cost.get_or_default().try_into()?,
             cannot_be_countered: value.cannot_be_countered,
             colors: value
                 .colors
@@ -414,11 +418,12 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(ReplacementEffect::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            mana_gains: value
-                .mana_gains
+            mana_abilities: value
+                .mana_abilities
                 .iter()
                 .map(GainManaAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            etb_tapped: value.etb_tapped,
             power: value
                 .power
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {

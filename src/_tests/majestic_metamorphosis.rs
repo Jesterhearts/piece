@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, PendingResults},
+    battlefield::{PendingResults, ResolutionResult},
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
@@ -27,18 +27,9 @@ fn metamorphosis() -> anyhow::Result<()> {
 
     majestic.move_to_stack(&mut db, vec![ActiveTarget::Battlefield { id: mantle }]);
 
-    let results = Stack::resolve_1(&mut db);
-    assert!(matches!(
-        results.as_slice(),
-        [
-            ActionResult::ApplyModifierToTarget { .. },
-            ActionResult::DrawCards { .. },
-            ActionResult::StackToGraveyard { .. },
-        ]
-    ));
-
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(mantle.power(&db), Some(4));
     assert_eq!(mantle.toughness(&db), Some(4));
@@ -70,18 +61,9 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
 
     majestic.move_to_stack(&mut db, vec![ActiveTarget::Battlefield { id: bear }]);
 
-    let results = Stack::resolve_1(&mut db);
-    assert!(matches!(
-        results.as_slice(),
-        [
-            ActionResult::ApplyModifierToTarget { .. },
-            ActionResult::DrawCards { .. },
-            ActionResult::StackToGraveyard { .. },
-        ]
-    ));
-
-    let result = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(result, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(4));

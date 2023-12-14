@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, PendingResults, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -31,14 +31,9 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    assert!(matches!(
-        results.as_slice(),
-        [ActionResult::ApplyModifierToTarget { .. }]
-    ));
-
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(shade1.power(&db), Some(2));
     assert_eq!(shade1.toughness(&db), Some(3));

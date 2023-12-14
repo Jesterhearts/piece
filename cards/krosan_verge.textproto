@@ -1,0 +1,33 @@
+name: "Krosan Verge"
+types { land {} }
+etb_tapped: true
+mana_abilities {
+  cost {
+    tap: true
+  }
+  gain_mana {
+    specific { gains{ colorless{} } }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs { generic { count: 2 } }
+    tap: true
+  }
+  effects {
+    tutor_library {
+      restrictions { 
+        of_type { subtypes { forest {} } }
+      }
+      destination { battlefield {} }
+    }
+  }
+  effects {
+    tutor_library {
+      restrictions { 
+        of_type { subtypes { plains {} } }
+      }
+      destination { battlefield {} }
+    }
+  }
+}

@@ -52,14 +52,9 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    assert!(matches!(
-        results.as_slice(),
-        [ActionResult::ApplyToBattlefield(_),]
-    ));
-
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(card.power(&db), Some(5));
     assert_eq!(card.toughness(&db), Some(5));
@@ -98,15 +93,18 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
-    let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [ActionResult::StackToGraveyard(counterspell)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    assert_eq!(
+        results,
+        [ActionResult::StackToGraveyard(counterspell)].into()
+    );
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [ActionResult::AddToBattlefield(card)]);
+    assert_eq!(results, [ActionResult::AddToBattlefield(card)].into());
 
     Ok(())
 }
@@ -133,15 +131,18 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
-    let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [ActionResult::StackToGraveyard(counterspell)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    assert_eq!(
+        results,
+        [ActionResult::StackToGraveyard(counterspell)].into()
+    );
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [ActionResult::AddToBattlefield(card2)]);
+    assert_eq!(results, [ActionResult::AddToBattlefield(card2)].into());
 
     Ok(())
 }
@@ -169,7 +170,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
-    let results = Stack::resolve_1(&mut db);
+    let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
@@ -178,9 +179,10 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
             },
             ActionResult::StackToGraveyard(counterspell)
         ]
+        .into()
     );
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Stack::is_empty(&mut db));
 

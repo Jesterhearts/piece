@@ -11,6 +11,7 @@ mod elesh_norn_grand_cenobite;
 mod forbidden_friendship;
 mod glowspore_shaman;
 mod hoar_shade;
+mod krosan_verge;
 mod mace_of_the_valiant;
 mod majestic_metamorphosis;
 mod paradise_mantle;

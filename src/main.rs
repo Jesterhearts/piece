@@ -176,9 +176,9 @@ fn main() -> anyhow::Result<()> {
     card6.move_to_hand(&mut db);
 
     while !Stack::is_empty(&mut db) {
-        let results = Stack::resolve_1(&mut db);
-        let result = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-        assert_eq!(result, PendingResults::default());
+        let mut results = Stack::resolve_1(&mut db);
+        let result = results.resolve(&mut db, &mut all_players, None);
+        assert_eq!(result, ResolutionResult::Complete);
     }
 
     stdout()
@@ -827,13 +827,11 @@ fn main() -> anyhow::Result<()> {
                         }
                         KeyCode::Enter => {
                             if to_resolve.is_none() && !Stack::is_empty(&mut db) {
-                                let results = Stack::resolve_1(&mut db);
-                                let results = Battlefield::apply_action_results(
-                                    &mut db,
-                                    &mut all_players,
-                                    &results,
-                                );
-                                if !results.is_empty() {
+                                let mut results = Stack::resolve_1(&mut db);
+                                if results.only_immediate_results() {
+                                    let result = results.resolve(&mut db, &mut all_players, None);
+                                    assert_eq!(result, ResolutionResult::Complete);
+                                } else if !results.is_empty() {
                                     to_resolve = Some(results);
                                     state = UiState::SelectingOptions {
                                         selection_list_state: ListState::default(),

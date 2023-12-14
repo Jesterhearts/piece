@@ -4,8 +4,8 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{
-        ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult,
-        UnresolvedAction, UnresolvedActionResult,
+        Battlefield, PendingResult, PendingResults, ResolutionResult, UnresolvedAction,
+        UnresolvedActionResult,
     },
     effects::{Effect, ReturnFromGraveyardToBattlefield},
     in_play::CardId,
@@ -81,13 +81,9 @@ fn graveyard_trigger() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    assert!(matches!(
-        results.as_slice(),
-        [ActionResult::CreateToken { .. }]
-    ));
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Battlefield::creatures(&mut db).len(), 2);
 

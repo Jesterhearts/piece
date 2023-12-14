@@ -378,7 +378,7 @@ impl Effect {
             Effect::ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary {
                 count, ..
             }) => *count,
-            Effect::TutorLibrary(_) => 1,
+            Effect::TutorLibrary(_) => 0,
         }
     }
 }

@@ -55,6 +55,7 @@ fn creates_tokens() -> anyhow::Result<()> {
             },
             ActionResult::StackToGraveyard(card),
         ]
+        .into()
     );
 
     Ok(())

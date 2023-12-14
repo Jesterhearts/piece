@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, PendingResults},
+    battlefield::{ActionResult, PendingResults, ResolutionResult},
     in_play::Database,
     in_play::{cards, CardId, InExile},
     load_cards,
@@ -36,7 +36,7 @@ fn resolves_shift() -> anyhow::Result<()> {
     let shift = CardId::upload(&mut db, &all_cards, player, "Reality Shift");
     shift.move_to_stack(&mut db, vec![ActiveTarget::Battlefield { id: bear1 }]);
 
-    let results = Stack::resolve_1(&mut db);
+    let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
         [
@@ -44,9 +44,10 @@ fn resolves_shift() -> anyhow::Result<()> {
             ActionResult::ManifestTopOfLibrary(player.into()),
             ActionResult::StackToGraveyard(shift),
         ]
+        .into()
     );
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(cards::<InExile>(&mut db), [bear1]);
 

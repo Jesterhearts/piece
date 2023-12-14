@@ -1,4 +1,7 @@
 name: "Island"
-cost { }
-types { basic_land {} }
-subtypes { island {} }
+
+ types
+{ basic_land {} }
+
+ subtypes
+{ island {} }

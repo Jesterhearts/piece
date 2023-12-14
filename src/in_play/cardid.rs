@@ -13,9 +13,9 @@ use crate::{
     battlefield::{compute_deck_targets, compute_graveyard_targets, Battlefield},
     card::{
         keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BasePower,
-        BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, Keyword,
-        Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
-        ModifiedKeywords, ModifyKeywords, Name, OracleText, StaticAbilityModifier,
+        BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, EtbTapped,
+        Keyword, Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
+        ModifiedKeywords, ModifyKeywords, Name, OracleText, Revealed, StaticAbilityModifier,
         TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
@@ -582,6 +582,10 @@ impl CardId {
         db.get::<Owner>(self.0).copied().unwrap()
     }
 
+    pub fn etb_tapped(self, db: &Database) -> bool {
+        db.get::<EtbTapped>(self.0).is_some()
+    }
+
     pub fn apply_modifier(self, db: &mut Database, modifier: ModifierId) {
         db.modifiers
             .get_mut::<Modifying>(modifier.0)
@@ -860,6 +864,10 @@ impl CardId {
             entity.insert(IsToken);
         }
 
+        if card.etb_tapped {
+            entity.insert(EtbTapped);
+        }
+
         if let Some(power) = card.power {
             entity.insert(BasePower(power as i32));
         }
@@ -922,9 +930,9 @@ impl CardId {
             db.entity_mut(cardid.0).insert(auraid);
         }
 
-        if !card.mana_gains.is_empty() {
+        if !card.mana_abilities.is_empty() {
             let mut ability_ids = vec![];
-            for gain_mana in card.mana_gains.iter() {
+            for gain_mana in card.mana_abilities.iter() {
                 let id = AbilityId::upload_ability(db, cardid, Ability::Mana(gain_mana.clone()));
 
                 ability_ids.push(id);
@@ -986,6 +994,16 @@ impl CardId {
     pub fn valid_targets(self, db: &mut Database) -> Vec<ActiveTarget> {
         let mut targets = vec![];
         let creatures = Battlefield::creatures(db);
+
+        if self.aura(db).is_some() {
+            let controller = self.controller(db);
+            for creature in creatures.iter() {
+                if creature.can_be_targeted(db, controller) {
+                    // TODO auras also target non creatures. This needs more validation and logic
+                    targets.push(ActiveTarget::Battlefield { id: *creature })
+                }
+            }
+        }
 
         let controller = self.controller(db);
         for effect in self.effects(db) {
@@ -1233,6 +1251,10 @@ impl CardId {
         db.entity_mut(self.0).insert(Tapped);
     }
 
+    pub fn untap(&self, db: &mut Database) {
+        db.entity_mut(self.0).remove::<Tapped>();
+    }
+
     pub fn clone_card(&self, db: &mut Database, source: CardId) {
         db.entity_mut(self.0).insert(Cloning(source.0));
     }
@@ -1339,5 +1361,9 @@ impl CardId {
         }
 
         results
+    }
+
+    pub fn reveal(self, db: &mut Database) {
+        db.entity_mut(self.0).insert(Revealed);
     }
 }

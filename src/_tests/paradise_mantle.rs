@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -30,9 +30,9 @@ fn adds_ability() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Stack::resolve_1(&mut db);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(creature.activated_abilities(&mut db).len(), 1);
 

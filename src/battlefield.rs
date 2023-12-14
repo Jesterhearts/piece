@@ -9,15 +9,15 @@ use crate::{
     controller::ControllerRestriction,
     cost::AdditionalCost,
     effects::{
-        effect_duration::UntilEndOfTurn, BattlefieldModifier, Counter, Effect, EffectDuration,
-        Mill, Token,
+        effect_duration::UntilEndOfTurn, BattlefieldModifier, Counter, Destination, Effect,
+        EffectDuration, Mill, Token, TutorLibrary,
     },
     in_play::{
-        all_cards, cards, AbilityId, Active, CardId, CounterId, Database, InGraveyard, InLibrary,
-        ModifierId, OnBattlefield, TriggerId,
+        all_cards, cards, AbilityId, Active, AuraId, CardId, CounterId, Database, InGraveyard,
+        InLibrary, ModifierId, OnBattlefield, TriggerId,
     },
     mana::Mana,
-    player::{AllPlayers, Controller},
+    player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Entry, Stack},
     targets::Restriction,
     triggers::{self, trigger_source},
@@ -42,6 +42,18 @@ pub struct PendingResult {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PendingResults {
     pub results: VecDeque<PendingResult>,
+}
+
+impl<const T: usize> From<[ActionResult; T]> for PendingResults {
+    fn from(value: [ActionResult; T]) -> Self {
+        Self {
+            results: VecDeque::from([PendingResult {
+                apply_immediately: value.to_vec(),
+                then_resolve: Default::default(),
+                recompute: false,
+            }]),
+        }
+    }
 }
 
 impl PendingResults {
@@ -147,11 +159,17 @@ impl PendingResults {
     pub(crate) fn is_empty(&self) -> bool {
         self.results.is_empty()
     }
+
+    pub(crate) fn only_immediate_results(&self) -> bool {
+        self.is_empty()
+            || (self.results.len() == 1 && self.results.front().unwrap().then_resolve.is_empty())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnresolvedActionResult {
     Effect(Effect),
+    Attach(AuraId, CardId),
     Ability(AbilityId),
 }
 
@@ -198,6 +216,11 @@ impl UnresolvedAction {
                         &mut valid_targets,
                     );
                 }
+
+                self.valid_targets = valid_targets;
+            }
+            UnresolvedActionResult::Attach(_, card) => {
+                self.valid_targets = card.valid_targets(db);
             }
         }
     }
@@ -213,6 +236,11 @@ impl UnresolvedAction {
                     .ability(db)
                     .choices(db, all_players, controller, &self.valid_targets)
             }
+            UnresolvedActionResult::Attach(_, _) => self
+                .valid_targets
+                .iter()
+                .map(|target| target.display(db, all_players))
+                .collect_vec(),
         }
     }
 
@@ -361,7 +389,61 @@ impl UnresolvedAction {
                         vec![]
                     }
                 }
-                Effect::TutorLibrary(_) => todo!(),
+                Effect::TutorLibrary(TutorLibrary {
+                    destination,
+                    reveal,
+                    ..
+                }) => {
+                    if choice.is_none() && !self.optional && !self.valid_targets.is_empty() {
+                        self.choices.pop();
+                        return vec![];
+                    }
+
+                    let targets = self
+                        .choices
+                        .iter()
+                        .filter(|target| target.is_some())
+                        .count();
+                    let wants_targets = effect.wants_targets();
+                    if targets >= wants_targets || targets >= self.valid_targets.len() {
+                        let mut results = vec![];
+                        let targets = self
+                            .choices
+                            .iter()
+                            .filter_map(|target| *target)
+                            .map(|target| self.valid_targets[target])
+                            .map(|target| {
+                                let ActiveTarget::Library { id } = target else {
+                                    unreachable!()
+                                };
+                                id
+                            })
+                            .collect_vec();
+                        if *reveal {
+                            for card in targets.iter() {
+                                results.push(ActionResult::RevealCard(*card))
+                            }
+                        }
+
+                        match destination {
+                            Destination::Hand => {
+                                for card in targets.iter() {
+                                    results.push(ActionResult::MoveToHandFromLibrary(*card));
+                                }
+                            }
+                            Destination::TopOfLibrary => todo!(),
+                            Destination::Battlefield => {
+                                for card in targets.iter() {
+                                    results.push(ActionResult::AddToBattlefieldFromLibrary(*card));
+                                }
+                            }
+                        }
+
+                        results
+                    } else {
+                        vec![]
+                    }
+                }
                 Effect::BattlefieldModifier(_)
                 | Effect::ControllerDrawCards(_)
                 | Effect::ControllerLosesLife(_) => {
@@ -421,15 +503,38 @@ impl UnresolvedAction {
                     }
                 }
             }
+            UnresolvedActionResult::Attach(aura, card) => {
+                if choice.is_none() && !self.valid_targets.is_empty() {
+                    self.choices.pop();
+                    return vec![];
+                } else if choice.is_none() {
+                    self.choices.pop();
+                    return vec![ActionResult::PermanentToGraveyard(*card)];
+                }
+
+                let target = self.valid_targets[choice.unwrap()];
+                vec![ActionResult::ApplyAuraToTarget {
+                    aura: *aura,
+                    target,
+                }]
+            }
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionResult {
+    RevealCard(CardId),
+    MoveToHandFromLibrary(CardId),
+    Shuffle(Owner),
     AddToBattlefield(CardId),
+    AddToBattlefieldFromLibrary(CardId),
     StackToGraveyard(CardId),
     ApplyToBattlefield(ModifierId),
+    ApplyAuraToTarget {
+        aura: AuraId,
+        target: ActiveTarget,
+    },
     ApplyModifierToTarget {
         modifier: ModifierId,
         target: ActiveTarget,
@@ -584,12 +689,74 @@ impl Battlefield {
             Self::push_effect_results(db, source_card_id, controller, effect, &mut results);
         }
 
+        if source_card_id.etb_tapped(db) {
+            source_card_id.tap(db);
+        }
         source_card_id.move_to_battlefield(db);
 
         for trigger in
             TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
         {
             if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
+                let for_types = trigger.for_types(db);
+                if source_card_id.types_intersect(db, &for_types) {
+                    for source in trigger.listeners(db) {
+                        results.push_resolved(ActionResult::AddTriggerToStack(trigger, source))
+                    }
+                }
+            }
+        }
+
+        for card in all_cards(db) {
+            card.apply_modifiers_layered(db);
+        }
+
+        results
+    }
+
+    #[must_use]
+    pub fn add_from_library(db: &mut Database, source_card_id: CardId) -> PendingResults {
+        let mut results = PendingResults::default();
+
+        if let Some(aura) = source_card_id.aura(db) {
+            results.push_unresolved(UnresolvedAction {
+                source: source_card_id,
+                result: UnresolvedActionResult::Attach(aura, source_card_id),
+                valid_targets: source_card_id.valid_targets(db),
+                choices: vec![],
+                optional: false,
+            });
+        }
+
+        for ability in source_card_id.static_abilities(db) {
+            match ability {
+                StaticAbility::GreenCannotBeCountered { .. } => {}
+                StaticAbility::BattlefieldModifier(modifier) => {
+                    let modifier =
+                        ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
+                    results.push_resolved(ActionResult::AddModifier { modifier })
+                }
+                StaticAbility::ExtraLandsPerTurn(_) => {}
+            }
+        }
+
+        let controller = source_card_id.controller(db);
+        for effect in source_card_id.etb_abilities(db) {
+            Self::push_effect_results(db, source_card_id, controller, effect, &mut results);
+        }
+
+        if source_card_id.etb_tapped(db) {
+            source_card_id.tap(db);
+        }
+        source_card_id.move_to_battlefield(db);
+
+        for trigger in
+            TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
+        {
+            if matches!(
+                trigger.location_from(db),
+                triggers::Location::Anywhere | triggers::Location::Library
+            ) {
                 let for_types = trigger.for_types(db);
                 if source_card_id.types_intersect(db, &for_types) {
                     for source in trigger.listeners(db) {
@@ -633,6 +800,10 @@ impl Battlefield {
 
         for modifier in all_modifiers {
             modifier.detach_all(db);
+        }
+
+        for card in all_cards(db) {
+            card.untap(db);
         }
 
         for card in all_cards(db) {
@@ -909,6 +1080,29 @@ impl Battlefield {
                 count,
             } => {
                 CounterId::add_counters(db, *target, *counter, *count);
+            }
+            ActionResult::RevealCard(card) => {
+                card.reveal(db);
+            }
+            ActionResult::MoveToHandFromLibrary(card) => {
+                card.move_to_hand(db);
+                all_players[card.controller(db)].deck.remove(*card);
+            }
+            ActionResult::AddToBattlefieldFromLibrary(card) => {
+                return Battlefield::add_from_library(db, *card);
+            }
+            ActionResult::Shuffle(owner) => {
+                all_players[*owner].deck.shuffle();
+            }
+            ActionResult::ApplyAuraToTarget { aura, target } => {
+                match target {
+                    ActiveTarget::Battlefield { id } => {
+                        id.apply_aura(db, *aura);
+                    }
+                    ActiveTarget::Graveyard { .. } => todo!(),
+                    ActiveTarget::Player { .. } => todo!(),
+                    _ => unreachable!(),
+                };
             }
         }
 
