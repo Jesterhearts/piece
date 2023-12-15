@@ -13,22 +13,23 @@ use crate::ui::linewrap::{LineComposer, WordWrapper};
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash)]
 
 pub struct ListState {
-    pub selected: Option<usize>,
-    pub hovered: Option<usize>,
+    pub selected_value: Option<usize>,
+    pub selected_index: Option<usize>,
+    pub hovered_value: Option<usize>,
     pub selected_up: bool,
     pub selected_down: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct List<'a> {
+pub struct List {
     pub title: String,
-    pub items: Vec<Span<'a>>,
+    pub items: Vec<(usize, String)>,
     pub last_hover: Option<(u16, u16)>,
     pub last_click: Option<(u16, u16)>,
     pub offset: usize,
 }
 
-impl<'a> StatefulWidget for List<'a> {
+impl StatefulWidget for List {
     type State = ListState;
 
     fn render(
@@ -37,7 +38,7 @@ impl<'a> StatefulWidget for List<'a> {
         buf: &mut ratatui::prelude::Buffer,
         state: &mut Self::State,
     ) {
-        state.hovered = None;
+        state.hovered_value = None;
         state.selected_down = false;
         state.selected_up = false;
 
@@ -88,11 +89,12 @@ impl<'a> StatefulWidget for List<'a> {
         let area = inner_area;
 
         let mut current_height = 0;
-        for (i, item) in self.items.into_iter().enumerate().skip(self.offset) {
+        for (idx, (item_idx, item)) in self.items.into_iter().enumerate().skip(self.offset) {
             if current_height >= area.height {
                 return;
             }
 
+            let item = Span::from(item);
             let mut graphemes = item.styled_graphemes(Style::default());
             let mut lines = WordWrapper::new(&mut graphemes, area.width - 1, false);
             let mut all_lines = vec![];
@@ -100,13 +102,15 @@ impl<'a> StatefulWidget for List<'a> {
                 all_lines.push(line.0.to_owned());
             }
 
+            let mut hovered = false;
             if let Some(hover) = self.last_hover {
                 if hover.0 >= area.top() + current_height
                     && hover.0 < area.top() + current_height + all_lines.len() as u16
                     && hover.1 >= area.left()
                     && hover.1 < area.right()
                 {
-                    state.hovered = Some(i);
+                    state.hovered_value = Some(item_idx);
+                    hovered = true;
                 }
             }
 
@@ -116,12 +120,14 @@ impl<'a> StatefulWidget for List<'a> {
                     && click.1 >= area.left()
                     && click.1 < area.right()
                 {
-                    state.selected = Some(i);
+                    state.selected_index = Some(idx);
                 }
             }
 
-            let selected = state.selected.map(|s| s == i).unwrap_or_default();
-            let hovered = state.hovered.map(|s| s == i).unwrap_or_default();
+            let selected = state.selected_index.map(|i| i == idx).unwrap_or_default();
+            if selected {
+                state.selected_value = Some(item_idx);
+            }
 
             for (line_num, line) in all_lines.into_iter().enumerate() {
                 if current_height >= area.height {

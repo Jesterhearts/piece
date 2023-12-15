@@ -18,7 +18,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
@@ -35,12 +35,12 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
                     ActionResult::PermanentToGraveyard(card),
                 ],
                 then_resolve: VecDeque::from([UnresolvedAction {
-                    source: card,
+                    source: Some(card),
                     result: UnresolvedActionResult::Ability(
                         card.activated_abilities(&mut db).first().copied().unwrap()
                     ),
                     valid_targets: vec![],
-                    choices: vec![],
+                    choices: Default::default(),
                     optional: false,
                 }]),
                 recompute: true
@@ -60,7 +60,7 @@ fn add_mana() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);

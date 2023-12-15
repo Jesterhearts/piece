@@ -12,10 +12,10 @@ use crate::{
     battlefield::{ActionResult, Battlefield, PendingResults},
     controller::ControllerRestriction,
     deck::Deck,
-    effects::{Effect, ReplaceDraw},
+    effects::{replacing, Effect},
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
     mana::Mana,
-    stack::ActiveTarget,
+    stack::{ActiveTarget, Stack},
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
@@ -26,6 +26,18 @@ pub struct Owner(usize);
 impl From<Controller> for Owner {
     fn from(value: Controller) -> Self {
         Self(value.0)
+    }
+}
+
+impl PartialEq<Controller> for Owner {
+    fn eq(&self, other: &Controller) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialEq<Owner> for Controller {
+    fn eq(&self, other: &Owner) -> bool {
+        self.0 == other.0
     }
 }
 
@@ -245,29 +257,37 @@ pub struct AllPlayers {
 
 impl AllPlayers {
     #[must_use]
-    pub fn new_player(&mut self, life_total: i32) -> Owner {
+    pub fn new_player(&mut self, name: String, life_total: i32) -> Owner {
         let id = Owner(NEXT_PLAYER_ID.fetch_add(1, Ordering::Relaxed));
         self.players.insert(
             id,
             Player {
+                name,
                 hexproof: false,
                 life_total,
                 lands_played: 0,
                 mana_pool: Default::default(),
                 deck: Deck::empty(),
+                lost: false,
             },
         );
 
         id
     }
 
-    pub fn all_players(db: &mut Database) -> HashSet<Owner> {
+    pub fn all_players(&self) -> Vec<Owner> {
+        self.players.keys().copied().collect_vec()
+    }
+
+    pub fn all_players_in_db(db: &mut Database) -> HashSet<Owner> {
         db.query::<&Owner>().iter(db).copied().collect()
     }
 }
 
 #[derive(Debug)]
 pub struct Player {
+    pub name: String,
+
     pub hexproof: bool,
     pub lands_played: usize,
     pub mana_pool: ManaPool,
@@ -275,6 +295,8 @@ pub struct Player {
     pub life_total: i32,
 
     pub deck: Deck,
+
+    pub lost: bool,
 }
 
 impl Player {
@@ -298,12 +320,11 @@ impl Player {
         }
     }
 
-    #[must_use]
     pub fn draw(&mut self, db: &mut Database, count: usize) -> PendingResults {
         let mut results = PendingResults::default();
 
         for _ in 0..count {
-            let replacements = ReplacementEffectId::watching::<ReplaceDraw>(db);
+            let replacements = ReplacementEffectId::watching::<replacing::Draw>(db);
             if !replacements.is_empty() {
                 self.draw_internal(db, &mut replacements.into_iter(), 1, &mut results);
             } else if let Some(card) = self.deck.draw() {
@@ -375,13 +396,12 @@ impl Player {
         }
     }
 
-    /// Returns Some if the card can be played
     pub fn play_card(
         &mut self,
         db: &mut Database,
         index: usize,
         target: Option<ActiveTarget>,
-    ) -> anyhow::Result<Option<CardId>> {
+    ) -> PendingResults {
         let cards = cards::<InHand>(db);
         let card = cards[index];
         let mana_pool = self.mana_pool;
@@ -389,7 +409,7 @@ impl Player {
         for mana in card.cost(db).mana_cost.iter() {
             if !self.mana_pool.spend(*mana) {
                 self.mana_pool = mana_pool;
-                return Ok(None);
+                return PendingResults::default();
             }
         }
 
@@ -397,15 +417,20 @@ impl Player {
             let targets = card.valid_targets(db);
             if !targets.contains(&target) {
                 self.mana_pool = mana_pool;
-                return Ok(None);
+                return PendingResults::default();
             }
         }
 
         if card.is_land(db) && self.lands_played >= Self::lands_per_turn(db) {
-            return Ok(None);
+            self.mana_pool = mana_pool;
+            return PendingResults::default();
         }
 
-        Ok(Some(card))
+        if card.is_land(db) {
+            return Battlefield::add_from_stack_or_hand(db, card, vec![]);
+        }
+
+        Stack::move_card_to_stack(db, card)
     }
 
     pub fn spend_mana(&mut self, mana: &[Mana]) -> bool {

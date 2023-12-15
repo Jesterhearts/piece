@@ -26,8 +26,8 @@ use crate::{
     effects::{
         counter,
         effect_duration::{UntilEndOfTurn, UntilSourceLeavesBattlefield},
-        AnyEffect, BattlefieldModifier, Counter, DynamicPowerToughness, EffectDuration, Effects,
-        ReplaceDraw, ReplacementEffect, Replacing,
+        replacing, AnyEffect, BattlefieldModifier, Counter, DynamicPowerToughness, EffectDuration,
+        Effects, ReplacementEffect, Replacing,
     },
     mana::Mana,
     player::Controller,
@@ -385,6 +385,18 @@ impl AbilityId {
 
                 Self(entity.id())
             }
+            Ability::ETB {
+                effects,
+                oracle_text,
+            } => {
+                let mut entity = db.abilities.spawn((cardid, Effects(effects)));
+                if let Some(text) = oracle_text.as_ref() {
+                    entity.insert(OracleText(text.clone()));
+                }
+
+                debug!("Uploaded {:?}", entity.id());
+                Self(entity.id())
+            }
         }
     }
 
@@ -479,6 +491,11 @@ impl AbilityId {
         })
     }
 
+    pub fn update_stack_seq(self, db: &mut Database) {
+        *db.abilities.get_mut::<InStack>(self.0).unwrap() =
+            InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed));
+    }
+
     pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<ActiveTarget>) {
         if Stack::split_second(db) {
             return;
@@ -497,7 +514,16 @@ impl AbilityId {
         db.abilities.despawn(self.0);
     }
 
+    pub fn original(self, db: &Database) -> AbilityId {
+        db.abilities
+            .get::<AbilityId>(self.0)
+            .copied()
+            .unwrap_or(self)
+    }
+
     pub fn ability(self, db: &mut Database) -> Ability {
+        let this = self.original(db);
+
         if let Some((cost, effects, text, apply_to_self)) = db
             .abilities
             .query::<(
@@ -509,7 +535,7 @@ impl AbilityId {
             )>()
             .iter(&db.abilities)
             .filter_map(|(e, cost, effect, text, apply_to_self)| {
-                if Self(e) == self {
+                if Self(e) == this {
                     Some((cost, effect, text, apply_to_self))
                 } else {
                     None
@@ -523,8 +549,25 @@ impl AbilityId {
                 apply_to_self: apply_to_self.is_some(),
                 oracle_text: text.map(|t| t.0.clone()).unwrap_or_default(),
             })
+        } else if let Some((effects, text)) = db
+            .abilities
+            .query::<(Entity, &Effects, Option<&OracleText>)>()
+            .iter(&db.abilities)
+            .filter_map(|(e, effects, text)| {
+                if Self(e) == this {
+                    Some((effects, text))
+                } else {
+                    None
+                }
+            })
+            .next()
+        {
+            Ability::ETB {
+                effects: effects.0.clone(),
+                oracle_text: text.map(|t| t.0.clone()),
+            }
         } else {
-            Ability::Mana(self.gain_mana_ability(db))
+            Ability::Mana(this.gain_mana_ability(db))
         }
     }
 
@@ -555,23 +598,37 @@ impl AbilityId {
                 format!("{}: {}", activated.cost.text(), activated.oracle_text)
             }
             Ability::Mana(ability) => ability.text(),
+            Ability::ETB { oracle_text, .. } => oracle_text.unwrap_or_else(|| "ETB".to_owned()),
         }
     }
 
     pub fn apply_to_self(self, db: &mut Database) -> bool {
-        db.abilities.get::<ApplyToSelf>(self.0).is_some()
+        db.abilities
+            .get::<ApplyToSelf>(self.original(db).0)
+            .is_some()
     }
 
     pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
         db.abilities
-            .get::<Effects>(self.0)
+            .get::<Effects>(self.original(db).0)
             .cloned()
             .unwrap_or_default()
             .0
     }
 
+    pub fn wants_targets(self, db: &mut Database) -> usize {
+        let controller = self.original(db).controller(db);
+        self.effects(db)
+            .into_iter()
+            .map(|effect| effect.wants_targets(db, controller))
+            .sum::<usize>()
+    }
+
     pub fn source(self, db: &mut Database) -> CardId {
-        db.abilities.get::<CardId>(self.0).copied().unwrap()
+        db.abilities
+            .get::<CardId>(self.original(db).0)
+            .copied()
+            .unwrap()
     }
 
     pub fn controller(self, db: &mut Database) -> Controller {
@@ -737,6 +794,11 @@ impl ModifierId {
 pub struct TriggerId(Entity);
 
 impl TriggerId {
+    pub fn update_stack_seq(self, db: &mut Database) {
+        db.triggers.get_mut::<TriggerInStack>(self.0).unwrap().seq =
+            NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<ActiveTarget>) {
         if Stack::split_second(db) {
             return;
@@ -852,7 +914,11 @@ impl TriggerId {
     }
 
     pub fn text(self, db: &Database) -> String {
-        db.triggers.get::<OracleText>(self.0).unwrap().0.clone()
+        db.triggers
+            .get::<OracleText>(self.0)
+            .cloned()
+            .map(|text| text.0)
+            .unwrap_or_default()
     }
 
     pub fn short_text(self, db: &Database) -> String {
@@ -862,6 +928,16 @@ impl TriggerId {
             text.push_str("...")
         }
         text
+    }
+
+    pub fn wants_targets(self, db: &mut Database, source: CardId) -> usize {
+        let effects = self.effects(db);
+        let controller = source.controller(db);
+        effects
+            .into_iter()
+            .map(|effect| effect.into_effect(db, controller))
+            .map(|effect| effect.wants_targets())
+            .sum()
     }
 }
 
@@ -1021,7 +1097,10 @@ impl ReplacementEffectId {
 
         match effect.replacing {
             Replacing::Draw => {
-                entity.insert(ReplaceDraw);
+                entity.insert(replacing::Draw);
+            }
+            Replacing::Etb => {
+                entity.insert(replacing::Etb);
             }
         }
 

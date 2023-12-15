@@ -49,9 +49,9 @@ message Destination {
   }
 
   oneof destination {
-    Hand hand = 1;
-    TopOfLibrary top_of_library = 2;
-    Battlefield battlefield = 3;
+    Hand hand = 2;
+    TopOfLibrary top_of_library = 3;
+    Battlefield battlefield = 4;
   }
 }
 
@@ -211,11 +211,14 @@ message Effect {
 message ReplacementEffect {
   message Draw {
   }
+  message Etb {
+  }
 
   oneof replacing {
     Draw draw = 1;
+    Etb etb = 2;
   }
 
-  repeated targets.Restriction restrictions = 2;
-  repeated Effect effects = 3;
+  repeated targets.Restriction restrictions = 3;
+  repeated Effect effects = 4;
 }

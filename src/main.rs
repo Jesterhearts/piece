@@ -1,6 +1,14 @@
 #![allow(clippy::single_match)]
 
-use std::{collections::HashMap, io::stdout};
+#[macro_use]
+extern crate slog;
+extern crate slog_scope;
+extern crate slog_stdlog;
+extern crate slog_term;
+#[macro_use]
+extern crate log;
+
+use std::{collections::HashMap, fs::OpenOptions, io::stdout};
 
 use anyhow::{anyhow, Context};
 use crossterm::{
@@ -18,15 +26,19 @@ use ratatui::{
     prelude::{CrosstermBackend, Terminal},
     style::Stylize,
     text::Span,
-    widgets::{block::Title, Block, Borders},
+    widgets::{block::Title, Block, Borders, Paragraph},
 };
+use slog::Drain;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{
+        Battlefield, PendingResults, ResolutionResult, UnresolvedAction, UnresolvedActionResult,
+    },
     card::Card,
     in_play::{CardId, Database, InGraveyard, InHand, OnBattlefield},
     player::AllPlayers,
     stack::Stack,
+    turns::Turn,
     ui::{
         horizontal_list::{HorizontalList, HorizontalListState},
         list::{List, ListState},
@@ -52,6 +64,7 @@ pub mod protogen;
 pub mod stack;
 pub mod targets;
 pub mod triggers;
+pub mod turns;
 pub mod types;
 pub mod ui;
 
@@ -115,6 +128,7 @@ enum UiState {
     },
     SelectingOptions {
         to_resolve: PendingResults,
+        organizing_stack: bool,
         selection_list_state: ListState,
         selection_list_offset: usize,
     },
@@ -122,14 +136,30 @@ enum UiState {
 }
 
 fn main() -> anyhow::Result<()> {
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("logs.log")?;
+
+    let decorator = slog_term::PlainSyncDecorator::new(file);
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let logger = slog::Logger::root(drain, o!());
+
+    // slog_stdlog uses the logger from slog_scope, so set a logger there
+    let _guard = slog_scope::set_global_logger(logger);
+    slog_stdlog::init()?;
+
     let cards = load_cards()?;
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
 
-    let player1 = all_players.new_player(20);
-    let player2 = all_players.new_player(20);
+    let player1 = all_players.new_player("Player 1".to_owned(), 20);
+    let player2 = all_players.new_player("Player 2".to_owned(), 20);
     all_players[player1].infinite_mana();
+
+    let mut turn = Turn::new(&all_players);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player1, "Forest");
@@ -154,6 +184,10 @@ fn main() -> anyhow::Result<()> {
 
     let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, vec![]);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::TryAgain
+    );
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
@@ -270,6 +304,11 @@ fn main() -> anyhow::Result<()> {
                             .constraints([Constraint::Length(1), Constraint::Min(1)])
                             .split(area);
 
+                        let phase_options_display = Layout::default()
+                            .direction(Direction::Horizontal)
+                            .constraints([Constraint::Min(1), Constraint::Length(30)])
+                            .split(phase_options_rest[0]);
+
                         frame.render_stateful_widget(
                             HorizontalList::new(
                                 ["Pass", "(Debug) Untap all"]
@@ -280,7 +319,7 @@ fn main() -> anyhow::Result<()> {
                                 last_click,
                             )
                             .page(*phase_options_list_page),
-                            phase_options_rest[0],
+                            phase_options_display[0],
                             phase_options_selection_state,
                         );
 
@@ -291,6 +330,15 @@ fn main() -> anyhow::Result<()> {
                         } else if phase_options_selection_state.left_clicked {
                             *phase_options_list_page = phase_options_list_page.saturating_sub(1);
                         }
+
+                        frame.render_widget(
+                            Paragraph::new(format!(
+                                " {} {}",
+                                all_players[turn.active_player()].name,
+                                turn.phase.as_ref()
+                            )),
+                            phase_options_display[1],
+                        );
 
                         area = phase_options_rest[1];
                     }
@@ -321,7 +369,7 @@ fn main() -> anyhow::Result<()> {
                                 .mana_pool
                                 .pools_display()
                                 .into_iter()
-                                .map(Span::from)
+                                .enumerate()
                                 .collect_vec(),
                             last_hover,
                             last_click,
@@ -344,7 +392,7 @@ fn main() -> anyhow::Result<()> {
                             items: Stack::entries(&mut db)
                                 .into_iter()
                                 .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
-                                .map(Span::from)
+                                .enumerate()
                                 .collect_vec(),
                             last_hover,
                             last_click,
@@ -368,7 +416,7 @@ fn main() -> anyhow::Result<()> {
                                 .mana_pool
                                 .pools_display()
                                 .into_iter()
-                                .map(Span::from)
+                                .enumerate()
                                 .collect_vec(),
                             last_hover,
                             last_click,
@@ -398,7 +446,7 @@ fn main() -> anyhow::Result<()> {
                         ui::Battlefield {
                             db: &mut db,
                             owner: player2,
-                            player_name: " Player 2 ".to_owned(),
+                            player_name: format!(" {} ", all_players[player2].name),
                             last_hover,
                             last_click,
                         },
@@ -410,7 +458,7 @@ fn main() -> anyhow::Result<()> {
                         ui::Battlefield {
                             db: &mut db,
                             owner: player1,
-                            player_name: " Player 1 ".to_owned(),
+                            player_name: format!(" {} ", all_players[player1].name),
                             last_hover,
                             last_click,
                         },
@@ -476,7 +524,7 @@ fn main() -> anyhow::Result<()> {
                                 .get_cards::<InGraveyard>(&mut db)
                                 .into_iter()
                                 .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .map(Span::from)
+                                .enumerate()
                                 .collect_vec(),
                             last_click,
                             last_hover,
@@ -501,7 +549,7 @@ fn main() -> anyhow::Result<()> {
                                 .get_cards::<InGraveyard>(&mut db)
                                 .into_iter()
                                 .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .map(Span::from)
+                                .enumerate()
                                 .collect_vec(),
                             last_click,
                             last_hover,
@@ -522,23 +570,27 @@ fn main() -> anyhow::Result<()> {
                     selection_list_offset,
                     selection_list_state,
                     to_resolve,
+                    ..
                 } => {
-                    if selection_list_state.selected.is_none() {
-                        selection_list_state.selected = Some(0);
+                    if selection_list_state.selected_index.is_none() {
+                        selection_list_state.selected_index = Some(0);
                     }
                     let mut options = to_resolve.options(&mut db, &all_players);
                     if to_resolve.is_optional(&mut db) {
-                        options.insert(0, "None".to_owned());
+                        for option in options.iter_mut() {
+                            option.0 += 1
+                        }
+                        options.insert(0, (0, "None".to_owned()));
                     }
 
-                    if selection_list_state.selected.unwrap_or_default() >= options.len() {
-                        selection_list_state.selected = Some(options.len() - 1);
+                    if selection_list_state.selected_index.unwrap_or_default() >= options.len() {
+                        selection_list_state.selected_index = Some(options.len() - 1);
                     }
 
                     frame.render_stateful_widget(
                         List {
                             title: " Select an option ".to_owned(),
-                            items: options.into_iter().map(Span::from).collect_vec(),
+                            items: options,
                             last_click,
                             last_hover,
                             offset: *selection_list_offset,
@@ -609,7 +661,11 @@ fn main() -> anyhow::Result<()> {
                         {
                             key_selected = Some(*hovered)
                         } else if let UiState::SelectingOptions {
-                            selection_list_state: ListState { hovered, .. },
+                            selection_list_state:
+                                ListState {
+                                    hovered_value: hovered,
+                                    ..
+                                },
                             ..
                         } = &state
                         {
@@ -759,7 +815,7 @@ fn main() -> anyhow::Result<()> {
                             if let UiState::SelectingOptions {
                                 selection_list_state:
                                     ListState {
-                                        selected: Some(selected),
+                                        selected_index: Some(selected),
                                         ..
                                     },
                                 ..
@@ -772,7 +828,7 @@ fn main() -> anyhow::Result<()> {
                             if let UiState::SelectingOptions {
                                 selection_list_state:
                                     ListState {
-                                        selected: Some(selected),
+                                        selected_index: Some(selected),
                                         ..
                                     },
                                 ..
@@ -847,16 +903,43 @@ fn main() -> anyhow::Result<()> {
                             if !matches!(state, UiState::SelectingOptions { .. })
                                 && !Stack::is_empty(&mut db)
                             {
-                                let mut results = Stack::resolve_1(&mut db);
-                                if results.only_immediate_results() {
-                                    let result = results.resolve(&mut db, &mut all_players, None);
-                                    assert_eq!(result, ResolutionResult::Complete);
-                                } else if !results.is_empty() {
+                                let mut pending = Stack::resolve_1(&mut db);
+                                while pending.only_immediate_results() {
+                                    let result = pending.resolve(&mut db, &mut all_players, None);
+                                    if result == ResolutionResult::Complete {
+                                        break;
+                                    }
+                                }
+
+                                if !pending.is_empty() {
+                                    previous_state.push(state);
                                     state = UiState::SelectingOptions {
-                                        to_resolve: results,
+                                        to_resolve: pending,
                                         selection_list_state: ListState::default(),
+                                        organizing_stack: false,
                                         selection_list_offset: 0,
                                     };
+                                } else {
+                                    let entries = Stack::entries(&mut db)
+                                        .into_iter()
+                                        .map(|(_, entry)| entry)
+                                        .collect_vec();
+                                    if entries.len() > 1 {
+                                        pending.push_unresolved(UnresolvedAction {
+                                            source: None,
+                                            result: UnresolvedActionResult::OrganizeStack(entries),
+                                            valid_targets: vec![],
+                                            choices: Default::default(),
+                                            optional: true,
+                                        });
+                                        previous_state.push(state);
+                                        state = UiState::SelectingOptions {
+                                            to_resolve: pending,
+                                            selection_list_state: ListState::default(),
+                                            organizing_stack: true,
+                                            selection_list_offset: 0,
+                                        };
+                                    }
                                 }
                             }
 
@@ -881,10 +964,15 @@ fn main() -> anyhow::Result<()> {
                             }
 
                             if let UiState::SelectingOptions {
-                                selection_list_state: ListState { selected, .. },
+                                selection_list_state:
+                                    ListState {
+                                        selected_value: selected,
+                                        ..
+                                    },
                                 ..
                             } = state
                             {
+                                debug!("Selected {:?}", selected);
                                 choice = selected;
                             }
                         }
@@ -953,7 +1041,46 @@ fn main() -> anyhow::Result<()> {
                 if phases_hovered.is_some() {
                     if let Some(index) = key_selected.map(|offset| *phases_start_index + offset) {
                         match index {
-                            0 => todo!(),
+                            0 => {
+                                let mut pending = turn.step(&mut db, &mut all_players);
+                                while pending.only_immediate_results() {
+                                    let result = pending.resolve(&mut db, &mut all_players, None);
+                                    if result == ResolutionResult::Complete {
+                                        break;
+                                    }
+                                }
+
+                                if !pending.is_empty() {
+                                    previous_state.push(state);
+                                    state = UiState::SelectingOptions {
+                                        to_resolve: pending,
+                                        selection_list_state: ListState::default(),
+                                        organizing_stack: false,
+                                        selection_list_offset: 0,
+                                    };
+                                } else {
+                                    let entries = Stack::entries(&mut db)
+                                        .into_iter()
+                                        .map(|(_, entry)| entry)
+                                        .collect_vec();
+                                    if entries.len() > 1 {
+                                        pending.push_unresolved(UnresolvedAction {
+                                            source: None,
+                                            result: UnresolvedActionResult::OrganizeStack(entries),
+                                            valid_targets: vec![],
+                                            choices: Default::default(),
+                                            optional: true,
+                                        });
+                                        previous_state.push(state);
+                                        state = UiState::SelectingOptions {
+                                            to_resolve: pending,
+                                            selection_list_state: ListState::default(),
+                                            selection_list_offset: 0,
+                                            organizing_stack: true,
+                                        };
+                                    }
+                                }
+                            }
                             1 => {
                                 for card in in_play::cards::<OnBattlefield>(&mut db) {
                                     card.untap(&mut db);
@@ -964,8 +1091,48 @@ fn main() -> anyhow::Result<()> {
                     }
                 } else if hand_hovered.is_some() {
                     if let Some(selected) = key_selected.map(|offset| *hand_start_index + offset) {
-                        state =
-                            UiState::ExaminingCard(player1.get_cards::<InHand>(&mut db)[selected]);
+                        let card = player1.get_cards::<InHand>(&mut db)[selected];
+                        if turn.can_cast(&mut db, card) {
+                            let mut pending =
+                                all_players[player1].play_card(&mut db, selected, None);
+                            while pending.only_immediate_results() {
+                                let result = pending.resolve(&mut db, &mut all_players, None);
+                                if result == ResolutionResult::Complete {
+                                    break;
+                                }
+                            }
+
+                            if !pending.is_empty() {
+                                previous_state.push(state);
+                                state = UiState::SelectingOptions {
+                                    to_resolve: pending,
+                                    selection_list_state: ListState::default(),
+                                    selection_list_offset: 0,
+                                    organizing_stack: false,
+                                };
+                            } else {
+                                let entries = Stack::entries(&mut db)
+                                    .into_iter()
+                                    .map(|(_, entry)| entry)
+                                    .collect_vec();
+                                if entries.len() > 1 {
+                                    pending.push_unresolved(UnresolvedAction {
+                                        source: None,
+                                        result: UnresolvedActionResult::OrganizeStack(entries),
+                                        valid_targets: vec![],
+                                        choices: Default::default(),
+                                        optional: true,
+                                    });
+                                    previous_state.push(state);
+                                    state = UiState::SelectingOptions {
+                                        to_resolve: pending,
+                                        selection_list_state: ListState::default(),
+                                        selection_list_offset: 0,
+                                        organizing_stack: true,
+                                    };
+                                }
+                            }
+                        }
                     }
                 } else if let Some(card) = selected_state.selected {
                     let abilities = card.activated_abilities(&mut db);
@@ -985,10 +1152,12 @@ fn main() -> anyhow::Result<()> {
                                     }
                                     battlefield::ResolutionResult::TryAgain => {}
                                     battlefield::ResolutionResult::PendingChoice => {
+                                        previous_state.push(state);
                                         state = UiState::SelectingOptions {
                                             to_resolve: results,
                                             selection_list_state: ListState::default(),
                                             selection_list_offset: 0,
+                                            organizing_stack: false,
                                         };
                                         break;
                                     }
@@ -998,38 +1167,68 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            UiState::SelectingOptions { to_resolve, .. } => loop {
+            UiState::SelectingOptions {
+                to_resolve,
+                organizing_stack,
+                ..
+            } => {
+                let mut real_choice = choice;
+                #[allow(clippy::unnecessary_unwrap)] // I would if I could
                 if to_resolve.is_optional(&mut db) && choice.is_some() {
                     if choice == Some(0) {
-                        choice = None
+                        real_choice = None
                     } else {
-                        choice = Some(choice.unwrap() - 1);
+                        real_choice = Some(choice.unwrap() - 1);
                     }
                 }
-                match to_resolve.resolve(&mut db, &mut all_players, choice) {
-                    battlefield::ResolutionResult::Complete => {
-                        state = UiState::Battlefield {
-                            phase_options_selection_state: HorizontalListState::default(),
-                            phase_options_list_page: 0,
-                            selected_state: CardSelectionState::default(),
-                            action_selection_state: HorizontalListState::default(),
-                            action_list_page: 0,
-                            hand_selection_state: HorizontalListState::default(),
-                            hand_list_page: 0,
-                            stack_list_offset: 0,
-                            player1_mana_list_offset: 0,
-                            player2_mana_list_offset: 0,
-                            player1_graveyard_list_offset: 0,
-                            player2_graveyard_list_offset: 0,
-                        };
-                        break;
-                    }
-                    battlefield::ResolutionResult::TryAgain => {}
-                    battlefield::ResolutionResult::PendingChoice => {
-                        break;
+                if choice.is_some() {
+                    loop {
+                        match to_resolve.resolve(&mut db, &mut all_players, real_choice) {
+                            battlefield::ResolutionResult::Complete => {
+                                let entries = Stack::entries(&mut db)
+                                    .into_iter()
+                                    .map(|(_, entry)| entry)
+                                    .collect_vec();
+                                if !*organizing_stack && entries.len() > 1 {
+                                    to_resolve.push_unresolved(UnresolvedAction {
+                                        source: None,
+                                        result: UnresolvedActionResult::OrganizeStack(entries),
+                                        valid_targets: vec![],
+                                        choices: Default::default(),
+                                        optional: true,
+                                    });
+                                    *organizing_stack = true;
+                                } else {
+                                    state = previous_state.pop().unwrap_or(UiState::Battlefield {
+                                        phase_options_selection_state: HorizontalListState::default(
+                                        ),
+                                        phase_options_list_page: 0,
+                                        selected_state: CardSelectionState::default(),
+                                        action_selection_state: HorizontalListState::default(),
+                                        action_list_page: 0,
+                                        hand_selection_state: HorizontalListState::default(),
+                                        hand_list_page: 0,
+                                        stack_list_offset: 0,
+                                        player1_mana_list_offset: 0,
+                                        player2_mana_list_offset: 0,
+                                        player1_graveyard_list_offset: 0,
+                                        player2_graveyard_list_offset: 0,
+                                    });
+                                }
+                                break;
+                            }
+                            battlefield::ResolutionResult::TryAgain => {
+                                if !to_resolve.only_immediate_results() {
+                                    break;
+                                }
+                            }
+                            battlefield::ResolutionResult::PendingChoice => {
+                                break;
+                            }
+                        }
                     }
                 }
-            },
+            }
             UiState::ExaminingCard(_) => {}
             UiState::BattlefieldPreview { .. } => {}
         }

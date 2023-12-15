@@ -13,7 +13,7 @@ fn plains() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Plains");
     assert_eq!(
@@ -41,7 +41,7 @@ fn island() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Island");
     assert_eq!(
@@ -68,7 +68,7 @@ fn swamp() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Swamp");
     assert_eq!(
@@ -96,7 +96,7 @@ fn mountain() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Mountain");
     assert_eq!(
@@ -123,7 +123,7 @@ fn forest() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Forest");
     assert_eq!(

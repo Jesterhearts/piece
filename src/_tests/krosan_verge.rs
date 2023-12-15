@@ -18,7 +18,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
@@ -34,7 +34,7 @@ fn tutors() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
 
     let forest = CardId::upload(&mut db, &cards, player, "Forest");
@@ -57,9 +57,12 @@ fn tutors() -> anyhow::Result<()> {
         results,
         PendingResults {
             results: VecDeque::from([PendingResult {
-                apply_immediately: vec![ActionResult::TapPermanent(card)],
+                apply_immediately: vec![
+                    ActionResult::TapPermanent(card),
+                    ActionResult::PermanentToGraveyard(card)
+                ],
                 then_resolve: VecDeque::from([UnresolvedAction {
-                    source: card,
+                    source: Some(card),
                     result: UnresolvedActionResult::Ability(
                         *card.activated_abilities(&mut db).first().unwrap()
                     ),
@@ -67,7 +70,7 @@ fn tutors() -> anyhow::Result<()> {
                         ActiveTarget::Library { id: forest },
                         ActiveTarget::Library { id: plains }
                     ],
-                    choices: vec![],
+                    choices: Default::default(),
                     optional: false
                 },]),
                 recompute: true

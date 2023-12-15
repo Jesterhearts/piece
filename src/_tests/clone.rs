@@ -21,7 +21,7 @@ fn etb_clones() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let results = Battlefield::add_from_stack_or_hand(&mut db, creature, vec![]);
@@ -35,10 +35,10 @@ fn etb_clones() -> anyhow::Result<()> {
             results: VecDeque::from([PendingResult {
                 apply_immediately: vec![],
                 then_resolve: VecDeque::from([UnresolvedAction {
-                    source: clone,
+                    source: Some(clone),
                     result: UnresolvedActionResult::Effect(Effect::CopyOfAnyCreatureNonTargeting),
                     valid_targets: vec![ActiveTarget::Battlefield { id: creature }],
-                    choices: vec![],
+                    choices: Default::default(),
                     optional: true,
                 }]),
                 recompute: false
@@ -60,7 +60,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player(20);
+    let player = all_players.new_player("Player".to_owned(), 20);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, vec![]);
@@ -70,10 +70,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
             results: VecDeque::from([PendingResult {
                 apply_immediately: vec![],
                 then_resolve: VecDeque::from([UnresolvedAction {
-                    source: clone,
+                    source: Some(clone),
                     result: UnresolvedActionResult::Effect(Effect::CopyOfAnyCreatureNonTargeting),
                     valid_targets: vec![],
-                    choices: vec![],
+                    choices: Default::default(),
                     optional: true,
                 }]),
                 recompute: false

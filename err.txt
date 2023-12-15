@@ -1,0 +1,2 @@
+    Finished dev [unoptimized + debuginfo] target(s) in 0.17s
+     Running `target\debug\piece.exe`

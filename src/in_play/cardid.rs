@@ -1,7 +1,7 @@
 use std::{collections::HashSet, sync::atomic::Ordering};
 
 use bevy_ecs::{component::Component, entity::Entity, query::With};
-use derive_more::{Deref, From};
+use derive_more::From;
 use itertools::Itertools;
 
 use crate::{
@@ -40,10 +40,10 @@ use crate::{
     Cards,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Deref, Component)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
 pub struct CardId(pub(super) Entity);
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Deref, Component)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
 pub struct Cloning(pub(super) Entity);
 
 impl From<CardId> for Cloning {
@@ -454,7 +454,7 @@ impl CardId {
                 applied_modifiers.insert(modifier);
                 match modify {
                     EtbAbilityModifier::RemoveAll => etb_abilities.clear(),
-                    EtbAbilityModifier::Add(add) => etb_abilities.push(add.clone()),
+                    EtbAbilityModifier::Add(add) => etb_abilities.push(*add),
                 }
             }
 
@@ -551,7 +551,7 @@ impl CardId {
             .insert(ModifiedActivatedAbilities(activated_abilities));
     }
 
-    pub fn etb_abilities(self, db: &mut Database) -> Vec<Effect> {
+    pub fn etb_abilities(self, db: &mut Database) -> Vec<AbilityId> {
         db.get::<ModifiedETBAbilities>(self.0)
             .cloned()
             .map(|m| m.0)
@@ -597,6 +597,16 @@ impl CardId {
 
     pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
         db.get::<Effects>(self.0).cloned().unwrap_or_default().0
+    }
+
+    pub fn wants_targets(self, db: &mut Database) -> usize {
+        let effects = self.effects(db);
+        let controller = self.controller(db);
+        effects
+            .into_iter()
+            .map(|effect| effect.into_effect(db, controller))
+            .map(|effect| effect.wants_targets())
+            .sum()
     }
 
     pub fn passes_restrictions(
@@ -773,9 +783,11 @@ impl CardId {
 
         for ability in abilities.iter() {
             let ability = ability.ability(db);
-            for mana in ability.cost().mana_cost.iter() {
-                let color = mana.color();
-                identity.insert(color);
+            if let Some(cost) = ability.cost() {
+                for mana in cost.mana_cost.iter() {
+                    let color = mana.color();
+                    identity.insert(color);
+                }
             }
 
             if let Ability::Mana(mana) = ability {
@@ -888,11 +900,27 @@ impl CardId {
             entity.insert(Effects(card.effects.clone()));
         }
 
-        if !card.etb_abilities.is_empty() {
-            entity.insert(ETBAbilities(card.etb_abilities.clone()));
-        }
-
         let cardid = CardId(entity.id());
+
+        if !card.etb_abilities.is_empty() {
+            let id = AbilityId::upload_ability(
+                db,
+                cardid,
+                Ability::ETB {
+                    effects: card
+                        .etb_abilities
+                        .iter()
+                        .map(|effect| AnyEffect {
+                            effect: effect.clone(),
+                            threshold: None,
+                        })
+                        .collect_vec(),
+                    oracle_text: None,
+                },
+            );
+
+            db.entity_mut(cardid.0).insert(ETBAbilities(vec![id]));
+        }
 
         if !card.activated_abilities.is_empty() {
             let mut ability_ids = vec![];
@@ -1055,6 +1083,8 @@ impl CardId {
                 let effect = effect.into_effect(db, controller);
                 self.targets_for_effect(db, controller, &effect, creatures, targets);
             }
+        } else {
+            targets.push(ActiveTarget::Battlefield { id: self })
         }
     }
 
@@ -1113,10 +1143,10 @@ impl CardId {
             Effect::Mill(Mill { target, .. }) => {
                 targets.extend(
                     match target {
-                        ControllerRestriction::Any => AllPlayers::all_players(db),
+                        ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
                         ControllerRestriction::You => HashSet::from([controller.into()]),
                         ControllerRestriction::Opponent => {
-                            let mut all = AllPlayers::all_players(db);
+                            let mut all = AllPlayers::all_players_in_db(db);
                             all.remove(&controller.into());
                             all
                         }
@@ -1275,7 +1305,7 @@ impl CardId {
         !self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))
     }
 
-    pub fn keywords(self, db: &mut Database) -> HashSet<Keyword> {
+    pub fn keywords(self, db: &Database) -> HashSet<Keyword> {
         db.get::<ModifiedKeywords>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Keywords>(self.0).map(|t| t.0.clone()))
@@ -1316,6 +1346,10 @@ impl CardId {
 
     pub fn split_second(self, db: &mut Database) -> bool {
         db.get::<SplitSecond>(self.0).is_some()
+    }
+
+    pub fn has_flash(&self, db: &Database) -> bool {
+        self.keywords(db).contains(&Keyword::Flash)
     }
 
     pub fn cannot_be_countered(&self, db: &mut Database) -> bool {

@@ -1,24 +1,28 @@
 [package]
-name = "piece"
+name    = "piece"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.75"
-bevy_ecs = { version = "0.12.1", default-features = false }
-crossterm = "0.27.0"
-derive_more = "0.99.17"
-include_dir = "0.7.3"
-indexmap = { version = "2.1.0", features = [ "serde" ] }
-itertools = "0.12.0"
-paste = "1.0.14"
-protobuf = "3.3.0"
-rand = "0.8.5"
-ratatui = "0.24.0"
-scopeguard = "1.2.0"
-strum = { version = "0.25.0", features = [ "derive" ] }
+anyhow        = "1.0.75"
+bevy_ecs      = { version = "0.12.1", default-features = false }
+crossterm     = "0.27.0"
+derive_more   = "0.99.17"
+include_dir   = "0.7.3"
+indexmap      = { version = "2.1.0", features = [ "serde" ] }
+itertools     = "0.12.0"
+log           = "0.4.20"
+paste         = "1.0.14"
+protobuf      = "3.3.0"
+rand          = "0.8.5"
+ratatui       = "0.24.0"
+scopeguard    = "1.2.0"
+slog          = "2.7.0"
+slog-scope    = "4.4.0"
+slog-stdlog   = "4.1.1"
+slog-term     = "2.9.0"
+strum         = { version = "0.25.0", features = [ "derive" ] }
 unicode-width = "0.1.11"
-
 
 [build-dependencies]
 protobuf-codegen = "3.3.0"

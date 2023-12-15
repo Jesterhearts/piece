@@ -8,7 +8,7 @@ use itertools::Itertools;
 use crate::{
     controller::ControllerRestriction,
     cost::AbilityCost,
-    effects::{AnyEffect, BattlefieldModifier, Effect},
+    effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
     mana::Mana,
     player::{AllPlayers, Controller},
@@ -44,10 +44,10 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct ETBAbilities(pub Vec<Effect>);
+pub struct ETBAbilities(pub Vec<AbilityId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct ModifiedETBAbilities(pub Vec<Effect>);
+pub struct ModifiedETBAbilities(pub Vec<AbilityId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
 pub struct StaticAbilities(pub Vec<StaticAbility>);
@@ -276,12 +276,17 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
 pub enum Ability {
     Activated(ActivatedAbility),
     Mana(GainManaAbility),
+    ETB {
+        effects: Vec<AnyEffect>,
+        oracle_text: Option<String>,
+    },
 }
 impl Ability {
-    pub fn cost(&self) -> &AbilityCost {
+    pub fn cost(&self) -> Option<&AbilityCost> {
         match self {
             Ability::Activated(ActivatedAbility { cost, .. })
-            | Ability::Mana(GainManaAbility { cost, .. }) => cost,
+            | Ability::Mana(GainManaAbility { cost, .. }) => Some(cost),
+            Ability::ETB { .. } => None,
         }
     }
 
@@ -289,6 +294,7 @@ impl Ability {
         match self {
             Ability::Activated(ActivatedAbility { apply_to_self, .. }) => *apply_to_self,
             Ability::Mana(_) => false,
+            Ability::ETB { .. } => false,
         }
     }
 
@@ -296,6 +302,7 @@ impl Ability {
         match self {
             Ability::Activated(ActivatedAbility { effects, .. }) => effects,
             Ability::Mana(_) => vec![],
+            Ability::ETB { effects, .. } => effects,
         }
     }
 
@@ -339,6 +346,18 @@ impl Ability {
                     result
                 }
             },
+            Ability::ETB { effects, .. } => {
+                let mut results = vec![];
+                for effect in effects.iter() {
+                    results.extend(
+                        effect
+                            .effect(db, controller)
+                            .choices(db, all_players, targets),
+                    );
+                }
+
+                results
+            }
         }
     }
 }

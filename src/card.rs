@@ -273,7 +273,7 @@ pub enum TriggeredAbilityModifier {
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub enum EtbAbilityModifier {
     RemoveAll,
-    Add(Effect),
+    Add(AbilityId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
