@@ -427,7 +427,7 @@ impl Player {
         }
 
         if card.is_land(db) {
-            return Battlefield::add_from_stack_or_hand(db, card, vec![]);
+            return Battlefield::add_from_stack_or_hand(db, card);
         }
 
         Stack::move_card_to_stack(db, card)
@@ -448,7 +448,7 @@ impl Player {
     pub fn manifest(&mut self, db: &mut Database) -> PendingResults {
         if let Some(manifested) = self.deck.draw() {
             manifested.manifest(db);
-            Battlefield::add_from_stack_or_hand(db, manifested, vec![])
+            Battlefield::add_from_stack_or_hand(db, manifested)
         } else {
             PendingResults::default()
         }

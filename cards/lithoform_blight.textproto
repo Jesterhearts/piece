@@ -1,0 +1,64 @@
+name: "Lithoform Blight"
+cost {
+  mana_costs { generic { count: 1} }
+  mana_costs { black {} }
+}
+types { enchantment {} }
+subtypes { aura {} }
+oracle_text:  "Enchant land\n"
+              "When Lithoform Blight enters the battlefield, draw a card.\n"
+              "Enchanted land loses all land types and abilities and has "
+              "\"{T}: Add {C}\" and \"{T}, Pay 1 life: Add one mana of any color.\""
+enchant {
+  modifiers {
+    modifier { 
+      remove_subtypes { plains {} }
+      remove_subtypes { island {} }
+      remove_subtypes { swamp {} }
+      remove_subtypes { mountain {} }
+      remove_subtypes { forest {} }
+    }
+    controller { any {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+  modifiers {
+    modifier { 
+      mana_ability { 
+        cost {
+          tap: true
+        }
+        gain_mana { specific { gains { colorless {} } } }
+      }
+    }
+    controller { any {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+  modifiers {
+    modifier {
+      mana_ability { 
+        cost {
+          tap: true
+          additional_costs { pay_life { count: 1} }
+        }
+        gain_mana {
+          choice {
+            choices { gains { white{} } }
+            choices { gains { blue{} } }
+            choices { gains { black{} } }
+            choices { gains { red{} } }
+            choices { gains { green{} } }
+          }
+        }
+      }
+    }
+    controller { any {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+  restrictions { of_type {
+    types { land {} }
+    types { basic_land {} }
+  } }
+}
+etb_abilities {
+  controller_draw_cards { count: 1 }
+}

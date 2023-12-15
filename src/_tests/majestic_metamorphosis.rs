@@ -20,7 +20,7 @@ fn metamorphosis() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_owned(), 20);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, mantle, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, mantle);
     assert_eq!(results, PendingResults::default());
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
@@ -54,7 +54,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_owned(), 20);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, bear);
     assert_eq!(results, PendingResults::default());
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");

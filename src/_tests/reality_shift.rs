@@ -26,9 +26,9 @@ fn resolves_shift() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear1, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, bear1);
     assert_eq!(results, PendingResults::default());
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear2, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, bear2);
     assert_eq!(results, PendingResults::default());
 
     all_players[player].deck.place_on_top(&mut db, bear3);

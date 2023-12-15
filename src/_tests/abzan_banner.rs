@@ -22,7 +22,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
@@ -63,7 +63,7 @@ fn add_mana() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_owned(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 1);

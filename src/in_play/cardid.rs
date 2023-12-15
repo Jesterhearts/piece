@@ -26,11 +26,11 @@ use crate::{
         ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
-        targets_for_battlefield_modifier, targets_for_counterspell, upload_modifier, AbilityId,
-        Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global, InExile,
-        InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq,
-        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId, UniqueId,
-        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        cards, targets_for_battlefield_modifier, targets_for_counterspell, upload_modifier,
+        AbilityId, Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global,
+        InExile, InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId,
+        ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId,
+        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Stack, Targets},
@@ -389,6 +389,20 @@ impl CardId {
             if let Some(add) = modifier.add_subtypes(db) {
                 applied_modifiers.insert(modifier);
                 subtypes.extend(add.0.iter().copied())
+            }
+
+            if let Some(remove) = modifier.remove_types(db) {
+                applied_modifiers.insert(modifier);
+                for ty in remove.iter() {
+                    types.remove(ty);
+                }
+            }
+
+            if let Some(remove) = modifier.remove_subtypes(db) {
+                applied_modifiers.insert(modifier);
+                for ty in remove.iter() {
+                    subtypes.remove(ty);
+                }
             }
         }
 
@@ -1021,18 +1035,24 @@ impl CardId {
 
     pub fn valid_targets(self, db: &mut Database) -> Vec<ActiveTarget> {
         let mut targets = vec![];
-        let creatures = Battlefield::creatures(db);
 
-        if self.aura(db).is_some() {
+        if let Some(aura) = self.aura(db) {
             let controller = self.controller(db);
-            for creature in creatures.iter() {
-                if creature.can_be_targeted(db, controller) {
-                    // TODO auras also target non creatures. This needs more validation and logic
-                    targets.push(ActiveTarget::Battlefield { id: *creature })
+            for card in cards::<OnBattlefield>(db) {
+                if card.passes_restrictions(
+                    db,
+                    self,
+                    controller,
+                    ControllerRestriction::Any,
+                    &aura.restrictions(db),
+                ) && card.can_be_targeted(db, controller)
+                {
+                    targets.push(ActiveTarget::Battlefield { id: card })
                 }
             }
         }
 
+        let creatures = Battlefield::creatures(db);
         let controller = self.controller(db);
         for effect in self.effects(db) {
             let effect = effect.into_effect(db, controller);

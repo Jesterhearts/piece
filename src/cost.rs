@@ -42,14 +42,31 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PayLife {
+    pub count: usize,
+}
+
+impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::additional_cost::PayLife) -> Result<Self, Self::Error> {
+        Ok(Self {
+            count: usize::try_from(value.count)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
     SacrificeThis,
+    PayLife(PayLife),
 }
 
 impl AdditionalCost {
     pub fn text(&self) -> String {
         match self {
             AdditionalCost::SacrificeThis => "Sacrifice this".to_owned(),
+            AdditionalCost::PayLife(pay) => format!("Pay {} life", pay.count),
         }
     }
 }
@@ -62,14 +79,19 @@ impl TryFrom<&protogen::cost::AdditionalCost> for AdditionalCost {
             .cost
             .as_ref()
             .ok_or_else(|| anyhow!("Expected additional cost to have a cost specified"))
-            .map(Self::from)
+            .and_then(Self::try_from)
     }
 }
 
-impl From<&protogen::cost::additional_cost::Cost> for AdditionalCost {
-    fn from(value: &protogen::cost::additional_cost::Cost) -> Self {
+impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::additional_cost::Cost) -> Result<Self, Self::Error> {
         match value {
-            protogen::cost::additional_cost::Cost::SacrificeThis(_) => Self::SacrificeThis,
+            protogen::cost::additional_cost::Cost::SacrificeThis(_) => Ok(Self::SacrificeThis),
+            protogen::cost::additional_cost::Cost::PayLife(pay) => {
+                Ok(Self::PayLife(pay.try_into()?))
+            }
         }
     }
 }

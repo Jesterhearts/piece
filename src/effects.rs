@@ -207,8 +207,11 @@ pub struct ModifyBattlefield {
     pub add_types: HashSet<Type>,
     pub add_subtypes: HashSet<Subtype>,
 
+    pub remove_types: HashSet<Type>,
+    pub remove_subtypes: HashSet<Subtype>,
+
     pub add_ability: Option<ActivatedAbility>,
-    pub gain_mana: Option<GainManaAbility>,
+    pub mana_ability: Option<GainManaAbility>,
 
     pub remove_all_subtypes: bool,
     pub remove_all_abilities: bool,
@@ -243,12 +246,22 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .iter()
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
+            remove_types: value
+                .remove_types
+                .iter()
+                .map(Type::try_from)
+                .collect::<anyhow::Result<_>>()?,
+            remove_subtypes: value
+                .remove_subtypes
+                .iter()
+                .map(Subtype::try_from)
+                .collect::<anyhow::Result<_>>()?,
             add_ability: value
                 .add_ability
                 .as_ref()
                 .map_or(Ok(None), |v| v.try_into().map(Some))?,
-            gain_mana: value
-                .gain_mana
+            mana_ability: value
+                .mana_ability
                 .as_ref()
                 .map_or(Ok(None), |v| v.try_into().map(Some))?,
             remove_all_subtypes: value.remove_all_subtypes,

@@ -34,7 +34,9 @@ use crate::{
     stack::{ActiveTarget, Stack, Targets},
     targets::{Restriction, Restrictions, SpellTarget},
     triggers::Location,
-    types::{AddSubtypes, AddTypes, RemoveAllSubtypes, Subtype, Types},
+    types::{
+        AddSubtypes, AddTypes, RemoveAllSubtypes, RemoveSubtypes, RemoveTypes, Subtype, Types,
+    },
 };
 
 pub use cardid::{CardId, Cloning};
@@ -248,6 +250,10 @@ impl AuraId {
         db.auras.get::<Modifiers>(self.0).cloned().unwrap()
     }
 
+    fn restrictions(&self, db: &Database) -> Vec<Restriction> {
+        db.auras.get::<Restrictions>(self.0).cloned().unwrap().0
+    }
+
     pub fn is_attached(self, db: &mut Database) -> bool {
         let modifiers = self.modifiers(db);
         for modifier in modifiers.iter() {
@@ -322,6 +328,14 @@ fn upload_modifier(
         entity.insert(AddSubtypes(modifier.modifier.add_subtypes.clone()));
     }
 
+    if !modifier.modifier.remove_types.is_empty() {
+        entity.insert(RemoveTypes(modifier.modifier.remove_types.clone()));
+    }
+
+    if !modifier.modifier.remove_subtypes.is_empty() {
+        entity.insert(RemoveSubtypes(modifier.modifier.remove_subtypes.clone()));
+    }
+
     if modifier.modifier.remove_all_subtypes {
         entity.insert(RemoveAllSubtypes);
     }
@@ -345,7 +359,7 @@ fn upload_modifier(
             .insert(ActivatedAbilityModifier::Add(id));
     }
 
-    if let Some(ability) = &modifier.modifier.gain_mana {
+    if let Some(ability) = &modifier.modifier.mana_ability {
         let id = AbilityId::upload_ability(db, source, Ability::Mana(ability.clone()));
         db.modifiers
             .entity_mut(modifierid.0)
@@ -726,6 +740,14 @@ impl ModifierId {
 
     fn add_subtypes(self, db: &mut Database) -> Option<&AddSubtypes> {
         db.modifiers.get::<AddSubtypes>(self.0)
+    }
+
+    fn remove_types(self, db: &mut Database) -> Option<&RemoveTypes> {
+        db.modifiers.get::<RemoveTypes>(self.0)
+    }
+
+    fn remove_subtypes(self, db: &mut Database) -> Option<&RemoveSubtypes> {
+        db.modifiers.get::<RemoveSubtypes>(self.0)
     }
 
     fn source(self, db: &mut Database) -> CardId {

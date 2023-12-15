@@ -11,7 +11,7 @@ activated_abilities {
   effects {
     equip {
       modifiers {
-        gain_mana {
+        mana_ability {
           gain_mana {
             choice {
               choices { gains { white{} } }

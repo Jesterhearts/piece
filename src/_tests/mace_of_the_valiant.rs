@@ -17,11 +17,11 @@ fn mace() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, bear);
     assert_eq!(results, PendingResults::default());
 
     let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, mace, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, mace);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, mace, 0);
@@ -36,7 +36,7 @@ fn mace() -> anyhow::Result<()> {
     assert_eq!(bear.toughness(&db), Some(2));
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

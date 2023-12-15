@@ -25,7 +25,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
@@ -122,7 +122,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card1, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card1);
     assert_eq!(results, PendingResults::default());
 
     card2.move_to_stack(&mut db, vec![]);
@@ -161,7 +161,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card1, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card1);
     assert_eq!(results, PendingResults::default());
 
     card2.move_to_stack(&mut db, vec![]);

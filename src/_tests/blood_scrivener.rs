@@ -24,7 +24,7 @@ fn replacement() -> anyhow::Result<()> {
     all_players[player].deck.place_on_top(&mut db, deck2);
 
     let card = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
 
     // Hand is empty

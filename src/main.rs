@@ -164,26 +164,26 @@ fn main() -> anyhow::Result<()> {
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land3 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land1, vec![]);
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land2, vec![]);
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land3, vec![]);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, land1);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, land2);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, land3);
 
     let card1 = CardId::upload(&mut db, &cards, player1, "Mace of the Valiant");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::TryAgain
@@ -194,21 +194,21 @@ fn main() -> anyhow::Result<()> {
     );
 
     let card4 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card4, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card4);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card5 = CardId::upload(&mut db, &cards, player1, "Allosaurus Shepherd");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card5, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card5);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card6 = CardId::upload(&mut db, &cards, player1, "Krosan Verge");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card6, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card6);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
@@ -589,7 +589,10 @@ fn main() -> anyhow::Result<()> {
 
                     frame.render_stateful_widget(
                         List {
-                            title: " Select an option ".to_owned(),
+                            title: format!(
+                                " Select an option for {} ",
+                                to_resolve.description(&mut db)
+                            ),
                             items: options,
                             last_click,
                             last_hover,
@@ -912,7 +915,6 @@ fn main() -> anyhow::Result<()> {
                                 }
 
                                 if !pending.is_empty() {
-                                    previous_state.push(state);
                                     state = UiState::SelectingOptions {
                                         to_resolve: pending,
                                         selection_list_state: ListState::default(),
@@ -932,7 +934,6 @@ fn main() -> anyhow::Result<()> {
                                             choices: Default::default(),
                                             optional: true,
                                         });
-                                        previous_state.push(state);
                                         state = UiState::SelectingOptions {
                                             to_resolve: pending,
                                             selection_list_state: ListState::default(),
@@ -1051,7 +1052,6 @@ fn main() -> anyhow::Result<()> {
                                 }
 
                                 if !pending.is_empty() {
-                                    previous_state.push(state);
                                     state = UiState::SelectingOptions {
                                         to_resolve: pending,
                                         selection_list_state: ListState::default(),
@@ -1071,7 +1071,6 @@ fn main() -> anyhow::Result<()> {
                                             choices: Default::default(),
                                             optional: true,
                                         });
-                                        previous_state.push(state);
                                         state = UiState::SelectingOptions {
                                             to_resolve: pending,
                                             selection_list_state: ListState::default(),
@@ -1103,7 +1102,6 @@ fn main() -> anyhow::Result<()> {
                             }
 
                             if !pending.is_empty() {
-                                previous_state.push(state);
                                 state = UiState::SelectingOptions {
                                     to_resolve: pending,
                                     selection_list_state: ListState::default(),
@@ -1123,7 +1121,6 @@ fn main() -> anyhow::Result<()> {
                                         choices: Default::default(),
                                         optional: true,
                                     });
-                                    previous_state.push(state);
                                     state = UiState::SelectingOptions {
                                         to_resolve: pending,
                                         selection_list_state: ListState::default(),
@@ -1152,7 +1149,6 @@ fn main() -> anyhow::Result<()> {
                                     }
                                     battlefield::ResolutionResult::TryAgain => {}
                                     battlefield::ResolutionResult::PendingChoice => {
-                                        previous_state.push(state);
                                         state = UiState::SelectingOptions {
                                             to_resolve: results,
                                             selection_list_state: ListState::default(),

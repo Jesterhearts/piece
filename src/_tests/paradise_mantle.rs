@@ -19,10 +19,10 @@ fn adds_ability() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let equipment = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment, vec![]);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, vec![]);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature);
 
     assert_eq!(creature.activated_abilities(&mut db), []);
 

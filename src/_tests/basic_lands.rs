@@ -23,7 +23,7 @@ fn plains() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -51,7 +51,7 @@ fn island() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -78,7 +78,7 @@ fn swamp() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -106,7 +106,7 @@ fn mountain() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -133,7 +133,7 @@ fn forest() -> anyhow::Result<()> {
             .unwrap()]
     );
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);

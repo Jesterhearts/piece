@@ -24,11 +24,11 @@ fn etb_clones() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_owned(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, creature, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, creature);
     assert_eq!(results, PendingResults::default());
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone);
     assert_eq!(
         results,
         PendingResults {
@@ -63,7 +63,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_owned(), 20);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone);
     assert_eq!(
         results,
         PendingResults {

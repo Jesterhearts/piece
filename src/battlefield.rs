@@ -8,7 +8,7 @@ use crate::{
     abilities::{Ability, GainMana, GainManaAbility, StaticAbility},
     card::Color,
     controller::ControllerRestriction,
-    cost::AdditionalCost,
+    cost::{AdditionalCost, PayLife},
     effects::{
         effect_duration::UntilEndOfTurn, replacing, BattlefieldModifier, Counter, Destination,
         Effect, EffectDuration, Mill, Token, TutorLibrary,
@@ -25,8 +25,8 @@ use crate::{
     types::Type,
 };
 
+#[must_use]
 #[derive(Debug, PartialEq, Eq)]
-
 pub enum ResolutionResult {
     Complete,
     TryAgain,
@@ -123,7 +123,18 @@ impl PendingResults {
         }
     }
 
-    #[must_use]
+    pub fn description(&self, db: &mut Database) -> String {
+        if let Some(to_resolve) = self.results.front() {
+            if let Some(to_resolve) = to_resolve.then_resolve.front() {
+                to_resolve.description(db)
+            } else {
+                String::default()
+            }
+        } else {
+            String::default()
+        }
+    }
+
     pub fn resolve(
         &mut self,
         db: &mut Database,
@@ -181,14 +192,26 @@ impl PendingResults {
 
     pub(crate) fn only_immediate_results(&self) -> bool {
         self.is_empty()
-            || (self.results.len() == 1 && self.results.front().unwrap().then_resolve.is_empty())
+            || (self.results.len() == 1
+                && (self.results.front().unwrap().then_resolve.is_empty()
+                    || (self.results.front().unwrap().then_resolve.len() == 1
+                        && self
+                            .results
+                            .front()
+                            .unwrap()
+                            .then_resolve
+                            .front()
+                            .unwrap()
+                            .valid_targets
+                            .is_empty()
+                        && !self.results.front().unwrap().recompute)))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnresolvedActionResult {
     Effect(Effect),
-    Attach(AuraId, CardId),
+    Attach(AuraId),
     Ability(AbilityId),
     AddCardToStack,
     AddTriggerToStack(TriggerId),
@@ -199,7 +222,7 @@ impl UnresolvedActionResult {
     fn wants_targets(&self, db: &mut Database, source: CardId) -> usize {
         match self {
             UnresolvedActionResult::Effect(effect) => effect.wants_targets(),
-            UnresolvedActionResult::Attach(_, _) => 1,
+            UnresolvedActionResult::Attach(_) => 1,
             UnresolvedActionResult::Ability(ability) => {
                 let effects = ability.effects(db);
                 let controller = ability.controller(db);
@@ -263,8 +286,8 @@ impl UnresolvedAction {
 
                     self.valid_targets = valid_targets;
                 }
-                UnresolvedActionResult::Attach(_, card) => {
-                    self.valid_targets = card.valid_targets(db);
+                UnresolvedActionResult::Attach(_) => {
+                    self.valid_targets = self.source.unwrap().valid_targets(db);
                 }
                 UnresolvedActionResult::AddCardToStack => {
                     let creatures = Battlefield::creatures(db);
@@ -307,6 +330,17 @@ impl UnresolvedAction {
         }
     }
 
+    pub fn description(&self, db: &mut Database) -> String {
+        match &self.result {
+            UnresolvedActionResult::Effect(_) => "Effect".to_owned(),
+            UnresolvedActionResult::Attach(_) => "Aura".to_owned(),
+            UnresolvedActionResult::Ability(ability) => ability.text(db),
+            UnresolvedActionResult::AddCardToStack => self.source.unwrap().name(db),
+            UnresolvedActionResult::AddTriggerToStack(trigger) => trigger.short_text(db),
+            UnresolvedActionResult::OrganizeStack(_) => "stack order".to_owned(),
+        }
+    }
+
     pub fn choices(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
         match &self.result {
             UnresolvedActionResult::Effect(effect) => effect
@@ -325,7 +359,7 @@ impl UnresolvedAction {
                     .filter(|(idx, _)| !self.choices.contains_key(&Some(*idx)))
                     .collect_vec()
             }
-            UnresolvedActionResult::Attach(_, _)
+            UnresolvedActionResult::Attach(_)
             | UnresolvedActionResult::AddCardToStack
             | UnresolvedActionResult::AddTriggerToStack(_) => self
                 .valid_targets
@@ -585,11 +619,11 @@ impl UnresolvedAction {
                     }
                 }
             }
-            UnresolvedActionResult::Attach(aura, card) => {
+            UnresolvedActionResult::Attach(aura) => {
                 if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
                     return vec![];
                 } else if self.valid_targets.is_empty() {
-                    return vec![ActionResult::PermanentToGraveyard(*card)];
+                    return vec![ActionResult::PermanentToGraveyard(self.source.unwrap())];
                 }
 
                 vec![ActionResult::ApplyAuraToTarget {
@@ -830,11 +864,7 @@ impl Battlefield {
         results
     }
 
-    pub fn add_from_stack_or_hand(
-        db: &mut Database,
-        source_card_id: CardId,
-        targets: Vec<CardId>,
-    ) -> PendingResults {
+    pub fn add_from_stack_or_hand(db: &mut Database, source_card_id: CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
         ReplacementEffectId::activate_all_for_card(db, source_card_id);
@@ -860,9 +890,13 @@ impl Battlefield {
         }
 
         if let Some(aura) = source_card_id.aura(db) {
-            for target in targets.iter() {
-                target.apply_aura(db, aura);
-            }
+            results.push_unresolved(UnresolvedAction {
+                source: Some(source_card_id),
+                result: UnresolvedActionResult::Attach(aura),
+                valid_targets: source_card_id.valid_targets(db),
+                choices: Default::default(),
+                optional: false,
+            });
         }
 
         for ability in source_card_id.static_abilities(db) {
@@ -936,7 +970,7 @@ impl Battlefield {
         if let Some(aura) = source_card_id.aura(db) {
             results.push_unresolved(UnresolvedAction {
                 source: Some(source_card_id),
-                result: UnresolvedActionResult::Attach(aura, source_card_id),
+                result: UnresolvedActionResult::Attach(aura),
                 valid_targets: source_card_id.valid_targets(db),
                 choices: Default::default(),
                 optional: false,
@@ -1078,6 +1112,12 @@ impl Battlefield {
                         }
 
                         results.push_resolved(ActionResult::PermanentToGraveyard(card));
+                    }
+                    AdditionalCost::PayLife(PayLife { count }) => {
+                        results.push_resolved(ActionResult::LoseLife {
+                            target: card.controller(db),
+                            count: *count,
+                        })
                     }
                 }
             }
@@ -1226,7 +1266,7 @@ impl Battlefield {
                     let ActiveTarget::Graveyard { id: target } = target else {
                         unreachable!()
                     };
-                    pending.extend(Self::add_from_stack_or_hand(db, *target, vec![]));
+                    pending.extend(Self::add_from_stack_or_hand(db, *target));
                 }
 
                 return pending;
@@ -1241,13 +1281,13 @@ impl Battlefield {
             }
             ActionResult::CreateToken { source, token } => {
                 let card = CardId::upload_token(db, (*source).into(), token.clone());
-                return Battlefield::add_from_stack_or_hand(db, card, vec![]);
+                return Battlefield::add_from_stack_or_hand(db, card);
             }
             ActionResult::DrawCards { target, count } => {
                 let _ = all_players[*target].draw(db, *count);
             }
             ActionResult::AddToBattlefield(card) => {
-                return Battlefield::add_from_stack_or_hand(db, *card, vec![]);
+                return Battlefield::add_from_stack_or_hand(db, *card);
             }
             ActionResult::StackToGraveyard(card) => {
                 return Battlefield::stack_to_graveyard(db, *card);

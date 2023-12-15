@@ -20,9 +20,13 @@ message ManaCost {
 message AdditionalCost {
   message SacrificeThis {
   }
+  message PayLife {
+    int32 count = 1;
+  }
 
   oneof cost {
     SacrificeThis sacrifice_this = 1;
+    PayLife pay_life = 2;
   }
 }
 

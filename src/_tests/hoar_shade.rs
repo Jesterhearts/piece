@@ -21,10 +21,10 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, shade1, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, shade1);
     assert_eq!(results, PendingResults::default());
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, shade2, vec![]);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, shade2);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, shade1, 0);

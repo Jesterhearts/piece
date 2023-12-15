@@ -1,11 +1,7 @@
-
-
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{
-        Battlefield, ResolutionResult,
-    },
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -33,7 +29,7 @@ fn etb() -> anyhow::Result<()> {
 
     let recruiter = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
     recruiter.move_to_hand(&mut db);
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, recruiter, vec![]);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, recruiter);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
