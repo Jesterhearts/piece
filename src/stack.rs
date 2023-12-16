@@ -421,11 +421,7 @@ impl Stack {
             .count()
     }
 
-    pub fn resolve_1(db: &mut Database) -> PendingResults {
-        let Some(next) = Self::pop(db) else {
-            return PendingResults::default();
-        };
-
+    pub fn settle(db: &mut Database) {
         let in_stack = Self::in_stack(db);
         for (_, entry) in in_stack.iter() {
             match entry {
@@ -440,6 +436,15 @@ impl Stack {
                 }
             }
         }
+    }
+
+    pub fn resolve_1(db: &mut Database) -> PendingResults {
+        let Some(next) = Self::pop(db) else {
+            return PendingResults::default();
+        };
+
+        Self::settle(db);
+        let in_stack = Self::in_stack(db);
 
         let mut results = PendingResults::default();
 

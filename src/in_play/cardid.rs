@@ -45,6 +45,12 @@ pub struct CardId(pub(super) Entity);
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
 pub struct Cloning(pub(super) Entity);
 
+impl From<Cloning> for CardId {
+    fn from(value: Cloning) -> Self {
+        Self(value.0)
+    }
+}
+
 impl From<CardId> for Cloning {
     fn from(value: CardId) -> Self {
         Self(value.0)
@@ -290,53 +296,47 @@ impl CardId {
             })
             .collect_vec();
 
-        let reference: CardId = if let Some(cloning) = self.cloning(db) {
-            cloning.0.into()
-        } else {
-            self
-        };
-
         let facedown = self.facedown(db);
 
         let mut base_power = if facedown {
             Some(2)
         } else {
-            db.get::<BasePower>(reference.0).map(|bp| bp.0)
+            db.get::<BasePower>(self.0).map(|bp| bp.0)
         };
         let mut base_toughness = if facedown {
             Some(2)
         } else {
-            db.get::<BaseToughness>(reference.0).map(|bt| bt.0)
+            db.get::<BaseToughness>(self.0).map(|bt| bt.0)
         };
         let mut types = if facedown {
             HashSet::from([Type::Creature])
         } else {
-            db.get::<Types>(reference.0).unwrap().0.clone()
+            db.get::<Types>(self.0).unwrap().0.clone()
         };
         let mut subtypes = if facedown {
             HashSet::default()
         } else {
-            db.get::<Subtypes>(reference.0).unwrap().0.clone()
+            db.get::<Subtypes>(self.0).unwrap().0.clone()
         };
         let mut keywords = if facedown {
             HashSet::default()
         } else {
-            db.get::<Keywords>(reference.0).unwrap().0.clone()
+            db.get::<Keywords>(self.0).unwrap().0.clone()
         };
         let mut colors: HashSet<Color> = if facedown {
             HashSet::default()
         } else {
-            db.get::<Colors>(reference.0)
+            db.get::<Colors>(self.0)
                 .unwrap()
                 .0
-                .union(&db.get::<CastingCost>(reference.0).unwrap().colors())
+                .union(&db.get::<CastingCost>(self.0).unwrap().colors())
                 .copied()
                 .collect()
         };
         let mut triggers = if facedown {
             vec![]
         } else {
-            db.get::<Triggers>(reference.0)
+            db.get::<Triggers>(self.0)
                 .cloned()
                 .map(|t| t.0)
                 .unwrap_or_default()
@@ -344,7 +344,7 @@ impl CardId {
         let mut etb_abilities = if facedown {
             vec![]
         } else {
-            db.get::<ETBAbilities>(reference.0)
+            db.get::<ETBAbilities>(self.0)
                 .cloned()
                 .map(|t| t.0)
                 .unwrap_or_default()
@@ -352,7 +352,7 @@ impl CardId {
         let mut static_abilities = if facedown {
             vec![]
         } else {
-            db.get::<StaticAbilities>(reference.0)
+            db.get::<StaticAbilities>(self.0)
                 .cloned()
                 .map(|s| s.0)
                 .unwrap_or_default()
@@ -360,7 +360,7 @@ impl CardId {
         let mut activated_abilities = if facedown {
             vec![]
         } else {
-            db.get::<ActivatedAbilities>(reference.0)
+            db.get::<ActivatedAbilities>(self.0)
                 .cloned()
                 .map(|s| s.0)
                 .unwrap_or_default()
@@ -899,7 +899,22 @@ impl CardId {
         destination: Location,
         is_token: bool,
     ) -> CardId {
-        let mut entity = db.spawn((
+        let cardid = CardId(db.spawn_empty().id());
+        Self::insert_components(db, cardid, card, player, destination, is_token);
+        cardid
+    }
+
+    fn insert_components<Location: Component>(
+        db: &mut Database,
+        cardid: CardId,
+        card: &Card,
+        player: Owner,
+        destination: Location,
+        is_token: bool,
+    ) {
+        let mut entity = db.entity_mut(cardid.0);
+
+        entity.insert((
             card.clone(),
             destination,
             Name(card.name.clone()),
@@ -941,8 +956,6 @@ impl CardId {
         if !card.effects.is_empty() {
             entity.insert(Effects(card.effects.clone()));
         }
-
-        let cardid = CardId(entity.id());
 
         if !card.etb_abilities.is_empty() {
             let id = AbilityId::upload_ability(
@@ -1054,7 +1067,6 @@ impl CardId {
         }
 
         cardid.apply_modifiers_layered(db);
-        cardid
     }
 
     pub fn cost(self, db: &Database) -> &CastingCost {
@@ -1340,12 +1352,26 @@ impl CardId {
         db.entity_mut(self.0).insert(Tapped);
     }
 
-    pub fn untap(&self, db: &mut Database) {
+    pub fn untap(self, db: &mut Database) {
         db.entity_mut(self.0).remove::<Tapped>();
     }
 
-    pub fn clone_card(&self, db: &mut Database, source: CardId) {
+    pub fn clone_card<Location: Component>(
+        self,
+        db: &mut Database,
+        source: CardId,
+        location: Location,
+    ) {
         db.entity_mut(self.0).insert(Cloning(source.0));
+        let controller = source.controller(db);
+        Self::insert_components(
+            db,
+            self,
+            &source.original(db).clone(),
+            controller.into(),
+            location,
+            false,
+        );
     }
 
     pub fn cloning(self, db: &mut Database) -> Option<Cloning> {
@@ -1358,6 +1384,10 @@ impl CardId {
 
     pub fn manifest(self, db: &mut Database) {
         db.entity_mut(self.0).insert(Manifested).insert(FaceDown);
+    }
+
+    pub fn manifested(self, db: &Database) -> bool {
+        db.get::<Manifested>(self.0).is_some()
     }
 
     pub fn is_permanent(self, db: &mut Database) -> bool {

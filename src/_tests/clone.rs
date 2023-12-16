@@ -32,18 +32,28 @@ fn etb_clones() -> anyhow::Result<()> {
     assert_eq!(
         results,
         PendingResults {
-            results: VecDeque::from([PendingResult {
-                apply_immediately: vec![],
-                to_resolve: VecDeque::from([UnresolvedAction {
-                    source: Some(clone),
-                    result: UnresolvedActionResult::Effect(Effect::CopyOfAnyCreatureNonTargeting),
-                    valid_targets: vec![ActiveTarget::Battlefield { id: creature }],
-                    choices: Default::default(),
-                    optional: true,
-                }]),
-                then_apply: vec![],
-                recompute: false,
-            }]),
+            results: VecDeque::from([
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: VecDeque::from([UnresolvedAction {
+                        source: Some(clone),
+                        result: UnresolvedActionResult::Effect(
+                            Effect::CopyOfAnyCreatureNonTargeting
+                        ),
+                        valid_targets: vec![ActiveTarget::Battlefield { id: creature }],
+                        choices: Default::default(),
+                        optional: true,
+                    }]),
+                    then_apply: vec![],
+                    recompute: false,
+                },
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: Default::default(),
+                    then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(clone)],
+                    recompute: false,
+                }
+            ]),
             applied: false,
         }
     );

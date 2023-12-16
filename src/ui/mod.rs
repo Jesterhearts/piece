@@ -112,15 +112,25 @@ impl<'db> StatefulWidget for Card<'db> {
         block.render(area, buf);
         let area = inner_area;
 
-        let oracle_text = self.card.oracle_text(self.db);
+        if self.card.manifested(self.db) {
+            return;
+        }
+
+        let source = self
+            .card
+            .cloning(self.db)
+            .map(CardId::from)
+            .unwrap_or(self.card);
+
+        let oracle_text = source.oracle_text(self.db);
         let has_oracle_text = !oracle_text.is_empty();
-        let triggers = self.card.triggers_text(self.db);
+        let triggers = source.triggers_text(self.db);
         let has_triggers = !triggers.is_empty();
-        let abilities = self.card.abilities_text(self.db);
+        let abilities = source.abilities_text(self.db);
         let has_abilities = !abilities.is_empty();
-        let modified_by = self.card.modified_by(self.db);
+        let modified_by = source.modified_by(self.db);
         let is_modified = !modified_by.is_empty();
-        let counters = CounterId::counter_text_on(self.db, self.card);
+        let counters = CounterId::counter_text_on(self.db, source);
         let has_counters = !counters.is_empty();
 
         let paragraph = std::iter::once(oracle_text)
@@ -182,10 +192,17 @@ impl<'db> StatefulWidget for Battlefield<'db> {
         let card_titles = cards
             .iter()
             .map(|card| {
+                let manifested = card.manifested(self.db);
+
                 let index = card.id(self.db);
-                let name = card.name(self.db);
+                let name = if manifested {
+                    "Manifested".to_string()
+                } else {
+                    card.name(self.db)
+                };
+
                 let cost = card.cost(self.db);
-                if cost.mana_cost.is_empty() {
+                if cost.mana_cost.is_empty() || manifested {
                     format!("({}) {}", index, name)
                 } else {
                     format!("({}) {} - {}", index, name, cost.text())

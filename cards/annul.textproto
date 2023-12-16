@@ -4,7 +4,7 @@ cost {
   mana_costs { blue {} }
 }
 types { instant {} }
-oracle_text: "Counter target spell."
+oracle_text: "Counter target artifact or enchantment spell."
 effects {
   counter_spell {
     valid_target { 

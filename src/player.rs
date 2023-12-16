@@ -392,6 +392,11 @@ impl Player {
 
         let wants_targets = card.wants_targets(db);
         let valid_targets = card.valid_targets(db);
+        debug!(
+            "wants targets: {}, has targets {}",
+            wants_targets,
+            valid_targets.len()
+        );
         if valid_targets.len() < wants_targets {
             return PendingResults::default();
         }
@@ -407,12 +412,14 @@ impl Player {
             return PendingResults::default();
         }
 
-        if card.is_land(db) {
-            return Battlefield::add_from_stack_or_hand(db, card);
+        let mut db = scopeguard::guard(db, Stack::settle);
+        if card.is_land(&mut db) {
+            self.lands_played += 1;
+            return Battlefield::add_from_stack_or_hand(&mut db, card);
         }
 
         self.mana_pool = mana_pool;
-        Stack::move_card_to_stack(db, card)
+        Stack::move_card_to_stack(&mut db, card)
     }
 
     pub fn can_spend_mana(&self, mana: &[Mana]) -> bool {

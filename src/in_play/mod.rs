@@ -150,8 +150,14 @@ impl Neg for TriggerInStack {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Default)]
 pub struct OnBattlefield(usize);
+
+impl OnBattlefield {
+    pub fn new() -> Self {
+        Self(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed))
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
 pub struct InGraveyard(usize);

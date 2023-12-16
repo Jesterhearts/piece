@@ -32,6 +32,13 @@ pub use pending_results::{
     PendingResult, PendingResults, ResolutionResult, UnresolvedAction, UnresolvedActionResult,
 };
 
+#[must_use]
+#[derive(Debug)]
+pub enum PartialAddToBattlefieldResult {
+    NeedsResolution(PendingResults),
+    Continue(PendingResults),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionResult {
     UpdateStackEntries(Vec<StackEntry>),
@@ -40,6 +47,11 @@ pub enum ActionResult {
     MoveToHandFromLibrary(CardId),
     Shuffle(Owner),
     AddToBattlefield(CardId),
+    AddToBattlefieldSkipReplacementEffects(CardId),
+    AddToBattlefieldSkipReplacementEffectsFromLibrary {
+        card: CardId,
+        enters_tapped: bool,
+    },
     AddToBattlefieldFromLibrary {
         card: CardId,
         enters_tapped: bool,
@@ -191,71 +203,15 @@ impl Battlefield {
     }
 
     pub fn add_from_stack_or_hand(db: &mut Database, source_card_id: CardId) -> PendingResults {
-        let mut results = PendingResults::default();
+        let mut results =
+            match Self::start_adding_to_battlefield(db, source_card_id, false, |card, _| {
+                ActionResult::AddToBattlefieldSkipReplacementEffects(card)
+            }) {
+                PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
+                PartialAddToBattlefieldResult::Continue(results) => results,
+            };
 
-        ReplacementEffectId::activate_all_for_card(db, source_card_id);
-
-        for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
-            let source = replacement.source(db);
-            let restrictions = replacement.restrictions(db);
-            if !source.passes_restrictions(db, source, ControllerRestriction::Any, &restrictions) {
-                continue;
-            }
-
-            let controller = replacement.source(db).controller(db);
-            for effect in replacement.effects(db) {
-                let effect = effect.into_effect(db, controller);
-                Self::push_effect_results(db, source, controller, effect, &mut results);
-            }
-        }
-
-        if let Some(aura) = source_card_id.aura(db) {
-            results.push_unresolved(UnresolvedAction {
-                source: Some(source_card_id),
-                result: UnresolvedActionResult::Attach(aura),
-                valid_targets: source_card_id.valid_targets(db),
-                choices: Default::default(),
-                optional: false,
-            });
-        }
-
-        for ability in source_card_id.static_abilities(db) {
-            match ability {
-                StaticAbility::GreenCannotBeCountered { .. } => {}
-                StaticAbility::BattlefieldModifier(modifier) => {
-                    let modifier =
-                        ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
-                    results.push_resolved(ActionResult::AddModifier { modifier })
-                }
-                StaticAbility::ExtraLandsPerTurn(_) => {}
-            }
-        }
-
-        for ability in source_card_id.etb_abilities(db) {
-            results.extend(Stack::move_ability_to_stack(db, ability, source_card_id));
-        }
-
-        if source_card_id.etb_tapped(db) {
-            source_card_id.tap(db);
-        }
-        source_card_id.move_to_battlefield(db);
-
-        for trigger in
-            TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
-        {
-            if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
-                let for_types = trigger.for_types(db);
-                if source_card_id.types_intersect(db, &for_types) {
-                    for listener in trigger.listeners(db) {
-                        results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
-                    }
-                }
-            }
-        }
-
-        for card in all_cards(db) {
-            card.apply_modifiers_layered(db);
-        }
+        complete_add_from_stack_or_hand(db, source_card_id, &mut results);
 
         results
     }
@@ -265,10 +221,38 @@ impl Battlefield {
         source_card_id: CardId,
         enters_tapped: bool,
     ) -> PendingResults {
-        let mut results = PendingResults::default();
+        let mut results = match Self::start_adding_to_battlefield(
+            db,
+            source_card_id,
+            enters_tapped,
+            |card, enters_tapped| ActionResult::AddToBattlefieldSkipReplacementEffectsFromLibrary {
+                card,
+                enters_tapped,
+            },
+        ) {
+            PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
+            PartialAddToBattlefieldResult::Continue(results) => results,
+        };
 
+        complete_add_from_library(db, source_card_id, &mut results);
+
+        results
+    }
+
+    fn start_adding_to_battlefield(
+        db: &mut Database,
+        source_card_id: CardId,
+        enters_tapped: bool,
+        construct_skip_replacement: impl FnOnce(CardId, bool) -> ActionResult,
+    ) -> PartialAddToBattlefieldResult {
+        let mut results = PendingResults::default();
+        ReplacementEffectId::activate_all_for_card(db, source_card_id);
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
             let source = replacement.source(db);
+            if source != source_card_id {
+                continue;
+            }
+
             let restrictions = replacement.restrictions(db);
             if !source.passes_restrictions(db, source, ControllerRestriction::Any, &restrictions) {
                 continue;
@@ -279,60 +263,64 @@ impl Battlefield {
                 let effect = effect.into_effect(db, controller);
                 Self::push_effect_results(db, source, controller, effect, &mut results);
             }
-        }
 
-        if let Some(aura) = source_card_id.aura(db) {
-            results.push_unresolved(UnresolvedAction {
-                source: Some(source_card_id),
-                result: UnresolvedActionResult::Attach(aura),
-                valid_targets: source_card_id.valid_targets(db),
-                choices: Default::default(),
-                optional: false,
-            });
-        }
-
-        for ability in source_card_id.static_abilities(db) {
-            match ability {
-                StaticAbility::GreenCannotBeCountered { .. } => {}
-                StaticAbility::BattlefieldModifier(modifier) => {
-                    let modifier =
-                        ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
-                    results.push_resolved(ActionResult::AddModifier { modifier })
-                }
-                StaticAbility::ExtraLandsPerTurn(_) => {}
+            if !results.only_immediate_results() {
+                source_card_id.apply_modifiers_layered(db);
+                results.push_deferred(construct_skip_replacement(source_card_id, enters_tapped));
+                return PartialAddToBattlefieldResult::NeedsResolution(results);
             }
         }
 
-        for ability in source_card_id.etb_abilities(db) {
-            results.extend(Stack::move_ability_to_stack(db, ability, source_card_id));
-        }
+        move_card_to_battlefield(db, source_card_id, enters_tapped, &mut results);
 
-        if enters_tapped || source_card_id.etb_tapped(db) {
-            source_card_id.tap(db);
-        }
-        source_card_id.move_to_battlefield(db);
+        PartialAddToBattlefieldResult::Continue(results)
+    }
 
-        for trigger in
-            TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
-        {
-            if matches!(
-                trigger.location_from(db),
-                triggers::Location::Anywhere | triggers::Location::Library
-            ) {
-                let for_types = trigger.for_types(db);
-                if source_card_id.types_intersect(db, &for_types) {
-                    for listener in trigger.listeners(db) {
-                        results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
-                    }
-                }
+    pub fn compute_deck_targets(
+        db: &mut Database,
+        player: Controller,
+        restrictions: &[Restriction],
+    ) -> Vec<CardId> {
+        let mut results = vec![];
+
+        for card in player.get_cards::<InLibrary>(db) {
+            if !card.passes_restrictions(db, card, ControllerRestriction::You, restrictions) {
+                continue;
             }
-        }
 
-        for card in all_cards(db) {
-            card.apply_modifiers_layered(db);
+            results.push(card);
         }
 
         results
+    }
+
+    pub fn compute_graveyard_targets(
+        db: &mut Database,
+        controller: ControllerRestriction,
+        source_card: CardId,
+        types: &HashSet<Type>,
+    ) -> Vec<CardId> {
+        let targets = match controller {
+            ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
+            ControllerRestriction::You => HashSet::from([source_card.controller(db).into()]),
+            ControllerRestriction::Opponent => {
+                let mut all = AllPlayers::all_players_in_db(db);
+                all.remove(&source_card.controller(db).into());
+                all
+            }
+        };
+        let mut target_cards = vec![];
+
+        for target in targets.into_iter() {
+            let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
+            for card in cards_in_graveyard {
+                if card.types_intersect(db, types) {
+                    target_cards.push(card);
+                }
+            }
+        }
+
+        target_cards
     }
 
     pub fn controlled_colors(db: &mut Database, player: Controller) -> HashSet<Color> {
@@ -575,7 +563,7 @@ impl Battlefield {
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let Some(ActiveTarget::Battlefield { id: target }) = target {
-                    source.clone_card(db, *target);
+                    source.clone_card(db, *target, OnBattlefield::new());
                 }
             }
             ActionResult::AddModifier { modifier } => {
@@ -820,6 +808,21 @@ impl Battlefield {
                     spent,
                     "Should have validated mana could be spent before spending."
                 );
+            }
+            ActionResult::AddToBattlefieldSkipReplacementEffects(card) => {
+                let mut results = PendingResults::default();
+                move_card_to_battlefield(db, *card, false, &mut results);
+                complete_add_from_stack_or_hand(db, *card, &mut results);
+                return results;
+            }
+            ActionResult::AddToBattlefieldSkipReplacementEffectsFromLibrary {
+                card,
+                enters_tapped,
+            } => {
+                let mut results = PendingResults::default();
+                move_card_to_battlefield(db, *card, *enters_tapped, &mut results);
+                complete_add_from_library(db, *card, &mut results);
+                return results;
             }
         }
 
@@ -1113,4 +1116,85 @@ pub fn compute_graveyard_targets(
     }
 
     target_cards
+}
+
+fn complete_add_from_library(
+    db: &mut Database,
+    source_card_id: CardId,
+    results: &mut PendingResults,
+) {
+    for trigger in TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
+    {
+        if matches!(
+            trigger.location_from(db),
+            triggers::Location::Anywhere | triggers::Location::Library
+        ) {
+            let for_types = trigger.for_types(db);
+            if source_card_id.types_intersect(db, &for_types) {
+                for listener in trigger.listeners(db) {
+                    results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                }
+            }
+        }
+    }
+
+    for card in all_cards(db) {
+        card.apply_modifiers_layered(db);
+    }
+}
+
+fn complete_add_from_stack_or_hand(
+    db: &mut Database,
+    source_card_id: CardId,
+    results: &mut PendingResults,
+) {
+    for trigger in TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
+    {
+        if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
+            let for_types = trigger.for_types(db);
+            if source_card_id.types_intersect(db, &for_types) {
+                for listener in trigger.listeners(db) {
+                    results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                }
+            }
+        }
+    }
+
+    for card in all_cards(db) {
+        card.apply_modifiers_layered(db);
+    }
+}
+
+fn move_card_to_battlefield(
+    db: &mut Database,
+    source_card_id: CardId,
+    enters_tapped: bool,
+    results: &mut PendingResults,
+) {
+    if let Some(aura) = source_card_id.aura(db) {
+        results.push_unresolved(UnresolvedAction {
+            source: Some(source_card_id),
+            result: UnresolvedActionResult::Attach(aura),
+            valid_targets: source_card_id.valid_targets(db),
+            choices: Default::default(),
+            optional: false,
+        });
+    }
+    for ability in source_card_id.static_abilities(db) {
+        match ability {
+            StaticAbility::GreenCannotBeCountered { .. } => {}
+            StaticAbility::BattlefieldModifier(modifier) => {
+                let modifier = ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
+                results.push_resolved(ActionResult::AddModifier { modifier })
+            }
+            StaticAbility::ExtraLandsPerTurn(_) => {}
+        }
+    }
+    for ability in source_card_id.etb_abilities(db) {
+        results.extend(Stack::move_ability_to_stack(db, ability, source_card_id));
+    }
+    if source_card_id.etb_tapped(db) || enters_tapped {
+        source_card_id.tap(db);
+    }
+    source_card_id.move_to_battlefield(db);
 }

@@ -34,3 +34,5 @@ static_abilities {
     count: 1
   }
 }
+power: 2
+toughness: 4
