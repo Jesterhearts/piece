@@ -365,13 +365,11 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller = self.controller(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 if !self.passes_restrictions_given_types(
                     db,
                     source,
-                    controller,
                     controller_restriction,
                     &restrictions,
                     &types,
@@ -415,13 +413,11 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller = self.controller(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 if !self.passes_restrictions_given_types(
                     db,
                     source,
-                    controller,
                     controller_restriction,
                     &restrictions,
                     &types,
@@ -440,13 +436,11 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller = self.controller(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 if !self.passes_restrictions_given_types(
                     db,
                     source,
-                    controller,
                     controller_restriction,
                     &restrictions,
                     &types,
@@ -502,13 +496,11 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller = self.controller(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 if !self.passes_restrictions_given_types(
                     db,
                     source,
-                    controller,
                     controller_restriction,
                     &restrictions,
                     &types,
@@ -627,7 +619,6 @@ impl CardId {
         self,
         db: &mut Database,
         source: CardId,
-        controller: Controller,
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
     ) -> bool {
@@ -637,7 +628,6 @@ impl CardId {
         self.passes_restrictions_given_types(
             db,
             source,
-            controller,
             controller_restriction,
             restrictions,
             &types,
@@ -650,7 +640,6 @@ impl CardId {
         self,
         db: &mut Database,
         source: CardId,
-        controller: Controller,
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
         self_types: &HashSet<Type>,
@@ -660,13 +649,13 @@ impl CardId {
             ControllerRestriction::Any => {}
             ControllerRestriction::You => {
                 let source_controller = source.controller(db);
-                if source_controller != controller {
+                if source_controller != self.controller(db) {
                     return false;
                 }
             }
             ControllerRestriction::Opponent => {
                 let source_controller = source.controller(db);
-                if source_controller == controller {
+                if source_controller == self.controller(db) {
                     return false;
                 }
             }
@@ -715,7 +704,7 @@ impl CardId {
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if controller.has_cards::<InHand>(db) {
+                    if self.controller(db).has_cards::<InHand>(db) {
                         return false;
                     }
                 }
@@ -865,6 +854,20 @@ impl CardId {
         )
     }
 
+    pub fn token_copy_of(self, db: &mut Database, player: Owner) -> CardId {
+        Self::upload_card(
+            db,
+            &self.original(db),
+            player,
+            OnBattlefield(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed)),
+            true,
+        )
+    }
+
+    pub fn original(self, db: &Database) -> Card {
+        db.get::<Card>(self.0).cloned().unwrap()
+    }
+
     fn upload_card<Location: Component>(
         db: &mut Database,
         card: &Card,
@@ -873,6 +876,7 @@ impl CardId {
         is_token: bool,
     ) -> CardId {
         let mut entity = db.spawn((
+            card.clone(),
             destination,
             Name(card.name.clone()),
             OracleText(card.oracle_text.clone()),
@@ -1042,7 +1046,6 @@ impl CardId {
                 if card.passes_restrictions(
                     db,
                     self,
-                    controller,
                     ControllerRestriction::Any,
                     &aura.restrictions(db),
                 ) && card.can_be_targeted(db, controller)
@@ -1079,7 +1082,6 @@ impl CardId {
                 && creature.passes_restrictions(
                     db,
                     self,
-                    controller,
                     ControllerRestriction::Any,
                     &dmg.restrictions,
                 )
@@ -1203,6 +1205,15 @@ impl CardId {
                         .map(|card| ActiveTarget::Library { id: card }),
                 );
             }
+            Effect::CreateTokenCopy { .. } => {
+                for creature in creatures.iter() {
+                    if creature.can_be_targeted(db, controller) {
+                        targets.push(ActiveTarget::Battlefield { id: *creature })
+                    }
+                }
+            }
+            Effect::ReturnSelfToHand => {}
+            Effect::RevealEachTopOfLibrary(_) => {}
         }
     }
 

@@ -324,7 +324,7 @@ pub enum ModifyKeywords {
     Add(HashSet<Keyword>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct Card {
     pub name: String,
     pub types: HashSet<Type>,

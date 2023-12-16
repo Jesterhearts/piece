@@ -1080,7 +1080,6 @@ fn targets_for_battlefield_modifier(
                 || creature.passes_restrictions(
                     db,
                     source,
-                    caster,
                     modifier.unwrap().controller,
                     &modifier.unwrap().restrictions,
                 ))

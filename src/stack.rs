@@ -49,6 +49,16 @@ impl ActiveTarget {
             ActiveTarget::Player { .. } => "Player".to_string(),
         }
     }
+
+    fn id(&self) -> Option<CardId> {
+        match self {
+            ActiveTarget::Battlefield { id }
+            | ActiveTarget::Graveyard { id }
+            | ActiveTarget::Library { id } => Some(*id),
+            ActiveTarget::Stack { .. } => None,
+            ActiveTarget::Player { .. } => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -604,7 +614,6 @@ impl Stack {
                                     if !id.passes_restrictions(
                                         db,
                                         source,
-                                        controller,
                                         ControllerRestriction::Any,
                                         &dmg.restrictions,
                                     ) {
@@ -747,7 +756,22 @@ impl Stack {
                             optional: false,
                         });
                     }
-                    Effect::CopyOfAnyCreatureNonTargeting => todo!(),
+                    Effect::CopyOfAnyCreatureNonTargeting => unreachable!(),
+                    Effect::CreateTokenCopy { modifiers } => {
+                        let target = targets.next().unwrap();
+                        let target = target.id();
+                        results.push_resolved(ActionResult::CreateTokenCopyOf {
+                            target: target.unwrap(),
+                            modifiers,
+                            controller: source.controller(db),
+                        });
+                    }
+                    Effect::ReturnSelfToHand => {
+                        source.move_to_hand(db);
+                    }
+                    Effect::RevealEachTopOfLibrary(reveal) => {
+                        results.push_resolved(ActionResult::RevealEachTopOfLibrary(source, reveal));
+                    }
                 }
             }
         }

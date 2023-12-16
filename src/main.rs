@@ -1092,8 +1092,7 @@ fn main() -> anyhow::Result<()> {
                     if let Some(selected) = key_selected.map(|offset| *hand_start_index + offset) {
                         let card = player1.get_cards::<InHand>(&mut db)[selected];
                         if turn.can_cast(&mut db, card) {
-                            let mut pending =
-                                all_players[player1].play_card(&mut db, selected, None);
+                            let mut pending = all_players[player1].play_card(&mut db, selected);
                             while pending.only_immediate_results() {
                                 let result = pending.resolve(&mut db, &mut all_players, None);
                                 if result == ResolutionResult::Complete {

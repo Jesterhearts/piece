@@ -31,13 +31,13 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
-        Ok(Self {
-            mana_cost: value
-                .mana_costs
-                .iter()
-                .map(Mana::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-        })
+        let mut mana_cost = value
+            .mana_costs
+            .iter()
+            .map(Mana::try_from)
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        mana_cost.sort();
+        Ok(Self { mana_cost })
     }
 }
 
@@ -129,12 +129,15 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::cost::AbilityCost) -> Result<Self, Self::Error> {
+        let mut mana_cost = value
+            .mana_costs
+            .iter()
+            .map(Mana::try_from)
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        mana_cost.sort();
+
         Ok(Self {
-            mana_cost: value
-                .mana_costs
-                .iter()
-                .map(Mana::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            mana_cost,
             tap: value.tap.unwrap_or_default(),
             additional_cost: value
                 .additional_costs

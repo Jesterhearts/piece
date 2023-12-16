@@ -15,7 +15,7 @@ use crate::{
     effects::{replacing, Effect},
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
     mana::Mana,
-    stack::{ActiveTarget, Stack},
+    stack::Stack,
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
@@ -348,18 +348,17 @@ impl Player {
             if replacements.len() > 0 {
                 while let Some(replacement) = replacements.next() {
                     let source = replacement.source(db);
-                    let controller = replacement.source(db).controller(db);
                     let restrictions = replacement.restrictions(db);
                     if !source.passes_restrictions(
                         db,
                         source,
-                        controller,
                         ControllerRestriction::Any,
                         &restrictions,
                     ) {
                         continue;
                     }
 
+                    let controller = replacement.source(db).controller(db);
                     for effect in replacement.effects(db) {
                         match effect.into_effect(db, controller) {
                             Effect::BattlefieldModifier(_) => todo!(),
@@ -372,19 +371,7 @@ impl Player {
                                     count,
                                 });
                             }
-                            Effect::CounterSpell { .. } => todo!(),
-                            Effect::CreateToken(_) => todo!(),
-                            Effect::DealDamage(_) => todo!(),
-                            Effect::Equip(_) => todo!(),
-                            Effect::ExileTargetCreature => todo!(),
-                            Effect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
-                            Effect::GainCounter(_) => todo!(),
-                            Effect::ModifyCreature(_) => todo!(),
-                            Effect::CopyOfAnyCreatureNonTargeting => todo!(),
-                            Effect::Mill(_) => todo!(),
-                            Effect::ReturnFromGraveyardToBattlefield(_) => todo!(),
-                            Effect::ReturnFromGraveyardToLibrary(_) => todo!(),
-                            Effect::TutorLibrary(_) => todo!(),
+                            _ => todo!(),
                         }
                     }
                 }
@@ -396,26 +383,19 @@ impl Player {
         }
     }
 
-    pub fn play_card(
-        &mut self,
-        db: &mut Database,
-        index: usize,
-        target: Option<ActiveTarget>,
-    ) -> PendingResults {
+    pub fn play_card(&mut self, db: &mut Database, index: usize) -> PendingResults {
         let cards = cards::<InHand>(db);
         let card = cards[index];
         let mana_pool = self.mana_pool;
 
-        for mana in card.cost(db).mana_cost.iter() {
-            if !self.mana_pool.spend(*mana) {
-                self.mana_pool = mana_pool;
-                return PendingResults::default();
-            }
+        let wants_targets = card.wants_targets(db);
+        let valid_targets = card.valid_targets(db);
+        if valid_targets.len() < wants_targets {
+            return PendingResults::default();
         }
 
-        if let Some(target) = target {
-            let targets = card.valid_targets(db);
-            if !targets.contains(&target) {
+        for mana in card.cost(db).mana_cost.iter() {
+            if !self.mana_pool.spend(*mana) {
                 self.mana_pool = mana_pool;
                 return PendingResults::default();
             }

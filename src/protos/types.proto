@@ -36,54 +36,31 @@ message Type {
 }
 
 message Subtype {
-  message Angel {
-  }
-  message Aura {
-  }
-  message Bear {
-  }
-  message Dinosaur {
-  }
-  message Dryad {
-  }
-  message Elemental {
-  }
-  message Elf {
-  }
-  message Equipment {
-  }
-  message Forest {
-  }
-  message Golem {
-  }
-  message Human {
-  }
-  message Island {
-  }
-  message Mountain {
-  }
-  message Nymph {
-  }
-  message Plains {
-  }
-  message Praetor {
-  }
-  message Shade {
-  }
-  message Shaman {
-  }
-  message Shapeshifter {
-  }
-  message Soldier {
-  }
-  message Swamp {
-  }
-  message Vampire {
-  }
-  message Wizard {
-  }
-  message Zombie {
-  }
+  message Angel {}
+  message Aura {}
+  message Bear {}
+  message Dinosaur {}
+  message Dryad {}
+  message Elemental {}
+  message Elf {}
+  message Equipment {}
+  message Forest {}
+  message Golem {}
+  message Human {}
+  message Island {}
+  message Mountain {}
+  message Nymph {}
+  message Plains {}
+  message Praetor {}
+  message Shade {}
+  message Shaman {}
+  message Shapeshifter {}
+  message Soldier {}
+  message Spirit {}
+  message Swamp {}
+  message Vampire {}
+  message Wizard {}
+  message Zombie {}
 
   oneof subtype {
     Angel angel = 1;
@@ -106,9 +83,10 @@ message Subtype {
     Shaman shaman = 18;
     Shapeshifter shapeshifter = 19;
     Soldier soldier = 20;
-    Swamp swamp = 21;
-    Vampire vampire = 22;
-    Wizard wizard = 23;
-    Zombie zombie = 24;
+    Spirit spirit = 21;
+    Swamp swamp = 22;
+    Vampire vampire = 23;
+    Wizard wizard = 24;
+    Zombie zombie = 25;
   }
 }

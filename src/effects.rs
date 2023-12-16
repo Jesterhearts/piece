@@ -340,6 +340,59 @@ impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
     }
 }
 
+pub mod reveal_each_top_of_library {
+    use crate::{effects::Effect, protogen, targets::Restriction};
+
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    pub struct ForEach {
+        pub restrictions: Vec<Restriction>,
+        pub effects: Vec<Effect>,
+        pub if_none: Vec<Effect>,
+    }
+
+    impl TryFrom<&protogen::effects::reveal_each_top_of_library::ForEach> for ForEach {
+        type Error = anyhow::Error;
+
+        fn try_from(
+            value: &protogen::effects::reveal_each_top_of_library::ForEach,
+        ) -> Result<Self, Self::Error> {
+            Ok(Self {
+                restrictions: value
+                    .restrictions
+                    .iter()
+                    .map(Restriction::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                effects: value
+                    .effects
+                    .iter()
+                    .map(Effect::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                if_none: value
+                    .if_none
+                    .effects
+                    .iter()
+                    .map(Effect::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            })
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct RevealEachTopOfLibrary {
+    pub for_each: reveal_each_top_of_library::ForEach,
+}
+
+impl TryFrom<&protogen::effects::RevealEachTopOfLibrary> for RevealEachTopOfLibrary {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::RevealEachTopOfLibrary) -> Result<Self, Self::Error> {
+        Ok(Self {
+            for_each: value.for_each.get_or_default().try_into()?,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
@@ -348,6 +401,9 @@ pub enum Effect {
     CopyOfAnyCreatureNonTargeting,
     CounterSpell { target: SpellTarget },
     CreateToken(Token),
+    CreateTokenCopy { modifiers: Vec<ModifyBattlefield> },
+    ReturnSelfToHand,
+    RevealEachTopOfLibrary(RevealEachTopOfLibrary),
     DealDamage(DealDamage),
     Equip(Vec<ModifyBattlefield>),
     ExileTargetCreature,
@@ -396,6 +452,9 @@ impl Effect {
                 count, ..
             }) => *count,
             Effect::TutorLibrary(_) => 0,
+            Effect::CreateTokenCopy { .. } => 1,
+            Effect::ReturnSelfToHand => 0,
+            Effect::RevealEachTopOfLibrary(_) => 0,
         }
     }
 }
@@ -470,6 +529,17 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::TutorLibrary(tutor) => {
                 Ok(Self::TutorLibrary(tutor.try_into()?))
+            }
+            protogen::effects::effect::Effect::CreateTokenCopy(copy) => Ok(Self::CreateTokenCopy {
+                modifiers: copy
+                    .modifiers
+                    .iter()
+                    .map(ModifyBattlefield::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
+            protogen::effects::effect::Effect::ReturnSelfToHand(_) => Ok(Self::ReturnSelfToHand),
+            protogen::effects::effect::Effect::RevealEachTopOfLibrary(reveal) => {
+                Ok(Self::RevealEachTopOfLibrary(reveal.try_into()?))
             }
         }
     }

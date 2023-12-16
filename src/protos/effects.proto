@@ -187,6 +187,25 @@ message ControllerLosesLife {
 
 message CopyOfAnyCreatureNonTargeting { }
 
+message CreateTokenCopy {
+  repeated ModifyBattlefield modifiers = 1;
+}
+
+message ReturnSelfToHand { }
+
+message RevealEachTopOfLibrary {
+  message ForEach {
+    message IfNone {
+      repeated Effect effects = 1;
+    }
+
+    repeated targets.Restriction restrictions = 2;
+    repeated Effect effects = 3;
+    IfNone if_none = 4;
+  }
+
+  ForEach for_each = 5;
+}
 
 message Effect {
   oneof effect {
@@ -197,18 +216,21 @@ message Effect {
     CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 5;
     CounterSpell counter_spell = 6;
     CreateToken create_token = 7;
-    DealDamage deal_damage = 8;
-    effects.Mill mill = 9;
-    effects.ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 10;
-    effects.ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 11;
-    effects.TutorLibrary tutor_library = 12;
-    Equip equip = 13;
-    ExileTargetCreature exile_target_creature = 14;
-    ExileTargetCreatureManifestTopOfLibrary exile_target_creature_manifest_top_of_library = 15;
-    GainCounter gain_counter = 16;
+    CreateTokenCopy create_token_copy = 8;
+    DealDamage deal_damage = 9;
+    Equip equip = 10;
+    ExileTargetCreature exile_target_creature = 11;
+    ExileTargetCreatureManifestTopOfLibrary exile_target_creature_manifest_top_of_library = 12;
+    GainCounter gain_counter = 13;
+    Mill mill = 14;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 15;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 16;
+    ReturnSelfToHand return_self_to_hand = 17;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 18;
+    TutorLibrary tutor_library = 19;
   }
 
-  optional Effect threshold = 17;
+  optional Effect threshold = 20;
 }
 
 message ReplacementEffect {

@@ -11,7 +11,7 @@ use crate::{
     cost::{AdditionalCost, PayLife},
     effects::{
         effect_duration::UntilEndOfTurn, replacing, BattlefieldModifier, Counter, Destination,
-        Effect, EffectDuration, Mill, Token, TutorLibrary,
+        Effect, EffectDuration, Mill, RevealEachTopOfLibrary, Token, TutorLibrary,
     },
     in_play::{
         all_cards, cards, AbilityId, Active, AuraId, CardId, CounterId, Database, InGraveyard,
@@ -434,8 +434,44 @@ impl UnresolvedAction {
                         |choice| self.valid_targets[choice],
                     ))]
                 }
-                Effect::ExileTargetCreatureManifestTopOfLibrary => todo!(),
-                Effect::GainCounter(_) => todo!(),
+                Effect::ExileTargetCreatureManifestTopOfLibrary => {
+                    if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
+                        return vec![];
+                    }
+
+                    let target = choice.map_or_else(
+                        || self.valid_targets[0],
+                        |choice| self.valid_targets[choice],
+                    );
+
+                    let ActiveTarget::Battlefield { id } = target else {
+                        unreachable!();
+                    };
+
+                    vec![
+                        ActionResult::ExileTarget(target),
+                        ActionResult::ManifestTopOfLibrary(id.controller(db)),
+                    ]
+                }
+                Effect::GainCounter(counter) => {
+                    if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
+                        return vec![];
+                    }
+
+                    let target = choice.map_or_else(
+                        || self.valid_targets[0],
+                        |choice| self.valid_targets[choice],
+                    );
+
+                    let ActiveTarget::Battlefield { id } = target else {
+                        unreachable!();
+                    };
+                    vec![ActionResult::AddCounters {
+                        target: id,
+                        counter: *counter,
+                        count: 1,
+                    }]
+                }
                 Effect::Mill(Mill { count, .. }) => {
                     let mut targets = self
                         .choices
@@ -461,7 +497,24 @@ impl UnresolvedAction {
                         vec![]
                     }
                 }
-                Effect::ModifyCreature(_) => todo!(),
+                Effect::ModifyCreature(modifier) => {
+                    if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
+                        return vec![];
+                    }
+
+                    let target = choice.map_or_else(
+                        || self.valid_targets[0],
+                        |choice| self.valid_targets[choice],
+                    );
+
+                    let modifier =
+                        ModifierId::upload_temporary_modifier(db, self.source.unwrap(), modifier);
+
+                    vec![ActionResult::ModifyCreatures {
+                        targets: vec![target],
+                        modifier,
+                    }]
+                }
                 Effect::ReturnFromGraveyardToBattlefield(_) => {
                     let mut targets = self
                         .choices
@@ -567,9 +620,32 @@ impl UnresolvedAction {
                         vec![]
                     }
                 }
+                Effect::CreateTokenCopy { modifiers } => {
+                    if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
+                        return vec![];
+                    }
+
+                    let target = choice.map_or_else(
+                        || self.valid_targets[0],
+                        |choice| self.valid_targets[choice],
+                    );
+
+                    let ActiveTarget::Battlefield { id } = target else {
+                        unreachable!();
+                    };
+
+                    vec![ActionResult::CreateTokenCopyOf {
+                        target: id,
+                        modifiers: modifiers.clone(),
+                        controller: self.source.unwrap().controller(db),
+                    }]
+                }
+
                 Effect::BattlefieldModifier(_)
                 | Effect::ControllerDrawCards(_)
-                | Effect::ControllerLosesLife(_) => {
+                | Effect::ControllerLosesLife(_)
+                | Effect::RevealEachTopOfLibrary(_)
+                | Effect::ReturnSelfToHand => {
                     unreachable!()
                 }
             },
@@ -804,6 +880,13 @@ pub enum ActionResult {
         card: CardId,
         targets: Vec<ActiveTarget>,
     },
+    HandFromBattlefield(CardId),
+    RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
+    CreateTokenCopyOf {
+        target: CardId,
+        modifiers: Vec<crate::effects::ModifyBattlefield>,
+        controller: Controller,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -871,18 +954,12 @@ impl Battlefield {
 
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
             let source = replacement.source(db);
-            let controller = replacement.source(db).controller(db);
             let restrictions = replacement.restrictions(db);
-            if !source.passes_restrictions(
-                db,
-                source,
-                controller,
-                ControllerRestriction::Any,
-                &restrictions,
-            ) {
+            if !source.passes_restrictions(db, source, ControllerRestriction::Any, &restrictions) {
                 continue;
             }
 
+            let controller = replacement.source(db).controller(db);
             for effect in replacement.effects(db) {
                 let effect = effect.into_effect(db, controller);
                 Self::push_effect_results(db, source, controller, effect, &mut results);
@@ -949,18 +1026,12 @@ impl Battlefield {
 
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
             let source = replacement.source(db);
-            let controller = replacement.source(db).controller(db);
             let restrictions = replacement.restrictions(db);
-            if !source.passes_restrictions(
-                db,
-                source,
-                controller,
-                ControllerRestriction::Any,
-                &restrictions,
-            ) {
+            if !source.passes_restrictions(db, source, ControllerRestriction::Any, &restrictions) {
                 continue;
             }
 
+            let controller = replacement.source(db).controller(db);
             for effect in replacement.effects(db) {
                 let effect = effect.into_effect(db, controller);
                 Self::push_effect_results(db, source, controller, effect, &mut results);
@@ -1385,6 +1456,86 @@ impl Battlefield {
                     }
                 }
             }
+            ActionResult::HandFromBattlefield(card) => {
+                return Self::permanent_to_hand(db, *card);
+            }
+            ActionResult::RevealEachTopOfLibrary(source, reveal) => {
+                let players = all_players.all_players();
+                let revealed = players
+                    .into_iter()
+                    .filter_map(|player| all_players[player].deck.reveal_top(db))
+                    .collect_vec();
+                let revealed = revealed
+                    .into_iter()
+                    .filter(|card| {
+                        card.passes_restrictions(
+                            db,
+                            *source,
+                            ControllerRestriction::Any,
+                            &reveal.for_each.restrictions,
+                        )
+                    })
+                    .collect_vec();
+
+                let mut results = PendingResults::default();
+                if revealed.is_empty() {
+                    let controller = source.controller(db);
+                    for effect in reveal.for_each.if_none.iter() {
+                        Self::push_effect_results(
+                            db,
+                            *source,
+                            controller,
+                            effect.clone(),
+                            &mut results,
+                        )
+                    }
+                } else {
+                    for target in revealed {
+                        for effect in reveal.for_each.effects.iter() {
+                            Self::push_effect_results_with_target_from_top_of_library(
+                                db,
+                                *source,
+                                effect,
+                                target,
+                                &mut results,
+                            );
+                        }
+                    }
+                }
+
+                return results;
+            }
+            ActionResult::CreateTokenCopyOf {
+                target,
+                modifiers,
+                controller,
+            } => {
+                let token = target.token_copy_of(db, (*controller).into());
+
+                for modifier in modifiers.iter() {
+                    let modifier = ModifierId::upload_temporary_modifier(
+                        db,
+                        token,
+                        &BattlefieldModifier {
+                            modifier: modifier.clone(),
+                            controller: ControllerRestriction::Any,
+                            duration: EffectDuration::UntilSourceLeavesBattlefield,
+                            restrictions: vec![],
+                        },
+                    );
+
+                    token.apply_modifier(db, modifier);
+                }
+            }
+        }
+
+        PendingResults::default()
+    }
+
+    pub fn permanent_to_hand(db: &mut Database, target: CardId) -> PendingResults {
+        target.move_to_hand(db);
+        for card in all_cards(db) {
+            card.apply_modifiers_layered(db);
         }
 
         PendingResults::default()
@@ -1539,7 +1690,8 @@ impl Battlefield {
             | Effect::Mill(_)
             | Effect::ModifyCreature(_)
             | Effect::ReturnFromGraveyardToBattlefield(_)
-            | Effect::ReturnFromGraveyardToLibrary(_) => {
+            | Effect::ReturnFromGraveyardToLibrary(_)
+            | Effect::CreateTokenCopy { .. } => {
                 let creatures = Self::creatures(db);
                 let mut valid_targets = vec![];
                 source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
@@ -1553,6 +1705,71 @@ impl Battlefield {
                     choices: Default::default(),
                 })
             }
+            Effect::ReturnSelfToHand => {
+                results.push_resolved(ActionResult::HandFromBattlefield(source))
+            }
+            Effect::RevealEachTopOfLibrary(reveal) => {
+                results.push_resolved(ActionResult::RevealEachTopOfLibrary(source, reveal));
+            }
+        }
+    }
+
+    fn push_effect_results_with_target_from_top_of_library(
+        db: &mut Database,
+        source: CardId,
+        effect: &Effect,
+        target: CardId,
+        results: &mut PendingResults,
+    ) {
+        match effect {
+            Effect::ControllerDrawCards(count) => {
+                results.push_resolved(ActionResult::DrawCards {
+                    target: target.controller(db),
+                    count: *count,
+                });
+            }
+            Effect::ControllerLosesLife(count) => {
+                results.push_resolved(ActionResult::LoseLife {
+                    target: target.controller(db),
+                    count: *count,
+                });
+            }
+            Effect::CreateToken(token) => {
+                results.push_resolved(ActionResult::CreateToken {
+                    source: target.controller(db),
+                    token: token.clone(),
+                });
+            }
+            Effect::GainCounter(counter) => {
+                results.push_resolved(ActionResult::AddCounters {
+                    target: source,
+                    counter: *counter,
+                    count: 1,
+                });
+            }
+            Effect::CreateTokenCopy { modifiers } => {
+                results.push_resolved(ActionResult::CreateTokenCopyOf {
+                    target,
+                    controller: source.controller(db),
+                    modifiers: modifiers.clone(),
+                })
+            }
+            &Effect::TutorLibrary(_)
+            | Effect::CounterSpell { .. }
+            | Effect::DealDamage(_)
+            | Effect::Equip(_)
+            | Effect::ExileTargetCreature
+            | Effect::ExileTargetCreatureManifestTopOfLibrary
+            | Effect::Mill(_)
+            | Effect::ModifyCreature(_)
+            | Effect::ReturnFromGraveyardToBattlefield(_)
+            | Effect::ReturnFromGraveyardToLibrary(_)
+            | Effect::BattlefieldModifier(_)
+            | Effect::CopyOfAnyCreatureNonTargeting
+            | Effect::RevealEachTopOfLibrary(_)
+            | Effect::ReturnSelfToHand => {
+                unreachable!()
+            }
         }
     }
 }
@@ -1565,7 +1782,7 @@ pub fn compute_deck_targets(
     let mut results = vec![];
 
     for card in player.get_cards::<InLibrary>(db) {
-        if !card.passes_restrictions(db, card, player, ControllerRestriction::You, restrictions) {
+        if !card.passes_restrictions(db, card, ControllerRestriction::You, restrictions) {
             continue;
         }
 

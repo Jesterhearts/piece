@@ -10,6 +10,7 @@ mod dryad_of_the_ilysian_grove;
 mod elesh_norn_grand_cenobite;
 mod forbidden_friendship;
 mod glowspore_shaman;
+mod haunting_imitation;
 mod hoar_shade;
 mod krosan_verge;
 mod lithoform_blight;

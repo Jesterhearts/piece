@@ -71,4 +71,13 @@ impl Deck {
     pub fn remove(&mut self, card: CardId) {
         self.cards.retain(|deck| *deck != card);
     }
+
+    pub fn reveal_top(&self, db: &mut Database) -> Option<CardId> {
+        if let Some(card) = self.cards.back() {
+            card.reveal(db);
+            Some(*card)
+        } else {
+            None
+        }
+    }
 }
