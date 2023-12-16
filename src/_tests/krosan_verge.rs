@@ -3,10 +3,7 @@ use std::collections::VecDeque;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{
-        ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult,
-        UnresolvedAction, UnresolvedActionResult,
-    },
+    battlefield::{ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult},
     in_play::{CardId, Database, OnBattlefield},
     load_cards,
     mana::Mana,
@@ -57,6 +54,7 @@ fn tutors() -> anyhow::Result<()> {
     card.untap(&mut db);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let ability = *card.activated_abilities(&mut db).first().unwrap();
     assert_eq!(
         results,
         PendingResults {
@@ -69,24 +67,18 @@ fn tutors() -> anyhow::Result<()> {
                         ActionResult::PermanentToGraveyard(card),
                         ActionResult::SpendMana(player.into(), vec![Mana::Generic(2)]),
                     ],
-                    recompute: false,
                 },
                 PendingResult {
-                    apply_immediately: vec![],
-                    to_resolve: VecDeque::from([UnresolvedAction {
-                        source: Some(card),
-                        result: UnresolvedActionResult::Ability(
-                            *card.activated_abilities(&mut db).first().unwrap()
-                        ),
-                        valid_targets: vec![
-                            ActiveTarget::Library { id: forest },
-                            ActiveTarget::Library { id: plains }
-                        ],
-                        choices: Default::default(),
-                        optional: false
-                    },]),
+                    apply_immediately: vec![ActionResult::AddAbilityToStack {
+                        source: card,
+                        ability,
+                        targets: vec![
+                            vec![ActiveTarget::Library { id: forest }],
+                            vec![ActiveTarget::Library { id: plains }],
+                        ]
+                    }],
+                    to_resolve: Default::default(),
                     then_apply: vec![],
-                    recompute: false,
                 },
             ]),
             applied: false,

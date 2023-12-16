@@ -390,14 +390,17 @@ impl Player {
         let cards = cards::<InHand>(db);
         let card = cards[index];
 
-        let wants_targets = card.wants_targets(db);
+        let needs_targets = card.needs_targets(db);
         let valid_targets = card.valid_targets(db);
         debug!(
-            "wants targets: {}, has targets {}",
-            wants_targets,
-            valid_targets.len()
+            "wants targets: {:?}, has targets {:?}",
+            needs_targets, valid_targets
         );
-        if valid_targets.len() < wants_targets {
+        let has_enough_targets = needs_targets
+            .into_iter()
+            .zip(valid_targets)
+            .all(|(wants, targets)| wants <= targets.len());
+        if !has_enough_targets {
             return PendingResults::default();
         }
 

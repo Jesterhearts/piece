@@ -23,7 +23,7 @@ impl TriggerId {
             NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<ActiveTarget>) {
+    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<Vec<ActiveTarget>>) {
         if Stack::split_second(db) {
             return;
         }
@@ -154,14 +154,14 @@ impl TriggerId {
         text
     }
 
-    pub fn wants_targets(self, db: &mut Database, source: CardId) -> usize {
+    pub fn needs_targets(self, db: &mut Database, source: CardId) -> Vec<usize> {
         let effects = self.effects(db);
         let controller = source.controller(db);
         effects
             .into_iter()
             .map(|effect| effect.into_effect(db, controller))
-            .map(|effect| effect.wants_targets())
-            .sum()
+            .map(|effect| effect.needs_targets())
+            .collect_vec()
     }
 
     pub fn settle(self, db: &mut Database) {

@@ -22,7 +22,8 @@ fn reveals_clones() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    haunting.move_to_stack(&mut db, vec![]);
+    let targets = haunting.valid_targets(&mut db);
+    haunting.move_to_stack(&mut db, targets);
 
     let land = CardId::upload(&mut db, &cards, player1, "Forest");
     let creature = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
@@ -62,7 +63,8 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    haunting.move_to_stack(&mut db, vec![]);
+    let targets = haunting.valid_targets(&mut db);
+    haunting.move_to_stack(&mut db, targets);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player2, "Swamp");

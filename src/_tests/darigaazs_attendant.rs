@@ -42,7 +42,6 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
                         target: player.into(),
                     }
                 ],
-                recompute: false
             }]),
             applied: false,
         }

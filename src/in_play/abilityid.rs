@@ -169,7 +169,7 @@ impl AbilityId {
             InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed));
     }
 
-    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<ActiveTarget>) {
+    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<Vec<ActiveTarget>>) {
         if Stack::split_second(db) {
             return;
         }
@@ -299,12 +299,12 @@ impl AbilityId {
             .0
     }
 
-    pub fn wants_targets(self, db: &mut Database) -> usize {
+    pub fn needs_targets(self, db: &mut Database) -> Vec<usize> {
         let controller = self.original(db).controller(db);
         self.effects(db)
             .into_iter()
-            .map(|effect| effect.wants_targets(db, controller))
-            .sum::<usize>()
+            .map(|effect| effect.needs_targets(db, controller))
+            .collect_vec()
     }
 
     pub fn source(self, db: &mut Database) -> CardId {

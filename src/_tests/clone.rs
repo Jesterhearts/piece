@@ -35,23 +35,19 @@ fn etb_clones() -> anyhow::Result<()> {
             results: VecDeque::from([
                 PendingResult {
                     apply_immediately: vec![],
-                    to_resolve: VecDeque::from([UnresolvedAction {
-                        source: Some(clone),
-                        result: UnresolvedActionResult::Effect(
-                            Effect::CopyOfAnyCreatureNonTargeting
-                        ),
-                        valid_targets: vec![ActiveTarget::Battlefield { id: creature }],
-                        choices: Default::default(),
-                        optional: true,
-                    }]),
+                    to_resolve: VecDeque::from([UnresolvedAction::new(
+                        &mut db,
+                        Some(clone),
+                        UnresolvedActionResult::Effect(Effect::CopyOfAnyCreatureNonTargeting),
+                        vec![vec![ActiveTarget::Battlefield { id: creature }]],
+                        true,
+                    )]),
                     then_apply: vec![],
-                    recompute: false,
                 },
                 PendingResult {
                     apply_immediately: vec![],
                     to_resolve: Default::default(),
                     then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(clone)],
-                    recompute: false,
                 }
             ]),
             applied: false,
@@ -59,6 +55,8 @@ fn etb_clones() -> anyhow::Result<()> {
     );
 
     let result = results.resolve(&mut db, &mut all_players, Some(0));
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(clone.cloning(&mut db), Some(creature.into()));
@@ -79,22 +77,30 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     assert_eq!(
         results,
         PendingResults {
-            results: VecDeque::from([PendingResult {
-                apply_immediately: vec![],
-                to_resolve: VecDeque::from([UnresolvedAction {
-                    source: Some(clone),
-                    result: UnresolvedActionResult::Effect(Effect::CopyOfAnyCreatureNonTargeting),
-                    valid_targets: vec![],
-                    choices: Default::default(),
-                    optional: true,
-                }]),
-                then_apply: vec![],
-                recompute: false,
-            }]),
+            results: VecDeque::from([
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: VecDeque::from([UnresolvedAction::new(
+                        &mut db,
+                        Some(clone),
+                        UnresolvedActionResult::Effect(Effect::CopyOfAnyCreatureNonTargeting),
+                        vec![vec![]],
+                        true,
+                    )]),
+                    then_apply: vec![],
+                },
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: Default::default(),
+                    then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(clone)],
+                }
+            ]),
             applied: false,
         }
     );
 
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

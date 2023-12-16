@@ -105,7 +105,7 @@ impl CardId {
         }
     }
 
-    pub fn move_to_stack(self, db: &mut Database, targets: Vec<ActiveTarget>) {
+    pub fn move_to_stack(self, db: &mut Database, targets: Vec<Vec<ActiveTarget>>) {
         if Stack::split_second(db) {
             return;
         }
@@ -623,14 +623,24 @@ impl CardId {
         db.get::<Effects>(self.0).cloned().unwrap_or_default().0
     }
 
-    pub fn wants_targets(self, db: &mut Database) -> usize {
+    pub fn needs_targets(self, db: &mut Database) -> Vec<usize> {
+        let effects = self.effects(db);
+        let controller = self.controller(db);
+        effects
+            .into_iter()
+            .map(|effect| effect.into_effect(db, controller))
+            .map(|effect| effect.needs_targets())
+            .collect_vec()
+    }
+
+    pub fn wants_targets(&self, db: &mut Database) -> Vec<usize> {
         let effects = self.effects(db);
         let controller = self.controller(db);
         effects
             .into_iter()
             .map(|effect| effect.into_effect(db, controller))
             .map(|effect| effect.wants_targets())
-            .sum()
+            .collect_vec()
     }
 
     pub fn passes_restrictions(
@@ -1065,7 +1075,7 @@ impl CardId {
         db.get::<CastingCost>(self.0).unwrap()
     }
 
-    pub fn valid_targets(self, db: &mut Database) -> Vec<ActiveTarget> {
+    pub fn valid_targets(self, db: &mut Database) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
 
         if let Some(aura) = self.aura(db) {
@@ -1078,7 +1088,7 @@ impl CardId {
                     &aura.restrictions(db),
                 ) && card.can_be_targeted(db, controller)
                 {
-                    targets.push(ActiveTarget::Battlefield { id: card })
+                    targets.push(vec![ActiveTarget::Battlefield { id: card }])
                 }
             }
         }
@@ -1087,11 +1097,11 @@ impl CardId {
         let controller = self.controller(db);
         for effect in self.effects(db) {
             let effect = effect.into_effect(db, controller);
-            self.targets_for_effect(db, controller, &effect, &creatures, &mut targets);
+            targets.push(self.targets_for_effect(db, controller, &effect, &creatures));
         }
 
         for ability in self.activated_abilities(db) {
-            self.targets_for_ability(db, ability, &creatures, &mut targets);
+            targets.extend(self.targets_for_ability(db, ability, &creatures));
         }
 
         targets
@@ -1128,18 +1138,20 @@ impl CardId {
         db: &mut Database,
         ability: AbilityId,
         creatures: &[CardId],
-        targets: &mut Vec<ActiveTarget>,
-    ) {
+    ) -> Vec<Vec<ActiveTarget>> {
+        let mut targets = vec![];
         let ability = ability.ability(db);
         let controller = self.controller(db);
         if !ability.apply_to_self() {
-            if let Some(effect) = ability.into_effects().into_iter().next() {
+            for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                self.targets_for_effect(db, controller, &effect, creatures, targets);
+                targets.push(self.targets_for_effect(db, controller, &effect, creatures));
             }
         } else {
-            targets.push(ActiveTarget::Battlefield { id: self })
+            targets.push(vec![ActiveTarget::Battlefield { id: self }])
         }
+
+        targets
     }
 
     pub fn targets_for_effect(
@@ -1148,20 +1160,27 @@ impl CardId {
         controller: Controller,
         effect: &Effect,
         creatures: &[CardId],
-        targets: &mut Vec<ActiveTarget>,
-    ) {
+    ) -> Vec<ActiveTarget> {
+        let mut targets = vec![];
         match effect {
             Effect::CounterSpell { target } => {
-                targets_for_counterspell(db, controller, target, targets);
+                targets_for_counterspell(db, controller, target, &mut targets);
             }
             Effect::BattlefieldModifier(_) => {}
             Effect::ControllerDrawCards(_) => {}
             Effect::Equip(_) => {
-                targets_for_battlefield_modifier(db, self, None, creatures, controller, targets);
+                targets_for_battlefield_modifier(
+                    db,
+                    self,
+                    None,
+                    creatures,
+                    controller,
+                    &mut targets,
+                );
             }
             Effect::CreateToken(_) => {}
             Effect::DealDamage(dmg) => {
-                self.targets_for_damage(db, creatures, dmg, targets);
+                self.targets_for_damage(db, creatures, dmg, &mut targets);
             }
             Effect::ExileTargetCreature => {
                 for creature in creatures.iter() {
@@ -1185,7 +1204,7 @@ impl CardId {
                     Some(modifier),
                     creatures,
                     controller,
-                    targets,
+                    &mut targets,
                 );
             }
             Effect::ControllerLosesLife(_) => {}
@@ -1247,6 +1266,8 @@ impl CardId {
             Effect::ReturnSelfToHand => {}
             Effect::RevealEachTopOfLibrary(_) => {}
         }
+
+        targets
     }
 
     pub fn can_be_countered(

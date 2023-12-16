@@ -602,7 +602,7 @@ fn main() -> anyhow::Result<()> {
                     }
 
                     if selection_list_state.selected_index.unwrap_or_default() >= options.len() {
-                        selection_list_state.selected_index = Some(options.len() - 1);
+                        selection_list_state.selected_index = Some(options.len().saturating_sub(1));
                     }
 
                     frame.render_stateful_widget(
@@ -1187,13 +1187,13 @@ fn main() -> anyhow::Result<()> {
                                     .map(|(_, entry)| entry)
                                     .collect_vec();
                                 if !*organizing_stack && entries.len() > 1 {
-                                    to_resolve.push_unresolved(UnresolvedAction {
-                                        source: None,
-                                        result: UnresolvedActionResult::OrganizeStack(entries),
-                                        valid_targets: vec![],
-                                        choices: Default::default(),
-                                        optional: true,
-                                    });
+                                    to_resolve.push_unresolved(UnresolvedAction::new(
+                                        &mut db,
+                                        None,
+                                        UnresolvedActionResult::OrganizeStack(entries),
+                                        vec![],
+                                        true,
+                                    ));
                                     *organizing_stack = true;
                                 } else {
                                     state = previous_state.pop().unwrap_or(UiState::Battlefield {
@@ -1271,13 +1271,13 @@ fn maybe_organize_stack(db: &mut Database, mut pending: PendingResults, state: &
             .collect_vec();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.push_unresolved(UnresolvedAction {
-                source: None,
-                result: UnresolvedActionResult::OrganizeStack(entries),
-                valid_targets: vec![],
-                choices: Default::default(),
-                optional: true,
-            });
+            pending.push_unresolved(UnresolvedAction::new(
+                db,
+                None,
+                UnresolvedActionResult::OrganizeStack(entries),
+                vec![],
+                true,
+            ));
             *state = UiState::SelectingOptions {
                 to_resolve: pending,
                 selection_list_state: ListState::default(),

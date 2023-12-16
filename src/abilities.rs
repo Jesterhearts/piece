@@ -309,20 +309,12 @@ impl Ability {
         all_players: &AllPlayers,
         controller: Controller,
         targets: &[ActiveTarget],
+        choosing: usize,
     ) -> Vec<String> {
         match self {
-            Ability::Activated(activated) => {
-                let mut results = vec![];
-                for effect in activated.effects.iter() {
-                    results.extend(
-                        effect
-                            .effect(db, controller)
-                            .choices(db, all_players, targets),
-                    );
-                }
-
-                results
-            }
+            Ability::Activated(activated) => activated.effects[choosing]
+                .effect(db, controller)
+                .choices(db, all_players, targets),
             Ability::Mana(mana) => match &mana.gain {
                 GainMana::Specific { gains } => {
                     let mut result = "Add ".to_string();
@@ -344,16 +336,9 @@ impl Ability {
                 }
             },
             Ability::ETB { effects, .. } => {
-                let mut results = vec![];
-                for effect in effects.iter() {
-                    results.extend(
-                        effect
-                            .effect(db, controller)
-                            .choices(db, all_players, targets),
-                    );
-                }
-
-                results
+                effects[choosing]
+                    .effect(db, controller)
+                    .choices(db, all_players, targets)
             }
         }
     }

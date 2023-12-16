@@ -28,7 +28,7 @@ use crate::{
 pub struct Settled;
 
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
-pub struct Targets(pub Vec<ActiveTarget>);
+pub struct Targets(pub Vec<Vec<ActiveTarget>>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ActiveTarget {
@@ -89,7 +89,7 @@ pub struct Mode(pub usize);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StackEntry {
     pub ty: Entry,
-    pub targets: Vec<ActiveTarget>,
+    pub targets: Vec<Vec<ActiveTarget>>,
     pub mode: Option<usize>,
 }
 
@@ -476,23 +476,21 @@ impl Stack {
             ),
         };
 
-        let mut targets = next.targets.into_iter();
+        let mut skipping = false;
 
-        for effect in effects {
+        for (effect, targets) in effects.into_iter().zip(next.targets) {
             let effect = effect.into_effect(db, controller);
-            let wants_targets = effect.wants_targets();
-            if targets.len() < wants_targets {
+            if skipping || targets.len() != effect.needs_targets() {
+                skipping = true;
                 let creatures = Battlefield::creatures(db);
-                let mut valid_targets = vec![];
-                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
-
-                results.push_unresolved(UnresolvedAction {
-                    source: Some(source),
-                    result: UnresolvedActionResult::Effect(effect),
-                    valid_targets,
-                    choices: Default::default(),
-                    optional: false,
-                });
+                let targets = source.targets_for_effect(db, controller, &effect, &creatures);
+                results.push_unresolved(UnresolvedAction::new(
+                    db,
+                    Some(source),
+                    UnresolvedActionResult::Effect(effect),
+                    vec![targets],
+                    false,
+                ));
             } else {
                 match effect {
                     Effect::CounterSpell {
@@ -502,10 +500,9 @@ impl Stack {
                             db,
                             &in_stack,
                             controller,
-                            &mut targets,
+                            targets,
                             &restrictions,
                             &mut results,
-                            wants_targets,
                         ) {
                             if let Some(resolving_card) = resolving_card {
                                 return [ActionResult::StackToGraveyard(resolving_card)].into();
@@ -538,7 +535,7 @@ impl Stack {
                         let modifier = ModifierId::upload_temporary_modifier(db, source, &modifier);
 
                         let mut final_targets = vec![];
-                        for target in (&mut targets).take(wants_targets) {
+                        for target in targets {
                             match target {
                                 ActiveTarget::Battlefield { .. } => {
                                     final_targets.push(target);
@@ -562,7 +559,7 @@ impl Stack {
                         }
                     }
                     Effect::ExileTargetCreature => {
-                        for target in (&mut targets).take(wants_targets) {
+                        for target in targets {
                             match target {
                                 ActiveTarget::Battlefield { id } => {
                                     if !id.is_in_location::<OnBattlefield>(db) {
@@ -616,7 +613,7 @@ impl Stack {
                         }
                     }
                     Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                        for target in (&mut targets).take(wants_targets) {
+                        for target in targets {
                             match target {
                                 ActiveTarget::Battlefield { id } => {
                                     if !id.is_in_location::<OnBattlefield>(db) {
@@ -672,7 +669,7 @@ impl Stack {
                         }
                     }
                     Effect::DealDamage(dmg) => {
-                        for target in (&mut targets).take(wants_targets) {
+                        for target in targets {
                             match target {
                                 ActiveTarget::Battlefield { id } => {
                                     if !id.is_in_location::<OnBattlefield>(db) {
@@ -733,7 +730,7 @@ impl Stack {
                         }
                     }
                     Effect::Equip(modifiers) => {
-                        match targets.next().unwrap() {
+                        match targets.into_iter().next().unwrap() {
                             ActiveTarget::Stack { .. } => {
                                 // Can't equip things on the stack
                                 if let Some(resolving_card) = resolving_card {
@@ -805,20 +802,16 @@ impl Stack {
                         })
                     }
                     Effect::Mill(Mill { count, .. }) => {
-                        results.push_resolved(ActionResult::Mill {
-                            count,
-                            targets: (&mut targets).take(wants_targets).collect_vec(),
-                        });
+                        results.push_resolved(ActionResult::Mill { count, targets });
                     }
                     Effect::ReturnFromGraveyardToBattlefield(_) => {
                         results.push_resolved(ActionResult::ReturnFromGraveyardToBattlefield {
-                            targets: (&mut targets).take(wants_targets).collect_vec(),
+                            targets,
                         });
                     }
                     Effect::ReturnFromGraveyardToLibrary(_) => {
-                        results.push_resolved(ActionResult::ReturnFromGraveyardToLibrary {
-                            targets: (&mut targets).take(wants_targets).collect_vec(),
-                        });
+                        results
+                            .push_resolved(ActionResult::ReturnFromGraveyardToLibrary { targets });
                     }
                     Effect::TutorLibrary(TutorLibrary {
                         restrictions,
@@ -830,23 +823,21 @@ impl Stack {
                             .map(|card| ActiveTarget::Library { id: card })
                             .collect_vec();
 
-                        results.push_unresolved(UnresolvedAction {
-                            source: Some(source),
-                            result: UnresolvedActionResult::Effect(Effect::TutorLibrary(
-                                TutorLibrary {
-                                    restrictions,
-                                    destination,
-                                    reveal,
-                                },
-                            )),
-                            valid_targets,
-                            choices: Default::default(),
-                            optional: false,
-                        });
+                        results.push_unresolved(UnresolvedAction::new(
+                            db,
+                            Some(source),
+                            UnresolvedActionResult::Effect(Effect::TutorLibrary(TutorLibrary {
+                                restrictions,
+                                destination,
+                                reveal,
+                            })),
+                            vec![valid_targets],
+                            false,
+                        ));
                     }
                     Effect::CopyOfAnyCreatureNonTargeting => unreachable!(),
                     Effect::CreateTokenCopy { modifiers } => {
-                        let target = targets.next().unwrap();
+                        let target = targets.into_iter().next().unwrap();
                         let target = target.id();
                         results.push_resolved(ActionResult::CreateTokenCopyOf {
                             target: target.unwrap(),
@@ -875,32 +866,20 @@ impl Stack {
         results
     }
 
-    pub fn move_ability_to_stack(
+    pub fn move_etb_ability_to_stack(
         db: &mut Database,
         ability: AbilityId,
         source: CardId,
     ) -> PendingResults {
         let mut results = PendingResults::default();
+        let creatures = Battlefield::creatures(db);
 
-        if ability.wants_targets(db) > 0 {
-            let mut valid_targets = vec![];
-            let creatures = Battlefield::creatures(db);
-            source.targets_for_ability(db, ability, &creatures, &mut valid_targets);
+        results.push_resolved(ActionResult::AddAbilityToStack {
+            ability,
+            source,
+            targets: source.targets_for_ability(db, ability, &creatures),
+        });
 
-            results.push_unresolved(UnresolvedAction {
-                source: Some(source),
-                result: UnresolvedActionResult::Ability(ability),
-                valid_targets,
-                choices: Default::default(),
-                optional: false,
-            });
-        } else {
-            results.push_resolved(ActionResult::AddAbilityToStack {
-                ability,
-                source,
-                targets: vec![],
-            })
-        }
         results
     }
 
@@ -911,51 +890,42 @@ impl Stack {
     ) -> PendingResults {
         let mut results = PendingResults::default();
 
-        if trigger.wants_targets(db, source) > 0 {
-            let mut valid_targets = vec![];
-            let creatures = Battlefield::creatures(db);
-            let controller = source.controller(db);
-            for effect in trigger.effects(db) {
-                let effect = effect.into_effect(db, controller);
-                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
-            }
-
-            results.push_unresolved(UnresolvedAction {
-                source: Some(source),
-                result: UnresolvedActionResult::AddTriggerToStack(trigger),
-                valid_targets,
-                choices: Default::default(),
-                optional: false,
-            });
-        } else {
-            results.push_resolved(ActionResult::AddTriggerToStack {
-                trigger,
-                source,
-                targets: vec![],
-            })
+        let mut targets = vec![];
+        let creatures = Battlefield::creatures(db);
+        let controller = source.controller(db);
+        for effect in trigger.effects(db) {
+            let effect = effect.into_effect(db, controller);
+            targets.push(source.targets_for_effect(db, controller, &effect, &creatures));
         }
+
+        results.push_resolved(ActionResult::AddTriggerToStack {
+            trigger,
+            source,
+            targets,
+        });
+
         results
     }
 
     pub fn move_card_to_stack(db: &mut Database, card: CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
-        if card.wants_targets(db) > 0 {
+        if card.needs_targets(db).into_iter().sum::<usize>() > 0 {
             let mut valid_targets = vec![];
             let creatures = Battlefield::creatures(db);
             let controller = card.controller(db);
             for effect in card.effects(db) {
                 let effect = effect.into_effect(db, controller);
-                card.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+                valid_targets.push(card.targets_for_effect(db, controller, &effect, &creatures));
             }
 
-            results.push_unresolved(UnresolvedAction {
-                source: Some(card),
-                result: UnresolvedActionResult::AddCardToStack,
+            results.push_unresolved(UnresolvedAction::new(
+                db,
+                Some(card),
+                UnresolvedActionResult::AddCardToStack { choosing: 0 },
                 valid_targets,
-                choices: Default::default(),
-                optional: false,
-            });
+                false,
+            ));
         } else {
             results.push_resolved(ActionResult::AddCardToStack {
                 card,
@@ -970,12 +940,11 @@ fn counter_spell(
     db: &mut Database,
     in_stack: &HashMap<InStack, Entry>,
     controller: Controller,
-    targets: &mut impl Iterator<Item = ActiveTarget>,
+    targets: Vec<ActiveTarget>,
     restrictions: &SpellTarget,
     results: &mut PendingResults,
-    wants_targets: usize,
 ) -> bool {
-    for target in targets.take(wants_targets) {
+    for target in targets {
         match target {
             ActiveTarget::Stack { id } => {
                 let Some(maybe_target) = in_stack.get(&id) else {

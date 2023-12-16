@@ -89,12 +89,12 @@ pub enum ActionResult {
     AddAbilityToStack {
         source: CardId,
         ability: AbilityId,
-        targets: Vec<ActiveTarget>,
+        targets: Vec<Vec<ActiveTarget>>,
     },
     AddTriggerToStack {
         trigger: TriggerId,
         source: CardId,
-        targets: Vec<ActiveTarget>,
+        targets: Vec<Vec<ActiveTarget>>,
     },
     CloneCreatureNonTargeting {
         source: CardId,
@@ -131,7 +131,7 @@ pub enum ActionResult {
     },
     AddCardToStack {
         card: CardId,
-        targets: Vec<ActiveTarget>,
+        targets: Vec<Vec<ActiveTarget>>,
     },
     HandFromBattlefield(CardId),
     RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
@@ -441,13 +441,13 @@ impl Battlefield {
                             })
                             .map(|card| ActiveTarget::Battlefield { id: card })
                             .collect_vec();
-                        results.push_unresolved(UnresolvedAction {
-                            source: Some(card),
-                            result: UnresolvedActionResult::SacrificePermanent,
-                            valid_targets,
-                            choices: Default::default(),
-                            optional: false,
-                        })
+                        results.push_unresolved(UnresolvedAction::new(
+                            db,
+                            Some(card),
+                            UnresolvedActionResult::SacrificePermanent,
+                            vec![valid_targets],
+                            false,
+                        ))
                     }
                 }
             }
@@ -467,13 +467,16 @@ impl Battlefield {
                     });
                 }
                 GainMana::Choice { .. } => {
-                    results.push_unresolved(UnresolvedAction {
-                        source: Some(card),
-                        result: UnresolvedActionResult::Ability(ability_id),
-                        optional: false,
-                        valid_targets: vec![],
-                        choices: Default::default(),
-                    });
+                    results.push_unresolved(UnresolvedAction::new(
+                        db,
+                        Some(card),
+                        UnresolvedActionResult::Ability {
+                            ability: ability_id,
+                            choosing: 0,
+                        },
+                        vec![],
+                        false,
+                    ));
                 }
             }
         } else {
@@ -483,19 +486,34 @@ impl Battlefield {
             let mut valid_targets = vec![];
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                card.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+                valid_targets.push(card.targets_for_effect(db, controller, &effect, &creatures));
             }
 
-            let wants_targets = ability_id.wants_targets(db);
-            if wants_targets <= valid_targets.len() {
-                results.push_unresolved(UnresolvedAction {
-                    source: Some(card),
-                    result: UnresolvedActionResult::Ability(ability_id),
-                    // TODO this isn't always true for many abilities.
-                    optional: false,
-                    valid_targets,
-                    choices: Default::default(),
+            let needs_targets = ability_id.needs_targets(db).into_iter().sum::<usize>() > 0;
+
+            let has_targets = ability_id
+                .needs_targets(db)
+                .into_iter()
+                .enumerate()
+                .all(|(idx, wants)| valid_targets[idx].len() >= wants);
+            if !needs_targets {
+                results.push_resolved(ActionResult::AddAbilityToStack {
+                    source: card,
+                    ability: ability_id,
+                    targets: valid_targets,
                 });
+            } else if has_targets {
+                results.push_unresolved(UnresolvedAction::new(
+                    db,
+                    Some(card),
+                    UnresolvedActionResult::Ability {
+                        ability: ability_id,
+                        choosing: 0,
+                    },
+                    valid_targets,
+                    // TODO this isn't always true for many abilities.
+                    false,
+                ));
             } else {
                 return PendingResults::default();
             }
@@ -954,30 +972,30 @@ impl Battlefield {
             }
             Effect::CopyOfAnyCreatureNonTargeting => {
                 let creatures = Self::creatures(db);
-                let mut valid_targets = vec![];
-                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+                let valid_targets =
+                    vec![source.targets_for_effect(db, controller, &effect, &creatures)];
 
-                results.push_unresolved(UnresolvedAction {
-                    source: Some(source),
-                    result: UnresolvedActionResult::Effect(effect),
-                    optional: true,
+                results.push_unresolved(UnresolvedAction::new(
+                    db,
+                    Some(source),
+                    UnresolvedActionResult::Effect(effect),
                     valid_targets,
-                    choices: Default::default(),
-                })
+                    true,
+                ))
             }
             Effect::TutorLibrary(_) => {
                 let creatures = Self::creatures(db);
-                let mut valid_targets = vec![];
-                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+                let valid_targets =
+                    vec![source.targets_for_effect(db, controller, &effect, &creatures)];
 
-                results.push_unresolved(UnresolvedAction {
-                    source: Some(source),
-                    result: UnresolvedActionResult::Effect(effect),
-                    // TODO this isn't always true
-                    optional: true,
+                results.push_unresolved(UnresolvedAction::new(
+                    db,
+                    Some(source),
+                    UnresolvedActionResult::Effect(effect),
                     valid_targets,
-                    choices: Default::default(),
-                })
+                    // TODO this isn't always true
+                    false,
+                ))
             }
             Effect::CounterSpell { .. }
             | Effect::DealDamage(_)
@@ -990,17 +1008,17 @@ impl Battlefield {
             | Effect::ReturnFromGraveyardToLibrary(_)
             | Effect::CreateTokenCopy { .. } => {
                 let creatures = Self::creatures(db);
-                let mut valid_targets = vec![];
-                source.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
+                let valid_targets =
+                    vec![source.targets_for_effect(db, controller, &effect, &creatures)];
 
-                results.push_unresolved(UnresolvedAction {
-                    source: Some(source),
-                    result: UnresolvedActionResult::Effect(effect),
-                    // TODO this isn't always true for many effects.
-                    optional: false,
+                results.push_unresolved(UnresolvedAction::new(
+                    db,
+                    Some(source),
+                    UnresolvedActionResult::Effect(effect),
                     valid_targets,
-                    choices: Default::default(),
-                })
+                    // TODO this isn't always true for many effects.
+                    false,
+                ))
             }
             Effect::ReturnSelfToHand => {
                 results.push_resolved(ActionResult::HandFromBattlefield(source))
@@ -1172,13 +1190,14 @@ fn move_card_to_battlefield(
     results: &mut PendingResults,
 ) {
     if let Some(aura) = source_card_id.aura(db) {
-        results.push_unresolved(UnresolvedAction {
-            source: Some(source_card_id),
-            result: UnresolvedActionResult::Attach(aura),
-            valid_targets: source_card_id.valid_targets(db),
-            choices: Default::default(),
-            optional: false,
-        });
+        let valid_targets = source_card_id.valid_targets(db);
+        results.push_unresolved(UnresolvedAction::new(
+            db,
+            Some(source_card_id),
+            UnresolvedActionResult::Attach(aura),
+            valid_targets,
+            false,
+        ));
     }
     for ability in source_card_id.static_abilities(db) {
         match ability {
@@ -1191,7 +1210,11 @@ fn move_card_to_battlefield(
         }
     }
     for ability in source_card_id.etb_abilities(db) {
-        results.extend(Stack::move_ability_to_stack(db, ability, source_card_id));
+        results.extend(Stack::move_etb_ability_to_stack(
+            db,
+            ability,
+            source_card_id,
+        ));
     }
     if source_card_id.etb_tapped(db) || enters_tapped {
         source_card_id.tap(db);

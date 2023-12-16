@@ -442,7 +442,7 @@ impl Effect {
         matches!(self, Effect::Equip(_))
     }
 
-    pub fn wants_targets(&self) -> usize {
+    pub fn needs_targets(&self) -> usize {
         match self {
             Effect::BattlefieldModifier(_) => 0,
             Effect::ControllerDrawCards(_) => 0,
@@ -465,6 +465,35 @@ impl Effect {
                 count, ..
             }) => *count,
             Effect::TutorLibrary(_) => 0,
+            Effect::CreateTokenCopy { .. } => 1,
+            Effect::ReturnSelfToHand => 0,
+            Effect::RevealEachTopOfLibrary(_) => 0,
+        }
+    }
+
+    pub fn wants_targets(&self) -> usize {
+        match self {
+            Effect::BattlefieldModifier(_) => 0,
+            Effect::ControllerDrawCards(_) => 0,
+            Effect::CounterSpell { .. } => 1,
+            Effect::CreateToken(_) => 0,
+            Effect::DealDamage(_) => 1,
+            Effect::Equip(_) => 1,
+            Effect::ExileTargetCreature => 1,
+            Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
+            Effect::GainCounter(_) => 0,
+            Effect::ModifyCreature(_) => 1,
+            Effect::ControllerLosesLife(_) => 0,
+            Effect::CopyOfAnyCreatureNonTargeting => 1,
+            Effect::Mill(_) => 1,
+            Effect::ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield {
+                count,
+                ..
+            }) => *count,
+            Effect::ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary {
+                count, ..
+            }) => *count,
+            Effect::TutorLibrary(_) => 1,
             Effect::CreateTokenCopy { .. } => 1,
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,
@@ -612,9 +641,9 @@ impl AnyEffect {
         }
     }
 
-    pub fn wants_targets(&self, db: &mut Database, controller: Controller) -> usize {
+    pub fn needs_targets(&self, db: &mut Database, controller: Controller) -> usize {
         let effect = self.effect(db, controller);
-        effect.wants_targets()
+        effect.needs_targets()
     }
 }
 

@@ -72,7 +72,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
     card.move_to_stack(&mut db, vec![]);
-    let targets = vec![Stack::target_nth(&mut db, 0)];
+    let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
     counterspell.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
@@ -110,7 +110,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     assert_eq!(results, PendingResults::default());
 
     card2.move_to_stack(&mut db, vec![]);
-    let targets = vec![Stack::target_nth(&mut db, 0)];
+    let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
     counterspell.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
@@ -149,7 +149,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     assert_eq!(results, PendingResults::default());
 
     card2.move_to_stack(&mut db, vec![]);
-    let targets = vec![Stack::target_nth(&mut db, 0)];
+    let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
     counterspell.move_to_stack(&mut db, targets);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);

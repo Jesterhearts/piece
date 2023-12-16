@@ -38,7 +38,6 @@ fn replacement() -> anyhow::Result<()> {
                     count: 1
                 }],
                 to_resolve: Default::default(),
-                recompute: false,
                 then_apply: vec![],
             }]),
             applied: false,

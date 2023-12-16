@@ -1,12 +1,9 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, vec};
 
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{
-        ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult,
-        UnresolvedAction, UnresolvedActionResult,
-    },
+    battlefield::{ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult},
     in_play::{CardId, Database},
     load_cards,
     mana::Mana,
@@ -31,6 +28,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let ability = card.activated_abilities(&mut db).first().copied().unwrap();
     assert_eq!(
         results,
         PendingResults {
@@ -46,21 +44,15 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
                             vec![Mana::White, Mana::Black, Mana::Green]
                         )
                     ],
-                    recompute: false,
                 },
                 PendingResult {
-                    apply_immediately: vec![],
-                    to_resolve: VecDeque::from([UnresolvedAction {
-                        source: Some(card),
-                        result: UnresolvedActionResult::Ability(
-                            card.activated_abilities(&mut db).first().copied().unwrap()
-                        ),
-                        valid_targets: vec![],
-                        choices: Default::default(),
-                        optional: false,
-                    }]),
+                    apply_immediately: vec![ActionResult::AddAbilityToStack {
+                        source: card,
+                        ability,
+                        targets: vec![vec![]]
+                    }],
+                    to_resolve: Default::default(),
                     then_apply: vec![],
-                    recompute: false,
                 }
             ]),
             applied: false,
