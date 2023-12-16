@@ -7,8 +7,8 @@ use crate::{
     abilities::Ability,
     card::{
         ActivatedAbilityModifier, AddColors, AddPower, AddToughness, BasePowerModifier,
-        BaseToughnessModifier, EtbAbilityModifier, Keyword, ModifyKeywords, StaticAbilityModifier,
-        TriggeredAbilityModifier,
+        BaseToughnessModifier, EtbAbilityModifier, Keyword, ModifyKeywords, RemoveAllColors,
+        StaticAbilityModifier, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     effects::{
@@ -118,6 +118,10 @@ impl ModifierId {
             entity.insert(AddSubtypes(modifier.modifier.add_subtypes.clone()));
         }
 
+        if !modifier.modifier.add_colors.is_empty() {
+            entity.insert(AddColors(modifier.modifier.add_colors.clone()));
+        }
+
         if !modifier.modifier.remove_types.is_empty() {
             entity.insert(RemoveTypes(modifier.modifier.remove_types.clone()));
         }
@@ -128,6 +132,10 @@ impl ModifierId {
 
         if modifier.modifier.remove_all_subtypes {
             entity.insert(RemoveAllSubtypes);
+        }
+
+        if modifier.modifier.remove_all_colors {
+            entity.insert(RemoveAllColors);
         }
 
         if !modifier.modifier.remove_keywords.is_empty() {
@@ -281,5 +289,9 @@ impl ModifierId {
 
     pub fn dynamic_power(self, db: &mut Database) -> Option<DynamicPowerToughness> {
         db.modifiers.get::<DynamicPowerToughness>(self.0).cloned()
+    }
+
+    pub fn remove_all_colors(self, db: &mut Database) -> bool {
+        db.modifiers.get::<RemoveAllColors>(self.0).is_some()
     }
 }

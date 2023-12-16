@@ -191,7 +191,7 @@ impl ManaPool {
         .unwrap()
     }
 
-    pub(crate) fn pools_display(&self) -> Vec<String> {
+    pub fn pools_display(&self) -> Vec<String> {
         let symbols = [
             Mana::White,
             Mana::Blue,

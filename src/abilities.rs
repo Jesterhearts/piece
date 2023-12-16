@@ -306,7 +306,7 @@ impl Ability {
         }
     }
 
-    pub(crate) fn choices(
+    pub fn choices(
         &self,
         db: &mut Database,
         all_players: &AllPlayers,

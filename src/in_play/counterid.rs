@@ -1,5 +1,3 @@
-
-
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::{Deref, DerefMut};
 

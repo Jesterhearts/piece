@@ -440,6 +440,15 @@ impl CardId {
                 applied_modifiers.insert(modifier);
                 colors.extend(add.0.iter().copied())
             }
+
+            if modifier.remove_all_colors(db) {
+                applied_modifiers.insert(modifier);
+                colors.clear();
+            }
+        }
+
+        if colors.len() != 1 {
+            colors.remove(&Color::Colorless);
         }
 
         for modifier in modifiers.iter().copied() {
@@ -782,6 +791,9 @@ impl CardId {
                 db.get::<Colors>(self.0).map(|c| {
                     let mut colors = db.get::<CastingCost>(self.0).unwrap().colors();
                     colors.extend(c.iter());
+                    if colors.len() != 1 {
+                        colors.remove(&Color::Colorless);
+                    }
                     colors
                 })
             })
@@ -1448,7 +1460,7 @@ impl CardId {
         db.entity_mut(self.0).insert(Revealed);
     }
 
-    pub(crate) fn settle(self, db: &mut Database) {
+    pub fn settle(self, db: &mut Database) {
         db.entity_mut(self.0).insert(Settled);
     }
 }

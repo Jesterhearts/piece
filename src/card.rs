@@ -217,6 +217,9 @@ pub struct ModifiedColors(pub HashSet<Color>);
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct AddColors(pub HashSet<Color>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub struct RemoveAllColors;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     White,

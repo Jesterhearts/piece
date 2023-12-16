@@ -1,0 +1,28 @@
+name: "Sinister Strength"
+cost {
+  mana_costs { generic { count: 1 } }
+  mana_costs { black {} }
+}
+types { enchantment {} }
+subtypes { aura{} }
+oracle_text:  "Enchant creature\n"
+              "Enchanted creature gets +3/+1 and is black."
+enchant {
+  modifiers {
+    modifier { 
+      add_power: 3
+      add_toughness: 1
+      remove_all_colors: true
+    }
+    controller { any {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+  modifiers {
+    modifier {
+      add_colors { black{} }
+    }
+    controller { any {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+  restrictions { of_type { types { creature {} } } }
+}

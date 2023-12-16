@@ -932,7 +932,7 @@ impl Stack {
         results
     }
 
-    pub(crate) fn move_card_to_stack(db: &mut Database, card: CardId) -> PendingResults {
+    pub fn move_card_to_stack(db: &mut Database, card: CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
         if card.wants_targets(db) > 0 {

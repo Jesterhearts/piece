@@ -327,11 +327,11 @@ impl AbilityId {
         text
     }
 
-    pub(crate) fn settle(self, db: &mut Database) {
+    pub fn settle(self, db: &mut Database) {
         db.abilities.entity_mut(self.0).insert(Settled);
     }
 
-    pub(crate) fn can_be_activated(
+    pub fn can_be_activated(
         self,
         db: &mut Database,
         all_players: &AllPlayers,

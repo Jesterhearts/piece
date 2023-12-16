@@ -210,11 +210,14 @@ pub struct ModifyBattlefield {
     pub remove_types: HashSet<Type>,
     pub remove_subtypes: HashSet<Subtype>,
 
+    pub add_colors: HashSet<Color>,
+
     pub add_ability: Option<ActivatedAbility>,
     pub mana_ability: Option<GainManaAbility>,
 
     pub remove_all_subtypes: bool,
     pub remove_all_abilities: bool,
+    pub remove_all_colors: bool,
 
     pub entire_battlefield: bool,
     pub global: bool,
@@ -246,6 +249,11 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .iter()
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
+            add_colors: value
+                .add_colors
+                .iter()
+                .map(Color::try_from)
+                .collect::<anyhow::Result<_>>()?,
             remove_types: value
                 .remove_types
                 .iter()
@@ -266,6 +274,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .map_or(Ok(None), |v| v.try_into().map(Some))?,
             remove_all_subtypes: value.remove_all_subtypes,
             remove_all_abilities: false,
+            remove_all_colors: value.remove_all_colors,
             entire_battlefield: value.entire_battlefield,
             global: value.global,
             add_keywords: value

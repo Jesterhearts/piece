@@ -119,19 +119,23 @@ message ModifyBattlefield {
   repeated types.Type remove_types = 6;
   repeated types.Subtype remove_subtypes = 7;
 
-  optional int32 add_power = 8;
-  optional int32 add_toughness = 9;
+  repeated color.Color add_colors = 8;
 
-  optional ActivatedAbility add_ability = 10;
-  optional GainManaAbility mana_ability = 11;
+  bool remove_all_colors = 9;
 
-  bool remove_all_subtypes = 12;
+  optional int32 add_power = 10;
+  optional int32 add_toughness = 11;
 
-  bool entire_battlefield = 13;
-  bool global = 14;
+  optional ActivatedAbility add_ability = 12;
+  optional GainManaAbility mana_ability = 13;
 
-  string add_keywords = 15;
-  string remove_keywords = 16;
+  bool remove_all_subtypes = 14;
+
+  bool entire_battlefield = 15;
+  bool global = 16;
+
+  string add_keywords = 17;
+  string remove_keywords = 18;
 }
 
 message BattlefieldModifier {

@@ -231,15 +231,15 @@ impl PendingResults {
         }
     }
 
-    pub(crate) fn extend(&mut self, results: PendingResults) {
+    pub fn extend(&mut self, results: PendingResults) {
         self.results.extend(results.results);
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.results.is_empty()
     }
 
-    pub(crate) fn only_immediate_results(&self) -> bool {
+    pub fn only_immediate_results(&self) -> bool {
         self.is_empty()
             || (self.results.len() == 1
                 && (self.results.front().unwrap().to_resolve.is_empty()
