@@ -1,0 +1,15 @@
+name: "Bog Initiate"
+types { creature{} }
+subtypes { human {} }
+subtypes { wizard {} }
+oracle_text: "{1}: Add {B}"
+mana_abilities {
+  cost {
+    mana_costs { generic { count: 1 } }
+    gain_mana {
+      specific {
+        gains { black{} }
+      }
+    }
+  }
+}
