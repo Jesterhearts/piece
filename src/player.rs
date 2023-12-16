@@ -1,10 +1,11 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     ops::{Index, IndexMut},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 use bevy_ecs::{component::Component, entity::Entity, query::With};
+use indexmap::IndexMap;
 use itertools::Itertools;
 
 use crate::{
@@ -238,21 +239,23 @@ impl Index<Controller> for AllPlayers {
     type Output = Player;
 
     fn index(&self, index: Controller) -> &Self::Output {
-        self.players.get(&index.into()).expect("Valid player id")
+        self.players
+            .get(&Owner::from(index))
+            .expect("Valid player id")
     }
 }
 
 impl IndexMut<Controller> for AllPlayers {
     fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
         self.players
-            .get_mut(&index.into())
+            .get_mut(&Owner::from(index))
             .expect("Valid player id")
     }
 }
 
 #[derive(Debug, Default)]
 pub struct AllPlayers {
-    players: HashMap<Owner, Player>,
+    players: IndexMap<Owner, Player>,
 }
 
 impl AllPlayers {
@@ -386,7 +389,6 @@ impl Player {
     pub fn play_card(&mut self, db: &mut Database, index: usize) -> PendingResults {
         let cards = cards::<InHand>(db);
         let card = cards[index];
-        let mana_pool = self.mana_pool;
 
         let wants_targets = card.wants_targets(db);
         let valid_targets = card.valid_targets(db);
@@ -394,15 +396,14 @@ impl Player {
             return PendingResults::default();
         }
 
+        let mut mana_pool = self.mana_pool;
         for mana in card.cost(db).mana_cost.iter() {
-            if !self.mana_pool.spend(*mana) {
-                self.mana_pool = mana_pool;
+            if !mana_pool.spend(*mana) {
                 return PendingResults::default();
             }
         }
 
         if card.is_land(db) && self.lands_played >= Self::lands_per_turn(db) {
-            self.mana_pool = mana_pool;
             return PendingResults::default();
         }
 
@@ -410,6 +411,7 @@ impl Player {
             return Battlefield::add_from_stack_or_hand(db, card);
         }
 
+        self.mana_pool = mana_pool;
         Stack::move_card_to_stack(db, card)
     }
 

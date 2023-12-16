@@ -3,6 +3,7 @@ syntax = "proto3";
 package cost;
 
 import "mana.proto";
+import "targets.proto";
 
 message ManaCost {
   oneof cost {
@@ -20,13 +21,17 @@ message ManaCost {
 message AdditionalCost {
   message SacrificeThis {
   }
+  message SacrificePermanent {
+    targets.Restriction restrictions = 1;
+  }
   message PayLife {
     int32 count = 1;
   }
 
   oneof cost {
-    SacrificeThis sacrifice_this = 1;
     PayLife pay_life = 2;
+    SacrificePermanent sacrifice_permanent= 3;
+    SacrificeThis sacrifice_this = 4;
   }
 }
 

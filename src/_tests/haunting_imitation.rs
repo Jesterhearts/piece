@@ -16,8 +16,8 @@ use crate::{
 fn reveals_clones() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
-    let player1 = all_players.new_player("Player".to_owned(), 20);
-    let player2 = all_players.new_player("Player".to_owned(), 20);
+    let player1 = all_players.new_player("Player".to_string(), 20);
+    let player2 = all_players.new_player("Player".to_string(), 20);
 
     let mut db = Database::default();
 
@@ -56,8 +56,8 @@ fn reveals_clones() -> anyhow::Result<()> {
 fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
-    let player1 = all_players.new_player("Player".to_owned(), 20);
-    let player2 = all_players.new_player("Player".to_owned(), 20);
+    let player1 = all_players.new_player("Player".to_string(), 20);
+    let player2 = all_players.new_player("Player".to_string(), 20);
 
     let mut db = Database::default();
 

@@ -14,7 +14,7 @@ fn mace() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
@@ -28,6 +28,8 @@ fn mace() -> anyhow::Result<()> {
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, mace, 0);
+    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 

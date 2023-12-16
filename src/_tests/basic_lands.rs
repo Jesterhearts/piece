@@ -13,7 +13,7 @@ fn plains() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
@@ -37,7 +37,7 @@ fn island() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
 
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
@@ -61,7 +61,7 @@ fn swamp() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
@@ -85,7 +85,7 @@ fn mountain() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
@@ -108,7 +108,7 @@ fn forest() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 

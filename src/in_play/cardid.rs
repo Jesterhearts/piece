@@ -845,12 +845,14 @@ impl CardId {
             .unwrap_or_default()
     }
 
+    #[must_use]
     pub fn upload(db: &mut Database, cards: &Cards, player: Owner, name: &str) -> CardId {
         let card = cards.get(name).expect("Valid card name");
 
         Self::upload_card(db, card, player, InLibrary, false)
     }
 
+    #[must_use]
     pub fn upload_token(db: &mut Database, player: Owner, token: Token) -> CardId {
         let card: Card = token.into();
 
@@ -863,6 +865,7 @@ impl CardId {
         )
     }
 
+    #[must_use]
     pub fn token_copy_of(self, db: &mut Database, player: Owner) -> CardId {
         Self::upload_card(
             db,
@@ -1080,8 +1083,8 @@ impl CardId {
 
     fn targets_for_damage(
         self,
-        creatures: &[CardId],
         db: &mut Database,
+        creatures: &[CardId],
         dmg: &DealDamage,
         targets: &mut Vec<ActiveTarget>,
     ) {
@@ -1097,6 +1100,10 @@ impl CardId {
             {
                 targets.push(ActiveTarget::Battlefield { id: *creature });
             }
+        }
+        for player in AllPlayers::all_players_in_db(db) {
+            // TODO player hexproof, non-all-target-damage
+            targets.push(ActiveTarget::Player { id: player });
         }
     }
 
@@ -1138,7 +1145,7 @@ impl CardId {
             }
             Effect::CreateToken(_) => {}
             Effect::DealDamage(dmg) => {
-                self.targets_for_damage(creatures, db, dmg, targets);
+                self.targets_for_damage(db, creatures, dmg, targets);
             }
             Effect::ExileTargetCreature => {
                 for creature in creatures.iter() {

@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use itertools::Itertools;
 
-use crate::{card::Color, mana::Mana, protogen};
+use crate::{card::Color, mana::Mana, protogen, targets::Restriction};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct CastingCost {
@@ -60,13 +60,20 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
 pub enum AdditionalCost {
     SacrificeThis,
     PayLife(PayLife),
+    SacrificePermanent(Vec<Restriction>),
 }
 
 impl AdditionalCost {
     pub fn text(&self) -> String {
         match self {
-            AdditionalCost::SacrificeThis => "Sacrifice this".to_owned(),
+            AdditionalCost::SacrificeThis => "Sacrifice this".to_string(),
             AdditionalCost::PayLife(pay) => format!("Pay {} life", pay.count),
+            AdditionalCost::SacrificePermanent(restrictions) => {
+                format!(
+                    "Sacrifice a {}",
+                    restrictions.iter().map(|r| r.text()).join(", ")
+                )
+            }
         }
     }
 }
@@ -91,6 +98,15 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
             protogen::cost::additional_cost::Cost::SacrificeThis(_) => Ok(Self::SacrificeThis),
             protogen::cost::additional_cost::Cost::PayLife(pay) => {
                 Ok(Self::PayLife(pay.try_into()?))
+            }
+            protogen::cost::additional_cost::Cost::SacrificePermanent(sacrifice) => {
+                Ok(Self::SacrificePermanent(
+                    sacrifice
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                ))
             }
         }
     }
@@ -118,7 +134,7 @@ impl AbilityCost {
         .chain(
             std::iter::once(self.tap)
                 .filter(|t| *t)
-                .map(|_| "↩".to_owned()),
+                .map(|_| "↩".to_string()),
         )
         .chain(self.additional_cost.iter().map(|cost| cost.text()))
         .join(", ")

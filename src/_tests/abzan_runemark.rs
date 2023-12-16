@@ -14,7 +14,7 @@ fn aura_works() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let results = Battlefield::add_from_stack_or_hand(&mut db, creature);
@@ -54,7 +54,7 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let results = Battlefield::add_from_stack_or_hand(&mut db, creature);
@@ -93,7 +93,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, creature);

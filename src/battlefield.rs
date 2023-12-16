@@ -37,7 +37,8 @@ pub enum ResolutionResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PendingResult {
     pub apply_immediately: Vec<ActionResult>,
-    pub then_resolve: VecDeque<UnresolvedAction>,
+    pub to_resolve: VecDeque<UnresolvedAction>,
+    pub then_apply: Vec<ActionResult>,
     pub recompute: bool,
 }
 
@@ -45,6 +46,7 @@ pub struct PendingResult {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PendingResults {
     pub results: VecDeque<PendingResult>,
+    pub applied: bool,
 }
 
 impl<const T: usize> From<[ActionResult; T]> for PendingResults {
@@ -52,20 +54,32 @@ impl<const T: usize> From<[ActionResult; T]> for PendingResults {
         Self {
             results: VecDeque::from([PendingResult {
                 apply_immediately: value.to_vec(),
-                then_resolve: Default::default(),
+                to_resolve: Default::default(),
+                then_apply: vec![],
                 recompute: false,
             }]),
+            applied: false,
         }
     }
 }
 
 impl PendingResults {
+    pub fn clear(&mut self) -> bool {
+        if self.applied {
+            false
+        } else {
+            self.results.clear();
+            true
+        }
+    }
+
     pub fn push_resolved(&mut self, action: ActionResult) {
         if let Some(last) = self.results.back_mut() {
-            if !last.then_resolve.is_empty() {
+            if !last.to_resolve.is_empty() {
                 self.results.push_back(PendingResult {
                     apply_immediately: vec![action],
-                    then_resolve: Default::default(),
+                    to_resolve: Default::default(),
+                    then_apply: vec![],
                     recompute: false,
                 });
             } else {
@@ -74,7 +88,30 @@ impl PendingResults {
         } else {
             self.results.push_back(PendingResult {
                 apply_immediately: vec![action],
-                then_resolve: Default::default(),
+                to_resolve: Default::default(),
+                then_apply: vec![],
+                recompute: false,
+            });
+        }
+    }
+
+    pub fn push_deferred(&mut self, action: ActionResult) {
+        if let Some(last) = self.results.back_mut() {
+            if !last.to_resolve.is_empty() {
+                self.results.push_back(PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: Default::default(),
+                    then_apply: vec![action],
+                    recompute: false,
+                });
+            } else {
+                last.then_apply.push(action);
+            }
+        } else {
+            self.results.push_back(PendingResult {
+                apply_immediately: vec![],
+                to_resolve: Default::default(),
+                then_apply: vec![action],
                 recompute: false,
             });
         }
@@ -82,14 +119,24 @@ impl PendingResults {
 
     pub fn push_unresolved(&mut self, action: UnresolvedAction) {
         if let Some(last) = self.results.back_mut() {
-            if !last.apply_immediately.is_empty() || !last.then_resolve.is_empty() {
+            if !last.apply_immediately.is_empty() || !last.to_resolve.is_empty() {
                 last.recompute = true;
             }
-            last.then_resolve.push_back(action);
+            if !last.then_apply.is_empty() {
+                self.results.push_back(PendingResult {
+                    apply_immediately: Default::default(),
+                    to_resolve: VecDeque::from([action]),
+                    then_apply: vec![],
+                    recompute: false,
+                });
+            } else {
+                last.to_resolve.push_back(action);
+            }
         } else {
             self.results.push_back(PendingResult {
                 apply_immediately: Default::default(),
-                then_resolve: VecDeque::from([action]),
+                to_resolve: VecDeque::from([action]),
+                then_apply: vec![],
                 recompute: false,
             });
         }
@@ -97,7 +144,7 @@ impl PendingResults {
 
     pub fn is_optional(&self, db: &mut Database) -> bool {
         if let Some(to_resolve) = self.results.front() {
-            if let Some(to_resolve) = to_resolve.then_resolve.front() {
+            if let Some(to_resolve) = to_resolve.to_resolve.front() {
                 to_resolve.optional
                     || (to_resolve.source.is_some()
                         && to_resolve
@@ -114,7 +161,7 @@ impl PendingResults {
 
     pub fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
         if let Some(to_resolve) = self.results.front() {
-            if let Some(to_resolve) = to_resolve.then_resolve.front() {
+            if let Some(to_resolve) = to_resolve.to_resolve.front() {
                 to_resolve.choices(db, all_players)
             } else {
                 vec![]
@@ -126,7 +173,7 @@ impl PendingResults {
 
     pub fn description(&self, db: &mut Database) -> String {
         if let Some(to_resolve) = self.results.front() {
-            if let Some(to_resolve) = to_resolve.then_resolve.front() {
+            if let Some(to_resolve) = to_resolve.to_resolve.front() {
                 to_resolve.description(db)
             } else {
                 String::default()
@@ -147,16 +194,20 @@ impl PendingResults {
         }
 
         let first = self.results.front_mut().unwrap();
-        let results = Battlefield::apply_action_results(db, all_players, &first.apply_immediately);
+        if !first.apply_immediately.is_empty() {
+            self.applied = true;
+        }
+        let immediate_results =
+            Battlefield::apply_action_results(db, all_players, &first.apply_immediately);
         first.apply_immediately.clear();
 
-        let extra = if let Some(to_resolve) = first.then_resolve.front_mut() {
+        let from_resolution = if let Some(to_resolve) = first.to_resolve.front_mut() {
             let actions = to_resolve.resolve(db, choice);
             if !actions.is_empty() {
-                first.then_resolve.pop_front();
+                self.applied = true;
+                first.to_resolve.pop_front();
                 Battlefield::apply_action_results(db, all_players, &actions)
             } else {
-                self.extend(results);
                 return ResolutionResult::PendingChoice;
             }
         } else {
@@ -164,17 +215,27 @@ impl PendingResults {
         };
 
         if first.recompute {
-            for to_resolve in first.then_resolve.iter_mut() {
+            for to_resolve in first.to_resolve.iter_mut() {
                 to_resolve.compute_targets(db);
             }
         }
 
-        if first.then_resolve.is_empty() {
-            self.results.pop_front();
-        }
+        let after = if first.to_resolve.is_empty() {
+            if !first.then_apply.is_empty() {
+                self.applied = true;
+            }
 
-        self.extend(results);
-        self.extend(extra);
+            let results = Battlefield::apply_action_results(db, all_players, &first.then_apply);
+
+            self.results.pop_front();
+            results
+        } else {
+            PendingResults::default()
+        };
+
+        self.extend(immediate_results);
+        self.extend(from_resolution);
+        self.extend(after);
 
         if self.results.is_empty() {
             ResolutionResult::Complete
@@ -194,13 +255,13 @@ impl PendingResults {
     pub(crate) fn only_immediate_results(&self) -> bool {
         self.is_empty()
             || (self.results.len() == 1
-                && (self.results.front().unwrap().then_resolve.is_empty()
-                    || (self.results.front().unwrap().then_resolve.len() == 1
+                && (self.results.front().unwrap().to_resolve.is_empty()
+                    || (self.results.front().unwrap().to_resolve.len() == 1
                         && self
                             .results
                             .front()
                             .unwrap()
-                            .then_resolve
+                            .to_resolve
                             .front()
                             .unwrap()
                             .valid_targets
@@ -217,6 +278,7 @@ pub enum UnresolvedActionResult {
     AddCardToStack,
     AddTriggerToStack(TriggerId),
     OrganizeStack(Vec<StackEntry>),
+    SacrificePermanent,
 }
 
 impl UnresolvedActionResult {
@@ -236,6 +298,7 @@ impl UnresolvedActionResult {
             UnresolvedActionResult::AddCardToStack => source.wants_targets(db),
             UnresolvedActionResult::AddTriggerToStack(trigger) => trigger.wants_targets(db, source),
             UnresolvedActionResult::OrganizeStack(_) => 0,
+            UnresolvedActionResult::SacrificePermanent => 1,
         }
     }
 }
@@ -327,18 +390,20 @@ impl UnresolvedAction {
                     self.valid_targets = valid_targets;
                 }
                 UnresolvedActionResult::OrganizeStack(_) => {}
+                UnresolvedActionResult::SacrificePermanent => {}
             }
         }
     }
 
     pub fn description(&self, db: &mut Database) -> String {
         match &self.result {
-            UnresolvedActionResult::Effect(_) => "Effect".to_owned(),
-            UnresolvedActionResult::Attach(_) => "Aura".to_owned(),
+            UnresolvedActionResult::Effect(_) => "Effect".to_string(),
+            UnresolvedActionResult::Attach(_) => "Aura".to_string(),
             UnresolvedActionResult::Ability(ability) => ability.text(db),
             UnresolvedActionResult::AddCardToStack => self.source.unwrap().name(db),
             UnresolvedActionResult::AddTriggerToStack(trigger) => trigger.short_text(db),
-            UnresolvedActionResult::OrganizeStack(_) => "stack order".to_owned(),
+            UnresolvedActionResult::OrganizeStack(_) => "stack order".to_string(),
+            UnresolvedActionResult::SacrificePermanent => "sacrificing a permanent".to_string(),
         }
     }
 
@@ -362,7 +427,8 @@ impl UnresolvedAction {
             }
             UnresolvedActionResult::Attach(_)
             | UnresolvedActionResult::AddCardToStack
-            | UnresolvedActionResult::AddTriggerToStack(_) => self
+            | UnresolvedActionResult::AddTriggerToStack(_)
+            | UnresolvedActionResult::SacrificePermanent => self
                 .valid_targets
                 .iter()
                 .map(|target| target.display(db, all_players))
@@ -396,7 +462,19 @@ impl UnresolvedAction {
                     source: self.source.unwrap().controller(db),
                     token: token.clone(),
                 }],
-                Effect::DealDamage(_) => todo!(),
+                Effect::DealDamage(damage) => {
+                    if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
+                        return vec![];
+                    }
+
+                    vec![ActionResult::DamageTarget {
+                        quantity: damage.quantity,
+                        target: choice.map_or_else(
+                            || self.valid_targets[0],
+                            |choice| self.valid_targets[choice],
+                        ),
+                    }]
+                }
                 Effect::Equip(modifiers) => {
                     if choice.is_none() && !self.optional && self.valid_targets.len() > 1 {
                         return vec![];
@@ -603,7 +681,12 @@ impl UnresolvedAction {
                                     results.push(ActionResult::MoveToHandFromLibrary(*card));
                                 }
                             }
-                            Destination::TopOfLibrary => todo!(),
+                            Destination::TopOfLibrary => {
+                                for card in targets.iter() {
+                                    results
+                                        .push(ActionResult::MoveFromLibraryToTopOfLibrary(*card));
+                                }
+                            }
                             Destination::Battlefield { enters_tapped } => {
                                 for card in targets.iter() {
                                     results.push(ActionResult::AddToBattlefieldFromLibrary {
@@ -660,9 +743,7 @@ impl UnresolvedAction {
                             }]
                         }
                         GainMana::Choice { choices } => {
-                            assert_eq!(self.choices.len(), 1);
                             if choice.is_none() {
-                                self.choices.pop();
                                 return vec![];
                             }
 
@@ -788,6 +869,19 @@ impl UnresolvedAction {
 
                 vec![ActionResult::UpdateStackEntries(results)]
             }
+            UnresolvedActionResult::SacrificePermanent => {
+                if choice.is_none() {
+                    return vec![];
+                }
+
+                let target = self.valid_targets[choice.unwrap()];
+
+                let ActiveTarget::Battlefield { id } = target else {
+                    unreachable!();
+                };
+
+                vec![ActionResult::PermanentToGraveyard(id)]
+            }
         }
     }
 }
@@ -888,6 +982,8 @@ pub enum ActionResult {
         modifiers: Vec<crate::effects::ModifyBattlefield>,
         controller: Controller,
     },
+    MoveFromLibraryToTopOfLibrary(CardId),
+    SpendMana(Controller, Vec<Mana>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1178,7 +1274,7 @@ impl Battlefield {
                     unreachable!()
                 }
 
-                results.push_resolved(ActionResult::TapPermanent(card));
+                results.push_deferred(ActionResult::TapPermanent(card));
             }
 
             for cost in cost.additional_cost.iter() {
@@ -1188,26 +1284,50 @@ impl Battlefield {
                             unreachable!()
                         }
 
-                        results.push_resolved(ActionResult::PermanentToGraveyard(card));
+                        results.push_deferred(ActionResult::PermanentToGraveyard(card));
                     }
                     AdditionalCost::PayLife(PayLife { count }) => {
-                        results.push_resolved(ActionResult::LoseLife {
+                        results.push_deferred(ActionResult::LoseLife {
                             target: card.controller(db),
                             count: *count,
+                        })
+                    }
+                    AdditionalCost::SacrificePermanent(restrictions) => {
+                        let controller = card.controller(db);
+                        let valid_targets = controller
+                            .get_cards::<OnBattlefield>(db)
+                            .into_iter()
+                            .filter(|target| {
+                                target.passes_restrictions(
+                                    db,
+                                    card,
+                                    ControllerRestriction::You,
+                                    restrictions,
+                                )
+                            })
+                            .map(|card| ActiveTarget::Battlefield { id: card })
+                            .collect_vec();
+                        results.push_unresolved(UnresolvedAction {
+                            source: Some(card),
+                            result: UnresolvedActionResult::SacrificePermanent,
+                            valid_targets,
+                            choices: Default::default(),
+                            optional: false,
                         })
                     }
                 }
             }
 
-            if !all_players[card.controller(db)].spend_mana(&cost.mana_cost) {
-                unreachable!()
-            }
+            results.push_deferred(ActionResult::SpendMana(
+                card.controller(db),
+                cost.mana_cost.clone(),
+            ));
         }
 
         if let Ability::Mana(gain) = ability {
             match gain.gain {
                 GainMana::Specific { gains } => {
-                    results.push_resolved(ActionResult::GainMana {
+                    results.push_deferred(ActionResult::GainMana {
                         target: card.controller(db),
                         gain: gains,
                     });
@@ -1232,14 +1352,19 @@ impl Battlefield {
                 card.targets_for_effect(db, controller, &effect, &creatures, &mut valid_targets);
             }
 
-            results.push_unresolved(UnresolvedAction {
-                source: Some(card),
-                result: UnresolvedActionResult::Ability(ability_id),
-                // TODO this isn't always true for many abilities.
-                optional: false,
-                valid_targets,
-                choices: Default::default(),
-            });
+            let wants_targets = ability_id.wants_targets(db);
+            if wants_targets <= valid_targets.len() {
+                results.push_unresolved(UnresolvedAction {
+                    source: Some(card),
+                    result: UnresolvedActionResult::Ability(ability_id),
+                    // TODO this isn't always true for many abilities.
+                    optional: false,
+                    valid_targets,
+                    choices: Default::default(),
+                });
+            } else {
+                return PendingResults::default();
+            }
         }
 
         results
@@ -1384,12 +1509,17 @@ impl Battlefield {
                 };
                 return Battlefield::exile(db, *target);
             }
-            ActionResult::DamageTarget { quantity, target } => {
-                let ActiveTarget::Battlefield { id: target } = target else {
-                    unreachable!()
-                };
-                target.mark_damage(db, *quantity);
-            }
+            ActionResult::DamageTarget { quantity, target } => match target {
+                ActiveTarget::Battlefield { id } => {
+                    id.mark_damage(db, *quantity);
+                }
+                ActiveTarget::Player { id } => {
+                    all_players[*id].life_total -= *quantity as i32;
+                }
+                ActiveTarget::Graveyard { .. }
+                | ActiveTarget::Library { .. }
+                | ActiveTarget::Stack { .. } => unreachable!(),
+            },
             ActionResult::ManifestTopOfLibrary(player) => {
                 return all_players[*player].manifest(db);
             }
@@ -1532,6 +1662,18 @@ impl Battlefield {
 
                     token.apply_modifier(db, modifier);
                 }
+            }
+            ActionResult::MoveFromLibraryToTopOfLibrary(card) => {
+                let owner = card.owner(db);
+                all_players[owner].deck.remove(*card);
+                all_players[owner].deck.place_on_top(db, *card);
+            }
+            ActionResult::SpendMana(controller, mana) => {
+                let spent = all_players[*controller].spend_mana(mana);
+                assert!(
+                    spent,
+                    "Should have validated mana could be spent before spending."
+                );
             }
         }
 

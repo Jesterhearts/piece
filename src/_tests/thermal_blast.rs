@@ -15,7 +15,7 @@ fn damages_target() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
@@ -56,7 +56,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
     for _ in 0..7 {
@@ -102,10 +102,10 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
-    let other = all_players.new_player("Player".to_owned(), 20);
+    let other = all_players.new_player("Player".to_string(), 20);
 
     for _ in 0..7 {
         let card = CardId::upload(&mut db, &cards, other, "Alpine Grizzly");

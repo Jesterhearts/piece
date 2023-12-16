@@ -19,7 +19,7 @@ fn creates_tokens() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
@@ -32,7 +32,7 @@ fn creates_tokens() -> anyhow::Result<()> {
             ActionResult::CreateToken {
                 source: player.into(),
                 token: Token::Creature(TokenCreature {
-                    name: "Dinosaur".to_owned(),
+                    name: "Dinosaur".to_string(),
                     types: HashSet::from([Type::Creature]),
                     subtypes: HashSet::from([Subtype::Dinosaur]),
                     colors: HashSet::from([Color::Red]),
@@ -44,7 +44,7 @@ fn creates_tokens() -> anyhow::Result<()> {
             ActionResult::CreateToken {
                 source: player.into(),
                 token: Token::Creature(TokenCreature {
-                    name: "Human Soldier".to_owned(),
+                    name: "Human Soldier".to_string(),
                     types: HashSet::from([Type::Creature]),
                     subtypes: HashSet::from([Subtype::Human, Subtype::Soldier]),
                     colors: HashSet::from([Color::White]),

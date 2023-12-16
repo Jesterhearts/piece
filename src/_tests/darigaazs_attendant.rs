@@ -18,7 +18,7 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
@@ -32,16 +32,19 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
         results,
         PendingResults {
             results: VecDeque::from([PendingResult {
-                apply_immediately: vec![
+                apply_immediately: vec![],
+                to_resolve: Default::default(),
+                then_apply: vec![
                     ActionResult::PermanentToGraveyard(attendant),
+                    ActionResult::SpendMana(player.into(), vec![Mana::Generic(1)]),
                     ActionResult::GainMana {
                         gain: vec![Mana::Black, Mana::Red, Mana::Green],
                         target: player.into(),
                     }
                 ],
-                then_resolve: Default::default(),
                 recompute: false
-            }])
+            }]),
+            applied: false,
         }
     );
 

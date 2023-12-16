@@ -159,8 +159,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
 
-    let player1 = all_players.new_player("Player 1".to_owned(), 20);
-    let player2 = all_players.new_player("Player 2".to_owned(), 20);
+    let player1 = all_players.new_player("Player 1".to_string(), 20);
+    let player2 = all_players.new_player("Player 2".to_string(), 20);
     all_players[player1].infinite_mana();
 
     let mut turn = Turn::new(&all_players);
@@ -381,7 +381,7 @@ fn main() -> anyhow::Result<()> {
                     let mut state = ListState::default();
                     frame.render_stateful_widget(
                         List {
-                            title: " Mana ".to_owned(),
+                            title: " Mana ".to_string(),
                             items: all_players[player2]
                                 .mana_pool
                                 .pools_display()
@@ -404,7 +404,7 @@ fn main() -> anyhow::Result<()> {
 
                     frame.render_stateful_widget(
                         List {
-                            title: " Stack (Enter) ".to_owned(),
+                            title: " Stack (Enter) ".to_string(),
                             items: Stack::entries(&mut db)
                                 .into_iter()
                                 .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
@@ -427,7 +427,7 @@ fn main() -> anyhow::Result<()> {
                     let mut state = ListState::default();
                     frame.render_stateful_widget(
                         List {
-                            title: " Mana ".to_owned(),
+                            title: " Mana ".to_string(),
                             items: all_players[player1]
                                 .mana_pool
                                 .pools_display()
@@ -517,7 +517,7 @@ fn main() -> anyhow::Result<()> {
                         .block(
                             Block::default()
                                 .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                                .title(" Hand ".to_owned()),
+                                .title(" Hand ".to_string()),
                         ),
                         battlefield_layout[3],
                         hand_selection_state,
@@ -537,7 +537,7 @@ fn main() -> anyhow::Result<()> {
                     let mut state = ListState::default();
                     frame.render_stateful_widget(
                         List {
-                            title: " Graveyard ".to_owned(),
+                            title: " Graveyard ".to_string(),
                             items: player2
                                 .get_cards::<InGraveyard>(&mut db)
                                 .into_iter()
@@ -561,7 +561,7 @@ fn main() -> anyhow::Result<()> {
 
                     frame.render_stateful_widget(
                         List {
-                            title: " Graveyard ".to_owned(),
+                            title: " Graveyard ".to_string(),
                             items: player1
                                 .get_cards::<InGraveyard>(&mut db)
                                 .into_iter()
@@ -597,7 +597,7 @@ fn main() -> anyhow::Result<()> {
                         for option in options.iter_mut() {
                             option.0 += 1
                         }
-                        options.insert(0, (0, "None".to_owned()));
+                        options.insert(0, (0, "None".to_string()));
                     }
 
                     if selection_list_state.selected_index.unwrap_or_default() >= options.len() {

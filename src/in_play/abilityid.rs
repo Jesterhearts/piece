@@ -6,6 +6,7 @@ use derive_more::From;
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility},
     card::OracleText,
+    controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, Effects},
     in_play::{CardId, Database, InStack, OnBattlefield, NEXT_STACK_SEQ},
@@ -275,7 +276,7 @@ impl AbilityId {
                 format!("{}: {}", activated.cost.text(), activated.oracle_text)
             }
             Ability::Mana(ability) => ability.text(),
-            Ability::ETB { oracle_text, .. } => oracle_text.unwrap_or_else(|| "ETB".to_owned()),
+            Ability::ETB { oracle_text, .. } => oracle_text.unwrap_or_else(|| "ETB".to_string()),
         }
     }
 
@@ -401,6 +402,23 @@ fn can_pay_costs(
             }
             AdditionalCost::PayLife(life) => {
                 if all_players[controller].life_total <= life.count as i32 {
+                    return false;
+                }
+            }
+            AdditionalCost::SacrificePermanent(restrictions) => {
+                let any_target =
+                    controller
+                        .get_cards::<OnBattlefield>(db)
+                        .into_iter()
+                        .any(|card| {
+                            card.passes_restrictions(
+                                db,
+                                source,
+                                ControllerRestriction::You,
+                                restrictions,
+                            )
+                        });
+                if !any_target {
                     return false;
                 }
             }

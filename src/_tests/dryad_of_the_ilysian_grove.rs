@@ -17,7 +17,7 @@ fn adds_land_types() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");

@@ -1,0 +1,19 @@
+name: "Deadapult"
+types { enchantment{} }
+oracle_text:  "{R}, Sacrifice a Zombie: Deadpult deals"
+              " 2 damage to any target."
+activated_abilities {
+  cost {
+    mana_costs { red{} }
+    additional_costs {
+      sacrifice_permanent {
+        restrictions { of_type { subtypes{ zombie{} } }}
+      }
+    }
+  }
+  effects {
+    deal_damage {
+      quantity: 2
+    }
+  }
+}

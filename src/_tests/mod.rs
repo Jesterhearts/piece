@@ -6,6 +6,7 @@ mod blood_scrivener;
 mod clone;
 mod counterspell;
 mod darigaazs_attendant;
+mod deadapult;
 mod dryad_of_the_ilysian_grove;
 mod elesh_norn_grand_cenobite;
 mod forbidden_friendship;

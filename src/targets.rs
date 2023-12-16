@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use itertools::Itertools;
 
 use crate::{
     controller::ControllerRestriction,
@@ -85,6 +86,40 @@ pub enum Restriction {
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
+}
+
+impl Restriction {
+    pub fn text(&self) -> String {
+        match self {
+            Restriction::NotSelf => "other permanent".to_string(),
+            Restriction::Self_ => "self".to_string(),
+            Restriction::OfType { types, subtypes } => {
+                if !types.is_empty() && !subtypes.is_empty() {
+                    format!(
+                        "a {} - {}",
+                        types.iter().map(|ty| ty.as_ref()).join(" "),
+                        subtypes.iter().map(|ty| ty.as_ref()).join(" ")
+                    )
+                } else if !types.is_empty() {
+                    format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" "))
+                } else {
+                    format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+                }
+            }
+            Restriction::Toughness(toughness) => match toughness {
+                Comparison::LessThan(t) => {
+                    format!("toughness less than {}", t)
+                }
+                Comparison::LessThanOrEqual(t) => {
+                    format!("toughness less than or equal to {}", t)
+                }
+            },
+            Restriction::ControllerControlsBlackOrGreen => {
+                "controller controls black or green".to_string()
+            }
+            Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
+        }
+    }
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {

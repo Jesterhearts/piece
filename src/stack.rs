@@ -1029,7 +1029,7 @@ mod tests {
         let cards = load_cards()?;
         let mut db = Database::default();
         let mut all_players = AllPlayers::default();
-        let player = all_players.new_player("Player".to_owned(), 20);
+        let player = all_players.new_player("Player".to_string(), 20);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
         card1.move_to_stack(&mut db, Default::default());

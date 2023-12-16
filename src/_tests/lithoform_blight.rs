@@ -11,7 +11,7 @@ use crate::{
 fn works() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::default();
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");

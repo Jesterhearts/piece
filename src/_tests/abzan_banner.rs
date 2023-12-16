@@ -9,6 +9,7 @@ use crate::{
     },
     in_play::{CardId, Database},
     load_cards,
+    mana::Mana,
     player::AllPlayers,
     turns::{Phase, Turn},
 };
@@ -19,7 +20,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
     let mut turn = Turn::new(&all_players);
@@ -33,25 +34,41 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     assert_eq!(
         results,
         PendingResults {
-            results: VecDeque::from([PendingResult {
-                apply_immediately: vec![
-                    ActionResult::TapPermanent(card),
-                    ActionResult::PermanentToGraveyard(card),
-                ],
-                then_resolve: VecDeque::from([UnresolvedAction {
-                    source: Some(card),
-                    result: UnresolvedActionResult::Ability(
-                        card.activated_abilities(&mut db).first().copied().unwrap()
-                    ),
-                    valid_targets: vec![],
-                    choices: Default::default(),
-                    optional: false,
-                }]),
-                recompute: true
-            }])
+            results: VecDeque::from([
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: VecDeque::default(),
+                    then_apply: vec![
+                        ActionResult::TapPermanent(card),
+                        ActionResult::PermanentToGraveyard(card),
+                        ActionResult::SpendMana(
+                            player.into(),
+                            vec![Mana::White, Mana::Black, Mana::Green]
+                        )
+                    ],
+                    recompute: false,
+                },
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: VecDeque::from([UnresolvedAction {
+                        source: Some(card),
+                        result: UnresolvedActionResult::Ability(
+                            card.activated_abilities(&mut db).first().copied().unwrap()
+                        ),
+                        valid_targets: vec![],
+                        choices: Default::default(),
+                        optional: false,
+                    }]),
+                    then_apply: vec![],
+                    recompute: false,
+                }
+            ]),
+            applied: false,
         }
     );
 
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -64,7 +81,7 @@ fn add_mana() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
@@ -73,6 +90,8 @@ fn add_mana() -> anyhow::Result<()> {
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 1);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 

@@ -9,6 +9,7 @@ use crate::{
     },
     in_play::{CardId, Database, OnBattlefield},
     load_cards,
+    mana::Mana,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
     turns::{Phase, Turn},
@@ -19,7 +20,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
@@ -35,7 +36,7 @@ fn tutors() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-    let player = all_players.new_player("Player".to_owned(), 20);
+    let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
@@ -59,28 +60,41 @@ fn tutors() -> anyhow::Result<()> {
     assert_eq!(
         results,
         PendingResults {
-            results: VecDeque::from([PendingResult {
-                apply_immediately: vec![
-                    ActionResult::TapPermanent(card),
-                    ActionResult::PermanentToGraveyard(card)
-                ],
-                then_resolve: VecDeque::from([UnresolvedAction {
-                    source: Some(card),
-                    result: UnresolvedActionResult::Ability(
-                        *card.activated_abilities(&mut db).first().unwrap()
-                    ),
-                    valid_targets: vec![
-                        ActiveTarget::Library { id: forest },
-                        ActiveTarget::Library { id: plains }
+            results: VecDeque::from([
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: Default::default(),
+                    then_apply: vec![
+                        ActionResult::TapPermanent(card),
+                        ActionResult::PermanentToGraveyard(card),
+                        ActionResult::SpendMana(player.into(), vec![Mana::Generic(2)]),
                     ],
-                    choices: Default::default(),
-                    optional: false
-                },]),
-                recompute: true
-            },])
+                    recompute: false,
+                },
+                PendingResult {
+                    apply_immediately: vec![],
+                    to_resolve: VecDeque::from([UnresolvedAction {
+                        source: Some(card),
+                        result: UnresolvedActionResult::Ability(
+                            *card.activated_abilities(&mut db).first().unwrap()
+                        ),
+                        valid_targets: vec![
+                            ActiveTarget::Library { id: forest },
+                            ActiveTarget::Library { id: plains }
+                        ],
+                        choices: Default::default(),
+                        optional: false
+                    },]),
+                    then_apply: vec![],
+                    recompute: false,
+                },
+            ]),
+            applied: false,
         }
     );
 
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
