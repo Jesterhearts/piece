@@ -1,6 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use bevy_ecs::{component::Component, entity::Entity, query::With};
+use bevy_ecs::{
+    component::Component,
+    entity::Entity,
+    query::{With, Without},
+};
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
@@ -19,6 +23,9 @@ use crate::{
     targets::{Restriction, SpellTarget},
     types::Type,
 };
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
+pub struct Settled;
 
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub struct Targets(pub Vec<ActiveTarget>);
@@ -184,6 +191,69 @@ impl Stack {
             )
             .sorted_by_key(|(seq, _)| *seq)
             .collect()
+    }
+
+    pub fn entries_unsettled(db: &mut Database) -> Vec<(InStack, StackEntry)> {
+        db.cards
+            .query_filtered::<(&InStack, Entity, &Targets, Option<&Mode>), Without<Settled>>()
+            .iter(&db.cards)
+            .map(|(seq, entity, targets, mode)| {
+                (
+                    *seq,
+                    StackEntry {
+                        ty: Entry::Card(entity.into()),
+                        targets: targets.0.clone(),
+                        mode: mode.map(|mode| mode.0),
+                    },
+                )
+            })
+            .chain(
+                db.abilities
+                    .query_filtered::<(
+                        &InStack,
+                        Entity,
+                        &AbilityId,
+                        &Targets,
+                        &CardId,
+                        Option<&Mode>,
+                    ), Without<Settled>>()
+                    .iter(&db.abilities)
+                    .map(|(seq, entity, source, targets, card_source, mode)| {
+                        (
+                            *seq,
+                            StackEntry {
+                                ty: Entry::Ability {
+                                    in_stack: entity.into(),
+                                    source: *source,
+                                    card_source: *card_source,
+                                },
+                                targets: targets.0.clone(),
+                                mode: mode.map(|mode| mode.0),
+                            },
+                        )
+                    }),
+            )
+            .chain(
+                db.triggers
+                    .query_filtered::<(&TriggerInStack, Entity, &Targets, Option<&Mode>), Without<Settled>>()
+                    .iter(&db.triggers)
+                    .map(|(seq, entity, targets, mode)| {
+                        (
+                            (*seq).into(),
+                            StackEntry {
+                                ty: Entry::Trigger {
+                                    in_stack: TriggerId::from(entity),
+                                    source: seq.trigger,
+                                    card_source: seq.source,
+                                },
+                                targets: targets.0.clone(),
+                                mode: mode.map(|mode| mode.0),
+                            },
+                        )
+                    }),
+            )
+            .sorted_by_key(|(seq, _)| -*seq)
+            .collect_vec()
     }
 
     pub fn entries(db: &mut Database) -> Vec<(InStack, StackEntry)> {
@@ -357,6 +427,19 @@ impl Stack {
         };
 
         let in_stack = Self::in_stack(db);
+        for (_, entry) in in_stack.iter() {
+            match entry {
+                Entry::Card(card) => {
+                    card.settle(db);
+                }
+                Entry::Ability { in_stack, .. } => {
+                    in_stack.settle(db);
+                }
+                Entry::Trigger { in_stack, .. } => {
+                    in_stack.settle(db);
+                }
+            }
+        }
 
         let mut results = PendingResults::default();
 

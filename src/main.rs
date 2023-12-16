@@ -1237,7 +1237,7 @@ fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut Ui
             selection_list_offset: 0,
         };
     } else {
-        let entries = Stack::entries(db)
+        let entries = Stack::entries_unsettled(db)
             .into_iter()
             .map(|(_, entry)| entry)
             .collect_vec();

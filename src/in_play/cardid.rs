@@ -33,7 +33,7 @@ use crate::{
         UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{AllPlayers, Controller, Owner},
-    stack::{ActiveTarget, Stack, Targets},
+    stack::{ActiveTarget, Settled, Stack, Targets},
     targets::{Comparison, Restriction, Restrictions, SpellTarget},
     triggers::{trigger_source, TriggerSource},
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
@@ -1430,5 +1430,9 @@ impl CardId {
 
     pub fn reveal(self, db: &mut Database) {
         db.entity_mut(self.0).insert(Revealed);
+    }
+
+    pub(crate) fn settle(self, db: &mut Database) {
+        db.entity_mut(self.0).insert(Settled);
     }
 }

@@ -31,7 +31,7 @@ use crate::{
     },
     mana::Mana,
     player::Controller,
-    stack::{ActiveTarget, Stack, Targets},
+    stack::{ActiveTarget, Settled, Stack, Targets},
     targets::{Restriction, Restrictions, SpellTarget},
     triggers::Location,
     types::{
@@ -662,6 +662,10 @@ impl AbilityId {
 
         text
     }
+
+    pub(crate) fn settle(self, db: &mut Database) {
+        db.abilities.entity_mut(self.0).insert(Settled);
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord, Component)]
@@ -960,6 +964,10 @@ impl TriggerId {
             .map(|effect| effect.into_effect(db, controller))
             .map(|effect| effect.wants_targets())
             .sum()
+    }
+
+    pub fn settle(self, db: &mut Database) {
+        db.triggers.entity_mut(self.0).insert(Settled);
     }
 }
 
