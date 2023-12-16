@@ -1133,7 +1133,7 @@ impl CardId {
         let ability = ability.ability(db);
         let controller = self.controller(db);
         if !ability.apply_to_self() {
-            for effect in ability.into_effects() {
+            if let Some(effect) = ability.into_effects().into_iter().next() {
                 let effect = effect.into_effect(db, controller);
                 self.targets_for_effect(db, controller, &effect, creatures, targets);
             }
