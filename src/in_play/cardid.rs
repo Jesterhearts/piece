@@ -21,13 +21,12 @@ use crate::{
     controller::ControllerRestriction,
     cost::CastingCost,
     effects::{
-        effect_duration::UntilSourceLeavesBattlefield, AnyEffect, DealDamage,
+        effect_duration::UntilSourceLeavesBattlefield, AnyEffect, BattlefieldModifier, DealDamage,
         DynamicPowerToughness, Effect, Effects, Mill, ReplacementEffects,
         ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
-        cards, targets_for_battlefield_modifier, targets_for_counterspell, upload_modifier,
-        AbilityId, Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global,
+        cards, AbilityId, Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global,
         InExile, InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId,
         ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId,
         UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
@@ -230,7 +229,7 @@ impl CardId {
             .iter(&db.modifiers)
             .filter_map(|(entity, modifying)| {
                 if modifying.contains(&self) {
-                    Some(ModifierId(entity))
+                    Some(ModifierId::from(entity))
                 } else {
                     None
                 }
@@ -249,7 +248,7 @@ impl CardId {
         }
 
         for entity in entities {
-            ModifierId(entity).deactivate(db);
+            ModifierId::from(entity).deactivate(db);
         }
     }
 
@@ -274,7 +273,7 @@ impl CardId {
                     || (on_battlefield && entire_battlefield.is_some())
                     || modifying.contains(&self)
                 {
-                    Some(ModifierId(entity))
+                    Some(ModifierId::from(entity))
                 } else {
                     None
                 }
@@ -594,7 +593,7 @@ impl CardId {
 
     pub fn apply_modifier(self, db: &mut Database, modifier: ModifierId) {
         db.modifiers
-            .get_mut::<Modifying>(modifier.0)
+            .get_mut::<Modifying>(modifier.into())
             .unwrap()
             .insert(self);
         modifier.activate(db);
@@ -960,11 +959,11 @@ impl CardId {
         if let Some(enchant) = &card.enchant {
             let mut modifierids = vec![];
             for modifier in enchant.modifiers.iter() {
-                let modifierid = upload_modifier(db, cardid, modifier, false);
+                let modifierid = ModifierId::upload_modifier(db, cardid, modifier, false);
                 modifierids.push(modifierid);
             }
 
-            let auraid = AuraId(
+            let auraid = AuraId::from(
                 db.auras
                     .spawn((
                         Modifiers(modifierids),
@@ -1012,7 +1011,7 @@ impl CardId {
                     }
                 }
 
-                trigger_ids.push(TriggerId(entity.id()));
+                trigger_ids.push(TriggerId::from(entity.id()));
             }
 
             db.entity_mut(cardid.0).insert(Triggers(trigger_ids));
@@ -1434,5 +1433,48 @@ impl CardId {
 
     pub(crate) fn settle(self, db: &mut Database) {
         db.entity_mut(self.0).insert(Settled);
+    }
+}
+
+fn targets_for_counterspell(
+    db: &mut Database,
+    caster: Controller,
+    target: &SpellTarget,
+    targets: &mut Vec<ActiveTarget>,
+) {
+    let cards_in_stack = db
+        .query::<(Entity, &InStack)>()
+        .iter(db)
+        .map(|(entity, in_stack)| (CardId(entity), *in_stack))
+        .sorted_by_key(|(_, in_stack)| *in_stack)
+        .collect_vec();
+
+    for (card, stack_id) in cards_in_stack.into_iter() {
+        if card.can_be_countered(db, caster, target) {
+            targets.push(ActiveTarget::Stack { id: stack_id });
+        }
+    }
+}
+
+fn targets_for_battlefield_modifier(
+    db: &mut Database,
+    source: CardId,
+    modifier: Option<&BattlefieldModifier>,
+    creatures: &[CardId],
+    caster: Controller,
+    targets: &mut Vec<ActiveTarget>,
+) {
+    for creature in creatures.iter() {
+        if creature.can_be_targeted(db, caster)
+            && (modifier.is_none()
+                || creature.passes_restrictions(
+                    db,
+                    source,
+                    modifier.unwrap().controller,
+                    &modifier.unwrap().restrictions,
+                ))
+        {
+            targets.push(ActiveTarget::Battlefield { id: *creature });
+        }
     }
 }
