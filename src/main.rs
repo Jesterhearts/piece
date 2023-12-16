@@ -110,6 +110,7 @@ enum UiState {
         stack_list_offset: usize,
         player1_mana_list_offset: usize,
         player2_mana_list_offset: usize,
+        player1_graveyard_selection_state: ListState,
         player1_graveyard_list_offset: usize,
         player2_graveyard_list_offset: usize,
     },
@@ -125,6 +126,7 @@ enum UiState {
         stack_list_offset: usize,
         player1_mana_list_offset: usize,
         player2_mana_list_offset: usize,
+        player1_graveyard_selection_state: ListState,
         player1_graveyard_list_offset: usize,
         player2_graveyard_list_offset: usize,
     },
@@ -228,6 +230,12 @@ fn main() -> anyhow::Result<()> {
         assert_eq!(result, ResolutionResult::Complete);
     }
 
+    for card in cards.keys() {
+        let card = CardId::upload(&mut db, &cards, player1, card);
+        all_players[player1].deck.place_on_top(&mut db, card);
+    }
+    all_players[player1].deck.shuffle();
+
     stdout()
         .execute(EnterAlternateScreen)?
         .execute(EnableMouseCapture)?;
@@ -249,6 +257,7 @@ fn main() -> anyhow::Result<()> {
         stack_list_offset: 0,
         player1_mana_list_offset: 0,
         player2_mana_list_offset: 0,
+        player1_graveyard_selection_state: ListState::default(),
         player1_graveyard_list_offset: 0,
         player2_graveyard_list_offset: 0,
     };
@@ -258,6 +267,7 @@ fn main() -> anyhow::Result<()> {
     let mut last_hover = None;
     let mut key_selected = None;
     let mut choice;
+    let mut selected_card = None;
 
     loop {
         choice = None;
@@ -278,6 +288,7 @@ fn main() -> anyhow::Result<()> {
                     stack_list_offset,
                     player1_mana_list_offset,
                     player2_mana_list_offset,
+                    player1_graveyard_selection_state,
                     player1_graveyard_list_offset,
                     player2_graveyard_list_offset,
                 }
@@ -293,6 +304,7 @@ fn main() -> anyhow::Result<()> {
                     stack_list_offset,
                     player1_mana_list_offset,
                     player2_mana_list_offset,
+                    player1_graveyard_selection_state,
                     player1_graveyard_list_offset,
                     player2_graveyard_list_offset,
                 } => {
@@ -473,7 +485,9 @@ fn main() -> anyhow::Result<()> {
                     frame.render_stateful_widget(
                         ui::SelectedAbilities {
                             db: &mut db,
-                            card: selected_state.selected,
+                            all_players: &all_players,
+                            turn: &turn,
+                            card: selected_state.selected.or(selected_card),
                             page: *action_list_page,
                             last_hover,
                             last_click,
@@ -545,7 +559,6 @@ fn main() -> anyhow::Result<()> {
                         *player2_graveyard_list_offset += 1;
                     }
 
-                    let mut state = ListState::default();
                     frame.render_stateful_widget(
                         List {
                             title: " Graveyard ".to_owned(),
@@ -560,13 +573,13 @@ fn main() -> anyhow::Result<()> {
                             offset: *player1_graveyard_list_offset,
                         },
                         graveyards[1],
-                        &mut state,
+                        player1_graveyard_selection_state,
                     );
 
-                    if state.selected_up {
+                    if player1_graveyard_selection_state.selected_up {
                         *player1_graveyard_list_offset =
                             player1_graveyard_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
+                    } else if player1_graveyard_selection_state.selected_down {
                         *player1_graveyard_list_offset += 1;
                     }
                 }
@@ -642,6 +655,17 @@ fn main() -> anyhow::Result<()> {
                     if last_down == Some((mouse.row, mouse.column)) {
                         last_click = Some((mouse.row, mouse.column));
                         if let UiState::Battlefield {
+                            player1_graveyard_selection_state:
+                                ListState {
+                                    hovered_value: Some(hovered),
+                                    ..
+                                },
+                            ..
+                        } = &state
+                        {
+                            let card = player1.get_cards::<InGraveyard>(&mut db)[*hovered];
+                            selected_card = Some(card);
+                        } else if let UiState::Battlefield {
                             stack_view_state:
                                 ListState {
                                     hovered_value: Some(_),
@@ -697,6 +721,18 @@ fn main() -> anyhow::Result<()> {
                 } else if let MouseEventKind::Up(MouseButton::Right) = mouse.kind {
                     if last_down == Some((mouse.row, mouse.column)) {
                         if let UiState::Battlefield {
+                            player1_graveyard_selection_state:
+                                ListState {
+                                    hovered_value: Some(hovered),
+                                    ..
+                                },
+                            ..
+                        } = &state
+                        {
+                            let card = player1.get_cards::<InGraveyard>(&mut db)[*hovered];
+                            previous_state.push(state);
+                            state = UiState::ExaminingCard(card);
+                        } else if let UiState::Battlefield {
                             selected_state:
                                 CardSelectionState {
                                     hovered: Some(hovered),
@@ -751,6 +787,12 @@ fn main() -> anyhow::Result<()> {
                                 ..
                             },
                         hand_list_page,
+                        player1_graveyard_selection_state:
+                            ListState {
+                                hovered_value: graveyard_hovered,
+                                ..
+                            },
+                        player1_graveyard_list_offset,
                         ..
                     } = &mut state
                     {
@@ -758,6 +800,9 @@ fn main() -> anyhow::Result<()> {
                             *hand_list_page = hand_list_page.saturating_sub(1);
                         } else if phases_hovered.is_some() {
                             *phase_options_list_page = phase_options_list_page.saturating_sub(1);
+                        } else if graveyard_hovered.is_some() {
+                            *player1_graveyard_list_offset =
+                                player1_graveyard_list_offset.saturating_sub(1);
                         } else {
                             *action_list_page = action_list_page.saturating_sub(1);
                         }
@@ -785,6 +830,12 @@ fn main() -> anyhow::Result<()> {
                                 ..
                             },
                         hand_list_page,
+                        player1_graveyard_selection_state:
+                            ListState {
+                                hovered_value: graveyard_hovered,
+                                ..
+                            },
+                        player1_graveyard_list_offset,
                         ..
                     } = &mut state
                     {
@@ -792,6 +843,8 @@ fn main() -> anyhow::Result<()> {
                             *hand_list_page += 1;
                         } else if phases_hovered.is_some() && *phases_has_overflow {
                             *phase_options_list_page += 1;
+                        } else if graveyard_hovered.is_some() {
+                            *player1_graveyard_list_offset += 1;
                         } else if *actions_has_overflow {
                             *action_list_page += 1;
                         }
@@ -939,6 +992,7 @@ fn main() -> anyhow::Result<()> {
                                     stack_list_offset: 0,
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
+                                    player1_graveyard_selection_state: ListState::default(),
                                     player1_graveyard_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
                                 });
@@ -970,6 +1024,7 @@ fn main() -> anyhow::Result<()> {
                                     stack_list_offset: 0,
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
+                                    player1_graveyard_selection_state: ListState::default(),
                                     player1_graveyard_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
                                 };
@@ -986,6 +1041,7 @@ fn main() -> anyhow::Result<()> {
                                     stack_list_offset: 0,
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
+                                    player1_graveyard_selection_state: ListState::default(),
                                     player1_graveyard_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
                                 });
@@ -1118,6 +1174,7 @@ fn main() -> anyhow::Result<()> {
                             let mut results = Battlefield::activate_ability(
                                 &mut db,
                                 &mut all_players,
+                                &turn,
                                 card,
                                 selected,
                             );
@@ -1187,6 +1244,7 @@ fn main() -> anyhow::Result<()> {
                                         stack_list_offset: 0,
                                         player1_mana_list_offset: 0,
                                         player2_mana_list_offset: 0,
+                                        player1_graveyard_selection_state: ListState::default(),
                                         player1_graveyard_list_offset: 0,
                                         player2_graveyard_list_offset: 0,
                                     });

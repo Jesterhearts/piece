@@ -11,6 +11,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
+    turns::{Phase, Turn},
 };
 
 #[test]
@@ -36,6 +37,8 @@ fn tutors() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let forest = CardId::upload(&mut db, &cards, player, "Forest");
     all_players[player].deck.place_on_top(&mut db, forest);
@@ -52,7 +55,7 @@ fn tutors() -> anyhow::Result<()> {
 
     card.untap(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     assert_eq!(
         results,
         PendingResults {

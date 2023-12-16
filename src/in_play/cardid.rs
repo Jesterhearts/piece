@@ -83,6 +83,8 @@ impl CardId {
             ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
+            self.untap(db);
+
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
@@ -109,6 +111,8 @@ impl CardId {
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
+
+            self.untap(db);
 
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
@@ -151,6 +155,8 @@ impl CardId {
             ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
+            self.untap(db);
+
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
@@ -176,6 +182,8 @@ impl CardId {
             ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
 
+            self.untap(db);
+
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
@@ -198,6 +206,8 @@ impl CardId {
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
             self.deactivate_modifiers(db);
+
+            self.untap(db);
 
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
@@ -403,9 +413,9 @@ impl CardId {
             }
         }
 
-        for (ty, ability) in AbilityId::land_abilities(db) {
+        for (ty, add_ability) in AbilityId::land_abilities() {
             if subtypes.contains(&ty) {
-                activated_abilities.push(ability);
+                activated_abilities.push(add_ability(db, self));
             }
         }
 

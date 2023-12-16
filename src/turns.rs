@@ -45,6 +45,11 @@ impl Turn {
         }
     }
 
+    #[cfg(test)]
+    pub fn set_phase(&mut self, phase: Phase) {
+        self.phase = phase;
+    }
+
     pub fn step(&mut self, db: &mut Database, all_players: &mut AllPlayers) -> PendingResults {
         match self.phase {
             Phase::Untap => {

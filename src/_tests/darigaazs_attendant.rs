@@ -9,6 +9,7 @@ use crate::{
     load_cards,
     mana::Mana,
     player::AllPlayers,
+    turns::{Phase, Turn},
 };
 
 #[test]
@@ -19,12 +20,14 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let attendant = CardId::upload(&mut db, &cards, player, "Darigaaz's Attendant");
     let results = Battlefield::add_from_stack_or_hand(&mut db, attendant);
     assert_eq!(results, PendingResults::default());
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, attendant, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, attendant, 0);
     assert_eq!(
         results,
         PendingResults {

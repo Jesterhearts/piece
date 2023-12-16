@@ -429,6 +429,10 @@ impl Effect {
             .collect_vec()
     }
 
+    pub fn is_sorcery_speed(&self) -> bool {
+        matches!(self, Effect::Equip(_))
+    }
+
     pub fn wants_targets(&self) -> usize {
         match self {
             Effect::BattlefieldModifier(_) => 0,

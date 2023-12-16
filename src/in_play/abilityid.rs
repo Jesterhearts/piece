@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, collections::HashMap, sync::atomic::Ordering};
+use std::{cell::OnceCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 
 use bevy_ecs::{component::Component, entity::Entity};
 use derive_more::From;
@@ -6,17 +6,20 @@ use derive_more::From;
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility},
     card::OracleText,
-    cost::AbilityCost,
+    cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, Effects},
-    in_play::{CardId, Database, InStack, NEXT_STACK_SEQ},
+    in_play::{CardId, Database, InStack, OnBattlefield, NEXT_STACK_SEQ},
     mana::Mana,
-    player::Controller,
+    player::{AllPlayers, Controller},
     stack::{ActiveTarget, Settled, Stack, Targets},
+    turns::{Phase, Turn},
     types::Subtype,
 };
 
+pub type MakeLandAbility = Rc<dyn Fn(&mut Database, CardId) -> AbilityId>;
+
 thread_local! {
-    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, AbilityId>> = OnceCell::new();
+    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, MakeLandAbility>> = OnceCell::new();
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
@@ -60,90 +63,105 @@ impl AbilityId {
         }
     }
 
-    pub fn land_abilities(db: &mut Database) -> HashMap<Subtype, Self> {
+    pub fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
         INIT_LAND_ABILITIES.with(|init| {
             init.get_or_init(|| {
-                let mut abilities = HashMap::new();
+                let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
 
-                let id = AbilityId(
-                    db.abilities
-                        .spawn((
-                            AbilityCost {
-                                mana_cost: vec![],
-                                tap: true,
-                                additional_cost: vec![],
-                            },
-                            GainMana::Specific {
-                                gains: vec![Mana::White],
-                            },
-                        ))
-                        .id(),
-                );
-                abilities.insert(Subtype::Plains, id);
+                let add = Rc::new(|db: &mut Database, source| {
+                    AbilityId(
+                        db.abilities
+                            .spawn((
+                                AbilityCost {
+                                    mana_cost: vec![],
+                                    tap: true,
+                                    additional_cost: vec![],
+                                },
+                                GainMana::Specific {
+                                    gains: vec![Mana::White],
+                                },
+                                source,
+                            ))
+                            .id(),
+                    )
+                });
+                abilities.insert(Subtype::Plains, add);
 
-                let id = AbilityId(
-                    db.abilities
-                        .spawn((
-                            AbilityCost {
-                                mana_cost: vec![],
-                                tap: true,
-                                additional_cost: vec![],
-                            },
-                            GainMana::Specific {
-                                gains: vec![Mana::Blue],
-                            },
-                        ))
-                        .id(),
-                );
-                abilities.insert(Subtype::Island, id);
+                let add = Rc::new(|db: &mut Database, source| {
+                    AbilityId(
+                        db.abilities
+                            .spawn((
+                                AbilityCost {
+                                    mana_cost: vec![],
+                                    tap: true,
+                                    additional_cost: vec![],
+                                },
+                                GainMana::Specific {
+                                    gains: vec![Mana::Blue],
+                                },
+                                source,
+                            ))
+                            .id(),
+                    )
+                });
+                abilities.insert(Subtype::Island, add);
 
-                let id = AbilityId(
-                    db.abilities
-                        .spawn((
-                            AbilityCost {
-                                mana_cost: vec![],
-                                tap: true,
-                                additional_cost: vec![],
-                            },
-                            GainMana::Specific {
-                                gains: vec![Mana::Black],
-                            },
-                        ))
-                        .id(),
-                );
-                abilities.insert(Subtype::Swamp, id);
+                let add = Rc::new(|db: &mut Database, source| {
+                    AbilityId(
+                        db.abilities
+                            .spawn((
+                                AbilityCost {
+                                    mana_cost: vec![],
+                                    tap: true,
+                                    additional_cost: vec![],
+                                },
+                                GainMana::Specific {
+                                    gains: vec![Mana::Black],
+                                },
+                                source,
+                            ))
+                            .id(),
+                    )
+                });
+                abilities.insert(Subtype::Swamp, add);
 
-                let id = AbilityId(
-                    db.abilities
-                        .spawn((
-                            AbilityCost {
-                                mana_cost: vec![],
-                                tap: true,
-                                additional_cost: vec![],
-                            },
-                            GainMana::Specific {
-                                gains: vec![Mana::Red],
-                            },
-                        ))
-                        .id(),
-                );
-                abilities.insert(Subtype::Mountain, id);
+                let add = Rc::new(|db: &mut Database, source| {
+                    AbilityId(
+                        db.abilities
+                            .spawn((
+                                AbilityCost {
+                                    mana_cost: vec![],
+                                    tap: true,
+                                    additional_cost: vec![],
+                                },
+                                GainMana::Specific {
+                                    gains: vec![Mana::Red],
+                                },
+                                source,
+                            ))
+                            .id(),
+                    )
+                });
+                abilities.insert(Subtype::Mountain, add);
 
-                let id = AbilityId(
-                    db.abilities
-                        .spawn((
-                            AbilityCost {
-                                mana_cost: vec![],
-                                tap: true,
-                                additional_cost: vec![],
-                            },
-                            GainMana::Specific {
-                                gains: vec![Mana::Green],
-                            },
-                        ))
-                        .id(),
-                );
-                abilities.insert(Subtype::Forest, id);
+                let add = Rc::new(|db: &mut Database, source| {
+                    AbilityId(
+                        db.abilities
+                            .spawn((
+                                AbilityCost {
+                                    mana_cost: vec![],
+                                    tap: true,
+                                    additional_cost: vec![],
+                                },
+                                GainMana::Specific {
+                                    gains: vec![Mana::Green],
+                                },
+                                source,
+                            ))
+                            .id(),
+                    )
+                });
+                abilities.insert(Subtype::Forest, add);
 
                 abilities
             })
@@ -165,7 +183,6 @@ impl AbilityId {
             self,
             InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)),
             Targets(targets),
-            // This is a hack to make land types work, probably need something better here
             source,
         ));
     }
@@ -312,4 +329,87 @@ impl AbilityId {
     pub(crate) fn settle(self, db: &mut Database) {
         db.abilities.entity_mut(self.0).insert(Settled);
     }
+
+    pub(crate) fn can_be_activated(
+        self,
+        db: &mut Database,
+        all_players: &AllPlayers,
+        turn: &Turn,
+    ) -> bool {
+        let source = self.source(db);
+        let in_battlefield = source.is_in_location::<OnBattlefield>(db);
+
+        match self.ability(db) {
+            Ability::Activated(ability) => {
+                if !in_battlefield {
+                    return false;
+                }
+
+                let controller = source.controller(db);
+                let is_sorcery = ability
+                    .effects
+                    .iter()
+                    .any(|effect| effect.effect(db, controller).is_sorcery_speed());
+                if is_sorcery {
+                    if controller != turn.active_player() {
+                        return false;
+                    }
+
+                    if !matches!(
+                        turn.phase,
+                        Phase::PreCombatMainPhase | Phase::PostCombatMainPhase
+                    ) {
+                        return false;
+                    }
+
+                    if !Stack::is_empty(db) {
+                        return false;
+                    }
+                }
+
+                can_pay_costs(&ability.cost, source, db, all_players)
+            }
+            Ability::Mana(ability) => {
+                if !in_battlefield {
+                    return false;
+                };
+
+                can_pay_costs(&ability.cost, source, db, all_players)
+            }
+            Ability::ETB { .. } => false,
+        }
+    }
+}
+
+fn can_pay_costs(
+    cost: &AbilityCost,
+    source: CardId,
+    db: &mut Database,
+    all_players: &AllPlayers,
+) -> bool {
+    if cost.tap && source.tapped(db) {
+        return false;
+    }
+    let controller = source.controller(db);
+
+    for cost in cost.additional_cost.iter() {
+        match cost {
+            AdditionalCost::SacrificeThis => {
+                if !source.can_be_sacrificed(db) {
+                    return false;
+                }
+            }
+            AdditionalCost::PayLife(life) => {
+                if all_players[controller].life_total <= life.count as i32 {
+                    return false;
+                }
+            }
+        }
+    }
+
+    if !all_players[controller].can_spend_mana(&cost.mana_cost) {
+        return false;
+    }
+
+    true
 }

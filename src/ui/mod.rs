@@ -15,7 +15,8 @@ use ratatui::{
 
 use crate::{
     in_play::{CardId, CounterId, Database, OnBattlefield},
-    player::Owner,
+    player::{AllPlayers, Owner},
+    turns::Turn,
     ui::horizontal_list::{HorizontalList, HorizontalListState},
 };
 
@@ -239,24 +240,32 @@ impl<'db> StatefulWidget for Battlefield<'db> {
     }
 }
 
-pub struct SelectedAbilities<'db> {
+pub struct SelectedAbilities<'db, 'ap, 't> {
     pub db: &'db mut Database,
+    pub all_players: &'ap AllPlayers,
+    pub turn: &'t Turn,
     pub card: Option<CardId>,
     pub page: u16,
     pub last_hover: Option<(u16, u16)>,
     pub last_click: Option<(u16, u16)>,
 }
 
-impl<'db> StatefulWidget for SelectedAbilities<'db> {
+impl<'db, 'ap, 't> StatefulWidget for SelectedAbilities<'db, 'ap, 't> {
     type State = HorizontalListState;
     fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer, state: &mut Self::State) {
-        let block = Block::default().borders(Borders::ALL);
+        let block = Block::default()
+            .title(" Select an option ")
+            .borders(Borders::ALL);
         let inner_area = block.inner(area);
         block.render(area, buf);
         let area = inner_area;
 
         if let Some(card) = self.card {
-            let abilites = card.activated_abilities(self.db);
+            let abilites = card
+                .activated_abilities(self.db)
+                .into_iter()
+                .filter(|ability| ability.can_be_activated(self.db, self.all_players, self.turn))
+                .collect_vec();
 
             HorizontalList::new(
                 abilites

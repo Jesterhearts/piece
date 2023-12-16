@@ -22,6 +22,7 @@ use crate::{
     stack::{ActiveTarget, Entry, Stack, StackEntry},
     targets::Restriction,
     triggers::{self, trigger_source},
+    turns::Turn,
     types::Type,
 };
 
@@ -1154,6 +1155,7 @@ impl Battlefield {
     pub fn activate_ability(
         db: &mut Database,
         all_players: &mut AllPlayers,
+        turn: &Turn,
         card: CardId,
         index: usize,
     ) -> PendingResults {
@@ -1166,10 +1168,14 @@ impl Battlefield {
         let ability_id = card.activated_abilities(db)[index];
         let ability = ability_id.ability(db);
 
+        if !ability_id.can_be_activated(db, all_players, turn) {
+            return PendingResults::default();
+        }
+
         if let Some(cost) = ability.cost() {
             if cost.tap {
                 if card.tapped(db) {
-                    return PendingResults::default();
+                    unreachable!()
                 }
 
                 results.push_resolved(ActionResult::TapPermanent(card));
@@ -1179,7 +1185,7 @@ impl Battlefield {
                 match cost {
                     AdditionalCost::SacrificeThis => {
                         if !card.can_be_sacrificed(db) {
-                            return PendingResults::default();
+                            unreachable!()
                         }
 
                         results.push_resolved(ActionResult::PermanentToGraveyard(card));
@@ -1194,7 +1200,7 @@ impl Battlefield {
             }
 
             if !all_players[card.controller(db)].spend_mana(&cost.mana_cost) {
-                return PendingResults::default();
+                unreachable!()
             }
         }
 

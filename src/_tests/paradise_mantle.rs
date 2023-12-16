@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::{Phase, Turn},
 };
 
 #[test]
@@ -17,6 +18,8 @@ fn adds_ability() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let equipment = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment);
@@ -26,7 +29,7 @@ fn adds_ability() -> anyhow::Result<()> {
 
     assert_eq!(creature.activated_abilities(&mut db), []);
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, equipment, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 

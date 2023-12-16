@@ -413,15 +413,28 @@ impl Player {
         Stack::move_card_to_stack(db, card)
     }
 
-    pub fn spend_mana(&mut self, mana: &[Mana]) -> bool {
-        let mana_pool = self.mana_pool;
+    pub fn can_spend_mana(&self, mana: &[Mana]) -> bool {
+        let mut mana_pool = self.mana_pool;
 
         for mana in mana.iter().copied() {
-            if !self.mana_pool.spend(mana) {
-                self.mana_pool = mana_pool;
+            if !mana_pool.spend(mana) {
                 return false;
             }
         }
+
+        true
+    }
+
+    pub fn spend_mana(&mut self, mana: &[Mana]) -> bool {
+        let mut mana_pool = self.mana_pool;
+
+        for mana in mana.iter().copied() {
+            if !mana_pool.spend(mana) {
+                return false;
+            }
+        }
+
+        self.mana_pool = mana_pool;
         true
     }
 

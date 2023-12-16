@@ -10,6 +10,7 @@ use crate::{
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
+    turns::{Phase, Turn},
 };
 
 #[test]
@@ -21,11 +22,14 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
 
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
+
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     assert_eq!(
         results,
         PendingResults {
@@ -61,12 +65,14 @@ fn add_mana() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 1);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 1);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 

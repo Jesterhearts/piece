@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::{Phase, Turn},
 };
 
 #[test]
@@ -17,6 +18,8 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
     all_players[player].infinite_mana();
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
@@ -27,7 +30,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let results = Battlefield::add_from_stack_or_hand(&mut db, shade2);
     assert_eq!(results, PendingResults::default());
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, shade1, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, shade1, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

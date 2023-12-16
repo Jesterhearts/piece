@@ -1,11 +1,11 @@
 use crate::{
     battlefield::{Battlefield, PendingResults, ResolutionResult},
+    in_play::CardId,
     in_play::Database,
-    in_play::{AbilityId, CardId},
     load_cards,
     player::AllPlayers,
     stack::Stack,
-    types::Subtype,
+    turns::{Phase, Turn},
 };
 
 #[test]
@@ -14,18 +14,14 @@ fn plains() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Plains");
-    assert_eq!(
-        card.activated_abilities(&mut db),
-        [*AbilityId::land_abilities(&mut db)
-            .get(&Subtype::Plains)
-            .unwrap()]
-    );
 
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -43,17 +39,14 @@ fn island() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
 
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
+
     let card = CardId::upload(&mut db, &cards, player, "Island");
-    assert_eq!(
-        card.activated_abilities(&mut db),
-        [*AbilityId::land_abilities(&mut db)
-            .get(&Subtype::Island)
-            .unwrap()]
-    );
 
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -69,18 +62,14 @@ fn swamp() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Swamp");
-    assert_eq!(
-        card.activated_abilities(&mut db),
-        [*AbilityId::land_abilities(&mut db)
-            .get(&Subtype::Swamp)
-            .unwrap()]
-    );
 
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -97,18 +86,14 @@ fn mountain() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Mountain");
-    assert_eq!(
-        card.activated_abilities(&mut db),
-        [*AbilityId::land_abilities(&mut db)
-            .get(&Subtype::Mountain)
-            .unwrap()]
-    );
 
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -124,18 +109,14 @@ fn forest() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_owned(), 20);
+    let mut turn = Turn::new(&all_players);
+    turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Forest");
-    assert_eq!(
-        card.activated_abilities(&mut db),
-        [*AbilityId::land_abilities(&mut db)
-            .get(&Subtype::Forest)
-            .unwrap()]
-    );
 
     let results = Battlefield::add_from_stack_or_hand(&mut db, card);
     assert_eq!(results, PendingResults::default());
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, card, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
