@@ -8,7 +8,7 @@ use strum::IntoEnumIterator;
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::CastingCost,
-    effects::{AnyEffect, Effect, ReplacementEffect, Token, TokenCreature},
+    effects::{AnyEffect, ReplacementEffect, Token, TokenCreature},
     in_play::{AbilityId, TriggerId},
     newtype_enum::newtype_enum,
     protogen,
@@ -342,7 +342,7 @@ pub struct Card {
 
     pub enchant: Option<Enchant>,
 
-    pub etb_abilities: Vec<Effect>,
+    pub etb_abilities: Vec<AnyEffect>,
     pub effects: Vec<AnyEffect>,
 
     pub static_abilities: Vec<StaticAbility>,
@@ -394,7 +394,7 @@ impl TryFrom<protogen::card::Card> for Card {
             etb_abilities: value
                 .etb_abilities
                 .iter()
-                .map(Effect::try_from)
+                .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             effects: value
                 .effects

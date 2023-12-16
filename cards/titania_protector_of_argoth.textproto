@@ -7,10 +7,6 @@ cost {
 types { legendary {} }
 types { creature {} }
 subtypes { elemental {} }
-oracle_text:  "When Titania, Protector of Argoth "
-              "enters the battlefield, return target "
-              "land card from your graveyard to the "
-              "battlefield."
 power: 5
 toughness: 3
 etb_abilities {
@@ -19,6 +15,10 @@ etb_abilities {
     types { land {} }
     types { basic_land {} }
   }
+  oracle_text:  "When Titania, Protector of Argoth "
+                "enters the battlefield, return target "
+                "land card from your graveyard to the "
+                "battlefield."
 }
 triggered_abilities {
   trigger {

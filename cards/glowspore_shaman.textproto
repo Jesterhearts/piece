@@ -6,10 +6,6 @@ cost {
 types { creature {} }
 subtypes { elf {} }
 subtypes { shaman {} }
-oracle_text:  "When Glowspore Shaman enters the "
-              "battlefield, mill three cards. You may "
-              "put a land card from your graveyard "
-              "on top of your library."
 power: 3
 toughness: 1
 etb_abilities {
@@ -17,6 +13,8 @@ etb_abilities {
     count: 3 
     target { you {} }
   }
+  oracle_text:  "When Glowspore Shaman enters the "
+                "battlefield, mill three cards."
 }
 etb_abilities {
   return_from_graveyard_to_library {
@@ -25,4 +23,6 @@ etb_abilities {
     types { land {} }
     types { basic_land {} }
   }
+  oracle_text:  "You may put a land card from your graveyard "
+                "on top of your library."
 }

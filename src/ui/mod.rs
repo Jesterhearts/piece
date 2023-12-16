@@ -124,6 +124,18 @@ impl<'db> StatefulWidget for Card<'db> {
 
         let oracle_text = source.oracle_text(self.db);
         let has_oracle_text = !oracle_text.is_empty();
+        let etb_text = source
+            .etb_abilities(self.db)
+            .into_iter()
+            .map(|ability| ability.text(self.db))
+            .collect_vec();
+        let has_etb_text = !etb_text.is_empty();
+        let effects_text = source
+            .effects(self.db)
+            .into_iter()
+            .map(|effect| effect.oracle_text)
+            .collect_vec();
+        let has_effects_text = !effects_text.is_empty();
         let triggers = source.triggers_text(self.db);
         let has_triggers = !triggers.is_empty();
         let abilities = source.abilities_text(self.db);
@@ -135,6 +147,10 @@ impl<'db> StatefulWidget for Card<'db> {
 
         let paragraph = std::iter::once(oracle_text)
             .chain(std::iter::once(String::default()).filter(|_| has_oracle_text))
+            .chain(etb_text)
+            .chain(std::iter::once(String::default()).filter(|_| has_etb_text))
+            .chain(effects_text)
+            .chain(std::iter::once(String::default()).filter(|_| has_effects_text))
             .chain(triggers)
             .chain(std::iter::once(String::default()).filter(|_| has_triggers))
             .chain(std::iter::once(abilities))

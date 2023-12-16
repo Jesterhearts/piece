@@ -276,10 +276,7 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
 pub enum Ability {
     Activated(ActivatedAbility),
     Mana(GainManaAbility),
-    ETB {
-        effects: Vec<AnyEffect>,
-        oracle_text: Option<String>,
-    },
+    ETB { effects: Vec<AnyEffect> },
 }
 impl Ability {
     pub fn cost(&self) -> Option<&AbilityCost> {

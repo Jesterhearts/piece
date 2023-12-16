@@ -962,15 +962,7 @@ impl CardId {
                 db,
                 cardid,
                 Ability::ETB {
-                    effects: card
-                        .etb_abilities
-                        .iter()
-                        .map(|effect| AnyEffect {
-                            effect: effect.clone(),
-                            threshold: None,
-                        })
-                        .collect_vec(),
-                    oracle_text: None,
+                    effects: card.etb_abilities.clone(),
                 },
             );
 

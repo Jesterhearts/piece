@@ -2,6 +2,7 @@ use std::{cell::OnceCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
 
 use bevy_ecs::{component::Component, entity::Entity};
 use derive_more::From;
+use itertools::Itertools;
 
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility},
@@ -49,15 +50,8 @@ impl AbilityId {
 
                 Self(entity.id())
             }
-            Ability::ETB {
-                effects,
-                oracle_text,
-            } => {
-                let mut entity = db.abilities.spawn((cardid, Effects(effects)));
-                if let Some(text) = oracle_text.as_ref() {
-                    entity.insert(OracleText(text.clone()));
-                }
-
+            Ability::ETB { effects } => {
+                let entity = db.abilities.spawn((cardid, Effects(effects)));
                 debug!("Uploaded {:?}", entity.id());
                 Self(entity.id())
             }
@@ -227,22 +221,23 @@ impl AbilityId {
                 apply_to_self: apply_to_self.is_some(),
                 oracle_text: text.map(|t| t.0.clone()).unwrap_or_default(),
             })
-        } else if let Some((effects, text)) = db
+        } else if let Some(effects) = db
             .abilities
-            .query::<(Entity, &Effects, Option<&OracleText>)>()
+            .query::<(Entity, &Effects)>()
             .iter(&db.abilities)
-            .filter_map(|(e, effects, text)| {
-                if Self(e) == this {
-                    Some((effects, text))
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |(e, effects)| {
+                    if Self(e) == this {
+                        Some(effects)
+                    } else {
+                        None
+                    }
+                },
+            )
             .next()
         {
             Ability::ETB {
                 effects: effects.0.clone(),
-                oracle_text: text.map(|t| t.0.clone()),
             }
         } else {
             Ability::Mana(this.gain_mana_ability(db))
@@ -276,7 +271,17 @@ impl AbilityId {
                 format!("{}: {}", activated.cost.text(), activated.oracle_text)
             }
             Ability::Mana(ability) => ability.text(),
-            Ability::ETB { oracle_text, .. } => oracle_text.unwrap_or_else(|| "ETB".to_string()),
+            Ability::ETB { effects } => {
+                let text = effects
+                    .iter()
+                    .map(|effect| effect.oracle_text.clone())
+                    .join(", ");
+                if text.is_empty() {
+                    "ETB".to_string()
+                } else {
+                    text
+                }
+            }
         }
     }
 

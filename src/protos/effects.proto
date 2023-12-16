@@ -235,6 +235,7 @@ message Effect {
   }
 
   optional Effect threshold = 20;
+  string oracle_text = 21;
 }
 
 message ReplacementEffect {

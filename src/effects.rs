@@ -565,6 +565,7 @@ pub struct Effects(pub Vec<AnyEffect>);
 pub struct AnyEffect {
     pub effect: Effect,
     pub threshold: Option<Effect>,
+    pub oracle_text: String,
 }
 
 impl TryFrom<&protogen::effects::Effect> for AnyEffect {
@@ -585,6 +586,7 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
                     .and_then(Effect::try_from)
                     .map(Some)
             })?,
+            oracle_text: value.oracle_text.clone(),
         })
     }
 }
