@@ -106,6 +106,7 @@ enum UiState {
         action_list_page: u16,
         hand_selection_state: HorizontalListState,
         hand_list_page: u16,
+        stack_view_state: ListState,
         stack_list_offset: usize,
         player1_mana_list_offset: usize,
         player2_mana_list_offset: usize,
@@ -120,6 +121,7 @@ enum UiState {
         action_list_page: u16,
         hand_selection_state: HorizontalListState,
         hand_list_page: u16,
+        stack_view_state: ListState,
         stack_list_offset: usize,
         player1_mana_list_offset: usize,
         player2_mana_list_offset: usize,
@@ -243,6 +245,7 @@ fn main() -> anyhow::Result<()> {
         action_list_page: 0,
         hand_selection_state: HorizontalListState::default(),
         hand_list_page: 0,
+        stack_view_state: ListState::default(),
         stack_list_offset: 0,
         player1_mana_list_offset: 0,
         player2_mana_list_offset: 0,
@@ -271,6 +274,7 @@ fn main() -> anyhow::Result<()> {
                     action_list_page,
                     hand_selection_state,
                     hand_list_page,
+                    stack_view_state,
                     stack_list_offset,
                     player1_mana_list_offset,
                     player2_mana_list_offset,
@@ -285,6 +289,7 @@ fn main() -> anyhow::Result<()> {
                     action_list_page,
                     hand_selection_state,
                     hand_list_page,
+                    stack_view_state,
                     stack_list_offset,
                     player1_mana_list_offset,
                     player2_mana_list_offset,
@@ -385,7 +390,6 @@ fn main() -> anyhow::Result<()> {
                         *player2_mana_list_offset += 1;
                     }
 
-                    let mut state = ListState::default();
                     frame.render_stateful_widget(
                         List {
                             title: " Stack (Enter) ".to_owned(),
@@ -399,12 +403,12 @@ fn main() -> anyhow::Result<()> {
                             offset: *stack_list_offset,
                         },
                         stack_and_mana[1],
-                        &mut state,
+                        stack_view_state,
                     );
 
-                    if state.selected_up {
+                    if stack_view_state.selected_up {
                         *stack_list_offset = stack_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
+                    } else if stack_view_state.selected_down {
                         *stack_list_offset += 1;
                     }
 
@@ -638,6 +642,18 @@ fn main() -> anyhow::Result<()> {
                     if last_down == Some((mouse.row, mouse.column)) {
                         last_click = Some((mouse.row, mouse.column));
                         if let UiState::Battlefield {
+                            stack_view_state:
+                                ListState {
+                                    hovered_value: Some(_),
+                                    ..
+                                },
+                            ..
+                        } = &state
+                        {
+                            if !Stack::is_empty(&mut db) {
+                                cleanup_stack(&mut db, &mut all_players, &mut state);
+                            }
+                        } else if let UiState::Battlefield {
                             action_selection_state:
                                 HorizontalListState {
                                     hovered: Some(hovered),
@@ -906,45 +922,8 @@ fn main() -> anyhow::Result<()> {
                             if !matches!(state, UiState::SelectingOptions { .. })
                                 && !Stack::is_empty(&mut db)
                             {
-                                let mut pending = Stack::resolve_1(&mut db);
-                                while pending.only_immediate_results() {
-                                    let result = pending.resolve(&mut db, &mut all_players, None);
-                                    if result == ResolutionResult::Complete {
-                                        break;
-                                    }
-                                }
-
-                                if !pending.is_empty() {
-                                    state = UiState::SelectingOptions {
-                                        to_resolve: pending,
-                                        selection_list_state: ListState::default(),
-                                        organizing_stack: false,
-                                        selection_list_offset: 0,
-                                    };
-                                } else {
-                                    let entries = Stack::entries(&mut db)
-                                        .into_iter()
-                                        .map(|(_, entry)| entry)
-                                        .collect_vec();
-                                    if entries.len() > 1 {
-                                        pending.push_unresolved(UnresolvedAction {
-                                            source: None,
-                                            result: UnresolvedActionResult::OrganizeStack(entries),
-                                            valid_targets: vec![],
-                                            choices: Default::default(),
-                                            optional: true,
-                                        });
-                                        state = UiState::SelectingOptions {
-                                            to_resolve: pending,
-                                            selection_list_state: ListState::default(),
-                                            organizing_stack: true,
-                                            selection_list_offset: 0,
-                                        };
-                                    }
-                                }
-                            }
-
-                            if matches!(
+                                cleanup_stack(&mut db, &mut all_players, &mut state);
+                            } else if matches!(
                                 state,
                                 UiState::ExaminingCard(_) | UiState::BattlefieldPreview { .. }
                             ) {
@@ -956,15 +935,14 @@ fn main() -> anyhow::Result<()> {
                                     action_list_page: 0,
                                     hand_selection_state: HorizontalListState::default(),
                                     hand_list_page: 0,
+                                    stack_view_state: ListState::default(),
                                     stack_list_offset: 0,
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
                                     player1_graveyard_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
                                 });
-                            }
-
-                            if let UiState::SelectingOptions {
+                            } else if let UiState::SelectingOptions {
                                 selection_list_state:
                                     ListState {
                                         selected_value: selected,
@@ -988,6 +966,7 @@ fn main() -> anyhow::Result<()> {
                                     action_list_page: 0,
                                     hand_selection_state: HorizontalListState::default(),
                                     hand_list_page: 0,
+                                    stack_view_state: ListState::default(),
                                     stack_list_offset: 0,
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
@@ -1003,6 +982,7 @@ fn main() -> anyhow::Result<()> {
                                     action_list_page: 0,
                                     hand_selection_state: HorizontalListState::default(),
                                     hand_list_page: 0,
+                                    stack_view_state: ListState::default(),
                                     stack_list_offset: 0,
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
@@ -1203,6 +1183,7 @@ fn main() -> anyhow::Result<()> {
                                         action_list_page: 0,
                                         hand_selection_state: HorizontalListState::default(),
                                         hand_list_page: 0,
+                                        stack_view_state: ListState::default(),
                                         stack_list_offset: 0,
                                         player1_mana_list_offset: 0,
                                         player2_mana_list_offset: 0,
@@ -1237,4 +1218,43 @@ fn main() -> anyhow::Result<()> {
     disable_raw_mode()?;
 
     Ok(())
+}
+
+fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut UiState) {
+    let mut pending = Stack::resolve_1(db);
+    while pending.only_immediate_results() {
+        let result = pending.resolve(db, all_players, None);
+        if result == ResolutionResult::Complete {
+            break;
+        }
+    }
+
+    if !pending.is_empty() {
+        *state = UiState::SelectingOptions {
+            to_resolve: pending,
+            selection_list_state: ListState::default(),
+            organizing_stack: false,
+            selection_list_offset: 0,
+        };
+    } else {
+        let entries = Stack::entries(db)
+            .into_iter()
+            .map(|(_, entry)| entry)
+            .collect_vec();
+        if entries.len() > 1 {
+            pending.push_unresolved(UnresolvedAction {
+                source: None,
+                result: UnresolvedActionResult::OrganizeStack(entries),
+                valid_targets: vec![],
+                choices: Default::default(),
+                optional: true,
+            });
+            *state = UiState::SelectingOptions {
+                to_resolve: pending,
+                selection_list_state: ListState::default(),
+                organizing_stack: true,
+                selection_list_offset: 0,
+            };
+        }
+    }
 }
