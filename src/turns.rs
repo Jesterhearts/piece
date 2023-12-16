@@ -4,6 +4,7 @@ use crate::{
     battlefield::{Battlefield, PendingResults},
     in_play::{CardId, Database},
     player::{AllPlayers, Owner},
+    stack::Stack,
     types::Type,
 };
 
@@ -112,6 +113,7 @@ impl Turn {
                 self.phase,
                 Phase::PreCombatMainPhase | Phase::PostCombatMainPhase
             )
+            && Stack::is_empty(db)
         {
             return true;
         }
