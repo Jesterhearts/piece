@@ -891,7 +891,7 @@ impl Stack {
     pub fn move_card_to_stack(db: &mut Database, card: CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
-        if card.needs_targets(db).into_iter().sum::<usize>() > 0 {
+        if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
             let valid_targets = card.valid_targets(db);
             results.push_unresolved(UnresolvedAction::new(
                 db,

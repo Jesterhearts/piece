@@ -733,12 +733,11 @@ impl UnresolvedAction {
                             target.map(|target| std::iter::repeat(target).take(*count))
                         })
                         .flatten()
-                        .map(|target| self.valid_targets[*choosing][target])
-                        .collect_vec();
+                        .count();
 
                     let needs_targets = ability.needs_targets(db)[*choosing];
 
-                    if targets.len() >= needs_targets || targets.len() >= self.valid_targets.len() {
+                    if targets >= needs_targets || targets >= self.valid_targets.len() {
                         *choosing += 1;
 
                         if *choosing == ability.effects(db).len() {
@@ -798,32 +797,36 @@ impl UnresolvedAction {
                         target.map(|target| std::iter::repeat(target).take(*count))
                     })
                     .flatten()
-                    .map(|target| valid_targets[target])
-                    .collect_vec();
+                    .count();
 
-                if targets.is_empty() && valid_targets.len() == 1 {
-                    targets = valid_targets.clone();
+                if targets == 0 && valid_targets.len() == 1 {
+                    targets = 1;
                 }
 
                 let needs_targets = self.source.unwrap().needs_targets(db)[*choosing];
-                if targets.len() >= needs_targets || targets.len() >= valid_targets.len() {
+                if targets >= needs_targets || targets >= valid_targets.len() {
                     *choosing += 1;
                     if *choosing == self.source.unwrap().effects_count(db) {
-                        let targets = self
-                            .choices
-                            .iter()
-                            .enumerate()
-                            .map(|(idx, choices)| {
-                                choices
-                                    .iter()
-                                    .filter_map(|(target, count)| {
-                                        target.map(|target| std::iter::repeat(target).take(*count))
-                                    })
-                                    .flatten()
-                                    .map(|target| self.valid_targets[idx][target])
-                                    .collect_vec()
-                            })
-                            .collect_vec();
+                        let targets = if valid_targets.len() == 1 {
+                            vec![valid_targets.clone()]
+                        } else {
+                            self.choices
+                                .iter()
+                                .enumerate()
+                                .map(|(idx, choices)| {
+                                    choices
+                                        .iter()
+                                        .filter_map(|(target, count)| {
+                                            target.map(|target| {
+                                                std::iter::repeat(target).take(*count)
+                                            })
+                                        })
+                                        .flatten()
+                                        .map(|target| self.valid_targets[idx][target])
+                                        .collect_vec()
+                                })
+                                .collect_vec()
+                        };
 
                         vec![ActionResult::AddCardToStack {
                             card: self.source.unwrap(),
