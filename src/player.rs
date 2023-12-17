@@ -418,7 +418,7 @@ impl Player {
         let mut db = scopeguard::guard(db, Stack::settle);
         if card.is_land(&mut db) {
             self.lands_played += 1;
-            return Battlefield::add_from_stack_or_hand(&mut db, card);
+            return Battlefield::add_from_stack_or_hand(&mut db, card, None);
         }
 
         self.mana_pool = mana_pool;
@@ -453,7 +453,7 @@ impl Player {
     pub fn manifest(&mut self, db: &mut Database) -> PendingResults {
         if let Some(manifested) = self.deck.draw() {
             manifested.manifest(db);
-            Battlefield::add_from_stack_or_hand(db, manifested)
+            Battlefield::add_from_stack_or_hand(db, manifested, None)
         } else {
             PendingResults::default()
         }

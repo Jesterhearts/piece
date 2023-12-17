@@ -22,10 +22,10 @@ fn equipment_works() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let equipment = CardId::upload(&mut db, &cards, player, "+2 Mace");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment, None);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -41,7 +41,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(4));
 
     let creature2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature2);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature2, None);
 
     assert_eq!(creature2.power(&db), Some(4));
     assert_eq!(creature2.toughness(&db), Some(2));
@@ -69,10 +69,10 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let equipment = CardId::upload(&mut db, &cards, player, "+2 Mace");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment, None);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -88,7 +88,7 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(4));
 
     let creature2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature2);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature2, None);
 
     assert_eq!(creature2.power(&db), Some(4));
     assert_eq!(creature2.toughness(&db), Some(2));

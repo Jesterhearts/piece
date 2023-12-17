@@ -307,6 +307,14 @@ impl AbilityId {
             .collect_vec()
     }
 
+    pub fn wants_targets(self, db: &mut Database) -> Vec<usize> {
+        let controller = self.original(db).controller(db);
+        self.effects(db)
+            .into_iter()
+            .map(|effect| effect.effect(db, controller).wants_targets())
+            .collect_vec()
+    }
+
     pub fn source(self, db: &mut Database) -> CardId {
         db.abilities
             .get::<CardId>(self.original(db).0)

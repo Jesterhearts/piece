@@ -46,8 +46,8 @@ pub enum ActionResult {
     RevealCard(CardId),
     MoveToHandFromLibrary(CardId),
     Shuffle(Owner),
-    AddToBattlefield(CardId),
-    AddToBattlefieldSkipReplacementEffects(CardId),
+    AddToBattlefield(CardId, Option<CardId>),
+    AddToBattlefieldSkipReplacementEffects(CardId, Option<CardId>),
     AddToBattlefieldSkipReplacementEffectsFromLibrary {
         card: CardId,
         enters_tapped: bool,
@@ -202,10 +202,14 @@ impl Battlefield {
         results
     }
 
-    pub fn add_from_stack_or_hand(db: &mut Database, source_card_id: CardId) -> PendingResults {
+    pub fn add_from_stack_or_hand(
+        db: &mut Database,
+        source_card_id: CardId,
+        target: Option<CardId>,
+    ) -> PendingResults {
         let mut results =
-            match Self::start_adding_to_battlefield(db, source_card_id, false, |card, _| {
-                ActionResult::AddToBattlefieldSkipReplacementEffects(card)
+            match Self::start_adding_to_battlefield(db, source_card_id, false, target, |card, _| {
+                ActionResult::AddToBattlefieldSkipReplacementEffects(card, target)
             }) {
                 PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
                 PartialAddToBattlefieldResult::Continue(results) => results,
@@ -225,6 +229,7 @@ impl Battlefield {
             db,
             source_card_id,
             enters_tapped,
+            None,
             |card, enters_tapped| ActionResult::AddToBattlefieldSkipReplacementEffectsFromLibrary {
                 card,
                 enters_tapped,
@@ -243,6 +248,7 @@ impl Battlefield {
         db: &mut Database,
         source_card_id: CardId,
         enters_tapped: bool,
+        target: Option<CardId>,
         construct_skip_replacement: impl FnOnce(CardId, bool) -> ActionResult,
     ) -> PartialAddToBattlefieldResult {
         let mut results = PendingResults::default();
@@ -271,7 +277,7 @@ impl Battlefield {
             }
         }
 
-        move_card_to_battlefield(db, source_card_id, enters_tapped, &mut results);
+        move_card_to_battlefield(db, source_card_id, enters_tapped, &mut results, target);
 
         PartialAddToBattlefieldResult::Continue(results)
     }
@@ -492,7 +498,7 @@ impl Battlefield {
             let needs_targets = ability_id.needs_targets(db).into_iter().sum::<usize>() > 0;
 
             let has_targets = ability_id
-                .needs_targets(db)
+                .wants_targets(db)
                 .into_iter()
                 .enumerate()
                 .all(|(idx, wants)| valid_targets[idx].len() >= wants);
@@ -620,7 +626,7 @@ impl Battlefield {
                     let ActiveTarget::Graveyard { id: target } = target else {
                         unreachable!()
                     };
-                    pending.extend(Self::add_from_stack_or_hand(db, *target));
+                    pending.extend(Self::add_from_stack_or_hand(db, *target, None));
                 }
 
                 return pending;
@@ -635,13 +641,13 @@ impl Battlefield {
             }
             ActionResult::CreateToken { source, token } => {
                 let card = CardId::upload_token(db, (*source).into(), token.clone());
-                return Battlefield::add_from_stack_or_hand(db, card);
+                return Battlefield::add_from_stack_or_hand(db, card, None);
             }
             ActionResult::DrawCards { target, count } => {
                 let _ = all_players[*target].draw(db, *count);
             }
-            ActionResult::AddToBattlefield(card) => {
-                return Battlefield::add_from_stack_or_hand(db, *card);
+            ActionResult::AddToBattlefield(card, target) => {
+                return Battlefield::add_from_stack_or_hand(db, *card, *target);
             }
             ActionResult::StackToGraveyard(card) => {
                 return Battlefield::stack_to_graveyard(db, *card);
@@ -827,9 +833,9 @@ impl Battlefield {
                     "Should have validated mana could be spent before spending."
                 );
             }
-            ActionResult::AddToBattlefieldSkipReplacementEffects(card) => {
+            ActionResult::AddToBattlefieldSkipReplacementEffects(card, target) => {
                 let mut results = PendingResults::default();
-                move_card_to_battlefield(db, *card, false, &mut results);
+                move_card_to_battlefield(db, *card, false, &mut results, *target);
                 complete_add_from_stack_or_hand(db, *card, &mut results);
                 return results;
             }
@@ -838,7 +844,7 @@ impl Battlefield {
                 enters_tapped,
             } => {
                 let mut results = PendingResults::default();
-                move_card_to_battlefield(db, *card, *enters_tapped, &mut results);
+                move_card_to_battlefield(db, *card, *enters_tapped, &mut results, None);
                 complete_add_from_library(db, *card, &mut results);
                 return results;
             }
@@ -1188,16 +1194,10 @@ fn move_card_to_battlefield(
     source_card_id: CardId,
     enters_tapped: bool,
     results: &mut PendingResults,
+    target: Option<CardId>,
 ) {
     if let Some(aura) = source_card_id.aura(db) {
-        let valid_targets = source_card_id.valid_targets(db);
-        results.push_unresolved(UnresolvedAction::new(
-            db,
-            Some(source_card_id),
-            UnresolvedActionResult::Attach(aura),
-            valid_targets,
-            false,
-        ));
+        target.unwrap().apply_aura(db, aura);
     }
     for ability in source_card_id.static_abilities(db) {
         match ability {

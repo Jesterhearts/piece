@@ -20,7 +20,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
 
     assert!(card.tapped(&mut db));
@@ -48,7 +48,7 @@ fn tutors() -> anyhow::Result<()> {
     all_players[player].deck.place_on_top(&mut db, annul);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
 
     card.untap(&mut db);

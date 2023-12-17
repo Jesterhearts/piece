@@ -19,12 +19,12 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, elesh);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, elesh, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
     assert_eq!(results, PendingResults::default());
 
     assert_eq!(elesh.power(&db), Some(4));

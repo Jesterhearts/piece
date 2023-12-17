@@ -29,7 +29,7 @@ fn etb() -> anyhow::Result<()> {
 
     let recruiter = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
     recruiter.move_to_hand(&mut db);
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, recruiter);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, recruiter, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

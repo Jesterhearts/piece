@@ -21,11 +21,11 @@ fn adds_land_types() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, land);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, land, None);
     assert_eq!(results, PendingResults::default());
 
     let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

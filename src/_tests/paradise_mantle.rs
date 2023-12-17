@@ -22,10 +22,10 @@ fn adds_ability() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let equipment = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, equipment, None);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
 
     assert_eq!(creature.activated_abilities(&mut db), []);
 

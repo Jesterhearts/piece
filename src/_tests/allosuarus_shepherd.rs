@@ -26,7 +26,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
@@ -88,7 +88,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [ActionResult::AddToBattlefield(card)].into());
+    assert_eq!(results, [ActionResult::AddToBattlefield(card, None)].into());
 
     Ok(())
 }
@@ -106,7 +106,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card1);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     assert_eq!(results, PendingResults::default());
 
     card2.move_to_stack(&mut db, vec![]);
@@ -126,7 +126,10 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let results = Stack::resolve_1(&mut db);
-    assert_eq!(results, [ActionResult::AddToBattlefield(card2)].into());
+    assert_eq!(
+        results,
+        [ActionResult::AddToBattlefield(card2, None)].into()
+    );
 
     Ok(())
 }
@@ -145,7 +148,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card1);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     assert_eq!(results, PendingResults::default());
 
     card2.move_to_stack(&mut db, vec![]);

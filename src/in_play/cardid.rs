@@ -619,6 +619,14 @@ impl CardId {
         self.apply_modifiers_layered(db);
     }
 
+    pub fn effects_count(self, db: &mut Database) -> usize {
+        let aura_count = self.aura(db).map(|_| 1).unwrap_or_default();
+        aura_count
+            + db.get::<Effects>(self.0)
+                .map(|effects| effects.len())
+                .unwrap_or_default()
+    }
+
     pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
         db.get::<Effects>(self.0).cloned().unwrap_or_default().0
     }
@@ -626,20 +634,30 @@ impl CardId {
     pub fn needs_targets(self, db: &mut Database) -> Vec<usize> {
         let effects = self.effects(db);
         let controller = self.controller(db);
-        effects
-            .into_iter()
-            .map(|effect| effect.into_effect(db, controller))
-            .map(|effect| effect.needs_targets())
+        let aura_targets = self.aura(db).map(|_| 1);
+        std::iter::once(())
+            .filter_map(|()| aura_targets)
+            .chain(
+                effects
+                    .into_iter()
+                    .map(|effect| effect.into_effect(db, controller))
+                    .map(|effect| effect.needs_targets()),
+            )
             .collect_vec()
     }
 
     pub fn wants_targets(&self, db: &mut Database) -> Vec<usize> {
         let effects = self.effects(db);
         let controller = self.controller(db);
-        effects
-            .into_iter()
-            .map(|effect| effect.into_effect(db, controller))
-            .map(|effect| effect.wants_targets())
+        let aura_targets = self.aura(db).map(|_| 1);
+        std::iter::once(())
+            .filter_map(|()| aura_targets)
+            .chain(
+                effects
+                    .into_iter()
+                    .map(|effect| effect.into_effect(db, controller))
+                    .map(|effect| effect.wants_targets()),
+            )
             .collect_vec()
     }
 

@@ -19,7 +19,7 @@ fn plains() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Plains");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -44,7 +44,7 @@ fn island() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Island");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -67,7 +67,7 @@ fn swamp() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Swamp");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -91,7 +91,7 @@ fn mountain() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Mountain");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -114,7 +114,7 @@ fn forest() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Forest");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);

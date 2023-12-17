@@ -168,26 +168,26 @@ fn main() -> anyhow::Result<()> {
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land3 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land1);
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land2);
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land3);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, land1, None);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, land2, None);
+    let _ = Battlefield::add_from_stack_or_hand(&mut db, land3, None);
 
     let card1 = CardId::upload(&mut db, &cards, player1, "Mace of the Valiant");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::TryAgain
@@ -198,21 +198,21 @@ fn main() -> anyhow::Result<()> {
     );
 
     let card4 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card4);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card4, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card5 = CardId::upload(&mut db, &cards, player1, "Allosaurus Shepherd");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card5);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card5, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
     let card6 = CardId::upload(&mut db, &cards, player1, "Krosan Verge");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card6);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card6, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete

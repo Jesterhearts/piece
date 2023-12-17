@@ -24,11 +24,11 @@ fn etb_clones() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, creature);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
     assert_eq!(results, PendingResults::default());
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, None);
     assert_eq!(
         results,
         PendingResults {
@@ -47,7 +47,9 @@ fn etb_clones() -> anyhow::Result<()> {
                 PendingResult {
                     apply_immediately: vec![],
                     to_resolve: Default::default(),
-                    then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(clone)],
+                    then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(
+                        clone, None
+                    )],
                 }
             ]),
             applied: false,
@@ -73,7 +75,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, None);
     assert_eq!(
         results,
         PendingResults {
@@ -92,7 +94,9 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
                 PendingResult {
                     apply_immediately: vec![],
                     to_resolve: Default::default(),
-                    then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(clone)],
+                    then_apply: vec![ActionResult::AddToBattlefieldSkipReplacementEffects(
+                        clone, None
+                    )],
                 }
             ]),
             applied: false,

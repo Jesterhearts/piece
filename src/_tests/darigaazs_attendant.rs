@@ -24,7 +24,7 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let attendant = CardId::upload(&mut db, &cards, player, "Darigaaz's Attendant");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, attendant);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, attendant, None);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, attendant, 0);

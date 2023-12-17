@@ -20,11 +20,11 @@ fn mace() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
     assert_eq!(results, PendingResults::default());
 
     let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, mace);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, mace, None);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, mace, 0);
@@ -41,7 +41,7 @@ fn mace() -> anyhow::Result<()> {
     assert_eq!(bear.toughness(&db), Some(2));
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

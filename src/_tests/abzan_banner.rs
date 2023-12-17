@@ -24,7 +24,7 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
@@ -78,7 +78,7 @@ fn add_mana() -> anyhow::Result<()> {
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card);
+    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     assert_eq!(results, PendingResults::default());
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 1);

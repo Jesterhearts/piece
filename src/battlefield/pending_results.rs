@@ -294,7 +294,7 @@ impl UnresolvedActionResult {
             UnresolvedActionResult::Effect(_) => 1,
             UnresolvedActionResult::Attach(_) => 1,
             UnresolvedActionResult::Ability { ability, .. } => ability.effects(db).len(),
-            UnresolvedActionResult::AddCardToStack { .. } => source.unwrap().effects(db).len(),
+            UnresolvedActionResult::AddCardToStack { .. } => source.unwrap().effects_count(db),
             UnresolvedActionResult::OrganizeStack(_) => 1,
             UnresolvedActionResult::SacrificePermanent => 1,
         }
@@ -359,17 +359,7 @@ impl UnresolvedAction {
                     self.valid_targets = self.source.unwrap().valid_targets(db);
                 }
                 UnresolvedActionResult::AddCardToStack { .. } => {
-                    let creatures = Battlefield::creatures(db);
-
-                    let mut valid_targets = vec![];
-                    for effect in source.effects(db) {
-                        let effect = effect.into_effect(db, controller);
-
-                        valid_targets
-                            .push(source.targets_for_effect(db, controller, &effect, &creatures));
-                    }
-
-                    self.valid_targets = valid_targets;
+                    self.valid_targets = self.source.unwrap().valid_targets(db);
                 }
                 UnresolvedActionResult::OrganizeStack(_) => {}
                 UnresolvedActionResult::SacrificePermanent => {}
@@ -818,7 +808,7 @@ impl UnresolvedAction {
                 let needs_targets = self.source.unwrap().needs_targets(db)[*choosing];
                 if targets.len() >= needs_targets || targets.len() >= valid_targets.len() {
                     *choosing += 1;
-                    if *choosing == self.source.unwrap().effects(db).len() {
+                    if *choosing == self.source.unwrap().effects_count(db) {
                         let targets = self
                             .choices
                             .iter()

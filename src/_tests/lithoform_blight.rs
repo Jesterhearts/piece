@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
+use pretty_assertions::assert_eq;
+
 use crate::{
-    battlefield::{Battlefield, ResolutionResult},
+    battlefield::ResolutionResult,
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
+    stack::Stack,
 };
 
 #[test]
@@ -18,8 +21,12 @@ fn works() -> anyhow::Result<()> {
     land.move_to_battlefield(&mut db);
 
     let lithoform = CardId::upload(&mut db, &cards, player, "Lithoform Blight");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, lithoform);
+    let mut results = Stack::move_card_to_stack(&mut db, lithoform);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
+    assert_eq!(result, ResolutionResult::Complete);
+
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
