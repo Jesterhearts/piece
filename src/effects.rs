@@ -422,6 +422,7 @@ pub enum Effect {
     ModifyCreature(BattlefieldModifier),
     ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
     ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
+    TargetToTopOfLibrary { restrictions: Vec<Restriction> },
     TutorLibrary(TutorLibrary),
     UntapThis,
 }
@@ -470,6 +471,7 @@ impl Effect {
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,
             Effect::UntapThis => 0,
+            Effect::TargetToTopOfLibrary { .. } => 1,
         }
     }
 
@@ -500,6 +502,7 @@ impl Effect {
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,
             Effect::UntapThis => 0,
+            Effect::TargetToTopOfLibrary { .. } => 1,
         }
     }
 }
@@ -587,6 +590,15 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Ok(Self::RevealEachTopOfLibrary(reveal.try_into()?))
             }
             protogen::effects::effect::Effect::UntapThis(_) => Ok(Self::UntapThis),
+            protogen::effects::effect::Effect::TargetToTopOfLibrary(to_top) => {
+                Ok(Self::TargetToTopOfLibrary {
+                    restrictions: to_top
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                })
+            }
         }
     }
 }

@@ -742,14 +742,22 @@ impl PendingResults {
                 let card = self.source.unwrap().card(db);
                 let modifier = ModifierId::upload_temporary_modifier(db, card, &modifier);
                 self.settled_effects
-                    .push_front(ActionResult::ModifyCreatures { targets, modifier })
+                    .push_front(ActionResult::ModifyCreatures { targets, modifier });
             }
-            Effect::ReturnFromGraveyardToBattlefield(_) => self
-                .settled_effects
-                .push_front(ActionResult::ReturnFromGraveyardToBattlefield { targets }),
-            Effect::ReturnFromGraveyardToLibrary(_) => self
-                .settled_effects
-                .push_front(ActionResult::ReturnFromGraveyardToLibrary { targets }),
+            Effect::ReturnFromGraveyardToBattlefield(_) => {
+                self.settled_effects
+                    .push_front(ActionResult::ReturnFromGraveyardToBattlefield { targets });
+            }
+            Effect::ReturnFromGraveyardToLibrary(_) => {
+                self.settled_effects
+                    .push_front(ActionResult::ReturnFromGraveyardToLibrary { targets });
+            }
+            Effect::TargetToTopOfLibrary { .. } => {
+                self.settled_effects
+                    .push_front(ActionResult::ReturnFromBattlefieldToLibrary {
+                        target: targets.pop().unwrap(),
+                    });
+            }
             Effect::TutorLibrary(TutorLibrary {
                 destination,
                 reveal,

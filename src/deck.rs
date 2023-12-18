@@ -52,8 +52,9 @@ impl Deck {
     }
 
     pub fn place_on_top(&mut self, db: &mut Database, card: CardId) {
-        card.move_to_library(db);
-        self.cards.push_back(card);
+        if card.move_to_library(db) {
+            self.cards.push_back(card);
+        }
     }
 
     pub fn draw(&mut self) -> Option<CardId> {

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package targets;
 
+import "color.proto";
 import "controller.proto";
 import "types.proto";
 
@@ -32,6 +33,9 @@ message Restriction {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
   }
+  message OfColor {
+    repeated color.Color colors = 1;
+  }
   message Self {
   }
   message Toughness {
@@ -46,8 +50,9 @@ message Restriction {
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 1;
     ControllerHandEmpty controller_hand_empty = 2;
     NotSelf not_self = 3;
-    OfType of_type = 4;
-    Self self = 5;
-    Toughness toughness = 6;
+    OfColor of_color = 4;
+    OfType of_type = 5;
+    Self self = 6;
+    Toughness toughness = 7;
   }
 }

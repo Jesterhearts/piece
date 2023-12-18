@@ -140,6 +140,9 @@ pub enum ActionResult {
     MoveFromLibraryToTopOfLibrary(CardId),
     SpendMana(Controller, Vec<Mana>),
     Untap(CardId),
+    ReturnFromBattlefieldToLibrary {
+        target: ActiveTarget,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -565,6 +568,13 @@ impl Battlefield {
 
                 return pending;
             }
+            ActionResult::ReturnFromBattlefieldToLibrary { target } => {
+                let ActiveTarget::Battlefield { id: target } = target else {
+                    unreachable!()
+                };
+
+                all_players[target.owner(db)].deck.place_on_top(db, *target);
+            }
             ActionResult::LoseLife { target, count } => {
                 all_players[*target].life_total -= *count as i32;
             }
@@ -909,6 +919,15 @@ impl Battlefield {
                     count: 1,
                 });
             }
+            Effect::ReturnSelfToHand => {
+                results.push_settled(ActionResult::HandFromBattlefield(source))
+            }
+            Effect::RevealEachTopOfLibrary(reveal) => {
+                results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
+            }
+            Effect::UntapThis => {
+                results.push_settled(ActionResult::Untap(source));
+            }
             Effect::CopyOfAnyCreatureNonTargeting
             | Effect::TutorLibrary(_)
             | Effect::CounterSpell { .. }
@@ -920,22 +939,14 @@ impl Battlefield {
             | Effect::ModifyCreature(_)
             | Effect::ReturnFromGraveyardToBattlefield(_)
             | Effect::ReturnFromGraveyardToLibrary(_)
-            | Effect::CreateTokenCopy { .. } => {
+            | Effect::CreateTokenCopy { .. }
+            | Effect::TargetToTopOfLibrary { .. } => {
                 let creatures = Self::creatures(db);
                 let valid_targets = source.targets_for_effect(db, controller, &effect, &creatures);
                 results.push_choose_targets(ChooseTargets::new(
                     EffectOrAura::Effect(effect),
                     valid_targets,
                 ));
-            }
-            Effect::ReturnSelfToHand => {
-                results.push_settled(ActionResult::HandFromBattlefield(source))
-            }
-            Effect::RevealEachTopOfLibrary(reveal) => {
-                results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
-            }
-            Effect::UntapThis => {
-                results.push_settled(ActionResult::Untap(source));
             }
         }
     }
@@ -994,7 +1005,8 @@ impl Battlefield {
             | Effect::CopyOfAnyCreatureNonTargeting
             | Effect::RevealEachTopOfLibrary(_)
             | Effect::UntapThis
-            | Effect::ReturnSelfToHand => {
+            | Effect::ReturnSelfToHand
+            | Effect::TargetToTopOfLibrary { .. } => {
                 unreachable!()
             }
         }

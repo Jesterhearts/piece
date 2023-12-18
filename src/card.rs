@@ -220,7 +220,7 @@ pub struct AddColors(pub HashSet<Color>);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct RemoveAllColors;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum Color {
     White,
     Blue,

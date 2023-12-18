@@ -179,9 +179,10 @@ impl CardId {
         }
     }
 
-    pub fn move_to_library(self, db: &mut Database) {
+    pub fn move_to_library(self, db: &mut Database) -> bool {
         if self.is_token(db) {
             db.cards.despawn(self.0);
+            false
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
@@ -201,6 +202,7 @@ impl CardId {
                 .remove::<InGraveyard>()
                 .remove::<InExile>()
                 .insert(InLibrary);
+            true
         }
     }
 
@@ -754,6 +756,12 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::OfColor(colors) => {
+                    let self_colors = self.colors(db);
+                    if self_colors.is_disjoint(colors) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1221,6 +1229,18 @@ impl CardId {
                 for creature in creatures.iter() {
                     if creature.can_be_targeted(db, controller) {
                         targets.push(ActiveTarget::Battlefield { id: *creature });
+                    }
+                }
+            }
+            Effect::TargetToTopOfLibrary { restrictions } => {
+                for target in in_play::cards::<OnBattlefield>(db) {
+                    if target.passes_restrictions(
+                        db,
+                        self,
+                        ControllerRestriction::Any,
+                        restrictions,
+                    ) {
+                        targets.push(ActiveTarget::Battlefield { id: target });
                     }
                 }
             }

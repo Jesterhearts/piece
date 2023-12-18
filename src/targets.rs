@@ -6,6 +6,7 @@ use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
+    card::Color,
     controller::ControllerRestriction,
     protogen,
     types::{Subtype, Type},
@@ -79,6 +80,7 @@ pub struct Restrictions(pub Vec<Restriction>);
 pub enum Restriction {
     NotSelf,
     Self_,
+    OfColor(HashSet<Color>),
     OfType {
         types: HashSet<Type>,
         subtypes: HashSet<Subtype>,
@@ -118,6 +120,9 @@ impl Restriction {
                 "controller controls black or green".to_string()
             }
             Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
+            Restriction::OfColor(colors) => {
+                format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
+            }
         }
     }
 }
@@ -162,6 +167,13 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::ControllerHandEmpty(_) => {
                 Ok(Self::ControllerHandEmpty)
             }
+            protogen::targets::restriction::Restriction::OfColor(colors) => Ok(Self::OfColor(
+                colors
+                    .colors
+                    .iter()
+                    .map(Color::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            )),
         }
     }
 }

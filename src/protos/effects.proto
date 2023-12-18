@@ -213,6 +213,10 @@ message RevealEachTopOfLibrary {
 
 message UntapThis {}
 
+message TargetToTopOfLibrary {
+  repeated targets.Restriction restrictions = 1;
+}
+
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
@@ -233,12 +237,13 @@ message Effect {
     ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 16;
     ReturnSelfToHand return_self_to_hand = 17;
     RevealEachTopOfLibrary reveal_each_top_of_library = 18;
-    TutorLibrary tutor_library = 19;
-    UntapThis untap_this = 20;
+    TargetToTopOfLibrary target_to_top_of_library = 19;
+    TutorLibrary tutor_library = 20;
+    UntapThis untap_this = 21;
   }
 
-  optional Effect threshold = 21;
-  string oracle_text = 22;
+  optional Effect threshold = 22;
+  string oracle_text = 23;
 }
 
 message ReplacementEffect {

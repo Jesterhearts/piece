@@ -712,6 +712,59 @@ impl Stack {
                         }
                     }
                 }
+                Effect::TargetToTopOfLibrary { restrictions } => {
+                    for target in targets {
+                        match target {
+                            ActiveTarget::Battlefield { id } => {
+                                if !id.is_in_location::<OnBattlefield>(db) {
+                                    // Permanent no longer on battlefield.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return [ActionResult::StackToGraveyard(resolving_card)]
+                                            .into();
+                                    } else {
+                                        return PendingResults::default();
+                                    }
+                                }
+
+                                if !id.can_be_targeted(db, controller) {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return [ActionResult::StackToGraveyard(resolving_card)]
+                                            .into();
+                                    } else {
+                                        return PendingResults::default();
+                                    }
+                                }
+
+                                if !id.passes_restrictions(
+                                    db,
+                                    source,
+                                    ControllerRestriction::Any,
+                                    &restrictions,
+                                ) {
+                                    // Card is no longer a valid target.
+                                    if let Some(resolving_card) = resolving_card {
+                                        return [ActionResult::StackToGraveyard(resolving_card)]
+                                            .into();
+                                    } else {
+                                        return PendingResults::default();
+                                    }
+                                }
+
+                                results.push_settled(
+                                    ActionResult::ReturnFromBattlefieldToLibrary { target },
+                                );
+                            }
+                            _ => {
+                                if let Some(resolving_card) = resolving_card {
+                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
+                                } else {
+                                    return PendingResults::default();
+                                }
+                            }
+                        }
+                    }
+                }
                 Effect::Equip(modifiers) => {
                     match targets.into_iter().next().unwrap() {
                         ActiveTarget::Stack { .. } => {
