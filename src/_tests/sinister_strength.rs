@@ -20,8 +20,9 @@ fn aura_works() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let aura = CardId::upload(&mut db, &cards, player, "Sinister Strength");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, aura, Some(creature));
@@ -33,8 +34,9 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(creature.colors(&mut db), HashSet::from([Color::Black]));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(card2.power(&db), Some(4));
     assert_eq!(card2.toughness(&db), Some(2));

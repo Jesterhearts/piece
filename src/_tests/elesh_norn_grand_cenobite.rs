@@ -24,8 +24,9 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(elesh.power(&db), Some(4));
     assert_eq!(elesh.toughness(&db), Some(7));

@@ -1,5 +1,7 @@
+use pretty_assertions::assert_eq;
+
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -19,9 +21,12 @@ fn plains() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Plains");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -44,9 +49,12 @@ fn island() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Island");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -67,9 +75,12 @@ fn swamp() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Swamp");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -91,9 +102,12 @@ fn mountain() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Mountain");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -114,9 +128,12 @@ fn forest() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Forest");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

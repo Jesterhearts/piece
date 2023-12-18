@@ -29,34 +29,38 @@ fn creates_tokens() -> anyhow::Result<()> {
     let results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
-        [
-            ActionResult::CreateToken {
-                source: player.into(),
-                token: Token::Creature(TokenCreature {
-                    name: "Dinosaur".to_string(),
-                    types: HashSet::from([Type::Creature]),
-                    subtypes: HashSet::from([Subtype::Dinosaur]),
-                    colors: HashSet::from([Color::Red]),
-                    keywords: HashSet::from([Keyword::Haste]),
-                    power: 1,
-                    toughness: 1
-                })
-            },
-            ActionResult::CreateToken {
-                source: player.into(),
-                token: Token::Creature(TokenCreature {
-                    name: "Human Soldier".to_string(),
-                    types: HashSet::from([Type::Creature]),
-                    subtypes: HashSet::from([Subtype::Human, Subtype::Soldier]),
-                    colors: HashSet::from([Color::White]),
-                    keywords: HashSet::default(),
-                    power: 1,
-                    toughness: 1,
-                })
-            },
-            ActionResult::StackToGraveyard(card),
-        ]
-        .into()
+        (
+            card,
+            true,
+            [
+                ActionResult::CreateToken {
+                    source: player.into(),
+                    token: Token::Creature(TokenCreature {
+                        name: "Dinosaur".to_string(),
+                        types: HashSet::from([Type::Creature]),
+                        subtypes: HashSet::from([Subtype::Dinosaur]),
+                        colors: HashSet::from([Color::Red]),
+                        keywords: HashSet::from([Keyword::Haste]),
+                        power: 1,
+                        toughness: 1
+                    })
+                },
+                ActionResult::CreateToken {
+                    source: player.into(),
+                    token: Token::Creature(TokenCreature {
+                        name: "Human Soldier".to_string(),
+                        types: HashSet::from([Type::Creature]),
+                        subtypes: HashSet::from([Subtype::Human, Subtype::Soldier]),
+                        colors: HashSet::from([Color::White]),
+                        keywords: HashSet::default(),
+                        power: 1,
+                        toughness: 1,
+                    })
+                },
+                ActionResult::StackToGraveyard(card),
+            ]
+        )
+            .into()
     );
 
     Ok(())

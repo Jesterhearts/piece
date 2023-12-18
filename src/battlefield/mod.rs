@@ -29,7 +29,8 @@ use crate::{
 };
 
 pub use pending_results::{
-    PendingResult, PendingResults, ResolutionResult, UnresolvedAction, UnresolvedActionResult,
+    ChooseTargets, EffectOrAura, PayCost, PendingResults, ResolutionResult, SacrificePermanent,
+    Source, SpendMana,
 };
 
 #[must_use]
@@ -60,10 +61,6 @@ pub enum ActionResult {
     ApplyToBattlefield(ModifierId),
     ApplyAuraToTarget {
         aura: AuraId,
-        target: ActiveTarget,
-    },
-    ApplyModifierToTarget {
-        modifier: ModifierId,
         target: ActiveTarget,
     },
     ExileTarget(ActiveTarget),
@@ -251,7 +248,8 @@ impl Battlefield {
         target: Option<CardId>,
         construct_skip_replacement: impl FnOnce(CardId, bool) -> ActionResult,
     ) -> PartialAddToBattlefieldResult {
-        let mut results = PendingResults::default();
+        let mut results = PendingResults::new(Source::Card(source_card_id));
+
         ReplacementEffectId::activate_all_for_card(db, source_card_id);
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
             let source = replacement.source(db);
@@ -272,7 +270,7 @@ impl Battlefield {
 
             if !results.only_immediate_results() {
                 source_card_id.apply_modifiers_layered(db);
-                results.push_deferred(construct_skip_replacement(source_card_id, enters_tapped));
+                results.push_settled(construct_skip_replacement(source_card_id, enters_tapped));
                 return PartialAddToBattlefieldResult::NeedsResolution(results);
             }
         }
@@ -399,8 +397,6 @@ impl Battlefield {
             return PendingResults::default();
         }
 
-        let mut results = PendingResults::default();
-
         let ability_id = card.activated_abilities(db)[index];
         let ability = ability_id.ability(db);
 
@@ -408,13 +404,14 @@ impl Battlefield {
             return PendingResults::default();
         }
 
+        let mut results = PendingResults::new(pending_results::Source::Ability(ability_id));
         if let Some(cost) = ability.cost() {
             if cost.tap {
                 if card.tapped(db) {
                     unreachable!()
                 }
 
-                results.push_deferred(ActionResult::TapPermanent(card));
+                results.push_settled(ActionResult::TapPermanent(card));
             }
 
             for cost in cost.additional_cost.iter() {
@@ -424,104 +421,40 @@ impl Battlefield {
                             unreachable!()
                         }
 
-                        results.push_deferred(ActionResult::PermanentToGraveyard(card));
+                        results.push_settled(ActionResult::PermanentToGraveyard(card));
                     }
                     AdditionalCost::PayLife(PayLife { count }) => {
-                        results.push_deferred(ActionResult::LoseLife {
+                        results.push_settled(ActionResult::LoseLife {
                             target: card.controller(db),
                             count: *count,
                         })
                     }
                     AdditionalCost::SacrificePermanent(restrictions) => {
-                        let controller = card.controller(db);
-                        let valid_targets = controller
-                            .get_cards::<OnBattlefield>(db)
-                            .into_iter()
-                            .filter(|target| {
-                                target.passes_restrictions(
-                                    db,
-                                    card,
-                                    ControllerRestriction::You,
-                                    restrictions,
-                                )
-                            })
-                            .map(|card| ActiveTarget::Battlefield { id: card })
-                            .collect_vec();
-                        results.push_unresolved(UnresolvedAction::new(
-                            db,
-                            Some(card),
-                            UnresolvedActionResult::SacrificePermanent,
-                            vec![valid_targets],
-                            false,
-                        ))
+                        results.push_pay_costs(PayCost::SacrificePermanent(
+                            SacrificePermanent::new(restrictions.clone()),
+                        ));
                     }
                 }
             }
 
-            results.push_deferred(ActionResult::SpendMana(
-                card.controller(db),
-                cost.mana_cost.clone(),
-            ));
+            results.push_pay_costs(PayCost::SpendMana(SpendMana::new(cost.mana_cost.clone())));
         }
 
         if let Ability::Mana(gain) = ability {
-            match gain.gain {
-                GainMana::Specific { gains } => {
-                    results.push_deferred(ActionResult::GainMana {
-                        target: card.controller(db),
-                        gain: gains,
-                    });
-                }
-                GainMana::Choice { .. } => {
-                    results.push_unresolved(UnresolvedAction::new(
-                        db,
-                        Some(card),
-                        UnresolvedActionResult::Ability {
-                            ability: ability_id,
-                            choosing: 0,
-                        },
-                        vec![],
-                        false,
-                    ));
-                }
+            if let GainMana::Choice { .. } = gain.gain {
+                results.push_choose_mode();
             }
         } else {
+            results.add_to_stack();
             let controller = card.controller(db);
 
             let creatures = Self::creatures(db);
-            let mut valid_targets = vec![];
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                valid_targets.push(card.targets_for_effect(db, controller, &effect, &creatures));
-            }
+                let targets = card.targets_for_effect(db, controller, &effect, &creatures);
 
-            let needs_targets = ability_id.needs_targets(db).into_iter().sum::<usize>() > 0;
-
-            let has_targets = ability_id
-                .wants_targets(db)
-                .into_iter()
-                .enumerate()
-                .all(|(idx, wants)| valid_targets[idx].len() >= wants);
-            if !needs_targets {
-                results.push_resolved(ActionResult::AddAbilityToStack {
-                    source: card,
-                    ability: ability_id,
-                    targets: valid_targets,
-                });
-            } else if has_targets {
-                results.push_unresolved(UnresolvedAction::new(
-                    db,
-                    Some(card),
-                    UnresolvedActionResult::Ability {
-                        ability: ability_id,
-                        choosing: 0,
-                    },
-                    valid_targets,
-                    // TODO this isn't always true for many abilities.
-                    false,
-                ));
-            } else {
-                return PendingResults::default();
+                results
+                    .push_choose_targets(ChooseTargets::new(EffectOrAura::Effect(effect), targets));
             }
         }
 
@@ -654,12 +587,6 @@ impl Battlefield {
             }
             ActionResult::ApplyToBattlefield(modifier) => {
                 modifier.activate(db);
-            }
-            ActionResult::ApplyModifierToTarget { modifier, target } => {
-                let ActiveTarget::Battlefield { id: target } = target else {
-                    unreachable!()
-                };
-                target.apply_modifier(db, *modifier);
             }
             ActionResult::ExileTarget(target) => {
                 let ActiveTarget::Battlefield { id: target } = target else {
@@ -947,63 +874,38 @@ impl Battlefield {
     ) {
         match effect {
             Effect::BattlefieldModifier(modifier) => {
-                results.push_resolved(ActionResult::AddModifier {
+                results.push_settled(ActionResult::AddModifier {
                     modifier: ModifierId::upload_temporary_modifier(db, source, &modifier),
                 });
             }
             Effect::ControllerDrawCards(count) => {
-                results.push_resolved(ActionResult::DrawCards {
+                results.push_settled(ActionResult::DrawCards {
                     target: controller,
                     count,
                 });
             }
             Effect::ControllerLosesLife(count) => {
-                results.push_resolved(ActionResult::LoseLife {
+                results.push_settled(ActionResult::LoseLife {
                     target: controller,
                     count,
                 });
             }
             Effect::CreateToken(token) => {
-                results.push_resolved(ActionResult::CreateToken {
+                results.push_settled(ActionResult::CreateToken {
                     source: controller,
                     token,
                 });
             }
             Effect::GainCounter(counter) => {
-                results.push_resolved(ActionResult::AddCounters {
+                results.push_settled(ActionResult::AddCounters {
                     target: source,
                     counter,
                     count: 1,
                 });
             }
-            Effect::CopyOfAnyCreatureNonTargeting => {
-                let creatures = Self::creatures(db);
-                let valid_targets =
-                    vec![source.targets_for_effect(db, controller, &effect, &creatures)];
-
-                results.push_unresolved(UnresolvedAction::new(
-                    db,
-                    Some(source),
-                    UnresolvedActionResult::Effect(effect),
-                    valid_targets,
-                    true,
-                ))
-            }
-            Effect::TutorLibrary(_) => {
-                let creatures = Self::creatures(db);
-                let valid_targets =
-                    vec![source.targets_for_effect(db, controller, &effect, &creatures)];
-
-                results.push_unresolved(UnresolvedAction::new(
-                    db,
-                    Some(source),
-                    UnresolvedActionResult::Effect(effect),
-                    valid_targets,
-                    // TODO this isn't always true
-                    false,
-                ))
-            }
-            Effect::CounterSpell { .. }
+            Effect::CopyOfAnyCreatureNonTargeting
+            | Effect::TutorLibrary(_)
+            | Effect::CounterSpell { .. }
             | Effect::DealDamage(_)
             | Effect::Equip(_)
             | Effect::ExileTargetCreature
@@ -1014,23 +916,17 @@ impl Battlefield {
             | Effect::ReturnFromGraveyardToLibrary(_)
             | Effect::CreateTokenCopy { .. } => {
                 let creatures = Self::creatures(db);
-                let valid_targets =
-                    vec![source.targets_for_effect(db, controller, &effect, &creatures)];
-
-                results.push_unresolved(UnresolvedAction::new(
-                    db,
-                    Some(source),
-                    UnresolvedActionResult::Effect(effect),
+                let valid_targets = source.targets_for_effect(db, controller, &effect, &creatures);
+                results.push_choose_targets(ChooseTargets::new(
+                    EffectOrAura::Effect(effect),
                     valid_targets,
-                    // TODO this isn't always true for many effects.
-                    false,
-                ))
+                ));
             }
             Effect::ReturnSelfToHand => {
-                results.push_resolved(ActionResult::HandFromBattlefield(source))
+                results.push_settled(ActionResult::HandFromBattlefield(source))
             }
             Effect::RevealEachTopOfLibrary(reveal) => {
-                results.push_resolved(ActionResult::RevealEachTopOfLibrary(source, reveal));
+                results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
             }
         }
     }
@@ -1044,32 +940,32 @@ impl Battlefield {
     ) {
         match effect {
             Effect::ControllerDrawCards(count) => {
-                results.push_resolved(ActionResult::DrawCards {
+                results.push_settled(ActionResult::DrawCards {
                     target: target.controller(db),
                     count: *count,
                 });
             }
             Effect::ControllerLosesLife(count) => {
-                results.push_resolved(ActionResult::LoseLife {
+                results.push_settled(ActionResult::LoseLife {
                     target: target.controller(db),
                     count: *count,
                 });
             }
             Effect::CreateToken(token) => {
-                results.push_resolved(ActionResult::CreateToken {
+                results.push_settled(ActionResult::CreateToken {
                     source: target.controller(db),
                     token: token.clone(),
                 });
             }
             Effect::GainCounter(counter) => {
-                results.push_resolved(ActionResult::AddCounters {
+                results.push_settled(ActionResult::AddCounters {
                     target: source,
                     counter: *counter,
                     count: 1,
                 });
             }
             Effect::CreateTokenCopy { modifiers } => {
-                results.push_resolved(ActionResult::CreateTokenCopyOf {
+                results.push_settled(ActionResult::CreateTokenCopyOf {
                     target,
                     controller: source.controller(db),
                     modifiers: modifiers.clone(),
@@ -1204,7 +1100,7 @@ fn move_card_to_battlefield(
             StaticAbility::GreenCannotBeCountered { .. } => {}
             StaticAbility::BattlefieldModifier(modifier) => {
                 let modifier = ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
-                results.push_resolved(ActionResult::AddModifier { modifier })
+                results.push_settled(ActionResult::AddModifier { modifier })
             }
             StaticAbility::ExtraLandsPerTurn(_) => {}
         }

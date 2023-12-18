@@ -30,6 +30,8 @@ fn equipment_works() -> anyhow::Result<()> {
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -77,6 +79,8 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -94,9 +98,11 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.toughness(&db), Some(2));
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
+    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);

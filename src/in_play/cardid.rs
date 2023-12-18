@@ -26,7 +26,7 @@ use crate::{
         ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
-        cards, AbilityId, Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global,
+        self, AbilityId, Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global,
         InExile, InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId,
         ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId,
         UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
@@ -1096,19 +1096,8 @@ impl CardId {
     pub fn valid_targets(self, db: &mut Database) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
 
-        if let Some(aura) = self.aura(db) {
-            let controller = self.controller(db);
-            for card in cards::<OnBattlefield>(db) {
-                if card.passes_restrictions(
-                    db,
-                    self,
-                    ControllerRestriction::Any,
-                    &aura.restrictions(db),
-                ) && card.can_be_targeted(db, controller)
-                {
-                    targets.push(vec![ActiveTarget::Battlefield { id: card }])
-                }
-            }
+        if let Some(aura_targets) = self.targets_for_aura(db) {
+            targets.push(aura_targets);
         }
 
         let creatures = Battlefield::creatures(db);
@@ -1170,6 +1159,27 @@ impl CardId {
         }
 
         targets
+    }
+
+    pub fn targets_for_aura(self, db: &mut Database) -> Option<Vec<ActiveTarget>> {
+        if let Some(aura) = self.aura(db) {
+            let mut targets = vec![];
+            let controller = self.controller(db);
+            for card in in_play::cards::<OnBattlefield>(db) {
+                if card.passes_restrictions(
+                    db,
+                    self,
+                    ControllerRestriction::Any,
+                    &aura.restrictions(db),
+                ) && card.can_be_targeted(db, controller)
+                {
+                    targets.push(ActiveTarget::Battlefield { id: card });
+                }
+            }
+            Some(targets)
+        } else {
+            None
+        }
     }
 
     pub fn targets_for_effect(

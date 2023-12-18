@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, PendingResults, ResolutionResult},
+    battlefield::{ActionResult, ResolutionResult},
     in_play::Database,
     in_play::{cards, CardId, InExile},
     load_cards,
@@ -26,10 +26,12 @@ fn resolves_shift() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear1, None);
-    assert_eq!(results, PendingResults::default());
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear1, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     all_players[player].deck.place_on_top(&mut db, bear3);
 
@@ -39,12 +41,16 @@ fn resolves_shift() -> anyhow::Result<()> {
     let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
-        [
-            ActionResult::ExileTarget(ActiveTarget::Battlefield { id: bear1 }),
-            ActionResult::ManifestTopOfLibrary(player.into()),
-            ActionResult::StackToGraveyard(shift),
-        ]
-        .into()
+        (
+            shift,
+            true,
+            [
+                ActionResult::ExileTarget(ActiveTarget::Battlefield { id: bear1 }),
+                ActionResult::ManifestTopOfLibrary(player.into()),
+                ActionResult::StackToGraveyard(shift),
+            ]
+        )
+            .into()
     );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{PendingResults, ResolutionResult},
+    battlefield::ResolutionResult,
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
@@ -20,8 +20,9 @@ fn metamorphosis() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, mantle, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, mantle, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
 
@@ -57,8 +58,9 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
 

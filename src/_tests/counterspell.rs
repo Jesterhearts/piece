@@ -29,13 +29,17 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
-        [
-            ActionResult::SpellCountered {
-                id: Entry::Card(counterspell_1)
-            },
-            ActionResult::StackToGraveyard(counterspell_2)
-        ]
-        .into()
+        (
+            counterspell_2,
+            true,
+            [
+                ActionResult::SpellCountered {
+                    id: Entry::Card(counterspell_1)
+                },
+                ActionResult::StackToGraveyard(counterspell_2)
+            ]
+        )
+            .into()
     );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);

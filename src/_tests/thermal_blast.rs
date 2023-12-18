@@ -27,14 +27,18 @@ fn damages_target() -> anyhow::Result<()> {
     let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
-        [
-            ActionResult::DamageTarget {
-                quantity: 3,
-                target: ActiveTarget::Battlefield { id: bear }
-            },
-            ActionResult::StackToGraveyard(blast)
-        ]
-        .into()
+        (
+            blast,
+            true,
+            [
+                ActionResult::DamageTarget {
+                    quantity: 3,
+                    target: ActiveTarget::Battlefield { id: bear }
+                },
+                ActionResult::StackToGraveyard(blast)
+            ]
+        )
+            .into()
     );
 
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -73,14 +77,18 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
-        [
-            ActionResult::DamageTarget {
-                quantity: 5,
-                target: ActiveTarget::Battlefield { id: bear }
-            },
-            ActionResult::StackToGraveyard(blast)
-        ]
-        .into()
+        (
+            blast,
+            true,
+            [
+                ActionResult::DamageTarget {
+                    quantity: 5,
+                    target: ActiveTarget::Battlefield { id: bear }
+                },
+                ActionResult::StackToGraveyard(blast)
+            ]
+        )
+            .into()
     );
 
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -121,14 +129,18 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     let mut results = Stack::resolve_1(&mut db);
     assert_eq!(
         results,
-        [
-            ActionResult::DamageTarget {
-                quantity: 3,
-                target: ActiveTarget::Battlefield { id: bear }
-            },
-            ActionResult::StackToGraveyard(blast)
-        ]
-        .into()
+        (
+            blast,
+            true,
+            [
+                ActionResult::DamageTarget {
+                    quantity: 3,
+                    target: ActiveTarget::Battlefield { id: bear }
+                },
+                ActionResult::StackToGraveyard(blast)
+            ]
+        )
+            .into()
     );
 
     let result = results.resolve(&mut db, &mut all_players, None);

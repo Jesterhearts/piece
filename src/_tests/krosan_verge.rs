@@ -1,14 +1,11 @@
-use std::collections::VecDeque;
-
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, PendingResult, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::{CardId, Database, OnBattlefield},
     load_cards,
-    mana::Mana,
     player::AllPlayers,
-    stack::{ActiveTarget, Stack},
+    stack::Stack,
     turns::{Phase, Turn},
 };
 
@@ -20,8 +17,9 @@ fn enters_tapped() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert!(card.tapped(&mut db));
 
@@ -48,49 +46,27 @@ fn tutors() -> anyhow::Result<()> {
     all_players[player].deck.place_on_top(&mut db, annul);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     card.untap(&mut db);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let ability = *card.activated_abilities(&mut db).first().unwrap();
-    assert_eq!(
-        results,
-        PendingResults {
-            results: VecDeque::from([
-                PendingResult {
-                    apply_immediately: vec![],
-                    to_resolve: Default::default(),
-                    then_apply: vec![
-                        ActionResult::TapPermanent(card),
-                        ActionResult::PermanentToGraveyard(card),
-                        ActionResult::SpendMana(player.into(), vec![Mana::Generic(2)]),
-                    ],
-                },
-                PendingResult {
-                    apply_immediately: vec![ActionResult::AddAbilityToStack {
-                        source: card,
-                        ability,
-                        targets: vec![
-                            vec![ActiveTarget::Library { id: forest }],
-                            vec![ActiveTarget::Library { id: plains }],
-                        ]
-                    }],
-                    to_resolve: Default::default(),
-                    then_apply: vec![],
-                },
-            ]),
-            applied: false,
-        }
-    );
+    let _ability = *card.activated_abilities(&mut db).first().unwrap();
 
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));

@@ -30,11 +30,13 @@ fn ability() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, &mut all_players, None);

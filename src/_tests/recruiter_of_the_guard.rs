@@ -35,6 +35,8 @@ fn etb() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(all_players[player].deck.len(), 2);

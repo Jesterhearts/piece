@@ -6,6 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility},
+    battlefield::Battlefield,
     card::OracleText,
     controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
@@ -240,13 +241,12 @@ impl AbilityId {
                 effects: effects.0.clone(),
             }
         } else {
-            Ability::Mana(this.gain_mana_ability(db))
+            Ability::Mana(this.gain_mana_ability(db).unwrap())
         }
     }
 
-    pub fn gain_mana_ability(self, db: &mut Database) -> GainManaAbility {
-        let (cost, gain) = db
-            .abilities
+    pub fn gain_mana_ability(self, db: &mut Database) -> Option<GainManaAbility> {
+        db.abilities
             .query::<(Entity, &AbilityCost, &GainMana)>()
             .iter(&db.abilities)
             .filter_map(|(e, cost, effect)| {
@@ -257,12 +257,10 @@ impl AbilityId {
                 }
             })
             .next()
-            .unwrap();
-
-        GainManaAbility {
-            cost: cost.clone(),
-            gain: gain.clone(),
-        }
+            .map(|(cost, gain)| GainManaAbility {
+                cost: cost.clone(),
+                gain: gain.clone(),
+            })
     }
 
     pub fn text(self, db: &mut Database) -> String {
@@ -381,7 +379,18 @@ impl AbilityId {
                     }
                 }
 
-                can_pay_costs(&ability.cost, source, db, all_players)
+                if !can_pay_costs(&ability.cost, source, db, all_players) {
+                    return false;
+                }
+
+                let creatures = Battlefield::creatures(db);
+                let targets = source.targets_for_ability(db, self, &creatures);
+                let needs_targets = self.needs_targets(db);
+
+                needs_targets
+                    .into_iter()
+                    .zip(targets)
+                    .all(|(needs, has)| has.len() >= needs)
             }
             Ability::Mana(ability) => {
                 if !in_battlefield {

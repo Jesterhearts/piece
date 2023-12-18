@@ -23,6 +23,8 @@ fn works() -> anyhow::Result<()> {
     let lithoform = CardId::upload(&mut db, &cards, player, "Lithoform Blight");
     let mut results = Stack::move_card_to_stack(&mut db, lithoform);
     let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);

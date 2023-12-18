@@ -31,9 +31,7 @@ use ratatui::{
 use slog::Drain;
 
 use crate::{
-    battlefield::{
-        Battlefield, PendingResults, ResolutionResult, UnresolvedAction, UnresolvedActionResult,
-    },
+    battlefield::{Battlefield, PendingResults, ResolutionResult},
     card::Card,
     in_play::{CardId, Database, InGraveyard, InHand, OnBattlefield},
     player::AllPlayers,
@@ -594,7 +592,7 @@ fn main() -> anyhow::Result<()> {
                         selection_list_state.selected_index = Some(0);
                     }
                     let mut options = to_resolve.options(&mut db, &all_players);
-                    if to_resolve.is_optional(&mut db) {
+                    if to_resolve.choices_optional() {
                         for option in options.iter_mut() {
                             option.0 += 1
                         }
@@ -1171,7 +1169,7 @@ fn main() -> anyhow::Result<()> {
             } => {
                 let mut real_choice = choice;
                 #[allow(clippy::unnecessary_unwrap)] // I would if I could
-                if to_resolve.is_optional(&mut db) && choice.is_some() {
+                if to_resolve.choices_optional() && choice.is_some() {
                     if choice == Some(0) {
                         real_choice = None
                     } else {
@@ -1187,13 +1185,7 @@ fn main() -> anyhow::Result<()> {
                                     .map(|(_, entry)| entry)
                                     .collect_vec();
                                 if !*organizing_stack && entries.len() > 1 {
-                                    to_resolve.push_unresolved(UnresolvedAction::new(
-                                        &mut db,
-                                        None,
-                                        UnresolvedActionResult::OrganizeStack(entries),
-                                        vec![],
-                                        true,
-                                    ));
+                                    to_resolve.set_organize_stack(entries);
                                     *organizing_stack = true;
                                 } else {
                                     state = previous_state.pop().unwrap_or(UiState::Battlefield {
@@ -1271,13 +1263,7 @@ fn maybe_organize_stack(db: &mut Database, mut pending: PendingResults, state: &
             .collect_vec();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.push_unresolved(UnresolvedAction::new(
-                db,
-                None,
-                UnresolvedActionResult::OrganizeStack(entries),
-                vec![],
-                true,
-            ));
+            pending.set_organize_stack(entries);
             *state = UiState::SelectingOptions {
                 to_resolve: pending,
                 selection_list_state: ListState::default(),

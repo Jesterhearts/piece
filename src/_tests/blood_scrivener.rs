@@ -1,9 +1,7 @@
-use std::collections::VecDeque;
-
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, PendingResult, PendingResults},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::{self, CardId, Database, InHand},
     load_cards,
     player::AllPlayers,
@@ -24,25 +22,15 @@ fn replacement() -> anyhow::Result<()> {
     all_players[player].deck.place_on_top(&mut db, deck2);
 
     let card = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
-    let results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     // Hand is empty
-    let results = all_players[player].draw(&mut db, 1);
-    assert_eq!(
-        results,
-        PendingResults {
-            results: VecDeque::from([PendingResult {
-                apply_immediately: vec![ActionResult::LoseLife {
-                    target: player.into(),
-                    count: 1
-                }],
-                to_resolve: Default::default(),
-                then_apply: vec![],
-            }]),
-            applied: false,
-        }
-    );
+    let mut results = all_players[player].draw(&mut db, 1);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(all_players[player].life_total, 19);
 
     assert_eq!(in_play::cards::<InHand>(&mut db), [deck2, deck1]);
 

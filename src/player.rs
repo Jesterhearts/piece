@@ -369,7 +369,7 @@ impl Player {
                                 self.draw_internal(db, replacements, count, results);
                             }
                             Effect::ControllerLosesLife(count) => {
-                                results.push_resolved(ActionResult::LoseLife {
+                                results.push_settled(ActionResult::LoseLife {
                                     target: controller,
                                     count,
                                 });

@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -24,13 +24,17 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, shade1, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, shade1, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Battlefield::add_from_stack_or_hand(&mut db, shade2, None);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, shade2, None);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, shade1, 0);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
