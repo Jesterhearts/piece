@@ -1293,6 +1293,7 @@ impl CardId {
             }
             Effect::ReturnSelfToHand => {}
             Effect::RevealEachTopOfLibrary(_) => {}
+            Effect::UntapThis => {}
         }
 
         targets

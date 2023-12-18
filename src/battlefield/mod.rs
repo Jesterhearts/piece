@@ -139,6 +139,7 @@ pub enum ActionResult {
     },
     MoveFromLibraryToTopOfLibrary(CardId),
     SpendMana(Controller, Vec<Mana>),
+    Untap(CardId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -777,6 +778,9 @@ impl Battlefield {
                 complete_add_from_library(db, *card, &mut results);
                 return results;
             }
+            ActionResult::Untap(target) => {
+                target.untap(db);
+            }
         }
 
         PendingResults::default()
@@ -930,6 +934,9 @@ impl Battlefield {
             Effect::RevealEachTopOfLibrary(reveal) => {
                 results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
             }
+            Effect::UntapThis => {
+                results.push_settled(ActionResult::Untap(source));
+            }
         }
     }
 
@@ -986,6 +993,7 @@ impl Battlefield {
             | Effect::BattlefieldModifier(_)
             | Effect::CopyOfAnyCreatureNonTargeting
             | Effect::RevealEachTopOfLibrary(_)
+            | Effect::UntapThis
             | Effect::ReturnSelfToHand => {
                 unreachable!()
             }

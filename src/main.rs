@@ -1002,7 +1002,7 @@ fn main() -> anyhow::Result<()> {
                                 choice = selected;
                             }
                         }
-                        KeyCode::Esc => {
+                        KeyCode::Tab => {
                             if matches!(state, UiState::SelectingOptions { .. }) {
                                 previous_state.push(state);
                                 state = UiState::BattlefieldPreview {
@@ -1021,6 +1021,46 @@ fn main() -> anyhow::Result<()> {
                                     player1_graveyard_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
                                 };
+                            } else {
+                                state = previous_state.pop().unwrap_or(UiState::Battlefield {
+                                    phase_options_selection_state: HorizontalListState::default(),
+                                    phase_options_list_page: 0,
+                                    selected_state: CardSelectionState::default(),
+                                    action_selection_state: HorizontalListState::default(),
+                                    action_list_page: 0,
+                                    hand_selection_state: HorizontalListState::default(),
+                                    hand_list_page: 0,
+                                    stack_view_state: ListState::default(),
+                                    stack_list_offset: 0,
+                                    player1_mana_list_offset: 0,
+                                    player2_mana_list_offset: 0,
+                                    player1_graveyard_selection_state: ListState::default(),
+                                    player1_graveyard_list_offset: 0,
+                                    player2_graveyard_list_offset: 0,
+                                });
+                            }
+                        }
+                        KeyCode::Esc => {
+                            if let UiState::SelectingOptions { to_resolve, .. } = &mut state {
+                                if to_resolve.can_discard() {
+                                    state = previous_state.pop().unwrap_or(UiState::Battlefield {
+                                        phase_options_selection_state: HorizontalListState::default(
+                                        ),
+                                        phase_options_list_page: 0,
+                                        selected_state: CardSelectionState::default(),
+                                        action_selection_state: HorizontalListState::default(),
+                                        action_list_page: 0,
+                                        hand_selection_state: HorizontalListState::default(),
+                                        hand_list_page: 0,
+                                        stack_view_state: ListState::default(),
+                                        stack_list_offset: 0,
+                                        player1_mana_list_offset: 0,
+                                        player2_mana_list_offset: 0,
+                                        player1_graveyard_selection_state: ListState::default(),
+                                        player1_graveyard_list_offset: 0,
+                                        player2_graveyard_list_offset: 0,
+                                    });
+                                }
                             } else {
                                 state = previous_state.pop().unwrap_or(UiState::Battlefield {
                                     phase_options_selection_state: HorizontalListState::default(),
@@ -1082,6 +1122,7 @@ fn main() -> anyhow::Result<()> {
                                         break;
                                     }
                                 }
+                                Battlefield::check_sba(&mut db);
                                 maybe_organize_stack(&mut db, pending, &mut state);
                             }
                             1 => {
@@ -1098,6 +1139,7 @@ fn main() -> anyhow::Result<()> {
                                     }
                                 }
 
+                                Battlefield::check_sba(&mut db);
                                 maybe_organize_stack(&mut db, pending, &mut state);
                             }
                             _ => {}
@@ -1118,6 +1160,7 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
+                            Battlefield::check_sba(&mut db);
                             maybe_organize_stack(&mut db, pending, &mut state);
                         }
                     }
@@ -1241,6 +1284,7 @@ fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut Ui
         }
     }
 
+    Battlefield::check_sba(db);
     maybe_organize_stack(db, pending, state);
 }
 

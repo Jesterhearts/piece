@@ -695,7 +695,13 @@ impl Stack {
                                     target,
                                 });
                             }
-                            ActiveTarget::Player { .. } => todo!(),
+                            ActiveTarget::Player { .. } => {
+                                // TODO player hexproof, etc.
+                                results.push_settled(ActionResult::DamageTarget {
+                                    quantity: 1,
+                                    target,
+                                })
+                            }
                             _ => {
                                 if let Some(resolving_card) = resolving_card {
                                     return [ActionResult::StackToGraveyard(resolving_card)].into();
@@ -822,6 +828,7 @@ impl Stack {
                 Effect::RevealEachTopOfLibrary(reveal) => {
                     results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
                 }
+                Effect::UntapThis => results.push_settled(ActionResult::Untap(source)),
             }
         }
 

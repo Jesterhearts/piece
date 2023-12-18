@@ -211,6 +211,8 @@ message RevealEachTopOfLibrary {
   ForEach for_each = 5;
 }
 
+message UntapThis {}
+
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
@@ -232,10 +234,11 @@ message Effect {
     ReturnSelfToHand return_self_to_hand = 17;
     RevealEachTopOfLibrary reveal_each_top_of_library = 18;
     TutorLibrary tutor_library = 19;
+    UntapThis untap_this = 20;
   }
 
-  optional Effect threshold = 20;
-  string oracle_text = 21;
+  optional Effect threshold = 21;
+  string oracle_text = 22;
 }
 
 message ReplacementEffect {

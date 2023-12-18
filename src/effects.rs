@@ -423,6 +423,7 @@ pub enum Effect {
     ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
     ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
     TutorLibrary(TutorLibrary),
+    UntapThis,
 }
 
 impl Effect {
@@ -468,6 +469,7 @@ impl Effect {
             Effect::CreateTokenCopy { .. } => 1,
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,
+            Effect::UntapThis => 0,
         }
     }
 
@@ -497,6 +499,7 @@ impl Effect {
             Effect::CreateTokenCopy { .. } => 1,
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,
+            Effect::UntapThis => 0,
         }
     }
 }
@@ -583,6 +586,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::RevealEachTopOfLibrary(reveal) => {
                 Ok(Self::RevealEachTopOfLibrary(reveal.try_into()?))
             }
+            protogen::effects::effect::Effect::UntapThis(_) => Ok(Self::UntapThis),
         }
     }
 }

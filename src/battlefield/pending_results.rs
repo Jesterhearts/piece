@@ -350,6 +350,8 @@ pub struct PendingResults {
 
     apply_in_stages: bool,
     add_to_stack: bool,
+
+    applied: bool,
 }
 
 impl<const T: usize> From<[ActionResult; T]> for PendingResults {
@@ -367,6 +369,7 @@ impl<const T: usize> From<(CardId, bool, [ActionResult; T])> for PendingResults 
             source: Some(Source::Card(source)),
             settled_effects: VecDeque::from(value),
             apply_in_stages,
+            applied: apply_in_stages,
             ..Default::default()
         }
     }
@@ -385,6 +388,7 @@ impl PendingResults {
     }
 
     pub fn apply_in_stages(&mut self) {
+        self.applied = true;
         self.apply_in_stages = true;
     }
 
@@ -513,6 +517,7 @@ impl PendingResults {
                 self.source = None;
             }
 
+            self.applied = true;
             let results = Battlefield::apply_action_results(
                 db,
                 all_players,
@@ -528,6 +533,7 @@ impl PendingResults {
         }
 
         if self.apply_in_stages {
+            self.applied = true;
             let results = Battlefield::apply_action_results(
                 db,
                 all_players,
@@ -803,6 +809,11 @@ impl PendingResults {
             Effect::BattlefieldModifier(_) => unreachable!(),
             Effect::ControllerDrawCards(_) => unreachable!(),
             Effect::ControllerLosesLife(_) => unreachable!(),
+            Effect::UntapThis => unreachable!(),
         }
+    }
+
+    pub(crate) fn can_discard(&self) -> bool {
+        self.is_empty() || !self.applied
     }
 }
