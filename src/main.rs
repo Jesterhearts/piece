@@ -188,10 +188,6 @@ fn main() -> anyhow::Result<()> {
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
-        ResolutionResult::TryAgain
-    );
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
         ResolutionResult::Complete
     );
 
@@ -755,17 +751,15 @@ fn main() -> anyhow::Result<()> {
                             hand_selection_state:
                                 HorizontalListState {
                                     hovered: Some(hovered),
-                                    start_index,
                                     ..
                                 },
                             ..
                         } = &state
                         {
-                            let start_index = *start_index;
                             let hovered = *hovered;
                             previous_state.push(state);
                             state = UiState::ExaminingCard(
-                                player1.get_cards::<InHand>(&mut db)[start_index + hovered],
+                                player1.get_cards::<InHand>(&mut db)[hovered],
                             );
                         }
                     }
@@ -1209,6 +1203,7 @@ fn main() -> anyhow::Result<()> {
                                 break;
                             }
                             battlefield::ResolutionResult::TryAgain => {
+                                debug!("Trying again for {:#?}", to_resolve);
                                 if !to_resolve.only_immediate_results() {
                                     break;
                                 }
@@ -1217,6 +1212,7 @@ fn main() -> anyhow::Result<()> {
                                 break;
                             }
                         }
+                        real_choice = None;
                     }
                 }
             }

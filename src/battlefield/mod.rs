@@ -17,7 +17,7 @@ use crate::{
     },
     in_play::{
         all_cards, cards, AbilityId, Active, AuraId, CardId, CounterId, Database, InGraveyard,
-        InLibrary, ModifierId, OnBattlefield, ReplacementEffectId, TriggerId,
+        InLibrary, InStack, ModifierId, OnBattlefield, ReplacementEffectId, TriggerId,
     },
     mana::Mana,
     player::{AllPlayers, Controller, Owner},
@@ -583,7 +583,9 @@ impl Battlefield {
                 return Battlefield::add_from_stack_or_hand(db, *card, *target);
             }
             ActionResult::StackToGraveyard(card) => {
-                return Battlefield::stack_to_graveyard(db, *card);
+                if card.is_in_location::<InStack>(db) {
+                    return Battlefield::stack_to_graveyard(db, *card);
+                }
             }
             ActionResult::ApplyToBattlefield(modifier) => {
                 modifier.activate(db);

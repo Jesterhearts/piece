@@ -476,7 +476,10 @@ impl Stack {
         results.apply_in_stages();
 
         let mut targets = next.targets.into_iter();
-        for (effect, targets) in effects.into_iter().zip(&mut targets) {
+        for (effect, targets) in effects
+            .into_iter()
+            .zip((&mut targets).chain(std::iter::repeat(vec![])))
+        {
             let effect = effect.into_effect(db, controller);
             if targets.len() != effect.needs_targets() {
                 let creatures = Battlefield::creatures(db);
@@ -884,9 +887,9 @@ impl Stack {
 
     pub fn move_card_to_stack(db: &mut Database, card: CardId) -> PendingResults {
         let mut results = PendingResults::new(Source::Card(card));
-        results.add_to_stack();
 
         if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
+            results.add_to_stack();
             let controller = card.controller(db);
             let creatures = Battlefield::creatures(db);
             if let Some(aura) = card.aura(db) {

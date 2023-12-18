@@ -120,14 +120,16 @@ impl ChooseTargets {
 
     #[must_use]
     pub fn choose_targets(&mut self, choice: Option<usize>) -> bool {
+        debug!("choosing target: {:?}", choice);
         if let Some(choice) = choice {
             *self.chosen.entry(choice).or_default() += 1;
             true
+        } else if self.valid_targets.len() == 1 {
+            debug!("Choosing default only target");
+            *self.chosen.entry(0).or_default() += 1;
+            true
         } else if self.can_skip() {
             self.skipping_remainder = true;
-            true
-        } else if self.valid_targets.len() == 1 {
-            *self.chosen.entry(0).or_default() += 1;
             true
         } else {
             false
@@ -410,8 +412,10 @@ impl PendingResults {
     }
 
     pub fn choices_optional(&self) -> bool {
-        if self.choose_modes.front().is_some() || self.choose_targets.front().is_some() {
+        if self.choose_modes.front().is_some() {
             false
+        } else if let Some(choosing) = self.choose_targets.front() {
+            choosing.valid_targets.len() <= 1
         } else if self.organizing_stack.is_some() {
             true
         } else {
@@ -431,7 +435,7 @@ impl PendingResults {
                 .entries
                 .iter()
                 .enumerate()
-                .filter(|(idx, _)| stack_org.choices.contains(idx))
+                .filter(|(idx, _)| !stack_org.choices.contains(idx))
                 .map(|(idx, entry)| (idx, entry.display(db)))
                 .collect_vec()
         } else {
@@ -460,6 +464,7 @@ impl PendingResults {
         choice: Option<usize>,
     ) -> ResolutionResult {
         assert!(!(self.add_to_stack && self.apply_in_stages));
+        debug!("Choosing {:?} for {:#?}", choice, self);
 
         if self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
@@ -606,6 +611,8 @@ impl PendingResults {
             if let Some(choice) = choice {
                 organizing.choices.insert(choice);
 
+                debug!("Chosen {:?}", organizing.choices);
+
                 if organizing.choices.len() == organizing.entries.len() {
                     let entries = organizing
                         .choices
@@ -624,7 +631,7 @@ impl PendingResults {
                 ResolutionResult::PendingChoice
             }
         } else {
-            unreachable!()
+            ResolutionResult::TryAgain
         }
     }
 
@@ -632,8 +639,10 @@ impl PendingResults {
         self.choose_modes.extend(results.choose_modes);
         self.choose_targets.extend(results.choose_targets);
         self.pay_costs.extend(results.pay_costs);
-        self.organizing_stack = results.organizing_stack;
         self.settled_effects.extend(results.settled_effects);
+        if let Some(organizing) = results.organizing_stack {
+            self.organizing_stack = Some(organizing);
+        }
         if results.add_to_stack {
             self.add_to_stack = true;
         }
@@ -651,10 +660,15 @@ impl PendingResults {
     }
 
     pub fn only_immediate_results(&self) -> bool {
-        self.choose_modes.is_empty()
+        (self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
-            && self.organizing_stack.is_none()
+            && self.organizing_stack.is_none())
+            || (self
+                .choose_targets
+                .iter()
+                .all(|choose| choose.valid_targets.is_empty())
+                && self.pay_costs.iter().all(|pay| pay.choice_optional()))
     }
 
     fn push_effect_results(

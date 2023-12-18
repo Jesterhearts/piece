@@ -63,8 +63,9 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let targets = haunting.valid_targets(&mut db);
-    haunting.move_to_stack(&mut db, targets);
+    let mut results = Stack::move_card_to_stack(&mut db, haunting);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player2, "Swamp");
