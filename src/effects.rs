@@ -421,7 +421,7 @@ pub enum Effect {
     ExileTargetCreatureManifestTopOfLibrary,
     GainCounter(Counter),
     Mill(Mill),
-    ModifyCreature(BattlefieldModifier),
+    ModifyTarget(BattlefieldModifier),
     ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
     ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
     TargetToTopOfLibrary { restrictions: Vec<Restriction> },
@@ -458,7 +458,7 @@ impl Effect {
             Effect::ExileTargetCreature => 1,
             Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
             Effect::GainCounter(_) => 0,
-            Effect::ModifyCreature(_) => 1,
+            Effect::ModifyTarget(_) => 1,
             Effect::ControllerLosesLife(_) => 0,
             Effect::CopyOfAnyCreatureNonTargeting => 1,
             Effect::Mill(_) => 1,
@@ -491,7 +491,7 @@ impl Effect {
             Effect::ExileTargetCreature => 1,
             Effect::ExileTargetCreatureManifestTopOfLibrary => 1,
             Effect::GainCounter(_) => 0,
-            Effect::ModifyCreature(_) => 1,
+            Effect::ModifyTarget(_) => 1,
             Effect::ControllerLosesLife(_) => 0,
             Effect::CopyOfAnyCreatureNonTargeting => 1,
             Effect::Mill(_) => 1,
@@ -545,8 +545,8 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ControllerDrawCards(draw) => {
                 Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
             }
-            protogen::effects::effect::Effect::ModifyCreature(modifier) => {
-                Ok(Self::ModifyCreature(modifier.try_into()?))
+            protogen::effects::effect::Effect::ModifyTarget(modifier) => {
+                Ok(Self::ModifyTarget(modifier.try_into()?))
             }
             protogen::effects::effect::Effect::ExileTargetCreature(_) => {
                 Ok(Self::ExileTargetCreature)

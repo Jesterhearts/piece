@@ -107,10 +107,9 @@ impl ChooseTargets {
     pub fn recompute_targets(&mut self, db: &mut Database, source: Source) {
         let card = source.card(db);
         let controller = card.controller(db);
-        let creatures = Battlefield::creatures(db);
         match &self.effect_or_aura {
             EffectOrAura::Effect(effect) => {
-                self.valid_targets = card.targets_for_effect(db, controller, effect, &creatures);
+                self.valid_targets = card.targets_for_effect(db, controller, effect);
             }
             EffectOrAura::Aura(_) => {
                 self.valid_targets = card.targets_for_aura(db).unwrap();
@@ -825,7 +824,7 @@ impl PendingResults {
             Effect::Mill(Mill { count, .. }) => self
                 .settled_effects
                 .push_front(ActionResult::Mill { count, targets }),
-            Effect::ModifyCreature(modifier) => {
+            Effect::ModifyTarget(modifier) => {
                 let card = self.source.unwrap().card(db);
                 let modifier = ModifierId::upload_temporary_modifier(db, card, &modifier);
                 self.settled_effects

@@ -54,11 +54,11 @@ enchant {
     controller { any {} }
     duration { until_source_leaves_battlefield {} }
   }
-  restrictions { of_type {
-    types { land {} }
-    types { basic_land {} }
-  } }
 }
+restrictions { of_type {
+  types { land {} }
+  types { basic_land {} }
+} }
 etb_abilities {
   controller_draw_cards { count: 1 }
 }

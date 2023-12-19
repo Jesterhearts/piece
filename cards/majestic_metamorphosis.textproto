@@ -5,7 +5,7 @@ cost {
 }
 types { instant {} }
 effects {
-  modify_creature {
+  modify_target {
     modifier {
         base_power: 4
         base_toughness: 4

@@ -11,8 +11,8 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        compute_deck_targets, ActionResult, Battlefield, ChooseTargets, EffectOrAura, PayCost,
-        PendingResults, Source, SpendMana,
+        compute_deck_targets, ActionResult, ChooseTargets, EffectOrAura, PayCost, PendingResults,
+        Source, SpendMana,
     },
     card::keyword::SplitSecond,
     controller::ControllerRestriction,
@@ -484,8 +484,7 @@ impl Stack {
         {
             let effect = effect.into_effect(db, controller);
             if targets.len() != effect.needs_targets() {
-                let creatures = Battlefield::creatures(db);
-                let valid_targets = source.targets_for_effect(db, controller, &effect, &creatures);
+                let valid_targets = source.targets_for_effect(db, controller, &effect);
                 results.push_choose_targets(ChooseTargets::new(
                     EffectOrAura::Effect(effect),
                     valid_targets,
@@ -532,7 +531,7 @@ impl Stack {
                         count,
                     });
                 }
-                Effect::ModifyCreature(modifier) => {
+                Effect::ModifyTarget(modifier) => {
                     let modifier = ModifierId::upload_temporary_modifier(db, source, &modifier);
 
                     let mut final_targets = vec![];
@@ -924,12 +923,11 @@ impl Stack {
         source: CardId,
     ) -> PendingResults {
         let mut results = PendingResults::default();
-        let creatures = Battlefield::creatures(db);
 
         results.push_settled(ActionResult::AddAbilityToStack {
             ability,
             source,
-            targets: source.targets_for_ability(db, ability, &creatures),
+            targets: source.targets_for_ability(db, ability),
         });
 
         results
@@ -943,11 +941,10 @@ impl Stack {
         let mut results = PendingResults::default();
 
         let mut targets = vec![];
-        let creatures = Battlefield::creatures(db);
         let controller = source.controller(db);
         for effect in trigger.effects(db) {
             let effect = effect.into_effect(db, controller);
-            targets.push(source.targets_for_effect(db, controller, &effect, &creatures));
+            targets.push(source.targets_for_effect(db, controller, &effect));
         }
 
         results.push_settled(ActionResult::AddTriggerToStack {
@@ -997,7 +994,6 @@ fn add_card_to_stack(
     if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
         results.add_card_to_stack(from);
         let controller = card.controller(db);
-        let creatures = Battlefield::creatures(db);
         if let Some(aura) = card.aura(db) {
             results.push_choose_targets(ChooseTargets::new(
                 EffectOrAura::Aura(aura),
@@ -1007,7 +1003,7 @@ fn add_card_to_stack(
 
         for effect in card.effects(db) {
             let effect = effect.into_effect(db, controller);
-            let valid_targets = card.targets_for_effect(db, controller, &effect, &creatures);
+            let valid_targets = card.targets_for_effect(db, controller, &effect);
             results.push_choose_targets(ChooseTargets::new(
                 EffectOrAura::Effect(effect),
                 valid_targets,

@@ -461,10 +461,9 @@ impl Battlefield {
             results.add_ability_to_stack();
             let controller = card.controller(db);
 
-            let creatures = Self::creatures(db);
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                let targets = card.targets_for_effect(db, controller, &effect, &creatures);
+                let targets = card.targets_for_effect(db, controller, &effect);
 
                 results
                     .push_choose_targets(ChooseTargets::new(EffectOrAura::Effect(effect), targets));
@@ -998,14 +997,13 @@ impl Battlefield {
             | Effect::ExileTargetCreature
             | Effect::ExileTargetCreatureManifestTopOfLibrary
             | Effect::Mill(_)
-            | Effect::ModifyCreature(_)
+            | Effect::ModifyTarget(_)
             | Effect::ReturnFromGraveyardToBattlefield(_)
             | Effect::ReturnFromGraveyardToLibrary(_)
             | Effect::CreateTokenCopy { .. }
             | Effect::TargetToTopOfLibrary { .. }
             | Effect::UntapTarget => {
-                let creatures = Self::creatures(db);
-                let valid_targets = source.targets_for_effect(db, controller, &effect, &creatures);
+                let valid_targets = source.targets_for_effect(db, controller, &effect);
                 results.push_choose_targets(ChooseTargets::new(
                     EffectOrAura::Effect(effect),
                     valid_targets,
@@ -1071,7 +1069,7 @@ impl Battlefield {
             | Effect::ExileTargetCreature
             | Effect::ExileTargetCreatureManifestTopOfLibrary
             | Effect::Mill(_)
-            | Effect::ModifyCreature(_)
+            | Effect::ModifyTarget(_)
             | Effect::ReturnFromGraveyardToBattlefield(_)
             | Effect::ReturnFromGraveyardToLibrary(_)
             | Effect::BattlefieldModifier(_)

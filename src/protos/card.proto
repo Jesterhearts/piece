@@ -38,4 +38,6 @@ message Card {
   bool etb_tapped = 19;
 
   string keywords = 20;
+
+  repeated targets.Restriction restrictions = 21;
 }

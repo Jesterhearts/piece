@@ -14,6 +14,7 @@ use crate::{
     in_play::{AbilityId, TriggerId},
     newtype_enum::newtype_enum,
     protogen,
+    targets::Restriction,
     types::{Subtype, Type},
 };
 
@@ -367,6 +368,8 @@ pub struct Card {
     pub etb_tapped: bool,
 
     pub keywords: Counter<Keyword>,
+
+    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<protogen::card::Card> for Card {
@@ -449,6 +452,11 @@ impl TryFrom<protogen::card::Card> for Card {
                 .split(',')
                 .filter(|s| !s.trim().is_empty())
                 .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .collect::<anyhow::Result<_>>()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
         })
     }

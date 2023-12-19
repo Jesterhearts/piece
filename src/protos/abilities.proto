@@ -10,7 +10,6 @@ import "triggers.proto";
 
 message Enchant {
   repeated effects.BattlefieldModifier modifiers = 1;
-  repeated targets.Restriction restrictions = 2;
 }
 
 message StaticAbility {

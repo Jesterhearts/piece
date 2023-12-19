@@ -25,5 +25,5 @@ enchant {
     duration { until_source_leaves_battlefield {} }
     restrictions { controller_controls_black_or_green {} }
   }
-  restrictions { of_type { types { creature {} } } }
 }
+restrictions { of_type { types { creature {} } } }

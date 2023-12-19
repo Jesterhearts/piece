@@ -14,14 +14,12 @@ use crate::{
     player::{AllPlayers, Controller},
     protogen,
     stack::ActiveTarget,
-    targets::Restriction,
     triggers::Trigger,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
-    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::abilities::Enchant> for Enchant {
@@ -33,11 +31,6 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
                 .modifiers
                 .iter()
                 .map(BattlefieldModifier::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
         })
     }

@@ -223,7 +223,7 @@ message TargetToTopOfLibrary {
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
-    BattlefieldModifier modify_creature = 2;
+    BattlefieldModifier modify_target = 2;
     Cascade cascade = 3;
     ControllerDrawCards controller_draw_cards = 4;
     ControllerLosesLife controller_loses_life = 5;

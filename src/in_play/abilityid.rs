@@ -6,7 +6,6 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility},
-    battlefield::Battlefield,
     card::OracleText,
     controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
@@ -383,8 +382,7 @@ impl AbilityId {
                     return false;
                 }
 
-                let creatures = Battlefield::creatures(db);
-                let targets = source.targets_for_ability(db, self, &creatures);
+                let targets = source.targets_for_ability(db, self);
                 let needs_targets = self.needs_targets(db);
 
                 needs_targets
