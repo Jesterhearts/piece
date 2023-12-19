@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
@@ -143,8 +143,8 @@ pub struct Triggers(pub Vec<TriggerId>);
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
 pub struct ModifiedTriggers(pub Vec<TriggerId>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
-pub struct TriggerListeners(pub HashSet<CardId>);
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub struct TriggerListener(pub CardId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggeredAbility {

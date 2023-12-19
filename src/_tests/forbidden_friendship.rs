@@ -24,7 +24,7 @@ fn creates_tokens() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
     let targets = card.valid_targets(&mut db);
-    card.move_to_stack(&mut db, targets);
+    card.move_to_stack(&mut db, targets, None);
 
     let results = Stack::resolve_1(&mut db);
     assert_eq!(
@@ -35,27 +35,27 @@ fn creates_tokens() -> anyhow::Result<()> {
             [
                 ActionResult::CreateToken {
                     source: player.into(),
-                    token: Token::Creature(TokenCreature {
+                    token: Box::new(Token::Creature(TokenCreature {
                         name: "Dinosaur".to_string(),
                         types: HashSet::from([Type::Creature]),
                         subtypes: HashSet::from([Subtype::Dinosaur]),
                         colors: HashSet::from([Color::Red]),
-                        keywords: HashSet::from([Keyword::Haste]),
+                        keywords: [Keyword::Haste].into_iter().collect(),
                         power: 1,
                         toughness: 1
-                    })
+                    }))
                 },
                 ActionResult::CreateToken {
                     source: player.into(),
-                    token: Token::Creature(TokenCreature {
+                    token: Box::new(Token::Creature(TokenCreature {
                         name: "Human Soldier".to_string(),
                         types: HashSet::from([Type::Creature]),
                         subtypes: HashSet::from([Subtype::Human, Subtype::Soldier]),
                         colors: HashSet::from([Color::White]),
-                        keywords: HashSet::default(),
+                        keywords: ::counter::Counter::default(),
                         power: 1,
                         toughness: 1,
-                    })
+                    }))
                 },
                 ActionResult::StackToGraveyard(card),
             ]

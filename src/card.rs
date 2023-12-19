@@ -2,6 +2,7 @@ use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
+use counter::Counter;
 use derive_more::{Deref, DerefMut};
 use strum::IntoEnumIterator;
 
@@ -16,10 +17,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub struct Keywords(pub HashSet<Keyword>);
+pub struct Keywords(pub Counter<Keyword>);
 
 #[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub struct ModifiedKeywords(pub HashSet<Keyword>);
+pub struct ModifiedKeywords(pub Counter<Keyword>);
 
 #[rustfmt::skip]
 newtype_enum!{
@@ -324,7 +325,7 @@ pub struct EtbTapped;
 #[derive(Debug, Clone, Component)]
 pub enum ModifyKeywords {
     Remove(HashSet<Keyword>),
-    Add(HashSet<Keyword>),
+    Add(Counter<Keyword>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
@@ -360,7 +361,7 @@ pub struct Card {
 
     pub etb_tapped: bool,
 
-    pub keywords: HashSet<Keyword>,
+    pub keywords: Counter<Keyword>,
 }
 
 impl TryFrom<protogen::card::Card> for Card {

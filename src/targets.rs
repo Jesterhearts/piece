@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
@@ -16,6 +16,23 @@ use crate::{
 pub enum Comparison {
     LessThan(i32),
     LessThanOrEqual(i32),
+    GreaterThan(i32),
+    GreaterThanOrEqual(i32),
+}
+
+impl Display for Comparison {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Comparison::LessThan(i) => f.write_fmt(format_args!("less than {}", i)),
+            Comparison::LessThanOrEqual(i) => {
+                f.write_fmt(format_args!("less than or equal to {}", i))
+            }
+            Comparison::GreaterThan(i) => f.write_fmt(format_args!("greater than {}", i)),
+            Comparison::GreaterThanOrEqual(i) => {
+                f.write_fmt(format_args!("greater than or equal to {}", i))
+            }
+        }
+    }
 }
 
 impl TryFrom<&protogen::targets::Comparison> for Comparison {
@@ -36,6 +53,12 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
             protogen::targets::comparison::Value::LessThan(value) => Self::LessThan(value.value),
             protogen::targets::comparison::Value::LessThanOrEqual(value) => {
                 Self::LessThanOrEqual(value.value)
+            }
+            protogen::targets::comparison::Value::GreaterThan(value) => {
+                Self::GreaterThan(value.value)
+            }
+            protogen::targets::comparison::Value::GreaterThanOrEqual(value) => {
+                Self::GreaterThanOrEqual(value.value)
             }
         }
     }
@@ -85,6 +108,8 @@ pub enum Restriction {
         types: HashSet<Type>,
         subtypes: HashSet<Subtype>,
     },
+    CastFromHand,
+    Cmc(Comparison),
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
@@ -108,14 +133,7 @@ impl Restriction {
                     format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" "))
                 }
             }
-            Restriction::Toughness(toughness) => match toughness {
-                Comparison::LessThan(t) => {
-                    format!("toughness less than {}", t)
-                }
-                Comparison::LessThanOrEqual(t) => {
-                    format!("toughness less than or equal to {}", t)
-                }
-            },
+            Restriction::Toughness(toughness) => format!("toughness {}", toughness),
             Restriction::ControllerControlsBlackOrGreen => {
                 "controller controls black or green".to_string()
             }
@@ -123,6 +141,8 @@ impl Restriction {
             Restriction::OfColor(colors) => {
                 format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
             }
+            Restriction::Cmc(cmc) => format!("cmc {}", cmc),
+            Restriction::CastFromHand => "cast from hand".to_string(),
         }
     }
 }
@@ -174,6 +194,10 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Color::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
+            protogen::targets::restriction::Restriction::Cmc(cmc) => {
+                Ok(Self::Cmc(cmc.comparison.get_or_default().try_into()?))
+            }
+            protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
         }
     }
 }

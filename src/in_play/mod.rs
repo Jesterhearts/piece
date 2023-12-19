@@ -24,6 +24,8 @@ pub use modifierid::{ModifierId, ModifierSeq, Modifiers};
 pub use replacementid::ReplacementEffectId;
 pub use triggerid::TriggerId;
 
+use crate::newtype_enum::newtype_enum;
+
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_HAND_SEQ: AtomicUsize = AtomicUsize::new(0);
@@ -40,6 +42,21 @@ pub struct UniqueId(usize);
 impl UniqueId {
     pub fn new() -> Self {
         Self(UNIQUE_ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+newtype_enum! {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+pub enum CastFrom {
+    Hand,
+    Exile,
+}
+}
+
+newtype_enum! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+    pub enum ExileReason {
+        Cascade,
     }
 }
 

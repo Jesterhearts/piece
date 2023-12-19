@@ -3,7 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::{CardId, Database, ExileReason},
     player::Owner,
     Cards,
 };
@@ -57,6 +57,12 @@ impl Deck {
         }
     }
 
+    pub fn place_on_bottom(&mut self, db: &mut Database, card: CardId) {
+        if card.move_to_library(db) {
+            self.cards.push_front(card);
+        }
+    }
+
     pub fn draw(&mut self) -> Option<CardId> {
         self.cards.pop_back()
     }
@@ -77,6 +83,19 @@ impl Deck {
         if let Some(card) = self.cards.back() {
             card.reveal(db);
             Some(*card)
+        } else {
+            None
+        }
+    }
+
+    pub fn exile_top_card(
+        &mut self,
+        db: &mut Database,
+        reason: Option<ExileReason>,
+    ) -> Option<CardId> {
+        if let Some(card) = self.cards.pop_back() {
+            card.move_to_exile(db, reason);
+            Some(card)
         } else {
             None
         }

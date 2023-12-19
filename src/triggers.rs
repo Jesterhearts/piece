@@ -9,6 +9,7 @@ newtype_enum! {
 pub enum Location {
     Anywhere,
     Battlefield,
+    Hand,
     Library,
 }
 }
@@ -38,6 +39,7 @@ impl From<&protogen::triggers::location::Location> for Location {
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
 pub enum TriggerSource {
+    Cast,
     PutIntoGraveyard,
     EntersTheBattlefield,
 }

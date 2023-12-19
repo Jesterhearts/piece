@@ -213,6 +213,8 @@ message RevealEachTopOfLibrary {
 
 message UntapThis {}
 
+message Cascade {}
+
 message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
@@ -221,29 +223,30 @@ message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
     BattlefieldModifier modify_creature = 2;
-    ControllerDrawCards controller_draw_cards = 3;
-    ControllerLosesLife controller_loses_life = 4;
-    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 5;
-    CounterSpell counter_spell = 6;
-    CreateToken create_token = 7;
-    CreateTokenCopy create_token_copy = 8;
-    DealDamage deal_damage = 9;
-    Equip equip = 10;
-    ExileTargetCreature exile_target_creature = 11;
-    ExileTargetCreatureManifestTopOfLibrary exile_target_creature_manifest_top_of_library = 12;
-    GainCounter gain_counter = 13;
-    Mill mill = 14;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 15;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 16;
-    ReturnSelfToHand return_self_to_hand = 17;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 18;
-    TargetToTopOfLibrary target_to_top_of_library = 19;
-    TutorLibrary tutor_library = 20;
-    UntapThis untap_this = 21;
+    Cascade cascade = 3;
+    ControllerDrawCards controller_draw_cards = 4;
+    ControllerLosesLife controller_loses_life = 5;
+    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 6;
+    CounterSpell counter_spell = 7;
+    CreateToken create_token = 8;
+    CreateTokenCopy create_token_copy = 9;
+    DealDamage deal_damage = 10;
+    Equip equip = 11;
+    ExileTargetCreature exile_target_creature = 12;
+    ExileTargetCreatureManifestTopOfLibrary exile_target_creature_manifest_top_of_library = 13;
+    GainCounter gain_counter = 14;
+    Mill mill = 15;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 16;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 17;
+    ReturnSelfToHand return_self_to_hand = 18;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 19;
+    TargetToTopOfLibrary target_to_top_of_library = 20;
+    TutorLibrary tutor_library = 21;
+    UntapThis untap_this = 22;
   }
 
-  optional Effect threshold = 22;
-  string oracle_text = 23;
+  optional Effect threshold = 23;
+  string oracle_text = 24;
 }
 
 message ReplacementEffect {

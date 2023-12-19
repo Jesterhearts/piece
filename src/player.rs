@@ -390,27 +390,6 @@ impl Player {
         let cards = cards::<InHand>(db);
         let card = cards[index];
 
-        let needs_targets = card.needs_targets(db);
-        let valid_targets = card.valid_targets(db);
-        debug!(
-            "wants targets: {:?}, has targets {:?}",
-            needs_targets, valid_targets
-        );
-        let has_enough_targets = needs_targets
-            .into_iter()
-            .zip(valid_targets)
-            .all(|(wants, targets)| wants <= targets.len());
-        if !has_enough_targets {
-            return PendingResults::default();
-        }
-
-        let mut mana_pool = self.mana_pool;
-        for mana in card.cost(db).mana_cost.iter() {
-            if !mana_pool.spend(*mana) {
-                return PendingResults::default();
-            }
-        }
-
         if card.is_land(db) && self.lands_played >= Self::lands_per_turn(db) {
             return PendingResults::default();
         }
@@ -421,8 +400,7 @@ impl Player {
             return Battlefield::add_from_stack_or_hand(&mut db, card, None);
         }
 
-        self.mana_pool = mana_pool;
-        Stack::move_card_to_stack(&mut db, card)
+        Stack::move_card_to_stack_from_hand(&mut db, card, true)
     }
 
     pub fn can_spend_mana(&self, mana: &[Mana]) -> bool {

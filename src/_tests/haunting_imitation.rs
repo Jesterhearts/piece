@@ -23,7 +23,7 @@ fn reveals_clones() -> anyhow::Result<()> {
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let targets = haunting.valid_targets(&mut db);
-    haunting.move_to_stack(&mut db, targets);
+    haunting.move_to_stack(&mut db, targets, None);
 
     let land = CardId::upload(&mut db, &cards, player1, "Forest");
     let creature = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
@@ -48,7 +48,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     );
     assert_eq!(token.power(&db), Some(1));
     assert_eq!(token.toughness(&db), Some(1));
-    assert_eq!(token.keywords(&db), HashSet::from([Keyword::Flying]));
+    assert_eq!(token.keywords(&db), [Keyword::Flying].into_iter().collect());
 
     Ok(())
 }
@@ -63,7 +63,7 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let mut results = Stack::move_card_to_stack(&mut db, haunting);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

@@ -8,10 +8,10 @@ use crate::{
     battlefield::{ActionResult, Battlefield},
     controller::ControllerRestriction,
     effects::{DealDamage, Destination, Effect, Mill, TutorLibrary},
-    in_play::{AbilityId, AuraId, CardId, Database, ModifierId, OnBattlefield},
+    in_play::{AbilityId, AuraId, CardId, CastFrom, Database, ModifierId, OnBattlefield},
     mana::Mana,
     player::{AllPlayers, Controller, Owner},
-    stack::{ActiveTarget, StackEntry},
+    stack::{ActiveTarget, Stack, StackEntry},
     targets::Restriction,
 };
 
@@ -339,6 +339,7 @@ pub struct PendingResults {
     choose_modes: VecDeque<()>,
     choose_targets: VecDeque<ChooseTargets>,
     pay_costs: VecDeque<PayCost>,
+    choosing_to_cast: Vec<CardId>,
 
     organizing_stack: Option<OrganizingStack>,
 
@@ -350,6 +351,8 @@ pub struct PendingResults {
 
     apply_in_stages: bool,
     add_to_stack: bool,
+    cast_from: Option<CastFrom>,
+    paying_costs: bool,
 
     applied: bool,
 }
@@ -383,13 +386,29 @@ impl PendingResults {
         }
     }
 
-    pub fn add_to_stack(&mut self) {
+    pub fn add_ability_to_stack(&mut self) {
         self.add_to_stack = true;
+        self.apply_in_stages = false;
+    }
+
+    pub fn add_card_to_stack(&mut self, from: CastFrom) {
+        self.add_to_stack = true;
+        self.cast_from(from)
+    }
+
+    pub fn cast_from(&mut self, from: CastFrom) {
+        self.cast_from = Some(from);
     }
 
     pub fn apply_in_stages(&mut self) {
         self.applied = true;
         self.apply_in_stages = true;
+        self.add_to_stack = false;
+    }
+
+    pub fn push_choose_cast(&mut self, card: CardId, paying_costs: bool) {
+        self.choosing_to_cast.push(card);
+        self.paying_costs = paying_costs;
     }
 
     pub fn push_settled(&mut self, action: ActionResult) {
@@ -422,8 +441,10 @@ impl PendingResults {
             choosing.valid_targets.len() <= 1
         } else if self.organizing_stack.is_some() {
             true
-        } else {
+        } else if !self.pay_costs.is_empty() {
             self.pay_costs.iter().all(|cost| cost.choice_optional())
+        } else {
+            true
         }
     }
 
@@ -434,6 +455,12 @@ impl PendingResults {
             choosing.options(db, all_players)
         } else if let Some(choosing) = self.pay_costs.front() {
             choosing.options(db, &self.all_chosen_targets)
+        } else if !self.choosing_to_cast.is_empty() {
+            self.choosing_to_cast
+                .iter()
+                .enumerate()
+                .map(|(idx, card)| (idx, card.name(db)))
+                .collect_vec()
         } else if let Some(stack_org) = self.organizing_stack.as_ref() {
             stack_org
                 .entries
@@ -454,6 +481,8 @@ impl PendingResults {
             "targets".to_string()
         } else if self.pay_costs.front().is_some() {
             "paying costs".to_string()
+        } else if !self.choosing_to_cast.is_empty() {
+            "spells to cast".to_string()
         } else if self.organizing_stack.is_some() {
             "stack order".to_string()
         } else {
@@ -473,16 +502,17 @@ impl PendingResults {
         if self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
+            && self.choosing_to_cast.is_empty()
             && self.organizing_stack.is_none()
         {
             if self.add_to_stack {
                 match self.source.unwrap() {
                     Source::Card(card) => {
-                        self.settled_effects
-                            .push_back(ActionResult::AddCardToStack {
-                                card,
-                                targets: self.chosen_targets.clone(),
-                            });
+                        self.settled_effects.push_back(ActionResult::CastCard {
+                            card,
+                            targets: self.chosen_targets.clone(),
+                            from: self.cast_from.unwrap(),
+                        });
                     }
                     Source::Ability(ability) => {
                         let source = ability.source(db);
@@ -613,6 +643,19 @@ impl PendingResults {
                 self.pay_costs.push_front(pay);
                 ResolutionResult::PendingChoice
             }
+        } else if !self.choosing_to_cast.is_empty() {
+            if let Some(choice) = choice {
+                let results = Stack::move_card_to_stack_from_exile(
+                    db,
+                    self.choosing_to_cast.remove(choice),
+                    self.paying_costs,
+                );
+                self.extend(results);
+                ResolutionResult::TryAgain
+            } else {
+                self.choosing_to_cast.clear();
+                ResolutionResult::TryAgain
+            }
         } else if let Some(organizing) = self.organizing_stack.as_mut() {
             if let Some(choice) = choice {
                 organizing.choices.insert(choice);
@@ -642,39 +685,43 @@ impl PendingResults {
     }
 
     pub fn extend(&mut self, results: PendingResults) {
+        if results.is_empty() {
+            return;
+        }
+
+        self.source = results.source;
         self.choose_modes.extend(results.choose_modes);
         self.choose_targets.extend(results.choose_targets);
         self.pay_costs.extend(results.pay_costs);
+        self.choosing_to_cast.extend(results.choosing_to_cast);
         self.settled_effects.extend(results.settled_effects);
-        if let Some(organizing) = results.organizing_stack {
-            self.organizing_stack = Some(organizing);
-        }
-        if results.add_to_stack {
-            self.add_to_stack = true;
-        }
-        if results.apply_in_stages {
-            self.apply_in_stages = true;
-        }
+
+        self.organizing_stack = results.organizing_stack;
+        self.cast_from = results.cast_from;
+        self.apply_in_stages = results.apply_in_stages;
+        self.add_to_stack = results.add_to_stack;
+        self.paying_costs = results.paying_costs;
     }
 
     pub fn is_empty(&self) -> bool {
         self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
+            && self.choosing_to_cast.is_empty()
             && self.organizing_stack.is_none()
             && self.settled_effects.is_empty()
     }
 
     pub fn only_immediate_results(&self) -> bool {
-        (self.choose_modes.is_empty()
-            && self.choose_targets.is_empty()
-            && self.pay_costs.is_empty()
-            && self.organizing_stack.is_none())
-            || (self
-                .choose_targets
-                .iter()
-                .all(|choose| choose.valid_targets.is_empty())
-                && self.pay_costs.iter().all(|pay| pay.choice_optional()))
+        (self.choosing_to_cast.is_empty() && self.choose_modes.is_empty())
+            && ((self.choose_targets.is_empty()
+                && self.pay_costs.is_empty()
+                && self.organizing_stack.is_none())
+                || (self
+                    .choose_targets
+                    .iter()
+                    .all(|choose| choose.valid_targets.is_empty())
+                    && self.pay_costs.iter().all(|pay| pay.choice_optional())))
     }
 
     fn push_effect_results(
@@ -818,6 +865,7 @@ impl PendingResults {
             Effect::ControllerDrawCards(_) => unreachable!(),
             Effect::ControllerLosesLife(_) => unreachable!(),
             Effect::UntapThis => unreachable!(),
+            Effect::Cascade => unreachable!(),
         }
     }
 

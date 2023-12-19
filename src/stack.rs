@@ -10,14 +10,15 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        compute_deck_targets, ActionResult, Battlefield, ChooseTargets, EffectOrAura,
-        PendingResults, Source,
+        compute_deck_targets, ActionResult, Battlefield, ChooseTargets, EffectOrAura, PayCost,
+        PendingResults, Source, SpendMana,
     },
     card::keyword::SplitSecond,
     controller::ControllerRestriction,
     effects::{BattlefieldModifier, Effect, EffectDuration, Mill, TutorLibrary},
     in_play::{
-        AbilityId, CardId, Database, InStack, ModifierId, OnBattlefield, TriggerId, TriggerInStack,
+        cast_from, AbilityId, CardId, CastFrom, Database, InStack, ModifierId, OnBattlefield,
+        TriggerId, TriggerInStack,
     },
     player::{AllPlayers, Controller, Owner},
     targets::{Restriction, SpellTarget},
@@ -820,7 +821,7 @@ impl Stack {
                 Effect::CreateToken(token) => {
                     results.push_settled(ActionResult::CreateToken {
                         source: controller,
-                        token: token.clone(),
+                        token: Box::new(token.clone()),
                     });
                 }
                 Effect::GainCounter(counter) => {
@@ -882,6 +883,10 @@ impl Stack {
                     results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
                 }
                 Effect::UntapThis => results.push_settled(ActionResult::Untap(source)),
+                Effect::Cascade => results.push_settled(ActionResult::Cascade {
+                    cascading: source.cost(db).cmc(),
+                    player: controller,
+                }),
             }
         }
 
@@ -945,36 +950,74 @@ impl Stack {
         results
     }
 
-    pub fn move_card_to_stack(db: &mut Database, card: CardId) -> PendingResults {
-        let mut results = PendingResults::new(Source::Card(card));
-
-        if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
-            results.add_to_stack();
-            let controller = card.controller(db);
-            let creatures = Battlefield::creatures(db);
-            if let Some(aura) = card.aura(db) {
-                results.push_choose_targets(ChooseTargets::new(
-                    EffectOrAura::Aura(aura),
-                    card.targets_for_aura(db).unwrap(),
-                ))
-            }
-
-            for effect in card.effects(db) {
-                let effect = effect.into_effect(db, controller);
-                let valid_targets = card.targets_for_effect(db, controller, &effect, &creatures);
-                results.push_choose_targets(ChooseTargets::new(
-                    EffectOrAura::Effect(effect),
-                    valid_targets,
-                ));
-            }
-        } else {
-            results.push_settled(ActionResult::AddCardToStack {
-                card,
-                targets: vec![],
-            })
-        }
-        results
+    pub fn move_card_to_stack_from_hand(
+        db: &mut Database,
+        card: CardId,
+        paying_costs: bool,
+    ) -> PendingResults {
+        add_card_to_stack(card, db, CastFrom::Hand, paying_costs)
     }
+
+    pub fn move_card_to_stack_from_exile(
+        db: &mut Database,
+        card: CardId,
+        paying_costs: bool,
+    ) -> PendingResults {
+        add_card_to_stack(card, db, CastFrom::Exile, paying_costs)
+    }
+}
+
+fn add_card_to_stack(
+    card: CardId,
+    db: &mut Database,
+    from: CastFrom,
+    paying_costs: bool,
+) -> PendingResults {
+    let mut results = PendingResults::new(Source::Card(card));
+
+    match from {
+        CastFrom::Hand => {
+            card.cast_location::<cast_from::Hand>(db);
+        }
+        CastFrom::Exile => {
+            card.cast_location::<cast_from::Exile>(db);
+        }
+    }
+    card.apply_modifiers_layered(db);
+
+    if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
+        results.add_card_to_stack(from);
+        let controller = card.controller(db);
+        let creatures = Battlefield::creatures(db);
+        if let Some(aura) = card.aura(db) {
+            results.push_choose_targets(ChooseTargets::new(
+                EffectOrAura::Aura(aura),
+                card.targets_for_aura(db).unwrap(),
+            ))
+        }
+
+        for effect in card.effects(db) {
+            let effect = effect.into_effect(db, controller);
+            let valid_targets = card.targets_for_effect(db, controller, &effect, &creatures);
+            results.push_choose_targets(ChooseTargets::new(
+                EffectOrAura::Effect(effect),
+                valid_targets,
+            ));
+        }
+    } else {
+        results.push_settled(ActionResult::CastCard {
+            card,
+            targets: vec![],
+            from,
+        })
+    }
+
+    let cost = card.cost(db);
+    if paying_costs {
+        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(cost.mana_cost.clone())));
+    }
+
+    results
 }
 
 fn counter_spell(
@@ -1047,7 +1090,7 @@ mod tests {
         let player = all_players.new_player("Player".to_string(), 20);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
-        card1.move_to_stack(&mut db, Default::default());
+        card1.move_to_stack(&mut db, Default::default(), None);
 
         let mut results = Stack::resolve_1(&mut db);
 

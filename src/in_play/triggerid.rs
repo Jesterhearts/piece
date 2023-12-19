@@ -1,16 +1,16 @@
-use std::{collections::HashSet, sync::atomic::Ordering};
+use std::sync::atomic::Ordering;
 
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::From;
 use itertools::Itertools;
 
 use crate::{
-    abilities::TriggerListeners,
+    abilities::{TriggerListener, TriggeredAbility},
     card::OracleText,
     effects::{AnyEffect, Effects},
-    in_play::{Active, CardId, Database, TriggerInStack, NEXT_STACK_SEQ},
+    in_play::{Active, CardId, Database, Temporary, TriggerInStack, NEXT_STACK_SEQ},
     stack::{ActiveTarget, Settled, Stack, Targets},
-    triggers::Location,
+    triggers::{trigger_source, Location, TriggerSource},
     types::Types,
 };
 
@@ -18,12 +18,50 @@ use crate::{
 pub struct TriggerId(Entity);
 
 impl TriggerId {
+    pub fn upload(
+        db: &mut Database,
+        ability: &TriggeredAbility,
+        card: CardId,
+        temporary: bool,
+    ) -> Self {
+        let mut entity = db.triggers.spawn((
+            TriggerListener(card),
+            ability.trigger.from,
+            Effects(ability.effects.clone()),
+            Types(ability.trigger.for_types.clone()),
+            OracleText(ability.oracle_text.clone()),
+        ));
+
+        if temporary {
+            entity.insert(Temporary);
+        }
+
+        match ability.trigger.trigger {
+            TriggerSource::PutIntoGraveyard => {
+                entity.insert(trigger_source::PutIntoGraveyard);
+            }
+            TriggerSource::EntersTheBattlefield => {
+                entity.insert(trigger_source::EntersTheBattlefield);
+            }
+            TriggerSource::Cast => {
+                entity.insert(trigger_source::Cast);
+            }
+        }
+
+        Self(entity.id())
+    }
+
     pub fn update_stack_seq(self, db: &mut Database) {
         db.triggers.get_mut::<TriggerInStack>(self.0).unwrap().seq =
             NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<Vec<ActiveTarget>>) {
+    pub fn move_to_stack(
+        self,
+        db: &mut Database,
+        listener: CardId,
+        targets: Vec<Vec<ActiveTarget>>,
+    ) {
         if Stack::split_second(db) {
             return;
         }
@@ -31,7 +69,7 @@ impl TriggerId {
         db.triggers.spawn((
             TriggerInStack {
                 seq: NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
-                source,
+                source: listener,
                 trigger: self,
             },
             Targets(targets),
@@ -50,10 +88,9 @@ impl TriggerId {
         db.triggers.get::<Types>(self.0).cloned().unwrap()
     }
 
-    pub fn listeners(self, db: &mut Database) -> HashSet<CardId> {
+    pub fn listener(self, db: &mut Database) -> CardId {
         db.triggers
-            .get::<TriggerListeners>(self.0)
-            .cloned()
+            .get::<TriggerListener>(self.0)
             .map(|l| l.0)
             .unwrap()
     }
@@ -89,10 +126,10 @@ impl TriggerId {
 
     pub fn all_for_card(db: &mut Database, cardid: CardId) -> Vec<TriggerId> {
         db.triggers
-            .query::<(Entity, &TriggerListeners)>()
+            .query::<(Entity, &TriggerListener)>()
             .iter(&db.triggers)
-            .filter_map(|(entity, listeners)| {
-                if listeners.contains(&cardid) {
+            .filter_map(|(entity, listener)| {
+                if listener.0 == cardid {
                     Some(Self(entity))
                 } else {
                     None
@@ -102,22 +139,12 @@ impl TriggerId {
     }
 
     pub fn unsubscribe_all_for_card(db: &mut Database, cardid: CardId) {
-        for mut listeners in db
-            .triggers
-            .query::<&mut TriggerListeners>()
-            .iter_mut(&mut db.triggers)
-        {
-            listeners.remove(&cardid);
-        }
-    }
-
-    pub fn deactivate_all_for_card(db: &mut Database, cardid: CardId) {
         let entities = db
             .triggers
-            .query_filtered::<(Entity, &TriggerListeners), With<Active>>()
+            .query::<(Entity, &TriggerListener)>()
             .iter(&db.triggers)
-            .filter_map(|(entity, listeners)| {
-                if listeners.contains(&cardid) {
+            .filter_map(|(entity, listener)| {
+                if listener.0 == cardid {
                     Some(entity)
                 } else {
                     None
@@ -126,15 +153,37 @@ impl TriggerId {
             .collect_vec();
 
         for entity in entities {
-            db.triggers.entity_mut(entity).remove::<Active>();
+            db.triggers.entity_mut(entity).remove::<TriggerListener>();
+        }
+    }
+
+    pub fn deactivate_all_for_card(db: &mut Database, cardid: CardId) {
+        let entities = db
+            .triggers
+            .query_filtered::<(Entity, &TriggerListener), With<Active>>()
+            .iter(&db.triggers)
+            .filter_map(|(entity, listener)| {
+                if listener.0 == cardid {
+                    Some(entity)
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
+
+        for entity in entities {
+            if db.triggers.get::<Temporary>(entity).is_some() {
+                db.triggers.despawn(entity);
+            } else {
+                db.triggers.entity_mut(entity).remove::<Active>();
+            }
         }
     }
 
     pub fn add_listener(self, db: &mut Database, listener: CardId) {
         db.triggers
-            .get_mut::<TriggerListeners>(self.0)
-            .unwrap()
-            .insert(listener);
+            .entity_mut(self.0)
+            .insert(TriggerListener(listener));
     }
 
     pub fn text(self, db: &Database) -> String {

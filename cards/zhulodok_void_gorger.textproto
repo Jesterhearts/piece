@@ -1,0 +1,23 @@
+name: "Zhulodok, Void Gorger"
+cost {
+  mana_costs { generic { count: 5 } }
+  mana_costs { colorless {} }
+}
+types { legendary {} }
+types { creature {} }
+subtypes { eldrazi {} }
+static_abilities {
+  battlefield_modifier {
+    modifier {
+      global: true
+      add_keywords: "Cascade, Cascade"
+    }
+    controller { you {} }
+    restrictions { of_color { colors { colorless {} } } }
+    restrictions { cmc { comparison { greater_than_or_equal { value: 7 } } } }
+    restrictions { cast_from_hand {} }
+    duration { until_source_leaves_battlefield {} }
+  }
+}
+power: 7
+toughness: 4

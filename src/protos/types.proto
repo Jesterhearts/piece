@@ -41,6 +41,7 @@ message Subtype {
   message Bear {}
   message Dinosaur {}
   message Dryad {}
+  message Eldrazi {}
   message Elemental {}
   message Elf {}
   message Equipment {}
@@ -68,25 +69,26 @@ message Subtype {
     Bear bear = 3;
     Dinosaur dinosaur = 4;
     Dryad dryad = 5;
-    Elemental elemental = 6;
-    Elf elf = 7;
-    Equipment equipment = 8;
-    Forest forest = 9;
-    Golem golem = 10;
-    Human human = 11;
-    Island island = 12;
-    Mountain mountain = 13;
-    Nymph nymph = 14;
-    Plains plains = 15;
-    Praetor praetor = 16;
-    Shade shade = 17;
-    Shaman shaman = 18;
-    Shapeshifter shapeshifter = 19;
-    Soldier soldier = 20;
-    Spirit spirit = 21;
-    Swamp swamp = 22;
-    Vampire vampire = 23;
-    Wizard wizard = 24;
-    Zombie zombie = 25;
+    Eldrazi eldrazi = 6;
+    Elemental elemental = 7;
+    Elf elf = 8;
+    Equipment equipment = 9;
+    Forest forest = 10;
+    Golem golem = 11;
+    Human human = 12;
+    Island island = 13;
+    Mountain mountain = 14;
+    Nymph nymph = 15;
+    Plains plains = 16;
+    Praetor praetor = 17;
+    Shade shade = 18;
+    Shaman shaman = 19;
+    Shapeshifter shapeshifter = 20;
+    Soldier soldier = 21;
+    Spirit spirit = 22;
+    Swamp swamp = 23;
+    Vampire vampire = 24;
+    Wizard wizard = 25;
+    Zombie zombie = 26;
   }
 }

@@ -8,7 +8,7 @@ use crate::{
     abilities::{
         Ability, ActivatedAbilities, ETBAbilities, GainMana, ModifiedActivatedAbilities,
         ModifiedETBAbilities, ModifiedStaticAbilities, ModifiedTriggers, StaticAbilities,
-        StaticAbility, TriggerListeners, Triggers,
+        StaticAbility, Triggers,
     },
     battlefield::{compute_deck_targets, compute_graveyard_targets, Battlefield},
     card::{
@@ -26,15 +26,15 @@ use crate::{
         ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
-        self, AbilityId, Active, AuraId, CounterId, Database, EntireBattlefield, FaceDown, Global,
-        InExile, InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId,
-        ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, TriggerId,
-        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        self, cast_from, exile_reason, AbilityId, Active, AuraId, CastFrom, CounterId, Database,
+        EntireBattlefield, ExileReason, FaceDown, Global, InExile, InGraveyard, InHand, InLibrary,
+        InStack, IsToken, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield,
+        ReplacementEffectId, Tapped, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ,
+        NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Settled, Stack, Targets},
     targets::{Comparison, Restriction, Restrictions, SpellTarget},
-    triggers::{trigger_source, TriggerSource},
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
     Cards,
 };
@@ -101,11 +101,19 @@ impl CardId {
                 .remove::<OnBattlefield>()
                 .remove::<InGraveyard>()
                 .remove::<InExile>()
+                .remove::<cast_from::Hand>()
+                .remove::<cast_from::Exile>()
+                .remove::<exile_reason::Cascade>()
                 .insert(InHand(NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed)));
         }
     }
 
-    pub fn move_to_stack(self, db: &mut Database, targets: Vec<Vec<ActiveTarget>>) {
+    pub fn move_to_stack(
+        self,
+        db: &mut Database,
+        targets: Vec<Vec<ActiveTarget>>,
+        from: Option<CastFrom>,
+    ) {
         if Stack::split_second(db) {
             return;
         }
@@ -123,16 +131,35 @@ impl CardId {
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
-            db.entity_mut(self.0)
+            let mut entity = db.entity_mut(self.0);
+            entity
                 .remove::<InLibrary>()
                 .remove::<InHand>()
                 .remove::<InStack>()
                 .remove::<OnBattlefield>()
                 .remove::<InGraveyard>()
                 .remove::<InExile>()
+                .remove::<cast_from::Hand>()
+                .remove::<cast_from::Exile>()
+                .remove::<exile_reason::Cascade>()
                 .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
                 .insert(Targets(targets));
+
+            if let Some(from) = from {
+                match from {
+                    CastFrom::Hand => {
+                        entity.insert(cast_from::Hand);
+                    }
+                    CastFrom::Exile => {
+                        entity.insert(cast_from::Exile);
+                    }
+                }
+            }
         }
+    }
+
+    pub fn cast_from_hand(self, db: &Database) -> bool {
+        db.get::<InStack>(self.0).is_some() && db.get::<cast_from::Hand>(self.0).is_some()
     }
 
     pub fn move_to_battlefield(self, db: &mut Database) {
@@ -144,6 +171,9 @@ impl CardId {
             .remove::<OnBattlefield>()
             .remove::<InGraveyard>()
             .remove::<InExile>()
+            .remove::<cast_from::Hand>()
+            .remove::<cast_from::Exile>()
+            .remove::<exile_reason::Cascade>()
             .insert(OnBattlefield(
                 NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
             ));
@@ -173,6 +203,9 @@ impl CardId {
                 .remove::<OnBattlefield>()
                 .remove::<InGraveyard>()
                 .remove::<InExile>()
+                .remove::<cast_from::Hand>()
+                .remove::<cast_from::Exile>()
+                .remove::<exile_reason::Cascade>()
                 .insert(InGraveyard(
                     NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
                 ));
@@ -201,12 +234,15 @@ impl CardId {
                 .remove::<OnBattlefield>()
                 .remove::<InGraveyard>()
                 .remove::<InExile>()
+                .remove::<cast_from::Hand>()
+                .remove::<cast_from::Exile>()
+                .remove::<exile_reason::Cascade>()
                 .insert(InLibrary);
             true
         }
     }
 
-    pub fn move_to_exile(self, db: &mut Database) {
+    pub fn move_to_exile(self, db: &mut Database, reason: Option<ExileReason>) {
         if self.is_token(db) {
             db.cards.despawn(self.0);
         } else {
@@ -220,14 +256,26 @@ impl CardId {
             let owner = self.owner(db);
             *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
 
-            db.entity_mut(self.0)
+            let mut entity = db.entity_mut(self.0);
+            entity
                 .remove::<InLibrary>()
                 .remove::<InHand>()
                 .remove::<InStack>()
                 .remove::<OnBattlefield>()
                 .remove::<InGraveyard>()
                 .remove::<InExile>()
+                .remove::<cast_from::Hand>()
+                .remove::<cast_from::Exile>()
+                .remove::<exile_reason::Cascade>()
                 .insert(InExile);
+
+            if let Some(reason) = reason {
+                match reason {
+                    ExileReason::Cascade => {
+                        entity.insert(exile_reason::Cascade);
+                    }
+                }
+            }
         }
     }
 
@@ -321,7 +369,7 @@ impl CardId {
             db.get::<Subtypes>(self.0).unwrap().0.clone()
         };
         let mut keywords = if facedown {
-            HashSet::default()
+            ::counter::Counter::default()
         } else {
             db.get::<Keywords>(self.0).unwrap().0.clone()
         };
@@ -504,7 +552,7 @@ impl CardId {
 
             if let Some(modify) = modifier.keyword_modifiers(db) {
                 match modify {
-                    ModifyKeywords::Remove(remove) => keywords.retain(|kw| !remove.contains(kw)),
+                    ModifyKeywords::Remove(remove) => keywords.retain(|kw, _| !remove.contains(kw)),
                     ModifyKeywords::Add(add) => keywords.extend(add.iter()),
                 }
             }
@@ -740,6 +788,8 @@ impl CardId {
                     if !match comparison {
                         Comparison::LessThan(target) => toughness < *target,
                         Comparison::LessThanOrEqual(target) => toughness <= *target,
+                        Comparison::GreaterThan(target) => toughness > *target,
+                        Comparison::GreaterThanOrEqual(target) => toughness >= *target,
                     } {
                         return false;
                     }
@@ -762,6 +812,19 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::Cmc(comparison) => {
+                    let cmc = self.cost(db).cmc() as i32;
+                    let matches = match comparison {
+                        Comparison::LessThan(i) => cmc < *i,
+                        Comparison::LessThanOrEqual(i) => cmc <= *i,
+                        Comparison::GreaterThan(i) => cmc > *i,
+                        Comparison::GreaterThanOrEqual(i) => cmc >= *i,
+                    };
+                    if !matches {
+                        return false;
+                    }
+                }
+                Restriction::CastFromHand => {}
             }
         }
 
@@ -985,7 +1048,7 @@ impl CardId {
             entity.insert(CannotBeCountered);
         }
 
-        if card.keywords.contains(&Keyword::SplitSecond) {
+        if card.keywords.contains_key(&Keyword::SplitSecond) {
             entity.insert(SplitSecond);
         }
 
@@ -1060,24 +1123,7 @@ impl CardId {
         if !card.triggered_abilities.is_empty() {
             let mut trigger_ids = vec![];
             for ability in card.triggered_abilities.iter() {
-                let mut entity = db.triggers.spawn((
-                    TriggerListeners(HashSet::from([cardid])),
-                    ability.trigger.from,
-                    Effects(ability.effects.clone()),
-                    Types(ability.trigger.for_types.clone()),
-                    OracleText(ability.oracle_text.clone()),
-                ));
-
-                match ability.trigger.trigger {
-                    TriggerSource::PutIntoGraveyard => {
-                        entity.insert(trigger_source::PutIntoGraveyard);
-                    }
-                    TriggerSource::EntersTheBattlefield => {
-                        entity.insert(trigger_source::EntersTheBattlefield);
-                    }
-                }
-
-                trigger_ids.push(TriggerId::from(entity.id()));
+                trigger_ids.push(TriggerId::upload(db, ability, cardid, false));
             }
 
             db.entity_mut(cardid.0).insert(Triggers(trigger_ids));
@@ -1314,6 +1360,7 @@ impl CardId {
             Effect::ReturnSelfToHand => {}
             Effect::RevealEachTopOfLibrary(_) => {}
             Effect::UntapThis => {}
+            Effect::Cascade => {}
         }
 
         targets
@@ -1456,7 +1503,7 @@ impl CardId {
         !self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))
     }
 
-    pub fn keywords(self, db: &Database) -> HashSet<Keyword> {
+    pub fn keywords(self, db: &Database) -> ::counter::Counter<Keyword> {
         db.get::<ModifiedKeywords>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Keywords>(self.0).map(|t| t.0.clone()))
@@ -1464,19 +1511,19 @@ impl CardId {
     }
 
     pub fn shroud(self, db: &mut Database) -> bool {
-        self.keywords(db).contains(&Keyword::Shroud)
+        self.keywords(db).contains_key(&Keyword::Shroud)
     }
 
     pub fn hexproof(self, db: &mut Database) -> bool {
-        self.keywords(db).contains(&Keyword::Hexproof)
+        self.keywords(db).contains_key(&Keyword::Hexproof)
     }
 
     pub fn flying(self, db: &mut Database) -> bool {
-        self.keywords(db).contains(&Keyword::Flying)
+        self.keywords(db).contains_key(&Keyword::Flying)
     }
 
     pub fn vigilance(self, db: &mut Database) -> bool {
-        self.keywords(db).contains(&Keyword::Vigilance)
+        self.keywords(db).contains_key(&Keyword::Vigilance)
     }
 
     pub fn name(self, db: &Database) -> String {
@@ -1500,7 +1547,7 @@ impl CardId {
     }
 
     pub fn has_flash(&self, db: &Database) -> bool {
-        self.keywords(db).contains(&Keyword::Flash)
+        self.keywords(db).contains_key(&Keyword::Flash)
     }
 
     pub fn cannot_be_countered(&self, db: &mut Database) -> bool {
@@ -1554,6 +1601,24 @@ impl CardId {
 
     pub fn settle(self, db: &mut Database) {
         db.entity_mut(self.0).insert(Settled);
+    }
+
+    pub fn cast_location<Location: Component + Default>(self, db: &mut Database) {
+        db.entity_mut(self.0).insert(Location::default());
+    }
+
+    pub fn cascade(self, db: &Database) -> usize {
+        self.keywords(db)
+            .get(&Keyword::Cascade)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    pub fn exiled_with_cascade(db: &mut Database) -> Vec<CardId> {
+        db.query_filtered::<Entity, (With<InExile>, With<exile_reason::Cascade>)>()
+            .iter(db)
+            .map(Self)
+            .collect_vec()
     }
 }
 

@@ -222,7 +222,7 @@ pub struct ModifyBattlefield {
     pub entire_battlefield: bool,
     pub global: bool,
 
-    pub add_keywords: HashSet<Keyword>,
+    pub add_keywords: ::counter::Counter<Keyword>,
     pub remove_keywords: HashSet<Keyword>,
 }
 
@@ -406,6 +406,7 @@ impl TryFrom<&protogen::effects::RevealEachTopOfLibrary> for RevealEachTopOfLibr
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
     ControllerDrawCards(usize),
+    Cascade,
     ControllerLosesLife(usize),
     CopyOfAnyCreatureNonTargeting,
     CounterSpell { target: SpellTarget },
@@ -472,6 +473,7 @@ impl Effect {
             Effect::RevealEachTopOfLibrary(_) => 0,
             Effect::UntapThis => 0,
             Effect::TargetToTopOfLibrary { .. } => 1,
+            Effect::Cascade => 0,
         }
     }
 
@@ -503,6 +505,7 @@ impl Effect {
             Effect::RevealEachTopOfLibrary(_) => 0,
             Effect::UntapThis => 0,
             Effect::TargetToTopOfLibrary { .. } => 1,
+            Effect::Cascade => 0,
         }
     }
 }
@@ -534,6 +537,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(modifier.try_into()?))
             }
+            protogen::effects::effect::Effect::Cascade(_) => Ok(Self::Cascade),
             protogen::effects::effect::Effect::ControllerDrawCards(draw) => {
                 Ok(Self::ControllerDrawCards(usize::try_from(draw.count)?))
             }
@@ -669,7 +673,7 @@ pub struct TokenCreature {
     pub types: HashSet<Type>,
     pub subtypes: HashSet<Subtype>,
     pub colors: HashSet<Color>,
-    pub keywords: HashSet<Keyword>,
+    pub keywords: ::counter::Counter<Keyword>,
     pub power: usize,
     pub toughness: usize,
 }

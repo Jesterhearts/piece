@@ -25,6 +25,16 @@ impl CastingCost {
 
         result
     }
+
+    pub(crate) fn cmc(&self) -> usize {
+        self.mana_cost
+            .iter()
+            .map(|mana| match mana {
+                Mana::Generic(count) => *count,
+                _ => 1,
+            })
+            .sum::<usize>()
+    }
 }
 
 impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
