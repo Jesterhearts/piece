@@ -588,7 +588,7 @@ fn main() -> anyhow::Result<()> {
                         selection_list_state.selected_index = Some(0);
                     }
                     let mut options = to_resolve.options(&mut db, &all_players);
-                    if to_resolve.choices_optional() {
+                    if to_resolve.choices_optional(&db, &all_players) {
                         for option in options.iter_mut() {
                             option.0 += 1
                         }
@@ -1042,7 +1042,7 @@ fn main() -> anyhow::Result<()> {
                         }
                         KeyCode::Esc => {
                             if let UiState::SelectingOptions { to_resolve, .. } = &mut state {
-                                if to_resolve.can_discard() {
+                                if to_resolve.can_cancel() {
                                     state = previous_state.pop().unwrap_or(UiState::Battlefield {
                                         phase_options_selection_state: HorizontalListState::default(
                                         ),
@@ -1116,7 +1116,7 @@ fn main() -> anyhow::Result<()> {
                         match index {
                             0 => {
                                 let mut pending = turn.step(&mut db, &mut all_players);
-                                while pending.only_immediate_results() {
+                                while pending.only_immediate_results(&db, &all_players) {
                                     let result = pending.resolve(&mut db, &mut all_players, None);
                                     if result == ResolutionResult::Complete {
                                         break;
@@ -1132,7 +1132,7 @@ fn main() -> anyhow::Result<()> {
                             }
                             2 => {
                                 let mut pending = all_players[player1].draw(&mut db, 1);
-                                while pending.only_immediate_results() {
+                                while pending.only_immediate_results(&db, &all_players) {
                                     let result = pending.resolve(&mut db, &mut all_players, None);
                                     if result == ResolutionResult::Complete {
                                         break;
@@ -1153,7 +1153,7 @@ fn main() -> anyhow::Result<()> {
                         let card = player1.get_cards::<InHand>(&mut db)[selected];
                         if turn.can_cast(&mut db, card) {
                             let mut pending = all_players[player1].play_card(&mut db, selected);
-                            while pending.only_immediate_results() {
+                            while pending.only_immediate_results(&db, &all_players) {
                                 let result = pending.resolve(&mut db, &mut all_players, None);
                                 if result == ResolutionResult::Complete {
                                     break;
@@ -1206,7 +1206,7 @@ fn main() -> anyhow::Result<()> {
             } => {
                 let mut real_choice = choice;
                 #[allow(clippy::unnecessary_unwrap)] // I would if I could
-                if to_resolve.choices_optional() && choice.is_some() {
+                if to_resolve.choices_optional(&db, &all_players) && choice.is_some() {
                     if choice == Some(0) {
                         real_choice = None
                     } else {
@@ -1247,7 +1247,7 @@ fn main() -> anyhow::Result<()> {
                             }
                             battlefield::ResolutionResult::TryAgain => {
                                 debug!("Trying again for {:#?}", to_resolve);
-                                if !to_resolve.only_immediate_results() {
+                                if !to_resolve.only_immediate_results(&db, &all_players) {
                                     break;
                                 }
                             }
@@ -1277,7 +1277,7 @@ fn main() -> anyhow::Result<()> {
 
 fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut UiState) {
     let mut pending = Stack::resolve_1(db);
-    while pending.only_immediate_results() {
+    while pending.only_immediate_results(db, all_players) {
         let result = pending.resolve(db, all_players, None);
         if result == ResolutionResult::Complete {
             break;

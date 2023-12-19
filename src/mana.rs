@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 use crate::{card::Color, protogen};
 
-#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Copy, Hash, strum::EnumIter)]
 pub enum Mana {
     White,
     Blue,
@@ -10,7 +10,18 @@ pub enum Mana {
     Red,
     Green,
     Colorless,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Copy, Hash)]
+pub enum ManaCost {
+    White,
+    Blue,
+    Black,
+    Red,
+    Green,
+    Colorless,
     Generic(usize),
+    X,
 }
 
 impl Mana {
@@ -22,12 +33,50 @@ impl Mana {
             Mana::Red => result.push('🔺'),
             Mana::Green => result.push('🌳'),
             Mana::Colorless => result.push('⟡'),
-            Mana::Generic(count) => result.push_str(&format!("{}", count)),
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match self {
+            Mana::White => Color::White,
+            Mana::Blue => Color::Blue,
+            Mana::Black => Color::Black,
+            Mana::Red => Color::Red,
+            Mana::Green => Color::Green,
+            Mana::Colorless => Color::Colorless,
         }
     }
 }
 
-impl TryFrom<&protogen::cost::ManaCost> for Mana {
+impl ManaCost {
+    pub fn push_mana_symbol(self, result: &mut String) {
+        match self {
+            ManaCost::White => result.push('🔆'),
+            ManaCost::Blue => result.push('💧'),
+            ManaCost::Black => result.push('💀'),
+            ManaCost::Red => result.push('🔺'),
+            ManaCost::Green => result.push('🌳'),
+            ManaCost::Colorless => result.push('⟡'),
+            ManaCost::Generic(count) => result.push_str(&format!("{}", count)),
+            ManaCost::X => result.push('X'),
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match self {
+            ManaCost::White => Color::White,
+            ManaCost::Blue => Color::Blue,
+            ManaCost::Black => Color::Black,
+            ManaCost::Red => Color::Red,
+            ManaCost::Green => Color::Green,
+            ManaCost::Colorless => Color::Colorless,
+            ManaCost::Generic(_) => Color::Colorless,
+            ManaCost::X => Color::Colorless,
+        }
+    }
+}
+
+impl TryFrom<&protogen::cost::ManaCost> for ManaCost {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::cost::ManaCost) -> Result<Self, Self::Error> {
@@ -35,11 +84,11 @@ impl TryFrom<&protogen::cost::ManaCost> for Mana {
             .cost
             .as_ref()
             .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
-            .and_then(Mana::try_from)
+            .and_then(ManaCost::try_from)
     }
 }
 
-impl TryFrom<&protogen::cost::mana_cost::Cost> for Mana {
+impl TryFrom<&protogen::cost::mana_cost::Cost> for ManaCost {
     type Error = anyhow::Error;
     fn try_from(value: &protogen::cost::mana_cost::Cost) -> Result<Self, Self::Error> {
         match value {
@@ -52,6 +101,7 @@ impl TryFrom<&protogen::cost::mana_cost::Cost> for Mana {
             protogen::cost::mana_cost::Cost::Generic(generic) => {
                 Ok(Self::Generic(usize::try_from(generic.count)?))
             }
+            protogen::cost::mana_cost::Cost::X(_) => Ok(Self::X),
         }
     }
 }
@@ -64,37 +114,19 @@ impl TryFrom<&protogen::mana::Mana> for Mana {
             .mana
             .as_ref()
             .ok_or_else(|| anyhow!("Expected mana to have a mana field specified"))
-            .and_then(Self::try_from)
+            .map(Self::from)
     }
 }
 
-impl TryFrom<&protogen::mana::mana::Mana> for Mana {
-    type Error = anyhow::Error;
-    fn try_from(value: &protogen::mana::mana::Mana) -> Result<Self, Self::Error> {
+impl From<&protogen::mana::mana::Mana> for Mana {
+    fn from(value: &protogen::mana::mana::Mana) -> Self {
         match value {
-            protogen::mana::mana::Mana::White(_) => Ok(Self::White),
-            protogen::mana::mana::Mana::Blue(_) => Ok(Self::Blue),
-            protogen::mana::mana::Mana::Black(_) => Ok(Self::Black),
-            protogen::mana::mana::Mana::Red(_) => Ok(Self::Red),
-            protogen::mana::mana::Mana::Green(_) => Ok(Self::Green),
-            protogen::mana::mana::Mana::Colorless(_) => Ok(Self::Colorless),
-            protogen::mana::mana::Mana::Generic(generic) => {
-                Ok(Self::Generic(usize::try_from(generic.count)?))
-            }
-        }
-    }
-}
-
-impl Mana {
-    pub fn color(&self) -> Color {
-        match self {
-            Mana::White => Color::White,
-            Mana::Blue => Color::Blue,
-            Mana::Black => Color::Black,
-            Mana::Red => Color::Red,
-            Mana::Green => Color::Green,
-            Mana::Colorless => Color::Colorless,
-            Mana::Generic(_) => Color::Colorless,
+            protogen::mana::mana::Mana::White(_) => Self::White,
+            protogen::mana::mana::Mana::Blue(_) => Self::Blue,
+            protogen::mana::mana::Mana::Black(_) => Self::Black,
+            protogen::mana::mana::Mana::Red(_) => Self::Red,
+            protogen::mana::mana::Mana::Green(_) => Self::Green,
+            protogen::mana::mana::Mana::Colorless(_) => Self::Colorless,
         }
     }
 }

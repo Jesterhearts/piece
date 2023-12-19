@@ -4,11 +4,11 @@ use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use itertools::Itertools;
 
-use crate::{card::Color, mana::Mana, protogen, targets::Restriction};
+use crate::{card::Color, mana::ManaCost, protogen, targets::Restriction};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct CastingCost {
-    pub mana_cost: Vec<Mana>,
+    pub mana_cost: Vec<ManaCost>,
 }
 
 impl CastingCost {
@@ -30,7 +30,7 @@ impl CastingCost {
         self.mana_cost
             .iter()
             .map(|mana| match mana {
-                Mana::Generic(count) => *count,
+                &ManaCost::Generic(count) => count,
                 _ => 1,
             })
             .sum::<usize>()
@@ -41,13 +41,13 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
-        let mut mana_cost = value
-            .mana_costs
-            .iter()
-            .map(Mana::try_from)
-            .collect::<anyhow::Result<Vec<_>>>()?;
-        mana_cost.sort();
-        Ok(Self { mana_cost })
+        Ok(Self {
+            mana_cost: value
+                .mana_costs
+                .iter()
+                .map(ManaCost::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
+        })
     }
 }
 
@@ -124,7 +124,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct AbilityCost {
-    pub mana_cost: Vec<Mana>,
+    pub mana_cost: Vec<ManaCost>,
     pub tap: bool,
     pub additional_cost: Vec<AdditionalCost>,
 }
@@ -155,15 +155,12 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::cost::AbilityCost) -> Result<Self, Self::Error> {
-        let mut mana_cost = value
-            .mana_costs
-            .iter()
-            .map(Mana::try_from)
-            .collect::<anyhow::Result<Vec<_>>>()?;
-        mana_cost.sort();
-
         Ok(Self {
-            mana_cost,
+            mana_cost: value
+                .mana_costs
+                .iter()
+                .map(ManaCost::try_from)
+                .collect::<anyhow::Result<Vec<_>>>()?,
             tap: value.tap.unwrap_or_default(),
             additional_cost: value
                 .additional_costs

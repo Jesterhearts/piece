@@ -281,11 +281,9 @@ impl Battlefield {
                 Self::push_effect_results(db, source, controller, effect, &mut results);
             }
 
-            if !results.only_immediate_results() {
-                source_card_id.apply_modifiers_layered(db);
-                results.push_settled(construct_skip_replacement(source_card_id, enters_tapped));
-                return PartialAddToBattlefieldResult::NeedsResolution(results);
-            }
+            source_card_id.apply_modifiers_layered(db);
+            results.push_settled(construct_skip_replacement(source_card_id, enters_tapped));
+            return PartialAddToBattlefieldResult::NeedsResolution(results);
         }
 
         move_card_to_battlefield(db, source_card_id, enters_tapped, &mut results, target);

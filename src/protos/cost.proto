@@ -14,6 +14,7 @@ message ManaCost {
     mana.Green green = 5;
     mana.Colorless colorless = 6;
     mana.Generic generic = 7;
+    mana.X x = 8;
   } 
 }
 

@@ -445,7 +445,7 @@ fn can_pay_costs(
         }
     }
 
-    if !all_players[controller].can_spend_mana(&cost.mana_cost) {
+    if !all_players[controller].can_meet_cost(&cost.mana_cost) {
         return false;
     }
 

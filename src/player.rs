@@ -15,7 +15,7 @@ use crate::{
     deck::Deck,
     effects::{replacing, Effect},
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
-    mana::Mana,
+    mana::{Mana, ManaCost},
     stack::Stack,
 };
 
@@ -112,7 +112,6 @@ impl ManaPool {
             Mana::Red => self.red_mana = self.red_mana.saturating_add(1),
             Mana::Green => self.green_mana = self.green_mana.saturating_add(1),
             Mana::Colorless => self.colorless_mana = self.colorless_mana.saturating_add(1),
-            Mana::Generic(count) => self.colorless_mana = self.colorless_mana.saturating_add(count),
         }
     }
 
@@ -160,35 +159,78 @@ impl ManaPool {
 
                 self.colorless_mana = mana;
             }
-            Mana::Generic(count) => {
-                let copy = *self;
-
-                for _ in 0..count {
-                    let Some(mana) = self.max().checked_sub(1) else {
-                        *self = copy;
-                        return false;
-                    };
-
-                    *self.max() = mana;
-                }
-            }
         }
 
         true
     }
 
-    fn max(&mut self) -> &mut usize {
+    pub fn can_spend(&self, cost: ManaCost) -> bool {
+        let mut mana_pool = *self;
+        match cost {
+            ManaCost::White => {
+                if !mana_pool.spend(Mana::White) {
+                    return false;
+                }
+            }
+            ManaCost::Blue => {
+                if !mana_pool.spend(Mana::Blue) {
+                    return false;
+                }
+            }
+            ManaCost::Black => {
+                if !mana_pool.spend(Mana::Black) {
+                    return false;
+                }
+            }
+            ManaCost::Red => {
+                if !mana_pool.spend(Mana::Red) {
+                    return false;
+                }
+            }
+            ManaCost::Green => {
+                if !mana_pool.spend(Mana::Green) {
+                    return false;
+                }
+            }
+            ManaCost::Colorless => {
+                if !mana_pool.spend(Mana::Colorless) {
+                    return false;
+                }
+            }
+            ManaCost::Generic(count) => {
+                for _ in 0..count {
+                    if let Some(max) = mana_pool.max() {
+                        if !mana_pool.spend(max) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+            }
+            ManaCost::X => {}
+        }
+
+        true
+    }
+
+    pub fn available_mana(&self) -> impl Iterator<Item = (usize, Mana)> {
         [
-            &mut self.white_mana,
-            &mut self.blue_mana,
-            &mut self.black_mana,
-            &mut self.red_mana,
-            &mut self.green_mana,
-            &mut self.colorless_mana,
+            (self.white_mana, Mana::White),
+            (self.blue_mana, Mana::Blue),
+            (self.black_mana, Mana::Black),
+            (self.red_mana, Mana::Red),
+            (self.green_mana, Mana::Green),
+            (self.colorless_mana, Mana::Colorless),
         ]
         .into_iter()
-        .max()
-        .unwrap()
+    }
+
+    pub fn max(&self) -> Option<Mana> {
+        self.available_mana()
+            .max_by_key(|(count, _)| *count)
+            .filter(|(count, _)| *count > 0)
+            .map(|(_, mana)| mana)
     }
 
     pub fn pools_display(&self) -> Vec<String> {
@@ -403,16 +445,33 @@ impl Player {
         Stack::move_card_to_stack_from_hand(&mut db, card, true)
     }
 
-    pub fn can_spend_mana(&self, mana: &[Mana]) -> bool {
-        let mut mana_pool = self.mana_pool;
+    pub fn can_meet_cost(&self, mana: &[ManaCost]) -> bool {
+        let mut mana = mana.to_vec();
+        mana.sort();
 
-        for mana in mana.iter().copied() {
-            if !mana_pool.spend(mana) {
+        for cost in mana.iter().copied() {
+            if !self.mana_pool.can_spend(cost) {
                 return false;
             }
         }
 
         true
+    }
+
+    pub fn pool_post_pay(&self, mana: &[Mana]) -> Option<ManaPool> {
+        let mut mana_pool = self.mana_pool;
+
+        for mana in mana.iter().copied() {
+            if !mana_pool.spend(mana) {
+                return None;
+            }
+        }
+
+        Some(mana_pool)
+    }
+
+    pub fn can_spend_mana(&self, mana: &[Mana]) -> bool {
+        self.pool_post_pay(mana).is_some()
     }
 
     pub fn spend_mana(&mut self, mana: &[Mana]) -> bool {
