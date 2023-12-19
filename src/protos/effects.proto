@@ -212,6 +212,7 @@ message RevealEachTopOfLibrary {
 }
 
 message UntapThis {}
+message UntapTarget {}
 
 message Cascade {}
 
@@ -243,10 +244,11 @@ message Effect {
     TargetToTopOfLibrary target_to_top_of_library = 20;
     TutorLibrary tutor_library = 21;
     UntapThis untap_this = 22;
+    UntapTarget untap_target = 23;
   }
 
-  optional Effect threshold = 23;
-  string oracle_text = 24;
+  optional Effect threshold = 24;
+  string oracle_text = 25;
 }
 
 message ReplacementEffect {

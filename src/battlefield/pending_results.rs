@@ -122,8 +122,12 @@ impl ChooseTargets {
     pub fn choose_targets(&mut self, choice: Option<usize>) -> bool {
         debug!("choosing target: {:?}", choice);
         if let Some(choice) = choice {
-            *self.chosen.entry(choice).or_default() += 1;
-            true
+            if choice >= self.valid_targets.len() {
+                false
+            } else {
+                *self.chosen.entry(choice).or_default() += 1;
+                true
+            }
         } else if self.valid_targets.len() == 1 {
             debug!("Choosing default only target");
             *self.chosen.entry(0).or_default() += 1;
@@ -134,6 +138,10 @@ impl ChooseTargets {
         } else {
             false
         }
+    }
+
+    pub fn into_effect(self) -> EffectOrAura {
+        self.effect_or_aura
     }
 
     pub fn into_chosen_targets_and_effect(self) -> (Vec<ActiveTarget>, EffectOrAura) {
@@ -592,16 +600,6 @@ impl PendingResults {
         } else if let Some(mut choosing) = self.choose_targets.pop_front() {
             if choosing.choose_targets(choice) {
                 if choosing.choices_complete() {
-                    if self.choose_targets.is_empty() {
-                        for cost in self.pay_costs.iter_mut() {
-                            cost.compute_targets(
-                                db,
-                                self.source.unwrap(),
-                                &self.all_chosen_targets,
-                            );
-                        }
-                    }
-
                     let (choices, effect_or_aura) = choosing.into_chosen_targets_and_effect();
 
                     if !self.add_to_stack {
@@ -621,6 +619,48 @@ impl PendingResults {
                     } else {
                         self.all_chosen_targets.extend(choices.iter().copied());
                         self.chosen_targets.push(choices);
+                    }
+
+                    if !self.source.unwrap().card(db).target_individually(db) {
+                        let player = self.source.unwrap().card(db).controller(db);
+                        for mut choosing in self.choose_targets.drain(..).collect_vec() {
+                            let (choices, effect_or_aura) = if choosing.choose_targets(choice) {
+                                choosing.into_chosen_targets_and_effect()
+                            } else {
+                                (vec![], choosing.into_effect())
+                            };
+
+                            if self.add_to_stack {
+                                self.chosen_targets.push(choices);
+                            } else {
+                                match effect_or_aura {
+                                    EffectOrAura::Effect(effect) => {
+                                        self.push_effect_results(db, player, effect, choices);
+                                    }
+                                    EffectOrAura::Aura(aura) => self.settled_effects.push_back(
+                                        ActionResult::ApplyAuraToTarget {
+                                            aura,
+                                            target: self
+                                                .chosen_targets
+                                                .pop()
+                                                .unwrap()
+                                                .pop()
+                                                .unwrap(),
+                                        },
+                                    ),
+                                }
+                            }
+                        }
+                    }
+
+                    if self.choose_targets.is_empty() {
+                        for cost in self.pay_costs.iter_mut() {
+                            cost.compute_targets(
+                                db,
+                                self.source.unwrap(),
+                                &self.all_chosen_targets,
+                            );
+                        }
                     }
                 } else {
                     self.choose_targets.push_front(choosing);
@@ -866,6 +906,7 @@ impl PendingResults {
             Effect::ControllerLosesLife(_) => unreachable!(),
             Effect::UntapThis => unreachable!(),
             Effect::Cascade => unreachable!(),
+            Effect::UntapTarget => unreachable!(),
         }
     }
 

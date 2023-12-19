@@ -427,6 +427,7 @@ pub enum Effect {
     TargetToTopOfLibrary { restrictions: Vec<Restriction> },
     TutorLibrary(TutorLibrary),
     UntapThis,
+    UntapTarget,
 }
 
 impl Effect {
@@ -475,6 +476,7 @@ impl Effect {
             Effect::UntapThis => 0,
             Effect::TargetToTopOfLibrary { .. } => 1,
             Effect::Cascade => 0,
+            Effect::UntapTarget => 1,
         }
     }
 
@@ -505,6 +507,7 @@ impl Effect {
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,
             Effect::UntapThis => 0,
+            Effect::UntapTarget => 1,
             Effect::TargetToTopOfLibrary { .. } => 1,
             Effect::Cascade => 0,
         }
@@ -604,6 +607,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                         .collect::<anyhow::Result<_>>()?,
                 })
             }
+            protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self::UntapTarget),
         }
     }
 }

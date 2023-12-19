@@ -17,7 +17,7 @@ use crate::{
         BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, EtbTapped,
         Keyword, Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
         ModifiedKeywords, ModifyKeywords, Name, OracleText, Revealed, StaticAbilityModifier,
-        TriggeredAbilityModifier,
+        TargetIndividually, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::CastingCost,
@@ -27,11 +27,11 @@ use crate::{
         ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
-        self, cast_from, exile_reason, AbilityId, Active, AuraId, CastFrom, CounterId, Database,
-        EntireBattlefield, ExileReason, FaceDown, Global, InExile, InGraveyard, InHand, InLibrary,
-        InStack, IsToken, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield,
-        ReplacementEffectId, Tapped, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ,
-        NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        self, cards, cast_from, exile_reason, AbilityId, Active, AuraId, CastFrom, CounterId,
+        Database, EntireBattlefield, ExileReason, FaceDown, Global, InExile, InGraveyard, InHand,
+        InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying,
+        OnBattlefield, ReplacementEffectId, Tapped, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ,
+        NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Settled, Stack, Targets},
@@ -1033,6 +1033,10 @@ impl CardId {
             entity.insert(IsToken);
         }
 
+        if card.target_individually {
+            entity.insert(TargetIndividually);
+        }
+
         if card.etb_tapped {
             entity.insert(EtbTapped);
         }
@@ -1362,6 +1366,14 @@ impl CardId {
             Effect::RevealEachTopOfLibrary(_) => {}
             Effect::UntapThis => {}
             Effect::Cascade => {}
+            Effect::UntapTarget => {
+                let caster = self.controller(db);
+                for card in cards::<OnBattlefield>(db) {
+                    if card.can_be_targeted(db, caster) {
+                        targets.push(ActiveTarget::Battlefield { id: card });
+                    }
+                }
+            }
         }
 
         targets
@@ -1620,6 +1632,10 @@ impl CardId {
             .iter(db)
             .map(Self)
             .collect_vec()
+    }
+
+    pub fn target_individually(self, db: &mut Database) -> bool {
+        db.get::<TargetIndividually>(self.0).is_some()
     }
 }
 

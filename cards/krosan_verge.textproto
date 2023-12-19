@@ -34,3 +34,4 @@ activated_abilities {
   oracle_text:  "Search your library for a Forest card and a Plains cards, "
                 "put them onto the battlefield tapped, then shuffle."
 }
+target_individually: true

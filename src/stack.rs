@@ -888,6 +888,13 @@ impl Stack {
                     cascading: source.cost(db).cmc(),
                     player: controller,
                 }),
+                Effect::UntapTarget => {
+                    let Ok(ActiveTarget::Battlefield { id }) = targets.into_iter().exactly_one()
+                    else {
+                        unreachable!()
+                    };
+                    results.push_settled(ActionResult::Untap(id));
+                }
             }
         }
 

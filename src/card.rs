@@ -205,6 +205,9 @@ impl Keyword {
 }
 
 #[derive(Debug, Clone, Copy, Component)]
+pub struct TargetIndividually;
+
+#[derive(Debug, Clone, Copy, Component)]
 pub struct Revealed;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
@@ -346,6 +349,7 @@ pub struct Card {
 
     pub etb_abilities: Vec<AnyEffect>,
     pub effects: Vec<AnyEffect>,
+    pub target_individually: bool,
 
     pub static_abilities: Vec<StaticAbility>,
 
@@ -403,6 +407,7 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            target_individually: value.target_individually,
             static_abilities: value
                 .static_abilities
                 .iter()

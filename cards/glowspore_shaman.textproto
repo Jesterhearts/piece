@@ -26,3 +26,4 @@ etb_abilities {
   oracle_text:  "You may put a land card from your graveyard "
                 "on top of your library."
 }
+target_individually: true

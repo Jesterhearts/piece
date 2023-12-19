@@ -24,17 +24,18 @@ message Card {
   optional abilities.Enchant enchant = 8;
 
   repeated effects.Effect effects = 9;
+  bool target_individually = 10;
 
-  repeated effects.Effect etb_abilities = 10;
-  repeated abilities.StaticAbility static_abilities = 11;
-  repeated effects.ActivatedAbility activated_abilities = 12;
-  repeated abilities.TriggeredAbility triggered_abilities = 13;
-  repeated effects.GainManaAbility mana_abilities = 14;
-  repeated effects.ReplacementEffect replacement_effects = 15;
+  repeated effects.Effect etb_abilities = 11;
+  repeated abilities.StaticAbility static_abilities = 12;
+  repeated effects.ActivatedAbility activated_abilities = 13;
+  repeated abilities.TriggeredAbility triggered_abilities = 14;
+  repeated effects.GainManaAbility mana_abilities = 15;
+  repeated effects.ReplacementEffect replacement_effects = 16;
 
-  optional int32 power = 16;
-  optional int32 toughness = 17;
-  bool etb_tapped = 18;
+  optional int32 power = 17;
+  optional int32 toughness = 18;
+  bool etb_tapped = 19;
 
-  string keywords = 19;
+  string keywords = 20;
 }

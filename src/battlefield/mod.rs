@@ -1000,7 +1000,8 @@ impl Battlefield {
             | Effect::ReturnFromGraveyardToBattlefield(_)
             | Effect::ReturnFromGraveyardToLibrary(_)
             | Effect::CreateTokenCopy { .. }
-            | Effect::TargetToTopOfLibrary { .. } => {
+            | Effect::TargetToTopOfLibrary { .. }
+            | Effect::UntapTarget => {
                 let creatures = Self::creatures(db);
                 let valid_targets = source.targets_for_effect(db, controller, &effect, &creatures);
                 results.push_choose_targets(ChooseTargets::new(
@@ -1076,7 +1077,8 @@ impl Battlefield {
             | Effect::RevealEachTopOfLibrary(_)
             | Effect::UntapThis
             | Effect::ReturnSelfToHand
-            | Effect::TargetToTopOfLibrary { .. } => {
+            | Effect::TargetToTopOfLibrary { .. }
+            | Effect::UntapTarget => {
                 unreachable!()
             }
         }
