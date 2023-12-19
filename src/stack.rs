@@ -541,6 +541,9 @@ impl Stack {
                             ActiveTarget::Battlefield { .. } => {
                                 final_targets.push(target);
                             }
+                            ActiveTarget::Graveyard { .. } => {
+                                final_targets.push(target);
+                            }
                             _ => {
                                 if let Some(resolving_card) = resolving_card {
                                     return [ActionResult::StackToGraveyard(resolving_card)].into();
@@ -551,12 +554,10 @@ impl Stack {
                         }
                     }
 
-                    for target in final_targets {
-                        results.push_settled(ActionResult::ModifyCreatures {
-                            targets: vec![target],
-                            modifier,
-                        });
-                    }
+                    results.push_settled(ActionResult::ModifyCreatures {
+                        targets: final_targets,
+                        modifier,
+                    });
                 }
                 Effect::ExileTargetCreature => {
                     for target in targets {

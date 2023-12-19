@@ -2,6 +2,8 @@ name: "Acrobatic Leap"
 cost {
   mana_costs { white {} }
 }
+oracle_text:  "Target creatures gets +1/+3 and gains"
+              " flying until end of turn."
 effects {
   modify_creature {
     modifier {

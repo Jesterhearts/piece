@@ -632,8 +632,10 @@ impl Battlefield {
             }
             ActionResult::ModifyCreatures { targets, modifier } => {
                 for target in targets {
-                    let ActiveTarget::Battlefield { id: target } = target else {
-                        unreachable!()
+                    let target = match target {
+                        ActiveTarget::Battlefield { id } => id,
+                        ActiveTarget::Graveyard { id } => id,
+                        _ => unreachable!(),
                     };
                     target.apply_modifier(db, *modifier);
                 }
