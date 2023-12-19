@@ -30,7 +30,7 @@ pub enum Source {
 }
 
 impl Source {
-    fn card(&self, db: &mut Database) -> CardId {
+    fn card(&self, db: &Database) -> CardId {
         match self {
             Source::Card(id) => *id,
             Source::Ability(id) => id.source(db),
@@ -239,11 +239,7 @@ impl PayCost {
         }
     }
 
-    fn options(
-        &self,
-        db: &mut Database,
-        all_targets: &HashSet<ActiveTarget>,
-    ) -> Vec<(usize, String)> {
+    fn options(&self, db: &Database, all_targets: &HashSet<ActiveTarget>) -> Vec<(usize, String)> {
         match self {
             PayCost::SacrificePermanent(sac) => sac
                 .valid_targets
@@ -481,7 +477,7 @@ impl PendingResults {
         }
     }
 
-    pub fn description(&self, _db: &mut Database) -> String {
+    pub fn description(&self, _db: &Database) -> String {
         if self.choose_modes.front().is_some() {
             "mode".to_string()
         } else if self.choose_targets.front().is_some() {

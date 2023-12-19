@@ -603,7 +603,7 @@ fn main() -> anyhow::Result<()> {
                         List {
                             title: format!(
                                 " Select an option for {} ",
-                                to_resolve.description(&mut db)
+                                to_resolve.description(&db)
                             ),
                             items: options,
                             last_click,
@@ -1165,7 +1165,7 @@ fn main() -> anyhow::Result<()> {
                         }
                     }
                 } else if let Some(card) = selected_state.selected {
-                    let abilities = card.activated_abilities(&mut db);
+                    let abilities = card.activated_abilities(&db);
                     if let Some(selected) = key_selected
                         .map(|offset| *actions_start_index + offset)
                         .or(last_entry_clicked)

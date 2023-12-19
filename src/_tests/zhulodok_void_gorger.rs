@@ -61,11 +61,11 @@ fn cascades() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        zhul.types(&mut db),
+        zhul.types(&db),
         IndexSet::from([Type::Artifact, Type::Creature, Type::Legendary])
     );
     assert_eq!(
-        zhul.subtypes(&mut db),
+        zhul.subtypes(&db),
         IndexSet::from([Subtype::Eldrazi, Subtype::Angel])
     );
 

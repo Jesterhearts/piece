@@ -42,7 +42,7 @@ fn ability() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(bear.marked_damage(&mut db), 2);
+    assert_eq!(bear.marked_damage(&db), 2);
 
     Ok(())
 }

@@ -43,7 +43,7 @@ fn untaps() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert!(card.tapped(&mut db));
+    assert!(card.tapped(&db));
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
@@ -54,7 +54,7 @@ fn untaps() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert!(!card.tapped(&mut db));
+    assert!(!card.tapped(&db));
 
     assert_eq!(all_players[player].life_total, 19);
 

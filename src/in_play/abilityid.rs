@@ -282,13 +282,13 @@ impl AbilityId {
         }
     }
 
-    pub fn apply_to_self(self, db: &mut Database) -> bool {
+    pub fn apply_to_self(self, db: &Database) -> bool {
         db.abilities
             .get::<ApplyToSelf>(self.original(db).0)
             .is_some()
     }
 
-    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+    pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.abilities
             .get::<Effects>(self.original(db).0)
             .cloned()
@@ -312,14 +312,14 @@ impl AbilityId {
             .collect_vec()
     }
 
-    pub fn source(self, db: &mut Database) -> CardId {
+    pub fn source(self, db: &Database) -> CardId {
         db.abilities
             .get::<CardId>(self.original(db).0)
             .copied()
             .unwrap()
     }
 
-    pub fn controller(self, db: &mut Database) -> Controller {
+    pub fn controller(self, db: &Database) -> Controller {
         self.source(db).controller(db)
     }
 

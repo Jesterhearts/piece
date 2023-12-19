@@ -1019,7 +1019,7 @@ impl Battlefield {
     }
 
     fn push_effect_results_with_target_from_top_of_library(
-        db: &mut Database,
+        db: &Database,
         source: CardId,
         effect: &Effect,
         target: CardId,

@@ -32,7 +32,7 @@ fn adds_land_types() -> anyhow::Result<()> {
     assert_eq!(Player::lands_per_turn(&mut db), 2);
 
     assert_eq!(
-        land.subtypes(&mut db),
+        land.subtypes(&db),
         IndexSet::from([
             Subtype::Plains,
             Subtype::Island,

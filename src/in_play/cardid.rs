@@ -73,11 +73,11 @@ impl CardId {
         database.get::<Location>(self.0).is_some()
     }
 
-    pub fn is_token(self, db: &mut Database) -> bool {
+    pub fn is_token(self, db: &Database) -> bool {
         db.get::<IsToken>(self.0).is_some()
     }
 
-    pub fn facedown(self, db: &mut Database) -> bool {
+    pub fn facedown(self, db: &Database) -> bool {
         db.get::<FaceDown>(self.0).is_some()
     }
 
@@ -626,7 +626,7 @@ impl CardId {
             .insert(ModifiedActivatedAbilities(activated_abilities));
     }
 
-    pub fn etb_abilities(self, db: &mut Database) -> Vec<AbilityId> {
+    pub fn etb_abilities(self, db: &Database) -> Vec<AbilityId> {
         db.get::<ModifiedETBAbilities>(self.0)
             .cloned()
             .map(|m| m.0)
@@ -634,14 +634,14 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub fn static_abilities(self, db: &mut Database) -> Vec<StaticAbility> {
+    pub fn static_abilities(self, db: &Database) -> Vec<StaticAbility> {
         db.get::<ModifiedStaticAbilities>(self.0)
             .cloned()
             .map(|m| m.0)
             .or_else(|| db.get::<StaticAbilities>(self.0).cloned().map(|m| m.0))
             .unwrap_or_default()
     }
-    pub fn activated_abilities(self, db: &mut Database) -> Vec<AbilityId> {
+    pub fn activated_abilities(self, db: &Database) -> Vec<AbilityId> {
         db.get::<ModifiedActivatedAbilities>(self.0)
             .cloned()
             .map(|m| m.0)
@@ -649,11 +649,11 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub fn controller(self, db: &mut Database) -> Controller {
+    pub fn controller(self, db: &Database) -> Controller {
         db.get::<Controller>(self.0).copied().unwrap()
     }
 
-    pub fn owner(self, db: &mut Database) -> Owner {
+    pub fn owner(self, db: &Database) -> Owner {
         db.get::<Owner>(self.0).copied().unwrap()
     }
 
@@ -670,7 +670,7 @@ impl CardId {
         self.apply_modifiers_layered(db);
     }
 
-    pub fn effects_count(self, db: &mut Database) -> usize {
+    pub fn effects_count(self, db: &Database) -> usize {
         let aura_count = self.aura(db).map(|_| 1).unwrap_or_default();
         aura_count
             + db.get::<Effects>(self.0)
@@ -678,7 +678,7 @@ impl CardId {
                 .unwrap_or_default()
     }
 
-    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+    pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.get::<Effects>(self.0).cloned().unwrap_or_default().0
     }
 
@@ -847,7 +847,7 @@ impl CardId {
         }
     }
 
-    pub fn marked_damage(self, db: &mut Database) -> i32 {
+    pub fn marked_damage(self, db: &Database) -> i32 {
         db.get::<MarkedDamage>(self.0)
             .copied()
             .unwrap_or_default()
@@ -887,11 +887,11 @@ impl CardId {
             })
     }
 
-    pub fn aura(self, db: &mut Database) -> Option<AuraId> {
+    pub fn aura(self, db: &Database) -> Option<AuraId> {
         db.get::<AuraId>(self.0).copied()
     }
 
-    pub fn colors(self, db: &mut Database) -> HashSet<Color> {
+    pub fn colors(self, db: &Database) -> HashSet<Color> {
         db.get::<ModifiedColors>(self.0)
             .map(|bp| bp.0.clone())
             .or_else(|| {
@@ -942,22 +942,22 @@ impl CardId {
         identity
     }
 
-    pub fn types_intersect(self, db: &mut Database, types: &IndexSet<Type>) -> bool {
+    pub fn types_intersect(self, db: &Database, types: &IndexSet<Type>) -> bool {
         types.is_empty() || !self.types(db).is_disjoint(types)
     }
 
-    pub fn types(self, db: &mut Database) -> IndexSet<Type> {
+    pub fn types(self, db: &Database) -> IndexSet<Type> {
         db.get::<ModifiedTypes>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Types>(self.0).map(|t| t.0.clone()))
             .unwrap_or_default()
     }
 
-    pub fn subtypes_intersect(self, db: &mut Database, types: &IndexSet<Subtype>) -> bool {
+    pub fn subtypes_intersect(self, db: &Database, types: &IndexSet<Subtype>) -> bool {
         types.is_empty() || !self.subtypes(db).is_disjoint(types)
     }
 
-    pub fn subtypes(self, db: &mut Database) -> IndexSet<Subtype> {
+    pub fn subtypes(self, db: &Database) -> IndexSet<Subtype> {
         db.get::<ModifiedSubtypes>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Subtypes>(self.0).map(|t| t.0.clone()))
@@ -1478,7 +1478,7 @@ impl CardId {
         true
     }
 
-    pub fn can_be_targeted(self, db: &mut Database, caster: Controller) -> bool {
+    pub fn can_be_targeted(self, db: &Database, caster: Controller) -> bool {
         if self.shroud(db) {
             return false;
         }
@@ -1492,12 +1492,12 @@ impl CardId {
         true
     }
 
-    pub fn can_be_sacrificed(self, _db: &mut Database) -> bool {
+    pub fn can_be_sacrificed(self, _db: &Database) -> bool {
         // TODO
         true
     }
 
-    pub fn tapped(self, db: &mut Database) -> bool {
+    pub fn tapped(self, db: &Database) -> bool {
         db.get::<Tapped>(self.0).is_some()
     }
 
@@ -1527,11 +1527,11 @@ impl CardId {
         );
     }
 
-    pub fn cloning(self, db: &mut Database) -> Option<Cloning> {
+    pub fn cloning(self, db: &Database) -> Option<Cloning> {
         db.get::<Cloning>(self.0).copied()
     }
 
-    pub fn is_land(self, db: &mut Database) -> bool {
+    pub fn is_land(self, db: &Database) -> bool {
         self.types_intersect(db, &IndexSet::from([Type::Land, Type::BasicLand]))
     }
 
@@ -1543,7 +1543,7 @@ impl CardId {
         db.get::<Manifested>(self.0).is_some()
     }
 
-    pub fn is_permanent(self, db: &mut Database) -> bool {
+    pub fn is_permanent(self, db: &Database) -> bool {
         !self.types_intersect(db, &IndexSet::from([Type::Instant, Type::Sorcery]))
     }
 
@@ -1554,19 +1554,19 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub fn shroud(self, db: &mut Database) -> bool {
+    pub fn shroud(self, db: &Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Shroud)
     }
 
-    pub fn hexproof(self, db: &mut Database) -> bool {
+    pub fn hexproof(self, db: &Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Hexproof)
     }
 
-    pub fn flying(self, db: &mut Database) -> bool {
+    pub fn flying(self, db: &Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Flying)
     }
 
-    pub fn vigilance(self, db: &mut Database) -> bool {
+    pub fn vigilance(self, db: &Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Vigilance)
     }
 
@@ -1586,7 +1586,7 @@ impl CardId {
         &db.get::<OracleText>(self.0).unwrap().0
     }
 
-    pub fn split_second(self, db: &mut Database) -> bool {
+    pub fn split_second(self, db: &Database) -> bool {
         db.get::<SplitSecond>(self.0).is_some()
     }
 
@@ -1594,7 +1594,7 @@ impl CardId {
         self.keywords(db).contains_key(&Keyword::Flash)
     }
 
-    pub fn cannot_be_countered(&self, db: &mut Database) -> bool {
+    pub fn cannot_be_countered(&self, db: &Database) -> bool {
         db.get::<CannotBeCountered>(self.0).is_some()
     }
 
@@ -1665,7 +1665,7 @@ impl CardId {
             .collect_vec()
     }
 
-    pub fn target_individually(self, db: &mut Database) -> bool {
+    pub fn target_individually(self, db: &Database) -> bool {
         db.get::<TargetIndividually>(self.0).is_some()
     }
 }

@@ -29,7 +29,7 @@ fn etb_clones() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(clone.cloning(&mut db), Some(creature.into()));
+    assert_eq!(clone.cloning(&db), Some(creature.into()));
 
     Ok(())
 }

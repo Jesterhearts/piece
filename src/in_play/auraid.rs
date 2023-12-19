@@ -7,11 +7,11 @@ use crate::in_play::{Database, Modifiers};
 pub struct AuraId(Entity);
 
 impl AuraId {
-    pub fn modifiers(self, db: &mut Database) -> Modifiers {
+    pub fn modifiers(self, db: &Database) -> Modifiers {
         db.auras.get::<Modifiers>(self.0).cloned().unwrap()
     }
 
-    pub fn is_attached(self, db: &mut Database) -> bool {
+    pub fn is_attached(self, db: &Database) -> bool {
         let modifiers = self.modifiers(db);
         for modifier in modifiers.iter() {
             if !modifier.modifying(db).is_empty() {

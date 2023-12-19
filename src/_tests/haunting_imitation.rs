@@ -40,9 +40,9 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(on_battlefield.len(), 1);
     let token = on_battlefield.pop().unwrap();
 
-    assert_eq!(token.types(&mut db), IndexSet::from([Type::Creature]));
+    assert_eq!(token.types(&db), IndexSet::from([Type::Creature]));
     assert_eq!(
-        token.subtypes(&mut db),
+        token.subtypes(&db),
         IndexSet::from([Subtype::Bear, Subtype::Spirit])
     );
     assert_eq!(token.power(&db), Some(1));

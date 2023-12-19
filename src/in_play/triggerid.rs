@@ -80,22 +80,22 @@ impl TriggerId {
         db.triggers.despawn(self.0);
     }
 
-    pub fn location_from(self, db: &mut Database) -> Location {
+    pub fn location_from(self, db: &Database) -> Location {
         db.triggers.get::<Location>(self.0).copied().unwrap()
     }
 
-    pub fn for_types(self, db: &mut Database) -> Types {
+    pub fn for_types(self, db: &Database) -> Types {
         db.triggers.get::<Types>(self.0).cloned().unwrap()
     }
 
-    pub fn listener(self, db: &mut Database) -> CardId {
+    pub fn listener(self, db: &Database) -> CardId {
         db.triggers
             .get::<TriggerListener>(self.0)
             .map(|l| l.0)
             .unwrap()
     }
 
-    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+    pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.triggers
             .get::<Effects>(self.0)
             .cloned()

@@ -57,7 +57,7 @@ impl Owner {
             .collect_vec()
     }
 
-    pub fn name(self, _db: &mut Database) -> String {
+    pub fn name(self, _db: &Database) -> String {
         "Player".to_string()
     }
 }
@@ -395,7 +395,7 @@ impl Player {
         }
 
         let mut db = scopeguard::guard(db, Stack::settle);
-        if card.is_land(&mut db) {
+        if card.is_land(&db) {
             self.lands_played += 1;
             return Battlefield::add_from_stack_or_hand(&mut db, card, None);
         }

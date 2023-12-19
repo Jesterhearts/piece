@@ -27,7 +27,7 @@ fn adds_ability() -> anyhow::Result<()> {
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
 
-    assert_eq!(creature.activated_abilities(&mut db), []);
+    assert_eq!(creature.activated_abilities(&db), []);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, equipment, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -41,7 +41,7 @@ fn adds_ability() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(creature.activated_abilities(&mut db).len(), 1);
+    assert_eq!(creature.activated_abilities(&db).len(), 1);
 
     Ok(())
 }

@@ -79,7 +79,7 @@ impl ReplacementEffectId {
         }
     }
 
-    pub fn restrictions(self, db: &mut Database) -> Vec<Restriction> {
+    pub fn restrictions(self, db: &Database) -> Vec<Restriction> {
         db.replacement_effects
             .get::<Restrictions>(self.0)
             .unwrap()
@@ -87,7 +87,7 @@ impl ReplacementEffectId {
             .clone()
     }
 
-    pub fn effects(self, db: &mut Database) -> Vec<AnyEffect> {
+    pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.replacement_effects
             .get::<Effects>(self.0)
             .unwrap()
@@ -95,7 +95,7 @@ impl ReplacementEffectId {
             .clone()
     }
 
-    pub fn source(self, db: &mut Database) -> CardId {
+    pub fn source(self, db: &Database) -> CardId {
         db.replacement_effects
             .get::<CardId>(self.0)
             .copied()

@@ -21,7 +21,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert!(card.tapped(&mut db));
+    assert!(card.tapped(&db));
 
     Ok(())
 }
@@ -53,7 +53,7 @@ fn tutors() -> anyhow::Result<()> {
     card.untap(&mut db);
 
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let _ability = *card.activated_abilities(&mut db).first().unwrap();
+    let _ability = *card.activated_abilities(&db).first().unwrap();
 
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);

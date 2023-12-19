@@ -38,14 +38,14 @@ fn metamorphosis() -> anyhow::Result<()> {
     assert_eq!(mantle.power(&db), Some(4));
     assert_eq!(mantle.toughness(&db), Some(4));
     assert_eq!(
-        mantle.subtypes(&mut db),
+        mantle.subtypes(&db),
         IndexSet::from([Subtype::Equipment, Subtype::Angel])
     );
     assert_eq!(
-        mantle.types(&mut db),
+        mantle.types(&db),
         IndexSet::from([Type::Artifact, Type::Creature])
     );
-    assert!(mantle.flying(&mut db));
+    assert!(mantle.flying(&db));
 
     Ok(())
 }
@@ -77,14 +77,14 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(4));
     assert_eq!(
-        bear.subtypes(&mut db),
+        bear.subtypes(&db),
         IndexSet::from([Subtype::Bear, Subtype::Angel])
     );
     assert_eq!(
-        bear.types(&mut db),
+        bear.types(&db),
         IndexSet::from([Type::Artifact, Type::Creature])
     );
-    assert!(bear.flying(&mut db));
+    assert!(bear.flying(&db));
 
     Ok(())
 }

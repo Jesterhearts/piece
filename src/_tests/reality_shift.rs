@@ -62,11 +62,11 @@ fn resolves_shift() -> anyhow::Result<()> {
 
     assert_eq!(bear2.power(&db), Some(4));
     assert_eq!(bear2.toughness(&db), Some(2));
-    assert_eq!(bear2.subtypes(&mut db), IndexSet::from([Subtype::Bear]));
+    assert_eq!(bear2.subtypes(&db), IndexSet::from([Subtype::Bear]));
 
     assert_eq!(bear3.power(&db), Some(2));
     assert_eq!(bear3.toughness(&db), Some(2));
-    assert_eq!(bear3.subtypes(&mut db), IndexSet::from([]));
+    assert_eq!(bear3.subtypes(&db), IndexSet::from([]));
 
     Ok(())
 }

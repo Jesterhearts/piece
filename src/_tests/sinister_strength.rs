@@ -31,7 +31,7 @@ fn aura_works() -> anyhow::Result<()> {
 
     assert_eq!(creature.power(&db), Some(7));
     assert_eq!(creature.toughness(&db), Some(3));
-    assert_eq!(creature.colors(&mut db), HashSet::from([Color::Black]));
+    assert_eq!(creature.colors(&db), HashSet::from([Color::Black]));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
@@ -46,7 +46,7 @@ fn aura_works() -> anyhow::Result<()> {
 
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
-    assert_eq!(creature.colors(&mut db), HashSet::from([Color::Green]));
+    assert_eq!(creature.colors(&db), HashSet::from([Color::Green]));
 
     assert!(Battlefield::no_modifiers(&mut db));
 

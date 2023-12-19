@@ -47,7 +47,7 @@ fn damages_target() -> anyhow::Result<()> {
 
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(bear.marked_damage(&mut db), 3);
+    assert_eq!(bear.marked_damage(&db), 3);
 
     let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
@@ -101,7 +101,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
 
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(bear.marked_damage(&mut db), 5);
+    assert_eq!(bear.marked_damage(&db), 5);
 
     let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
@@ -157,7 +157,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
 
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(bear.marked_damage(&mut db), 3);
+    assert_eq!(bear.marked_damage(&db), 3);
 
     let results = Battlefield::check_sba(&mut db);
     assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);

@@ -171,11 +171,11 @@ impl ModifierId {
         modifierid
     }
 
-    pub fn modifying(self, db: &mut Database) -> &Modifying {
+    pub fn modifying(self, db: &Database) -> &Modifying {
         db.modifiers.get::<Modifying>(self.0).unwrap()
     }
 
-    pub fn ability_modifier(self, db: &mut Database) -> Option<&ActivatedAbilityModifier> {
+    pub fn ability_modifier(self, db: &Database) -> Option<&ActivatedAbilityModifier> {
         db.modifiers.get::<ActivatedAbilityModifier>(self.0)
     }
 
@@ -208,90 +208,84 @@ impl ModifierId {
         self.deactivate(db);
     }
 
-    pub fn add_types(self, db: &mut Database) -> Option<&AddTypes> {
+    pub fn add_types(self, db: &Database) -> Option<&AddTypes> {
         db.modifiers.get::<AddTypes>(self.0)
     }
 
-    pub fn add_subtypes(self, db: &mut Database) -> Option<&AddSubtypes> {
+    pub fn add_subtypes(self, db: &Database) -> Option<&AddSubtypes> {
         db.modifiers.get::<AddSubtypes>(self.0)
     }
 
-    pub fn remove_types(self, db: &mut Database) -> Option<&RemoveTypes> {
+    pub fn remove_types(self, db: &Database) -> Option<&RemoveTypes> {
         db.modifiers.get::<RemoveTypes>(self.0)
     }
 
-    pub fn remove_subtypes(self, db: &mut Database) -> Option<&RemoveSubtypes> {
+    pub fn remove_subtypes(self, db: &Database) -> Option<&RemoveSubtypes> {
         db.modifiers.get::<RemoveSubtypes>(self.0)
     }
 
-    pub fn source(self, db: &mut Database) -> CardId {
+    pub fn source(self, db: &Database) -> CardId {
         db.modifiers.get::<CardId>(self.0).copied().unwrap()
     }
 
-    pub fn controller_restriction(self, db: &mut Database) -> ControllerRestriction {
+    pub fn controller_restriction(self, db: &Database) -> ControllerRestriction {
         db.modifiers
             .get::<ControllerRestriction>(self.0)
             .copied()
             .unwrap()
     }
 
-    pub fn restrictions(self, db: &mut Database) -> Vec<Restriction> {
+    pub fn restrictions(self, db: &Database) -> Vec<Restriction> {
         db.modifiers.get::<Restrictions>(self.0).cloned().unwrap().0
     }
 
-    pub fn add_colors(self, db: &mut Database) -> Option<&AddColors> {
+    pub fn add_colors(self, db: &Database) -> Option<&AddColors> {
         db.modifiers.get::<AddColors>(self.0)
     }
 
-    pub fn triggered_ability_modifiers(
-        self,
-        db: &mut Database,
-    ) -> Option<&TriggeredAbilityModifier> {
+    pub fn triggered_ability_modifiers(self, db: &Database) -> Option<&TriggeredAbilityModifier> {
         db.modifiers.get::<TriggeredAbilityModifier>(self.0)
     }
 
-    pub fn etb_ability_modifiers(self, db: &mut Database) -> Option<&EtbAbilityModifier> {
+    pub fn etb_ability_modifiers(self, db: &Database) -> Option<&EtbAbilityModifier> {
         db.modifiers.get::<EtbAbilityModifier>(self.0)
     }
 
-    pub fn static_ability_modifiers(self, db: &mut Database) -> Option<&StaticAbilityModifier> {
+    pub fn static_ability_modifiers(self, db: &Database) -> Option<&StaticAbilityModifier> {
         db.modifiers.get::<StaticAbilityModifier>(self.0)
     }
 
-    pub fn activated_ability_modifiers(
-        self,
-        db: &mut Database,
-    ) -> Option<&ActivatedAbilityModifier> {
+    pub fn activated_ability_modifiers(self, db: &Database) -> Option<&ActivatedAbilityModifier> {
         db.modifiers.get::<ActivatedAbilityModifier>(self.0)
     }
 
-    pub fn keyword_modifiers(self, db: &mut Database) -> Option<&ModifyKeywords> {
+    pub fn keyword_modifiers(self, db: &Database) -> Option<&ModifyKeywords> {
         db.modifiers.get::<ModifyKeywords>(self.0)
     }
 
-    pub fn base_power(self, db: &mut Database) -> Option<i32> {
+    pub fn base_power(self, db: &Database) -> Option<i32> {
         db.modifiers.get::<BasePowerModifier>(self.0).map(|m| m.0)
     }
 
-    pub fn base_toughness(self, db: &mut Database) -> Option<i32> {
+    pub fn base_toughness(self, db: &Database) -> Option<i32> {
         db.modifiers
             .get::<BaseToughnessModifier>(self.0)
             .map(|m| m.0)
     }
 
-    pub fn add_power(self, db: &mut Database) -> Option<i32> {
+    pub fn add_power(self, db: &Database) -> Option<i32> {
         db.modifiers.get::<AddPower>(self.0).map(|a| a.0)
     }
 
-    pub fn add_toughness(self, db: &mut Database) -> Option<i32> {
+    pub fn add_toughness(self, db: &Database) -> Option<i32> {
         db.modifiers.get::<AddToughness>(self.0).map(|a| a.0)
     }
 
-    pub fn dynamic_power(self, db: &mut Database) -> Option<DynamicPowerToughness> {
+    pub fn dynamic_power(self, db: &Database) -> Option<DynamicPowerToughness> {
         db.modifiers.get::<DynamicPowerToughness>(self.0).cloned()
     }
 
-    pub fn remove_all_colors(self, db: &mut Database) -> bool {
+    pub fn remove_all_colors(self, db: &Database) -> bool {
         db.modifiers.get::<RemoveAllColors>(self.0).is_some()
     }
 }

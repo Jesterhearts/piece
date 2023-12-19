@@ -45,7 +45,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.power(&db), Some(5));
     assert_eq!(card.toughness(&db), Some(5));
     assert_eq!(
-        card.subtypes(&mut db),
+        card.subtypes(&db),
         IndexSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
     );
 
@@ -54,7 +54,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.power(&db), Some(1));
     assert_eq!(card.toughness(&db), Some(1));
     assert_eq!(
-        card.subtypes(&mut db),
+        card.subtypes(&db),
         IndexSet::from([Subtype::Elf, Subtype::Shaman])
     );
 
