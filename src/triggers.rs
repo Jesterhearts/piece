@@ -1,6 +1,5 @@
-use std::collections::HashSet;
-
 use anyhow::anyhow;
+use indexmap::IndexSet;
 
 use crate::{newtype_enum::newtype_enum, protogen, types::Type};
 
@@ -49,7 +48,7 @@ pub enum TriggerSource {
 pub struct Trigger {
     pub trigger: TriggerSource,
     pub from: Location,
-    pub for_types: HashSet<Type>,
+    pub for_types: IndexSet<Type>,
 }
 
 impl TryFrom<&protogen::triggers::Trigger> for Trigger {

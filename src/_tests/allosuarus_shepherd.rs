@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -47,7 +46,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.toughness(&db), Some(5));
     assert_eq!(
         card.subtypes(&mut db),
-        HashSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
+        IndexSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
     );
 
     Battlefield::end_turn(&mut db);
@@ -56,7 +55,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.toughness(&db), Some(1));
     assert_eq!(
         card.subtypes(&mut db),
-        HashSet::from([Subtype::Elf, Subtype::Shaman])
+        IndexSet::from([Subtype::Elf, Subtype::Shaman])
     );
 
     Ok(())

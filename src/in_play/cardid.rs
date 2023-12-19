@@ -2,6 +2,7 @@ use std::{collections::HashSet, sync::atomic::Ordering};
 
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::From;
+use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -359,12 +360,12 @@ impl CardId {
             db.get::<BaseToughness>(self.0).map(|bt| bt.0)
         };
         let mut types = if facedown {
-            HashSet::from([Type::Creature])
+            IndexSet::from([Type::Creature])
         } else {
             db.get::<Types>(self.0).unwrap().0.clone()
         };
         let mut subtypes = if facedown {
-            HashSet::default()
+            Default::default()
         } else {
             db.get::<Subtypes>(self.0).unwrap().0.clone()
         };
@@ -738,8 +739,8 @@ impl CardId {
         source: CardId,
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
-        self_types: &HashSet<Type>,
-        self_subtypes: &HashSet<Subtype>,
+        self_types: &IndexSet<Type>,
+        self_subtypes: &IndexSet<Subtype>,
     ) -> bool {
         match controller_restriction {
             ControllerRestriction::Any => {}
@@ -934,22 +935,22 @@ impl CardId {
         identity
     }
 
-    pub fn types_intersect(self, db: &mut Database, types: &HashSet<Type>) -> bool {
+    pub fn types_intersect(self, db: &mut Database, types: &IndexSet<Type>) -> bool {
         types.is_empty() || !self.types(db).is_disjoint(types)
     }
 
-    pub fn types(self, db: &mut Database) -> HashSet<Type> {
+    pub fn types(self, db: &mut Database) -> IndexSet<Type> {
         db.get::<ModifiedTypes>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Types>(self.0).map(|t| t.0.clone()))
             .unwrap_or_default()
     }
 
-    pub fn subtypes_intersect(self, db: &mut Database, types: &HashSet<Subtype>) -> bool {
+    pub fn subtypes_intersect(self, db: &mut Database, types: &IndexSet<Subtype>) -> bool {
         types.is_empty() || !self.subtypes(db).is_disjoint(types)
     }
 
-    pub fn subtypes(self, db: &mut Database) -> HashSet<Subtype> {
+    pub fn subtypes(self, db: &mut Database) -> IndexSet<Subtype> {
         db.get::<ModifiedSubtypes>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Subtypes>(self.0).map(|t| t.0.clone()))
@@ -1488,7 +1489,7 @@ impl CardId {
     }
 
     pub fn is_land(self, db: &mut Database) -> bool {
-        self.types_intersect(db, &HashSet::from([Type::Land, Type::BasicLand]))
+        self.types_intersect(db, &IndexSet::from([Type::Land, Type::BasicLand]))
     }
 
     pub fn manifest(self, db: &mut Database) {
@@ -1500,7 +1501,7 @@ impl CardId {
     }
 
     pub fn is_permanent(self, db: &mut Database) -> bool {
-        !self.types_intersect(db, &HashSet::from([Type::Instant, Type::Sorcery]))
+        !self.types_intersect(db, &IndexSet::from([Type::Instant, Type::Sorcery]))
     }
 
     pub fn keywords(self, db: &Database) -> ::counter::Counter<Keyword> {

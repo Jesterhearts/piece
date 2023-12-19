@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use counter::Counter;
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -331,8 +332,8 @@ pub enum ModifyKeywords {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct Card {
     pub name: String,
-    pub types: HashSet<Type>,
-    pub subtypes: HashSet<Subtype>,
+    pub types: IndexSet<Type>,
+    pub subtypes: IndexSet<Subtype>,
 
     pub cost: CastingCost,
     pub cannot_be_countered: bool,
@@ -374,12 +375,12 @@ impl TryFrom<protogen::card::Card> for Card {
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             cost: value.cost.get_or_default().try_into()?,
             cannot_be_countered: value.cannot_be_countered,
             colors: value

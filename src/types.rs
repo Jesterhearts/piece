@@ -1,22 +1,21 @@
-use std::collections::HashSet;
-
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 
 use crate::protogen;
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct Types(pub HashSet<Type>);
+pub struct Types(pub IndexSet<Type>);
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct ModifiedTypes(pub HashSet<Type>);
+pub struct ModifiedTypes(pub IndexSet<Type>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct AddTypes(pub HashSet<Type>);
+pub struct AddTypes(pub IndexSet<Type>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct RemoveTypes(pub HashSet<Type>);
+pub struct RemoveTypes(pub IndexSet<Type>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum Type {
@@ -66,16 +65,16 @@ impl Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct Subtypes(pub HashSet<Subtype>);
+pub struct Subtypes(pub IndexSet<Subtype>);
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct ModifiedSubtypes(pub HashSet<Subtype>);
+pub struct ModifiedSubtypes(pub IndexSet<Subtype>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct AddSubtypes(pub HashSet<Subtype>);
+pub struct AddSubtypes(pub IndexSet<Subtype>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct RemoveSubtypes(pub HashSet<Subtype>);
+pub struct RemoveSubtypes(pub IndexSet<Subtype>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct RemoveAllSubtypes;

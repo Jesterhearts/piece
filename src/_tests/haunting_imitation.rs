@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -41,10 +40,10 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(on_battlefield.len(), 1);
     let token = on_battlefield.pop().unwrap();
 
-    assert_eq!(token.types(&mut db), HashSet::from([Type::Creature]));
+    assert_eq!(token.types(&mut db), IndexSet::from([Type::Creature]));
     assert_eq!(
         token.subtypes(&mut db),
-        HashSet::from([Subtype::Bear, Subtype::Spirit])
+        IndexSet::from([Subtype::Bear, Subtype::Spirit])
     );
     assert_eq!(token.power(&db), Some(1));
     assert_eq!(token.toughness(&db), Some(1));

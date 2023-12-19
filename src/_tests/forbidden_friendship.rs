@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -37,8 +38,8 @@ fn creates_tokens() -> anyhow::Result<()> {
                     source: player.into(),
                     token: Box::new(Token::Creature(TokenCreature {
                         name: "Dinosaur".to_string(),
-                        types: HashSet::from([Type::Creature]),
-                        subtypes: HashSet::from([Subtype::Dinosaur]),
+                        types: IndexSet::from([Type::Creature]),
+                        subtypes: IndexSet::from([Subtype::Dinosaur]),
                         colors: HashSet::from([Color::Red]),
                         keywords: [Keyword::Haste].into_iter().collect(),
                         power: 1,
@@ -49,8 +50,8 @@ fn creates_tokens() -> anyhow::Result<()> {
                     source: player.into(),
                     token: Box::new(Token::Creature(TokenCreature {
                         name: "Human Soldier".to_string(),
-                        types: HashSet::from([Type::Creature]),
-                        subtypes: HashSet::from([Subtype::Human, Subtype::Soldier]),
+                        types: IndexSet::from([Type::Creature]),
+                        subtypes: IndexSet::from([Subtype::Human, Subtype::Soldier]),
                         colors: HashSet::from([Color::White]),
                         keywords: ::counter::Counter::default(),
                         power: 1,

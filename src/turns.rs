@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use indexmap::IndexSet;
 
 use crate::{
     battlefield::{Battlefield, PendingResults},
@@ -106,7 +106,7 @@ impl Turn {
 
     pub fn can_cast(&self, db: &mut Database, card: CardId) -> bool {
         let instant_or_flash =
-            card.types_intersect(db, &HashSet::from([Type::Instant])) || card.has_flash(db);
+            card.types_intersect(db, &IndexSet::from([Type::Instant])) || card.has_flash(db);
         // TODO teferi like effects.
         if instant_or_flash {
             return true;

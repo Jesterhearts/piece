@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use bevy_ecs::{entity::Entity, query::With};
 
+use indexmap::IndexSet;
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
 
@@ -314,7 +315,7 @@ impl Battlefield {
         db: &mut Database,
         controller: ControllerRestriction,
         source_card: CardId,
-        types: &HashSet<Type>,
+        types: &IndexSet<Type>,
     ) -> Vec<CardId> {
         let targets = match controller {
             ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
@@ -1104,7 +1105,7 @@ pub fn compute_graveyard_targets(
     db: &mut Database,
     controller: ControllerRestriction,
     source_card: CardId,
-    types: &HashSet<Type>,
+    types: &IndexSet<Type>,
 ) -> Vec<CardId> {
     let targets = match controller {
         ControllerRestriction::Any => AllPlayers::all_players_in_db(db),

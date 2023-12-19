@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use bevy_ecs::{
     component::Component,
@@ -6,6 +6,7 @@ use bevy_ecs::{
     query::{With, Without},
 };
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -581,7 +582,7 @@ impl Stack {
                                     }
                                 }
 
-                                if !id.types_intersect(db, &HashSet::from([Type::Creature])) {
+                                if !id.types_intersect(db, &IndexSet::from([Type::Creature])) {
                                     // Target isn't a creature
 
                                     if let Some(resolving_card) = resolving_card {
@@ -628,7 +629,7 @@ impl Stack {
                                     }
                                 }
 
-                                if !id.types_intersect(db, &HashSet::from([Type::Creature])) {
+                                if !id.types_intersect(db, &IndexSet::from([Type::Creature])) {
                                     // Target isn't a creature
                                     if let Some(resolving_card) = resolving_card {
                                         return [ActionResult::StackToGraveyard(resolving_card)]
@@ -797,7 +798,7 @@ impl Stack {
                                         controller: ControllerRestriction::You,
                                         duration: EffectDuration::UntilSourceLeavesBattlefield,
                                         restrictions: vec![Restriction::OfType {
-                                            types: HashSet::from([Type::Creature]),
+                                            types: IndexSet::from([Type::Creature]),
                                             subtypes: Default::default(),
                                         }],
                                     },

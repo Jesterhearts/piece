@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -40,11 +39,11 @@ fn metamorphosis() -> anyhow::Result<()> {
     assert_eq!(mantle.toughness(&db), Some(4));
     assert_eq!(
         mantle.subtypes(&mut db),
-        HashSet::from([Subtype::Equipment, Subtype::Angel])
+        IndexSet::from([Subtype::Equipment, Subtype::Angel])
     );
     assert_eq!(
         mantle.types(&mut db),
-        HashSet::from([Type::Artifact, Type::Creature])
+        IndexSet::from([Type::Artifact, Type::Creature])
     );
     assert!(mantle.flying(&mut db));
 
@@ -79,11 +78,11 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     assert_eq!(bear.toughness(&db), Some(4));
     assert_eq!(
         bear.subtypes(&mut db),
-        HashSet::from([Subtype::Bear, Subtype::Angel])
+        IndexSet::from([Subtype::Bear, Subtype::Angel])
     );
     assert_eq!(
         bear.types(&mut db),
-        HashSet::from([Type::Artifact, Type::Creature])
+        IndexSet::from([Type::Artifact, Type::Creature])
     );
     assert!(bear.flying(&mut db));
 

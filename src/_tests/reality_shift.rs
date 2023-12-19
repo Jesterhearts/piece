@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -63,11 +62,11 @@ fn resolves_shift() -> anyhow::Result<()> {
 
     assert_eq!(bear2.power(&db), Some(4));
     assert_eq!(bear2.toughness(&db), Some(2));
-    assert_eq!(bear2.subtypes(&mut db), HashSet::from([Subtype::Bear]));
+    assert_eq!(bear2.subtypes(&mut db), IndexSet::from([Subtype::Bear]));
 
     assert_eq!(bear3.power(&db), Some(2));
     assert_eq!(bear3.toughness(&db), Some(2));
-    assert_eq!(bear3.subtypes(&mut db), Default::default());
+    assert_eq!(bear3.subtypes(&mut db), IndexSet::from([]));
 
     Ok(())
 }

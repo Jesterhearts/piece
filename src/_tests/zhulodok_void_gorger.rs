@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -63,11 +64,11 @@ fn cascades() -> anyhow::Result<()> {
 
     assert_eq!(
         zhul.types(&mut db),
-        HashSet::from([Type::Artifact, Type::Creature, Type::Legendary])
+        IndexSet::from([Type::Artifact, Type::Creature, Type::Legendary])
     );
     assert_eq!(
         zhul.subtypes(&mut db),
-        HashSet::from([Subtype::Eldrazi, Subtype::Angel])
+        IndexSet::from([Subtype::Eldrazi, Subtype::Angel])
     );
 
     // Resolve the first cascade

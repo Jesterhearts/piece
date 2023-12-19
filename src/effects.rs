@@ -3,6 +3,7 @@ use std::{collections::HashSet, str::FromStr};
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -96,7 +97,7 @@ impl TryFrom<&protogen::effects::Mill> for Mill {
 pub struct ReturnFromGraveyardToLibrary {
     pub count: usize,
     pub controller: ControllerRestriction,
-    pub types: HashSet<Type>,
+    pub types: IndexSet<Type>,
 }
 
 impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGraveyardToLibrary {
@@ -112,7 +113,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGra
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -120,7 +121,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGra
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReturnFromGraveyardToBattlefield {
     pub count: usize,
-    pub types: HashSet<Type>,
+    pub types: IndexSet<Type>,
 }
 
 impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
@@ -137,7 +138,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -204,11 +205,11 @@ pub struct ModifyBattlefield {
 
     pub dynamic_power_toughness: Option<DynamicPowerToughness>,
 
-    pub add_types: HashSet<Type>,
-    pub add_subtypes: HashSet<Subtype>,
+    pub add_types: IndexSet<Type>,
+    pub add_subtypes: IndexSet<Subtype>,
 
-    pub remove_types: HashSet<Type>,
-    pub remove_subtypes: HashSet<Subtype>,
+    pub remove_types: IndexSet<Type>,
+    pub remove_subtypes: IndexSet<Subtype>,
 
     pub add_colors: HashSet<Color>,
 
@@ -243,12 +244,12 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .add_types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             add_subtypes: value
                 .add_subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             add_colors: value
                 .add_colors
                 .iter()
@@ -670,8 +671,8 @@ impl AnyEffect {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenCreature {
     pub name: String,
-    pub types: HashSet<Type>,
-    pub subtypes: HashSet<Subtype>,
+    pub types: IndexSet<Type>,
+    pub subtypes: IndexSet<Subtype>,
     pub colors: HashSet<Color>,
     pub keywords: ::counter::Counter<Keyword>,
     pub power: usize,
@@ -689,12 +690,12 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
                 .iter()
                 .map(Type::try_from)
                 .chain(std::iter::once(Ok(Type::Creature)))
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             colors: value
                 .colors
                 .iter()

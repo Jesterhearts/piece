@@ -3,6 +3,7 @@ use std::{collections::HashSet, fmt::Display};
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -67,8 +68,8 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SpellTarget {
     pub controller: ControllerRestriction,
-    pub types: HashSet<Type>,
-    pub subtypes: HashSet<Subtype>,
+    pub types: IndexSet<Type>,
+    pub subtypes: IndexSet<Subtype>,
 }
 
 impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
@@ -86,12 +87,12 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
             subtypes: value
                 .subtypes
                 .iter()
                 .map(Subtype::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -105,8 +106,8 @@ pub enum Restriction {
     Self_,
     OfColor(HashSet<Color>),
     OfType {
-        types: HashSet<Type>,
-        subtypes: HashSet<Subtype>,
+        types: IndexSet<Type>,
+        subtypes: IndexSet<Subtype>,
     },
     CastFromHand,
     Cmc(Comparison),
@@ -171,12 +172,12 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .types
                     .iter()
                     .map(Type::try_from)
-                    .collect::<anyhow::Result<HashSet<_>>>()?,
+                    .collect::<anyhow::Result<_>>()?,
                 subtypes: types
                     .subtypes
                     .iter()
                     .map(Subtype::try_from)
-                    .collect::<anyhow::Result<HashSet<_>>>()?,
+                    .collect::<anyhow::Result<_>>()?,
             }),
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),

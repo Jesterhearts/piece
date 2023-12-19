@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -34,7 +33,7 @@ fn adds_land_types() -> anyhow::Result<()> {
 
     assert_eq!(
         land.subtypes(&mut db),
-        HashSet::from([
+        IndexSet::from([
             Subtype::Plains,
             Subtype::Island,
             Subtype::Swamp,
