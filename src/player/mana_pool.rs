@@ -95,18 +95,18 @@ impl ManaPool {
         }
     }
 
-    fn max_sourced_mana(&mut self, mana: Mana) -> Option<&mut usize> {
+    fn max_sourced_mana(&mut self, mana: Mana) -> Option<(&mut usize, ManaSource)> {
         if let Some(sources) = self.sourced.get_mut(&mana) {
             sources
                 .iter_mut()
                 .max_by_key(|(_, amount)| **amount)
-                .map(|(_, amount)| amount)
+                .map(|(source, amount)| (amount, *source))
         } else {
             None
         }
     }
 
-    pub fn spend(&mut self, mana: Mana, source: Option<ManaSource>) -> bool {
+    pub fn spend(&mut self, mana: Mana, source: Option<ManaSource>) -> (bool, Option<ManaSource>) {
         if let Some(source) = source {
             let sourced = self
                 .sourced
@@ -115,20 +115,21 @@ impl ManaPool {
                 .entry(source)
                 .or_default();
             let Some(mana) = sourced.checked_sub(1) else {
-                return false;
+                return (false, None);
             };
 
             *sourced = mana;
+            (true, Some(source))
         } else {
             match mana {
                 Mana::White => {
                     let Some(mana) = self.white_mana.checked_sub(1) else {
                         let mut sourced = self.max_sourced_mana(mana);
-                        let Some(mana) = sourced.as_mut().and_then(|s| s.checked_sub(1)) else {
-                            return false;
+                        let Some(mana) = sourced.as_mut().and_then(|s| s.0.checked_sub(1)) else {
+                            return (false, None);
                         };
-                        *sourced.unwrap() = mana;
-                        return true;
+                        *sourced.as_mut().unwrap().0 = mana;
+                        return (true, Some(sourced.unwrap().1));
                     };
 
                     self.white_mana = mana;
@@ -136,11 +137,11 @@ impl ManaPool {
                 Mana::Blue => {
                     let Some(mana) = self.blue_mana.checked_sub(1) else {
                         let mut sourced = self.max_sourced_mana(mana);
-                        let Some(mana) = sourced.as_mut().and_then(|s| s.checked_sub(1)) else {
-                            return false;
+                        let Some(mana) = sourced.as_mut().and_then(|s| s.0.checked_sub(1)) else {
+                            return (false, None);
                         };
-                        *sourced.unwrap() = mana;
-                        return true;
+                        *sourced.as_mut().unwrap().0 = mana;
+                        return (true, Some(sourced.unwrap().1));
                     };
 
                     self.blue_mana = mana;
@@ -148,11 +149,11 @@ impl ManaPool {
                 Mana::Black => {
                     let Some(mana) = self.black_mana.checked_sub(1) else {
                         let mut sourced = self.max_sourced_mana(mana);
-                        let Some(mana) = sourced.as_mut().and_then(|s| s.checked_sub(1)) else {
-                            return false;
+                        let Some(mana) = sourced.as_mut().and_then(|s| s.0.checked_sub(1)) else {
+                            return (false, None);
                         };
-                        *sourced.unwrap() = mana;
-                        return true;
+                        *sourced.as_mut().unwrap().0 = mana;
+                        return (true, Some(sourced.unwrap().1));
                     };
 
                     self.black_mana = mana;
@@ -160,11 +161,11 @@ impl ManaPool {
                 Mana::Red => {
                     let Some(mana) = self.red_mana.checked_sub(1) else {
                         let mut sourced = self.max_sourced_mana(mana);
-                        let Some(mana) = sourced.as_mut().and_then(|s| s.checked_sub(1)) else {
-                            return false;
+                        let Some(mana) = sourced.as_mut().and_then(|s| s.0.checked_sub(1)) else {
+                            return (false, None);
                         };
-                        *sourced.unwrap() = mana;
-                        return true;
+                        *sourced.as_mut().unwrap().0 = mana;
+                        return (true, Some(sourced.unwrap().1));
                     };
 
                     self.red_mana = mana;
@@ -172,11 +173,11 @@ impl ManaPool {
                 Mana::Green => {
                     let Some(mana) = self.green_mana.checked_sub(1) else {
                         let mut sourced = self.max_sourced_mana(mana);
-                        let Some(mana) = sourced.as_mut().and_then(|s| s.checked_sub(1)) else {
-                            return false;
+                        let Some(mana) = sourced.as_mut().and_then(|s| s.0.checked_sub(1)) else {
+                            return (false, None);
                         };
-                        *sourced.unwrap() = mana;
-                        return true;
+                        *sourced.as_mut().unwrap().0 = mana;
+                        return (true, Some(sourced.unwrap().1));
                     };
 
                     self.green_mana = mana;
@@ -184,58 +185,57 @@ impl ManaPool {
                 Mana::Colorless => {
                     let Some(mana) = self.colorless_mana.checked_sub(1) else {
                         let mut sourced = self.max_sourced_mana(mana);
-                        let Some(mana) = sourced.as_mut().and_then(|s| s.checked_sub(1)) else {
-                            return false;
+                        let Some(mana) = sourced.as_mut().and_then(|s| s.0.checked_sub(1)) else {
+                            return (false, None);
                         };
-                        *sourced.unwrap() = mana;
-                        return true;
+                        *sourced.as_mut().unwrap().0 = mana;
+                        return (true, Some(sourced.unwrap().1));
                     };
 
                     self.colorless_mana = mana;
                 }
             }
+            (true, None)
         }
-
-        true
     }
 
     pub fn can_spend(&self, cost: ManaCost, source: Option<ManaSource>) -> bool {
         let mut mana_pool = self.clone();
         match cost {
             ManaCost::White => {
-                if !mana_pool.spend(Mana::White, source) {
+                if let (false, _) = mana_pool.spend(Mana::White, source) {
                     return false;
                 }
             }
             ManaCost::Blue => {
-                if !mana_pool.spend(Mana::Blue, source) {
+                if let (false, _) = mana_pool.spend(Mana::Blue, source) {
                     return false;
                 }
             }
             ManaCost::Black => {
-                if !mana_pool.spend(Mana::Black, source) {
+                if let (false, _) = mana_pool.spend(Mana::Black, source) {
                     return false;
                 }
             }
             ManaCost::Red => {
-                if !mana_pool.spend(Mana::Red, source) {
+                if let (false, _) = mana_pool.spend(Mana::Red, source) {
                     return false;
                 }
             }
             ManaCost::Green => {
-                if !mana_pool.spend(Mana::Green, source) {
+                if let (false, _) = mana_pool.spend(Mana::Green, source) {
                     return false;
                 }
             }
             ManaCost::Colorless => {
-                if !mana_pool.spend(Mana::Colorless, source) {
+                if let (false, _) = mana_pool.spend(Mana::Colorless, source) {
                     return false;
                 }
             }
             ManaCost::Generic(count) => {
                 for _ in 0..count {
                     if let Some(max) = mana_pool.max() {
-                        if !mana_pool.spend(max, source) {
+                        if let (false, _) = mana_pool.spend(max, source) {
                             return false;
                         }
                     } else {

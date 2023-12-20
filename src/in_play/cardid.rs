@@ -1137,6 +1137,22 @@ impl CardId {
             db.entity_mut(cardid.0).insert(ETBAbilities(vec![id]));
         }
 
+        if !card.mana_abilities.is_empty() {
+            let mut ability_ids = vec![];
+            for gain_mana in card.mana_abilities.iter() {
+                let id = AbilityId::upload_ability(db, cardid, Ability::Mana(gain_mana.clone()));
+
+                ability_ids.push(id);
+            }
+
+            if let Some(mut abilities) = db.get_mut::<ActivatedAbilities>(cardid.0) {
+                abilities.extend(ability_ids);
+            } else {
+                db.entity_mut(cardid.0)
+                    .insert(ActivatedAbilities(ability_ids));
+            }
+        }
+
         if !card.activated_abilities.is_empty() {
             let mut ability_ids = vec![];
             for ability in card.activated_abilities.iter() {
@@ -1145,8 +1161,12 @@ impl CardId {
                 ability_ids.push(id);
             }
 
-            db.entity_mut(cardid.0)
-                .insert(ActivatedAbilities(ability_ids));
+            if let Some(mut abilities) = db.get_mut::<ActivatedAbilities>(cardid.0) {
+                abilities.extend(ability_ids);
+            } else {
+                db.entity_mut(cardid.0)
+                    .insert(ActivatedAbilities(ability_ids));
+            }
         }
 
         if !card.static_abilities.is_empty() {
@@ -1164,22 +1184,6 @@ impl CardId {
             let auraid = AuraId::from(db.auras.spawn((Modifiers(modifierids),)).id());
 
             db.entity_mut(cardid.0).insert(auraid);
-        }
-
-        if !card.mana_abilities.is_empty() {
-            let mut ability_ids = vec![];
-            for gain_mana in card.mana_abilities.iter() {
-                let id = AbilityId::upload_ability(db, cardid, Ability::Mana(gain_mana.clone()));
-
-                ability_ids.push(id);
-            }
-
-            if let Some(mut abilities) = db.get_mut::<ActivatedAbilities>(cardid.0) {
-                abilities.extend(ability_ids);
-            } else {
-                db.entity_mut(cardid.0)
-                    .insert(ActivatedAbilities(ability_ids));
-            }
         }
 
         if !card.triggered_abilities.is_empty() {

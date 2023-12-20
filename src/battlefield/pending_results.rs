@@ -521,14 +521,14 @@ impl PayCost {
                             ManaCost::Generic(count) => {
                                 for _ in 0..count {
                                     let max = pool_post_pay.max().unwrap();
-                                    assert!(pool_post_pay.spend(max, None));
+                                    let (_, source) = pool_post_pay.spend(max, None);
                                     *spend
                                         .paid
                                         .entry(first_unpaid)
                                         .or_default()
                                         .entry(max)
                                         .or_default()
-                                        .entry(None)
+                                        .entry(source)
                                         .or_default() += 1;
                                 }
 
@@ -539,17 +539,19 @@ impl PayCost {
                             }
                             ManaCost::X => unreachable!(),
                         };
+                        let (_, source) = pool_post_pay.spend(mana, None);
                         *spend
                             .paid
                             .entry(first_unpaid)
                             .or_default()
                             .entry(mana)
                             .or_default()
-                            .entry(None)
+                            .entry(source)
                             .or_default() += 1;
+                        return true;
+                    } else {
+                        return false;
                     }
-
-                    return true;
                 }
 
                 let (mana, sources) = spend.paying();

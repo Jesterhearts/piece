@@ -303,7 +303,7 @@ impl Player {
             .copied()
             .zip(sources.iter().copied().chain(std::iter::repeat(None)))
         {
-            if !mana_pool.spend(mana, source) {
+            if let (false, _) = mana_pool.spend(mana, source) {
                 return None;
             }
         }
@@ -323,7 +323,7 @@ impl Player {
             .copied()
             .zip(sources.iter().copied().chain(std::iter::repeat(None)))
         {
-            if !mana_pool.spend(mana, source) {
+            if let (false, _) = mana_pool.spend(mana, source) {
                 return false;
             }
         }
