@@ -606,9 +606,9 @@ impl CardId {
         add_power += p1p1 as i32;
         add_toughness += p1p1 as i32;
 
-        let p1p1 = CounterId::counters_of_type_on::<counter::M1M1>(db, self);
-        add_power -= p1p1 as i32;
-        add_toughness -= p1p1 as i32;
+        let m1m1 = CounterId::counters_of_type_on::<counter::M1M1>(db, self);
+        add_power -= m1m1 as i32;
+        add_toughness -= m1m1 as i32;
 
         if let Some(bp) = base_power {
             db.entity_mut(self.0).insert(ModifiedBasePower(bp));
