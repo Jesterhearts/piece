@@ -268,9 +268,9 @@ impl SpendMana {
     }
 
     fn description(&self) -> String {
-        match self.first_unpaid() {
-            Some(ManaCost::Generic(_)) => "generic mana".to_string(),
-            Some(ManaCost::X) => "X".to_string(),
+        match self.first_unpaid_x_always_unpaid().unwrap() {
+            ManaCost::Generic(_) => "generic mana".to_string(),
+            ManaCost::X => "X".to_string(),
             _ => String::default(),
         }
     }
@@ -289,21 +289,51 @@ pub enum PayCost {
 }
 
 impl PayCost {
+    fn autopay(&self, all_players: &AllPlayers, player: Owner) -> bool {
+        match self {
+            PayCost::SacrificePermanent(_) => false,
+            PayCost::SpendMana(spend) => {
+                let mut spend = spend.clone();
+                while let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
+                    let pool_post_pay = all_players[player].pool_post_pay(&spend.paying()).unwrap();
+                    match first_unpaid {
+                        ManaCost::X | ManaCost::Generic(_) => return false,
+                        unpaid => {
+                            if !pool_post_pay.can_spend(unpaid) {
+                                return false;
+                            }
+                            *spend
+                                .paid
+                                .entry(unpaid)
+                                .or_default()
+                                .entry(match unpaid {
+                                    ManaCost::White => Mana::White,
+                                    ManaCost::Blue => Mana::Blue,
+                                    ManaCost::Black => Mana::Black,
+                                    ManaCost::Red => Mana::Red,
+                                    ManaCost::Green => Mana::Green,
+                                    ManaCost::Colorless => Mana::Colorless,
+                                    ManaCost::Generic(_) | ManaCost::X => unreachable!(),
+                                })
+                                .or_default() += 1;
+                        }
+                    }
+                }
+
+                true
+            }
+        }
+    }
+
     fn choice_optional(&self, all_players: &AllPlayers, player: Owner) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::SpendMana(spend) => {
                 let pool_post_pay = all_players[player].pool_post_pay(&spend.paying()).unwrap();
-                let first_unpaid = spend.first_unpaid().unwrap();
+                let first_unpaid = spend.first_unpaid_x_always_unpaid().unwrap();
                 match first_unpaid {
-                    ManaCost::Generic(count) => {
-                        if count == 1 {
-                            pool_post_pay.max().is_some()
-                        } else {
-                            false
-                        }
-                    }
-                    ManaCost::X => false,
+                    ManaCost::Generic(_) => true,
+                    ManaCost::X => true,
                     unpaid => pool_post_pay.can_spend(unpaid),
                 }
             }
@@ -339,9 +369,10 @@ impl PayCost {
                 if pool_post_paid.is_none() || pool_post_paid.unwrap().max().is_none() {
                     return vec![];
                 }
+                debug!("Spending mana from {:?}", pool_post_paid);
                 let pool_post_paid = pool_post_paid.unwrap();
 
-                match spend.first_unpaid() {
+                match spend.first_unpaid_x_always_unpaid() {
                     Some(ManaCost::Generic(_) | ManaCost::X) => pool_post_paid
                         .available_mana()
                         .map(|(count, mana)| {
@@ -471,9 +502,7 @@ impl PayCost {
                                     Some(ManaCost::X)
                                 );
                             }
-                            ManaCost::X => {
-                                return true;
-                            }
+                            ManaCost::X => unreachable!(),
                         };
                         *spend
                             .paid
@@ -965,7 +994,7 @@ impl PendingResults {
                     .iter()
                     .all(|choose| choose.valid_targets.is_empty())
                     && self.pay_costs.iter().all(|pay| {
-                        pay.choice_optional(all_players, self.source.unwrap().card(db).owner(db))
+                        pay.autopay(all_players, self.source.unwrap().card(db).owner(db))
                     })))
     }
 
