@@ -62,3 +62,7 @@ effects {
   }
   oracle_text: "Draw a card"
 }
+restrictions {
+  on_battlefield {
+  }
+}

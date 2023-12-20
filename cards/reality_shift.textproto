@@ -19,3 +19,7 @@ effects {
   exile_target_creature_manifest_top_of_library {
   }
 }
+restrictions {
+  on_battlefield {
+  }
+}

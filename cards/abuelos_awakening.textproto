@@ -69,3 +69,7 @@ restrictions {
     }
   }
 }
+restrictions {
+  in_graveyard {
+  }
+}

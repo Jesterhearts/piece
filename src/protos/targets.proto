@@ -36,38 +36,42 @@ message SpellTarget {
 
 message Restriction {
   message CastFromHand {}
-  message NotSelf {}
-  message OfType {
-    repeated types.Type types = 1;
-    repeated types.Subtype subtypes = 2;
+  message Cmc {
+    Comparison comparison = 1;
   }
+  message ControllerControlsBlackOrGreen {}
+  message ControllerHandEmpty {}
   message NotOfType {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
   }
+  message NotSelf {}
   message OfColor {
     repeated color.Color colors = 1;
   }
-  message Cmc {
-    Comparison comparison = 1;
+  message OfType {
+    repeated types.Type types = 1;
+    repeated types.Subtype subtypes = 2;
   }
   message Self {}
   message Toughness {
     Comparison comparison = 1;
   }
-  message ControllerControlsBlackOrGreen {}
-  message ControllerHandEmpty {}
+  message OnBattlefield {}
+  message InGraveyard {}
 
   oneof restriction {
     CastFromHand cast_from_hand = 1;
     Cmc cmc = 2;
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 3;
     ControllerHandEmpty controller_hand_empty = 4;
-    NotOfType not_of_type = 5;
-    NotSelf not_self = 6;
-    OfColor of_color = 7;
-    OfType of_type = 8;
-    Self self = 9;
-    Toughness toughness = 10;
+    InGraveyard in_graveyard = 5;
+    NotOfType not_of_type = 6;
+    NotSelf not_self = 7;
+    OfColor of_color = 8;
+    OfType of_type = 9;
+    OnBattlefield on_battlefield = 10;
+    Self self = 11;
+    Toughness toughness = 12;
   }
 }

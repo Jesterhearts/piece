@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy_ecs::{
     component::Component,
@@ -20,11 +20,11 @@ use crate::{
         BattlefieldModifier, Effect, EffectDuration, ForEachManaOfSource, Mill, TutorLibrary,
     },
     in_play::{
-        cast_from, AbilityId, CardId, CastFrom, Database, InStack, ModifierId, OnBattlefield,
-        TriggerId, TriggerInStack,
+        cast_from, AbilityId, CardId, CastFrom, Database, InStack, ModifierId, TriggerId,
+        TriggerInStack,
     },
-    player::{AllPlayers, Controller, Owner},
-    targets::{Restriction, SpellTarget},
+    player::{AllPlayers, Owner},
+    targets::Restriction,
     types::Type,
 };
 
@@ -485,7 +485,7 @@ impl Stack {
             .zip((&mut targets).chain(std::iter::repeat(vec![])))
         {
             let effect = effect.into_effect(db, controller);
-            if targets.len() != effect.needs_targets() {
+            if targets.len() != effect.needs_targets() && effect.needs_targets() != 0 {
                 let valid_targets = source.targets_for_effect(db, controller, &effect);
                 results.push_choose_targets(ChooseTargets::new(
                     EffectOrAura::Effect(effect),
@@ -494,24 +494,33 @@ impl Stack {
                 continue;
             }
 
+            if effect.wants_targets() > 0 {
+                let valid_targets = source
+                    .targets_for_effect(db, controller, &effect)
+                    .into_iter()
+                    .collect::<HashSet<_>>();
+                if !targets.iter().all(|target| valid_targets.contains(target)) {
+                    if let Some(resolving_card) = resolving_card {
+                        return [ActionResult::StackToGraveyard(resolving_card)].into();
+                    } else {
+                        return PendingResults::default();
+                    }
+                }
+            }
+
             match effect {
-                Effect::CounterSpell {
-                    target: restrictions,
-                } => {
+                Effect::CounterSpell { .. } => {
                     let in_stack = Self::in_stack(db);
-                    if !counter_spell(
-                        db,
-                        &in_stack,
-                        controller,
-                        targets,
-                        &restrictions,
-                        &mut results,
-                    ) {
-                        if let Some(resolving_card) = resolving_card {
-                            return [ActionResult::StackToGraveyard(resolving_card)].into();
-                        } else {
-                            return PendingResults::default();
-                        }
+                    let in_stack = &in_stack;
+                    let results: &mut PendingResults = &mut results;
+                    for target in targets {
+                        let ActiveTarget::Stack { id } = target else {
+                            unreachable!()
+                        };
+
+                        results.push_settled(ActionResult::SpellCountered {
+                            id: *in_stack.get(&id).unwrap(),
+                        });
                     }
                 }
                 Effect::BattlefieldModifier(modifier) => {
@@ -543,13 +552,7 @@ impl Stack {
                             ActiveTarget::Graveyard { .. } => {
                                 final_targets.push(target);
                             }
-                            _ => {
-                                if let Some(resolving_card) = resolving_card {
-                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
-                                } else {
-                                    return PendingResults::default();
-                                }
-                            }
+                            _ => unreachable!(),
                         }
                     }
 
@@ -571,263 +574,56 @@ impl Stack {
                 }
                 Effect::ExileTargetCreature => {
                     for target in targets {
-                        match target {
-                            ActiveTarget::Battlefield { id } => {
-                                if !id.is_in_location::<OnBattlefield>(db) {
-                                    // Permanent no longer on battlefield.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.can_be_targeted(db, controller) {
-                                    // Card is no longer a valid target.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.types_intersect(db, &IndexSet::from([Type::Creature])) {
-                                    // Target isn't a creature
-
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                results.push_settled(ActionResult::ExileTarget(target));
-                            }
-                            _ => {
-                                if let Some(resolving_card) = resolving_card {
-                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
-                                } else {
-                                    return PendingResults::default();
-                                }
-                            }
-                        }
+                        results.push_settled(ActionResult::ExileTarget(target));
                     }
                 }
                 Effect::ExileTargetCreatureManifestTopOfLibrary => {
                     for target in targets {
-                        match target {
-                            ActiveTarget::Battlefield { id } => {
-                                if !id.is_in_location::<OnBattlefield>(db) {
-                                    // Permanent no longer on battlefield.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.can_be_targeted(db, controller) {
-                                    // Card is no longer a valid target.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.types_intersect(db, &IndexSet::from([Type::Creature])) {
-                                    // Target isn't a creature
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                results.push_settled(ActionResult::ExileTarget(target));
-                                results.push_settled(ActionResult::ManifestTopOfLibrary(
-                                    id.controller(db),
-                                ));
-                            }
-                            _ => {
-                                if let Some(resolving_card) = resolving_card {
-                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
-                                } else {
-                                    return PendingResults::default();
-                                }
-                            }
-                        }
+                        results.push_settled(ActionResult::ExileTarget(target));
+                        results.push_settled(ActionResult::ManifestTopOfLibrary(
+                            target.id().unwrap().controller(db),
+                        ));
                     }
                 }
                 Effect::DealDamage(dmg) => {
                     for target in targets {
-                        match target {
-                            ActiveTarget::Battlefield { id } => {
-                                if !id.is_in_location::<OnBattlefield>(db) {
-                                    // Permanent no longer on battlefield.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.can_be_targeted(db, controller) {
-                                    // Card is no longer a valid target.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.passes_restrictions(
-                                    db,
-                                    source,
-                                    ControllerRestriction::Any,
-                                    &dmg.restrictions,
-                                ) {
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                results.push_settled(ActionResult::DamageTarget {
-                                    quantity: dmg.quantity,
-                                    target,
-                                });
-                            }
-                            ActiveTarget::Player { .. } => {
-                                // TODO player hexproof, etc.
-                                results.push_settled(ActionResult::DamageTarget {
-                                    quantity: 1,
-                                    target,
-                                })
-                            }
-                            _ => {
-                                if let Some(resolving_card) = resolving_card {
-                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
-                                } else {
-                                    return PendingResults::default();
-                                }
-                            }
-                        }
+                        results.push_settled(ActionResult::DamageTarget {
+                            quantity: dmg.quantity,
+                            target,
+                        });
                     }
                 }
-                Effect::TargetToTopOfLibrary { restrictions } => {
+                Effect::TargetToTopOfLibrary { .. } => {
                     for target in targets {
-                        match target {
-                            ActiveTarget::Battlefield { id } => {
-                                if !id.is_in_location::<OnBattlefield>(db) {
-                                    // Permanent no longer on battlefield.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.can_be_targeted(db, controller) {
-                                    // Card is no longer a valid target.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                if !id.passes_restrictions(
-                                    db,
-                                    source,
-                                    ControllerRestriction::Any,
-                                    &restrictions,
-                                ) {
-                                    // Card is no longer a valid target.
-                                    if let Some(resolving_card) = resolving_card {
-                                        return [ActionResult::StackToGraveyard(resolving_card)]
-                                            .into();
-                                    } else {
-                                        return PendingResults::default();
-                                    }
-                                }
-
-                                results.push_settled(
-                                    ActionResult::ReturnFromBattlefieldToLibrary { target },
-                                );
-                            }
-                            _ => {
-                                if let Some(resolving_card) = resolving_card {
-                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
-                                } else {
-                                    return PendingResults::default();
-                                }
-                            }
-                        }
+                        results
+                            .push_settled(ActionResult::ReturnFromBattlefieldToLibrary { target });
                     }
                 }
                 Effect::Equip(modifiers) => {
-                    match targets.into_iter().next().unwrap() {
-                        ActiveTarget::Stack { .. } => {
-                            // Can't equip things on the stack
-                            if let Some(resolving_card) = resolving_card {
-                                return [ActionResult::StackToGraveyard(resolving_card)].into();
-                            } else {
-                                return PendingResults::default();
-                            }
-                        }
-                        ActiveTarget::Battlefield { id } => {
-                            if !id.can_be_targeted(db, controller) {
-                                // Card is not a valid target, spell fizzles.
-                                if let Some(resolving_card) = resolving_card {
-                                    return [ActionResult::StackToGraveyard(resolving_card)].into();
-                                } else {
-                                    return PendingResults::default();
-                                }
-                            }
+                    let target = targets.into_iter().exactly_one().unwrap();
+                    // This is a hack. I hope equipement doesn't come with anthem effects.
+                    // It probably works even so.
+                    source.deactivate_modifiers(db);
+                    source.activate_modifiers(db);
+                    for modifier in modifiers {
+                        let modifier = ModifierId::upload_temporary_modifier(
+                            db,
+                            source,
+                            &BattlefieldModifier {
+                                modifier: modifier.clone(),
+                                controller: ControllerRestriction::You,
+                                duration: EffectDuration::UntilSourceLeavesBattlefield,
+                                restrictions: vec![Restriction::OfType {
+                                    types: IndexSet::from([Type::Creature]),
+                                    subtypes: Default::default(),
+                                }],
+                            },
+                        );
 
-                            // This is a hack. I hope equipement doesn't come with anthem effects.
-                            source.deactivate_modifiers(db);
-                            for modifier in modifiers {
-                                let modifier = ModifierId::upload_temporary_modifier(
-                                    db,
-                                    source,
-                                    &BattlefieldModifier {
-                                        modifier: modifier.clone(),
-                                        controller: ControllerRestriction::You,
-                                        duration: EffectDuration::UntilSourceLeavesBattlefield,
-                                        restrictions: vec![Restriction::OfType {
-                                            types: IndexSet::from([Type::Creature]),
-                                            subtypes: Default::default(),
-                                        }],
-                                    },
-                                );
-
-                                results.push_settled(ActionResult::ModifyCreatures {
-                                    targets: vec![ActiveTarget::Battlefield { id }],
-                                    modifier,
-                                });
-                            }
-                        }
-                        _ => {
-                            if let Some(resolving_card) = resolving_card {
-                                return [ActionResult::StackToGraveyard(resolving_card)].into();
-                            } else {
-                                return PendingResults::default();
-                            }
-                        }
+                        results.push_settled(ActionResult::ModifyCreatures {
+                            targets: vec![target],
+                            modifier,
+                        });
                     }
                 }
                 Effect::CreateToken(token) => {
@@ -1081,58 +877,6 @@ fn add_card_to_stack(
     }
 
     results
-}
-
-fn counter_spell(
-    db: &mut Database,
-    in_stack: &HashMap<InStack, Entry>,
-    controller: Controller,
-    targets: Vec<ActiveTarget>,
-    restrictions: &SpellTarget,
-    results: &mut PendingResults,
-) -> bool {
-    for target in targets {
-        match target {
-            ActiveTarget::Stack { id } => {
-                let Some(maybe_target) = in_stack.get(&id) else {
-                    // Spell has left the stack already
-                    return false;
-                };
-
-                match maybe_target {
-                    Entry::Card(maybe_target) => {
-                        if !maybe_target.can_be_countered(db, controller, restrictions) {
-                            // Spell is no longer a valid target.
-                            return false;
-                        }
-                    }
-                    Entry::Ability { .. } => {
-                        // Vanilla counterspells can't counter activated abilities.
-                        return false;
-                    }
-                    Entry::Trigger { .. } => {
-                        // Vanilla counterspells can't counter triggered abilities.
-                        return false;
-                    }
-                }
-
-                // If we reach here, we know the spell can be countered.
-                results.push_settled(ActionResult::SpellCountered { id: *maybe_target });
-            }
-            ActiveTarget::Battlefield { .. } => {
-                // Cards on the battlefield aren't valid targets of counterspells
-                return false;
-            }
-            ActiveTarget::Player { .. } => {
-                // Players aren't valid targets of counterspells
-                return false;
-            }
-            ActiveTarget::Graveyard { .. } => return false,
-            ActiveTarget::Library { .. } => return false,
-        }
-    }
-
-    true
 }
 
 #[cfg(test)]

@@ -746,6 +746,7 @@ impl Battlefield {
                 if let Some(x_is) = x_is {
                     card.set_x(db, *x_is)
                 };
+                card.apply_modifiers_layered(db);
                 let cascade = card.cascade(db);
                 for _ in 0..cascade {
                     let id = TriggerId::upload(

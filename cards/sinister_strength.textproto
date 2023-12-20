@@ -60,3 +60,7 @@ restrictions {
     }
   }
 }
+restrictions {
+  on_battlefield {
+  }
+}

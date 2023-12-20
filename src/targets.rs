@@ -118,6 +118,8 @@ pub enum Restriction {
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
+    InGraveyard,
+    OnBattlefield,
 }
 
 impl Restriction {
@@ -163,7 +165,9 @@ impl Restriction {
                 format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
             }
             Restriction::Cmc(cmc) => format!("cmc {}", cmc),
-            Restriction::CastFromHand => "cast from hand".to_string(),
+            Restriction::CastFromHand => "cast from your hand".to_string(),
+            Restriction::InGraveyard => "in a graveyard".to_string(),
+            Restriction::OnBattlefield => "on the battlefield".to_string(),
         }
     }
 }
@@ -231,6 +235,10 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Subtype::try_from)
                     .collect::<anyhow::Result<_>>()?,
             }),
+            protogen::targets::restriction::Restriction::InGraveyard(_) => Ok(Self::InGraveyard),
+            protogen::targets::restriction::Restriction::OnBattlefield(_) => {
+                Ok(Self::OnBattlefield)
+            }
         }
     }
 }

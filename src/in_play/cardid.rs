@@ -327,6 +327,24 @@ impl CardId {
         }
     }
 
+    pub fn activate_modifiers(self, db: &mut Database) {
+        let mut entities = vec![];
+
+        for (entity, source) in db
+            .modifiers
+            .query::<(Entity, &CardId)>()
+            .iter_mut(&mut db.modifiers)
+        {
+            if *source == self {
+                entities.push(entity);
+            }
+        }
+
+        for entity in entities {
+            ModifierId::from(entity).activate(db);
+        }
+    }
+
     pub fn apply_modifiers_layered(self, db: &mut Database) {
         TriggerId::unsubscribe_all_for_card(db, self);
 
@@ -856,7 +874,21 @@ impl CardId {
                         return false;
                     }
                 }
-                Restriction::CastFromHand => {}
+                Restriction::InGraveyard => {
+                    if !self.is_in_location::<InGraveyard>(db) {
+                        return false;
+                    }
+                }
+                Restriction::OnBattlefield => {
+                    if !self.is_in_location::<OnBattlefield>(db) {
+                        return false;
+                    }
+                }
+                Restriction::CastFromHand => {
+                    if !self.cast_from_hand(db) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1280,7 +1312,7 @@ impl CardId {
         controller: Controller,
         effect: &Effect,
     ) -> Vec<ActiveTarget> {
-        let on_battlefield = in_play::cards::<OnBattlefield>(db)
+        let all_cards = in_play::all_cards(db)
             .into_iter()
             .filter(|card| {
                 card.passes_restrictions(
@@ -1300,21 +1332,14 @@ impl CardId {
             Effect::BattlefieldModifier(_) => {}
             Effect::ControllerDrawCards(_) => {}
             Effect::Equip(_) => {
-                targets_for_battlefield_modifier(
-                    db,
-                    self,
-                    None,
-                    &on_battlefield,
-                    controller,
-                    &mut targets,
-                );
+                targets_for_equipment(db, &all_cards, controller, &mut targets);
             }
             Effect::CreateToken(_) => {}
             Effect::DealDamage(dmg) => {
-                self.targets_for_damage(db, &on_battlefield, dmg, &mut targets);
+                self.targets_for_damage(db, &all_cards, dmg, &mut targets);
             }
             Effect::ExileTargetCreature => {
-                for creature in on_battlefield
+                for creature in all_cards
                     .iter()
                     .filter(|target| target.types_intersect(db, &IndexSet::from([Type::Creature])))
                     .collect_vec()
@@ -1325,7 +1350,7 @@ impl CardId {
                 }
             }
             Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                for creature in on_battlefield
+                for creature in all_cards
                     .iter()
                     .filter(|target| target.types_intersect(db, &IndexSet::from([Type::Creature])))
                     .collect_vec()
@@ -1352,15 +1377,15 @@ impl CardId {
                 targets_for_battlefield_modifier(
                     db,
                     self,
-                    Some(modifier),
-                    &on_battlefield,
+                    modifier,
+                    &all_cards,
                     controller,
                     &mut targets,
                 );
             }
             Effect::ControllerLosesLife(_) => {}
             Effect::CopyOfAnyCreatureNonTargeting => {
-                for creature in on_battlefield
+                for creature in all_cards
                     .iter()
                     .filter(|target| target.types_intersect(db, &IndexSet::from([Type::Creature])))
                 {
@@ -1411,9 +1436,9 @@ impl CardId {
                 );
             }
             Effect::CreateTokenCopy { .. } => {
-                for target in on_battlefield.iter() {
+                for target in all_cards.iter() {
                     if target.can_be_targeted(db, controller) {
-                        targets.push(ActiveTarget::Battlefield { id: *target })
+                        push_target_from_location(db, *target, &mut targets);
                     }
                 }
             }
@@ -1425,15 +1450,15 @@ impl CardId {
                 let caster = self.controller(db);
                 for card in cards::<OnBattlefield>(db) {
                     if card.can_be_targeted(db, caster) {
-                        targets.push(ActiveTarget::Battlefield { id: card });
+                        push_target_from_location(db, card, &mut targets);
                     }
                 }
             }
             Effect::TargetGainsCounters(_) => {
                 let caster = self.controller(db);
-                for card in on_battlefield.iter() {
+                for card in all_cards.iter() {
                     if card.can_be_targeted(db, caster) {
-                        targets.push(ActiveTarget::Battlefield { id: *card });
+                        push_target_from_location(db, *card, &mut targets);
                     }
                 }
             }
@@ -1769,26 +1794,46 @@ fn targets_for_counterspell(
 fn targets_for_battlefield_modifier(
     db: &mut Database,
     source: CardId,
-    modifier: Option<&BattlefieldModifier>,
+    modifier: &BattlefieldModifier,
+    all_cards: &[CardId],
+    caster: Controller,
+    targets: &mut Vec<ActiveTarget>,
+) {
+    for card in all_cards.iter() {
+        if card.can_be_targeted(db, caster)
+            && card.passes_restrictions(db, source, modifier.controller, &modifier.restrictions)
+        {
+            push_target_from_location(db, *card, targets);
+        }
+    }
+}
+
+fn push_target_from_location(db: &mut Database, card: CardId, targets: &mut Vec<ActiveTarget>) {
+    if card.is_in_location::<OnBattlefield>(db) {
+        targets.push(ActiveTarget::Battlefield { id: card });
+    } else if card.is_in_location::<InGraveyard>(db) {
+        targets.push(ActiveTarget::Graveyard { id: card });
+    } else if card.is_in_location::<InLibrary>(db) {
+        targets.push(ActiveTarget::Library { id: card });
+    } else {
+        todo!()
+    }
+}
+
+fn targets_for_equipment(
+    db: &mut Database,
     on_battlefield: &[CardId],
     caster: Controller,
     targets: &mut Vec<ActiveTarget>,
 ) {
-    for creature in on_battlefield
+    for card in on_battlefield
         .iter()
+        .filter(|target| target.is_in_location::<OnBattlefield>(db))
         .filter(|target| target.types_intersect(db, &IndexSet::from([Type::Creature])))
         .collect_vec()
     {
-        if creature.can_be_targeted(db, caster)
-            && (modifier.is_none()
-                || creature.passes_restrictions(
-                    db,
-                    source,
-                    modifier.unwrap().controller,
-                    &modifier.unwrap().restrictions,
-                ))
-        {
-            targets.push(ActiveTarget::Battlefield { id: *creature });
+        if card.can_be_targeted(db, caster) {
+            targets.push(ActiveTarget::Battlefield { id: *card });
         }
     }
 }

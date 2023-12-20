@@ -41,3 +41,7 @@ effects {
     }
   }
 }
+restrictions {
+  on_battlefield {
+  }
+}
