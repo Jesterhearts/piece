@@ -1,7 +1,9 @@
 name: "Island"
-
- types
-{ basic_land {} }
-
- subtypes
-{ island {} }
+types {
+  basic_land {
+  }
+}
+subtypes {
+  island {
+  }
+}

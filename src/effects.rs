@@ -420,6 +420,7 @@ pub enum Effect {
     ReturnSelfToHand,
     RevealEachTopOfLibrary(RevealEachTopOfLibrary),
     DealDamage(DealDamage),
+    Discover(usize),
     Equip(Vec<ModifyBattlefield>),
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
@@ -485,6 +486,7 @@ impl Effect {
             Effect::UntapTarget => 1,
             Effect::TargetGainsCounters(_) => 1,
             Effect::Scry(_) => 0,
+            Effect::Discover(_) => 0,
         }
     }
 
@@ -520,6 +522,7 @@ impl Effect {
             Effect::Cascade => 0,
             Effect::TargetGainsCounters(_) => 1,
             Effect::Scry(_) => 0,
+            Effect::Discover(_) => 0,
         }
     }
 }
@@ -623,6 +626,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::Scry(scry) => {
                 Ok(Self::Scry(usize::try_from(scry.count)?))
+            }
+            protogen::effects::effect::Effect::Discover(discover) => {
+                Ok(Self::Discover(usize::try_from(discover.count)?))
             }
         }
     }

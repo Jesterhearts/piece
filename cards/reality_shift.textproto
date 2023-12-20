@@ -1,14 +1,21 @@
 name: "Reality Shift"
-cost {
-  mana_costs { generic { count: 1} }
-  mana_costs { blue {} }
+types {
+  instant {
+  }
 }
-types { instant {} }
-oracle_text:  "Exile targt creature. Its controller "
-              "manifests the top card of their "
-              "library. (That player puts the top card "
-              "of their library onto the battlefield face "
-              "down as a 2/2 creature. If it's a creature "
-              "card, it can be turned face up any time "
-              "for its mana cost.)"
-effects { exile_target_creature_manifest_top_of_library {} }
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    blue {
+    }
+  }
+}
+oracle_text: "Exile targt creature. Its controller manifests the top card of their library. (That player puts the top card of their library onto the battlefield face down as a 2/2 creature. If it\'s a creature card, it can be turned face up any time for its mana cost.)"
+effects {
+  exile_target_creature_manifest_top_of_library {
+  }
+}

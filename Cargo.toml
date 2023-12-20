@@ -1,7 +1,16 @@
 [package]
-name    = "piece"
-version = "0.1.0"
-edition = "2021"
+name        = "piece"
+version     = "0.1.0"
+edition     = "2021"
+default-run = "game"
+
+[[bin]]
+name = "game"
+path = "src/bin/run_game.rs"
+
+[[bin]]
+name = "format"
+path = "src/bin/format_textproto.rs"
 
 [dependencies]
 anyhow        = "1.0.75"

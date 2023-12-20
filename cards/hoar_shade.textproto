@@ -1,22 +1,44 @@
 name: "Hoar Shade"
-cost {
-  mana_costs { generic { count: 3 } }
-  mana_costs { black {} }
+types {
+  creature {
+  }
 }
-types { creature {} }
-subtypes { shade {} }
+subtypes {
+  shade {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 3
+    }
+  }
+  mana_costs {
+    black {
+    }
+  }
+}
 activated_abilities {
   cost {
-    mana_costs { black {} }
+    mana_costs {
+      black {
+      }
+    }
   }
   effects {
-    battlefield_modifier { 
+    battlefield_modifier {
       modifier {
         add_power: 1
         add_toughness: 1
       }
-      controller { you {} }
-      duration { until_end_of_turn {} }
+      controller {
+        you {
+        }
+      }
+      duration {
+        until_end_of_turn {
+        }
+      }
     }
   }
   apply_to_self: true

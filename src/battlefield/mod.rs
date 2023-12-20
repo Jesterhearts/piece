@@ -1080,6 +1080,7 @@ impl Battlefield {
                     player: controller,
                 });
             }
+            Effect::Discover(_) => todo!(),
             Effect::Scry(count) => {
                 results.push_settled(ActionResult::Scry(source, count));
             }
@@ -1169,7 +1170,8 @@ impl Battlefield {
             | Effect::ReturnSelfToHand
             | Effect::TargetToTopOfLibrary { .. }
             | Effect::UntapTarget
-            | Effect::TargetGainsCounters(_) => {
+            | Effect::TargetGainsCounters(_)
+            | Effect::Discover(_) => {
                 unreachable!()
             }
         }

@@ -1,22 +1,48 @@
 name: "Attentive Sunscribe"
-cost {
-  mana_costs { generic { count: 1} }
-  mana_costs { white{} }
+types {
+  artifact {
+  }
 }
-types { artifact {} }
-types { creature {} }
-subtypes { gnome {} }
+types {
+  creature {
+  }
+}
+subtypes {
+  gnome {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
 triggered_abilities {
   trigger {
-    source { tapped { } }
-    from { anywhere {} }
-    restrictions { self {} }
+    source {
+      tapped {
+      }
+    }
+    from {
+      anywhere {
+      }
+    }
+    restrictions {
+      self {
+      }
+    }
   }
   effects {
-    scry { count: 1 }
+    scry {
+      count: 1
+    }
   }
-  oracle_text:  "Whenever Attentive Sunscribe becomes"
-                " tapped, scry 1."
+  oracle_text: "Whenever Attentive Sunscribe becomes tapped, scry 1."
 }
 power: 2
 toughness: 2

@@ -920,6 +920,7 @@ impl Stack {
                 Effect::Scry(count) => {
                     results.push_settled(ActionResult::Scry(source, count));
                 }
+                Effect::Discover(_) => todo!(),
             }
         }
 

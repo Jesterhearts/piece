@@ -1,15 +1,30 @@
 name: "Annul"
-cost {
-  mana_costs { blue {} }
-  mana_costs { blue {} }
+types {
+  instant {
+  }
 }
-types { instant {} }
+cost {
+  mana_costs {
+    blue {
+    }
+  }
+  mana_costs {
+    blue {
+    }
+  }
+}
 oracle_text: "Counter target artifact or enchantment spell."
 effects {
   counter_spell {
-    valid_target { 
-      types { artifact {} }
-      types { enchantment {} }
+    valid_target {
+      types {
+        artifact {
+        }
+      }
+      types {
+        enchantment {
+        }
+      }
     }
   }
 }

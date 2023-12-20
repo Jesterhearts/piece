@@ -1,37 +1,69 @@
 name: "Krosan Verge"
-types { land {} }
-etb_tapped: true
+types {
+  land {
+  }
+}
+target_individually: true
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 2
+      }
+    }
+    tap: true
+    additional_costs {
+      sacrifice_this {
+      }
+    }
+  }
+  effects {
+    tutor_library {
+      restrictions {
+        of_type {
+          subtypes {
+            forest {
+            }
+          }
+        }
+      }
+      destination {
+        battlefield {
+          enters_tapped: true
+        }
+      }
+    }
+  }
+  effects {
+    tutor_library {
+      restrictions {
+        of_type {
+          subtypes {
+            plains {
+            }
+          }
+        }
+      }
+      destination {
+        battlefield {
+          enters_tapped: true
+        }
+      }
+    }
+  }
+  oracle_text: "Search your library for a Forest card and a Plains cards, put them onto the battlefield tapped, then shuffle."
+}
 mana_abilities {
   cost {
     tap: true
   }
   gain_mana {
-    specific { gains{ colorless{} } }
-  }
-}
-activated_abilities {
-  cost {
-    mana_costs { generic { count: 2 } }
-    additional_costs{ sacrifice_this{} } 
-    tap: true
-  }
-  effects {
-    tutor_library {
-      restrictions { 
-        of_type { subtypes { forest {} } }
+    specific {
+      gains {
+        colorless {
+        }
       }
-      destination { battlefield { enters_tapped: true } }
     }
   }
-  effects {
-    tutor_library {
-      restrictions { 
-        of_type { subtypes { plains {} } }
-      }
-      destination { battlefield { enters_tapped: true } }
-    }
-  }
-  oracle_text:  "Search your library for a Forest card and a Plains cards, "
-                "put them onto the battlefield tapped, then shuffle."
 }
-target_individually: true
+etb_tapped: true

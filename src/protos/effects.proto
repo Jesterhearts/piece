@@ -229,6 +229,10 @@ message UntapTarget {}
 
 message Cascade {}
 
+message Discover {
+  int32 count = 1;
+}
+
 message Scry {
   int32 count = 1;
 }
@@ -249,26 +253,27 @@ message Effect {
     CreateToken create_token = 8;
     CreateTokenCopy create_token_copy = 9;
     DealDamage deal_damage = 10;
-    Equip equip = 11;
-    ExileTargetCreature exile_target_creature = 12;
+    Discover discover = 11;
+    Equip equip = 12;
+    ExileTargetCreature exile_target_creature = 13;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 13;
-    GainCounter gain_counter = 14;
-    GainCounter target_gains_counters = 15;
-    Mill mill = 16;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 17;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 18;
-    ReturnSelfToHand return_self_to_hand = 19;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 20;
-    Scry scry = 21;
-    TargetToTopOfLibrary target_to_top_of_library = 22;
-    TutorLibrary tutor_library = 23;
-    UntapThis untap_this = 24;
-    UntapTarget untap_target = 25;
+        exile_target_creature_manifest_top_of_library = 14;
+    GainCounter gain_counter = 15;
+    GainCounter target_gains_counters = 16;
+    Mill mill = 17;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 18;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 19;
+    ReturnSelfToHand return_self_to_hand = 20;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 21;
+    Scry scry = 22;
+    TargetToTopOfLibrary target_to_top_of_library = 23;
+    TutorLibrary tutor_library = 24;
+    UntapThis untap_this = 25;
+    UntapTarget untap_target = 26;
   }
 
-  optional Effect threshold = 26;
-  string oracle_text = 27;
+  optional Effect threshold = 27;
+  string oracle_text = 28;
 }
 
 message ReplacementEffect {

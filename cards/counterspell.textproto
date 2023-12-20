@@ -1,8 +1,20 @@
 name: "Counterspell"
-cost {
-  mana_costs { blue {} }
-  mana_costs { blue {} }
+types {
+  instant {
+  }
 }
-types { instant {} }
+cost {
+  mana_costs {
+    blue {
+    }
+  }
+  mana_costs {
+    blue {
+    }
+  }
+}
 oracle_text: "Counter target spell."
-effects { counter_spell { } }
+effects {
+  counter_spell {
+  }
+}

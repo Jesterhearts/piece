@@ -1,4 +1,8 @@
 name: "Abzan Banner"
+types {
+  artifact {
+  }
+}
 cost {
   mana_costs {
     generic {
@@ -6,26 +10,25 @@ cost {
     }
   }
 }
-types { artifact {} }
-mana_abilities {
-  cost {
-    tap: true
-  }
-  gain_mana {
-    choice {
-      choices { gains { white {} } }
-      choices { gains { black {} } }
-      choices { gains { green {} } }
-    }
-  }
-}
 activated_abilities {
   cost {
-    mana_costs { white {} }
-    mana_costs { black {} }
-    mana_costs { green {} }
+    mana_costs {
+      white {
+      }
+    }
+    mana_costs {
+      black {
+      }
+    }
+    mana_costs {
+      green {
+      }
+    }
     tap: true
-    additional_costs { sacrifice_this {} }
+    additional_costs {
+      sacrifice_this {
+      }
+    }
   }
   effects {
     controller_draw_cards {
@@ -33,4 +36,31 @@ activated_abilities {
     }
   }
   oracle_text: "Draw a card."
+}
+mana_abilities {
+  cost {
+    tap: true
+  }
+  gain_mana {
+    choice {
+      choices {
+        gains {
+          white {
+          }
+        }
+      }
+      choices {
+        gains {
+          black {
+          }
+        }
+      }
+      choices {
+        gains {
+          green {
+          }
+        }
+      }
+    }
+  }
 }

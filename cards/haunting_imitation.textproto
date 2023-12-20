@@ -1,32 +1,50 @@
 name: "Haunting Imitation"
-cost {
-  mana_costs { generic { count: 2 } }
-  mana_costs { blue{} }
+types {
+  sorcery {
+  }
 }
-types { sorcery{} }
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    blue {
+    }
+  }
+}
 effects {
   reveal_each_top_of_library {
     for_each {
-      restrictions { of_type { types { creature {} } } }
-      effects { 
-        create_token_copy { 
+      restrictions {
+        of_type {
+          types {
+            creature {
+            }
+          }
+        }
+      }
+      effects {
+        create_token_copy {
           modifiers {
             base_power: 1
             base_toughness: 1
-            add_subtypes { spirit {} }
+            add_subtypes {
+              spirit {
+              }
+            }
             add_keywords: "Flying"
           }
         }
       }
       if_none {
-        effects { return_self_to_hand {} }
+        effects {
+          return_self_to_hand {
+          }
+        }
       }
     }
   }
-  oracle_text:  "Each player reveals the top card of their library. "
-                "For each creature card revealed this way, create a token "
-                "that's a copy of that card, except it's 1/1, it's a "
-                "Spirit in addition to its other types, and it has "
-                "flying. If no creature cards were revealed this way, "
-                "return Haunting Imitation to its owner's hand."
+  oracle_text: "Each player reveals the top card of their library. For each creature card revealed this way, create a token that\'s a copy of that card, except it\'s 1/1, it\'s a Spirit in addition to its other types, and it has flying. If no creature cards were revealed this way, return Haunting Imitation to its owner\'s hand."
 }

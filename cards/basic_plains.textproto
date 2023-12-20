@@ -1,7 +1,9 @@
 name: "Plains"
-
- types
-{ basic_land {} }
-
- subtypes
-{ plains {} }
+types {
+  basic_land {
+  }
+}
+subtypes {
+  plains {
+  }
+}

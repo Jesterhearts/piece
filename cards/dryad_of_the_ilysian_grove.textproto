@@ -1,32 +1,77 @@
 name: "Dryad of the Ilysian Grove"
-cost {
-  mana_costs { generic {count: 2} }
-  mana_costs { green {} }
+types {
+  enchantment {
+  }
 }
-types { enchantment{} }
-types { creature{} }
-subtypes { nymph {} }
-subtypes { dryad {} }
-oracle_text:  "You may play an additional land on each "
-              "of your turns.\n"
-              "Lands you control are every basic land "
-              "type in addition to their other types."
+types {
+  creature {
+  }
+}
+subtypes {
+  nymph {
+  }
+}
+subtypes {
+  dryad {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    green {
+    }
+  }
+}
+oracle_text: "You may play an additional land on each of your turns.\nLands you control are every basic land type in addition to their other types."
 static_abilities {
   battlefield_modifier {
     modifier {
-      add_subtypes { plains{} }
-      add_subtypes { island{} }
-      add_subtypes { swamp{} }
-      add_subtypes { mountain{} }
-      add_subtypes { forest{} }
+      add_subtypes {
+        plains {
+        }
+      }
+      add_subtypes {
+        island {
+        }
+      }
+      add_subtypes {
+        swamp {
+        }
+      }
+      add_subtypes {
+        mountain {
+        }
+      }
+      add_subtypes {
+        forest {
+        }
+      }
       entire_battlefield: true
     }
-    controller { you {} }
-    duration { until_source_leaves_battlefield{} }
-    restrictions { of_type { 
-      types { land {}}
-      types { basic_land {} }
-    } }
+    controller {
+      you {
+      }
+    }
+    duration {
+      until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      of_type {
+        types {
+          land {
+          }
+        }
+        types {
+          basic_land {
+          }
+        }
+      }
+    }
   }
 }
 static_abilities {

@@ -1317,11 +1317,12 @@ impl PendingResults {
             Effect::ControllerLosesLife(_) => unreachable!(),
             Effect::UntapThis => unreachable!(),
             Effect::Cascade => unreachable!(),
+            Effect::Discover(_) => unreachable!(),
             Effect::UntapTarget => unreachable!(),
         }
     }
 
-    pub(crate) fn can_cancel(&self) -> bool {
+    pub fn can_cancel(&self) -> bool {
         self.is_empty() || !self.applied
     }
 }

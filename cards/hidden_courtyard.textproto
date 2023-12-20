@@ -1,9 +1,52 @@
 name: "Hidden Courtyard"
-etb_tapped: true
-types { land {} }
-subtypes { cave {} }
-mana_abilities {
-  cost { tap: true }
-  gain_mana { specific { gains { white {} } } }
-  mana_source { cave {} }
+types {
+  land {
+  }
 }
+subtypes {
+  cave {
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 4
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    tap: true
+    additional_costs {
+      sacrifice_this {
+      }
+    }
+  }
+  effects {
+    discover {
+      count: 4
+    }
+  }
+  oracle_text: "Discover 4. Activate only as Sorcery."
+  sorcery_speed: true
+}
+mana_abilities {
+  cost {
+    tap: true
+  }
+  gain_mana {
+    specific {
+      gains {
+        white {
+        }
+      }
+    }
+  }
+  mana_source {
+    cave {
+    }
+  }
+}
+etb_tapped: true

@@ -1,27 +1,68 @@
 name: "Paradise Mantle"
-cost {
-  mana_costs { generic{ count:0 } }
+types {
+  artifact {
+  }
 }
-types { artifact{} }
-subtypes { equipment{} }
-oracle_text:  "Equipped creature has \"{T}: Add one "
-              "mana of any color.\""
+subtypes {
+  equipment {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+    }
+  }
+}
+oracle_text: "Equipped creature has \"{T}: Add one mana of any color.\""
 activated_abilities {
-  cost { mana_costs { generic { count: 1 } } }
+  cost {
+    mana_costs {
+      generic {
+        count: 1
+      }
+    }
+  }
   effects {
     equip {
       modifiers {
         mana_ability {
+          cost {
+            tap: true
+          }
           gain_mana {
             choice {
-              choices { gains { white{} } }
-              choices { gains { blue{} } }
-              choices { gains { black{} } }
-              choices { gains { red{} } }
-              choices { gains { green{} } }
+              choices {
+                gains {
+                  white {
+                  }
+                }
+              }
+              choices {
+                gains {
+                  blue {
+                  }
+                }
+              }
+              choices {
+                gains {
+                  black {
+                  }
+                }
+              }
+              choices {
+                gains {
+                  red {
+                  }
+                }
+              }
+              choices {
+                gains {
+                  green {
+                  }
+                }
+              }
             }
           }
-          cost { tap: true }
         }
       }
     }

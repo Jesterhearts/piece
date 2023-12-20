@@ -1,9 +1,22 @@
 name: "Hexplate Golem"
-cost {
-  mana_costs { generic { count: 7 } }
+types {
+  artifact {
+  }
 }
-types { artifact {} }
-types { creature {} }
-subtypes { golem {} }
+types {
+  creature {
+  }
+}
+subtypes {
+  golem {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 7
+    }
+  }
+}
 power: 5
 toughness: 7

@@ -1,9 +1,22 @@
 name: "Alpine Grizzly"
-cost {
-  mana_costs { generic { count: 2 } }
-  mana_costs { green {} }
+types {
+  creature {
+  }
 }
-types { creature {} }
-subtypes { bear {} }
+subtypes {
+  bear {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    green {
+    }
+  }
+}
 power: 4
 toughness: 2

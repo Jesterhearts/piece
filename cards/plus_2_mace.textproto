@@ -1,13 +1,32 @@
 name: "+2 Mace"
-cost {
-  mana_costs { generic { count: 1 }}
-  mana_costs { white {} }
+types {
+  artifact {
+  }
 }
-types { artifact {} }
-subtypes { equipment {} }
+subtypes {
+  equipment {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
 oracle_text: "Equipped creature gets +2/+2"
 activated_abilities {
-  cost { mana_costs { generic { count: 3 } } }
+  cost {
+    mana_costs {
+      generic {
+        count: 3
+      }
+    }
+  }
   effects {
     equip {
       modifiers {

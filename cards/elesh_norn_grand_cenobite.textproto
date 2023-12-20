@@ -1,16 +1,32 @@
 name: "Elesh Norn, Grand Cenobite"
-types { legendary {} }
-types { creature {} }
-subtypes { praetor {} }
-cost { 
-  mana_costs { generic { count: 5 } }
-  mana_costs { white {} }
-  mana_costs { white {} }
+types {
+  legendary {
+  }
 }
-oracle_text:  "Vigilance\n"
-              "Other creatures you control get +2/+2\n"
-              "Creatures your opponents control get -2/-2\n"
-keywords: "Vigilance"
+types {
+  creature {
+  }
+}
+subtypes {
+  praetor {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 5
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+oracle_text: "Vigilance\nOther creatures you control get +2/+2\nCreatures your opponents control get -2/-2\n"
 static_abilities {
   battlefield_modifier {
     modifier {
@@ -18,9 +34,18 @@ static_abilities {
       add_toughness: 2
       entire_battlefield: true
     }
-    controller { you {} }
-    duration { until_source_leaves_battlefield {} }
-    restrictions { not_self {} }
+    controller {
+      you {
+      }
+    }
+    duration {
+      until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      not_self {
+      }
+    }
   }
 }
 static_abilities {
@@ -30,10 +55,20 @@ static_abilities {
       add_toughness: -2
       entire_battlefield: true
     }
-    controller { opponent {} }
-    duration { until_source_leaves_battlefield {} }
-    restrictions { not_self {} }
+    controller {
+      opponent {
+      }
+    }
+    duration {
+      until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      not_self {
+      }
+    }
   }
 }
 power: 4
 toughness: 7
+keywords: "Vigilance"

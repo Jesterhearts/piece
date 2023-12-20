@@ -1,7 +1,9 @@
 name: "Forest"
-
- types
-{ basic_land {} }
-
- subtypes
-{ forest {} }
+types {
+  basic_land {
+  }
+}
+subtypes {
+  forest {
+  }
+}

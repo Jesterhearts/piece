@@ -1437,6 +1437,7 @@ impl CardId {
                 }
             }
             Effect::Scry(_) => {}
+            Effect::Discover(_) => {}
         }
 
         targets
