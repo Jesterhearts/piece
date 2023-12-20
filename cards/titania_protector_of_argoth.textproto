@@ -24,8 +24,10 @@ triggered_abilities {
   trigger {
     source { put_into_graveyard{} }
     from { battlefield {} }
-    types { land {} }
-    types { basic_land {} }
+    restrictions { of_type {
+      types { land {} }
+      types { basic_land {} }
+    } }
   }
   effects {
     create_token {

@@ -24,6 +24,8 @@ activated_abilities {
   effects {
     gain_counter { single { counter { p1p1 {} } } }
   }
+  oracle_text:  "Put a +1/+1 counter on Adpative Gemguard.\n"
+                "Activate only as sourcery."
   sorcery_speed: true
 }
 power: 3

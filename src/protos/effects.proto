@@ -232,6 +232,10 @@ message UntapTarget {}
 
 message Cascade {}
 
+message Scry {
+  int32 count = 1;
+}
+
 message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
@@ -258,14 +262,15 @@ message Effect {
     ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 18;
     ReturnSelfToHand return_self_to_hand = 19;
     RevealEachTopOfLibrary reveal_each_top_of_library = 20;
-    TargetToTopOfLibrary target_to_top_of_library = 21;
-    TutorLibrary tutor_library = 22;
-    UntapThis untap_this = 23;
-    UntapTarget untap_target = 24;
+    Scry scry = 21;
+    TargetToTopOfLibrary target_to_top_of_library = 22;
+    TutorLibrary tutor_library = 23;
+    UntapThis untap_this = 24;
+    UntapTarget untap_target = 25;
   }
 
-  optional Effect threshold = 25;
-  string oracle_text = 26;
+  optional Effect threshold = 26;
+  string oracle_text = 27;
 }
 
 message ReplacementEffect {

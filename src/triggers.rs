@@ -1,7 +1,6 @@
 use anyhow::anyhow;
-use indexmap::IndexSet;
 
-use crate::{newtype_enum::newtype_enum, protogen, types::Type};
+use crate::{newtype_enum::newtype_enum, protogen, targets::Restriction};
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
@@ -41,6 +40,7 @@ pub enum TriggerSource {
     Cast,
     PutIntoGraveyard,
     EntersTheBattlefield,
+    Tapped,
 }
 }
 
@@ -48,7 +48,7 @@ pub enum TriggerSource {
 pub struct Trigger {
     pub trigger: TriggerSource,
     pub from: Location,
-    pub for_types: IndexSet<Type>,
+    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::triggers::Trigger> for Trigger {
@@ -58,10 +58,10 @@ impl TryFrom<&protogen::triggers::Trigger> for Trigger {
         Ok(Self {
             trigger: value.source.get_or_default().try_into()?,
             from: value.from.get_or_default().try_into()?,
-            for_types: value
-                .types
+            restrictions: value
+                .restrictions
                 .iter()
-                .map(Type::try_from)
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
         })
     }
@@ -88,6 +88,7 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
             protogen::triggers::trigger_source::Trigger::EntersTheBattlefield(_) => {
                 Self::EntersTheBattlefield
             }
+            protogen::triggers::trigger_source::Trigger::Tapped(_) => Self::Tapped,
         }
     }
 }

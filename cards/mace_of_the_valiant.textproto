@@ -27,7 +27,7 @@ triggered_abilities {
   trigger {
     source { enters_the_battlefield {} }
     from { anywhere{} }
-    types{ creature{} }
+    restrictions { of_type { types { creature {} } } }
   }
   effects {
     gain_counter { single { counter { charge {} } } }

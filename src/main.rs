@@ -222,6 +222,13 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
+    let card9 = CardId::upload(&mut db, &cards, player1, "Attentive Sunscribe");
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card9, None);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::Complete
+    );
+
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);
         let result = results.resolve(&mut db, &mut all_players, None);

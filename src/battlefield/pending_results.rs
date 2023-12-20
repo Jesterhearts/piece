@@ -632,6 +632,50 @@ impl PayCost {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ChoosingScry {
+    cards: VecDeque<CardId>,
+    cards_on_bottom: Vec<CardId>,
+    cards_on_top: Vec<CardId>,
+    placing_on_top: bool,
+}
+impl ChoosingScry {
+    fn choose(&mut self, choice: Option<usize>) -> bool {
+        debug!("Choosing to scry to top = {}", self.placing_on_top);
+        if choice.is_none() && !self.placing_on_top {
+            self.placing_on_top = true;
+            return false;
+        } else if choice.is_none() {
+            for card in self.cards.drain(..) {
+                self.cards_on_top.push(card);
+            }
+            return true;
+        }
+
+        if self.placing_on_top {
+            let card = self.cards.remove(choice.unwrap()).unwrap();
+            self.cards_on_top.push(card);
+        } else {
+            let card = self.cards.remove(choice.unwrap()).unwrap();
+            self.cards_on_bottom.push(card);
+        }
+
+        self.cards.is_empty()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.cards.is_empty() && self.cards_on_bottom.is_empty() && self.cards_on_bottom.is_empty()
+    }
+
+    fn options(&self, db: &Database) -> Vec<(usize, String)> {
+        self.cards
+            .iter()
+            .map(|card| card.name(db))
+            .enumerate()
+            .collect_vec()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OrganizingStack {
     entries: Vec<StackEntry>,
@@ -645,6 +689,7 @@ pub struct PendingResults {
 
     choose_modes: VecDeque<()>,
     choose_targets: VecDeque<ChooseTargets>,
+    choosing_scry: ChoosingScry,
     pay_costs: VecDeque<PayCost>,
     choosing_to_cast: Vec<CardId>,
 
@@ -715,6 +760,10 @@ impl PendingResults {
         self.add_to_stack = false;
     }
 
+    pub(crate) fn push_choose_scry(&mut self, cards: Vec<CardId>) {
+        self.choosing_scry.cards.extend(cards);
+    }
+
     pub fn push_choose_cast(&mut self, card: CardId, paying_costs: bool) {
         self.choosing_to_cast.push(card);
         self.paying_costs = paying_costs;
@@ -771,6 +820,8 @@ impl PendingResults {
                 self.source.unwrap(),
                 &self.all_chosen_targets,
             )
+        } else if !self.choosing_scry.cards.is_empty() {
+            self.choosing_scry.options(db)
         } else if !self.choosing_to_cast.is_empty() {
             self.choosing_to_cast
                 .iter()
@@ -797,6 +848,12 @@ impl PendingResults {
             "targets".to_string()
         } else if let Some(pay) = self.pay_costs.front() {
             pay.description()
+        } else if !self.choosing_scry.cards.is_empty() {
+            if self.choosing_scry.placing_on_top {
+                "placing on top of your library".to_string()
+            } else {
+                "placing on the bottom of your library".to_string()
+            }
         } else if !self.choosing_to_cast.is_empty() {
             "spells to cast".to_string()
         } else if self.organizing_stack.is_some() {
@@ -818,6 +875,7 @@ impl PendingResults {
         if self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
+            && self.choosing_scry.is_empty()
             && self.choosing_to_cast.is_empty()
             && self.organizing_stack.is_none()
         {
@@ -987,6 +1045,23 @@ impl PendingResults {
                 self.pay_costs.push_front(pay);
                 ResolutionResult::PendingChoice
             }
+        } else if !self.choosing_scry.is_empty() {
+            if self.choosing_scry.choose(choice) {
+                for card in self.choosing_scry.cards_on_bottom.drain(..) {
+                    all_players[self.source.unwrap().card(db).controller(db)]
+                        .deck
+                        .place_on_bottom(db, card);
+                }
+
+                for card in self.choosing_scry.cards_on_top.drain(..) {
+                    all_players[self.source.unwrap().card(db).controller(db)]
+                        .deck
+                        .place_on_top(db, card);
+                }
+                ResolutionResult::TryAgain
+            } else {
+                ResolutionResult::PendingChoice
+            }
         } else if !self.choosing_to_cast.is_empty() {
             if let Some(choice) = choice {
                 let results = Stack::move_card_to_stack_from_exile(
@@ -1034,6 +1109,7 @@ impl PendingResults {
         }
 
         self.source = results.source;
+        self.choosing_scry.cards.extend(results.choosing_scry.cards);
         self.choose_modes.extend(results.choose_modes);
         self.choose_targets.extend(results.choose_targets);
         self.pay_costs.extend(results.pay_costs);
@@ -1052,12 +1128,15 @@ impl PendingResults {
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
             && self.choosing_to_cast.is_empty()
+            && self.choosing_scry.is_empty()
             && self.organizing_stack.is_none()
             && self.settled_effects.is_empty()
     }
 
     pub fn only_immediate_results(&self, db: &Database, all_players: &AllPlayers) -> bool {
-        (self.choosing_to_cast.is_empty() && self.choose_modes.is_empty())
+        (self.choosing_to_cast.is_empty()
+            && self.choose_modes.is_empty()
+            && self.choosing_scry.cards.is_empty())
             && ((self.choose_targets.is_empty()
                 && self.pay_costs.is_empty()
                 && self.organizing_stack.is_none())
@@ -1221,6 +1300,10 @@ impl PendingResults {
                     target: self.source.unwrap().card(db).controller(db),
                     count,
                 });
+            }
+            Effect::Scry(count) => {
+                self.settled_effects
+                    .push_front(ActionResult::Scry(self.source.unwrap().card(db), count));
             }
 
             Effect::Equip(_) => unreachable!(),

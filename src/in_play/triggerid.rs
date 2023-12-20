@@ -10,8 +10,8 @@ use crate::{
     effects::{AnyEffect, Effects},
     in_play::{Active, CardId, Database, Temporary, TriggerInStack, NEXT_STACK_SEQ},
     stack::{ActiveTarget, Settled, Stack, Targets},
+    targets::Restrictions,
     triggers::{trigger_source, Location, TriggerSource},
-    types::Types,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
@@ -28,7 +28,7 @@ impl TriggerId {
             TriggerListener(card),
             ability.trigger.from,
             Effects(ability.effects.clone()),
-            Types(ability.trigger.for_types.clone()),
+            Restrictions(ability.trigger.restrictions.clone()),
             OracleText(ability.oracle_text.clone()),
         ));
 
@@ -45,6 +45,9 @@ impl TriggerId {
             }
             TriggerSource::Cast => {
                 entity.insert(trigger_source::Cast);
+            }
+            TriggerSource::Tapped => {
+                entity.insert(trigger_source::Tapped);
             }
         }
 
@@ -84,8 +87,8 @@ impl TriggerId {
         db.triggers.get::<Location>(self.0).copied().unwrap()
     }
 
-    pub fn for_types(self, db: &Database) -> Types {
-        db.triggers.get::<Types>(self.0).cloned().unwrap()
+    pub fn restrictions(self, db: &Database) -> Restrictions {
+        db.triggers.get::<Restrictions>(self.0).cloned().unwrap()
     }
 
     pub fn listener(self, db: &Database) -> CardId {

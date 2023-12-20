@@ -424,6 +424,7 @@ pub enum Effect {
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
     GainCounter(GainCounter),
+    Scry(usize),
     TargetGainsCounters(GainCounter),
     Mill(Mill),
     ModifyTarget(BattlefieldModifier),
@@ -483,6 +484,7 @@ impl Effect {
             Effect::Cascade => 0,
             Effect::UntapTarget => 1,
             Effect::TargetGainsCounters(_) => 1,
+            Effect::Scry(_) => 0,
         }
     }
 
@@ -517,6 +519,7 @@ impl Effect {
             Effect::TargetToTopOfLibrary { .. } => 1,
             Effect::Cascade => 0,
             Effect::TargetGainsCounters(_) => 1,
+            Effect::Scry(_) => 0,
         }
     }
 }
@@ -617,6 +620,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self::UntapTarget),
             protogen::effects::effect::Effect::TargetGainsCounters(gain) => {
                 Ok(Self::TargetGainsCounters(gain.try_into()?))
+            }
+            protogen::effects::effect::Effect::Scry(scry) => {
+                Ok(Self::Scry(usize::try_from(scry.count)?))
             }
         }
     }

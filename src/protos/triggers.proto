@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package triggers;
 
+import "targets.proto";
 import "types.proto";
 
 message Location {
@@ -22,17 +23,20 @@ message Location {
 message TriggerSource  {
   message PutIntoGraveyard {
   }
+  message Tapped {
+  }
   message EntersTheBattlefield {
   }
-
+  
   oneof trigger {
-    PutIntoGraveyard put_into_graveyard = 1;
-    EntersTheBattlefield enters_the_battlefield = 2;
+    EntersTheBattlefield enters_the_battlefield = 1;
+    PutIntoGraveyard put_into_graveyard = 2;
+    Tapped tapped = 3;
   }
 }
 
 message Trigger {
   TriggerSource source = 1;
   Location from = 2;
-  repeated types.Type types = 3;
+  repeated targets.Restriction restrictions = 3;
 }

@@ -11,7 +11,7 @@ use crate::{
         ModifiedETBAbilities, ModifiedStaticAbilities, ModifiedTriggers, StaticAbilities,
         StaticAbility, Triggers,
     },
-    battlefield::{compute_deck_targets, compute_graveyard_targets, Battlefield},
+    battlefield::{compute_deck_targets, compute_graveyard_targets, Battlefield, PendingResults},
     card::{
         keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BasePower,
         BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, EtbTapped,
@@ -36,6 +36,7 @@ use crate::{
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Settled, Stack, Targets},
     targets::{Comparison, Restriction, Restrictions, SpellTarget},
+    triggers::trigger_source,
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
     Cards,
 };
@@ -1429,6 +1430,7 @@ impl CardId {
                     }
                 }
             }
+            Effect::Scry(_) => {}
         }
 
         targets
@@ -1525,8 +1527,24 @@ impl CardId {
         db.get::<Tapped>(self.0).is_some()
     }
 
-    pub fn tap(self, db: &mut Database) {
+    pub fn tap(self, db: &mut Database) -> PendingResults {
+        let mut pending = PendingResults::default();
+        for trigger in TriggerId::active_triggers_of_source::<trigger_source::Tapped>(db) {
+            let restrictions = trigger.restrictions(db);
+            if self.passes_restrictions(
+                db,
+                trigger.listener(db),
+                ControllerRestriction::Any,
+                &restrictions,
+            ) {
+                let listener = trigger.listener(db);
+                pending.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+            }
+        }
+
         db.entity_mut(self.0).insert(Tapped);
+
+        pending
     }
 
     pub fn untap(self, db: &mut Database) {
