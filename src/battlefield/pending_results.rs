@@ -1030,6 +1030,7 @@ impl PendingResults {
             }
         } else if let Some(mut pay) = self.pay_costs.pop_front() {
             let player = self.source.unwrap().card(db).controller(db);
+            pay.compute_targets(db, self.source.unwrap(), &self.all_chosen_targets);
             if pay.choose_pay(all_players, player.into(), &self.all_chosen_targets, choice) {
                 if pay.paid() {
                     self.x_is = pay.x_is();

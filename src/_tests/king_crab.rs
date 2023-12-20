@@ -39,7 +39,7 @@ fn place_on_top() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::TryAgain);
     // pay costs
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     //end pay costs

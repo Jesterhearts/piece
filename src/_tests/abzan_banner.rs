@@ -34,9 +34,9 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay banner cost
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // end pay banner cost
