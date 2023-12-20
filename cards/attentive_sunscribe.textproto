@@ -32,6 +32,10 @@ triggered_abilities {
       anywhere {
       }
     }
+    controller {
+      you {
+      }
+    }
     restrictions {
       self {
       }

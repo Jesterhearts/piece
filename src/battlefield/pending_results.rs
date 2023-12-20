@@ -1329,6 +1329,7 @@ impl PendingResults {
             Effect::Cascade => unreachable!(),
             Effect::Discover(_) => unreachable!(),
             Effect::UntapTarget => unreachable!(),
+            Effect::ForEachManaOfSource(_) => unreachable!(),
         }
     }
 

@@ -1,0 +1,77 @@
+name: "Bat Colony"
+types {
+  enchantment {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+oracle_text: "When Bat Colony enters the battlefield, create a 1/1 black Bat creature token with flying for each mana from a Cave spent to cast it."
+effects {
+  for_each_mana_of_source {
+    source {
+      cave {
+      }
+    }
+    effect {
+      create_token {
+        creature {
+          name: "Bat"
+          subtypes {
+            bat {
+            }
+          }
+          colors {
+            black {
+            }
+          }
+          power: 1
+          toughness: 1
+        }
+      }
+    }
+  }
+}
+triggered_abilities {
+  trigger {
+    source {
+      enters_the_battlefield {
+      }
+    }
+    from {
+      anywhere {
+      }
+    }
+    controller {
+      you {
+      }
+    }
+    restrictions {
+      of_type {
+        subtypes {
+          cave {
+          }
+        }
+      }
+    }
+  }
+  effects {
+    target_gains_counters {
+      single {
+        counter {
+          p1p1 {
+          }
+        }
+      }
+    }
+  }
+  oracle_text: "Whenever a Cave enters the battlefield under your control, put a +1/+1 counter on target creature you control."
+}

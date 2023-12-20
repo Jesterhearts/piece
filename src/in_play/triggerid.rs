@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::{
     abilities::{TriggerListener, TriggeredAbility},
     card::OracleText,
+    controller::ControllerRestriction,
     effects::{AnyEffect, Effects},
     in_play::{Active, CardId, Database, Temporary, TriggerInStack, NEXT_STACK_SEQ},
     stack::{ActiveTarget, Settled, Stack, Targets},
@@ -30,6 +31,7 @@ impl TriggerId {
             Effects(ability.effects.clone()),
             Restrictions(ability.trigger.restrictions.clone()),
             OracleText(ability.oracle_text.clone()),
+            ability.trigger.controller,
         ));
 
         if temporary {
@@ -218,5 +220,12 @@ impl TriggerId {
 
     pub fn settle(self, db: &mut Database) {
         db.triggers.entity_mut(self.0).insert(Settled);
+    }
+
+    pub fn controller_restriction(self, db: &Database) -> ControllerRestriction {
+        db.triggers
+            .get::<ControllerRestriction>(self.0)
+            .copied()
+            .unwrap()
     }
 }

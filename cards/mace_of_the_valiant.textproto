@@ -53,6 +53,10 @@ triggered_abilities {
       anywhere {
       }
     }
+    controller {
+      you {
+      }
+    }
     restrictions {
       of_type {
         types {

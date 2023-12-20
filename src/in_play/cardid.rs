@@ -26,8 +26,9 @@ use crate::{
     cost::CastingCost,
     effects::{
         counter, effect_duration::UntilSourceLeavesBattlefield, AnyEffect, BattlefieldModifier,
-        DealDamage, DynamicPowerToughness, Effect, Effects, Mill, ReplacementEffects,
-        ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
+        DealDamage, DynamicPowerToughness, Effect, Effects, ForEachManaOfSource, Mill,
+        ReplacementEffects, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token,
+        TutorLibrary,
     },
     in_play::{
         self, cards, cast_from, exile_reason, AbilityId, Active, AuraId, CastFrom, CounterId,
@@ -1438,6 +1439,9 @@ impl CardId {
             }
             Effect::Scry(_) => {}
             Effect::Discover(_) => {}
+            Effect::ForEachManaOfSource(ForEachManaOfSource { effect, .. }) => {
+                targets.extend(self.targets_for_effect(db, controller, effect));
+            }
         }
 
         targets
@@ -1541,7 +1545,7 @@ impl CardId {
             if self.passes_restrictions(
                 db,
                 trigger.listener(db),
-                ControllerRestriction::Any,
+                trigger.controller_restriction(db),
                 &restrictions,
             ) {
                 let listener = trigger.listener(db);
@@ -1735,6 +1739,10 @@ impl CardId {
         }
 
         db.entity_mut(self.0).insert(SourcedMana(sourced));
+    }
+
+    pub fn get_mana_from_sources(self, db: &Database) -> Option<SourcedMana> {
+        db.get::<SourcedMana>(self.0).cloned()
     }
 }
 

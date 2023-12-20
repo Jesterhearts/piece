@@ -12,7 +12,7 @@ use crate::{
     controller::ControllerRestriction,
     in_play::{Database, ReplacementEffectId},
     newtype_enum::newtype_enum,
-    player::{AllPlayers, Controller},
+    player::{mana_pool::ManaSource, AllPlayers, Controller},
     protogen,
     stack::ActiveTarget,
     targets::{Restriction, SpellTarget},
@@ -407,6 +407,23 @@ impl TryFrom<&protogen::effects::RevealEachTopOfLibrary> for RevealEachTopOfLibr
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ForEachManaOfSource {
+    pub source: ManaSource,
+    pub effect: Box<Effect>,
+}
+
+impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ForEachManaOfSource) -> Result<Self, Self::Error> {
+        Ok(Self {
+            source: value.source.get_or_default().try_into()?,
+            effect: Box::new(value.effect.get_or_default().try_into()?),
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
@@ -424,6 +441,7 @@ pub enum Effect {
     Equip(Vec<ModifyBattlefield>),
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
+    ForEachManaOfSource(ForEachManaOfSource),
     GainCounter(GainCounter),
     Scry(usize),
     TargetGainsCounters(GainCounter),
@@ -487,6 +505,9 @@ impl Effect {
             Effect::TargetGainsCounters(_) => 1,
             Effect::Scry(_) => 0,
             Effect::Discover(_) => 0,
+            Effect::ForEachManaOfSource(ForEachManaOfSource { effect, .. }) => {
+                effect.needs_targets()
+            }
         }
     }
 
@@ -523,6 +544,9 @@ impl Effect {
             Effect::TargetGainsCounters(_) => 1,
             Effect::Scry(_) => 0,
             Effect::Discover(_) => 0,
+            Effect::ForEachManaOfSource(ForEachManaOfSource { effect, .. }) => {
+                effect.wants_targets()
+            }
         }
     }
 }
@@ -629,6 +653,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::Discover(discover) => {
                 Ok(Self::Discover(usize::try_from(discover.count)?))
+            }
+            protogen::effects::effect::Effect::ForEachManaOfSource(for_each) => {
+                Ok(Self::ForEachManaOfSource(for_each.try_into()?))
             }
         }
     }

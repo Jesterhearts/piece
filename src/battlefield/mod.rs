@@ -16,7 +16,7 @@ use crate::{
     cost::{AdditionalCost, PayLife},
     effects::{
         effect_duration::UntilEndOfTurn, replacing, AnyEffect, BattlefieldModifier, DynamicCounter,
-        Effect, EffectDuration, GainCounter, RevealEachTopOfLibrary, Token,
+        Effect, EffectDuration, ForEachManaOfSource, GainCounter, RevealEachTopOfLibrary, Token,
     },
     in_play::{
         all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
@@ -163,6 +163,11 @@ pub enum ActionResult {
     Discover {
         count: usize,
         player: Controller,
+    },
+    ForEachManaOfSource {
+        card: CardId,
+        source: ManaSource,
+        effect: Box<Effect>,
     },
 }
 
@@ -747,6 +752,7 @@ impl Battlefield {
                             trigger: Trigger {
                                 trigger: TriggerSource::Cast,
                                 from: triggers::Location::Hand,
+                                controller: ControllerRestriction::You,
                                 restrictions: Default::default(),
                             },
                             effects: vec![AnyEffect {
@@ -819,6 +825,28 @@ impl Battlefield {
                                 *source,
                                 effect,
                                 target,
+                                &mut results,
+                            );
+                        }
+                    }
+                }
+
+                results
+            }
+            ActionResult::ForEachManaOfSource {
+                card,
+                source,
+                effect,
+            } => {
+                let mut results = PendingResults::default();
+                if let Some(sourced) = card.get_mana_from_sources(db) {
+                    if let Some(from_source) = sourced.get(source) {
+                        for _ in 0..*from_source {
+                            Self::push_effect_results(
+                                db,
+                                *card,
+                                card.controller(db),
+                                (**effect).clone(),
                                 &mut results,
                             );
                         }
@@ -973,7 +1001,7 @@ impl Battlefield {
                 if target.passes_restrictions(
                     db,
                     trigger.listener(db),
-                    ControllerRestriction::Any,
+                    trigger.controller_restriction(db),
                     &restrictions,
                 ) {
                     let listener = trigger.listener(db);
@@ -1004,7 +1032,7 @@ impl Battlefield {
                 if target.passes_restrictions(
                     db,
                     trigger.listener(db),
-                    ControllerRestriction::Any,
+                    trigger.controller_restriction(db),
                     &restrictions,
                 ) {
                     let listener = trigger.listener(db);
@@ -1028,7 +1056,7 @@ impl Battlefield {
                 if target.passes_restrictions(
                     db,
                     trigger.listener(db),
-                    ControllerRestriction::Any,
+                    trigger.controller_restriction(db),
                     &restrictions,
                 ) {
                     let listener = trigger.listener(db);
@@ -1107,6 +1135,16 @@ impl Battlefield {
             }),
             Effect::Scry(count) => {
                 results.push_settled(ActionResult::Scry(source, count));
+            }
+            Effect::ForEachManaOfSource(ForEachManaOfSource {
+                source: mana_source,
+                effect,
+            }) => {
+                results.push_settled(ActionResult::ForEachManaOfSource {
+                    card: source,
+                    source: mana_source,
+                    effect,
+                });
             }
             Effect::CopyOfAnyCreatureNonTargeting
             | Effect::TutorLibrary(_)
@@ -1195,6 +1233,7 @@ impl Battlefield {
             | Effect::TargetToTopOfLibrary { .. }
             | Effect::UntapTarget
             | Effect::TargetGainsCounters(_)
+            | Effect::ForEachManaOfSource(_)
             | Effect::Discover(_) => {
                 unreachable!()
             }
@@ -1271,7 +1310,7 @@ fn complete_add_from_library(
             if source_card_id.passes_restrictions(
                 db,
                 trigger.listener(db),
-                ControllerRestriction::Any,
+                trigger.controller_restriction(db),
                 &restrictions,
             ) {
                 let listener = trigger.listener(db);
@@ -1297,7 +1336,7 @@ fn complete_add_from_stack_or_hand(
             if source_card_id.passes_restrictions(
                 db,
                 trigger.listener(db),
-                ControllerRestriction::Any,
+                trigger.controller_restriction(db),
                 &restrictions,
             ) {
                 let listener = trigger.listener(db);

@@ -16,7 +16,9 @@ use crate::{
     },
     card::keyword::SplitSecond,
     controller::ControllerRestriction,
-    effects::{BattlefieldModifier, Effect, EffectDuration, Mill, TutorLibrary},
+    effects::{
+        BattlefieldModifier, Effect, EffectDuration, ForEachManaOfSource, Mill, TutorLibrary,
+    },
     in_play::{
         cast_from, AbilityId, CardId, CastFrom, Database, InStack, ModifierId, OnBattlefield,
         TriggerId, TriggerInStack,
@@ -923,6 +925,14 @@ impl Stack {
                 Effect::Discover(count) => results.push_settled(ActionResult::Discover {
                     count,
                     player: controller,
+                }),
+                Effect::ForEachManaOfSource(ForEachManaOfSource {
+                    source: mana_source,
+                    effect,
+                }) => results.push_settled(ActionResult::ForEachManaOfSource {
+                    card: source,
+                    source: mana_source,
+                    effect,
                 }),
             }
         }

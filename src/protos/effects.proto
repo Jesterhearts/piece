@@ -241,6 +241,11 @@ message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
 
+message ForEachManaOfSource {
+  cost.ManaSource source = 1;
+  Effect effect = 2;
+}
+
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
@@ -258,22 +263,23 @@ message Effect {
     ExileTargetCreature exile_target_creature = 13;
     ExileTargetCreatureManifestTopOfLibrary
         exile_target_creature_manifest_top_of_library = 14;
-    GainCounter gain_counter = 15;
-    GainCounter target_gains_counters = 16;
-    Mill mill = 17;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 18;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 19;
-    ReturnSelfToHand return_self_to_hand = 20;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 21;
-    Scry scry = 22;
-    TargetToTopOfLibrary target_to_top_of_library = 23;
-    TutorLibrary tutor_library = 24;
-    UntapThis untap_this = 25;
-    UntapTarget untap_target = 26;
+    ForEachManaOfSource for_each_mana_of_source = 15;
+    GainCounter gain_counter = 16;
+    GainCounter target_gains_counters = 17;
+    Mill mill = 18;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 19;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 20;
+    ReturnSelfToHand return_self_to_hand = 21;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 22;
+    Scry scry = 23;
+    TargetToTopOfLibrary target_to_top_of_library = 24;
+    TutorLibrary tutor_library = 25;
+    UntapThis untap_this = 26;
+    UntapTarget untap_target = 27;
   }
 
-  optional Effect threshold = 27;
-  string oracle_text = 28;
+  optional Effect threshold = 28;
+  string oracle_text = 29;
 }
 
 message ReplacementEffect {

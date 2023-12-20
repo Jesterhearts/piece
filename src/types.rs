@@ -83,6 +83,7 @@ pub struct RemoveAllSubtypes;
 pub enum Subtype {
     Angel,
     Aura,
+    Bat,
     Bear,
     Cave,
     Dinosaur,
@@ -128,6 +129,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
         match value {
             protogen::types::subtype::Subtype::Angel(_) => Self::Angel,
             protogen::types::subtype::Subtype::Aura(_) => Self::Aura,
+            protogen::types::subtype::Subtype::Bat(_) => Self::Bat,
             protogen::types::subtype::Subtype::Bear(_) => Self::Bear,
             &protogen::types::subtype::Subtype::Cave(_) => Self::Cave,
             protogen::types::subtype::Subtype::Dinosaur(_) => Self::Dinosaur,
