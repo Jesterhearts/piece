@@ -32,8 +32,14 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
+    // Pay banner cost
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::PendingChoice);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::PendingChoice);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
+    // end pay banner cost
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

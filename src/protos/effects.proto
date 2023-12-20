@@ -78,14 +78,14 @@ message ReturnFromGraveyardToBattlefield {
 }
 
 message Duration {
-  message UntilEndOfTurn {
-  }
-  message UntilSourceLeavesBattlefield {
-  }
+  message UntilEndOfTurn {}
+  message UntilSourceLeavesBattlefield {}
+  message UntilTargetLeavesBattlefield {}
 
   oneof duration {
     UntilEndOfTurn until_end_of_turn = 1;
     UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
+    UntilTargetLeavesBattlefield until_target_leaves_battlefield = 3;
   }
 }
 
@@ -182,7 +182,22 @@ message DealDamage {
 }
 
 message GainCounter {
-  counters.Counter counter = 1;
+  message Single {
+    counters.Counter counter = 1;
+  }
+  message Dynamic {
+    message X {
+      counters.Counter counter = 1;
+    }
+    oneof dynamic {
+      X x = 2;
+    }
+  }
+
+  oneof counter {
+    Single single = 3;
+    Dynamic dynamic = 4;
+  }
 }
 
 message ControllerLosesLife {
@@ -236,19 +251,20 @@ message Effect {
     ExileTargetCreature exile_target_creature = 12;
     ExileTargetCreatureManifestTopOfLibrary exile_target_creature_manifest_top_of_library = 13;
     GainCounter gain_counter = 14;
-    Mill mill = 15;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 16;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 17;
-    ReturnSelfToHand return_self_to_hand = 18;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 19;
-    TargetToTopOfLibrary target_to_top_of_library = 20;
-    TutorLibrary tutor_library = 21;
-    UntapThis untap_this = 22;
-    UntapTarget untap_target = 23;
+    GainCounter target_gains_counters = 15;
+    Mill mill = 16;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 17;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 18;
+    ReturnSelfToHand return_self_to_hand = 19;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 20;
+    TargetToTopOfLibrary target_to_top_of_library = 21;
+    TutorLibrary tutor_library = 22;
+    UntapThis untap_this = 23;
+    UntapTarget untap_target = 24;
   }
 
-  optional Effect threshold = 24;
-  string oracle_text = 25;
+  optional Effect threshold = 25;
+  string oracle_text = 26;
 }
 
 message ReplacementEffect {

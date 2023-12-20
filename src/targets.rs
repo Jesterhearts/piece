@@ -109,6 +109,10 @@ pub enum Restriction {
         types: IndexSet<Type>,
         subtypes: IndexSet<Subtype>,
     },
+    NotOfType {
+        types: IndexSet<Type>,
+        subtypes: IndexSet<Subtype>,
+    },
     CastFromHand,
     Cmc(Comparison),
     Toughness(Comparison),
@@ -132,6 +136,19 @@ impl Restriction {
                     format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" "))
                 } else {
                     format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+                }
+            }
+            Restriction::NotOfType { types, subtypes } => {
+                if !types.is_empty() && !subtypes.is_empty() {
+                    format!(
+                        "not a {} - {}",
+                        types.iter().map(|ty| ty.as_ref()).join(" "),
+                        subtypes.iter().map(|ty| ty.as_ref()).join(" ")
+                    )
+                } else if !types.is_empty() {
+                    format!("not a {}", types.iter().map(|ty| ty.as_ref()).join(" "))
+                } else {
+                    format!("not a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" "))
                 }
             }
             Restriction::Toughness(toughness) => format!("toughness {}", toughness),
@@ -199,6 +216,18 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                 Ok(Self::Cmc(cmc.comparison.get_or_default().try_into()?))
             }
             protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
+            protogen::targets::restriction::Restriction::NotOfType(not) => Ok(Self::NotOfType {
+                types: not
+                    .types
+                    .iter()
+                    .map(Type::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                subtypes: not
+                    .subtypes
+                    .iter()
+                    .map(Subtype::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
         }
     }
 }

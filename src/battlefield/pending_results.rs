@@ -122,7 +122,9 @@ impl ChooseTargets {
     pub fn choose_targets(&mut self, choice: Option<usize>) -> bool {
         debug!("choosing target: {:?}", choice);
         if let Some(choice) = choice {
-            if choice >= self.valid_targets.len() {
+            if self.valid_targets.is_empty() {
+                true
+            } else if choice >= self.valid_targets.len() {
                 false
             } else {
                 *self.chosen.entry(choice).or_default() += 1;
@@ -216,21 +218,20 @@ impl SpendMana {
         for cost in mana {
             *paying.entry(cost).or_default() += 1;
         }
+        let mut paid = IndexMap::default();
+        paid.entry(ManaCost::X).or_default();
 
-        Self {
-            paying,
-            paid: Default::default(),
-        }
+        Self { paying, paid }
     }
 
-    pub fn first_unpaid(&self) -> Option<ManaCost> {
+    pub fn first_unpaid_x_always_unpaid(&self) -> Option<ManaCost> {
         let unpaid = self
             .paying
             .iter()
             .find(|(paying, required)| {
                 let required = match paying {
                     ManaCost::Generic(count) => *count,
-                    ManaCost::X => 0,
+                    ManaCost::X => usize::MAX,
                     _ => **required,
                 };
 
@@ -245,6 +246,11 @@ impl SpendMana {
             .map(|(paying, _)| *paying);
         debug!("First unpaid: {:?}", unpaid);
         unpaid
+    }
+
+    pub fn first_unpaid(&self) -> Option<ManaCost> {
+        self.first_unpaid_x_always_unpaid()
+            .filter(|unpaid| !matches!(unpaid, ManaCost::X))
     }
 
     pub fn paid(&self) -> bool {
@@ -267,6 +273,12 @@ impl SpendMana {
             Some(ManaCost::X) => "X".to_string(),
             _ => String::default(),
         }
+    }
+
+    fn x_is(&self) -> Option<usize> {
+        self.paid
+            .get(&ManaCost::X)
+            .map(|paid| paid.values().sum::<usize>())
     }
 }
 
@@ -428,8 +440,11 @@ impl PayCost {
             }
             PayCost::SpendMana(spend) => {
                 if choice.is_none() {
-                    let pool_post_pay = all_players[player].pool_post_pay(&spend.paying()).unwrap();
-                    let first_unpaid = spend.first_unpaid().unwrap();
+                    let mut pool_post_pay =
+                        all_players[player].pool_post_pay(&spend.paying()).unwrap();
+                    let Some(first_unpaid) = spend.first_unpaid() else {
+                        return self.paid();
+                    };
 
                     if pool_post_pay.can_spend(first_unpaid) {
                         let mana = match first_unpaid {
@@ -439,8 +454,26 @@ impl PayCost {
                             ManaCost::Red => Mana::Red,
                             ManaCost::Green => Mana::Green,
                             ManaCost::Colorless => Mana::Colorless,
-                            ManaCost::Generic(_) => pool_post_pay.max().unwrap(),
-                            ManaCost::X => pool_post_pay.max().unwrap(),
+                            ManaCost::Generic(count) => {
+                                for _ in 0..count {
+                                    let max = pool_post_pay.max().unwrap();
+                                    assert!(pool_post_pay.spend(max));
+                                    *spend
+                                        .paid
+                                        .entry(first_unpaid)
+                                        .or_default()
+                                        .entry(max)
+                                        .or_default() += 1;
+                                }
+
+                                return !matches!(
+                                    spend.first_unpaid_x_always_unpaid(),
+                                    Some(ManaCost::X)
+                                );
+                            }
+                            ManaCost::X => {
+                                return true;
+                            }
                         };
                         *spend
                             .paid
@@ -454,11 +487,11 @@ impl PayCost {
                 }
 
                 let mana = Mana::iter().nth(choice.unwrap()).unwrap();
-                let cost = spend.first_unpaid().unwrap();
+                let cost = spend.first_unpaid_x_always_unpaid().unwrap();
                 *spend.paid.entry(cost).or_default().entry(mana).or_default() += 1;
 
                 if all_players[player].can_spend_mana(&spend.paying()) {
-                    !matches!(cost, ManaCost::X)
+                    !matches!(spend.first_unpaid_x_always_unpaid(), Some(ManaCost::X))
                 } else {
                     false
                 }
@@ -479,6 +512,13 @@ impl PayCost {
         match self {
             PayCost::SacrificePermanent(_) => "sacrificing a permanent".to_string(),
             PayCost::SpendMana(spend) => spend.description(),
+        }
+    }
+
+    fn x_is(&self) -> Option<usize> {
+        match self {
+            PayCost::SacrificePermanent(_) => None,
+            PayCost::SpendMana(spend) => spend.x_is(),
         }
     }
 }
@@ -511,6 +551,8 @@ pub struct PendingResults {
     add_to_stack: bool,
     cast_from: Option<CastFrom>,
     paying_costs: bool,
+
+    x_is: Option<usize>,
 
     applied: bool,
 }
@@ -677,6 +719,7 @@ impl PendingResults {
                             card,
                             targets: self.chosen_targets.clone(),
                             from: self.cast_from.unwrap(),
+                            x_is: self.x_is,
                         });
                     }
                     Source::Ability(ability) => {
@@ -763,7 +806,7 @@ impl PendingResults {
                         let player = self.source.unwrap().card(db).controller(db);
                         match effect_or_aura {
                             EffectOrAura::Effect(effect) => {
-                                self.push_effect_results(db, player, effect, choices);
+                                self.push_effect_results(db, player, effect, choices.clone());
                             }
                             EffectOrAura::Aura(aura) => {
                                 self.settled_effects
@@ -775,24 +818,25 @@ impl PendingResults {
                         }
                     } else {
                         self.all_chosen_targets.extend(choices.iter().copied());
-                        self.chosen_targets.push(choices);
+                        self.chosen_targets.push(choices.clone());
                     }
 
                     if !self.source.unwrap().card(db).target_individually(db) {
                         let player = self.source.unwrap().card(db).controller(db);
-                        for mut choosing in self.choose_targets.drain(..).collect_vec() {
-                            let (choices, effect_or_aura) = if choosing.choose_targets(choice) {
-                                choosing.into_chosen_targets_and_effect()
-                            } else {
-                                (vec![], choosing.into_effect())
-                            };
+                        for choosing in self.choose_targets.drain(..).collect_vec() {
+                            let effect_or_aura = choosing.into_effect();
 
                             if self.add_to_stack {
-                                self.chosen_targets.push(choices);
+                                self.chosen_targets.push(choices.clone());
                             } else {
                                 match effect_or_aura {
                                     EffectOrAura::Effect(effect) => {
-                                        self.push_effect_results(db, player, effect, choices);
+                                        self.push_effect_results(
+                                            db,
+                                            player,
+                                            effect,
+                                            choices.clone(),
+                                        );
                                     }
                                     EffectOrAura::Aura(aura) => self.settled_effects.push_back(
                                         ActionResult::ApplyAuraToTarget {
@@ -832,6 +876,7 @@ impl PendingResults {
             let player = self.source.unwrap().card(db).controller(db);
             if pay.choose_pay(all_players, player.into(), &self.all_chosen_targets, choice) {
                 if pay.paid() {
+                    self.x_is = pay.x_is();
                     self.settled_effects.push_back(pay.results(player));
                 } else {
                     self.pay_costs.push_front(pay);
@@ -977,9 +1022,9 @@ impl PendingResults {
                     unreachable!()
                 };
                 self.settled_effects.push_front(ActionResult::AddCounters {
+                    source: id,
                     target: id,
                     counter,
-                    count: 1,
                 });
             }
             Effect::Mill(Mill { count, .. }) => self
@@ -1055,6 +1100,27 @@ impl PendingResults {
                     }
                 }
             }
+            Effect::TargetGainsCounters(counter) => {
+                for target in targets.into_iter() {
+                    let target = match target {
+                        ActiveTarget::Battlefield { id } => id,
+                        ActiveTarget::Graveyard { id } => id,
+                        _ => unreachable!(),
+                    };
+
+                    self.settled_effects.push_front(ActionResult::AddCounters {
+                        source: self.source.unwrap().card(db),
+                        target,
+                        counter,
+                    });
+                }
+            }
+            Effect::ControllerDrawCards(count) => {
+                self.settled_effects.push_front(ActionResult::DrawCards {
+                    target: self.source.unwrap().card(db).controller(db),
+                    count,
+                });
+            }
 
             Effect::Equip(_) => unreachable!(),
             Effect::RevealEachTopOfLibrary(_) => unreachable!(),
@@ -1062,7 +1128,6 @@ impl PendingResults {
             Effect::CreateToken(_) => unreachable!(),
             Effect::CounterSpell { .. } => unreachable!(),
             Effect::BattlefieldModifier(_) => unreachable!(),
-            Effect::ControllerDrawCards(_) => unreachable!(),
             Effect::ControllerLosesLife(_) => unreachable!(),
             Effect::UntapThis => unreachable!(),
             Effect::Cascade => unreachable!(),

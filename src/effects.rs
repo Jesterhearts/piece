@@ -148,6 +148,7 @@ newtype_enum! {
 pub enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
+    UntilTargetLeavesBattlefield,
 }
 }
 
@@ -157,6 +158,9 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
             protogen::effects::duration::Duration::UntilEndOfTurn(_) => Self::UntilEndOfTurn,
             protogen::effects::duration::Duration::UntilSourceLeavesBattlefield(_) => {
                 Self::UntilSourceLeavesBattlefield
+            }
+            protogen::effects::duration::Duration::UntilTargetLeavesBattlefield(_) => {
+                Self::UntilTargetLeavesBattlefield
             }
         }
     }
@@ -419,7 +423,8 @@ pub enum Effect {
     Equip(Vec<ModifyBattlefield>),
     ExileTargetCreature,
     ExileTargetCreatureManifestTopOfLibrary,
-    GainCounter(Counter),
+    GainCounter(GainCounter),
+    TargetGainsCounters(GainCounter),
     Mill(Mill),
     ModifyTarget(BattlefieldModifier),
     ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
@@ -477,6 +482,7 @@ impl Effect {
             Effect::TargetToTopOfLibrary { .. } => 1,
             Effect::Cascade => 0,
             Effect::UntapTarget => 1,
+            Effect::TargetGainsCounters(_) => 1,
         }
     }
 
@@ -510,6 +516,7 @@ impl Effect {
             Effect::UntapTarget => 1,
             Effect::TargetToTopOfLibrary { .. } => 1,
             Effect::Cascade => 0,
+            Effect::TargetGainsCounters(_) => 1,
         }
     }
 }
@@ -567,9 +574,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                     .map(ModifyBattlefield::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
-            protogen::effects::effect::Effect::GainCounter(counter) => Ok(Self::GainCounter(
-                counter.counter.get_or_default().try_into()?,
-            )),
+            protogen::effects::effect::Effect::GainCounter(counter) => {
+                Ok(Self::GainCounter(counter.try_into()?))
+            }
             protogen::effects::effect::Effect::ControllerLosesLife(value) => {
                 Ok(Self::ControllerLosesLife(usize::try_from(value.count)?))
             }
@@ -608,6 +615,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 })
             }
             protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self::UntapTarget),
+            protogen::effects::effect::Effect::TargetGainsCounters(gain) => {
+                Ok(Self::TargetGainsCounters(gain.try_into()?))
+            }
         }
     }
 }
@@ -754,6 +764,70 @@ pub enum Counter {
     P1P1,
     M1M1,
 }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DynamicCounter {
+    X(Counter),
+}
+
+impl TryFrom<&protogen::effects::gain_counter::Dynamic> for DynamicCounter {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::gain_counter::Dynamic) -> Result<Self, Self::Error> {
+        value
+            .dynamic
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected dynamic counter to have a value set"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCounter {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::gain_counter::dynamic::Dynamic,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::gain_counter::dynamic::Dynamic::X(counter) => {
+                Ok(Self::X(counter.counter.get_or_default().try_into()?))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GainCounter {
+    Single(Counter),
+    Dynamic(DynamicCounter),
+}
+
+impl TryFrom<&protogen::effects::GainCounter> for GainCounter {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::GainCounter) -> Result<Self, Self::Error> {
+        value
+            .counter
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
+            .and_then(GainCounter::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::gain_counter::Counter> for GainCounter {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::gain_counter::Counter) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::gain_counter::Counter::Single(counter) => {
+                Ok(Self::Single(counter.counter.get_or_default().try_into()?))
+            }
+            protogen::effects::gain_counter::Counter::Dynamic(dynamic) => {
+                Ok(Self::Dynamic(dynamic.try_into()?))
+            }
+        }
+    }
 }
 
 impl TryFrom<&protogen::counters::Counter> for Counter {

@@ -16,14 +16,14 @@ use crate::{
         keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BasePower,
         BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, EtbTapped,
         Keyword, Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
-        ModifiedKeywords, ModifyKeywords, Name, OracleText, Revealed, StaticAbilityModifier,
+        ModifiedKeywords, ModifyKeywords, Name, OracleText, PaidX, Revealed, StaticAbilityModifier,
         TargetIndividually, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::CastingCost,
     effects::{
-        effect_duration::UntilSourceLeavesBattlefield, AnyEffect, BattlefieldModifier, DealDamage,
-        DynamicPowerToughness, Effect, Effects, Mill, ReplacementEffects,
+        counter, effect_duration::UntilSourceLeavesBattlefield, AnyEffect, BattlefieldModifier,
+        DealDamage, DynamicPowerToughness, Effect, Effects, Mill, ReplacementEffects,
         ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
@@ -590,6 +590,14 @@ impl CardId {
             add_power += modifier.add_power(db).unwrap_or_default();
             add_toughness += modifier.add_toughness(db).unwrap_or_default();
 
+            let p1p1 = CounterId::counters_of_type_on::<counter::P1P1>(db, self);
+            add_power += p1p1 as i32;
+            add_toughness += p1p1 as i32;
+
+            let p1p1 = CounterId::counters_of_type_on::<counter::M1M1>(db, self);
+            add_power -= p1p1 as i32;
+            add_toughness -= p1p1 as i32;
+
             if let Some(dynamic) = modifier.dynamic_power(db) {
                 match dynamic {
                     DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
@@ -783,6 +791,14 @@ impl CardId {
                     }
 
                     if !subtypes.is_empty() && self_subtypes.is_disjoint(subtypes) {
+                        return false;
+                    }
+                }
+                Restriction::NotOfType { types, subtypes } => {
+                    if !types.is_empty() && !self_types.is_disjoint(types) {
+                        return false;
+                    }
+                    if !subtypes.is_empty() && !self_subtypes.is_disjoint(subtypes) {
                         return false;
                     }
                 }
@@ -1405,6 +1421,14 @@ impl CardId {
                     }
                 }
             }
+            Effect::TargetGainsCounters(_) => {
+                let caster = self.controller(db);
+                for card in on_battlefield.iter() {
+                    if card.can_be_targeted(db, caster) {
+                        targets.push(ActiveTarget::Battlefield { id: *card });
+                    }
+                }
+            }
         }
 
         targets
@@ -1667,6 +1691,16 @@ impl CardId {
 
     pub fn target_individually(self, db: &Database) -> bool {
         db.get::<TargetIndividually>(self.0).is_some()
+    }
+
+    pub(crate) fn set_x(self, db: &mut Database, x_is: usize) {
+        db.entity_mut(self.0).insert(PaidX(x_is));
+    }
+
+    pub(crate) fn get_x(self, db: &Database) -> usize {
+        db.get::<PaidX>(self.0)
+            .map(|paid| paid.0)
+            .unwrap_or_default()
     }
 }
 

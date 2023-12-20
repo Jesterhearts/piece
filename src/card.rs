@@ -206,6 +206,9 @@ impl Keyword {
 }
 
 #[derive(Debug, Clone, Copy, Component)]
+pub struct PaidX(pub usize);
+
+#[derive(Debug, Clone, Copy, Component)]
 pub struct TargetIndividually;
 
 #[derive(Debug, Clone, Copy, Component)]

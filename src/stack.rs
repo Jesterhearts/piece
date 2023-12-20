@@ -532,8 +532,6 @@ impl Stack {
                     });
                 }
                 Effect::ModifyTarget(modifier) => {
-                    let modifier = ModifierId::upload_temporary_modifier(db, source, &modifier);
-
                     let mut final_targets = vec![];
                     for target in targets {
                         match target {
@@ -552,6 +550,17 @@ impl Stack {
                             }
                         }
                     }
+
+                    let modifier = match modifier.duration {
+                        EffectDuration::UntilTargetLeavesBattlefield => {
+                            ModifierId::upload_temporary_modifier(
+                                db,
+                                final_targets.iter().exactly_one().unwrap().id().unwrap(),
+                                &modifier,
+                            )
+                        }
+                        _ => ModifierId::upload_temporary_modifier(db, source, &modifier),
+                    };
 
                     results.push_settled(ActionResult::ModifyCreatures {
                         targets: final_targets,
@@ -827,9 +836,9 @@ impl Stack {
                 }
                 Effect::GainCounter(counter) => {
                     results.push_settled(ActionResult::AddCounters {
+                        source,
                         target: source,
                         counter,
-                        count: 1,
                     });
                 }
                 Effect::ControllerLosesLife(count) => {
@@ -894,6 +903,19 @@ impl Stack {
                         unreachable!()
                     };
                     results.push_settled(ActionResult::Untap(id));
+                }
+                Effect::TargetGainsCounters(counter) => {
+                    let target = match targets.into_iter().exactly_one().unwrap() {
+                        ActiveTarget::Battlefield { id } => id,
+                        ActiveTarget::Graveyard { id } => id,
+                        _ => unreachable!(),
+                    };
+
+                    results.push_settled(ActionResult::AddCounters {
+                        source,
+                        target,
+                        counter,
+                    })
                 }
             }
         }
@@ -1014,6 +1036,7 @@ fn add_card_to_stack(
             card,
             targets: vec![],
             from,
+            x_is: None,
         })
     }
 

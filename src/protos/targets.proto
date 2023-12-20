@@ -42,6 +42,10 @@ message Restriction {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
   }
+  message NotOfType {
+    repeated types.Type types = 1;
+    repeated types.Subtype subtypes = 2;
+  }
   message OfColor {
     repeated color.Color colors = 1;
   }
@@ -63,10 +67,11 @@ message Restriction {
     Cmc cmc = 2;
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 3;
     ControllerHandEmpty controller_hand_empty = 4;
-    NotSelf not_self = 5;
-    OfColor of_color = 6;
-    OfType of_type = 7;
-    Self self = 8;
-    Toughness toughness = 9;
+    NotOfType not_of_type = 5;
+    NotSelf not_self = 6;
+    OfColor of_color = 7;
+    OfType of_type = 8;
+    Self self = 9;
+    Toughness toughness = 10;
   }
 }

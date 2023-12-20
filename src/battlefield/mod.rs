@@ -14,8 +14,8 @@ use crate::{
     controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
     effects::{
-        effect_duration::UntilEndOfTurn, replacing, AnyEffect, BattlefieldModifier, Counter,
-        Effect, EffectDuration, RevealEachTopOfLibrary, Token,
+        effect_duration::UntilEndOfTurn, replacing, AnyEffect, BattlefieldModifier, DynamicCounter,
+        Effect, EffectDuration, GainCounter, RevealEachTopOfLibrary, Token,
     },
     in_play::{
         all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
@@ -80,9 +80,9 @@ pub enum ActionResult {
         id: Entry,
     },
     AddCounters {
+        source: CardId,
         target: CardId,
-        counter: Counter,
-        count: usize,
+        counter: GainCounter,
     },
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
@@ -133,6 +133,7 @@ pub enum ActionResult {
         card: CardId,
         targets: Vec<Vec<ActiveTarget>>,
         from: CastFrom,
+        x_is: Option<usize>,
     },
     HandFromBattlefield(CardId),
     RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
@@ -644,12 +645,22 @@ impl Battlefield {
                 Entry::Ability { .. } | Entry::Trigger { .. } => unreachable!(),
             },
             ActionResult::AddCounters {
+                source,
                 target,
                 counter,
-                count,
-            } => {
-                CounterId::add_counters(db, *target, *counter, *count);
-            }
+            } => match counter {
+                GainCounter::Single(counter) => {
+                    CounterId::add_counters(db, *target, *counter, 1);
+                }
+                GainCounter::Dynamic(dynamic) => match dynamic {
+                    DynamicCounter::X(counter) => {
+                        let x = source.get_x(db);
+                        if x > 0 {
+                            CounterId::add_counters(db, *target, *counter, x);
+                        }
+                    }
+                },
+            },
             ActionResult::RevealCard(card) => {
                 card.reveal(db);
             }
@@ -684,8 +695,12 @@ impl Battlefield {
                 card,
                 targets,
                 from,
+                x_is,
             } => {
                 card.move_to_stack(db, targets.clone(), Some(*from));
+                if let Some(x_is) = x_is {
+                    card.set_x(db, *x_is)
+                };
                 let cascade = card.cascade(db);
                 for _ in 0..cascade {
                     let id = TriggerId::upload(
@@ -973,9 +988,9 @@ impl Battlefield {
             }
             Effect::GainCounter(counter) => {
                 results.push_settled(ActionResult::AddCounters {
+                    source,
                     target: source,
                     counter,
-                    count: 1,
                 });
             }
             Effect::ReturnSelfToHand => {
@@ -986,6 +1001,12 @@ impl Battlefield {
             }
             Effect::UntapThis => {
                 results.push_settled(ActionResult::Untap(source));
+            }
+            Effect::Cascade => {
+                results.push_settled(ActionResult::Cascade {
+                    cascading: source.cost(db).cmc(),
+                    player: controller,
+                });
             }
             Effect::CopyOfAnyCreatureNonTargeting
             | Effect::TutorLibrary(_)
@@ -1000,18 +1021,13 @@ impl Battlefield {
             | Effect::ReturnFromGraveyardToLibrary(_)
             | Effect::CreateTokenCopy { .. }
             | Effect::TargetToTopOfLibrary { .. }
-            | Effect::UntapTarget => {
+            | Effect::UntapTarget
+            | Effect::TargetGainsCounters(_) => {
                 let valid_targets = source.targets_for_effect(db, controller, &effect);
                 results.push_choose_targets(ChooseTargets::new(
                     EffectOrAura::Effect(effect),
                     valid_targets,
                 ));
-            }
-            Effect::Cascade => {
-                results.push_settled(ActionResult::Cascade {
-                    cascading: source.cost(db).cmc(),
-                    player: controller,
-                });
             }
         }
     }
@@ -1044,9 +1060,9 @@ impl Battlefield {
             }
             Effect::GainCounter(counter) => {
                 results.push_settled(ActionResult::AddCounters {
+                    source,
                     target: source,
                     counter: *counter,
-                    count: 1,
                 });
             }
             Effect::CreateTokenCopy { modifiers } => {
@@ -1076,7 +1092,8 @@ impl Battlefield {
             | Effect::UntapThis
             | Effect::ReturnSelfToHand
             | Effect::TargetToTopOfLibrary { .. }
-            | Effect::UntapTarget => {
+            | Effect::UntapTarget
+            | Effect::TargetGainsCounters(_) => {
                 unreachable!()
             }
         }
@@ -1121,9 +1138,16 @@ pub fn compute_graveyard_targets(
     for target in targets.into_iter() {
         let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
         for card in cards_in_graveyard {
-            if card.types_intersect(db, types) {
-                target_cards.push(card);
+            if !card.passes_restrictions(db, source_card, controller, &source_card.restrictions(db))
+            {
+                continue;
             }
+
+            if !card.types_intersect(db, types) {
+                continue;
+            }
+
+            target_cards.push(card);
         }
     }
 

@@ -115,7 +115,7 @@ impl ManaPool {
         }
     }
 
-    fn spend(&mut self, mana: Mana) -> bool {
+    pub fn spend(&mut self, mana: Mana) -> bool {
         match mana {
             Mana::White => {
                 let Some(mana) = self.white_mana.checked_sub(1) else {

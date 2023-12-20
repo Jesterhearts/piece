@@ -30,7 +30,7 @@ triggered_abilities {
     types{ creature{} }
   }
   effects {
-    gain_counter { counter { charge {} } }
+    gain_counter { single { counter { charge {} } } }
   }
   oracle_text:  "Whenever a creature enters the "
                 "battlefield under your control, put a "
