@@ -422,6 +422,7 @@ impl Battlefield {
         index: usize,
     ) -> PendingResults {
         if Stack::split_second(db) {
+            debug!("Can't activate ability (split second)");
             return PendingResults::default();
         }
 
@@ -429,6 +430,7 @@ impl Battlefield {
         let ability = ability_id.ability(db);
 
         if !ability_id.can_be_activated(db, all_players, turn) {
+            debug!("Can't activate ability (can't meet costs)");
             return PendingResults::default();
         }
 

@@ -212,10 +212,16 @@ fn main() -> anyhow::Result<()> {
 
                         frame.render_stateful_widget(
                             HorizontalList::new(
-                                ["Pass", "(Debug) Untap all", "(Debug) Draw"]
-                                    .into_iter()
-                                    .map(Span::from)
-                                    .collect_vec(),
+                                [
+                                    "Pass",
+                                    "(Debug) Untap all",
+                                    "(Debug) Draw",
+                                    "(Debug) infinite mana",
+                                ]
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, s)| (idx, Span::from(s)))
+                                .collect_vec(),
                                 last_hover,
                                 last_click,
                             )
@@ -391,8 +397,8 @@ fn main() -> anyhow::Result<()> {
                             player1
                                 .get_cards::<InHand>(&mut db)
                                 .into_iter()
-                                .map(|card| card.name(&db))
-                                .map(Span::from)
+                                .enumerate()
+                                .map(|(idx, card)| (idx, Span::from(card.name(&db))))
                                 .collect_vec(),
                             last_hover,
                             last_click,
@@ -1030,6 +1036,9 @@ fn main() -> anyhow::Result<()> {
 
                                 Battlefield::check_sba(&mut db);
                                 maybe_organize_stack(&mut db, pending, &mut state);
+                            }
+                            3 => {
+                                all_players[player1].infinite_mana();
                             }
                             _ => {}
                         }

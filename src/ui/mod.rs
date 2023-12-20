@@ -297,14 +297,16 @@ impl<'db, 'ap, 't> StatefulWidget for SelectedAbilities<'db, 'ap, 't> {
             let abilites = card
                 .activated_abilities(self.db)
                 .into_iter()
-                .filter(|ability| ability.can_be_activated(self.db, self.all_players, self.turn))
+                .enumerate()
+                .filter(|(_, ability)| {
+                    ability.can_be_activated(self.db, self.all_players, self.turn)
+                })
                 .collect_vec();
 
             HorizontalList::new(
                 abilites
-                    .iter()
-                    .map(|ability| ability.text(self.db))
-                    .map(Span::from)
+                    .into_iter()
+                    .map(|(idx, ability)| (idx, Span::from(ability.text(self.db))))
                     .collect_vec(),
                 self.last_hover,
                 self.last_click,

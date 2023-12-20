@@ -64,6 +64,16 @@ pub struct ManaPool {
 }
 
 impl ManaPool {
+    pub fn drain(&mut self) {
+        self.sourced.clear();
+        self.white_mana = 0;
+        self.blue_mana = 0;
+        self.black_mana = 0;
+        self.red_mana = 0;
+        self.green_mana = 0;
+        self.colorless_mana = 0;
+    }
+
     pub fn apply(&mut self, mana: Mana, source: Option<ManaSource>) {
         if let Some(source) = source {
             let sourced_mana = self
@@ -239,7 +249,7 @@ impl ManaPool {
         true
     }
 
-    pub fn available_mana(&self) -> impl Iterator<Item = (usize, Mana, Option<ManaSource>)> + '_ {
+    pub fn all_mana(&self) -> impl Iterator<Item = (usize, Mana, Option<ManaSource>)> + '_ {
         self.sourced
             .iter()
             .flat_map(|(mana, sources)| {
@@ -256,7 +266,10 @@ impl ManaPool {
                 (self.green_mana, Mana::Green, None),
                 (self.colorless_mana, Mana::Colorless, None),
             ])
-            .filter(|(count, _, _)| *count > 0)
+    }
+
+    pub fn available_mana(&self) -> impl Iterator<Item = (usize, Mana, Option<ManaSource>)> + '_ {
+        self.all_mana().filter(|(count, _, _)| *count > 0)
     }
 
     pub fn max(&self) -> Option<Mana> {
@@ -265,8 +278,26 @@ impl ManaPool {
             .map(|(_, mana, _)| mana)
     }
 
-    pub fn pools_display(&self) -> Vec<String> {
+    pub fn available_pool_display(&self) -> Vec<String> {
         let available = self.available_mana();
+
+        let mut results = vec![];
+        for (amount, symbol, source) in available {
+            let mut result = String::default();
+            symbol.push_mana_symbol(&mut result);
+            if let Some(source) = source {
+                result.push_str(&format!(" ({}): {}", source.as_ref(), amount));
+            } else {
+                result.push_str(&format!(": {}", amount));
+            }
+            results.push(result)
+        }
+
+        results
+    }
+
+    pub fn pools_display(&self) -> Vec<String> {
+        let available = self.all_mana();
 
         let mut results = vec![];
         for (amount, symbol, source) in available {

@@ -393,8 +393,6 @@ impl PayCost {
                 .collect_vec(),
             PayCost::SpendMana(spend) => {
                 let (mana, source) = spend.paying();
-                debug!("mana {:?}, source {:?}", mana, source);
-                debug!("pool {:#?}", all_players[player].mana_pool);
                 let pool_post_paid = all_players[player].pool_post_pay(&mana, &source);
                 if pool_post_paid.is_none() || pool_post_paid.as_ref().unwrap().max().is_none() {
                     return vec![];
@@ -403,7 +401,7 @@ impl PayCost {
 
                 match spend.first_unpaid_x_always_unpaid() {
                     Some(ManaCost::Generic(_) | ManaCost::X) => pool_post_paid
-                        .pools_display()
+                        .available_pool_display()
                         .into_iter()
                         .enumerate()
                         .collect_vec(),
@@ -559,6 +557,7 @@ impl PayCost {
                     .pool_post_pay(&mana, &sources)
                     .unwrap()
                     .available_mana()
+                    .filter(|(count, _, _)| *count > 0)
                     .nth(choice.unwrap())
                     .unwrap();
 

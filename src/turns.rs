@@ -53,39 +53,72 @@ impl Turn {
     pub fn step(&mut self, db: &mut Database, all_players: &mut AllPlayers) -> PendingResults {
         match self.phase {
             Phase::Untap => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::Upkeep;
             }
             Phase::Upkeep => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::Draw;
                 if self.turn_count != 0 {
                     return all_players[self.active_player()].draw(db, 1);
                 }
             }
             Phase::Draw => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::PreCombatMainPhase;
             }
             Phase::PreCombatMainPhase => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::BeginCombat;
             }
             Phase::BeginCombat => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::DeclareAttackers;
             }
             Phase::DeclareAttackers => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::DeclareBlockers;
             }
             Phase::DeclareBlockers => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::FirstStrike;
             }
             Phase::FirstStrike => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::Damage;
             }
             Phase::Damage => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::PostCombatMainPhase;
             }
             Phase::PostCombatMainPhase => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::EndStep;
             }
             Phase::EndStep => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::Cleanup;
 
                 Battlefield::end_turn(db);
@@ -94,6 +127,9 @@ impl Turn {
                 return Battlefield::apply_action_results(db, all_players, &results);
             }
             Phase::Cleanup => {
+                for player in all_players.all_players() {
+                    all_players[player].mana_pool.drain();
+                }
                 self.phase = Phase::Untap;
                 self.active_player = (self.active_player + 1) % self.turn_order.len();
                 Battlefield::untap(db, self.active_player());

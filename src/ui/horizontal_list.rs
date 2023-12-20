@@ -24,7 +24,7 @@ pub struct HorizontalListState {
 #[derive(Debug)]
 pub struct HorizontalList<'a> {
     block: Option<Block<'a>>,
-    items: Vec<Span<'a>>,
+    items: Vec<(usize, Span<'a>)>,
     style: Style,
     page: u16,
     last_hover: Option<(u16, u16)>,
@@ -33,7 +33,7 @@ pub struct HorizontalList<'a> {
 
 impl<'a> HorizontalList<'a> {
     pub fn new(
-        items: Vec<Span<'a>>,
+        items: Vec<(usize, Span<'a>)>,
         last_hover: Option<(u16, u16)>,
         last_click: Option<(u16, u16)>,
     ) -> Self {
@@ -114,7 +114,7 @@ impl StatefulWidget for HorizontalList<'_> {
 
         let mut current_page = 0;
 
-        for (index, item) in self.items.iter().enumerate() {
+        for (index, (outer_index, item)) in self.items.iter().enumerate() {
             // We always do "(#) " for 1-9
             const NUMBER_WIDTH: u16 = 4;
             // We separate with " "
@@ -193,7 +193,7 @@ impl StatefulWidget for HorizontalList<'_> {
                         && hover.1 >= initial_x
                         && hover.1 < x
                     {
-                        state.hovered = Some(index);
+                        state.hovered = Some(*outer_index);
                         buf.set_style(
                             Rect {
                                 x: initial_x,
