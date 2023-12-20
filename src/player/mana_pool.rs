@@ -240,22 +240,23 @@ impl ManaPool {
     }
 
     pub fn available_mana(&self) -> impl Iterator<Item = (usize, Mana, Option<ManaSource>)> + '_ {
-        [
-            (self.white_mana, Mana::White, None),
-            (self.blue_mana, Mana::Blue, None),
-            (self.black_mana, Mana::Black, None),
-            (self.red_mana, Mana::Red, None),
-            (self.green_mana, Mana::Green, None),
-            (self.colorless_mana, Mana::Colorless, None),
-        ]
-        .into_iter()
-        .chain(self.sourced.iter().flat_map(|(mana, sources)| {
-            sources
-                .iter()
-                .sorted_by_key(|(_, count)| *count)
-                .map(|(source, count)| (*count, *mana, Some(*source)))
-        }))
-        .filter(|(count, _, _)| *count > 0)
+        self.sourced
+            .iter()
+            .flat_map(|(mana, sources)| {
+                sources
+                    .iter()
+                    .sorted_by_key(|(_, count)| *count)
+                    .map(|(source, count)| (*count, *mana, Some(*source)))
+            })
+            .chain([
+                (self.white_mana, Mana::White, None),
+                (self.blue_mana, Mana::Blue, None),
+                (self.black_mana, Mana::Black, None),
+                (self.red_mana, Mana::Red, None),
+                (self.green_mana, Mana::Green, None),
+                (self.colorless_mana, Mana::Colorless, None),
+            ])
+            .filter(|(count, _, _)| *count > 0)
     }
 
     pub fn max(&self) -> Option<Mana> {
