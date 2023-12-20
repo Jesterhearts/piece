@@ -129,26 +129,29 @@ impl Restriction {
                 if !types.is_empty() && !subtypes.is_empty() {
                     format!(
                         "a {} - {}",
-                        types.iter().map(|ty| ty.as_ref()).join(" "),
-                        subtypes.iter().map(|ty| ty.as_ref()).join(" ")
+                        types.iter().map(|ty| ty.as_ref()).join(" or "),
+                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
                     )
                 } else if !types.is_empty() {
-                    format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" "))
+                    format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" or "))
                 } else {
-                    format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+                    format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" or "))
                 }
             }
             Restriction::NotOfType { types, subtypes } => {
                 if !types.is_empty() && !subtypes.is_empty() {
                     format!(
                         "not a {} - {}",
-                        types.iter().map(|ty| ty.as_ref()).join(" "),
-                        subtypes.iter().map(|ty| ty.as_ref()).join(" ")
+                        types.iter().map(|ty| ty.as_ref()).join(" or "),
+                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
                     )
                 } else if !types.is_empty() {
-                    format!("not a {}", types.iter().map(|ty| ty.as_ref()).join(" "))
+                    format!("not a {}", types.iter().map(|ty| ty.as_ref()).join(" or "))
                 } else {
-                    format!("not a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+                    format!(
+                        "not a {}",
+                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
+                    )
                 }
             }
             Restriction::Toughness(toughness) => format!("toughness {}", toughness),

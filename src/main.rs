@@ -215,8 +215,12 @@ fn main() -> anyhow::Result<()> {
     let card7 = CardId::upload(&mut db, &cards, player1, "Titania, Protector of Argoth");
     card7.move_to_hand(&mut db);
 
-    let card8 = CardId::upload(&mut db, &cards, player1, "Forest");
-    all_players[player1].deck.place_on_top(&mut db, card8);
+    let card8 = CardId::upload(&mut db, &cards, player1, "Adaptive Gemguard");
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card8, None);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::Complete
+    );
 
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);

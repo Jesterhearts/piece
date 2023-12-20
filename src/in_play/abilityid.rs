@@ -5,7 +5,7 @@ use derive_more::From;
 use itertools::Itertools;
 
 use crate::{
-    abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility},
+    abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility, SorcerySpeed},
     card::OracleText,
     controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
@@ -41,6 +41,10 @@ impl AbilityId {
 
                 if !ability.oracle_text.is_empty() {
                     entity.insert(OracleText(ability.oracle_text.clone()));
+                }
+
+                if ability.sorcery_speed {
+                    entity.insert(SorcerySpeed);
                 }
 
                 Self(entity.id())
@@ -193,10 +197,14 @@ impl AbilityId {
             .unwrap_or(self)
     }
 
+    pub fn is_sorcery_speed(self, db: &Database) -> bool {
+        db.abilities.get::<SorcerySpeed>(self.0).is_some()
+    }
+
     pub fn ability(self, db: &mut Database) -> Ability {
         let this = self.original(db);
 
-        if let Some((cost, effects, text, apply_to_self)) = db
+        if let Some((cost, effects, text, apply_to_self, sourcery_speed)) = db
             .abilities
             .query::<(
                 Entity,
@@ -204,11 +212,12 @@ impl AbilityId {
                 &Effects,
                 Option<&OracleText>,
                 Option<&ApplyToSelf>,
+                Option<&SorcerySpeed>,
             )>()
             .iter(&db.abilities)
-            .filter_map(|(e, cost, effect, text, apply_to_self)| {
+            .filter_map(|(e, cost, effect, text, apply_to_self, sorcery_speed)| {
                 if Self(e) == this {
-                    Some((cost, effect, text, apply_to_self))
+                    Some((cost, effect, text, apply_to_self, sorcery_speed))
                 } else {
                     None
                 }
@@ -220,6 +229,7 @@ impl AbilityId {
                 effects: effects.0.clone(),
                 apply_to_self: apply_to_self.is_some(),
                 oracle_text: text.map(|t| t.0.clone()).unwrap_or_default(),
+                sorcery_speed: sourcery_speed.is_some(),
             })
         } else if let Some(effects) = db
             .abilities
@@ -357,10 +367,11 @@ impl AbilityId {
                 }
 
                 let controller = source.controller(db);
-                let is_sorcery = ability
-                    .effects
-                    .iter()
-                    .any(|effect| effect.effect(db, controller).is_sorcery_speed());
+                let is_sorcery = ability.sorcery_speed
+                    || ability
+                        .effects
+                        .iter()
+                        .any(|effect| effect.effect(db, controller).is_sorcery_speed());
                 if is_sorcery {
                     if controller != turn.active_player() {
                         return false;
@@ -378,7 +389,7 @@ impl AbilityId {
                     }
                 }
 
-                if !can_pay_costs(&ability.cost, source, db, all_players) {
+                if !can_pay_costs(db, all_players, &ability.cost, source) {
                     return false;
                 }
 
@@ -395,7 +406,7 @@ impl AbilityId {
                     return false;
                 };
 
-                can_pay_costs(&ability.cost, source, db, all_players)
+                can_pay_costs(db, all_players, &ability.cost, source)
             }
             Ability::ETB { .. } => false,
         }
@@ -403,10 +414,10 @@ impl AbilityId {
 }
 
 fn can_pay_costs(
-    cost: &AbilityCost,
-    source: CardId,
     db: &mut Database,
     all_players: &AllPlayers,
+    cost: &AbilityCost,
+    source: CardId,
 ) -> bool {
     if cost.tap && source.tapped(db) {
         return false;
@@ -438,6 +449,25 @@ fn can_pay_costs(
                                 restrictions,
                             )
                         });
+                if !any_target {
+                    return false;
+                }
+            }
+            AdditionalCost::TapPermanent(restrictions) => {
+                let any_target =
+                    controller
+                        .get_cards::<OnBattlefield>(db)
+                        .into_iter()
+                        .any(|card| {
+                            !card.tapped(db)
+                                && card.passes_restrictions(
+                                    db,
+                                    source,
+                                    ControllerRestriction::You,
+                                    restrictions,
+                                )
+                        });
+
                 if !any_target {
                     return false;
                 }

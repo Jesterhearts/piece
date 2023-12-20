@@ -205,6 +205,23 @@ impl SacrificePermanent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TapPermanent {
+    restrictions: Vec<Restriction>,
+    valid_targets: Vec<CardId>,
+    chosen: Option<CardId>,
+}
+
+impl TapPermanent {
+    pub fn new(restrictions: Vec<Restriction>) -> Self {
+        Self {
+            restrictions,
+            valid_targets: Default::default(),
+            chosen: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpendMana {
     paying: IndexMap<ManaCost, usize>,
     paid: IndexMap<ManaCost, IndexMap<Mana, usize>>,
@@ -284,6 +301,7 @@ impl SpendMana {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PayCost {
     SacrificePermanent(SacrificePermanent),
+    TapPermanent(TapPermanent),
     SpendMana(SpendMana),
 }
 
@@ -291,6 +309,7 @@ impl PayCost {
     fn autopay(&self, all_players: &AllPlayers, player: Owner) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
+            PayCost::TapPermanent(_) => false,
             PayCost::SpendMana(spend) => {
                 let mut spend = spend.clone();
                 if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
@@ -327,6 +346,7 @@ impl PayCost {
     fn choice_optional(&self, all_players: &AllPlayers, player: Owner) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
+            PayCost::TapPermanent(_) => false,
             PayCost::SpendMana(spend) => {
                 let pool_post_pay = all_players[player].pool_post_pay(&spend.paying()).unwrap();
                 let first_unpaid = spend.first_unpaid_x_always_unpaid().unwrap();
@@ -342,25 +362,32 @@ impl PayCost {
     fn paid(&self) -> bool {
         match self {
             PayCost::SacrificePermanent(sac) => sac.chosen.is_some(),
+            PayCost::TapPermanent(tap) => tap.chosen.is_some(),
             PayCost::SpendMana(spend) => spend.paid(),
         }
     }
 
     fn options(
-        &self,
-        db: &Database,
+        &mut self,
+        db: &mut Database,
         all_players: &AllPlayers,
-        player: Owner,
+        source: Source,
         all_targets: &HashSet<ActiveTarget>,
     ) -> Vec<(usize, String)> {
+        let player = source.card(db).controller(db);
+        self.compute_targets(db, source, all_targets);
+
         match self {
             PayCost::SacrificePermanent(sac) => sac
                 .valid_targets
                 .iter()
                 .enumerate()
-                .filter(|(_, target)| {
-                    !all_targets.contains(&ActiveTarget::Battlefield { id: **target })
-                })
+                .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target.id(db),)))
+                .collect_vec(),
+            PayCost::TapPermanent(tap) => tap
+                .valid_targets
+                .iter()
+                .enumerate()
                 .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target.id(db),)))
                 .collect_vec(),
             PayCost::SpendMana(spend) => {
@@ -422,23 +449,45 @@ impl PayCost {
         source: Source,
         already_chosen: &HashSet<ActiveTarget>,
     ) {
-        if let PayCost::SacrificePermanent(sac) = self {
-            let card = source.card(db);
-            let controller = card.controller(db);
-            let valid_targets = controller
-                .get_cards::<OnBattlefield>(db)
-                .into_iter()
-                .filter(|target| {
-                    !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
-                        && target.passes_restrictions(
-                            db,
-                            card,
-                            ControllerRestriction::You,
-                            &sac.restrictions,
-                        )
-                })
-                .collect_vec();
-            sac.valid_targets = valid_targets;
+        match self {
+            PayCost::SacrificePermanent(sac) => {
+                let card = source.card(db);
+                let controller = card.controller(db);
+                let valid_targets = controller
+                    .get_cards::<OnBattlefield>(db)
+                    .into_iter()
+                    .filter(|target| {
+                        !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
+                            && target.passes_restrictions(
+                                db,
+                                card,
+                                ControllerRestriction::You,
+                                &sac.restrictions,
+                            )
+                    })
+                    .collect_vec();
+                sac.valid_targets = valid_targets;
+            }
+            PayCost::TapPermanent(tap) => {
+                let card = source.card(db);
+                let controller = card.controller(db);
+                let valid_targets = controller
+                    .get_cards::<OnBattlefield>(db)
+                    .into_iter()
+                    .filter(|target| {
+                        !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
+                            && !target.tapped(db)
+                            && target.passes_restrictions(
+                                db,
+                                card,
+                                ControllerRestriction::You,
+                                &tap.restrictions,
+                            )
+                    })
+                    .collect_vec();
+                tap.valid_targets = valid_targets;
+            }
+            PayCost::SpendMana(_) => {}
         }
     }
 
@@ -451,6 +500,23 @@ impl PayCost {
     ) -> bool {
         match self {
             PayCost::SacrificePermanent(SacrificePermanent {
+                valid_targets,
+                chosen,
+                ..
+            }) => {
+                if let Some(choice) = choice {
+                    let target = valid_targets[choice];
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                        *chosen = Some(target);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            PayCost::TapPermanent(TapPermanent {
                 valid_targets,
                 chosen,
                 ..
@@ -531,6 +597,9 @@ impl PayCost {
             PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
                 ActionResult::PermanentToGraveyard(chosen.unwrap())
             }
+            PayCost::TapPermanent(TapPermanent { chosen, .. }) => {
+                ActionResult::TapPermanent(chosen.unwrap())
+            }
             PayCost::SpendMana(spend) => ActionResult::SpendMana(player, spend.paying()),
         }
     }
@@ -538,14 +607,27 @@ impl PayCost {
     fn description(&self) -> String {
         match self {
             PayCost::SacrificePermanent(_) => "sacrificing a permanent".to_string(),
+            PayCost::TapPermanent(_) => "tapping a permanent".to_string(),
             PayCost::SpendMana(spend) => spend.description(),
         }
     }
 
     fn x_is(&self) -> Option<usize> {
         match self {
-            PayCost::SacrificePermanent(_) => None,
+            PayCost::SacrificePermanent(_) | PayCost::TapPermanent(_) => None,
             PayCost::SpendMana(spend) => spend.x_is(),
+        }
+    }
+
+    fn target(&self) -> Option<ActiveTarget> {
+        match self {
+            PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
+                chosen.map(|id| ActiveTarget::Battlefield { id })
+            }
+            PayCost::TapPermanent(TapPermanent { chosen, .. }) => {
+                chosen.map(|id| ActiveTarget::Battlefield { id })
+            }
+            PayCost::SpendMana(_) => None,
         }
     }
 }
@@ -677,16 +759,16 @@ impl PendingResults {
         }
     }
 
-    pub fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
+    pub fn options(&mut self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
         if self.choose_modes.front().is_some() {
             self.source.unwrap().mode_options(db)
         } else if let Some(choosing) = self.choose_targets.front() {
             choosing.options(db, all_players)
-        } else if let Some(choosing) = self.pay_costs.front() {
+        } else if let Some(choosing) = self.pay_costs.front_mut() {
             choosing.options(
                 db,
                 all_players,
-                self.source.unwrap().card(db).owner(db),
+                self.source.unwrap(),
                 &self.all_chosen_targets,
             )
         } else if !self.choosing_to_cast.is_empty() {
@@ -880,16 +962,6 @@ impl PendingResults {
                             }
                         }
                     }
-
-                    if self.choose_targets.is_empty() {
-                        for cost in self.pay_costs.iter_mut() {
-                            cost.compute_targets(
-                                db,
-                                self.source.unwrap(),
-                                &self.all_chosen_targets,
-                            );
-                        }
-                    }
                 } else {
                     self.choose_targets.push_front(choosing);
                 }
@@ -899,11 +971,13 @@ impl PendingResults {
                 ResolutionResult::PendingChoice
             }
         } else if let Some(mut pay) = self.pay_costs.pop_front() {
-            debug!("Paying costs");
             let player = self.source.unwrap().card(db).controller(db);
             if pay.choose_pay(all_players, player.into(), &self.all_chosen_targets, choice) {
                 if pay.paid() {
                     self.x_is = pay.x_is();
+                    if let Some(target) = pay.target() {
+                        self.all_chosen_targets.insert(target);
+                    }
                     self.settled_effects.push_back(pay.results(player));
                 } else {
                     self.pay_costs.push_front(pay);

@@ -17,6 +17,9 @@ use crate::{
     triggers::Trigger,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub struct SorcerySpeed;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
@@ -107,6 +110,7 @@ pub struct ActivatedAbility {
     pub effects: Vec<AnyEffect>,
     pub apply_to_self: bool,
     pub oracle_text: String,
+    pub sorcery_speed: bool,
 }
 
 impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
@@ -126,6 +130,7 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
                 .collect::<anyhow::Result<Vec<_>>>()?,
             apply_to_self: value.apply_to_self,
             oracle_text: value.oracle_text.clone(),
+            sorcery_speed: value.sorcery_speed,
         })
     }
 }

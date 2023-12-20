@@ -37,6 +37,7 @@ message ActivatedAbility {
   repeated Effect effects = 2;
   bool apply_to_self = 3;
   string oracle_text = 4;
+  bool sorcery_speed = 5;
 }
 
 message Destination {

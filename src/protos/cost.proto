@@ -25,6 +25,9 @@ message AdditionalCost {
   message SacrificePermanent {
     targets.Restriction restrictions = 1;
   }
+  message TapPermanent {
+    targets.Restriction restrictions = 1;
+  }
   message PayLife {
     int32 count = 1;
   }
@@ -32,7 +35,8 @@ message AdditionalCost {
   oneof cost {
     PayLife pay_life = 2;
     SacrificePermanent sacrifice_permanent= 3;
-    SacrificeThis sacrifice_this = 4;
+    TapPermanent tap_permanent = 4;
+    SacrificeThis sacrifice_this = 5;
   }
 }
 

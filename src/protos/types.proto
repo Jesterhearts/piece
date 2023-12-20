@@ -46,6 +46,7 @@ message Subtype {
   message Elf {}
   message Equipment {}
   message Forest {}
+  message Gnome {}
   message Golem {}
   message Human {}
   message Island {}
@@ -74,21 +75,22 @@ message Subtype {
     Elf elf = 8;
     Equipment equipment = 9;
     Forest forest = 10;
-    Golem golem = 11;
-    Human human = 12;
-    Island island = 13;
-    Mountain mountain = 14;
-    Nymph nymph = 15;
-    Plains plains = 16;
-    Praetor praetor = 17;
-    Shade shade = 18;
-    Shaman shaman = 19;
-    Shapeshifter shapeshifter = 20;
-    Soldier soldier = 21;
-    Spirit spirit = 22;
-    Swamp swamp = 23;
-    Vampire vampire = 24;
-    Wizard wizard = 25;
-    Zombie zombie = 26;
+    Gnome gnome = 11;
+    Golem golem = 12;
+    Human human = 13;
+    Island island = 14;
+    Mountain mountain = 15;
+    Nymph nymph = 16;
+    Plains plains = 17;
+    Praetor praetor = 18;
+    Shade shade = 19;
+    Shaman shaman = 20;
+    Shapeshifter shapeshifter = 21;
+    Soldier soldier = 22;
+    Spirit spirit = 23;
+    Swamp swamp = 24;
+    Vampire vampire = 25;
+    Wizard wizard = 26;
+    Zombie zombie = 27;
   }
 }

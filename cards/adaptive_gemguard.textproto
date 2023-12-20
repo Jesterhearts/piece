@@ -1,0 +1,30 @@
+name: "Adaptive Gemguard"
+cost {
+  mana_costs { generic { count: 3 } }
+  mana_costs { white {} }
+}
+types { artifact {} }
+types { creature {} }
+subtypes { gnome {} }
+activated_abilities {
+  cost {
+    additional_costs {
+      tap_permanent { restrictions { of_type {
+        types { artifact {} }
+        types { creature {} }
+      } } }
+    }
+    additional_costs {
+      tap_permanent { restrictions { of_type {
+        types { artifact {} }
+        types { creature {} }
+      } } }
+    }
+  }
+  effects {
+    gain_counter { single { counter { p1p1 {} } } }
+  }
+  sorcery_speed: true
+}
+power: 3
+toughness: 3

@@ -71,6 +71,7 @@ pub enum AdditionalCost {
     SacrificeThis,
     PayLife(PayLife),
     SacrificePermanent(Vec<Restriction>),
+    TapPermanent(Vec<Restriction>),
 }
 
 impl AdditionalCost {
@@ -80,9 +81,12 @@ impl AdditionalCost {
             AdditionalCost::PayLife(pay) => format!("Pay {} life", pay.count),
             AdditionalCost::SacrificePermanent(restrictions) => {
                 format!(
-                    "Sacrifice a {}",
+                    "Sacrifice {}",
                     restrictions.iter().map(|r| r.text()).join(", ")
                 )
+            }
+            AdditionalCost::TapPermanent(tap) => {
+                format!("Tap {}", tap.iter().map(|t| t.text()).join(", "))
             }
         }
     }
@@ -118,6 +122,12 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
                         .collect::<anyhow::Result<_>>()?,
                 ))
             }
+            protogen::cost::additional_cost::Cost::TapPermanent(tap) => Ok(Self::TapPermanent(
+                tap.restrictions
+                    .iter()
+                    .map(Restriction::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            )),
         }
     }
 }

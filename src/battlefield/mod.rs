@@ -10,6 +10,7 @@ use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
     abilities::{Ability, GainMana, StaticAbility, TriggeredAbility},
+    battlefield::pending_results::TapPermanent,
     card::Color,
     controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
@@ -445,6 +446,11 @@ impl Battlefield {
                         results.push_pay_costs(PayCost::SacrificePermanent(
                             SacrificePermanent::new(restrictions.clone()),
                         ));
+                    }
+                    AdditionalCost::TapPermanent(restrictions) => {
+                        results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
+                            restrictions.clone(),
+                        )));
                     }
                 }
             }
