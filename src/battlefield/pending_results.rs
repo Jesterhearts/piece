@@ -244,7 +244,6 @@ impl SpendMana {
                     .unwrap_or(true)
             })
             .map(|(paying, _)| *paying);
-        debug!("First unpaid: {:?}", unpaid);
         unpaid
     }
 
@@ -294,7 +293,7 @@ impl PayCost {
             PayCost::SacrificePermanent(_) => false,
             PayCost::SpendMana(spend) => {
                 let mut spend = spend.clone();
-                while let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
+                if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
                     let pool_post_pay = all_players[player].pool_post_pay(&spend.paying()).unwrap();
                     match first_unpaid {
                         ManaCost::X | ManaCost::Generic(_) => return false,
@@ -369,7 +368,6 @@ impl PayCost {
                 if pool_post_paid.is_none() || pool_post_paid.unwrap().max().is_none() {
                     return vec![];
                 }
-                debug!("Spending mana from {:?}", pool_post_paid);
                 let pool_post_paid = pool_post_paid.unwrap();
 
                 match spend.first_unpaid_x_always_unpaid() {
@@ -512,7 +510,7 @@ impl PayCost {
                             .or_default() += 1;
                     }
 
-                    return self.paid();
+                    return true;
                 }
 
                 let mana = Mana::iter().nth(choice.unwrap()).unwrap();
