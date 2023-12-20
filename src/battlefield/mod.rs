@@ -160,6 +160,10 @@ pub enum ActionResult {
     },
     CascadeExileToBottomOfLibrary(Controller),
     Scry(CardId, usize),
+    Discover {
+        count: usize,
+        player: Controller,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -902,6 +906,23 @@ impl Battlefield {
 
                 results
             }
+            ActionResult::Discover { count, player } => {
+                let mut results = PendingResults::default();
+                results.cast_from(CastFrom::Exile);
+                results.discovering();
+
+                while let Some(card) = all_players[*player]
+                    .deck
+                    .exile_top_card(db, Some(ExileReason::Cascade))
+                {
+                    if !card.is_land(db) && card.cost(db).cmc() < *count {
+                        results.push_choose_cast(card, false);
+                        break;
+                    }
+                }
+                results.push_settled(ActionResult::CascadeExileToBottomOfLibrary(*player));
+                results
+            }
             ActionResult::CascadeExileToBottomOfLibrary(player) => {
                 let mut cards = CardId::exiled_with_cascade(db);
                 cards.shuffle(&mut thread_rng());
@@ -1080,7 +1101,10 @@ impl Battlefield {
                     player: controller,
                 });
             }
-            Effect::Discover(_) => todo!(),
+            Effect::Discover(count) => results.push_settled(ActionResult::Discover {
+                count,
+                player: source.controller(db),
+            }),
             Effect::Scry(count) => {
                 results.push_settled(ActionResult::Scry(source, count));
             }

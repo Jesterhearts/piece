@@ -920,7 +920,10 @@ impl Stack {
                 Effect::Scry(count) => {
                     results.push_settled(ActionResult::Scry(source, count));
                 }
-                Effect::Discover(_) => todo!(),
+                Effect::Discover(count) => results.push_settled(ActionResult::Discover {
+                    count,
+                    player: controller,
+                }),
             }
         }
 
@@ -1027,13 +1030,31 @@ fn add_card_to_stack(
             ))
         }
 
-        for effect in card.effects(db) {
-            let effect = effect.into_effect(db, controller);
+        let effects = card.effects(db);
+        if effects.len() == 1 {
+            let effect = effects
+                .into_iter()
+                .exactly_one()
+                .unwrap()
+                .into_effect(db, controller);
             let valid_targets = card.targets_for_effect(db, controller, &effect);
+            if valid_targets.len() < effect.needs_targets() {
+                return PendingResults::default();
+            }
+
             results.push_choose_targets(ChooseTargets::new(
                 EffectOrAura::Effect(effect),
                 valid_targets,
             ));
+        } else {
+            for effect in card.effects(db) {
+                let effect = effect.into_effect(db, controller);
+                let valid_targets = card.targets_for_effect(db, controller, &effect);
+                results.push_choose_targets(ChooseTargets::new(
+                    EffectOrAura::Effect(effect),
+                    valid_targets,
+                ));
+            }
         }
     } else {
         results.push_settled(ActionResult::CastCard {

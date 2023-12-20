@@ -702,6 +702,7 @@ pub struct PendingResults {
     add_to_stack: bool,
     cast_from: Option<CastFrom>,
     paying_costs: bool,
+    discovering: bool,
 
     x_is: Option<usize>,
 
@@ -735,6 +736,10 @@ impl PendingResults {
             source: Some(source),
             ..Default::default()
         }
+    }
+
+    pub fn discovering(&mut self) {
+        self.discovering = true;
     }
 
     pub fn add_ability_to_stack(&mut self) {
@@ -1074,6 +1079,10 @@ impl PendingResults {
                 self.extend(results);
                 ResolutionResult::TryAgain
             } else {
+                if self.discovering {
+                    let card = *self.choosing_to_cast.iter().exactly_one().unwrap();
+                    card.move_to_hand(db);
+                }
                 self.choosing_to_cast.clear();
                 ResolutionResult::TryAgain
             }
@@ -1123,6 +1132,7 @@ impl PendingResults {
         self.apply_in_stages = results.apply_in_stages;
         self.add_to_stack = results.add_to_stack;
         self.paying_costs = results.paying_costs;
+        self.discovering = results.discovering;
     }
 
     pub fn is_empty(&self) -> bool {
