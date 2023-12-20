@@ -3,15 +3,15 @@ syntax = "proto3";
 package types;
 
 message Type {
-  message BasicLand {}
-  message Land {}
-  message Instant {}
-  message Sorcery {}
-  message Creature {}
   message Artifact {}
-  message Enchantment {}
+  message BasicLand {}
   message Battle {}
+  message Creature {}
+  message Enchantment {}
+  message Instant {}
+  message Land {}
   message Legendary {}
+  message Sorcery {}
 
   oneof ty {
     Artifact artifact = 1;
@@ -30,6 +30,7 @@ message Subtype {
   message Angel {}
   message Aura {}
   message Bear {}
+  message Cave {}
   message Dinosaur {}
   message Dryad {}
   message Eldrazi {}
@@ -59,29 +60,30 @@ message Subtype {
     Angel angel = 1;
     Aura aura = 2;
     Bear bear = 3;
-    Dinosaur dinosaur = 4;
-    Dryad dryad = 5;
-    Eldrazi eldrazi = 6;
-    Elemental elemental = 7;
-    Elf elf = 8;
-    Equipment equipment = 9;
-    Forest forest = 10;
-    Gnome gnome = 11;
-    Golem golem = 12;
-    Human human = 13;
-    Island island = 14;
-    Mountain mountain = 15;
-    Nymph nymph = 16;
-    Plains plains = 17;
-    Praetor praetor = 18;
-    Shade shade = 19;
-    Shaman shaman = 20;
-    Shapeshifter shapeshifter = 21;
-    Soldier soldier = 22;
-    Spirit spirit = 23;
-    Swamp swamp = 24;
-    Vampire vampire = 25;
-    Wizard wizard = 26;
-    Zombie zombie = 27;
+    Cave cave = 4;
+    Dinosaur dinosaur = 5;
+    Dryad dryad = 6;
+    Eldrazi eldrazi = 7;
+    Elemental elemental = 8;
+    Elf elf = 9;
+    Equipment equipment = 10;
+    Forest forest = 11;
+    Gnome gnome = 12;
+    Golem golem = 13;
+    Human human = 14;
+    Island island = 15;
+    Mountain mountain = 16;
+    Nymph nymph = 17;
+    Plains plains = 18;
+    Praetor praetor = 19;
+    Shade shade = 20;
+    Shaman shaman = 21;
+    Shapeshifter shapeshifter = 22;
+    Soldier soldier = 23;
+    Spirit spirit = 24;
+    Swamp swamp = 25;
+    Vampire vampire = 26;
+    Wizard wizard = 27;
+    Zombie zombie = 28;
   }
 }

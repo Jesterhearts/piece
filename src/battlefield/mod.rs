@@ -24,7 +24,7 @@ use crate::{
         ReplacementEffectId, TriggerId,
     },
     mana::Mana,
-    player::{AllPlayers, Controller, Owner},
+    player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Entry, Stack, StackEntry},
     targets::Restriction,
     triggers::{self, trigger_source, Trigger, TriggerSource},
@@ -121,6 +121,7 @@ pub enum ActionResult {
     GainMana {
         gain: Vec<Mana>,
         target: Controller,
+        source: Option<ManaSource>,
     },
     CreateToken {
         source: Controller,
@@ -144,7 +145,11 @@ pub enum ActionResult {
         controller: Controller,
     },
     MoveFromLibraryToTopOfLibrary(CardId),
-    SpendMana(Controller, Vec<Mana>),
+    SpendMana {
+        card: CardId,
+        mana: Vec<Mana>,
+        sources: Vec<Option<ManaSource>>,
+    },
     Untap(CardId),
     ReturnFromBattlefieldToLibrary {
         target: ActiveTarget,
@@ -597,9 +602,13 @@ impl Battlefield {
                 all_players[*target].life_total -= *count as i32;
                 PendingResults::default()
             }
-            ActionResult::GainMana { gain, target } => {
+            ActionResult::GainMana {
+                gain,
+                target,
+                source,
+            } => {
                 for mana in gain {
-                    all_players[*target].mana_pool.apply(*mana)
+                    all_players[*target].mana_pool.apply(*mana, *source)
                 }
                 PendingResults::default()
             }
@@ -843,8 +852,13 @@ impl Battlefield {
                 all_players[owner].deck.place_on_top(db, *card);
                 PendingResults::default()
             }
-            ActionResult::SpendMana(controller, mana) => {
-                let spent = all_players[*controller].spend_mana(mana);
+            ActionResult::SpendMana {
+                card,
+                mana,
+                sources,
+            } => {
+                card.mana_from_source(db, sources);
+                let spent = all_players[card.controller(db)].spend_mana(mana, sources);
                 assert!(
                     spent,
                     "Should have validated mana could be spent before spending."

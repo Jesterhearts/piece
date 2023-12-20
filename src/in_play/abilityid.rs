@@ -12,7 +12,7 @@ use crate::{
     effects::{AnyEffect, Effects},
     in_play::{CardId, Database, InStack, OnBattlefield, NEXT_STACK_SEQ},
     mana::Mana,
-    player::{AllPlayers, Controller},
+    player::{mana_pool::ManaSource, AllPlayers, Controller},
     stack::{ActiveTarget, Settled, Stack, Targets},
     turns::{Phase, Turn},
     types::Subtype,
@@ -50,7 +50,10 @@ impl AbilityId {
                 Self(entity.id())
             }
             Ability::Mana(ability) => {
-                let entity = db.abilities.spawn((cardid, ability.cost, ability.gain));
+                let mut entity = db.abilities.spawn((cardid, ability.cost, ability.gain));
+                if let Some(source) = ability.mana_source {
+                    entity.insert(source);
+                }
 
                 Self(entity.id())
             }
@@ -256,19 +259,20 @@ impl AbilityId {
 
     pub fn gain_mana_ability(self, db: &mut Database) -> Option<GainManaAbility> {
         db.abilities
-            .query::<(Entity, &AbilityCost, &GainMana)>()
+            .query::<(Entity, &AbilityCost, &GainMana, Option<&ManaSource>)>()
             .iter(&db.abilities)
-            .filter_map(|(e, cost, effect)| {
+            .filter_map(|(e, cost, effect, mana_source)| {
                 if Self(e) == self {
-                    Some((cost, effect))
+                    Some((cost, effect, mana_source))
                 } else {
                     None
                 }
             })
             .next()
-            .map(|(cost, gain)| GainManaAbility {
+            .map(|(cost, gain, source)| GainManaAbility {
                 cost: cost.clone(),
                 gain: gain.clone(),
+                mana_source: source.copied(),
             })
     }
 
@@ -411,6 +415,10 @@ impl AbilityId {
             Ability::ETB { .. } => false,
         }
     }
+
+    pub(crate) fn mana_source(self, db: &Database) -> Option<ManaSource> {
+        db.abilities.get::<ManaSource>(self.0).copied()
+    }
 }
 
 fn can_pay_costs(
@@ -475,7 +483,7 @@ fn can_pay_costs(
         }
     }
 
-    if !all_players[controller].can_meet_cost(&cost.mana_cost) {
+    if !all_players[controller].can_meet_cost(&cost.mana_cost, &[]) {
         return false;
     }
 

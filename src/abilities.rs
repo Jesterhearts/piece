@@ -11,7 +11,7 @@ use crate::{
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
     mana::Mana,
-    player::{AllPlayers, Controller},
+    player::{mana_pool::ManaSource, AllPlayers, Controller},
     protogen,
     stack::ActiveTarget,
     triggers::Trigger,
@@ -252,6 +252,7 @@ pub struct GainManaAbilities(pub Vec<GainManaAbility>);
 pub struct GainManaAbility {
     pub cost: AbilityCost,
     pub gain: GainMana,
+    pub mana_source: Option<ManaSource>,
 }
 impl GainManaAbility {
     pub fn text(&self) -> String {
@@ -266,6 +267,10 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
         Ok(Self {
             cost: value.cost.get_or_default().try_into()?,
             gain: value.gain_mana.get_or_default().try_into()?,
+            mana_source: value
+                .mana_source
+                .as_ref()
+                .map_or(Ok(None), |value| value.try_into().map(Some))?,
         })
     }
 }

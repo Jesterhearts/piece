@@ -30,6 +30,7 @@ message GainMana {
 message GainManaAbility {
   cost.AbilityCost cost = 1;
   GainMana gain_mana = 2;
+  cost.ManaSource mana_source = 3;
 }
 
 message ActivatedAbility {

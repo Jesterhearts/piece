@@ -1,0 +1,9 @@
+name: "Hidden Courtyard"
+etb_tapped: true
+types { land {} }
+subtypes { cave {} }
+mana_abilities {
+  cost { tap: true }
+  gain_mana { specific { gains { white {} } } }
+  mana_source { cave {} }
+}

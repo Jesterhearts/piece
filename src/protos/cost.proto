@@ -5,6 +5,15 @@ package cost;
 import "mana.proto";
 import "targets.proto";
 
+message ManaSource {
+  message Cave {}
+  message Treasure {}
+  oneof source {
+    Cave cave = 1;
+    Treasure treasure = 2;
+  }
+}
+
 message ManaCost {
   oneof cost {
     mana.White white = 1;
@@ -15,13 +24,11 @@ message ManaCost {
     mana.Colorless colorless = 6;
     mana.Generic generic = 7;
     mana.X x = 8;
-  } 
+  }
 }
 
-
 message AdditionalCost {
-  message SacrificeThis {
-  }
+  message SacrificeThis {}
   message SacrificePermanent {
     targets.Restriction restrictions = 1;
   }
@@ -34,7 +41,7 @@ message AdditionalCost {
 
   oneof cost {
     PayLife pay_life = 2;
-    SacrificePermanent sacrifice_permanent= 3;
+    SacrificePermanent sacrifice_permanent = 3;
     TapPermanent tap_permanent = 4;
     SacrificeThis sacrifice_this = 5;
   }

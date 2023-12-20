@@ -1,4 +1,7 @@
-use std::{collections::HashSet, sync::atomic::Ordering};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::atomic::Ordering,
+};
 
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::From;
@@ -33,7 +36,10 @@ use crate::{
         OnBattlefield, ReplacementEffectId, Tapped, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ,
         NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
-    player::{AllPlayers, Controller, Owner},
+    player::{
+        mana_pool::{ManaSource, SourcedMana},
+        AllPlayers, Controller, Owner,
+    },
     stack::{ActiveTarget, Settled, Stack, Targets},
     targets::{Comparison, Restriction, Restrictions, SpellTarget},
     triggers::trigger_source,
@@ -1719,6 +1725,15 @@ impl CardId {
         db.get::<PaidX>(self.0)
             .map(|paid| paid.0)
             .unwrap_or_default()
+    }
+
+    pub(crate) fn mana_from_source(self, db: &mut Database, sources: &[Option<ManaSource>]) {
+        let mut sourced = HashMap::default();
+        for source in sources.iter().flatten().copied() {
+            *sourced.entry(source).or_default() += 1
+        }
+
+        db.entity_mut(self.0).insert(SourcedMana(sourced));
     }
 }
 
