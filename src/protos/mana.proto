@@ -2,23 +2,17 @@ syntax = "proto3";
 
 package mana;
 
-message White {
-}
+message White {}
 
-message Blue {
-}
+message Blue {}
 
-message Black {
-}
+message Black {}
 
-message Red {
-}
+message Red {}
 
-message Green {
-}
+message Green {}
 
-message Colorless {
-}
+message Colorless {}
 
 message Generic {
   int32 count = 1;

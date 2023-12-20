@@ -6,12 +6,9 @@ import "targets.proto";
 import "types.proto";
 
 message Location {
-  message Anywhere {
-  }
-  message Battlefield {
-  }
-  message Library {
-  }
+  message Anywhere {}
+  message Battlefield {}
+  message Library {}
 
   oneof location {
     Anywhere anywhere = 1;
@@ -20,14 +17,11 @@ message Location {
   }
 }
 
-message TriggerSource  {
-  message PutIntoGraveyard {
-  }
-  message Tapped {
-  }
-  message EntersTheBattlefield {
-  }
-  
+message TriggerSource {
+  message PutIntoGraveyard {}
+  message Tapped {}
+  message EntersTheBattlefield {}
+
   oneof trigger {
     EntersTheBattlefield enters_the_battlefield = 1;
     PutIntoGraveyard put_into_graveyard = 2;

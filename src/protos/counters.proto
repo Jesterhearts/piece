@@ -3,12 +3,9 @@ syntax = "proto3";
 package counters;
 
 message Counter {
-  message Charge {
-  }
-  message P1P1 {
-  }
-  message M1M1 {
-  }
+  message Charge {}
+  message P1P1 {}
+  message M1M1 {}
 
   oneof type {
     Charge charge = 1;

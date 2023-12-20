@@ -3,24 +3,15 @@ syntax = "proto3";
 package types;
 
 message Type {
-  message BasicLand {
-  }
-  message Land {
-  }
-  message Instant {
-  }
-  message Sorcery {
-  }
-  message Creature {
-  }
-  message Artifact {
-  }
-  message Enchantment {
-  }
-  message Battle {
-  }
-  message Legendary {
-  }
+  message BasicLand {}
+  message Land {}
+  message Instant {}
+  message Sorcery {}
+  message Creature {}
+  message Artifact {}
+  message Enchantment {}
+  message Battle {}
+  message Legendary {}
 
   oneof ty {
     Artifact artifact = 1;

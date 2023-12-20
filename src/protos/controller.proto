@@ -3,12 +3,9 @@ syntax = "proto3";
 package controller;
 
 message Controller {
-  message Any {
-  }
-  message You {
-  }
-  message Opponent {
-  }
+  message Any {}
+  message You {}
+  message Opponent {}
 
   oneof controller {
     Any any = 1;

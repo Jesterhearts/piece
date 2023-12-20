@@ -3,18 +3,12 @@ syntax = "proto3";
 package color;
 
 message Color {
-  message White {
-  }
-  message Blue {
-  }
-  message Black {
-  }
-  message Red {
-  }
-  message Green {
-  }
-  message Colorless {
-  }
+  message White {}
+  message Blue {}
+  message Black {}
+  message Red {}
+  message Green {}
+  message Colorless {}
 
   oneof color {
     White white = 1;

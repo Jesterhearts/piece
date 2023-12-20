@@ -19,7 +19,7 @@ message Comparison {
   message GreaterThanOrEqual {
     int32 value = 1;
   }
-  
+
   oneof value {
     LessThan less_than = 1;
     LessThanOrEqual less_than_or_equal = 2;
@@ -36,8 +36,7 @@ message SpellTarget {
 
 message Restriction {
   message CastFromHand {}
-  message NotSelf {
-  }
+  message NotSelf {}
   message OfType {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
@@ -52,15 +51,12 @@ message Restriction {
   message Cmc {
     Comparison comparison = 1;
   }
-  message Self {
-  }
+  message Self {}
   message Toughness {
     Comparison comparison = 1;
   }
-  message ControllerControlsBlackOrGreen {
-  }
-  message ControllerHandEmpty {
-  }
+  message ControllerControlsBlackOrGreen {}
+  message ControllerHandEmpty {}
 
   oneof restriction {
     CastFromHand cast_from_hand = 1;

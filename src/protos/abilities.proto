@@ -24,7 +24,7 @@ message StaticAbility {
   }
 }
 
-message TriggeredAbility {  
+message TriggeredAbility {
   triggers.Trigger trigger = 1;
   repeated effects.Effect effects = 2;
   string oracle_text = 3;
