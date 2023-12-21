@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use pretty_assertions::assert_eq;
 
@@ -30,7 +30,7 @@ fn place_on_top() -> anyhow::Result<()> {
     creature.move_to_battlefield(&mut db);
 
     assert_eq!(
-        card.valid_targets(&mut db),
+        card.valid_targets(&mut db, &HashSet::default()),
         vec![vec![ActiveTarget::Battlefield { id: creature }]]
     );
 

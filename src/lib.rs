@@ -64,7 +64,8 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 
         cards.insert(
             card.name.to_owned(),
-            card.try_into()
+            (&card)
+                .try_into()
                 .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
         );
     }

@@ -33,6 +33,31 @@ message GainManaAbility {
   cost.ManaSource mana_source = 3;
 }
 
+message Craft {
+  message One {
+    repeated types.Type types = 1;
+    repeated types.Subtype subtypes = 2;
+  }
+  message XOrMore {
+    int32 minimum = 1;
+    repeated types.Type types = 2;
+    repeated types.Subtype subtypes = 3;
+    repeated color.Color colors = 4;
+  }
+  message SharingCardType {
+    int32 count = 1;
+  }
+  message OneOfEach {
+    repeated types.Subtype subtypes = 1;
+  }
+  oneof source {
+    One one = 2;
+    XOrMore x_or_more = 3;
+    SharingCardType sharing_card_type = 4;
+    OneOfEach one_of_each = 5;
+  }
+}
+
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
@@ -246,6 +271,10 @@ message ForEachManaOfSource {
   Effect effect = 2;
 }
 
+message GainLife {
+  int32 count = 1;
+}
+
 message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
@@ -255,31 +284,33 @@ message Effect {
     ControllerLosesLife controller_loses_life = 5;
     CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 6;
     CounterSpell counter_spell = 7;
-    CreateToken create_token = 8;
-    CreateTokenCopy create_token_copy = 9;
-    DealDamage deal_damage = 10;
-    Discover discover = 11;
-    Equip equip = 12;
-    ExileTargetCreature exile_target_creature = 13;
+    Craft craft = 8;
+    CreateToken create_token = 9;
+    CreateTokenCopy create_token_copy = 10;
+    DealDamage deal_damage = 11;
+    Discover discover = 12;
+    Equip equip = 13;
+    ExileTargetCreature exile_target_creature = 14;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 14;
-    ForEachManaOfSource for_each_mana_of_source = 15;
-    GainCounter gain_counter = 16;
-    GainCounter target_gains_counters = 17;
-    Mill mill = 18;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 19;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 20;
-    ReturnSelfToHand return_self_to_hand = 21;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 22;
-    Scry scry = 23;
-    TargetToTopOfLibrary target_to_top_of_library = 24;
-    TutorLibrary tutor_library = 25;
-    UntapThis untap_this = 26;
-    UntapTarget untap_target = 27;
+        exile_target_creature_manifest_top_of_library = 15;
+    ForEachManaOfSource for_each_mana_of_source = 16;
+    GainCounter gain_counter = 17;
+    GainCounter target_gains_counters = 18;
+    GainLife gain_life = 19;
+    Mill mill = 20;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 21;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 22;
+    ReturnSelfToHand return_self_to_hand = 23;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 24;
+    Scry scry = 25;
+    TargetToTopOfLibrary target_to_top_of_library = 26;
+    TutorLibrary tutor_library = 27;
+    UntapThis untap_this = 28;
+    UntapTarget untap_target = 29;
   }
 
-  optional Effect threshold = 28;
-  string oracle_text = 29;
+  optional Effect threshold = 30;
+  string oracle_text = 31;
 }
 
 message ReplacementEffect {

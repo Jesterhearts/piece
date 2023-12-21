@@ -9,11 +9,10 @@ use crate::{
     controller::ControllerRestriction,
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
-    in_play::{AbilityId, CardId, Database, TriggerId},
+    in_play::{AbilityId, CardId, TriggerId},
     mana::Mana,
-    player::{mana_pool::ManaSource, AllPlayers, Controller},
+    player::mana_pool::ManaSource,
     protogen,
-    stack::ActiveTarget,
     triggers::Trigger,
 };
 
@@ -303,46 +302,6 @@ impl Ability {
             Ability::Activated(ActivatedAbility { effects, .. }) => effects,
             Ability::Mana(_) => vec![],
             Ability::ETB { effects, .. } => effects,
-        }
-    }
-
-    pub fn choices(
-        &self,
-        db: &mut Database,
-        all_players: &AllPlayers,
-        controller: Controller,
-        targets: &[ActiveTarget],
-        choosing: usize,
-    ) -> Vec<String> {
-        match self {
-            Ability::Activated(activated) => activated.effects[choosing]
-                .effect(db, controller)
-                .choices(db, all_players, targets),
-            Ability::Mana(mana) => match &mana.gain {
-                GainMana::Specific { gains } => {
-                    let mut result = "Add ".to_string();
-                    for mana in gains {
-                        mana.push_mana_symbol(&mut result);
-                    }
-                    vec![result]
-                }
-                GainMana::Choice { choices } => {
-                    let mut result = vec![];
-                    for choice in choices {
-                        let mut add = "Add ".to_string();
-                        for mana in choice {
-                            mana.push_mana_symbol(&mut add);
-                        }
-                        result.push(add)
-                    }
-                    result
-                }
-            },
-            Ability::ETB { effects, .. } => {
-                effects[choosing]
-                    .effect(db, controller)
-                    .choices(db, all_players, targets)
-            }
         }
     }
 }

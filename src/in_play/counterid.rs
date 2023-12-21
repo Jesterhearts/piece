@@ -23,6 +23,14 @@ impl CounterId {
         }
     }
 
+    pub fn remove_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
+        match counter {
+            Counter::Charge => Self::remove_counters_of_type::<counter::Charge>(db, card, count),
+            Counter::P1P1 => Self::remove_counters_of_type::<counter::P1P1>(db, card, count),
+            Counter::M1M1 => Self::remove_counters_of_type::<counter::M1M1>(db, card, count),
+        }
+    }
+
     pub fn add_counters_of_type<Type: Component + Default>(
         db: &mut Database,
         card: CardId,
@@ -44,6 +52,32 @@ impl CounterId {
 
         if let Some(mut existing_count) = existing {
             **existing_count += count;
+        } else {
+            db.counters.spawn((card, Count(count), Type::default()));
+        }
+    }
+
+    pub fn remove_counters_of_type<Type: Component + Default>(
+        db: &mut Database,
+        card: CardId,
+        count: usize,
+    ) {
+        let existing = db
+            .counters
+            .query_filtered::<(&CardId, &mut Count), With<Type>>()
+            .iter_mut(&mut db.counters)
+            .find_map(
+                |(is_on, count)| {
+                    if card == *is_on {
+                        Some(count)
+                    } else {
+                        None
+                    }
+                },
+            );
+
+        if let Some(mut existing_count) = existing {
+            **existing_count = existing_count.saturating_sub(count);
         } else {
             db.counters.spawn((card, Count(count), Type::default()));
         }

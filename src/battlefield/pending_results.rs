@@ -65,53 +65,59 @@ impl Source {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EffectOrAura {
+pub enum TargetSource {
     Effect(Effect),
     Aura(AuraId),
 }
 
-impl EffectOrAura {
+impl TargetSource {
     fn wants_targets(&self) -> usize {
         match self {
-            EffectOrAura::Effect(effect) => effect.wants_targets(),
-            EffectOrAura::Aura(_) => 1,
+            TargetSource::Effect(effect) => effect.wants_targets(),
+            TargetSource::Aura(_) => 1,
         }
     }
 
     fn needs_targets(&self) -> usize {
         match self {
-            EffectOrAura::Effect(effect) => effect.needs_targets(),
-            EffectOrAura::Aura(_) => 1,
+            TargetSource::Effect(effect) => effect.needs_targets(),
+            TargetSource::Aura(_) => 1,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChooseTargets {
-    effect_or_aura: EffectOrAura,
+    target_source: TargetSource,
     valid_targets: Vec<ActiveTarget>,
     chosen: IndexMap<usize, usize>,
     skipping_remainder: bool,
 }
 
 impl ChooseTargets {
-    pub fn new(effect_or_aura: EffectOrAura, valid_targets: Vec<ActiveTarget>) -> Self {
+    pub fn new(target_source: TargetSource, valid_targets: Vec<ActiveTarget>) -> Self {
         Self {
-            effect_or_aura,
+            target_source,
             valid_targets,
             chosen: Default::default(),
             skipping_remainder: false,
         }
     }
 
-    pub fn recompute_targets(&mut self, db: &mut Database, source: Source) {
+    pub fn recompute_targets(
+        &mut self,
+        db: &mut Database,
+        source: Source,
+        already_chosen: &HashSet<ActiveTarget>,
+    ) {
         let card = source.card(db);
         let controller = card.controller(db);
-        match &self.effect_or_aura {
-            EffectOrAura::Effect(effect) => {
-                self.valid_targets = card.targets_for_effect(db, controller, effect);
+        match &self.target_source {
+            TargetSource::Effect(effect) => {
+                self.valid_targets =
+                    card.targets_for_effect(db, controller, effect, already_chosen);
             }
-            EffectOrAura::Aura(_) => {
+            TargetSource::Aura(_) => {
                 self.valid_targets = card.targets_for_aura(db).unwrap();
             }
         }
@@ -141,11 +147,11 @@ impl ChooseTargets {
         }
     }
 
-    pub fn into_effect(self) -> EffectOrAura {
-        self.effect_or_aura
+    pub fn into_effect(self) -> TargetSource {
+        self.target_source
     }
 
-    pub fn into_chosen_targets_and_effect(self) -> (Vec<ActiveTarget>, EffectOrAura) {
+    pub fn into_chosen_targets_and_effect(self) -> (Vec<ActiveTarget>, TargetSource) {
         let mut results = vec![];
         for choice in self
             .chosen
@@ -155,7 +161,7 @@ impl ChooseTargets {
             results.push(self.valid_targets[choice]);
         }
 
-        (results, self.effect_or_aura)
+        (results, self.target_source)
     }
 
     pub fn into_chosen_targets(self) -> Vec<ActiveTarget> {
@@ -167,13 +173,13 @@ impl ChooseTargets {
     }
 
     pub fn choices_complete(&self) -> bool {
-        self.chosen_targets_count() >= self.effect_or_aura.wants_targets()
+        self.chosen_targets_count() >= self.target_source.wants_targets()
             || self.chosen_targets_count() >= self.valid_targets.len()
             || (self.can_skip() && self.skipping_remainder)
     }
 
     pub fn can_skip(&self) -> bool {
-        self.chosen_targets_count() >= self.effect_or_aura.needs_targets()
+        self.chosen_targets_count() >= self.target_source.needs_targets()
             || self.chosen_targets_count() >= self.valid_targets.len()
     }
 
@@ -954,7 +960,7 @@ impl PendingResults {
             self.extend(results);
 
             for choice in self.choose_targets.iter_mut() {
-                choice.recompute_targets(db, self.source.unwrap());
+                choice.recompute_targets(db, self.source.unwrap(), &self.all_chosen_targets);
             }
         }
 
@@ -978,10 +984,10 @@ impl PendingResults {
                     if !self.add_to_stack {
                         let player = self.source.unwrap().card(db).controller(db);
                         match effect_or_aura {
-                            EffectOrAura::Effect(effect) => {
+                            TargetSource::Effect(effect) => {
                                 self.push_effect_results(db, player, effect, choices.clone());
                             }
-                            EffectOrAura::Aura(aura) => {
+                            TargetSource::Aura(aura) => {
                                 self.settled_effects
                                     .push_back(ActionResult::ApplyAuraToTarget {
                                         aura,
@@ -1003,7 +1009,7 @@ impl PendingResults {
                                 self.chosen_targets.push(choices.clone());
                             } else {
                                 match effect_or_aura {
-                                    EffectOrAura::Effect(effect) => {
+                                    TargetSource::Effect(effect) => {
                                         self.push_effect_results(
                                             db,
                                             player,
@@ -1011,7 +1017,7 @@ impl PendingResults {
                                             choices.clone(),
                                         );
                                     }
-                                    EffectOrAura::Aura(aura) => self.settled_effects.push_back(
+                                    TargetSource::Aura(aura) => self.settled_effects.push_back(
                                         ActionResult::ApplyAuraToTarget {
                                             aura,
                                             target: self
@@ -1318,6 +1324,12 @@ impl PendingResults {
                 self.settled_effects
                     .push_front(ActionResult::Scry(self.source.unwrap().card(db), count));
             }
+            Effect::GainLife(count) => {
+                self.settled_effects.push_front(ActionResult::GainLife {
+                    target: self.source.unwrap().card(db).controller(db),
+                    count,
+                });
+            }
 
             Effect::Equip(_) => unreachable!(),
             Effect::RevealEachTopOfLibrary(_) => unreachable!(),
@@ -1331,6 +1343,7 @@ impl PendingResults {
             Effect::Discover(_) => unreachable!(),
             Effect::UntapTarget => unreachable!(),
             Effect::ForEachManaOfSource(_) => unreachable!(),
+            Effect::Craft(_) => unreachable!(),
         }
     }
 

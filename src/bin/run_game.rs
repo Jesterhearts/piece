@@ -107,10 +107,23 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
+    let card11 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card11, None);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::Complete
+    );
+
+    let card12 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
+    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card12, None);
+    assert_eq!(
+        results.resolve(&mut db, &mut all_players, None),
+        ResolutionResult::Complete
+    );
+
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);
-        let result = results.resolve(&mut db, &mut all_players, None);
-        assert_eq!(result, ResolutionResult::Complete);
+        while let ResolutionResult::TryAgain = results.resolve(&mut db, &mut all_players, None) {}
     }
 
     for card in cards.keys() {

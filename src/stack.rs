@@ -11,8 +11,8 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        compute_deck_targets, ActionResult, ChooseTargets, EffectOrAura, PayCost, PendingResults,
-        Source, SpendMana,
+        compute_deck_targets, ActionResult, ChooseTargets, PayCost, PendingResults, Source,
+        SpendMana, TargetSource,
     },
     card::keyword::SplitSecond,
     controller::ControllerRestriction,
@@ -61,7 +61,7 @@ impl ActiveTarget {
         }
     }
 
-    fn id(&self) -> Option<CardId> {
+    pub fn id(&self) -> Option<CardId> {
         match self {
             ActiveTarget::Battlefield { id }
             | ActiveTarget::Graveyard { id }
@@ -486,9 +486,10 @@ impl Stack {
         {
             let effect = effect.into_effect(db, controller);
             if targets.len() != effect.needs_targets() && effect.needs_targets() != 0 {
-                let valid_targets = source.targets_for_effect(db, controller, &effect);
+                let valid_targets =
+                    source.targets_for_effect(db, controller, &effect, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
-                    EffectOrAura::Effect(effect),
+                    TargetSource::Effect(effect),
                     valid_targets,
                 ));
                 continue;
@@ -496,7 +497,7 @@ impl Stack {
 
             if effect.wants_targets() > 0 {
                 let valid_targets = source
-                    .targets_for_effect(db, controller, &effect)
+                    .targets_for_effect(db, controller, &effect, &HashSet::default())
                     .into_iter()
                     .collect::<HashSet<_>>();
                 if !targets.iter().all(|target| valid_targets.contains(target)) {
@@ -666,7 +667,7 @@ impl Stack {
                         .collect_vec();
 
                     results.push_choose_targets(ChooseTargets::new(
-                        EffectOrAura::Effect(Effect::TutorLibrary(TutorLibrary {
+                        TargetSource::Effect(Effect::TutorLibrary(TutorLibrary {
                             restrictions,
                             destination,
                             reveal,
@@ -730,6 +731,14 @@ impl Stack {
                     source: mana_source,
                     effect,
                 }),
+                Effect::GainLife(count) => results.push_settled(ActionResult::GainLife {
+                    target: source.controller(db),
+                    count,
+                }),
+                Effect::Craft(_) => results.push_settled(ActionResult::Craft {
+                    transforming: source,
+                    targets,
+                }),
             }
         }
 
@@ -762,7 +771,7 @@ impl Stack {
         results.push_settled(ActionResult::AddAbilityToStack {
             ability,
             source,
-            targets: source.targets_for_ability(db, ability),
+            targets: source.targets_for_ability(db, ability, &HashSet::default()),
         });
 
         results
@@ -779,7 +788,7 @@ impl Stack {
         let controller = source.controller(db);
         for effect in trigger.effects(db) {
             let effect = effect.into_effect(db, controller);
-            targets.push(source.targets_for_effect(db, controller, &effect));
+            targets.push(source.targets_for_effect(db, controller, &effect, &HashSet::default()));
         }
 
         results.push_settled(ActionResult::AddTriggerToStack {
@@ -831,7 +840,7 @@ fn add_card_to_stack(
         let controller = card.controller(db);
         if let Some(aura) = card.aura(db) {
             results.push_choose_targets(ChooseTargets::new(
-                EffectOrAura::Aura(aura),
+                TargetSource::Aura(aura),
                 card.targets_for_aura(db).unwrap(),
             ))
         }
@@ -843,21 +852,23 @@ fn add_card_to_stack(
                 .exactly_one()
                 .unwrap()
                 .into_effect(db, controller);
-            let valid_targets = card.targets_for_effect(db, controller, &effect);
+            let valid_targets =
+                card.targets_for_effect(db, controller, &effect, &HashSet::default());
             if valid_targets.len() < effect.needs_targets() {
                 return PendingResults::default();
             }
 
             results.push_choose_targets(ChooseTargets::new(
-                EffectOrAura::Effect(effect),
+                TargetSource::Effect(effect),
                 valid_targets,
             ));
         } else {
             for effect in card.effects(db) {
                 let effect = effect.into_effect(db, controller);
-                let valid_targets = card.targets_for_effect(db, controller, &effect);
+                let valid_targets =
+                    card.targets_for_effect(db, controller, &effect, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
-                    EffectOrAura::Effect(effect),
+                    TargetSource::Effect(effect),
                     valid_targets,
                 ));
             }

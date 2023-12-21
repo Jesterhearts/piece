@@ -10,7 +10,10 @@ use crate::{
     abilities::{ActivatedAbility, GainManaAbility},
     card::{Color, Keyword},
     controller::ControllerRestriction,
-    in_play::{Database, ReplacementEffectId},
+    in_play::{
+        self, push_target_from_location, CardId, Database, InGraveyard, OnBattlefield,
+        ReplacementEffectId,
+    },
     newtype_enum::newtype_enum,
     player::{mana_pool::ManaSource, AllPlayers, Controller},
     protogen,
@@ -432,6 +435,7 @@ pub enum Effect {
     ControllerLosesLife(usize),
     CopyOfAnyCreatureNonTargeting,
     CounterSpell { target: SpellTarget },
+    Craft(Craft),
     CreateToken(Token),
     CreateTokenCopy { modifiers: Vec<ModifyBattlefield> },
     ReturnSelfToHand,
@@ -443,6 +447,7 @@ pub enum Effect {
     ExileTargetCreatureManifestTopOfLibrary,
     ForEachManaOfSource(ForEachManaOfSource),
     GainCounter(GainCounter),
+    GainLife(usize),
     Scry(usize),
     TargetGainsCounters(GainCounter),
     Mill(Mill),
@@ -508,6 +513,8 @@ impl Effect {
             Effect::ForEachManaOfSource(ForEachManaOfSource { effect, .. }) => {
                 effect.needs_targets()
             }
+            Effect::GainLife(_) => 0,
+            Effect::Craft(craft) => craft.target.needs_targets(),
         }
     }
 
@@ -547,6 +554,8 @@ impl Effect {
             Effect::ForEachManaOfSource(ForEachManaOfSource { effect, .. }) => {
                 effect.wants_targets()
             }
+            Effect::GainLife(_) => 0,
+            Effect::Craft(craft) => craft.target.needs_targets(),
         }
     }
 }
@@ -657,6 +666,10 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ForEachManaOfSource(for_each) => {
                 Ok(Self::ForEachManaOfSource(for_each.try_into()?))
             }
+            protogen::effects::effect::Effect::GainLife(gain) => {
+                Ok(Self::GainLife(usize::try_from(gain.count)?))
+            }
+            protogen::effects::effect::Effect::Craft(craft) => Ok(Self::Craft(craft.try_into()?)),
         }
     }
 }
@@ -940,6 +953,188 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub enum CraftTarget {
+    One {
+        types: IndexSet<Type>,
+        subtypes: IndexSet<Subtype>,
+    },
+    XOrMore {
+        minimum: usize,
+        types: IndexSet<Type>,
+        subtypes: IndexSet<Subtype>,
+        colors: HashSet<Color>,
+    },
+    SharingCardType {
+        count: usize,
+    },
+    OneOfEach {
+        subtypes: IndexSet<Subtype>,
+    },
+}
+
+impl CraftTarget {
+    pub(crate) fn needs_targets(&self) -> usize {
+        match self {
+            CraftTarget::One { .. } => 1,
+            CraftTarget::XOrMore { minimum, .. } => *minimum,
+            CraftTarget::SharingCardType { count } => *count,
+            CraftTarget::OneOfEach { subtypes } => subtypes.len(),
+        }
+    }
+
+    pub(crate) fn targets(
+        &self,
+        this: CardId,
+        db: &mut Database,
+        already_chosen: &HashSet<ActiveTarget>,
+    ) -> Vec<ActiveTarget> {
+        let candidates = in_play::cards::<OnBattlefield>(db)
+            .into_iter()
+            .chain(in_play::cards::<InGraveyard>(db))
+            .filter(|card| *card != this);
+        let mut targets = vec![];
+
+        match self {
+            CraftTarget::One { types, subtypes } => {
+                for card in candidates
+                    .filter(|card| card.types_intersect(db, types))
+                    .filter(|card| card.subtypes_intersect(db, subtypes))
+                    .collect_vec()
+                {
+                    push_target_from_location(db, card, &mut targets);
+                }
+            }
+            CraftTarget::XOrMore {
+                types,
+                subtypes,
+                colors,
+                ..
+            } => {
+                for card in candidates
+                    .filter(|card| card.types_intersect(db, types))
+                    .filter(|card| card.subtypes_intersect(db, subtypes))
+                    .filter(|card| !card.colors(db).is_disjoint(colors))
+                    .collect_vec()
+                {
+                    push_target_from_location(db, card, &mut targets);
+                }
+            }
+            CraftTarget::SharingCardType { .. } => {
+                let card_types = already_chosen
+                    .iter()
+                    .map(|chosen| chosen.id().unwrap())
+                    .map(|chosen| chosen.types(db))
+                    .collect_vec();
+                for card in candidates
+                    .filter(|candidate| {
+                        card_types
+                            .iter()
+                            .all(|types| candidate.types_intersect(db, types))
+                    })
+                    .collect_vec()
+                {
+                    push_target_from_location(db, card, &mut targets);
+                }
+            }
+            CraftTarget::OneOfEach { subtypes } => {
+                let already_chosen = already_chosen
+                    .iter()
+                    .map(|chosen| chosen.id().unwrap())
+                    .flat_map(|chosen| chosen.subtypes(db).into_iter())
+                    .collect::<HashSet<_>>();
+
+                for card in candidates
+                    .filter(|card| {
+                        card.subtypes_intersect(db, subtypes)
+                            && card
+                                .subtypes(db)
+                                .intersection(subtypes)
+                                .copied()
+                                .collect::<HashSet<_>>()
+                                .is_disjoint(&already_chosen)
+                    })
+                    .collect_vec()
+                {
+                    push_target_from_location(db, card, &mut targets);
+                }
+            }
+        }
+
+        targets
+    }
+}
+
+impl TryFrom<&protogen::effects::craft::Source> for CraftTarget {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::craft::Source) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::craft::Source::One(one) => Ok(Self::One {
+                types: one
+                    .types
+                    .iter()
+                    .map(Type::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                subtypes: one
+                    .subtypes
+                    .iter()
+                    .map(Subtype::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
+            protogen::effects::craft::Source::XOrMore(xormore) => Ok(Self::XOrMore {
+                minimum: usize::try_from(xormore.minimum)?,
+                types: xormore
+                    .types
+                    .iter()
+                    .map(Type::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                subtypes: xormore
+                    .subtypes
+                    .iter()
+                    .map(Subtype::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                colors: xormore
+                    .colors
+                    .iter()
+                    .map(Color::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
+            protogen::effects::craft::Source::SharingCardType(sharing) => {
+                Ok(Self::SharingCardType {
+                    count: usize::try_from(sharing.count)?,
+                })
+            }
+            protogen::effects::craft::Source::OneOfEach(oneofeach) => Ok(Self::OneOfEach {
+                subtypes: oneofeach
+                    .subtypes
+                    .iter()
+                    .map(Subtype::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Craft {
+    pub target: CraftTarget,
+}
+
+impl TryFrom<&protogen::effects::Craft> for Craft {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Craft) -> Result<Self, Self::Error> {
+        Ok(Self {
+            target: value
+                .source
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected craft to have a target set"))
+                .and_then(CraftTarget::try_from)?,
         })
     }
 }

@@ -1,0 +1,153 @@
+name: "Clay-Fired Bricks"
+types {
+  artifact {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  tutor_library {
+    restrictions {
+      of_type {
+        types {
+          basic_land {
+          }
+        }
+        subtypes {
+          plains {
+          }
+        }
+      }
+    }
+    destination {
+      hand {
+      }
+    }
+    reveal: true
+  }
+  oracle_text: "When Clay-Fired bricks enters the battlefield, search your library for a basic plains card reveal it, put it into your hand, then shuffle"
+}
+etb_abilities {
+  gain_life {
+    count: 2
+  }
+  oracle_text: "You gain 2 life."
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 5
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+  }
+  effects {
+    craft {
+      one {
+        types {
+          artifact {
+          }
+        }
+      }
+    }
+  }
+  oracle_text: "Craft with an artifact"
+  sorcery_speed: true
+}
+back_face {
+  name: "Cosmium Kiln"
+  types {
+    artifact {
+    }
+  }
+  colors {
+    white {
+    }
+  }
+  oracle_text: "Creatures you control get +1/+1"
+  etb_abilities {
+    create_token {
+      creature {
+        name: "Gnome"
+        types {
+          artifact {
+          }
+        }
+        types {
+          creature {
+          }
+        }
+        subtypes {
+          gnome {
+          }
+        }
+        power: 1
+        toughness: 1
+      }
+    }
+  }
+  etb_abilities {
+    create_token {
+      creature {
+        name: "Gnome"
+        types {
+          artifact {
+          }
+        }
+        types {
+          creature {
+          }
+        }
+        subtypes {
+          gnome {
+          }
+        }
+        power: 1
+        toughness: 1
+      }
+    }
+    oracle_text: "When Cosmium Kiln enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens."
+  }
+  static_abilities {
+    battlefield_modifier {
+      modifier {
+        add_power: 1
+        add_toughness: 1
+        entire_battlefield: true
+      }
+      controller {
+        you {
+        }
+      }
+      duration {
+        until_source_leaves_battlefield {
+        }
+      }
+      restrictions {
+        of_type {
+          types {
+            creature {
+            }
+          }
+        }
+      }
+    }
+  }
+}

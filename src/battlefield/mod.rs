@@ -33,8 +33,8 @@ use crate::{
 };
 
 pub use pending_results::{
-    ChooseTargets, EffectOrAura, PayCost, PendingResults, ResolutionResult, SacrificePermanent,
-    Source, SpendMana,
+    ChooseTargets, PayCost, PendingResults, ResolutionResult, SacrificePermanent, Source,
+    SpendMana, TargetSource,
 };
 
 #[must_use]
@@ -168,6 +168,14 @@ pub enum ActionResult {
         card: CardId,
         source: ManaSource,
         effect: Box<Effect>,
+    },
+    GainLife {
+        target: crate::player::Controller,
+        count: usize,
+    },
+    Craft {
+        transforming: CardId,
+        targets: Vec<ActiveTarget>,
     },
 }
 
@@ -427,13 +435,13 @@ impl Battlefield {
         }
 
         let ability_id = card.activated_abilities(db)[index];
-        let ability = ability_id.ability(db);
 
         if !ability_id.can_be_activated(db, all_players, turn) {
             debug!("Can't activate ability (can't meet costs)");
             return PendingResults::default();
         }
 
+        let ability = ability_id.ability(db);
         let mut results = PendingResults::new(pending_results::Source::Ability(ability_id));
         if let Some(cost) = ability.cost() {
             if cost.tap {
@@ -485,10 +493,10 @@ impl Battlefield {
 
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                let targets = card.targets_for_effect(db, controller, &effect);
+                let targets = card.targets_for_effect(db, controller, &effect, &HashSet::default());
 
                 results
-                    .push_choose_targets(ChooseTargets::new(EffectOrAura::Effect(effect), targets));
+                    .push_choose_targets(ChooseTargets::new(TargetSource::Effect(effect), targets));
             }
         }
 
@@ -979,6 +987,31 @@ impl Battlefield {
 
                 results
             }
+            ActionResult::GainLife { target, count } => {
+                all_players[*target].life_total += *count as i32;
+                PendingResults::default()
+            }
+            ActionResult::Craft {
+                transforming,
+                targets,
+            } => {
+                transforming.move_to_exile(db, None);
+                for target in targets {
+                    let card = target.id().unwrap();
+                    card.move_to_exile(db, None);
+                }
+                transforming.transform(db);
+                let mut results = PendingResults::new(Source::Card(transforming.faceup_face(db)));
+                move_card_to_battlefield(
+                    db,
+                    transforming.faceup_face(db),
+                    transforming.faceup_face(db).etb_tapped(db),
+                    &mut results,
+                    None,
+                );
+                complete_add_from_exile(db, transforming.faceup_face(db), &mut results);
+                results
+            }
         }
     }
 
@@ -1149,6 +1182,12 @@ impl Battlefield {
                     effect,
                 });
             }
+            Effect::GainLife(count) => {
+                results.push_settled(ActionResult::GainLife {
+                    target: controller,
+                    count,
+                });
+            }
             Effect::CopyOfAnyCreatureNonTargeting
             | Effect::TutorLibrary(_)
             | Effect::CounterSpell { .. }
@@ -1163,10 +1202,12 @@ impl Battlefield {
             | Effect::CreateTokenCopy { .. }
             | Effect::TargetToTopOfLibrary { .. }
             | Effect::UntapTarget
+            | Effect::Craft(_)
             | Effect::TargetGainsCounters(_) => {
-                let valid_targets = source.targets_for_effect(db, controller, &effect);
+                let valid_targets =
+                    source.targets_for_effect(db, controller, &effect, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
-                    EffectOrAura::Effect(effect),
+                    TargetSource::Effect(effect),
                     valid_targets,
                 ));
             }
@@ -1237,7 +1278,9 @@ impl Battlefield {
             | Effect::UntapTarget
             | Effect::TargetGainsCounters(_)
             | Effect::ForEachManaOfSource(_)
-            | Effect::Discover(_) => {
+            | Effect::Discover(_)
+            | Effect::GainLife(_)
+            | Effect::Craft(_) => {
                 unreachable!()
             }
         }
@@ -1309,6 +1352,32 @@ fn complete_add_from_library(
             trigger.location_from(db),
             triggers::Location::Anywhere | triggers::Location::Library
         ) {
+            let restrictions = trigger.restrictions(db);
+            if source_card_id.passes_restrictions(
+                db,
+                trigger.listener(db),
+                trigger.controller_restriction(db),
+                &restrictions,
+            ) {
+                let listener = trigger.listener(db);
+                results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+            }
+        }
+    }
+
+    for card in all_cards(db) {
+        card.apply_modifiers_layered(db);
+    }
+}
+
+fn complete_add_from_exile(
+    db: &mut Database,
+    source_card_id: CardId,
+    results: &mut PendingResults,
+) {
+    for trigger in TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
+    {
+        if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
             let restrictions = trigger.restrictions(db);
             if source_card_id.passes_restrictions(
                 db,

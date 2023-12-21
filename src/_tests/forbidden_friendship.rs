@@ -24,7 +24,7 @@ fn creates_tokens() -> anyhow::Result<()> {
     all_players[player].infinite_mana();
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
-    let targets = card.valid_targets(&mut db);
+    let targets = card.valid_targets(&mut db, &HashSet::default());
     card.move_to_stack(&mut db, targets, None);
 
     let results = Stack::resolve_1(&mut db);

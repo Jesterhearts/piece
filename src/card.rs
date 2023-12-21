@@ -11,12 +11,18 @@ use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::CastingCost,
     effects::{AnyEffect, ReplacementEffect, Token, TokenCreature},
-    in_play::{AbilityId, TriggerId},
+    in_play::{AbilityId, CardId, TriggerId},
     newtype_enum::newtype_enum,
     protogen,
     targets::Restriction,
     types::{Subtype, Type},
 };
+
+#[derive(Debug, Clone, Component)]
+pub struct BackFace(pub CardId);
+
+#[derive(Debug, Clone, Component)]
+pub struct FrontFace(pub CardId);
 
 #[derive(Debug, Clone, Deref, DerefMut, Component)]
 pub struct Keywords(pub Counter<Keyword>);
@@ -373,14 +379,16 @@ pub struct Card {
     pub keywords: Counter<Keyword>,
 
     pub restrictions: Vec<Restriction>,
+
+    pub back_face: Option<Box<Card>>,
 }
 
-impl TryFrom<protogen::card::Card> for Card {
+impl TryFrom<&protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
-    fn try_from(value: protogen::card::Card) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.clone(),
             types: value
                 .types
                 .iter()
@@ -398,7 +406,7 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(Color::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
-            oracle_text: value.oracle_text,
+            oracle_text: value.oracle_text.clone(),
             enchant: value
                 .enchant
                 .as_ref()
@@ -461,6 +469,9 @@ impl TryFrom<protogen::card::Card> for Card {
                 .iter()
                 .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
+            back_face: value.back_face.as_ref().map_or(Ok(None), |back| {
+                Card::try_from(back).map(|card| Some(Box::new(card)))
+            })?,
         })
     }
 }

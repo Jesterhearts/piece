@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
@@ -21,7 +23,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     let mut db = Database::default();
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let targets = haunting.valid_targets(&mut db);
+    let targets = haunting.valid_targets(&mut db, &HashSet::default());
     haunting.move_to_stack(&mut db, targets, None);
 
     let land = CardId::upload(&mut db, &cards, player1, "Forest");

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
@@ -27,7 +29,7 @@ fn x_is_zero() -> anyhow::Result<()> {
     non_target.move_to_graveyard(&mut db);
 
     assert_eq!(
-        card.valid_targets(&mut db)[0],
+        card.valid_targets(&mut db, &HashSet::default())[0],
         [ActiveTarget::Graveyard { id: target }]
     );
 
@@ -81,7 +83,7 @@ fn x_is_two() -> anyhow::Result<()> {
     non_target.move_to_graveyard(&mut db);
 
     assert_eq!(
-        card.valid_targets(&mut db)[0],
+        card.valid_targets(&mut db, &HashSet::default())[0],
         [ActiveTarget::Graveyard { id: target }]
     );
 

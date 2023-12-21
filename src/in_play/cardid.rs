@@ -7,6 +7,7 @@ use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::From;
 use indexmap::IndexSet;
 use itertools::Itertools;
+use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{
@@ -16,17 +17,17 @@ use crate::{
     },
     battlefield::{compute_deck_targets, compute_graveyard_targets, Battlefield, PendingResults},
     card::{
-        keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BasePower,
-        BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier, EtbTapped,
-        Keyword, Keywords, MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors,
-        ModifiedKeywords, ModifyKeywords, Name, OracleText, PaidX, Revealed, StaticAbilityModifier,
-        TargetIndividually, TriggeredAbilityModifier,
+        keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BackFace,
+        BasePower, BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier,
+        EtbTapped, FrontFace, Keyword, Keywords, MarkedDamage, ModifiedBasePower,
+        ModifiedBaseToughness, ModifiedColors, ModifiedKeywords, ModifyKeywords, Name, OracleText,
+        PaidX, Revealed, StaticAbilityModifier, TargetIndividually, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::CastingCost,
     effects::{
         counter, effect_duration::UntilSourceLeavesBattlefield, AnyEffect, BattlefieldModifier,
-        DealDamage, DynamicPowerToughness, Effect, Effects, ForEachManaOfSource, Mill,
+        Counter, DealDamage, DynamicPowerToughness, Effect, Effects, ForEachManaOfSource, Mill,
         ReplacementEffects, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token,
         TutorLibrary,
     },
@@ -34,8 +35,8 @@ use crate::{
         self, cards, cast_from, exile_reason, AbilityId, Active, AuraId, CastFrom, CounterId,
         Database, EntireBattlefield, ExileReason, FaceDown, Global, InExile, InGraveyard, InHand,
         InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying,
-        OnBattlefield, ReplacementEffectId, Tapped, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ,
-        NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
+        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -87,6 +88,47 @@ impl CardId {
 
     pub fn facedown(self, db: &Database) -> bool {
         db.get::<FaceDown>(self.0).is_some()
+    }
+
+    pub fn transformed(self, db: &Database) -> bool {
+        db.get::<Transformed>(self.0).is_some()
+    }
+
+    pub fn transform(self, db: &mut Database) {
+        let front_face = self.faceup_face(db);
+        let back_face = self.facedown_face(db);
+        for counter in Counter::iter() {
+            let count = CounterId::counters_on(db, front_face, counter);
+            CounterId::add_counters(db, back_face, counter, count);
+            CounterId::remove_counters(db, front_face, counter, count);
+        }
+
+        let transformed = self.transformed(db);
+        if transformed {
+            db.entity_mut(front_face.0).remove::<Transformed>();
+            db.entity_mut(back_face.0).remove::<Transformed>();
+        } else {
+            db.entity_mut(front_face.0).insert(Transformed);
+            db.entity_mut(back_face.0).insert(Transformed);
+        }
+    }
+
+    pub fn faceup_face(self, db: &Database) -> CardId {
+        let transformed = self.transformed(db);
+        if transformed {
+            db.get::<BackFace>(self.0).map(|b| b.0).unwrap()
+        } else {
+            db.get::<FrontFace>(self.0).map(|f| f.0).unwrap_or(self)
+        }
+    }
+
+    pub fn facedown_face(self, db: &Database) -> CardId {
+        let transformed = self.transformed(db);
+        if transformed {
+            db.get::<FrontFace>(self.0).map(|f| f.0).unwrap()
+        } else {
+            db.get::<BackFace>(self.0).map(|b| b.0).unwrap()
+        }
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
@@ -373,47 +415,48 @@ impl CardId {
             })
             .collect_vec();
 
-        let facedown = self.facedown(db);
+        let facedown = self.facedown(db) && !self.transformed(db);
+        let source = self.faceup_face(db);
 
         let mut base_power = if facedown {
             Some(2)
         } else {
-            db.get::<BasePower>(self.0).map(|bp| bp.0)
+            db.get::<BasePower>(source.0).map(|bp| bp.0)
         };
         let mut base_toughness = if facedown {
             Some(2)
         } else {
-            db.get::<BaseToughness>(self.0).map(|bt| bt.0)
+            db.get::<BaseToughness>(source.0).map(|bt| bt.0)
         };
         let mut types = if facedown {
             IndexSet::from([Type::Creature])
         } else {
-            db.get::<Types>(self.0).unwrap().0.clone()
+            db.get::<Types>(source.0).unwrap().0.clone()
         };
         let mut subtypes = if facedown {
             Default::default()
         } else {
-            db.get::<Subtypes>(self.0).unwrap().0.clone()
+            db.get::<Subtypes>(source.0).unwrap().0.clone()
         };
         let mut keywords = if facedown {
             ::counter::Counter::default()
         } else {
-            db.get::<Keywords>(self.0).unwrap().0.clone()
+            db.get::<Keywords>(source.0).unwrap().0.clone()
         };
         let mut colors: HashSet<Color> = if facedown {
             HashSet::default()
         } else {
-            db.get::<Colors>(self.0)
+            db.get::<Colors>(source.0)
                 .unwrap()
                 .0
-                .union(&db.get::<CastingCost>(self.0).unwrap().colors())
+                .union(&db.get::<CastingCost>(source.0).unwrap().colors())
                 .copied()
                 .collect()
         };
         let mut triggers = if facedown {
             vec![]
         } else {
-            db.get::<Triggers>(self.0)
+            db.get::<Triggers>(source.0)
                 .cloned()
                 .map(|t| t.0)
                 .unwrap_or_default()
@@ -421,7 +464,7 @@ impl CardId {
         let mut etb_abilities = if facedown {
             vec![]
         } else {
-            db.get::<ETBAbilities>(self.0)
+            db.get::<ETBAbilities>(source.0)
                 .cloned()
                 .map(|t| t.0)
                 .unwrap_or_default()
@@ -429,7 +472,7 @@ impl CardId {
         let mut static_abilities = if facedown {
             vec![]
         } else {
-            db.get::<StaticAbilities>(self.0)
+            db.get::<StaticAbilities>(source.0)
                 .cloned()
                 .map(|s| s.0)
                 .unwrap_or_default()
@@ -437,7 +480,7 @@ impl CardId {
         let mut activated_abilities = if facedown {
             vec![]
         } else {
-            db.get::<ActivatedAbilities>(self.0)
+            db.get::<ActivatedAbilities>(source.0)
                 .cloned()
                 .map(|s| s.0)
                 .unwrap_or_default()
@@ -628,26 +671,26 @@ impl CardId {
             }
         }
 
-        let p1p1 = CounterId::counters_of_type_on::<counter::P1P1>(db, self);
+        let p1p1 = CounterId::counters_of_type_on::<counter::P1P1>(db, source);
         add_power += p1p1 as i32;
         add_toughness += p1p1 as i32;
 
-        let m1m1 = CounterId::counters_of_type_on::<counter::M1M1>(db, self);
+        let m1m1 = CounterId::counters_of_type_on::<counter::M1M1>(db, source);
         add_power -= m1m1 as i32;
         add_toughness -= m1m1 as i32;
 
         if let Some(bp) = base_power {
-            db.entity_mut(self.0).insert(ModifiedBasePower(bp));
+            db.entity_mut(source.0).insert(ModifiedBasePower(bp));
         }
         if let Some(bt) = base_toughness {
-            db.entity_mut(self.0).insert(ModifiedBaseToughness(bt));
+            db.entity_mut(source.0).insert(ModifiedBaseToughness(bt));
         }
 
         for trigger in triggers.iter() {
-            trigger.add_listener(db, self);
+            trigger.add_listener(db, source);
         }
 
-        db.entity_mut(self.0)
+        db.entity_mut(source.0)
             .insert(AddPower(add_power))
             .insert(AddToughness(add_toughness))
             .insert(ModifiedTypes(types))
@@ -1055,7 +1098,7 @@ impl CardId {
         db.get::<Card>(self.0).cloned().unwrap()
     }
 
-    fn upload_card<Location: Component>(
+    fn upload_card<Location: Component + std::marker::Copy>(
         db: &mut Database,
         card: &Card,
         player: Owner,
@@ -1067,7 +1110,7 @@ impl CardId {
         cardid
     }
 
-    fn insert_components<Location: Component>(
+    fn insert_components<Location: Component + std::marker::Copy>(
         db: &mut Database,
         cardid: CardId,
         card: &Card,
@@ -1206,6 +1249,15 @@ impl CardId {
             db.entity_mut(cardid.0).insert(ReplacementEffects(ids));
         }
 
+        if let Some(back) = &card.back_face {
+            let id = CardId::upload_card(db, back, player, destination, is_token);
+
+            db.entity_mut(id.0).insert(FrontFace(cardid));
+            db.entity_mut(id.0).insert(BackFace(id));
+            db.entity_mut(cardid.0).insert(FrontFace(cardid));
+            db.entity_mut(cardid.0).insert(BackFace(id));
+        }
+
         cardid.apply_modifiers_layered(db);
     }
 
@@ -1213,7 +1265,11 @@ impl CardId {
         db.get::<CastingCost>(self.0).unwrap()
     }
 
-    pub fn valid_targets(self, db: &mut Database) -> Vec<Vec<ActiveTarget>> {
+    pub fn valid_targets(
+        self,
+        db: &mut Database,
+        already_chosen: &HashSet<ActiveTarget>,
+    ) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
 
         if let Some(aura_targets) = self.targets_for_aura(db) {
@@ -1223,11 +1279,11 @@ impl CardId {
         let controller = self.controller(db);
         for effect in self.effects(db) {
             let effect = effect.into_effect(db, controller);
-            targets.push(self.targets_for_effect(db, controller, &effect));
+            targets.push(self.targets_for_effect(db, controller, &effect, already_chosen));
         }
 
         for ability in self.activated_abilities(db) {
-            targets.extend(self.targets_for_ability(db, ability));
+            targets.extend(self.targets_for_ability(db, ability, already_chosen));
         }
 
         targets
@@ -1267,6 +1323,7 @@ impl CardId {
         self,
         db: &mut Database,
         ability: AbilityId,
+        already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
         let ability = ability.ability(db);
@@ -1274,7 +1331,7 @@ impl CardId {
         if !ability.apply_to_self() {
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                targets.push(self.targets_for_effect(db, controller, &effect));
+                targets.push(self.targets_for_effect(db, controller, &effect, already_chosen));
             }
         } else {
             targets.push(vec![ActiveTarget::Battlefield { id: self }])
@@ -1315,6 +1372,7 @@ impl CardId {
         db: &mut Database,
         controller: Controller,
         effect: &Effect,
+        already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         let all_cards = in_play::all_cards(db)
             .into_iter()
@@ -1469,8 +1527,10 @@ impl CardId {
             Effect::Scry(_) => {}
             Effect::Discover(_) => {}
             Effect::ForEachManaOfSource(ForEachManaOfSource { effect, .. }) => {
-                targets.extend(self.targets_for_effect(db, controller, effect));
+                targets.extend(self.targets_for_effect(db, controller, effect, already_chosen));
             }
+            Effect::GainLife(_) => {}
+            Effect::Craft(craft) => targets.extend(craft.target.targets(self, db, already_chosen)),
         }
 
         targets
@@ -1591,7 +1651,7 @@ impl CardId {
         db.entity_mut(self.0).remove::<Tapped>();
     }
 
-    pub fn clone_card<Location: Component>(
+    pub fn clone_card<Location: Component + std::marker::Copy>(
         self,
         db: &mut Database,
         source: CardId,
@@ -1812,7 +1872,7 @@ fn targets_for_battlefield_modifier(
     }
 }
 
-fn push_target_from_location(db: &mut Database, card: CardId, targets: &mut Vec<ActiveTarget>) {
+pub fn push_target_from_location(db: &mut Database, card: CardId, targets: &mut Vec<ActiveTarget>) {
     if card.is_in_location::<OnBattlefield>(db) {
         targets.push(ActiveTarget::Battlefield { id: card });
     } else if card.is_in_location::<InGraveyard>(db) {

@@ -1,4 +1,9 @@
-use std::{cell::OnceCell, collections::HashMap, rc::Rc, sync::atomic::Ordering};
+use std::{
+    cell::OnceCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    sync::atomic::Ordering,
+};
 
 use bevy_ecs::{component::Component, entity::Entity};
 use derive_more::From;
@@ -397,7 +402,7 @@ impl AbilityId {
                     return false;
                 }
 
-                let targets = source.targets_for_ability(db, self);
+                let targets = source.targets_for_ability(db, self, &HashSet::default());
                 let needs_targets = self.needs_targets(db);
 
                 needs_targets
