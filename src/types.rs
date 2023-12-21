@@ -17,17 +17,17 @@ pub struct AddTypes(pub IndexSet<Type>);
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct RemoveTypes(pub IndexSet<Type>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, strum::AsRefStr)]
 pub enum Type {
-    BasicLand,
-    Land,
+    Legendary,
     Instant,
     Sorcery,
     Creature,
     Artifact,
     Enchantment,
     Battle,
-    Legendary,
+    Land,
+    BasicLand,
 }
 
 impl TryFrom<&protogen::types::Type> for Type {
@@ -79,7 +79,7 @@ pub struct RemoveSubtypes(pub IndexSet<Subtype>);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct RemoveAllSubtypes;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::AsRefStr)]
 pub enum Subtype {
     Angel,
     Aura,

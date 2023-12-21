@@ -121,9 +121,12 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
+    let card13 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
+    card13.move_to_hand(&mut db);
+
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);
-        while let ResolutionResult::TryAgain = results.resolve(&mut db, &mut all_players, None) {}
+        while results.resolve(&mut db, &mut all_players, None) != ResolutionResult::Complete {}
     }
 
     for card in cards.keys() {

@@ -80,11 +80,13 @@ impl<'db> StatefulWidget for Card<'db> {
             )
             .join(" - ");
 
-        block = block.title(
-            Title::from(format!(" {} ", typeline))
-                .position(Position::Bottom)
-                .alignment(Alignment::Left),
-        );
+        if typeline.len() < usize::from(area.width - 8) {
+            block = block.title(
+                Title::from(format!(" {} ", typeline))
+                    .position(Position::Bottom)
+                    .alignment(Alignment::Left),
+            );
+        }
 
         if let Some(pt) = self.pt {
             block = block.title(
@@ -202,10 +204,17 @@ impl<'db> StatefulWidget for Battlefield<'db> {
         block.render(area, buf);
         let area = inner_area;
 
-        let cards = self.owner.get_cards::<OnBattlefield>(self.db);
+        let mut cards = self.owner.get_cards::<OnBattlefield>(self.db);
         if cards.is_empty() {
             return;
         }
+        cards.sort_by_cached_key(|card| {
+            let mut types = card.types(self.db).into_iter().collect_vec();
+            types.sort();
+            let mut subtypes = card.subtypes(self.db).into_iter().collect_vec();
+            subtypes.sort();
+            (types, subtypes)
+        });
 
         let card_titles = cards
             .iter()
