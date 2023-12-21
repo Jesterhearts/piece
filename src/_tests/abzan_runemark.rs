@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, PendingResults, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -73,16 +73,14 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     assert!(creature.vigilance(&db));
 
     let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, []);
+    assert_eq!(results, PendingResults::default());
 
     let results = Battlefield::permanent_to_graveyard(&mut db, creature);
     assert_eq!(results, PendingResults::default());
 
-    let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, [ActionResult::PermanentToGraveyard(aura)]);
-
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::check_sba(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Battlefield::no_modifiers(&mut db));
     assert!(Battlefield::is_empty(&mut db));

@@ -13,6 +13,7 @@ use itertools::Itertools;
 use crate::{
     abilities::StaticAbility,
     battlefield::{ActionResult, Battlefield, PendingResults},
+    card::Color,
     controller::ControllerRestriction,
     deck::Deck,
     effects::{replacing, Effect},
@@ -20,6 +21,7 @@ use crate::{
     mana::{Mana, ManaCost},
     player::mana_pool::{ManaPool, ManaSource},
     stack::Stack,
+    targets::Restriction,
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
@@ -62,6 +64,68 @@ impl Owner {
 
     pub fn name(self, _db: &Database) -> String {
         "Player".to_string()
+    }
+
+    pub(crate) fn passes_restrictions(
+        self,
+        db: &mut Database,
+        controller: Controller,
+        restrictions: &[Restriction],
+    ) -> bool {
+        for restriction in restrictions {
+            match restriction {
+                Restriction::AttackingOrBlocking => {
+                    return false;
+                }
+                Restriction::NotSelf => {
+                    if self == controller {
+                        return false;
+                    }
+                }
+                Restriction::Self_ => {
+                    if self != controller {
+                        return false;
+                    }
+                }
+                Restriction::OfColor(_) => {
+                    return false;
+                }
+                Restriction::OfType { .. } => {
+                    return false;
+                }
+                Restriction::NotOfType { .. } => {
+                    return false;
+                }
+                Restriction::CastFromHand => {
+                    return false;
+                }
+                Restriction::Cmc(_) => {
+                    return false;
+                }
+                Restriction::Toughness(_) => {
+                    return false;
+                }
+                Restriction::ControllerControlsBlackOrGreen => {
+                    let colors = Battlefield::controlled_colors(db, controller);
+                    if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
+                        return false;
+                    }
+                }
+                Restriction::ControllerHandEmpty => {
+                    if controller.has_cards::<InHand>(db) {
+                        return false;
+                    }
+                }
+                Restriction::InGraveyard => {
+                    return false;
+                }
+                Restriction::OnBattlefield => {
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 }
 

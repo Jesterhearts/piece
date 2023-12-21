@@ -32,11 +32,11 @@ use crate::{
         TutorLibrary,
     },
     in_play::{
-        self, cards, cast_from, exile_reason, AbilityId, Active, AuraId, CastFrom, CounterId,
-        Database, EntireBattlefield, ExileReason, FaceDown, Global, InExile, InGraveyard, InHand,
-        InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying,
-        OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
-        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        self, cards, cast_from, exile_reason, AbilityId, Active, Attacking, AuraId, CastFrom,
+        CounterId, Database, EntireBattlefield, ExileReason, FaceDown, Global, InExile,
+        InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq,
+        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId,
+        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -946,6 +946,12 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::AttackingOrBlocking => {
+                    // TODO blocking
+                    if !self.attacking(db) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1329,7 +1335,9 @@ impl CardId {
         }
         for player in AllPlayers::all_players_in_db(db) {
             // TODO player hexproof, non-all-target-damage
-            targets.push(ActiveTarget::Player { id: player });
+            if player.passes_restrictions(db, self.controller(db), &self.restrictions(db)) {
+                targets.push(ActiveTarget::Player { id: player });
+            }
         }
     }
 
@@ -1846,6 +1854,35 @@ impl CardId {
 
     pub fn get_mana_from_sources(self, db: &Database) -> Option<SourcedMana> {
         db.get::<SourcedMana>(self.0).cloned()
+    }
+
+    pub(crate) fn attacking(self, db: &Database) -> bool {
+        db.get::<Attacking>(self.0).is_some()
+    }
+
+    pub(crate) fn set_attacking(self, db: &mut Database, target: Owner) {
+        db.entity_mut(self.0).insert(Attacking(target));
+    }
+
+    pub(crate) fn all_attackers(db: &mut Database) -> Vec<(CardId, Owner)> {
+        db.query::<(Entity, &Attacking)>()
+            .iter(db)
+            .map(|(e, attacking)| (Self(e), attacking.0))
+            .collect_vec()
+    }
+
+    pub(crate) fn clear_all_attacking(db: &mut Database) {
+        for card in db
+            .query_filtered::<Entity, With<Attacking>>()
+            .iter(db)
+            .collect_vec()
+        {
+            db.entity_mut(card).remove::<Attacking>();
+        }
+    }
+
+    pub(crate) fn can_attack(self, db: &Database) -> bool {
+        self.types_intersect(db, &IndexSet::from([Type::Creature]))
     }
 }
 

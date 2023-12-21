@@ -102,6 +102,7 @@ pub struct Restrictions(pub Vec<Restriction>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Restriction {
+    AttackingOrBlocking,
     NotSelf,
     Self_,
     OfColor(HashSet<Color>),
@@ -125,6 +126,7 @@ pub enum Restriction {
 impl Restriction {
     pub fn text(&self) -> String {
         match self {
+            Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),
             Restriction::NotSelf => "other permanent".to_string(),
             Restriction::Self_ => "self".to_string(),
             Restriction::OfType { types, subtypes } => {
@@ -189,6 +191,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
 
     fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
+            protogen::targets::restriction::Restriction::AttackingOrBlocking(_) => {
+                Ok(Self::AttackingOrBlocking)
+            }
             protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
             protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {

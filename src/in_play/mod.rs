@@ -24,7 +24,7 @@ pub use modifierid::{ModifierId, ModifierSeq, Modifiers};
 pub use replacementid::ReplacementEffectId;
 pub use triggerid::TriggerId;
 
-use crate::newtype_enum::newtype_enum;
+use crate::{newtype_enum::newtype_enum, player::Owner};
 
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
@@ -44,6 +44,9 @@ impl UniqueId {
         Self(UNIQUE_ID.fetch_add(1, Ordering::Relaxed))
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct Attacking(pub Owner);
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]

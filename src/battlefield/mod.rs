@@ -177,6 +177,10 @@ pub enum ActionResult {
         transforming: CardId,
         targets: Vec<ActiveTarget>,
     },
+    DeclareAttackers {
+        attackers: Vec<CardId>,
+        targets: Vec<Owner>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -404,18 +408,24 @@ impl Battlefield {
         }
     }
 
-    pub fn check_sba(db: &mut Database) -> Vec<ActionResult> {
-        let mut result = vec![];
+    pub fn check_sba(db: &mut Database) -> PendingResults {
+        let mut result = PendingResults::default();
         for card_id in cards::<OnBattlefield>(db) {
             let toughness = card_id.toughness(db);
+            debug!("Checking damage for {}", card_id.name(db));
+            debug!(
+                "toughness {:?}, damage {:?}",
+                toughness,
+                card_id.marked_damage(db)
+            );
 
             if toughness.is_some() && (toughness.unwrap() - card_id.marked_damage(db)) <= 0 {
-                result.push(ActionResult::PermanentToGraveyard(card_id));
+                result.push_settled(ActionResult::PermanentToGraveyard(card_id));
             }
 
             let aura = card_id.aura(db);
             if aura.is_some() && !aura.unwrap().is_attached(db) {
-                result.push(ActionResult::PermanentToGraveyard(card_id));
+                result.push_settled(ActionResult::PermanentToGraveyard(card_id));
             }
         }
 
@@ -1011,6 +1021,17 @@ impl Battlefield {
                 );
                 complete_add_from_exile(db, transforming.faceup_face(db), &mut results);
                 transforming.move_to_limbo(db);
+                results
+            }
+            ActionResult::DeclareAttackers { attackers, targets } => {
+                let mut results = PendingResults::default();
+                for (attacker, target) in attackers.iter().zip(targets.iter()) {
+                    attacker.set_attacking(db, *target);
+                    if !attacker.vigilance(db) {
+                        results.extend(attacker.tap(db));
+                    }
+                }
+                // TODO declare blockers
                 results
             }
         }

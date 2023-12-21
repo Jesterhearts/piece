@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, PendingResults, ResolutionResult},
+    battlefield::{ActionResult, Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -49,10 +49,9 @@ fn damages_target() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
-    let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::check_sba(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(Battlefield::creatures(&mut db), []);
 
     Ok(())
@@ -103,10 +102,9 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 5);
 
-    let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::check_sba(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(Battlefield::creatures(&mut db), []);
 
     Ok(())
@@ -159,10 +157,9 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
-    let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, [ActionResult::PermanentToGraveyard(bear)]);
-    let results = Battlefield::apply_action_results(&mut db, &mut all_players, &results);
-    assert_eq!(results, PendingResults::default());
+    let mut results = Battlefield::check_sba(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(Battlefield::creatures(&mut db), []);
 
     Ok(())

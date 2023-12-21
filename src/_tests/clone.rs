@@ -1,9 +1,9 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
-    in_play::Database,
+    in_play::{self, Database, InGraveyard},
     load_cards,
     player::AllPlayers,
 };
@@ -49,8 +49,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, [ActionResult::PermanentToGraveyard(clone)]);
+    let mut results = Battlefield::check_sba(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(in_play::cards::<InGraveyard>(&mut db), [clone]);
 
     Ok(())
 }

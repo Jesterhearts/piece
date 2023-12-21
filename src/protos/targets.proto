@@ -35,6 +35,7 @@ message SpellTarget {
 }
 
 message Restriction {
+  message AttackingOrBlocking {}
   message CastFromHand {}
   message Cmc {
     Comparison comparison = 1;
@@ -61,17 +62,18 @@ message Restriction {
   message InGraveyard {}
 
   oneof restriction {
-    CastFromHand cast_from_hand = 1;
-    Cmc cmc = 2;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 3;
-    ControllerHandEmpty controller_hand_empty = 4;
-    InGraveyard in_graveyard = 5;
-    NotOfType not_of_type = 6;
-    NotSelf not_self = 7;
-    OfColor of_color = 8;
-    OfType of_type = 9;
-    OnBattlefield on_battlefield = 10;
-    Self self = 11;
-    Toughness toughness = 12;
+    AttackingOrBlocking attacking_or_blocking = 1;
+    CastFromHand cast_from_hand = 2;
+    Cmc cmc = 3;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 4;
+    ControllerHandEmpty controller_hand_empty = 5;
+    InGraveyard in_graveyard = 6;
+    NotOfType not_of_type = 7;
+    NotSelf not_self = 8;
+    OfColor of_color = 9;
+    OfType of_type = 10;
+    OnBattlefield on_battlefield = 11;
+    Self self = 12;
+    Toughness toughness = 13;
   }
 }

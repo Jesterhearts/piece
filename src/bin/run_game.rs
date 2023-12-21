@@ -124,6 +124,9 @@ fn main() -> anyhow::Result<()> {
     let card13 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
     card13.move_to_hand(&mut db);
 
+    let card14 = CardId::upload(&mut db, &cards, player1, "Cosmium Blast");
+    card14.move_to_hand(&mut db);
+
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);
         while results.resolve(&mut db, &mut all_players, None) != ResolutionResult::Complete {}
@@ -1129,7 +1132,7 @@ fn main() -> anyhow::Result<()> {
                                         break;
                                     }
                                 }
-                                Battlefield::check_sba(&mut db);
+
                                 maybe_organize_stack(&mut db, pending, &mut state);
                             }
                             1 => {
@@ -1146,7 +1149,6 @@ fn main() -> anyhow::Result<()> {
                                     }
                                 }
 
-                                Battlefield::check_sba(&mut db);
                                 maybe_organize_stack(&mut db, pending, &mut state);
                             }
                             3 => {
@@ -1170,7 +1172,6 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
-                            Battlefield::check_sba(&mut db);
                             maybe_organize_stack(&mut db, pending, &mut state);
                         }
                     }
@@ -1227,35 +1228,52 @@ fn main() -> anyhow::Result<()> {
                     loop {
                         match to_resolve.resolve(&mut db, &mut all_players, real_choice) {
                             battlefield::ResolutionResult::Complete => {
-                                let entries = Stack::entries_unsettled(&mut db)
-                                    .into_iter()
-                                    .map(|(_, entry)| entry)
-                                    .collect_vec();
-                                if !*organizing_stack && entries.len() > 1 {
-                                    to_resolve.set_organize_stack(entries);
-                                    *organizing_stack = true;
-                                } else {
-                                    state = previous_state.pop().unwrap_or(UiState::Battlefield {
-                                        phase_options_selection_state: HorizontalListState::default(
-                                        ),
-                                        phase_options_list_page: 0,
-                                        selected_state: CardSelectionState::default(),
-                                        action_selection_state: HorizontalListState::default(),
-                                        action_list_page: 0,
-                                        hand_selection_state: HorizontalListState::default(),
-                                        hand_list_page: 0,
-                                        stack_view_state: ListState::default(),
-                                        stack_list_offset: 0,
-                                        player1_mana_list_offset: 0,
-                                        player2_mana_list_offset: 0,
-                                        player1_graveyard_selection_state: ListState::default(),
-                                        player1_graveyard_list_offset: 0,
-                                        player1_exile_selection_state: ListState::default(),
-                                        player1_exile_list_offset: 0,
-                                        player2_graveyard_list_offset: 0,
-                                        player2_exile_list_offset: 0,
-                                    });
+                                let mut pending = Battlefield::check_sba(&mut db);
+                                while pending.only_immediate_results(&db, &all_players) {
+                                    let result = pending.resolve(&mut db, &mut all_players, None);
+                                    if result == ResolutionResult::Complete {
+                                        break;
+                                    }
                                 }
+
+                                if pending.is_empty() {
+                                    let entries = Stack::entries_unsettled(&mut db)
+                                        .into_iter()
+                                        .map(|(_, entry)| entry)
+                                        .collect_vec();
+                                    if !*organizing_stack && entries.len() > 1 {
+                                        to_resolve.set_organize_stack(entries);
+                                        *organizing_stack = true;
+                                    } else {
+                                        state =
+                                            previous_state.pop().unwrap_or(UiState::Battlefield {
+                                                phase_options_selection_state:
+                                                    HorizontalListState::default(),
+                                                phase_options_list_page: 0,
+                                                selected_state: CardSelectionState::default(),
+                                                action_selection_state:
+                                                    HorizontalListState::default(),
+                                                action_list_page: 0,
+                                                hand_selection_state: HorizontalListState::default(
+                                                ),
+                                                hand_list_page: 0,
+                                                stack_view_state: ListState::default(),
+                                                stack_list_offset: 0,
+                                                player1_mana_list_offset: 0,
+                                                player2_mana_list_offset: 0,
+                                                player1_graveyard_selection_state:
+                                                    ListState::default(),
+                                                player1_graveyard_list_offset: 0,
+                                                player1_exile_selection_state: ListState::default(),
+                                                player1_exile_list_offset: 0,
+                                                player2_graveyard_list_offset: 0,
+                                                player2_exile_list_offset: 0,
+                                            });
+                                    }
+                                } else {
+                                    *to_resolve = pending;
+                                }
+
                                 break;
                             }
                             battlefield::ResolutionResult::TryAgain => {
@@ -1297,7 +1315,16 @@ fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut Ui
         }
     }
 
-    Battlefield::check_sba(db);
+    if pending.is_empty() {
+        pending = Battlefield::check_sba(db);
+        while pending.only_immediate_results(db, all_players) {
+            let result = pending.resolve(db, all_players, None);
+            if result == ResolutionResult::Complete {
+                break;
+            }
+        }
+    }
+
     maybe_organize_stack(db, pending, state);
 }
 

@@ -302,7 +302,7 @@ impl SpendMana {
         match self.first_unpaid_x_always_unpaid().unwrap() {
             ManaCost::Generic(_) => "generic mana".to_string(),
             ManaCost::X => "X".to_string(),
-            _ => String::default(),
+            _ => "paying mana".to_string(),
         }
     }
 
@@ -561,27 +561,29 @@ impl PayCost {
                 }
 
                 let (mana, sources) = spend.paying();
-                let (_, mana, source) = all_players[player]
+                if let Some((_, mana, source)) = all_players[player]
                     .pool_post_pay(&mana, &sources)
                     .unwrap()
                     .available_mana()
                     .filter(|(count, _, _)| *count > 0)
                     .nth(choice.unwrap())
-                    .unwrap();
+                {
+                    let cost = spend.first_unpaid_x_always_unpaid().unwrap();
+                    *spend
+                        .paid
+                        .entry(cost)
+                        .or_default()
+                        .entry(mana)
+                        .or_default()
+                        .entry(source)
+                        .or_default() += 1;
 
-                let cost = spend.first_unpaid_x_always_unpaid().unwrap();
-                *spend
-                    .paid
-                    .entry(cost)
-                    .or_default()
-                    .entry(mana)
-                    .or_default()
-                    .entry(source)
-                    .or_default() += 1;
-
-                let (mana, sources) = spend.paying();
-                if all_players[player].can_spend_mana(&mana, &sources) {
-                    !matches!(spend.first_unpaid_x_always_unpaid(), Some(ManaCost::X))
+                    let (mana, sources) = spend.paying();
+                    if all_players[player].can_spend_mana(&mana, &sources) {
+                        !matches!(spend.first_unpaid_x_always_unpaid(), Some(ManaCost::X))
+                    } else {
+                        false
+                    }
                 } else {
                     false
                 }
@@ -686,11 +688,20 @@ pub struct OrganizingStack {
     choices: IndexSet<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeclaringAttackers {
+    candidates: Vec<CardId>,
+    choices: IndexSet<usize>,
+    targets: Vec<Owner>,
+    valid_targets: Vec<Owner>,
+}
+
 #[must_use]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PendingResults {
     source: Option<Source>,
 
+    declare_attackers: Option<DeclaringAttackers>,
     choose_modes: VecDeque<()>,
     choose_targets: VecDeque<ChooseTargets>,
     choosing_scry: ChoosingScry,
@@ -801,8 +812,32 @@ impl PendingResults {
         });
     }
 
+    pub fn set_declare_attackers(
+        &mut self,
+        db: &mut Database,
+        all_players: &AllPlayers,
+        attacker: Owner,
+    ) {
+        let mut players = all_players.all_players();
+        players.retain(|player| *player != attacker);
+        debug!("Attacking {:?}", players);
+        // TODO goad, etc.
+        self.declare_attackers = Some(DeclaringAttackers {
+            candidates: attacker
+                .get_cards::<OnBattlefield>(db)
+                .into_iter()
+                .filter(|card| card.can_attack(db))
+                .collect_vec(),
+            choices: IndexSet::default(),
+            targets: vec![],
+            valid_targets: players,
+        });
+    }
+
     pub fn choices_optional(&self, db: &Database, all_players: &AllPlayers) -> bool {
-        if self.choose_modes.front().is_some() {
+        if self.declare_attackers.is_some() {
+            true
+        } else if self.choose_modes.front().is_some() {
             false
         } else if let Some(choosing) = self.choose_targets.front() {
             choosing.valid_targets.len() <= 1
@@ -818,7 +853,24 @@ impl PendingResults {
     }
 
     pub fn options(&mut self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
-        if self.choose_modes.front().is_some() {
+        if let Some(declaring) = self.declare_attackers.as_ref() {
+            if declaring.choices.len() == declaring.targets.len() {
+                declaring
+                    .candidates
+                    .iter()
+                    .map(|card| card.name(db))
+                    .enumerate()
+                    .filter(|(idx, _)| !declaring.choices.contains(idx))
+                    .collect_vec()
+            } else {
+                declaring
+                    .valid_targets
+                    .iter()
+                    .map(|player| all_players[*player].name.clone())
+                    .enumerate()
+                    .collect_vec()
+            }
+        } else if self.choose_modes.front().is_some() {
             self.source.unwrap().mode_options(db)
         } else if let Some(choosing) = self.choose_targets.front() {
             choosing.options(db, all_players)
@@ -851,7 +903,9 @@ impl PendingResults {
     }
 
     pub fn description(&self, _db: &Database) -> String {
-        if self.choose_modes.front().is_some() {
+        if self.declare_attackers.is_some() {
+            "attackers".to_string()
+        } else if self.choose_modes.front().is_some() {
             "mode".to_string()
         } else if self.choose_targets.front().is_some() {
             "targets".to_string()
@@ -881,7 +935,8 @@ impl PendingResults {
         assert!(!(self.add_to_stack && self.apply_in_stages));
         debug!("Choosing {:?} for {:#?}", choice, self);
 
-        if self.choose_modes.is_empty()
+        if self.declare_attackers.is_none()
+            && self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
             && self.choosing_scry.is_empty()
@@ -964,7 +1019,30 @@ impl PendingResults {
             }
         }
 
-        if let Some(choosing) = self.choose_modes.pop_front() {
+        if let Some(declaring) = self.declare_attackers.as_mut() {
+            if let Some(choice) = choice {
+                if declaring.choices.len() == declaring.targets.len() {
+                    declaring.choices.insert(choice);
+                } else {
+                    declaring.targets.push(declaring.valid_targets[choice]);
+                }
+                ResolutionResult::PendingChoice
+            } else if declaring.choices.len() == declaring.targets.len() {
+                self.settled_effects
+                    .push_front(ActionResult::DeclareAttackers {
+                        attackers: declaring
+                            .choices
+                            .iter()
+                            .map(|choice| declaring.candidates[*choice])
+                            .collect_vec(),
+                        targets: declaring.targets.clone(),
+                    });
+                self.declare_attackers = None;
+                ResolutionResult::TryAgain
+            } else {
+                ResolutionResult::PendingChoice
+            }
+        } else if let Some(choosing) = self.choose_modes.pop_front() {
             if let Some(choice) = choice {
                 self.chosen_modes.push(choice);
             } else {
@@ -1134,6 +1212,7 @@ impl PendingResults {
         self.choosing_to_cast.extend(results.choosing_to_cast);
         self.settled_effects.extend(results.settled_effects);
 
+        self.declare_attackers = results.declare_attackers;
         self.organizing_stack = results.organizing_stack;
         self.cast_from = results.cast_from;
         self.apply_in_stages = results.apply_in_stages;
@@ -1143,7 +1222,8 @@ impl PendingResults {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.choose_modes.is_empty()
+        self.declare_attackers.is_none()
+            && self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
             && self.choosing_to_cast.is_empty()
@@ -1155,10 +1235,10 @@ impl PendingResults {
     pub fn only_immediate_results(&self, db: &Database, all_players: &AllPlayers) -> bool {
         (self.choosing_to_cast.is_empty()
             && self.choose_modes.is_empty()
-            && self.choosing_scry.cards.is_empty())
-            && ((self.choose_targets.is_empty()
-                && self.pay_costs.is_empty()
-                && self.organizing_stack.is_none())
+            && self.choosing_scry.cards.is_empty()
+            && self.declare_attackers.is_none()
+            && self.organizing_stack.is_none())
+            && ((self.choose_targets.is_empty() && self.pay_costs.is_empty())
                 || (self
                     .choose_targets
                     .iter()

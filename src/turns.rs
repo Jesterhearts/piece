@@ -57,6 +57,7 @@ impl Turn {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::Upkeep;
+                PendingResults::default()
             }
             Phase::Upkeep => {
                 for player in all_players.all_players() {
@@ -66,54 +67,75 @@ impl Turn {
                 if self.turn_count != 0 {
                     return all_players[self.active_player()].draw(db, 1);
                 }
+                PendingResults::default()
             }
             Phase::Draw => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::PreCombatMainPhase;
+                PendingResults::default()
             }
             Phase::PreCombatMainPhase => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::BeginCombat;
+                PendingResults::default()
             }
             Phase::BeginCombat => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::DeclareAttackers;
+                let mut results = PendingResults::default();
+                results.set_declare_attackers(db, all_players, self.active_player());
+                results
             }
             Phase::DeclareAttackers => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::DeclareBlockers;
+                PendingResults::default()
             }
             Phase::DeclareBlockers => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::FirstStrike;
+                PendingResults::default()
             }
             Phase::FirstStrike => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::Damage;
+                let cards = CardId::all_attackers(db);
+                // TODO blocks
+                for (card, target) in cards {
+                    if let Some(power) = card.power(db) {
+                        if power > 0 {
+                            all_players[target].life_total -= power;
+                        }
+                    }
+                }
+                PendingResults::default()
             }
             Phase::Damage => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
+                CardId::clear_all_attacking(db);
                 self.phase = Phase::PostCombatMainPhase;
+                PendingResults::default()
             }
             Phase::PostCombatMainPhase => {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::EndStep;
+                PendingResults::default()
             }
             Phase::EndStep => {
                 for player in all_players.all_players() {
@@ -122,9 +144,7 @@ impl Turn {
                 self.phase = Phase::Cleanup;
 
                 Battlefield::end_turn(db);
-                let results = Battlefield::check_sba(db);
-
-                return Battlefield::apply_action_results(db, all_players, &results);
+                Battlefield::check_sba(db)
             }
             Phase::Cleanup => {
                 for player in all_players.all_players() {
@@ -134,10 +154,9 @@ impl Turn {
                 self.active_player = (self.active_player + 1) % self.turn_order.len();
                 Battlefield::untap(db, self.active_player());
                 self.turn_count += 1;
+                PendingResults::default()
             }
         }
-
-        PendingResults::default()
     }
 
     pub fn can_cast(&self, db: &mut Database, card: CardId) -> bool {
