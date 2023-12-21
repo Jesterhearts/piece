@@ -9,17 +9,18 @@ use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    abilities::{Ability, GainMana, StaticAbility, TriggeredAbility},
+    abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
     battlefield::pending_results::TapPermanent,
     card::Color,
     controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
     effects::{
-        effect_duration::UntilEndOfTurn, replacing, AnyEffect, BattlefieldModifier, DynamicCounter,
-        Effect, EffectDuration, ForEachManaOfSource, GainCounter, RevealEachTopOfLibrary, Token,
+        effect_duration::UntilEndOfTurn, replacing, AnyEffect, BattlefieldModifier, DestroyEach,
+        DynamicCounter, Effect, EffectDuration, ForEachManaOfSource, GainCounter,
+        RevealEachTopOfLibrary, Token,
     },
     in_play::{
-        all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
+        self, all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
         ExileReason, InGraveyard, InLibrary, InStack, ModifierId, OnBattlefield,
         ReplacementEffectId, TriggerId,
     },
@@ -91,6 +92,7 @@ pub enum ActionResult {
         source: CardId,
         ability: AbilityId,
         targets: Vec<Vec<ActiveTarget>>,
+        x_is: Option<usize>,
     },
     AddTriggerToStack {
         trigger: TriggerId,
@@ -181,6 +183,7 @@ pub enum ActionResult {
         attackers: Vec<CardId>,
         targets: Vec<Owner>,
     },
+    DestroyEach(CardId, Vec<Restriction>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -558,8 +561,12 @@ impl Battlefield {
                 source,
                 ability,
                 targets,
+                x_is,
             } => {
                 ability.move_to_stack(db, *source, targets.clone());
+                if let Some(x) = x_is {
+                    source.set_x(db, *x);
+                }
                 PendingResults::default()
             }
             ActionResult::AddTriggerToStack {
@@ -1034,6 +1041,26 @@ impl Battlefield {
                 // TODO declare blockers
                 results
             }
+            ActionResult::DestroyEach(source, restrictions) => {
+                let cards = in_play::cards::<OnBattlefield>(db)
+                    .into_iter()
+                    .filter(|card| {
+                        card.passes_restrictions(
+                            db,
+                            *source,
+                            ControllerRestriction::Any,
+                            restrictions,
+                        )
+                    })
+                    .collect_vec();
+
+                let mut results = PendingResults::default();
+                for card in cards {
+                    results.extend(Battlefield::permanent_to_graveyard(db, card));
+                }
+
+                results
+            }
         }
     }
 
@@ -1210,6 +1237,9 @@ impl Battlefield {
                     count,
                 });
             }
+            Effect::DestroyEach(DestroyEach { restrictions }) => {
+                results.push_settled(ActionResult::DestroyEach(source, restrictions));
+            }
             Effect::CopyOfAnyCreatureNonTargeting
             | Effect::TutorLibrary(_)
             | Effect::CounterSpell { .. }
@@ -1302,7 +1332,8 @@ impl Battlefield {
             | Effect::ForEachManaOfSource(_)
             | Effect::Discover(_)
             | Effect::GainLife(_)
-            | Effect::Craft(_) => {
+            | Effect::Craft(_)
+            | Effect::DestroyEach(_) => {
                 unreachable!()
             }
         }
@@ -1462,6 +1493,7 @@ fn move_card_to_battlefield(
                 results.push_settled(ActionResult::AddModifier { modifier })
             }
             StaticAbility::ExtraLandsPerTurn(_) => {}
+            StaticAbility::ForceEtbTapped(_) => {}
         }
     }
     for ability in source_card_id.etb_abilities(db) {
@@ -1471,7 +1503,35 @@ fn move_card_to_battlefield(
             source_card_id,
         ));
     }
-    if source_card_id.etb_tapped(db) || enters_tapped {
+
+    let must_enter_tapped =
+        Battlefield::static_abilities(db)
+            .iter()
+            .any(|(ability, controller)| match ability {
+                StaticAbility::ForceEtbTapped(ForceEtbTapped {
+                    controller: controller_restriction,
+                    types,
+                }) => {
+                    match controller_restriction {
+                        ControllerRestriction::Any => {}
+                        ControllerRestriction::You => {
+                            if *controller != source_card_id.controller(db) {
+                                return false;
+                            }
+                        }
+                        ControllerRestriction::Opponent => {
+                            if *controller == source_card_id.controller(db) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    source_card_id.types_intersect(db, types)
+                }
+                _ => false,
+            });
+
+    if must_enter_tapped || source_card_id.etb_tapped(db) || enters_tapped {
         results.extend(source_card_id.tap(db));
     }
     source_card_id.move_to_battlefield(db);

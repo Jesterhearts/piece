@@ -244,6 +244,7 @@ impl ManaPool {
                 }
             }
             ManaCost::X => {}
+            ManaCost::TwoX => {}
         }
 
         true

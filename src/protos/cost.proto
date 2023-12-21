@@ -24,6 +24,7 @@ message ManaCost {
     mana.Colorless colorless = 6;
     mana.Generic generic = 7;
     mana.X x = 8;
+    mana.TwoX twox = 9;
   }
 }
 

@@ -1,0 +1,51 @@
+name: "Dauntless Dismantler"
+oracle_text: "Artifacts your opponents control enter the battlefield tapped."
+static_abilities {
+  force_etb_tapped {
+    controller {
+      opponent {
+      }
+    }
+    types {
+      artifact {
+      }
+    }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      twox {
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    additional_costs {
+      sacrifice_this {
+      }
+    }
+  }
+  effects {
+    destroy_each {
+      restrictions {
+        cmc {
+          dynamic {
+            x {
+            }
+          }
+        }
+      }
+      restrictions {
+        of_type {
+          types {
+            artifact {
+            }
+          }
+        }
+      }
+    }
+  }
+  oracle_text: "Destroy each artifact with mana value X"
+}

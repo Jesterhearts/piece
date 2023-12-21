@@ -22,6 +22,7 @@ pub enum ManaCost {
     Colorless,
     Generic(usize),
     X,
+    TwoX,
 }
 
 impl Mana {
@@ -59,6 +60,7 @@ impl ManaCost {
             ManaCost::Colorless => result.push('⟡'),
             ManaCost::Generic(count) => result.push_str(&format!("{}", count)),
             ManaCost::X => result.push('X'),
+            ManaCost::TwoX => result.push_str("XX"),
         }
     }
 
@@ -72,6 +74,7 @@ impl ManaCost {
             ManaCost::Colorless => Color::Colorless,
             ManaCost::Generic(_) => Color::Colorless,
             ManaCost::X => Color::Colorless,
+            ManaCost::TwoX => Color::Colorless,
         }
     }
 }
@@ -102,6 +105,7 @@ impl TryFrom<&protogen::cost::mana_cost::Cost> for ManaCost {
                 Ok(Self::Generic(usize::try_from(generic.count)?))
             }
             protogen::cost::mana_cost::Cost::X(_) => Ok(Self::X),
+            protogen::cost::mana_cost::Cost::Twox(_) => Ok(Self::TwoX),
         }
     }
 }

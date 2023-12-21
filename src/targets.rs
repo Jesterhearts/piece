@@ -1,4 +1,7 @@
-use std::{collections::HashSet, fmt::Display};
+use std::{
+    collections::HashSet,
+    fmt::{Display, Write},
+};
 
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
@@ -101,6 +104,81 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
 pub struct Restrictions(pub Vec<Restriction>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Dynamic {
+    X,
+}
+
+impl TryFrom<&protogen::targets::Dynamic> for Dynamic {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::Dynamic) -> Result<Self, Self::Error> {
+        value
+            .dynamic
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected dynamic to have a value set"))
+            .map(Self::from)
+    }
+}
+
+impl From<&protogen::targets::dynamic::Dynamic> for Dynamic {
+    fn from(value: &protogen::targets::dynamic::Dynamic) -> Self {
+        match value {
+            protogen::targets::dynamic::Dynamic::X(_) => Self::X,
+        }
+    }
+}
+
+impl std::fmt::Display for Dynamic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Dynamic::X => f.write_char('X'),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Cmc {
+    Comparison(Comparison),
+    Dynamic(Dynamic),
+}
+
+impl std::fmt::Display for Cmc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Cmc::Comparison(comparison) => comparison.fmt(f),
+            Cmc::Dynamic(dy) => dy.fmt(f),
+        }
+    }
+}
+
+impl TryFrom<&protogen::targets::restriction::Cmc> for Cmc {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::restriction::Cmc) -> Result<Self, Self::Error> {
+        value
+            .cmc
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected cmc to have a cmc set"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::targets::restriction::cmc::Cmc> for Cmc {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::restriction::cmc::Cmc) -> Result<Self, Self::Error> {
+        match value {
+            protogen::targets::restriction::cmc::Cmc::Dynamic(dy) => {
+                Ok(Self::Dynamic(dy.try_into()?))
+            }
+            protogen::targets::restriction::cmc::Cmc::Comparison(c) => {
+                Ok(Self::Comparison(c.try_into()?))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Restriction {
     AttackingOrBlocking,
     NotSelf,
@@ -115,7 +193,7 @@ pub enum Restriction {
         subtypes: IndexSet<Subtype>,
     },
     CastFromHand,
-    Cmc(Comparison),
+    Cmc(Cmc),
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
@@ -224,9 +302,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Color::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
-            protogen::targets::restriction::Restriction::Cmc(cmc) => {
-                Ok(Self::Cmc(cmc.comparison.get_or_default().try_into()?))
-            }
+            protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
             protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
             protogen::targets::restriction::Restriction::NotOfType(not) => Ok(Self::NotOfType {
                 types: not

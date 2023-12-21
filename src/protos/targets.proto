@@ -28,6 +28,14 @@ message Comparison {
   }
 }
 
+message Dynamic {
+  message X {}
+
+  oneof dynamic {
+    X x = 1;
+  }
+}
+
 message SpellTarget {
   controller.Controller controller = 1;
   repeated types.Type types = 2;
@@ -38,7 +46,10 @@ message Restriction {
   message AttackingOrBlocking {}
   message CastFromHand {}
   message Cmc {
-    Comparison comparison = 1;
+    oneof cmc {
+      Dynamic dynamic = 1;
+      Comparison comparison = 2;
+    }
   }
   message ControllerControlsBlackOrGreen {}
   message ControllerHandEmpty {}

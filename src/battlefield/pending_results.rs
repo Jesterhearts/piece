@@ -7,7 +7,7 @@ use crate::{
     abilities::GainMana,
     battlefield::{ActionResult, Battlefield},
     controller::ControllerRestriction,
-    effects::{DealDamage, Destination, Effect, Mill, TutorLibrary},
+    effects::{DealDamage, Destination, DestroyEach, Effect, Mill, TutorLibrary},
     in_play::{AbilityId, AuraId, CardId, CastFrom, Database, ModifierId, OnBattlefield},
     mana::{Mana, ManaCost},
     player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
@@ -242,6 +242,7 @@ impl SpendMana {
         }
         let mut paid = IndexMap::default();
         paid.entry(ManaCost::X).or_default();
+        paid.entry(ManaCost::TwoX).or_default();
 
         Self { paying, paid }
     }
@@ -254,6 +255,7 @@ impl SpendMana {
                 let required = match paying {
                     ManaCost::Generic(count) => *count,
                     ManaCost::X => usize::MAX,
+                    ManaCost::TwoX => usize::MAX,
                     _ => **required,
                 };
 
@@ -274,7 +276,7 @@ impl SpendMana {
 
     pub fn first_unpaid(&self) -> Option<ManaCost> {
         self.first_unpaid_x_always_unpaid()
-            .filter(|unpaid| !matches!(unpaid, ManaCost::X))
+            .filter(|unpaid| !matches!(unpaid, ManaCost::X | ManaCost::TwoX))
     }
 
     pub fn paid(&self) -> bool {
@@ -307,11 +309,25 @@ impl SpendMana {
     }
 
     fn x_is(&self) -> Option<usize> {
-        self.paid.get(&ManaCost::X).map(|paid| {
-            paid.values()
-                .flat_map(|sourced| sourced.values())
-                .sum::<usize>()
-        })
+        self.paid
+            .get(&ManaCost::X)
+            .map(|paid| {
+                paid.values()
+                    .flat_map(|sourced| sourced.values())
+                    .sum::<usize>()
+            })
+            .filter(|paid| *paid != 0)
+            .or_else(|| {
+                self.paid
+                    .get(&ManaCost::TwoX)
+                    .map(|paid| {
+                        paid.values()
+                            .flat_map(|sourced| sourced.values())
+                            .sum::<usize>()
+                            / 2
+                    })
+                    .filter(|paid| *paid != 0)
+            })
     }
 }
 
@@ -328,12 +344,15 @@ impl PayCost {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
             PayCost::SpendMana(spend) => {
+                debug!("Checking autopay: {:?}", spend,);
                 if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
+                    debug!("first unpaid {:?}", first_unpaid,);
                     let (mana, source) = spend.paying();
-                    let pool_post_pay = all_players[player].pool_post_pay(&mana, &source).unwrap();
                     match first_unpaid {
-                        ManaCost::X | ManaCost::Generic(_) => return false,
+                        ManaCost::TwoX | ManaCost::X | ManaCost::Generic(_) => return false,
                         unpaid => {
+                            let pool_post_pay =
+                                all_players[player].pool_post_pay(&mana, &source).unwrap();
                             if !pool_post_pay.can_spend(unpaid, None) {
                                 return false;
                             }
@@ -357,6 +376,17 @@ impl PayCost {
                     match first_unpaid {
                         ManaCost::Generic(_) => true,
                         ManaCost::X => true,
+                        ManaCost::TwoX => {
+                            spend
+                                .paid
+                                .get(&ManaCost::TwoX)
+                                .iter()
+                                .flat_map(|i| i.values())
+                                .flat_map(|i| i.values())
+                                .sum::<usize>()
+                                % 2
+                                == 0
+                        }
                         unpaid => pool_post_pay.can_spend(unpaid, None),
                     }
                 } else {
@@ -406,7 +436,7 @@ impl PayCost {
                 let pool_post_paid = pool_post_paid.unwrap();
 
                 match spend.first_unpaid_x_always_unpaid() {
-                    Some(ManaCost::Generic(_) | ManaCost::X) => pool_post_paid
+                    Some(ManaCost::Generic(_) | ManaCost::X | ManaCost::TwoX) => pool_post_paid
                         .available_pool_display()
                         .into_iter()
                         .enumerate()
@@ -509,11 +539,29 @@ impl PayCost {
             }
             PayCost::SpendMana(spend) => {
                 if choice.is_none() {
+                    if spend
+                        .paid
+                        .entry(ManaCost::TwoX)
+                        .or_default()
+                        .values()
+                        .flat_map(|i| i.values())
+                        .sum::<usize>()
+                        % 2
+                        != 0
+                    {
+                        return false;
+                    }
+
+                    let paying_x = matches!(
+                        spend.first_unpaid_x_always_unpaid(),
+                        Some(ManaCost::X | ManaCost::TwoX)
+                    );
+
                     let (mana, source) = spend.paying();
                     let mut pool_post_pay =
                         all_players[player].pool_post_pay(&mana, &source).unwrap();
                     let Some(first_unpaid) = spend.first_unpaid() else {
-                        return self.paid();
+                        return paying_x;
                     };
 
                     if pool_post_pay.can_spend(first_unpaid, None) {
@@ -544,6 +592,7 @@ impl PayCost {
                                 );
                             }
                             ManaCost::X => unreachable!(),
+                            ManaCost::TwoX => unreachable!(),
                         };
                         let (_, source) = pool_post_pay.spend(mana, None);
                         *spend
@@ -554,7 +603,7 @@ impl PayCost {
                             .or_default()
                             .entry(source)
                             .or_default() += 1;
-                        return true;
+                        return paying_x;
                     } else {
                         return false;
                     }
@@ -580,7 +629,10 @@ impl PayCost {
 
                     let (mana, sources) = spend.paying();
                     if all_players[player].can_spend_mana(&mana, &sources) {
-                        !matches!(spend.first_unpaid_x_always_unpaid(), Some(ManaCost::X))
+                        !matches!(
+                            spend.first_unpaid_x_always_unpaid(),
+                            Some(ManaCost::X | ManaCost::TwoX)
+                        )
                     } else {
                         false
                     }
@@ -933,7 +985,7 @@ impl PendingResults {
         choice: Option<usize>,
     ) -> ResolutionResult {
         assert!(!(self.add_to_stack && self.apply_in_stages));
-        debug!("Choosing {:?} for {:#?}", choice, self);
+        debug!("Choosing {:?} for {:?}", choice, self);
 
         if self.declare_attackers.is_none()
             && self.choose_modes.is_empty()
@@ -960,6 +1012,7 @@ impl PendingResults {
                                 source,
                                 ability,
                                 targets: self.chosen_targets.clone(),
+                                x_is: self.x_is,
                             });
                     }
                 }
@@ -1124,6 +1177,7 @@ impl PendingResults {
             if pay.choose_pay(all_players, player.into(), &self.all_chosen_targets, choice) {
                 if pay.paid() {
                     self.x_is = pay.x_is();
+                    debug!("X is {:?}", self.x_is);
                     if let Some(target) = pay.target() {
                         self.all_chosen_targets.insert(target);
                     }
@@ -1409,6 +1463,12 @@ impl PendingResults {
                     target: self.source.unwrap().card(db).controller(db),
                     count,
                 });
+            }
+            Effect::DestroyEach(DestroyEach { restrictions }) => {
+                self.settled_effects.push_front(ActionResult::DestroyEach(
+                    self.source.unwrap().card(db),
+                    restrictions,
+                ));
             }
 
             Effect::Equip(_) => unreachable!(),

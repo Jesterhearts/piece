@@ -427,20 +427,38 @@ impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct DestroyEach {
+    pub restrictions: Vec<Restriction>,
+}
+
+impl TryFrom<&protogen::effects::DestroyEach> for DestroyEach {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::DestroyEach) -> Result<Self, Self::Error> {
+        Ok(Self {
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
-    ControllerDrawCards(usize),
     Cascade,
+    ControllerDrawCards(usize),
     ControllerLosesLife(usize),
     CopyOfAnyCreatureNonTargeting,
     CounterSpell { target: SpellTarget },
     Craft(Craft),
     CreateToken(Token),
     CreateTokenCopy { modifiers: Vec<ModifyBattlefield> },
-    ReturnSelfToHand,
-    RevealEachTopOfLibrary(RevealEachTopOfLibrary),
     DealDamage(DealDamage),
+    DestroyEach(DestroyEach),
     Discover(usize),
     Equip(Vec<ModifyBattlefield>),
     ExileTargetCreature,
@@ -448,16 +466,18 @@ pub enum Effect {
     ForEachManaOfSource(ForEachManaOfSource),
     GainCounter(GainCounter),
     GainLife(usize),
-    Scry(usize),
-    TargetGainsCounters(GainCounter),
     Mill(Mill),
     ModifyTarget(BattlefieldModifier),
     ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
     ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
+    ReturnSelfToHand,
+    RevealEachTopOfLibrary(RevealEachTopOfLibrary),
+    Scry(usize),
+    TargetGainsCounters(GainCounter),
     TargetToTopOfLibrary { restrictions: Vec<Restriction> },
     TutorLibrary(TutorLibrary),
-    UntapThis,
     UntapTarget,
+    UntapThis,
 }
 
 impl Effect {
@@ -515,6 +535,7 @@ impl Effect {
             }
             Effect::GainLife(_) => 0,
             Effect::Craft(craft) => craft.target.needs_targets(),
+            Effect::DestroyEach(_) => 0,
         }
     }
 
@@ -556,6 +577,7 @@ impl Effect {
             }
             Effect::GainLife(_) => 0,
             Effect::Craft(craft) => craft.target.needs_targets(),
+            Effect::DestroyEach(_) => 0,
         }
     }
 }
@@ -670,6 +692,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Ok(Self::GainLife(usize::try_from(gain.count)?))
             }
             protogen::effects::effect::Effect::Craft(craft) => Ok(Self::Craft(craft.try_into()?)),
+            protogen::effects::effect::Effect::DestroyEach(destroy) => {
+                Ok(Self::DestroyEach(destroy.try_into()?))
+            }
         }
     }
 }

@@ -20,6 +20,8 @@ message Generic {
 
 message X {}
 
+message TwoX {}
+
 message Mana {
   oneof mana {
     White white = 1;

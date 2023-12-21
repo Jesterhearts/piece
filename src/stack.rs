@@ -17,7 +17,8 @@ use crate::{
     card::keyword::SplitSecond,
     controller::ControllerRestriction,
     effects::{
-        BattlefieldModifier, Effect, EffectDuration, ForEachManaOfSource, Mill, TutorLibrary,
+        BattlefieldModifier, DestroyEach, Effect, EffectDuration, ForEachManaOfSource, Mill,
+        TutorLibrary,
     },
     in_play::{
         cast_from, AbilityId, CardId, CastFrom, Database, InStack, ModifierId, TriggerId,
@@ -739,6 +740,9 @@ impl Stack {
                     transforming: source,
                     targets,
                 }),
+                Effect::DestroyEach(DestroyEach { restrictions }) => {
+                    results.push_settled(ActionResult::DestroyEach(source, restrictions));
+                }
             }
         }
 
@@ -772,6 +776,7 @@ impl Stack {
             ability,
             source,
             targets: source.targets_for_ability(db, ability, &HashSet::default()),
+            x_is: None,
         });
 
         results

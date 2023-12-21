@@ -7,6 +7,7 @@ import "cost.proto";
 import "effects.proto";
 import "targets.proto";
 import "triggers.proto";
+import "types.proto";
 
 message Enchant {
   repeated effects.BattlefieldModifier modifiers = 1;
@@ -16,11 +17,16 @@ message StaticAbility {
   message GreenCannotBeCountered {
     controller.Controller controller = 1;
   }
+  message ForceEtbTapped {
+    controller.Controller controller = 1;
+    repeated types.Type types = 2;
+  }
 
   oneof ability {
-    GreenCannotBeCountered green_cannot_be_countered = 2;
-    effects.BattlefieldModifier battlefield_modifier = 3;
-    effects.ExtraLandsPerTurn extra_lands_per_turn = 4;
+    effects.BattlefieldModifier battlefield_modifier = 1;
+    effects.ExtraLandsPerTurn extra_lands_per_turn = 2;
+    ForceEtbTapped force_etb_tapped = 3;
+    GreenCannotBeCountered green_cannot_be_countered = 4;
   }
 }
 

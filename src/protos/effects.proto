@@ -10,27 +10,35 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
-message GainMana {
-  message GainMana {
-    repeated mana.Mana gains = 1;
-  }
-  message Specific {
-    repeated mana.Mana gains = 1;
-  }
-  message Choice {
-    repeated GainMana choices = 1;
-  }
-
-  oneof gain {
-    Specific specific = 1;
-    Choice choice = 2;
-  }
+message ActivatedAbility {
+  cost.AbilityCost cost = 1;
+  repeated Effect effects = 2;
+  bool apply_to_self = 3;
+  string oracle_text = 4;
+  bool sorcery_speed = 5;
 }
 
-message GainManaAbility {
-  cost.AbilityCost cost = 1;
-  GainMana gain_mana = 2;
-  cost.ManaSource mana_source = 3;
+message BattlefieldModifier {
+  ModifyBattlefield modifier = 1;
+  controller.Controller controller = 2;
+  Duration duration = 3;
+  repeated targets.Restriction restrictions = 4;
+}
+
+message Cascade {}
+
+message ControllerDrawCards {
+  int32 count = 1;
+}
+
+message ControllerLosesLife {
+  int32 count = 1;
+}
+
+message CopyOfAnyCreatureNonTargeting {}
+
+message CounterSpell {
+  targets.SpellTarget valid_target = 1;
 }
 
 message Craft {
@@ -58,12 +66,28 @@ message Craft {
   }
 }
 
-message ActivatedAbility {
-  cost.AbilityCost cost = 1;
-  repeated Effect effects = 2;
-  bool apply_to_self = 3;
-  string oracle_text = 4;
-  bool sorcery_speed = 5;
+message CreateToken {
+  oneof token {
+    Creature creature = 1;
+  }
+  message Creature {
+    string name = 1;
+    repeated types.Type types = 2;
+    repeated types.Subtype subtypes = 3;
+    repeated color.Color colors = 4;
+    int32 power = 5;
+    int32 toughness = 6;
+    string keywords = 7;
+  }
+}
+
+message CreateTokenCopy {
+  repeated ModifyBattlefield modifiers = 1;
+}
+
+message DealDamage {
+  int32 quantity = 1;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message Destination {
@@ -72,7 +96,6 @@ message Destination {
   message Battlefield {
     bool enters_tapped = 1;
   }
-
   oneof destination {
     Hand hand = 2;
     TopOfLibrary top_of_library = 3;
@@ -80,33 +103,18 @@ message Destination {
   }
 }
 
-message TutorLibrary {
+message DestroyEach {
   repeated targets.Restriction restrictions = 1;
-  Destination destination = 2;
-  bool reveal = 3;
 }
 
-message Mill {
+message Discover {
   int32 count = 1;
-  controller.Controller target = 2;
-}
-
-message ReturnFromGraveyardToLibrary {
-  int32 count = 1;
-  controller.Controller controller = 2;
-  repeated types.Type types = 3;
-}
-
-message ReturnFromGraveyardToBattlefield {
-  int32 count = 1;
-  repeated types.Type types = 2;
 }
 
 message Duration {
   message UntilEndOfTurn {}
   message UntilSourceLeavesBattlefield {}
   message UntilTargetLeavesBattlefield {}
-
   oneof duration {
     UntilEndOfTurn until_end_of_turn = 1;
     UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
@@ -114,81 +122,13 @@ message Duration {
   }
 }
 
-message CounterSpell {
-  targets.SpellTarget valid_target = 1;
-}
-
-message ExtraLandsPerTurn {
-  int32 count = 1;
-}
-
 message DynamicPowerToughness {
   oneof source {
     NumberOfCountersOnThis number_of_counters_on_this = 1;
   }
-
   message NumberOfCountersOnThis {
     counters.Counter counter = 1;
   }
-}
-
-message ModifyBattlefield {
-  optional int32 base_power = 1;
-  optional int32 base_toughness = 2;
-
-  optional DynamicPowerToughness add_dynamic_power_toughness = 3;
-
-  repeated types.Type add_types = 4;
-  repeated types.Subtype add_subtypes = 5;
-
-  repeated types.Type remove_types = 6;
-  repeated types.Subtype remove_subtypes = 7;
-
-  repeated color.Color add_colors = 8;
-
-  bool remove_all_colors = 9;
-
-  optional int32 add_power = 10;
-  optional int32 add_toughness = 11;
-
-  optional ActivatedAbility add_ability = 12;
-  optional GainManaAbility mana_ability = 13;
-
-  bool remove_all_subtypes = 14;
-
-  bool entire_battlefield = 15;
-  bool global = 16;
-
-  string add_keywords = 17;
-  string remove_keywords = 18;
-}
-
-message BattlefieldModifier {
-  ModifyBattlefield modifier = 1;
-  controller.Controller controller = 2;
-  Duration duration = 3;
-  repeated targets.Restriction restrictions = 4;
-}
-
-message CreateToken {
-  oneof token {
-    Creature creature = 1;
-  }
-
-  message Creature {
-    string name = 1;
-    repeated types.Type types = 2;
-    repeated types.Subtype subtypes = 3;
-    repeated color.Color colors = 4;
-    int32 power = 5;
-    int32 toughness = 6;
-
-    string keywords = 7;
-  }
-}
-
-message ControllerDrawCards {
-  int32 count = 1;
 }
 
 message Equip {
@@ -199,9 +139,13 @@ message ExileTargetCreature {}
 
 message ExileTargetCreatureManifestTopOfLibrary {}
 
-message DealDamage {
-  int32 quantity = 1;
-  repeated targets.Restriction restrictions = 2;
+message ExtraLandsPerTurn {
+  int32 count = 1;
+}
+
+message ForEachManaOfSource {
+  cost.ManaSource source = 1;
+  Effect effect = 2;
 }
 
 message GainCounter {
@@ -216,21 +160,73 @@ message GainCounter {
       X x = 2;
     }
   }
-
   oneof counter {
     Single single = 3;
     Dynamic dynamic = 4;
   }
 }
 
-message ControllerLosesLife {
+message GainLife {
   int32 count = 1;
 }
 
-message CopyOfAnyCreatureNonTargeting {}
+message GainMana {
+  message GainMana {
+    repeated mana.Mana gains = 1;
+  }
+  message Specific {
+    repeated mana.Mana gains = 1;
+  }
+  message Choice {
+    repeated GainMana choices = 1;
+  }
+  oneof gain {
+    Specific specific = 1;
+    Choice choice = 2;
+  }
+}
 
-message CreateTokenCopy {
-  repeated ModifyBattlefield modifiers = 1;
+message GainManaAbility {
+  cost.AbilityCost cost = 1;
+  GainMana gain_mana = 2;
+  cost.ManaSource mana_source = 3;
+}
+
+message Mill {
+  int32 count = 1;
+  controller.Controller target = 2;
+}
+
+message ModifyBattlefield {
+  optional int32 base_power = 1;
+  optional int32 base_toughness = 2;
+  optional DynamicPowerToughness add_dynamic_power_toughness = 3;
+  repeated types.Type add_types = 4;
+  repeated types.Subtype add_subtypes = 5;
+  repeated types.Type remove_types = 6;
+  repeated types.Subtype remove_subtypes = 7;
+  repeated color.Color add_colors = 8;
+  bool remove_all_colors = 9;
+  optional int32 add_power = 10;
+  optional int32 add_toughness = 11;
+  optional ActivatedAbility add_ability = 12;
+  optional GainManaAbility mana_ability = 13;
+  bool remove_all_subtypes = 14;
+  bool entire_battlefield = 15;
+  bool global = 16;
+  string add_keywords = 17;
+  string remove_keywords = 18;
+}
+
+message ReturnFromGraveyardToBattlefield {
+  int32 count = 1;
+  repeated types.Type types = 2;
+}
+
+message ReturnFromGraveyardToLibrary {
+  int32 count = 1;
+  controller.Controller controller = 2;
+  repeated types.Type types = 3;
 }
 
 message ReturnSelfToHand {}
@@ -240,22 +236,11 @@ message RevealEachTopOfLibrary {
     message IfNone {
       repeated Effect effects = 1;
     }
-
     repeated targets.Restriction restrictions = 2;
     repeated Effect effects = 3;
     IfNone if_none = 4;
   }
-
   ForEach for_each = 5;
-}
-
-message UntapThis {}
-message UntapTarget {}
-
-message Cascade {}
-
-message Discover {
-  int32 count = 1;
 }
 
 message Scry {
@@ -266,14 +251,15 @@ message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
 
-message ForEachManaOfSource {
-  cost.ManaSource source = 1;
-  Effect effect = 2;
+message TutorLibrary {
+  repeated targets.Restriction restrictions = 1;
+  Destination destination = 2;
+  bool reveal = 3;
 }
 
-message GainLife {
-  int32 count = 1;
-}
+message UntapTarget {}
+
+message UntapThis {}
 
 message Effect {
   oneof effect {
@@ -288,29 +274,30 @@ message Effect {
     CreateToken create_token = 9;
     CreateTokenCopy create_token_copy = 10;
     DealDamage deal_damage = 11;
-    Discover discover = 12;
-    Equip equip = 13;
-    ExileTargetCreature exile_target_creature = 14;
+    DestroyEach destroy_each = 12;
+    Discover discover = 13;
+    Equip equip = 14;
+    ExileTargetCreature exile_target_creature = 15;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 15;
-    ForEachManaOfSource for_each_mana_of_source = 16;
-    GainCounter gain_counter = 17;
-    GainCounter target_gains_counters = 18;
-    GainLife gain_life = 19;
-    Mill mill = 20;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 21;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 22;
-    ReturnSelfToHand return_self_to_hand = 23;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 24;
-    Scry scry = 25;
-    TargetToTopOfLibrary target_to_top_of_library = 26;
-    TutorLibrary tutor_library = 27;
-    UntapThis untap_this = 28;
-    UntapTarget untap_target = 29;
+        exile_target_creature_manifest_top_of_library = 16;
+    ForEachManaOfSource for_each_mana_of_source = 17;
+    GainCounter gain_counter = 18;
+    GainCounter target_gains_counters = 19;
+    GainLife gain_life = 20;
+    Mill mill = 21;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 22;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 23;
+    ReturnSelfToHand return_self_to_hand = 24;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 25;
+    Scry scry = 26;
+    TargetToTopOfLibrary target_to_top_of_library = 27;
+    TutorLibrary tutor_library = 28;
+    UntapThis untap_this = 29;
+    UntapTarget untap_target = 30;
   }
 
-  optional Effect threshold = 30;
-  string oracle_text = 31;
+  optional Effect threshold = 31;
+  string oracle_text = 32;
 }
 
 message ReplacementEffect {

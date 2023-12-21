@@ -43,7 +43,7 @@ use crate::{
         AllPlayers, Controller, Owner,
     },
     stack::{ActiveTarget, Settled, Stack, Targets},
-    targets::{Comparison, Restriction, Restrictions, SpellTarget},
+    targets::{Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
     triggers::trigger_source,
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
     Cards,
@@ -830,7 +830,6 @@ impl CardId {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn passes_restrictions_given_types(
         self,
         db: &mut Database,
@@ -919,16 +918,28 @@ impl CardId {
                         return false;
                     }
                 }
-                Restriction::Cmc(comparison) => {
+                Restriction::Cmc(cmc_test) => {
                     let cmc = self.cost(db).cmc() as i32;
-                    let matches = match comparison {
-                        Comparison::LessThan(i) => cmc < *i,
-                        Comparison::LessThanOrEqual(i) => cmc <= *i,
-                        Comparison::GreaterThan(i) => cmc > *i,
-                        Comparison::GreaterThanOrEqual(i) => cmc >= *i,
-                    };
-                    if !matches {
-                        return false;
+                    match cmc_test {
+                        Cmc::Comparison(comparison) => {
+                            let matches = match comparison {
+                                Comparison::LessThan(i) => cmc < *i,
+                                Comparison::LessThanOrEqual(i) => cmc <= *i,
+                                Comparison::GreaterThan(i) => cmc > *i,
+                                Comparison::GreaterThanOrEqual(i) => cmc >= *i,
+                            };
+                            if !matches {
+                                return false;
+                            }
+                        }
+                        Cmc::Dynamic(dy) => match dy {
+                            Dynamic::X => {
+                                debug!("Destroying cmc {} vs x of {}", cmc, source.get_x(db));
+                                if source.get_x(db) as i32 != cmc {
+                                    return false;
+                                }
+                            }
+                        },
                     }
                 }
                 Restriction::InGraveyard => {
@@ -1553,6 +1564,7 @@ impl CardId {
             }
             Effect::GainLife(_) => {}
             Effect::Craft(craft) => targets.extend(craft.target.targets(self, db, already_chosen)),
+            Effect::DestroyEach(_) => {}
         }
 
         targets
@@ -1620,6 +1632,7 @@ impl CardId {
                 }
                 StaticAbility::BattlefieldModifier(_) => {}
                 StaticAbility::ExtraLandsPerTurn(_) => {}
+                StaticAbility::ForceEtbTapped(_) => {}
             }
         }
 

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -14,6 +15,7 @@ use crate::{
     player::mana_pool::ManaSource,
     protogen,
     triggers::Trigger,
+    types::Type,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
@@ -51,10 +53,17 @@ pub struct StaticAbilities(pub Vec<StaticAbility>);
 pub struct ModifiedStaticAbilities(pub Vec<StaticAbility>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ForceEtbTapped {
+    pub controller: ControllerRestriction,
+    pub types: IndexSet<Type>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StaticAbility {
-    GreenCannotBeCountered { controller: ControllerRestriction },
     BattlefieldModifier(BattlefieldModifier),
     ExtraLandsPerTurn(usize),
+    ForceEtbTapped(ForceEtbTapped),
+    GreenCannotBeCountered { controller: ControllerRestriction },
 }
 
 impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
@@ -89,6 +98,16 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
             }
             protogen::abilities::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
                 Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
+            }
+            protogen::abilities::static_ability::Ability::ForceEtbTapped(force) => {
+                Ok(Self::ForceEtbTapped(ForceEtbTapped {
+                    controller: force.controller.get_or_default().try_into()?,
+                    types: force
+                        .types
+                        .iter()
+                        .map(Type::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                }))
             }
         }
     }

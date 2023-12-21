@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
-    let card12 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
+    let card12 = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card12, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, None),
@@ -602,7 +602,13 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
                 UiState::ExaminingCard(card) => {
-                    let title = card.name(&db);
+                    let cost = card.cost(&db);
+
+                    let title = if cost.mana_cost.is_empty() {
+                        card.name(&db)
+                    } else {
+                        format!("{} - {}", card.name(&db), cost.text())
+                    };
                     let pt = card.pt_text(&db);
                     frame.render_stateful_widget(
                         ui::Card {
@@ -1182,30 +1188,22 @@ fn main() -> anyhow::Result<()> {
                         .or(last_entry_clicked)
                     {
                         if selected < abilities.len() {
-                            let mut results = Battlefield::activate_ability(
+                            let mut pending = Battlefield::activate_ability(
                                 &mut db,
                                 &mut all_players,
                                 &turn,
                                 card,
                                 selected,
                             );
-                            loop {
-                                match results.resolve(&mut db, &mut all_players, None) {
-                                    battlefield::ResolutionResult::Complete => {
-                                        break;
-                                    }
-                                    battlefield::ResolutionResult::TryAgain => {}
-                                    battlefield::ResolutionResult::PendingChoice => {
-                                        state = UiState::SelectingOptions {
-                                            to_resolve: results,
-                                            selection_list_state: ListState::default(),
-                                            selection_list_offset: 0,
-                                            organizing_stack: false,
-                                        };
-                                        break;
-                                    }
+
+                            while pending.only_immediate_results(&db, &all_players) {
+                                let result = pending.resolve(&mut db, &mut all_players, None);
+                                if result == ResolutionResult::Complete {
+                                    break;
                                 }
                             }
+
+                            maybe_organize_stack(&mut db, pending, &mut state);
                         }
                     }
                 }
