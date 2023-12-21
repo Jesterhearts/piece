@@ -31,6 +31,8 @@ pub struct Turn {
     pub phase: Phase,
     turn_order: Vec<Owner>,
     active_player: usize,
+    priority_player: usize,
+    passed: usize,
 }
 
 impl Turn {
@@ -42,6 +44,8 @@ impl Turn {
             phase: Phase::default(),
             turn_order,
             active_player: 0,
+            priority_player: 0,
+            passed: 0,
         }
     }
 
@@ -50,7 +54,21 @@ impl Turn {
         self.phase = phase;
     }
 
+    pub fn step_priority(&mut self) {
+        self.priority_player = (self.priority_player + 1) % self.turn_order.len();
+        self.passed = 0;
+    }
+
+    pub fn pass_priority(&mut self) {
+        self.priority_player = (self.priority_player + 1) % self.turn_order.len();
+        self.passed = (self.passed + 1) % self.turn_order.len();
+    }
+
     pub fn step(&mut self, db: &mut Database, all_players: &mut AllPlayers) -> PendingResults {
+        if self.passed != 0 {
+            return PendingResults::default();
+        }
+
         match self.phase {
             Phase::Untap => {
                 for player in all_players.all_players() {
@@ -183,5 +201,13 @@ impl Turn {
 
     pub fn active_player(&self) -> Owner {
         self.turn_order[self.active_player]
+    }
+
+    pub fn passed_full_round(&self) -> bool {
+        self.passed == 0
+    }
+
+    pub fn priority_player(&self) -> Owner {
+        self.turn_order[self.priority_player]
     }
 }

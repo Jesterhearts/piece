@@ -13,6 +13,7 @@ use crate::{
     player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Stack, StackEntry},
     targets::Restriction,
+    turns::Turn,
 };
 
 #[must_use]
@@ -190,6 +191,10 @@ impl ChooseTargets {
             .map(|(idx, target)| (idx, target.display(db, all_players)))
             .collect_vec()
     }
+
+    fn is_empty(&self) -> bool {
+        self.valid_targets.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -301,10 +306,14 @@ impl SpendMana {
     }
 
     fn description(&self) -> String {
-        match self.first_unpaid_x_always_unpaid().unwrap() {
-            ManaCost::Generic(_) => "generic mana".to_string(),
-            ManaCost::X => "X".to_string(),
-            _ => "paying mana".to_string(),
+        if let Some(first_unpaid) = self.first_unpaid_x_always_unpaid() {
+            match first_unpaid {
+                ManaCost::Generic(_) => "generic mana".to_string(),
+                ManaCost::X => "X".to_string(),
+                _ => "paying mana".to_string(),
+            }
+        } else {
+            String::default()
         }
     }
 
@@ -328,6 +337,10 @@ impl SpendMana {
                     })
                     .filter(|paid| *paid != 0)
             })
+    }
+
+    fn is_empty(&self) -> bool {
+        !self.paying.values().any(|v| *v != 0)
     }
 }
 
@@ -372,22 +385,25 @@ impl PayCost {
             PayCost::SpendMana(spend) => {
                 let (mana, source) = spend.paying();
                 if let Some(pool_post_pay) = all_players[player].pool_post_pay(&mana, &source) {
-                    let first_unpaid = spend.first_unpaid_x_always_unpaid().unwrap();
-                    match first_unpaid {
-                        ManaCost::Generic(_) => true,
-                        ManaCost::X => true,
-                        ManaCost::TwoX => {
-                            spend
-                                .paid
-                                .get(&ManaCost::TwoX)
-                                .iter()
-                                .flat_map(|i| i.values())
-                                .flat_map(|i| i.values())
-                                .sum::<usize>()
-                                % 2
-                                == 0
+                    if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
+                        match first_unpaid {
+                            ManaCost::Generic(_) => true,
+                            ManaCost::X => true,
+                            ManaCost::TwoX => {
+                                spend
+                                    .paid
+                                    .get(&ManaCost::TwoX)
+                                    .iter()
+                                    .flat_map(|i| i.values())
+                                    .flat_map(|i| i.values())
+                                    .sum::<usize>()
+                                    % 2
+                                    == 0
+                            }
+                            unpaid => pool_post_pay.can_spend(unpaid, None),
                         }
-                        unpaid => pool_post_pay.can_spend(unpaid, None),
+                    } else {
+                        true
                     }
                 } else {
                     false
@@ -688,6 +704,14 @@ impl PayCost {
             PayCost::SpendMana(_) => None,
         }
     }
+
+    fn is_empty(&self) -> bool {
+        match self {
+            PayCost::SacrificePermanent(_) => false,
+            PayCost::TapPermanent(_) => false,
+            PayCost::SpendMana(spend) => spend.is_empty(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -854,10 +878,15 @@ impl PendingResults {
     }
 
     pub fn push_pay_costs(&mut self, pay: PayCost) {
-        self.pay_costs.push_back(pay);
+        if !pay.is_empty() {
+            self.pay_costs.push_back(pay);
+        }
     }
 
-    pub fn set_organize_stack(&mut self, entries: Vec<StackEntry>) {
+    pub fn set_organize_stack(&mut self, db: &Database, mut entries: Vec<StackEntry>, turn: &Turn) {
+        entries.sort_by_key(|e| {
+            e.ty.source().controller(db) != Controller::from(turn.priority_player())
+        });
         self.organizing_stack = Some(OrganizingStack {
             entries,
             choices: Default::default(),
@@ -872,7 +901,13 @@ impl PendingResults {
     ) {
         let mut players = all_players.all_players();
         players.retain(|player| *player != attacker);
-        debug!("Attacking {:?}", players);
+        debug!(
+            "Attacking {:?}",
+            players
+                .iter()
+                .map(|player| all_players[*player].name.clone())
+                .collect_vec()
+        );
         // TODO goad, etc.
         self.declare_attackers = Some(DeclaringAttackers {
             candidates: attacker
@@ -990,7 +1025,7 @@ impl PendingResults {
         if self.declare_attackers.is_none()
             && self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
-            && self.pay_costs.is_empty()
+            && self.pay_costs.iter().all(|pay| pay.is_empty())
             && self.choosing_scry.is_empty()
             && self.choosing_to_cast.is_empty()
             && self.organizing_stack.is_none()
@@ -1074,12 +1109,18 @@ impl PendingResults {
 
         if let Some(declaring) = self.declare_attackers.as_mut() {
             if let Some(choice) = choice {
-                if declaring.choices.len() == declaring.targets.len() {
-                    declaring.choices.insert(choice);
+                if declaring.candidates.is_empty() {
+                    ResolutionResult::Complete
                 } else {
-                    declaring.targets.push(declaring.valid_targets[choice]);
+                    if declaring.choices.len() == declaring.targets.len() {
+                        if !declaring.choices.insert(choice) {
+                            return ResolutionResult::Complete;
+                        }
+                    } else {
+                        declaring.targets.push(declaring.valid_targets[choice]);
+                    }
+                    ResolutionResult::PendingChoice
                 }
-                ResolutionResult::PendingChoice
             } else if declaring.choices.len() == declaring.targets.len() {
                 self.settled_effects
                     .push_front(ActionResult::DeclareAttackers {
@@ -1107,10 +1148,26 @@ impl PendingResults {
             } else {
                 ResolutionResult::PendingChoice
             }
-        } else if let Some(mut choosing) = self.choose_targets.pop_front() {
-            if choosing.choose_targets(choice) {
-                if choosing.choices_complete() {
-                    let (choices, effect_or_aura) = choosing.into_chosen_targets_and_effect();
+        } else if self
+            .choose_targets
+            .iter()
+            .any(|targets| !targets.is_empty())
+        {
+            let mut choosing;
+            loop {
+                choosing = self
+                    .choose_targets
+                    .pop_front()
+                    .filter(|targets| !targets.is_empty());
+                if choosing.is_some() {
+                    break;
+                }
+            }
+
+            if choosing.as_mut().unwrap().choose_targets(choice) {
+                if choosing.as_ref().unwrap().choices_complete() {
+                    let (choices, effect_or_aura) =
+                        choosing.unwrap().into_chosen_targets_and_effect();
 
                     if !self.add_to_stack {
                         let player = self.source.unwrap().card(db).controller(db);
@@ -1164,11 +1221,11 @@ impl PendingResults {
                         }
                     }
                 } else {
-                    self.choose_targets.push_front(choosing);
+                    self.choose_targets.push_front(choosing.unwrap());
                 }
                 ResolutionResult::TryAgain
             } else {
-                self.choose_targets.push_front(choosing);
+                self.choose_targets.push_front(choosing.unwrap());
                 ResolutionResult::PendingChoice
             }
         } else if let Some(mut pay) = self.pay_costs.pop_front() {
@@ -1292,7 +1349,8 @@ impl PendingResults {
             && self.choosing_scry.cards.is_empty()
             && self.declare_attackers.is_none()
             && self.organizing_stack.is_none())
-            && ((self.choose_targets.is_empty() && self.pay_costs.is_empty())
+            && ((self.choose_targets.iter().all(|targets| targets.is_empty())
+                && self.pay_costs.iter().all(|pay| pay.is_empty()))
                 || (self
                     .choose_targets
                     .iter()
@@ -1489,5 +1547,29 @@ impl PendingResults {
 
     pub fn can_cancel(&self) -> bool {
         self.is_empty() || !self.applied
+    }
+
+    pub fn priority(&self, db: &Database, all_players: &AllPlayers, turn: &Turn) -> Owner {
+        if let Some(attacking) = self.declare_attackers.as_ref() {
+            let mut all_players = all_players
+                .all_players()
+                .into_iter()
+                .collect::<HashSet<_>>();
+            for target in attacking.valid_targets.iter() {
+                all_players.remove(target);
+            }
+
+            return all_players.into_iter().exactly_one().unwrap();
+        } else if let Some(organizing) = self.organizing_stack.as_ref() {
+            if let Some(first) = organizing
+                .entries
+                .iter()
+                .enumerate()
+                .find(|(idx, _)| !organizing.choices.contains(idx))
+            {
+                return first.1.ty.source().controller(db).into();
+            }
+        }
+        turn.priority_player()
     }
 }

@@ -26,6 +26,7 @@ use crate::{
 mod _tests;
 
 pub mod abilities;
+pub mod ai;
 pub mod battlefield;
 pub mod card;
 pub mod controller;

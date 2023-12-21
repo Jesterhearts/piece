@@ -28,6 +28,7 @@ use ratatui::{
 use slog::Drain;
 
 use piece::{
+    ai::AI,
     battlefield::{self, Battlefield, PendingResults, ResolutionResult},
     in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
@@ -66,6 +67,8 @@ fn main() -> anyhow::Result<()> {
     let player1 = all_players.new_player("Player 1".to_string(), 20);
     let player2 = all_players.new_player("Player 2".to_string(), 20);
     all_players[player1].infinite_mana();
+
+    let ai = AI::new(player2);
 
     let mut turn = Turn::new(&all_players);
 
@@ -657,7 +660,7 @@ fn main() -> anyhow::Result<()> {
                         } = &state
                         {
                             if !Stack::is_empty(&mut db) {
-                                cleanup_stack(&mut db, &mut all_players, &mut state);
+                                cleanup_stack(&mut db, &mut all_players, &turn, &mut state);
                             }
                         } else if let UiState::Battlefield {
                             action_selection_state:
@@ -969,7 +972,7 @@ fn main() -> anyhow::Result<()> {
                             if !matches!(state, UiState::SelectingOptions { .. })
                                 && !Stack::is_empty(&mut db)
                             {
-                                cleanup_stack(&mut db, &mut all_players, &mut state);
+                                cleanup_stack(&mut db, &mut all_players, &turn, &mut state);
                             } else if matches!(
                                 state,
                                 UiState::ExaminingCard(_) | UiState::BattlefieldPreview { .. }
@@ -1131,15 +1134,38 @@ fn main() -> anyhow::Result<()> {
                     {
                         match index {
                             0 => {
-                                let mut pending = turn.step(&mut db, &mut all_players);
-                                while pending.only_immediate_results(&db, &all_players) {
-                                    let result = pending.resolve(&mut db, &mut all_players, None);
-                                    if result == ResolutionResult::Complete {
-                                        break;
-                                    }
-                                }
+                                turn.pass_priority();
+                                if !turn.passed_full_round() {
+                                    debug!("Giving ai priority");
+                                    let mut pending = ai.priority(
+                                        &mut db,
+                                        &mut all_players,
+                                        &mut turn,
+                                        &mut PendingResults::default(),
+                                    );
 
-                                maybe_organize_stack(&mut db, pending, &mut state);
+                                    while pending.only_immediate_results(&db, &all_players) {
+                                        let result =
+                                            pending.resolve(&mut db, &mut all_players, None);
+                                        if result == ResolutionResult::Complete {
+                                            break;
+                                        }
+                                    }
+
+                                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                                } else {
+                                    let mut pending = turn.step(&mut db, &mut all_players);
+
+                                    while pending.only_immediate_results(&db, &all_players) {
+                                        let result =
+                                            pending.resolve(&mut db, &mut all_players, None);
+                                        if result == ResolutionResult::Complete {
+                                            break;
+                                        }
+                                    }
+
+                                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                                }
                             }
                             1 => {
                                 for card in in_play::cards::<OnBattlefield>(&mut db) {
@@ -1155,7 +1181,7 @@ fn main() -> anyhow::Result<()> {
                                     }
                                 }
 
-                                maybe_organize_stack(&mut db, pending, &mut state);
+                                maybe_organize_stack(&mut db, &turn, pending, &mut state);
                             }
                             3 => {
                                 all_players[player1].infinite_mana();
@@ -1178,7 +1204,7 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
-                            maybe_organize_stack(&mut db, pending, &mut state);
+                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
                         }
                     }
                 } else if let Some(card) = selected_state.selected {
@@ -1203,7 +1229,7 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
-                            maybe_organize_stack(&mut db, pending, &mut state);
+                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
                         }
                     }
                 }
@@ -1213,78 +1239,103 @@ fn main() -> anyhow::Result<()> {
                 organizing_stack,
                 ..
             } => {
-                let mut real_choice = choice;
-                #[allow(clippy::unnecessary_unwrap)] // I would if I could
-                if to_resolve.choices_optional(&db, &all_players) && choice.is_some() {
-                    if choice == Some(0) {
-                        real_choice = None
+                if turn.priority_player() == player2 {
+                    debug!("Giving ai priority");
+                    let pending = ai.priority(&mut db, &mut all_players, &mut turn, to_resolve);
+                    if pending.is_empty() {
+                        maybe_organize_stack(&mut db, &turn, PendingResults::default(), &mut state);
                     } else {
-                        real_choice = Some(choice.unwrap() - 1);
+                        *to_resolve = pending;
                     }
-                }
-                if choice.is_some() {
-                    loop {
-                        match to_resolve.resolve(&mut db, &mut all_players, real_choice) {
-                            battlefield::ResolutionResult::Complete => {
-                                let mut pending = Battlefield::check_sba(&mut db);
-                                while pending.only_immediate_results(&db, &all_players) {
-                                    let result = pending.resolve(&mut db, &mut all_players, None);
-                                    if result == ResolutionResult::Complete {
+                } else {
+                    let mut real_choice = choice;
+                    #[allow(clippy::unnecessary_unwrap)] // I would if I could
+                    if to_resolve.choices_optional(&db, &all_players) && choice.is_some() {
+                        if choice == Some(0) {
+                            real_choice = None
+                        } else {
+                            real_choice = Some(choice.unwrap() - 1);
+                        }
+                    }
+                    if choice.is_some() {
+                        loop {
+                            match to_resolve.resolve(&mut db, &mut all_players, real_choice) {
+                                battlefield::ResolutionResult::Complete => {
+                                    let mut pending = Battlefield::check_sba(&mut db);
+                                    while pending.only_immediate_results(&db, &all_players) {
+                                        let result =
+                                            pending.resolve(&mut db, &mut all_players, None);
+                                        if result == ResolutionResult::Complete {
+                                            break;
+                                        }
+                                    }
+
+                                    if pending.is_empty() {
+                                        let entries = Stack::entries_unsettled(&mut db)
+                                            .into_iter()
+                                            .map(|(_, entry)| entry)
+                                            .collect_vec();
+                                        if !*organizing_stack && entries.len() > 1 {
+                                            to_resolve.set_organize_stack(&db, entries, &turn);
+                                            *organizing_stack = true;
+                                        } else {
+                                            turn.step_priority();
+                                            debug!("Giving ai priority");
+                                            let pending = ai.priority(
+                                                &mut db,
+                                                &mut all_players,
+                                                &mut turn,
+                                                &mut PendingResults::default(),
+                                            );
+                                            maybe_organize_stack(
+                                                &mut db, &turn, pending, &mut state,
+                                            );
+
+                                            state = previous_state.pop().unwrap_or(
+                                                UiState::Battlefield {
+                                                    phase_options_selection_state:
+                                                        HorizontalListState::default(),
+                                                    phase_options_list_page: 0,
+                                                    selected_state: CardSelectionState::default(),
+                                                    action_selection_state:
+                                                        HorizontalListState::default(),
+                                                    action_list_page: 0,
+                                                    hand_selection_state:
+                                                        HorizontalListState::default(),
+                                                    hand_list_page: 0,
+                                                    stack_view_state: ListState::default(),
+                                                    stack_list_offset: 0,
+                                                    player1_mana_list_offset: 0,
+                                                    player2_mana_list_offset: 0,
+                                                    player1_graveyard_selection_state:
+                                                        ListState::default(),
+                                                    player1_graveyard_list_offset: 0,
+                                                    player1_exile_selection_state:
+                                                        ListState::default(),
+                                                    player1_exile_list_offset: 0,
+                                                    player2_graveyard_list_offset: 0,
+                                                    player2_exile_list_offset: 0,
+                                                },
+                                            );
+                                        }
+                                    } else {
+                                        *to_resolve = pending;
+                                    }
+
+                                    break;
+                                }
+                                battlefield::ResolutionResult::TryAgain => {
+                                    debug!("Trying again for {:#?}", to_resolve);
+                                    if !to_resolve.only_immediate_results(&db, &all_players) {
                                         break;
                                     }
                                 }
-
-                                if pending.is_empty() {
-                                    let entries = Stack::entries_unsettled(&mut db)
-                                        .into_iter()
-                                        .map(|(_, entry)| entry)
-                                        .collect_vec();
-                                    if !*organizing_stack && entries.len() > 1 {
-                                        to_resolve.set_organize_stack(entries);
-                                        *organizing_stack = true;
-                                    } else {
-                                        state =
-                                            previous_state.pop().unwrap_or(UiState::Battlefield {
-                                                phase_options_selection_state:
-                                                    HorizontalListState::default(),
-                                                phase_options_list_page: 0,
-                                                selected_state: CardSelectionState::default(),
-                                                action_selection_state:
-                                                    HorizontalListState::default(),
-                                                action_list_page: 0,
-                                                hand_selection_state: HorizontalListState::default(
-                                                ),
-                                                hand_list_page: 0,
-                                                stack_view_state: ListState::default(),
-                                                stack_list_offset: 0,
-                                                player1_mana_list_offset: 0,
-                                                player2_mana_list_offset: 0,
-                                                player1_graveyard_selection_state:
-                                                    ListState::default(),
-                                                player1_graveyard_list_offset: 0,
-                                                player1_exile_selection_state: ListState::default(),
-                                                player1_exile_list_offset: 0,
-                                                player2_graveyard_list_offset: 0,
-                                                player2_exile_list_offset: 0,
-                                            });
-                                    }
-                                } else {
-                                    *to_resolve = pending;
-                                }
-
-                                break;
-                            }
-                            battlefield::ResolutionResult::TryAgain => {
-                                debug!("Trying again for {:#?}", to_resolve);
-                                if !to_resolve.only_immediate_results(&db, &all_players) {
+                                battlefield::ResolutionResult::PendingChoice => {
                                     break;
                                 }
                             }
-                            battlefield::ResolutionResult::PendingChoice => {
-                                break;
-                            }
+                            real_choice = None;
                         }
-                        real_choice = None;
                     }
                 }
             }
@@ -1304,7 +1355,12 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut UiState) {
+fn cleanup_stack(
+    db: &mut Database,
+    all_players: &mut AllPlayers,
+    turn: &Turn,
+    state: &mut UiState,
+) {
     let mut pending = Stack::resolve_1(db);
     while pending.only_immediate_results(db, all_players) {
         let result = pending.resolve(db, all_players, None);
@@ -1323,10 +1379,15 @@ fn cleanup_stack(db: &mut Database, all_players: &mut AllPlayers, state: &mut Ui
         }
     }
 
-    maybe_organize_stack(db, pending, state);
+    maybe_organize_stack(db, turn, pending, state);
 }
 
-fn maybe_organize_stack(db: &mut Database, mut pending: PendingResults, state: &mut UiState) {
+fn maybe_organize_stack(
+    db: &mut Database,
+    turn: &Turn,
+    mut pending: PendingResults,
+    state: &mut UiState,
+) {
     if !pending.is_empty() {
         *state = UiState::SelectingOptions {
             to_resolve: pending,
@@ -1341,7 +1402,7 @@ fn maybe_organize_stack(db: &mut Database, mut pending: PendingResults, state: &
             .collect_vec();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.set_organize_stack(entries);
+            pending.set_organize_stack(db, entries, turn);
             *state = UiState::SelectingOptions {
                 to_resolve: pending,
                 selection_list_state: ListState::default(),

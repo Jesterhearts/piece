@@ -62,10 +62,6 @@ impl Owner {
             .collect_vec()
     }
 
-    pub fn name(self, _db: &Database) -> String {
-        "Player".to_string()
-    }
-
     pub(crate) fn passes_restrictions(
         self,
         db: &mut Database,

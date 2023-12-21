@@ -88,6 +88,16 @@ pub enum Entry {
     },
 }
 
+impl Entry {
+    pub fn source(&self) -> CardId {
+        match self {
+            Entry::Card(card_source)
+            | Entry::Ability { card_source, .. }
+            | Entry::Trigger { card_source, .. } => *card_source,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Deref, DerefMut, Component)]
 pub struct Mode(pub usize);
 
