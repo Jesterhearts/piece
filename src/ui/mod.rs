@@ -128,12 +128,14 @@ impl<'db> StatefulWidget for Card<'db> {
             .etb_abilities(self.db)
             .into_iter()
             .map(|ability| ability.text(self.db))
+            .filter(|text| !text.is_empty())
             .collect_vec();
         let has_etb_text = !etb_text.is_empty();
         let effects_text = source
             .effects(self.db)
             .into_iter()
             .map(|effect| effect.oracle_text)
+            .filter(|text| !text.is_empty())
             .collect_vec();
         let has_effects_text = !effects_text.is_empty();
         let triggers = source.triggers_text(self.db);
@@ -226,8 +228,8 @@ impl<'db> StatefulWidget for Battlefield<'db> {
             })
             .collect_vec();
 
-        let max_len = card_titles.iter().map(|t| t.len()).max().unwrap();
-        let cards_wide = area.width as usize / max_len;
+        let title_width = 20;
+        let cards_wide = area.width as usize / title_width;
         let wide_percentage = (1.0 / cards_wide as f32 * 100.0).floor() as u16;
         let cards_tall = (cards.len() as f32 / cards_wide as f32).ceil();
         let tall_percentage = (1.0 / cards_tall * 100.0).floor() as u16;

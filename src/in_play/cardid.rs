@@ -330,6 +330,20 @@ impl CardId {
         }
     }
 
+    pub fn move_to_limbo(self, db: &mut Database) {
+        let mut entity = db.entity_mut(self.0);
+        entity
+            .remove::<InLibrary>()
+            .remove::<InHand>()
+            .remove::<InStack>()
+            .remove::<OnBattlefield>()
+            .remove::<InGraveyard>()
+            .remove::<InExile>()
+            .remove::<cast_from::Hand>()
+            .remove::<cast_from::Exile>()
+            .remove::<exile_reason::Cascade>();
+    }
+
     pub fn remove_all_modifiers(self, db: &mut Database) {
         for mut modifying in db
             .modifiers

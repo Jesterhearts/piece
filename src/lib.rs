@@ -89,7 +89,10 @@ pub enum UiState {
         player2_mana_list_offset: usize,
         player1_graveyard_selection_state: ListState,
         player1_graveyard_list_offset: usize,
+        player1_exile_selection_state: ListState,
+        player1_exile_list_offset: usize,
         player2_graveyard_list_offset: usize,
+        player2_exile_list_offset: usize,
     },
     BattlefieldPreview {
         phase_options_selection_state: HorizontalListState,
@@ -105,7 +108,10 @@ pub enum UiState {
         player2_mana_list_offset: usize,
         player1_graveyard_selection_state: ListState,
         player1_graveyard_list_offset: usize,
+        player1_exile_selection_state: ListState,
+        player1_exile_list_offset: usize,
         player2_graveyard_list_offset: usize,
+        player2_exile_list_offset: usize,
     },
     SelectingOptions {
         to_resolve: PendingResults,

@@ -1010,6 +1010,7 @@ impl Battlefield {
                     None,
                 );
                 complete_add_from_exile(db, transforming.faceup_face(db), &mut results);
+                transforming.move_to_limbo(db);
                 results
             }
         }

@@ -499,7 +499,7 @@ impl Effect {
             Effect::ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary {
                 count, ..
             }) => *count,
-            Effect::TutorLibrary(_) => 0,
+            Effect::TutorLibrary(_) => 1,
             Effect::CreateTokenCopy { .. } => 1,
             Effect::ReturnSelfToHand => 0,
             Effect::RevealEachTopOfLibrary(_) => 0,

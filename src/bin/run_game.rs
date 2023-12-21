@@ -29,7 +29,7 @@ use slog::Drain;
 
 use piece::{
     battlefield::{self, Battlefield, PendingResults, ResolutionResult},
-    in_play::{self, CardId, Database, InGraveyard, InHand, OnBattlefield},
+    in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
     player::AllPlayers,
     stack::Stack,
@@ -155,7 +155,10 @@ fn main() -> anyhow::Result<()> {
         player2_mana_list_offset: 0,
         player1_graveyard_selection_state: ListState::default(),
         player1_graveyard_list_offset: 0,
+        player1_exile_selection_state: ListState::default(),
+        player1_exile_list_offset: 0,
         player2_graveyard_list_offset: 0,
+        player2_exile_list_offset: 0,
     };
 
     let mut last_down = None;
@@ -187,7 +190,10 @@ fn main() -> anyhow::Result<()> {
                     player2_mana_list_offset,
                     player1_graveyard_selection_state,
                     player1_graveyard_list_offset,
+                    player1_exile_selection_state,
+                    player1_exile_list_offset,
                     player2_graveyard_list_offset,
+                    player2_exile_list_offset,
                 }
                 | UiState::BattlefieldPreview {
                     phase_options_list_page,
@@ -203,7 +209,10 @@ fn main() -> anyhow::Result<()> {
                     player2_mana_list_offset,
                     player1_graveyard_selection_state,
                     player1_graveyard_list_offset,
+                    player1_exile_selection_state,
+                    player1_exile_list_offset,
                     player2_graveyard_list_offset,
+                    player2_exile_list_offset,
                 } => {
                     if in_preview {
                         let block = Block::default()
@@ -365,7 +374,10 @@ fn main() -> anyhow::Result<()> {
                         ui::Battlefield {
                             db: &mut db,
                             owner: player2,
-                            player_name: format!(" {} ", all_players[player2].name),
+                            player_name: format!(
+                                " {} ({}) ",
+                                all_players[player2].name, all_players[player2].life_total
+                            ),
                             last_hover,
                             last_click,
                         },
@@ -377,7 +389,10 @@ fn main() -> anyhow::Result<()> {
                         ui::Battlefield {
                             db: &mut db,
                             owner: player1,
-                            player_name: format!(" {} ", all_players[player1].name),
+                            player_name: format!(
+                                " {} ({}) ",
+                                all_players[player1].name, all_players[player1].life_total
+                            ),
                             last_hover,
                             last_click,
                         },
@@ -432,10 +447,39 @@ fn main() -> anyhow::Result<()> {
                         *hand_list_page = hand_list_page.saturating_sub(1);
                     }
 
-                    let graveyards = Layout::default()
+                    let exile_and_graveyards = Layout::default()
                         .direction(Direction::Vertical)
-                        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+                        .constraints([
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(30),
+                            Constraint::Percentage(40),
+                            Constraint::Percentage(20),
+                        ])
                         .split(stack_battlefield_graveyard[2]);
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Exile ".to_string(),
+                            items: player2
+                                .get_cards::<InExile>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: *player2_exile_list_offset,
+                        },
+                        exile_and_graveyards[0],
+                        &mut state,
+                    );
+
+                    if state.selected_up {
+                        *player2_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player2_exile_list_offset += 1;
+                    }
 
                     let mut state = ListState::default();
                     frame.render_stateful_widget(
@@ -451,7 +495,7 @@ fn main() -> anyhow::Result<()> {
                             last_hover,
                             offset: *player2_graveyard_list_offset,
                         },
-                        graveyards[0],
+                        exile_and_graveyards[1],
                         &mut state,
                     );
 
@@ -475,7 +519,7 @@ fn main() -> anyhow::Result<()> {
                             last_hover,
                             offset: *player1_graveyard_list_offset,
                         },
-                        graveyards[1],
+                        exile_and_graveyards[2],
                         player1_graveyard_selection_state,
                     );
 
@@ -484,6 +528,29 @@ fn main() -> anyhow::Result<()> {
                             player1_graveyard_list_offset.saturating_sub(1);
                     } else if player1_graveyard_selection_state.selected_down {
                         *player1_graveyard_list_offset += 1;
+                    }
+
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Exile ".to_string(),
+                            items: player1
+                                .get_cards::<InExile>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: *player1_exile_list_offset,
+                        },
+                        exile_and_graveyards[3],
+                        player1_exile_selection_state,
+                    );
+
+                    if state.selected_up {
+                        *player1_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player1_exile_list_offset += 1;
                     }
                 }
                 UiState::SelectingOptions {
@@ -621,6 +688,7 @@ fn main() -> anyhow::Result<()> {
                             key_selected = None;
                         }
                     }
+                    last_down = None;
                 } else if let MouseEventKind::Up(MouseButton::Right) = mouse.kind {
                     if last_down == Some((mouse.row, mouse.column)) {
                         if let UiState::Battlefield {
@@ -633,6 +701,18 @@ fn main() -> anyhow::Result<()> {
                         } = &state
                         {
                             let card = player1.get_cards::<InGraveyard>(&mut db)[*hovered];
+                            previous_state.push(state);
+                            state = UiState::ExaminingCard(card);
+                        } else if let UiState::Battlefield {
+                            player1_exile_selection_state:
+                                ListState {
+                                    hovered_value: Some(hovered),
+                                    ..
+                                },
+                            ..
+                        } = &state
+                        {
+                            let card = player1.get_cards::<InExile>(&mut db)[*hovered];
                             previous_state.push(state);
                             state = UiState::ExaminingCard(card);
                         } else if let UiState::Battlefield {
@@ -671,6 +751,7 @@ fn main() -> anyhow::Result<()> {
                             );
                         }
                     }
+                    last_down = None;
                 } else if let MouseEventKind::Moved = mouse.kind {
                     last_hover = Some((mouse.row, mouse.column));
                 } else if let MouseEventKind::ScrollUp | MouseEventKind::ScrollLeft = mouse.kind {
@@ -894,8 +975,11 @@ fn main() -> anyhow::Result<()> {
                                     player1_mana_list_offset: 0,
                                     player2_mana_list_offset: 0,
                                     player1_graveyard_selection_state: ListState::default(),
+                                    player1_exile_selection_state: ListState::default(),
+                                    player1_exile_list_offset: 0,
                                     player1_graveyard_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
+                                    player2_exile_list_offset: 0,
                                 });
                             } else if let UiState::SelectingOptions {
                                 selection_list_state:
@@ -927,7 +1011,10 @@ fn main() -> anyhow::Result<()> {
                                     player2_mana_list_offset: 0,
                                     player1_graveyard_selection_state: ListState::default(),
                                     player1_graveyard_list_offset: 0,
+                                    player1_exile_selection_state: ListState::default(),
+                                    player1_exile_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
+                                    player2_exile_list_offset: 0,
                                 };
                             } else {
                                 state = previous_state.pop().unwrap_or(UiState::Battlefield {
@@ -944,7 +1031,10 @@ fn main() -> anyhow::Result<()> {
                                     player2_mana_list_offset: 0,
                                     player1_graveyard_selection_state: ListState::default(),
                                     player1_graveyard_list_offset: 0,
+                                    player1_exile_selection_state: ListState::default(),
+                                    player1_exile_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
+                                    player2_exile_list_offset: 0,
                                 });
                             }
                         }
@@ -966,7 +1056,10 @@ fn main() -> anyhow::Result<()> {
                                         player2_mana_list_offset: 0,
                                         player1_graveyard_selection_state: ListState::default(),
                                         player1_graveyard_list_offset: 0,
+                                        player1_exile_selection_state: ListState::default(),
+                                        player1_exile_list_offset: 0,
                                         player2_graveyard_list_offset: 0,
+                                        player2_exile_list_offset: 0,
                                     });
                                 }
                             } else {
@@ -984,7 +1077,10 @@ fn main() -> anyhow::Result<()> {
                                     player2_mana_list_offset: 0,
                                     player1_graveyard_selection_state: ListState::default(),
                                     player1_graveyard_list_offset: 0,
+                                    player1_exile_selection_state: ListState::default(),
+                                    player1_exile_list_offset: 0,
                                     player2_graveyard_list_offset: 0,
+                                    player2_exile_list_offset: 0,
                                 });
                             }
                         }
@@ -1151,7 +1247,10 @@ fn main() -> anyhow::Result<()> {
                                         player2_mana_list_offset: 0,
                                         player1_graveyard_selection_state: ListState::default(),
                                         player1_graveyard_list_offset: 0,
+                                        player1_exile_selection_state: ListState::default(),
+                                        player1_exile_list_offset: 0,
                                         player2_graveyard_list_offset: 0,
+                                        player2_exile_list_offset: 0,
                                     });
                                 }
                                 break;
