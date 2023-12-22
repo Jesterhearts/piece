@@ -4,7 +4,13 @@ use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use itertools::Itertools;
 
-use crate::{card::Color, mana::ManaCost, protogen, targets::Restriction};
+use crate::{
+    card::Color,
+    in_play::{CardId, Database},
+    mana::ManaCost,
+    protogen,
+    targets::Restriction,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct CastingCost {
@@ -68,16 +74,16 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
-    SacrificeThis,
+    SacrificeSource,
     PayLife(PayLife),
     SacrificePermanent(Vec<Restriction>),
     TapPermanent(Vec<Restriction>),
 }
 
 impl AdditionalCost {
-    pub fn text(&self) -> String {
+    pub fn text(&self, db: &Database, source: CardId) -> String {
         match self {
-            AdditionalCost::SacrificeThis => "Sacrifice this".to_string(),
+            AdditionalCost::SacrificeSource => format!("Sacrifice {}", source.name(db)),
             AdditionalCost::PayLife(pay) => format!("Pay {} life", pay.count),
             AdditionalCost::SacrificePermanent(restrictions) => {
                 format!(
@@ -109,7 +115,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 
     fn try_from(value: &protogen::cost::additional_cost::Cost) -> Result<Self, Self::Error> {
         match value {
-            protogen::cost::additional_cost::Cost::SacrificeThis(_) => Ok(Self::SacrificeThis),
+            protogen::cost::additional_cost::Cost::SacrificeSource(_) => Ok(Self::SacrificeSource),
             protogen::cost::additional_cost::Cost::PayLife(pay) => {
                 Ok(Self::PayLife(pay.try_into()?))
             }
@@ -139,7 +145,7 @@ pub struct AbilityCost {
     pub additional_cost: Vec<AdditionalCost>,
 }
 impl AbilityCost {
-    pub fn text(&self) -> String {
+    pub fn text(&self, db: &Database, source: CardId) -> String {
         std::iter::once(
             self.mana_cost
                 .iter()
@@ -156,7 +162,11 @@ impl AbilityCost {
                 .filter(|t| *t)
                 .map(|_| "↩".to_string()),
         )
-        .chain(self.additional_cost.iter().map(|cost| cost.text()))
+        .chain(
+            self.additional_cost
+                .iter()
+                .map(|cost| cost.text(db, source)),
+        )
         .join(", ")
     }
 }

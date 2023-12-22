@@ -20,7 +20,7 @@ activated_abilities {
     }
     tap: true
     additional_costs {
-      sacrifice_this {
+      sacrifice_source {
       }
     }
   }

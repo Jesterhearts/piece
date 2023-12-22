@@ -59,10 +59,10 @@ message Craft {
     repeated types.Subtype subtypes = 1;
   }
   oneof source {
-    One one = 2;
-    XOrMore x_or_more = 3;
-    SharingCardType sharing_card_type = 4;
-    OneOfEach one_of_each = 5;
+    One one = 1;
+    XOrMore x_or_more = 2;
+    SharingCardType sharing_card_type = 3;
+    OneOfEach one_of_each = 4;
   }
 }
 
@@ -104,6 +104,10 @@ message Destination {
 }
 
 message DestroyEach {
+  repeated targets.Restriction restrictions = 1;
+}
+
+message DestroyTarget {
   repeated targets.Restriction restrictions = 1;
 }
 
@@ -181,8 +185,8 @@ message GainMana {
     repeated GainMana choices = 1;
   }
   oneof gain {
-    Specific specific = 1;
-    Choice choice = 2;
+    Specific specific = 2;
+    Choice choice = 3;
   }
 }
 
@@ -275,29 +279,30 @@ message Effect {
     CreateTokenCopy create_token_copy = 10;
     DealDamage deal_damage = 11;
     DestroyEach destroy_each = 12;
-    Discover discover = 13;
-    Equip equip = 14;
-    ExileTargetCreature exile_target_creature = 15;
+    DestroyTarget destroy_target = 13;
+    Discover discover = 14;
+    Equip equip = 15;
+    ExileTargetCreature exile_target_creature = 16;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 16;
-    ForEachManaOfSource for_each_mana_of_source = 17;
-    GainCounter gain_counter = 18;
-    GainCounter target_gains_counters = 19;
-    GainLife gain_life = 20;
-    Mill mill = 21;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 22;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 23;
-    ReturnSelfToHand return_self_to_hand = 24;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 25;
-    Scry scry = 26;
-    TargetToTopOfLibrary target_to_top_of_library = 27;
-    TutorLibrary tutor_library = 28;
-    UntapThis untap_this = 29;
-    UntapTarget untap_target = 30;
+        exile_target_creature_manifest_top_of_library = 17;
+    ForEachManaOfSource for_each_mana_of_source = 18;
+    GainCounter gain_counter = 19;
+    GainCounter target_gains_counters = 20;
+    GainLife gain_life = 21;
+    Mill mill = 22;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 23;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 24;
+    ReturnSelfToHand return_self_to_hand = 25;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 26;
+    Scry scry = 27;
+    TargetToTopOfLibrary target_to_top_of_library = 28;
+    TutorLibrary tutor_library = 29;
+    UntapThis untap_this = 30;
+    UntapTarget untap_target = 31;
   }
 
-  optional Effect threshold = 31;
-  string oracle_text = 32;
+  optional Effect threshold = 32;
+  string oracle_text = 33;
 }
 
 message ReplacementEffect {

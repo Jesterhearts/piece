@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use bevy_ecs::{
     component::Component,
     entity::Entity,
+    event::Events,
     query::{With, Without},
 };
 use derive_more::{Deref, DerefMut};
@@ -21,8 +22,8 @@ use crate::{
         TutorLibrary,
     },
     in_play::{
-        cast_from, AbilityId, CardId, CastFrom, Database, InStack, ModifierId, TriggerId,
-        TriggerInStack,
+        cast_from, AbilityId, CardId, CastFrom, Database, DeleteAbility, InStack, ModifierId,
+        TriggerId, TriggerInStack,
     },
     player::{AllPlayers, Owner},
     targets::Restriction,
@@ -753,6 +754,9 @@ impl Stack {
                 Effect::DestroyEach(DestroyEach { restrictions }) => {
                     results.push_settled(ActionResult::DestroyEach(source, restrictions));
                 }
+                Effect::DestroyTarget(_) => results.push_settled(ActionResult::DestroyTarget(
+                    targets.into_iter().exactly_one().unwrap(),
+                )),
             }
         }
 
@@ -769,6 +773,16 @@ impl Stack {
                 ));
             } else {
                 results.push_settled(ActionResult::StackToGraveyard(resolving_card));
+            }
+        }
+
+        let mut events = db.resource_mut::<Events<DeleteAbility>>();
+        let events = events.drain().collect::<HashSet<_>>();
+        for event in events {
+            if event.ability.source(db) == source {
+                event.ability.delete(db);
+            } else {
+                db.send_event(event);
             }
         }
 

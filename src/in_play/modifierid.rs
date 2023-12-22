@@ -18,8 +18,8 @@ use crate::{
         BattlefieldModifier, DynamicPowerToughness, EffectDuration,
     },
     in_play::{
-        AbilityId, Active, CardId, Database, EntireBattlefield, Global, Modifying, Temporary,
-        NEXT_MODIFIER_SEQ,
+        AbilityId, Active, CardId, Database, DeleteAbility, EntireBattlefield, Global, Modifying,
+        Temporary, NEXT_MODIFIER_SEQ,
     },
     targets::{Restriction, Restrictions},
     types::{AddSubtypes, AddTypes, RemoveAllSubtypes, RemoveSubtypes, RemoveTypes},
@@ -180,8 +180,10 @@ impl ModifierId {
         db.modifiers.get::<Modifying>(self.0).unwrap()
     }
 
-    pub fn ability_modifier(self, db: &Database) -> Option<&ActivatedAbilityModifier> {
-        db.modifiers.get::<ActivatedAbilityModifier>(self.0)
+    pub fn ability_modifier(self, db: &Database) -> Option<ActivatedAbilityModifier> {
+        db.modifiers
+            .get::<ActivatedAbilityModifier>(self.0)
+            .copied()
     }
 
     pub fn activate(self, db: &mut Database) {
@@ -199,7 +201,7 @@ impl ModifierId {
 
         if is_temporary && modifying.is_empty() {
             if let Some(ActivatedAbilityModifier::Add(ability)) = self.ability_modifier(db) {
-                ability.delete(db);
+                db.send_event(DeleteAbility { ability });
             }
 
             db.modifiers.despawn(self.0);

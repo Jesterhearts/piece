@@ -24,9 +24,8 @@ fn plains() -> anyhow::Result<()> {
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -52,9 +51,8 @@ fn island() -> anyhow::Result<()> {
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -78,9 +76,8 @@ fn swamp() -> anyhow::Result<()> {
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -105,9 +102,8 @@ fn mountain() -> anyhow::Result<()> {
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -131,9 +127,8 @@ fn forest() -> anyhow::Result<()> {
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

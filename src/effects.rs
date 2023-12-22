@@ -446,6 +446,25 @@ impl TryFrom<&protogen::effects::DestroyEach> for DestroyEach {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct DestroyTarget {
+    pub restrictions: Vec<Restriction>,
+}
+
+impl TryFrom<&protogen::effects::DestroyTarget> for DestroyTarget {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::DestroyTarget) -> Result<Self, Self::Error> {
+        Ok(Self {
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub enum Effect {
     BattlefieldModifier(BattlefieldModifier),
@@ -459,6 +478,7 @@ pub enum Effect {
     CreateTokenCopy { modifiers: Vec<ModifyBattlefield> },
     DealDamage(DealDamage),
     DestroyEach(DestroyEach),
+    DestroyTarget(DestroyTarget),
     Discover(usize),
     Equip(Vec<ModifyBattlefield>),
     ExileTargetCreature,
@@ -536,6 +556,7 @@ impl Effect {
             Effect::GainLife(_) => 0,
             Effect::Craft(craft) => craft.target.needs_targets(),
             Effect::DestroyEach(_) => 0,
+            Effect::DestroyTarget(_) => 1,
         }
     }
 
@@ -578,6 +599,7 @@ impl Effect {
             Effect::GainLife(_) => 0,
             Effect::Craft(craft) => craft.target.needs_targets(),
             Effect::DestroyEach(_) => 0,
+            Effect::DestroyTarget(_) => 1,
         }
     }
 }
@@ -694,6 +716,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::Craft(craft) => Ok(Self::Craft(craft.try_into()?)),
             protogen::effects::effect::Effect::DestroyEach(destroy) => {
                 Ok(Self::DestroyEach(destroy.try_into()?))
+            }
+            protogen::effects::effect::Effect::DestroyTarget(destroy) => {
+                Ok(Self::DestroyTarget(destroy.try_into()?))
             }
         }
     }

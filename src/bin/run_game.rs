@@ -414,6 +414,7 @@ fn main() -> anyhow::Result<()> {
                             db: &mut db,
                             all_players: &all_players,
                             turn: &turn,
+                            player: player1,
                             card: selected_state.selected.or(selected_card),
                             page: *action_list_page,
                             last_hover,
@@ -1218,6 +1219,7 @@ fn main() -> anyhow::Result<()> {
                                 &mut db,
                                 &mut all_players,
                                 &turn,
+                                player1,
                                 card,
                                 selected,
                             );

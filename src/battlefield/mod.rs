@@ -184,6 +184,7 @@ pub enum ActionResult {
         targets: Vec<Owner>,
     },
     DestroyEach(CardId, Vec<Restriction>),
+    DestroyTarget(ActiveTarget),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -439,6 +440,7 @@ impl Battlefield {
         db: &mut Database,
         all_players: &mut AllPlayers,
         turn: &Turn,
+        activator: Owner,
         card: CardId,
         index: usize,
     ) -> PendingResults {
@@ -449,7 +451,7 @@ impl Battlefield {
 
         let ability_id = card.activated_abilities(db)[index];
 
-        if !ability_id.can_be_activated(db, all_players, turn) {
+        if !ability_id.can_be_activated(db, all_players, turn, activator) {
             debug!("Can't activate ability (can't meet costs)");
             return PendingResults::default();
         }
@@ -467,12 +469,13 @@ impl Battlefield {
 
             for cost in cost.additional_cost.iter() {
                 match cost {
-                    AdditionalCost::SacrificeThis => {
-                        if !card.can_be_sacrificed(db) {
-                            unreachable!()
-                        }
-
-                        results.push_settled(ActionResult::PermanentToGraveyard(card));
+                    AdditionalCost::SacrificeSource => {
+                        results.push_settled(ActionResult::PermanentToGraveyard(
+                            ability_id.source(db),
+                        ));
+                        results.push_invalid_target(ActiveTarget::Battlefield {
+                            id: ability_id.source(db),
+                        })
                     }
                     AdditionalCost::PayLife(PayLife { count }) => {
                         results.push_settled(ActionResult::LoseLife {
@@ -506,7 +509,12 @@ impl Battlefield {
 
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                let targets = card.targets_for_effect(db, controller, &effect, &HashSet::default());
+                let targets = card.targets_for_effect(
+                    db,
+                    controller,
+                    &effect,
+                    results.all_currently_targeted(),
+                );
 
                 results
                     .push_choose_targets(ChooseTargets::new(TargetSource::Effect(effect), targets));
@@ -1061,6 +1069,13 @@ impl Battlefield {
 
                 results
             }
+            ActionResult::DestroyTarget(target) => {
+                let ActiveTarget::Battlefield { id } = target else {
+                    unreachable!()
+                };
+
+                Battlefield::permanent_to_graveyard(db, *id)
+            }
         }
     }
 
@@ -1255,9 +1270,14 @@ impl Battlefield {
             | Effect::TargetToTopOfLibrary { .. }
             | Effect::UntapTarget
             | Effect::Craft(_)
-            | Effect::TargetGainsCounters(_) => {
-                let valid_targets =
-                    source.targets_for_effect(db, controller, &effect, &HashSet::default());
+            | Effect::TargetGainsCounters(_)
+            | Effect::DestroyTarget(_) => {
+                let valid_targets = source.targets_for_effect(
+                    db,
+                    controller,
+                    &effect,
+                    results.all_currently_targeted(),
+                );
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),
                     valid_targets,
@@ -1333,7 +1353,8 @@ impl Battlefield {
             | Effect::Discover(_)
             | Effect::GainLife(_)
             | Effect::Craft(_)
-            | Effect::DestroyEach(_) => {
+            | Effect::DestroyEach(_)
+            | Effect::DestroyTarget(_) => {
                 unreachable!()
             }
         }

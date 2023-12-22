@@ -29,7 +29,8 @@ fn ability() -> anyhow::Result<()> {
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, Some(0));

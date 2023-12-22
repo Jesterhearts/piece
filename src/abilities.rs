@@ -10,7 +10,7 @@ use crate::{
     controller::ControllerRestriction,
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
-    in_play::{AbilityId, CardId, TriggerId},
+    in_play::{AbilityId, CardId, Database, TriggerId},
     mana::Mana,
     player::mana_pool::ManaSource,
     protogen,
@@ -273,8 +273,8 @@ pub struct GainManaAbility {
     pub mana_source: Option<ManaSource>,
 }
 impl GainManaAbility {
-    pub fn text(&self) -> String {
-        format!("{}: {}", self.cost.text(), self.gain.text())
+    pub fn text(&self, db: &Database, source: CardId) -> String {
+        format!("{}: {}", self.cost.text(db, source), self.gain.text())
     }
 }
 

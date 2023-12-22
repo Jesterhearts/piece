@@ -27,9 +27,9 @@ use crate::{
     cost::CastingCost,
     effects::{
         counter, effect_duration::UntilSourceLeavesBattlefield, AnyEffect, BattlefieldModifier,
-        Counter, DealDamage, DynamicPowerToughness, Effect, Effects, ForEachManaOfSource, Mill,
-        ReplacementEffects, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToLibrary, Token,
-        TutorLibrary,
+        Counter, DealDamage, DestroyTarget, DynamicPowerToughness, Effect, Effects,
+        ForEachManaOfSource, Mill, ReplacementEffects, ReturnFromGraveyardToBattlefield,
+        ReturnFromGraveyardToLibrary, Token, TutorLibrary,
     },
     in_play::{
         self, cards, cast_from, exile_reason, AbilityId, Active, Attacking, AuraId, CastFrom,
@@ -1565,6 +1565,23 @@ impl CardId {
             Effect::GainLife(_) => {}
             Effect::Craft(craft) => targets.extend(craft.target.targets(self, db, already_chosen)),
             Effect::DestroyEach(_) => {}
+            Effect::DestroyTarget(DestroyTarget { restrictions }) => {
+                for card in all_cards.iter() {
+                    let target = ActiveTarget::Battlefield { id: *card };
+                    if !already_chosen.contains(&target)
+                        && card.is_in_location::<OnBattlefield>(db)
+                        && card.can_be_targeted(db, controller)
+                        && card.passes_restrictions(
+                            db,
+                            self,
+                            ControllerRestriction::Any,
+                            restrictions,
+                        )
+                    {
+                        targets.push(target);
+                    }
+                }
+            }
         }
 
         targets

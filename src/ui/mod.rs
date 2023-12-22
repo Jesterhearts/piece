@@ -288,6 +288,7 @@ pub struct SelectedAbilities<'db, 'ap, 't> {
     pub db: &'db mut Database,
     pub all_players: &'ap AllPlayers,
     pub turn: &'t Turn,
+    pub player: Owner,
     pub card: Option<CardId>,
     pub page: u16,
     pub last_hover: Option<(u16, u16)>,
@@ -310,7 +311,7 @@ impl<'db, 'ap, 't> StatefulWidget for SelectedAbilities<'db, 'ap, 't> {
                 .into_iter()
                 .enumerate()
                 .filter(|(_, ability)| {
-                    ability.can_be_activated(self.db, self.all_players, self.turn)
+                    ability.can_be_activated(self.db, self.all_players, self.turn, self.player)
                 })
                 .collect_vec();
 

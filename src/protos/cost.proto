@@ -29,7 +29,7 @@ message ManaCost {
 }
 
 message AdditionalCost {
-  message SacrificeThis {}
+  message SacrificeSource {}
   message SacrificePermanent {
     targets.Restriction restrictions = 1;
   }
@@ -44,7 +44,7 @@ message AdditionalCost {
     PayLife pay_life = 2;
     SacrificePermanent sacrifice_permanent = 3;
     TapPermanent tap_permanent = 4;
-    SacrificeThis sacrifice_this = 5;
+    SacrificeSource sacrifice_source = 5;
   }
 }
 

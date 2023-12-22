@@ -12,9 +12,19 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use bevy_ecs::{component::Component, entity::Entity, world::World};
+use bevy_ecs::{
+    component::Component,
+    entity::Entity,
+    event::{Event, Events},
+    world::World,
+};
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Event)]
+pub struct DeleteAbility {
+    pub ability: AbilityId,
+}
 
 pub use abilityid::AbilityId;
 pub use auraid::AuraId;
@@ -236,7 +246,7 @@ pub struct CountersDb(World);
 #[derive(Debug, Deref, DerefMut, Default)]
 pub struct ReplacementDb(World);
 
-#[derive(Debug, Deref, DerefMut, Default)]
+#[derive(Debug, Deref, DerefMut)]
 pub struct Database {
     #[deref]
     #[deref_mut]
@@ -248,4 +258,22 @@ pub struct Database {
     pub auras: AurasDb,
     pub counters: CountersDb,
     pub replacement_effects: ReplacementDb,
+}
+
+impl Default for Database {
+    fn default() -> Self {
+        let mut cards = CardDb::default();
+        cards.insert_resource(Events::<DeleteAbility>::default());
+
+        Self {
+            cards,
+            modifiers: Default::default(),
+            triggers: Default::default(),
+            abilities: Default::default(),
+            static_abilities: Default::default(),
+            auras: Default::default(),
+            counters: Default::default(),
+            replacement_effects: Default::default(),
+        }
+    }
 }

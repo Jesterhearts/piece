@@ -568,16 +568,11 @@ impl PayCost {
                         return false;
                     }
 
-                    let paying_x = matches!(
-                        spend.first_unpaid_x_always_unpaid(),
-                        Some(ManaCost::X | ManaCost::TwoX)
-                    );
-
                     let (mana, source) = spend.paying();
                     let mut pool_post_pay =
                         all_players[player].pool_post_pay(&mana, &source).unwrap();
                     let Some(first_unpaid) = spend.first_unpaid() else {
-                        return paying_x;
+                        return true;
                     };
 
                     if pool_post_pay.can_spend(first_unpaid, None) {
@@ -619,7 +614,11 @@ impl PayCost {
                             .or_default()
                             .entry(source)
                             .or_default() += 1;
-                        return paying_x;
+
+                        return !matches!(
+                            spend.first_unpaid_x_always_unpaid(),
+                            Some(ManaCost::X | ManaCost::TwoX)
+                        );
                     } else {
                         return false;
                     }
@@ -869,6 +868,14 @@ impl PendingResults {
         self.settled_effects.push_back(action);
     }
 
+    pub fn push_invalid_target(&mut self, target: ActiveTarget) {
+        self.all_chosen_targets.insert(target);
+    }
+
+    pub fn all_currently_targeted(&self) -> &HashSet<ActiveTarget> {
+        &self.all_chosen_targets
+    }
+
     pub fn push_choose_mode(&mut self) {
         self.choose_modes.push_back(());
     }
@@ -994,7 +1001,12 @@ impl PendingResults {
             "attackers".to_string()
         } else if self.choose_modes.front().is_some() {
             "mode".to_string()
-        } else if self.choose_targets.front().is_some() {
+        } else if self.apply_in_stages && !self.choose_targets.is_empty()
+            || self
+                .choose_targets
+                .iter()
+                .any(|targets| !targets.is_empty())
+        {
             "targets".to_string()
         } else if let Some(pay) = self.pay_costs.front() {
             pay.description()
@@ -1022,10 +1034,22 @@ impl PendingResults {
         assert!(!(self.add_to_stack && self.apply_in_stages));
         debug!("Choosing {:?} for {:?}", choice, self);
 
+        if !self.apply_in_stages
+            && self.choose_targets.iter().all(|targets| targets.is_empty())
+            && !self.choose_targets.is_empty()
+        {
+            self.choose_targets.clear();
+            return ResolutionResult::TryAgain;
+        }
+        if self.pay_costs.iter().all(|pay| pay.is_empty()) && !self.pay_costs.is_empty() {
+            self.pay_costs.clear();
+            return ResolutionResult::TryAgain;
+        }
+
         if self.declare_attackers.is_none()
             && self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
-            && self.pay_costs.iter().all(|pay| pay.is_empty())
+            && self.pay_costs.is_empty()
             && self.choosing_scry.is_empty()
             && self.choosing_to_cast.is_empty()
             && self.organizing_stack.is_none()
@@ -1148,26 +1172,10 @@ impl PendingResults {
             } else {
                 ResolutionResult::PendingChoice
             }
-        } else if self
-            .choose_targets
-            .iter()
-            .any(|targets| !targets.is_empty())
-        {
-            let mut choosing;
-            loop {
-                choosing = self
-                    .choose_targets
-                    .pop_front()
-                    .filter(|targets| !targets.is_empty());
-                if choosing.is_some() {
-                    break;
-                }
-            }
-
-            if choosing.as_mut().unwrap().choose_targets(choice) {
-                if choosing.as_ref().unwrap().choices_complete() {
-                    let (choices, effect_or_aura) =
-                        choosing.unwrap().into_chosen_targets_and_effect();
+        } else if let Some(mut choosing) = self.choose_targets.pop_front() {
+            if choosing.choose_targets(choice) {
+                if choosing.choices_complete() {
+                    let (choices, effect_or_aura) = choosing.into_chosen_targets_and_effect();
 
                     if !self.add_to_stack {
                         let player = self.source.unwrap().card(db).controller(db);
@@ -1221,11 +1229,11 @@ impl PendingResults {
                         }
                     }
                 } else {
-                    self.choose_targets.push_front(choosing.unwrap());
+                    self.choose_targets.push_front(choosing);
                 }
                 ResolutionResult::TryAgain
             } else {
-                self.choose_targets.push_front(choosing.unwrap());
+                self.choose_targets.push_front(choosing);
                 ResolutionResult::PendingChoice
             }
         } else if let Some(mut pay) = self.pay_costs.pop_front() {
@@ -1526,6 +1534,11 @@ impl PendingResults {
                 self.settled_effects.push_front(ActionResult::DestroyEach(
                     self.source.unwrap().card(db),
                     restrictions,
+                ));
+            }
+            Effect::DestroyTarget(_) => {
+                self.settled_effects.push_front(ActionResult::DestroyTarget(
+                    targets.into_iter().exactly_one().unwrap(),
                 ));
             }
 

@@ -23,7 +23,7 @@ activated_abilities {
       }
     }
     additional_costs {
-      sacrifice_this {
+      sacrifice_source {
       }
     }
   }

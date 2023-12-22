@@ -17,7 +17,7 @@ use crate::{
     effects::{AnyEffect, Effects},
     in_play::{CardId, Database, InStack, OnBattlefield, NEXT_STACK_SEQ},
     mana::Mana,
-    player::{mana_pool::ManaSource, AllPlayers, Controller},
+    player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Settled, Stack, Targets},
     turns::{Phase, Turn},
     types::Subtype,
@@ -284,9 +284,13 @@ impl AbilityId {
     pub fn text(self, db: &mut Database) -> String {
         match self.ability(db) {
             Ability::Activated(activated) => {
-                format!("{}: {}", activated.cost.text(), activated.oracle_text)
+                format!(
+                    "{}: {}",
+                    activated.cost.text(db, self.source(db)),
+                    activated.oracle_text
+                )
             }
-            Ability::Mana(ability) => ability.text(),
+            Ability::Mana(ability) => ability.text(db, self.source(db)),
             Ability::ETB { effects } => {
                 let text = effects
                     .iter()
@@ -365,6 +369,7 @@ impl AbilityId {
         db: &mut Database,
         all_players: &AllPlayers,
         turn: &Turn,
+        activator: Owner,
     ) -> bool {
         let source = self.source(db);
         let in_battlefield = source.is_in_location::<OnBattlefield>(db);
@@ -376,6 +381,10 @@ impl AbilityId {
                 }
 
                 let controller = source.controller(db);
+                if controller != activator {
+                    return false;
+                }
+
                 let is_sorcery = ability.sorcery_speed
                     || ability
                         .effects
@@ -439,7 +448,7 @@ fn can_pay_costs(
 
     for cost in cost.additional_cost.iter() {
         match cost {
-            AdditionalCost::SacrificeThis => {
+            AdditionalCost::SacrificeSource => {
                 if !source.can_be_sacrificed(db) {
                     return false;
                 }

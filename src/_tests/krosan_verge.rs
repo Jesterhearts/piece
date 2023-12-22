@@ -52,7 +52,8 @@ fn tutors() -> anyhow::Result<()> {
 
     card.untap(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 1);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 1);
     let _ability = *card.activated_abilities(&db).first().unwrap();
 
     let result = results.resolve(&mut db, &mut all_players, None);

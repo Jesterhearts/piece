@@ -29,7 +29,8 @@ fn mace() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, mace, 0);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, mace, 0);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay costs

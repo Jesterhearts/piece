@@ -34,7 +34,8 @@ fn place_on_top() -> anyhow::Result<()> {
         vec![vec![ActiveTarget::Battlefield { id: creature }]]
     );
 
-    let mut results = Battlefield::activate_ability(&mut db, &mut all_players, &turn, card, 0);
+    let mut results =
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // pay costs
