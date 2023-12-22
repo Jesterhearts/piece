@@ -50,6 +50,7 @@ message AdditionalCost {
 
 message CastingCost {
   repeated ManaCost mana_costs = 1;
+  repeated AdditionalCost additional_costs = 2;
 }
 
 message AbilityCost {

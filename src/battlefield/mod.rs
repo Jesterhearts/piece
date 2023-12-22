@@ -10,7 +10,6 @@ use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
-    battlefield::pending_results::TapPermanent,
     card::Color,
     controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
@@ -35,7 +34,7 @@ use crate::{
 
 pub use pending_results::{
     ChooseTargets, PayCost, PendingResults, ResolutionResult, SacrificePermanent, Source,
-    SpendMana, TargetSource,
+    SpendMana, TapPermanent, TargetSource,
 };
 
 #[must_use]

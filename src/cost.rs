@@ -15,6 +15,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct CastingCost {
     pub mana_cost: Vec<ManaCost>,
+    pub additional_cost: Vec<AdditionalCost>,
 }
 
 impl CastingCost {
@@ -53,6 +54,11 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
                 .iter()
                 .map(ManaCost::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            additional_cost: value
+                .additional_costs
+                .iter()
+                .map(AdditionalCost::try_from)
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }

@@ -12,11 +12,12 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        compute_deck_targets, ActionResult, ChooseTargets, PayCost, PendingResults, Source,
-        SpendMana, TargetSource,
+        compute_deck_targets, ActionResult, ChooseTargets, PayCost, PendingResults,
+        SacrificePermanent, Source, SpendMana, TapPermanent, TargetSource,
     },
     card::keyword::SplitSecond,
     controller::ControllerRestriction,
+    cost::AdditionalCost,
     effects::{
         BattlefieldModifier, DestroyEach, Effect, EffectDuration, ForEachManaOfSource, Mill,
         TutorLibrary,
@@ -914,6 +915,20 @@ fn add_card_to_stack(
     let cost = card.cost(db);
     if paying_costs {
         results.push_pay_costs(PayCost::SpendMana(SpendMana::new(cost.mana_cost.clone())));
+    }
+    for cost in cost.additional_cost.iter() {
+        match cost {
+            AdditionalCost::SacrificeSource => unreachable!(),
+            AdditionalCost::PayLife(_) => todo!(),
+            AdditionalCost::SacrificePermanent(restrictions) => {
+                results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
+                    restrictions.clone(),
+                )));
+            }
+            AdditionalCost::TapPermanent(restrictions) => results.push_pay_costs(
+                PayCost::TapPermanent(TapPermanent::new(restrictions.clone())),
+            ),
+        }
     }
 
     results
