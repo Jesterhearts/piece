@@ -44,6 +44,11 @@ use piece::{
     UiState,
 };
 
+enum UiAction {
+    CleanupStack,
+    UpdatePushPreviousState(UiState),
+}
+
 fn main() -> anyhow::Result<()> {
     let file = OpenOptions::new()
         .create(true)
@@ -172,466 +177,18 @@ fn main() -> anyhow::Result<()> {
 
     let mut last_down = None;
     let mut last_click = None;
+    let mut last_rclick = false;
     let mut last_hover = None;
     let mut key_selected = None;
     let mut last_entry_clicked = None;
-    let mut choice;
+    let mut choice = None;
     let mut selected_card = None;
+    let mut scroll_left_up = false;
+    let mut scroll_right_down = false;
+
+    let mut next_action = None;
 
     loop {
-        choice = None;
-        terminal.draw(|frame| {
-            let mut area = frame.size();
-            let in_preview = matches!(state, UiState::BattlefieldPreview { .. });
-
-            match &mut state {
-                UiState::Battlefield {
-                    phase_options_list_page,
-                    phase_options_selection_state,
-                    selected_state,
-                    action_selection_state,
-                    action_list_page,
-                    hand_selection_state,
-                    hand_list_page,
-                    stack_view_state,
-                    stack_list_offset,
-                    player1_mana_list_offset,
-                    player2_mana_list_offset,
-                    player1_graveyard_selection_state,
-                    player1_graveyard_list_offset,
-                    player1_exile_selection_state,
-                    player1_exile_list_offset,
-                    player2_graveyard_list_offset,
-                    player2_exile_list_offset,
-                }
-                | UiState::BattlefieldPreview {
-                    phase_options_list_page,
-                    phase_options_selection_state,
-                    selected_state,
-                    action_selection_state,
-                    action_list_page,
-                    hand_selection_state,
-                    hand_list_page,
-                    stack_view_state,
-                    stack_list_offset,
-                    player1_mana_list_offset,
-                    player2_mana_list_offset,
-                    player1_graveyard_selection_state,
-                    player1_graveyard_list_offset,
-                    player1_exile_selection_state,
-                    player1_exile_list_offset,
-                    player2_graveyard_list_offset,
-                    player2_exile_list_offset,
-                } => {
-                    if in_preview {
-                        let block = Block::default()
-                            .title(Title::from(" PREVIEW "))
-                            .italic()
-                            .borders(Borders::all());
-                        area = block.inner(area);
-                        frame.render_widget(block, area);
-                    } else {
-                        let phase_options_rest = Layout::default()
-                            .direction(Direction::Vertical)
-                            .constraints([Constraint::Length(1), Constraint::Min(1)])
-                            .split(area);
-
-                        let phase_options_display = Layout::default()
-                            .direction(Direction::Horizontal)
-                            .constraints([Constraint::Min(1), Constraint::Length(30)])
-                            .split(phase_options_rest[0]);
-
-                        frame.render_stateful_widget(
-                            HorizontalList::new(
-                                [
-                                    "Pass",
-                                    "(Debug) Untap all",
-                                    "(Debug) Draw",
-                                    "(Debug) infinite mana",
-                                ]
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, s)| (idx, Span::from(s)))
-                                .collect_vec(),
-                                last_hover,
-                                last_click,
-                            )
-                            .page(*phase_options_list_page),
-                            phase_options_display[0],
-                            phase_options_selection_state,
-                        );
-
-                        if phase_options_selection_state.has_overflow
-                            && phase_options_selection_state.right_clicked
-                        {
-                            *phase_options_list_page += 1
-                        } else if phase_options_selection_state.left_clicked {
-                            *phase_options_list_page = phase_options_list_page.saturating_sub(1);
-                        }
-
-                        frame.render_widget(
-                            Paragraph::new(format!(
-                                " {} {}",
-                                all_players[turn.active_player()].name,
-                                turn.phase.as_ref()
-                            )),
-                            phase_options_display[1],
-                        );
-
-                        area = phase_options_rest[1];
-                    }
-
-                    let stack_battlefield_graveyard = Layout::default()
-                        .direction(Direction::Horizontal)
-                        .constraints([
-                            Constraint::Percentage(12),
-                            Constraint::Percentage(76),
-                            Constraint::Percentage(12),
-                        ])
-                        .split(area);
-
-                    let stack_and_mana = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Length(10),
-                            Constraint::Min(1),
-                            Constraint::Length(10),
-                        ])
-                        .split(stack_battlefield_graveyard[0]);
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Mana ".to_string(),
-                            items: all_players[player2]
-                                .mana_pool
-                                .pools_display()
-                                .into_iter()
-                                .enumerate()
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                            offset: *player2_mana_list_offset,
-                        },
-                        stack_and_mana[0],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player2_mana_list_offset = player2_mana_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player2_mana_list_offset += 1;
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Stack (Enter) ".to_string(),
-                            items: Stack::entries(&mut db)
-                                .into_iter()
-                                .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                            offset: *stack_list_offset,
-                        },
-                        stack_and_mana[1],
-                        stack_view_state,
-                    );
-
-                    if stack_view_state.selected_up {
-                        *stack_list_offset = stack_list_offset.saturating_sub(1);
-                    } else if stack_view_state.selected_down {
-                        *stack_list_offset += 1;
-                    }
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Mana ".to_string(),
-                            items: all_players[player1]
-                                .mana_pool
-                                .pools_display()
-                                .into_iter()
-                                .enumerate()
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                            offset: *player1_mana_list_offset,
-                        },
-                        stack_and_mana[2],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player1_mana_list_offset = player1_mana_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player1_mana_list_offset += 1;
-                    }
-
-                    let battlefield_layout = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Percentage(40),
-                            Constraint::Min(1),
-                            Constraint::Length(4),
-                            Constraint::Length(2),
-                        ])
-                        .split(stack_battlefield_graveyard[1]);
-
-                    frame.render_stateful_widget(
-                        ui::Battlefield {
-                            db: &mut db,
-                            owner: player2,
-                            player_name: format!(
-                                " {} ({}) ",
-                                all_players[player2].name, all_players[player2].life_total
-                            ),
-                            last_hover,
-                            last_click,
-                        },
-                        battlefield_layout[0],
-                        &mut CardSelectionState::default(),
-                    );
-
-                    frame.render_stateful_widget(
-                        ui::Battlefield {
-                            db: &mut db,
-                            owner: player1,
-                            player_name: format!(
-                                " {} ({}) ",
-                                all_players[player1].name, all_players[player1].life_total
-                            ),
-                            last_hover,
-                            last_click,
-                        },
-                        battlefield_layout[1],
-                        selected_state,
-                    );
-
-                    frame.render_stateful_widget(
-                        ui::SelectedAbilities {
-                            db: &mut db,
-                            all_players: &all_players,
-                            turn: &turn,
-                            player: player1,
-                            card: selected_state.selected.or(selected_card),
-                            page: *action_list_page,
-                            last_hover,
-                            last_click,
-                        },
-                        battlefield_layout[2],
-                        action_selection_state,
-                    );
-
-                    if action_selection_state.has_overflow && action_selection_state.right_clicked {
-                        *action_list_page += 1
-                    } else if action_selection_state.left_clicked {
-                        *action_list_page = action_list_page.saturating_sub(1);
-                    }
-
-                    frame.render_stateful_widget(
-                        HorizontalList::new(
-                            player1
-                                .get_cards::<InHand>(&mut db)
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, card)| (idx, Span::from(card.name(&db))))
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                        )
-                        .page(*hand_list_page)
-                        .block(
-                            Block::default()
-                                .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                                .title(" Hand ".to_string()),
-                        ),
-                        battlefield_layout[3],
-                        hand_selection_state,
-                    );
-
-                    if hand_selection_state.has_overflow && hand_selection_state.right_clicked {
-                        *hand_list_page += 1
-                    } else if hand_selection_state.left_clicked {
-                        *hand_list_page = hand_list_page.saturating_sub(1);
-                    }
-
-                    let exile_and_graveyards = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Percentage(10),
-                            Constraint::Percentage(30),
-                            Constraint::Percentage(40),
-                            Constraint::Percentage(20),
-                        ])
-                        .split(stack_battlefield_graveyard[2]);
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Exile ".to_string(),
-                            items: player2
-                                .get_cards::<InExile>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player2_exile_list_offset,
-                        },
-                        exile_and_graveyards[0],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player2_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player2_exile_list_offset += 1;
-                    }
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Graveyard ".to_string(),
-                            items: player2
-                                .get_cards::<InGraveyard>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player2_graveyard_list_offset,
-                        },
-                        exile_and_graveyards[1],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player2_graveyard_list_offset =
-                            player2_graveyard_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player2_graveyard_list_offset += 1;
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Graveyard ".to_string(),
-                            items: player1
-                                .get_cards::<InGraveyard>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player1_graveyard_list_offset,
-                        },
-                        exile_and_graveyards[2],
-                        player1_graveyard_selection_state,
-                    );
-
-                    if player1_graveyard_selection_state.selected_up {
-                        *player1_graveyard_list_offset =
-                            player1_graveyard_list_offset.saturating_sub(1);
-                    } else if player1_graveyard_selection_state.selected_down {
-                        *player1_graveyard_list_offset += 1;
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Exile ".to_string(),
-                            items: player1
-                                .get_cards::<InExile>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player1_exile_list_offset,
-                        },
-                        exile_and_graveyards[3],
-                        player1_exile_selection_state,
-                    );
-
-                    if state.selected_up {
-                        *player1_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player1_exile_list_offset += 1;
-                    }
-                }
-                UiState::SelectingOptions {
-                    selection_list_offset,
-                    selection_list_state,
-                    to_resolve,
-                    ..
-                } => {
-                    if selection_list_state.selected_index.is_none() {
-                        selection_list_state.selected_index = Some(0);
-                    }
-                    let mut options = to_resolve.options(&mut db, &all_players);
-                    if to_resolve.choices_optional(&db, &all_players) {
-                        for option in options.iter_mut() {
-                            option.0 += 1
-                        }
-                        options.insert(0, (0, "None".to_string()));
-                    }
-
-                    if selection_list_state.selected_index.unwrap_or_default() >= options.len() {
-                        selection_list_state.selected_index = Some(options.len().saturating_sub(1));
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: format!(
-                                " Select an option for {} ",
-                                to_resolve.description(&db)
-                            ),
-                            items: options,
-                            last_click,
-                            last_hover,
-                            offset: *selection_list_offset,
-                        },
-                        area,
-                        selection_list_state,
-                    );
-
-                    if selection_list_state.selected_up {
-                        *selection_list_offset = selection_list_offset.saturating_sub(1);
-                    } else if selection_list_state.selected_down {
-                        *selection_list_offset += 1;
-                    }
-                }
-                UiState::ExaminingCard(card) => {
-                    let cost = card.cost(&db);
-
-                    let title = if cost.mana_cost.is_empty() {
-                        card.name(&db)
-                    } else {
-                        format!("{} - {}", card.name(&db), cost.text())
-                    };
-                    let pt = card.pt_text(&db);
-                    frame.render_stateful_widget(
-                        ui::Card {
-                            db: &mut db,
-                            card: *card,
-                            title,
-                            pt,
-                            highlight: false,
-                            last_hover: None,
-                            last_click: None,
-                        },
-                        area,
-                        &mut CardSelectionState::default(),
-                    );
-                }
-            }
-        })?;
-
-        last_click = None;
         if event::poll(std::time::Duration::from_millis(16))? {
             let event = event::read()?;
 
@@ -641,213 +198,20 @@ fn main() -> anyhow::Result<()> {
                 } else if let MouseEventKind::Up(MouseButton::Left) = mouse.kind {
                     if last_down == Some((mouse.row, mouse.column)) {
                         last_click = Some((mouse.row, mouse.column));
-                        if let UiState::Battlefield {
-                            player1_graveyard_selection_state:
-                                ListState {
-                                    hovered_value: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            let card = player1.get_cards::<InGraveyard>(&mut db)[*hovered];
-                            selected_card = Some(card);
-                        } else if let UiState::Battlefield {
-                            stack_view_state:
-                                ListState {
-                                    hovered_value: Some(_),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            if !Stack::is_empty(&mut db) {
-                                cleanup_stack(&mut db, &mut all_players, &turn, &mut state);
-                            }
-                        } else if let UiState::Battlefield {
-                            action_selection_state:
-                                HorizontalListState {
-                                    hovered: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        }
-                        | UiState::Battlefield {
-                            hand_selection_state:
-                                HorizontalListState {
-                                    hovered: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        }
-                        | UiState::Battlefield {
-                            phase_options_selection_state:
-                                HorizontalListState {
-                                    hovered: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            last_entry_clicked = Some(*hovered);
-                        } else if let UiState::SelectingOptions {
-                            selection_list_state:
-                                ListState {
-                                    hovered_value: hovered,
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            choice = *hovered;
-                            key_selected = None;
-                        } else {
-                            key_selected = None;
-                        }
                     }
                     last_down = None;
                 } else if let MouseEventKind::Up(MouseButton::Right) = mouse.kind {
                     if last_down == Some((mouse.row, mouse.column)) {
-                        if let UiState::Battlefield {
-                            player1_graveyard_selection_state:
-                                ListState {
-                                    hovered_value: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            let card = player1.get_cards::<InGraveyard>(&mut db)[*hovered];
-                            previous_state.push(state);
-                            state = UiState::ExaminingCard(card);
-                        } else if let UiState::Battlefield {
-                            player1_exile_selection_state:
-                                ListState {
-                                    hovered_value: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            let card = player1.get_cards::<InExile>(&mut db)[*hovered];
-                            previous_state.push(state);
-                            state = UiState::ExaminingCard(card);
-                        } else if let UiState::Battlefield {
-                            selected_state:
-                                CardSelectionState {
-                                    hovered: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        }
-                        | UiState::BattlefieldPreview {
-                            selected_state:
-                                CardSelectionState {
-                                    hovered: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            let hovered = *hovered;
-                            previous_state.push(state);
-                            state = UiState::ExaminingCard(hovered);
-                        } else if let UiState::Battlefield {
-                            hand_selection_state:
-                                HorizontalListState {
-                                    hovered: Some(hovered),
-                                    ..
-                                },
-                            ..
-                        } = &state
-                        {
-                            let hovered = *hovered;
-                            previous_state.push(state);
-                            state = UiState::ExaminingCard(
-                                player1.get_cards::<InHand>(&mut db)[hovered],
-                            );
-                        }
+                        last_rclick = true;
                     }
                     last_down = None;
                 } else if let MouseEventKind::Moved = mouse.kind {
                     last_hover = Some((mouse.row, mouse.column));
                 } else if let MouseEventKind::ScrollUp | MouseEventKind::ScrollLeft = mouse.kind {
-                    if let UiState::Battlefield {
-                        phase_options_selection_state:
-                            HorizontalListState {
-                                hovered: phases_hovered,
-                                ..
-                            },
-                        phase_options_list_page,
-                        action_list_page,
-                        hand_selection_state:
-                            HorizontalListState {
-                                hovered: hand_hovered,
-                                ..
-                            },
-                        hand_list_page,
-                        player1_graveyard_selection_state:
-                            ListState {
-                                hovered_value: graveyard_hovered,
-                                ..
-                            },
-                        player1_graveyard_list_offset,
-                        ..
-                    } = &mut state
-                    {
-                        if hand_hovered.is_some() {
-                            *hand_list_page = hand_list_page.saturating_sub(1);
-                        } else if phases_hovered.is_some() {
-                            *phase_options_list_page = phase_options_list_page.saturating_sub(1);
-                        } else if graveyard_hovered.is_some() {
-                            *player1_graveyard_list_offset =
-                                player1_graveyard_list_offset.saturating_sub(1);
-                        } else {
-                            *action_list_page = action_list_page.saturating_sub(1);
-                        }
-                    };
+                    scroll_left_up = true;
                 } else if let MouseEventKind::ScrollDown | MouseEventKind::ScrollRight = mouse.kind
                 {
-                    if let UiState::Battlefield {
-                        phase_options_selection_state:
-                            HorizontalListState {
-                                hovered: phases_hovered,
-                                has_overflow: phases_has_overflow,
-                                ..
-                            },
-                        phase_options_list_page,
-                        action_selection_state:
-                            HorizontalListState {
-                                has_overflow: actions_has_overflow,
-                                ..
-                            },
-                        action_list_page,
-                        hand_selection_state:
-                            HorizontalListState {
-                                hovered: hand_hovered,
-                                has_overflow: hand_has_overflow,
-                                ..
-                            },
-                        hand_list_page,
-                        player1_graveyard_selection_state:
-                            ListState {
-                                hovered_value: graveyard_hovered,
-                                ..
-                            },
-                        player1_graveyard_list_offset,
-                        ..
-                    } = &mut state
-                    {
-                        if hand_hovered.is_some() && *hand_has_overflow {
-                            *hand_list_page += 1;
-                        } else if phases_hovered.is_some() && *phases_has_overflow {
-                            *phase_options_list_page += 1;
-                        } else if graveyard_hovered.is_some() {
-                            *player1_graveyard_list_offset += 1;
-                        } else if *actions_has_overflow {
-                            *action_list_page += 1;
-                        }
-                    };
+                    scroll_right_down = true;
                 }
             } else if let event::Event::Key(key) = event {
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
@@ -907,68 +271,6 @@ fn main() -> anyhow::Result<()> {
                             {
                                 *selected += 1;
                             }
-                        }
-                        KeyCode::Left => {
-                            if let UiState::Battlefield {
-                                phase_options_selection_state:
-                                    HorizontalListState {
-                                        hovered: phases_hovered,
-                                        ..
-                                    },
-                                phase_options_list_page,
-                                action_list_page,
-                                hand_selection_state:
-                                    HorizontalListState {
-                                        hovered: hand_hovered,
-                                        ..
-                                    },
-                                hand_list_page,
-                                ..
-                            } = &mut state
-                            {
-                                if hand_hovered.is_some() {
-                                    *hand_list_page = hand_list_page.saturating_sub(1);
-                                } else if phases_hovered.is_some() {
-                                    *phase_options_list_page =
-                                        phase_options_list_page.saturating_sub(1);
-                                } else {
-                                    *action_list_page = action_list_page.saturating_sub(1);
-                                }
-                            };
-                        }
-                        KeyCode::Right => {
-                            if let UiState::Battlefield {
-                                phase_options_selection_state:
-                                    HorizontalListState {
-                                        hovered: phases_hovered,
-                                        has_overflow: phases_has_overflow,
-                                        ..
-                                    },
-                                phase_options_list_page,
-                                action_selection_state:
-                                    HorizontalListState {
-                                        has_overflow: actions_has_overflow,
-                                        ..
-                                    },
-                                action_list_page,
-                                hand_selection_state:
-                                    HorizontalListState {
-                                        hovered: hand_hovered,
-                                        has_overflow: hand_has_overflow,
-                                        ..
-                                    },
-                                hand_list_page,
-                                ..
-                            } = &mut state
-                            {
-                                if hand_hovered.is_some() && *hand_has_overflow {
-                                    *hand_list_page += 1;
-                                } else if phases_hovered.is_some() && *phases_has_overflow {
-                                    *phase_options_list_page += 1;
-                                } else if *actions_has_overflow {
-                                    *action_list_page += 1;
-                                }
-                            };
                         }
                         KeyCode::Enter => {
                             if !matches!(state, UiState::SelectingOptions { .. })
@@ -1103,6 +405,589 @@ fn main() -> anyhow::Result<()> {
                         }
                         _ => {}
                     }
+                }
+            }
+        }
+
+        terminal.draw(|frame| {
+            let mut area = frame.size();
+            let in_preview = matches!(state, UiState::BattlefieldPreview { .. });
+
+            match &mut state {
+                UiState::Battlefield {
+                    phase_options_list_page,
+                    phase_options_selection_state,
+                    selected_state,
+                    action_selection_state,
+                    action_list_page,
+                    hand_selection_state,
+                    hand_list_page,
+                    stack_view_state,
+                    stack_list_offset,
+                    player1_mana_list_offset,
+                    player2_mana_list_offset,
+                    player1_graveyard_selection_state,
+                    player1_graveyard_list_offset,
+                    player1_exile_selection_state,
+                    player1_exile_list_offset,
+                    player2_graveyard_list_offset,
+                    player2_exile_list_offset,
+                }
+                | UiState::BattlefieldPreview {
+                    phase_options_list_page,
+                    phase_options_selection_state,
+                    selected_state,
+                    action_selection_state,
+                    action_list_page,
+                    hand_selection_state,
+                    hand_list_page,
+                    stack_view_state,
+                    stack_list_offset,
+                    player1_mana_list_offset,
+                    player2_mana_list_offset,
+                    player1_graveyard_selection_state,
+                    player1_graveyard_list_offset,
+                    player1_exile_selection_state,
+                    player1_exile_list_offset,
+                    player2_graveyard_list_offset,
+                    player2_exile_list_offset,
+                } => {
+                    if in_preview {
+                        let block = Block::default()
+                            .title(Title::from(" PREVIEW "))
+                            .italic()
+                            .borders(Borders::all());
+                        area = block.inner(area);
+                        frame.render_widget(block, area);
+                    } else {
+                        let phase_options_rest = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints([Constraint::Length(1), Constraint::Min(1)])
+                            .split(area);
+
+                        let phase_options_display = Layout::default()
+                            .direction(Direction::Horizontal)
+                            .constraints([Constraint::Min(1), Constraint::Length(30)])
+                            .split(phase_options_rest[0]);
+
+                        frame.render_stateful_widget(
+                            HorizontalList::new(
+                                [
+                                    "Pass",
+                                    "(Debug) Untap all",
+                                    "(Debug) Draw",
+                                    "(Debug) infinite mana",
+                                ]
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, s)| (idx, Span::from(s)))
+                                .collect_vec(),
+                                last_hover,
+                                last_click,
+                            )
+                            .page(*phase_options_list_page),
+                            phase_options_display[0],
+                            phase_options_selection_state,
+                        );
+
+                        if phase_options_selection_state.has_overflow
+                            && phase_options_selection_state.right_clicked
+                        {
+                            *phase_options_list_page += 1
+                        } else if phase_options_selection_state.left_clicked {
+                            *phase_options_list_page = phase_options_list_page.saturating_sub(1);
+                        }
+
+                        if let Some(hovered) = phase_options_selection_state.hovered {
+                            if last_click.is_some() {
+                                last_entry_clicked = Some(hovered);
+                            }
+                        }
+
+                        frame.render_widget(
+                            Paragraph::new(format!(
+                                " {} {} ",
+                                all_players[turn.active_player()].name,
+                                turn.phase.as_ref()
+                            )),
+                            phase_options_display[1],
+                        );
+
+                        area = phase_options_rest[1];
+                    }
+
+                    let stack_battlefield_graveyard = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([
+                            Constraint::Percentage(12),
+                            Constraint::Percentage(76),
+                            Constraint::Percentage(12),
+                        ])
+                        .split(area);
+
+                    let stack_and_mana = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([
+                            Constraint::Length(10),
+                            Constraint::Min(1),
+                            Constraint::Length(10),
+                        ])
+                        .split(stack_battlefield_graveyard[0]);
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Mana ".to_string(),
+                            items: all_players[player2]
+                                .mana_pool
+                                .pools_display()
+                                .into_iter()
+                                .enumerate()
+                                .collect_vec(),
+                            last_hover,
+                            last_click,
+                            offset: *player2_mana_list_offset,
+                        },
+                        stack_and_mana[0],
+                        &mut state,
+                    );
+
+                    if state.selected_up {
+                        *player2_mana_list_offset = player2_mana_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player2_mana_list_offset += 1;
+                    }
+
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Stack (Enter) ".to_string(),
+                            items: Stack::entries(&mut db)
+                                .into_iter()
+                                .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_hover,
+                            last_click,
+                            offset: *stack_list_offset,
+                        },
+                        stack_and_mana[1],
+                        stack_view_state,
+                    );
+
+                    if stack_view_state.selected_up {
+                        *stack_list_offset = stack_list_offset.saturating_sub(1);
+                    } else if stack_view_state.selected_down {
+                        *stack_list_offset += 1;
+                    }
+
+                    if stack_view_state.hovered_value.is_some() {
+                        if scroll_right_down {
+                            *stack_list_offset += 1;
+                        } else if scroll_left_up {
+                            *stack_list_offset = stack_list_offset.saturating_sub(1)
+                        } else if last_click.is_some() && !Stack::is_empty(&mut db) {
+                            next_action = Some(UiAction::CleanupStack)
+                        }
+                    }
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Mana ".to_string(),
+                            items: all_players[player1]
+                                .mana_pool
+                                .pools_display()
+                                .into_iter()
+                                .enumerate()
+                                .collect_vec(),
+                            last_hover,
+                            last_click,
+                            offset: *player1_mana_list_offset,
+                        },
+                        stack_and_mana[2],
+                        &mut state,
+                    );
+
+                    if state.selected_up {
+                        *player1_mana_list_offset = player1_mana_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player1_mana_list_offset += 1;
+                    }
+
+                    if state.hovered_value.is_some() {
+                        if scroll_right_down {
+                            *player1_mana_list_offset += 1;
+                        } else if scroll_left_up {
+                            *player1_mana_list_offset = player1_mana_list_offset.saturating_sub(1);
+                        }
+                    }
+
+                    let battlefield_layout = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([
+                            Constraint::Percentage(40),
+                            Constraint::Min(1),
+                            Constraint::Length(4),
+                            Constraint::Length(2),
+                        ])
+                        .split(stack_battlefield_graveyard[1]);
+
+                    let mut state = CardSelectionState::default();
+                    frame.render_stateful_widget(
+                        ui::Battlefield {
+                            db: &mut db,
+                            owner: player2,
+                            player_name: format!(
+                                " {} ({}) ",
+                                all_players[player2].name, all_players[player2].life_total
+                            ),
+                            last_hover,
+                            last_click,
+                        },
+                        battlefield_layout[0],
+                        &mut state,
+                    );
+                    if let Some(hovered) = state.hovered {
+                        if last_rclick {
+                            next_action = Some(UiAction::UpdatePushPreviousState(
+                                UiState::ExaminingCard(hovered),
+                            ));
+                        }
+                    }
+
+                    frame.render_stateful_widget(
+                        ui::Battlefield {
+                            db: &mut db,
+                            owner: player1,
+                            player_name: format!(
+                                " {} ({}) ",
+                                all_players[player1].name, all_players[player1].life_total
+                            ),
+                            last_hover,
+                            last_click,
+                        },
+                        battlefield_layout[1],
+                        selected_state,
+                    );
+
+                    if let Some(hovered) = selected_state.hovered {
+                        if last_rclick {
+                            next_action = Some(UiAction::UpdatePushPreviousState(
+                                UiState::ExaminingCard(hovered),
+                            ));
+                        }
+                    }
+
+                    frame.render_stateful_widget(
+                        ui::SelectedAbilities {
+                            db: &mut db,
+                            all_players: &all_players,
+                            turn: &turn,
+                            player: player1,
+                            card: selected_state.selected.or(selected_card),
+                            page: *action_list_page,
+                            last_hover,
+                            last_click,
+                        },
+                        battlefield_layout[2],
+                        action_selection_state,
+                    );
+
+                    if action_selection_state.has_overflow && action_selection_state.right_clicked {
+                        *action_list_page += 1
+                    } else if action_selection_state.left_clicked {
+                        *action_list_page = action_list_page.saturating_sub(1);
+                    }
+
+                    if let Some(hovered) = action_selection_state.hovered {
+                        if scroll_left_up {
+                            *action_list_page = action_list_page.saturating_sub(1);
+                        } else if scroll_right_down {
+                            *action_list_page += 1;
+                        } else if last_click.is_some() {
+                            last_entry_clicked = Some(hovered);
+                        }
+                    }
+
+                    frame.render_stateful_widget(
+                        HorizontalList::new(
+                            player1
+                                .get_cards::<InHand>(&mut db)
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, card)| (idx, Span::from(card.name(&db))))
+                                .collect_vec(),
+                            last_hover,
+                            last_click,
+                        )
+                        .page(*hand_list_page)
+                        .block(
+                            Block::default()
+                                .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                                .title(" Hand ".to_string()),
+                        ),
+                        battlefield_layout[3],
+                        hand_selection_state,
+                    );
+
+                    if hand_selection_state.has_overflow && hand_selection_state.right_clicked {
+                        *hand_list_page += 1
+                    } else if hand_selection_state.left_clicked {
+                        *hand_list_page = hand_list_page.saturating_sub(1);
+                    }
+
+                    if let Some(hovered) = hand_selection_state.hovered {
+                        if scroll_left_up {
+                            *hand_list_page = hand_list_page.saturating_sub(1);
+                        } else if scroll_right_down {
+                            *hand_list_page += 1;
+                        } else if last_rclick {
+                            next_action =
+                                Some(UiAction::UpdatePushPreviousState(UiState::ExaminingCard(
+                                    player1.get_cards::<InHand>(&mut db)[hovered],
+                                )));
+                        } else if last_click.is_some() {
+                            last_entry_clicked = Some(hovered);
+                        }
+                    }
+
+                    let exile_and_graveyards = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([
+                            Constraint::Percentage(10),
+                            Constraint::Percentage(30),
+                            Constraint::Percentage(40),
+                            Constraint::Percentage(20),
+                        ])
+                        .split(stack_battlefield_graveyard[2]);
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Exile ".to_string(),
+                            items: player2
+                                .get_cards::<InExile>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: *player2_exile_list_offset,
+                        },
+                        exile_and_graveyards[0],
+                        &mut state,
+                    );
+
+                    if state.selected_up {
+                        *player2_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player2_exile_list_offset += 1;
+                    }
+
+                    if state.selected_value.is_some() {
+                        if scroll_left_up {
+                            *player2_exile_list_offset =
+                                player2_exile_list_offset.saturating_sub(1);
+                        } else if scroll_right_down {
+                            *player2_exile_list_offset += 1;
+                        }
+                    }
+
+                    let mut state = ListState::default();
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Graveyard ".to_string(),
+                            items: player2
+                                .get_cards::<InGraveyard>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: *player2_graveyard_list_offset,
+                        },
+                        exile_and_graveyards[1],
+                        &mut state,
+                    );
+
+                    if state.selected_up {
+                        *player2_graveyard_list_offset =
+                            player2_graveyard_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player2_graveyard_list_offset += 1;
+                    }
+
+                    if state.selected_value.is_some() {
+                        if scroll_left_up {
+                            *player2_graveyard_list_offset =
+                                player2_graveyard_list_offset.saturating_sub(1);
+                        } else if scroll_right_down {
+                            *player2_graveyard_list_offset += 1;
+                        }
+                    }
+
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Graveyard ".to_string(),
+                            items: player1
+                                .get_cards::<InGraveyard>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: *player1_graveyard_list_offset,
+                        },
+                        exile_and_graveyards[2],
+                        player1_graveyard_selection_state,
+                    );
+
+                    if player1_graveyard_selection_state.selected_up {
+                        *player1_graveyard_list_offset =
+                            player1_graveyard_list_offset.saturating_sub(1);
+                    } else if player1_graveyard_selection_state.selected_down {
+                        *player1_graveyard_list_offset += 1;
+                    }
+
+                    if let Some(hovered) = player1_graveyard_selection_state.hovered_value {
+                        if scroll_left_up {
+                            *player1_graveyard_list_offset =
+                                player1_graveyard_list_offset.saturating_sub(1);
+                        } else if scroll_right_down {
+                            *player1_graveyard_list_offset += 1;
+                        } else if last_rclick {
+                            let card = player1.get_cards::<InGraveyard>(&mut db)[hovered];
+                            next_action = Some(UiAction::UpdatePushPreviousState(
+                                UiState::ExaminingCard(card),
+                            ))
+                        } else if last_click.is_some() {
+                            let card = player1.get_cards::<InGraveyard>(&mut db)[hovered];
+                            selected_card = Some(card);
+                        }
+                    }
+
+                    frame.render_stateful_widget(
+                        List {
+                            title: " Exile ".to_string(),
+                            items: player1
+                                .get_cards::<InExile>(&mut db)
+                                .into_iter()
+                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
+                                .enumerate()
+                                .collect_vec(),
+                            last_click,
+                            last_hover,
+                            offset: *player1_exile_list_offset,
+                        },
+                        exile_and_graveyards[3],
+                        player1_exile_selection_state,
+                    );
+
+                    if state.selected_up {
+                        *player1_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
+                    } else if state.selected_down {
+                        *player1_exile_list_offset += 1;
+                    }
+
+                    if let Some(hovered) = player1_exile_selection_state.hovered_value {
+                        if scroll_left_up {
+                            *player1_exile_list_offset =
+                                player1_exile_list_offset.saturating_sub(1);
+                        } else if scroll_right_down {
+                            *player1_exile_list_offset += 1;
+                        } else if last_rclick {
+                            let card = player1.get_cards::<InExile>(&mut db)[hovered];
+                            next_action = Some(UiAction::UpdatePushPreviousState(
+                                UiState::ExaminingCard(card),
+                            ));
+                        }
+                    }
+                }
+                UiState::SelectingOptions {
+                    selection_list_offset,
+                    selection_list_state,
+                    to_resolve,
+                    ..
+                } => {
+                    if selection_list_state.selected_index.is_none() {
+                        selection_list_state.selected_index = Some(0);
+                    }
+                    let mut options = to_resolve.options(&mut db, &all_players);
+                    if to_resolve.choices_optional(&db, &all_players) {
+                        for option in options.iter_mut() {
+                            option.0 += 1
+                        }
+                        options.insert(0, (0, "None".to_string()));
+                    }
+
+                    if selection_list_state.selected_index.unwrap_or_default() >= options.len() {
+                        selection_list_state.selected_index = Some(options.len().saturating_sub(1));
+                    }
+
+                    frame.render_stateful_widget(
+                        List {
+                            title: format!(
+                                " Select an option for {} ",
+                                to_resolve.description(&db)
+                            ),
+                            items: options,
+                            last_click,
+                            last_hover,
+                            offset: *selection_list_offset,
+                        },
+                        area,
+                        selection_list_state,
+                    );
+
+                    if selection_list_state.selected_up {
+                        *selection_list_offset = selection_list_offset.saturating_sub(1);
+                    } else if selection_list_state.selected_down {
+                        *selection_list_offset += 1;
+                    }
+
+                    if let Some(hovered) = selection_list_state.hovered_value {
+                        if last_click.is_some() {
+                            choice = Some(hovered);
+                        }
+                    }
+                }
+                UiState::ExaminingCard(card) => {
+                    let cost = card.cost(&db);
+
+                    let title = if cost.mana_cost.is_empty() {
+                        card.name(&db)
+                    } else {
+                        format!("{} - {}", card.name(&db), cost.text())
+                    };
+                    let pt = card.pt_text(&db);
+                    frame.render_stateful_widget(
+                        ui::Card {
+                            db: &mut db,
+                            card: *card,
+                            title,
+                            pt,
+                            highlight: false,
+                            last_hover: None,
+                            last_click: None,
+                        },
+                        area,
+                        &mut CardSelectionState::default(),
+                    );
+                }
+            }
+        })?;
+
+        if let Some(action) = next_action {
+            match action {
+                UiAction::CleanupStack => {
+                    cleanup_stack(&mut db, &mut all_players, &turn, &mut state);
+                }
+                UiAction::UpdatePushPreviousState(new_state) => {
+                    previous_state.push(state);
+                    state = new_state
                 }
             }
         }
@@ -1346,8 +1231,14 @@ fn main() -> anyhow::Result<()> {
             UiState::BattlefieldPreview { .. } => {}
         }
 
-        last_entry_clicked = None;
+        last_click = None;
+        last_rclick = false;
         key_selected = None;
+        last_entry_clicked = None;
+        choice = None;
+        scroll_left_up = false;
+        scroll_right_down = false;
+        next_action = None;
     }
 
     stdout()
