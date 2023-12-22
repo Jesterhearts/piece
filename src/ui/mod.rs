@@ -4,12 +4,12 @@ pub mod list;
 
 use itertools::Itertools;
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Offset, Rect},
     style::Stylize,
     text::Span,
     widgets::{
         block::{Position, Title},
-        Block, BorderType, Borders, Paragraph, StatefulWidget, Widget, Wrap,
+        Block, BorderType, Borders, Clear, Paragraph, StatefulWidget, Widget, Wrap,
     },
 };
 
@@ -31,6 +31,7 @@ pub struct Card<'db> {
     pub card: CardId,
     pub title: String,
     pub pt: Option<String>,
+    pub highlight: bool,
     pub last_hover: Option<(u16, u16)>,
     pub last_click: Option<(u16, u16)>,
 }
@@ -80,7 +81,7 @@ impl<'db> StatefulWidget for Card<'db> {
             )
             .join(" - ");
 
-        if typeline.len() < usize::from(area.width - 8) {
+        if typeline.len() < usize::from(area.width.saturating_sub(8)) {
             block = block.title(
                 Title::from(format!(" {} ", typeline))
                     .position(Position::Bottom)
@@ -98,7 +99,9 @@ impl<'db> StatefulWidget for Card<'db> {
 
         if hovered {
             state.hovered = Some(self.card);
-            block = block.on_dark_gray();
+            if self.highlight {
+                block = block.on_dark_gray();
+            }
         }
 
         if clicked {
@@ -243,18 +246,27 @@ impl<'db> StatefulWidget for Battlefield<'db> {
         let cards_tall = (cards.len() as f32 / cards_wide as f32).ceil();
         let tall_percentage = (1.0 / cards_tall * 100.0).floor() as u16;
 
-        let layout = Layout::default()
+        let desired_height = 30;
+
+        let mut layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(
-                (0..cards_tall as usize)
-                    .map(|_| Constraint::Percentage(tall_percentage))
-                    .collect_vec(),
-            )
+            .constraints((0..cards_tall as usize).map(|_| Constraint::Percentage(tall_percentage)))
             .split(area);
+
+        let card_height = layout[0].height;
+        let mut stacking = false;
+        if card_height < desired_height {
+            stacking = true;
+            layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints((0..(area.height / 3)).map(|_| Constraint::Length(3)))
+                .split(area);
+        }
 
         let mut card_and_title = cards.into_iter().zip(card_titles);
 
-        for cell in layout.iter() {
+        let mut hovered_title = None;
+        'outer: for cell in layout.iter() {
             let layout = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints(
@@ -270,15 +282,42 @@ impl<'db> StatefulWidget for Battlefield<'db> {
                     Card {
                         db: self.db,
                         card,
-                        title,
+                        title: title.clone(),
                         pt,
+                        highlight: true,
                         last_hover: self.last_hover,
                         last_click: self.last_click,
                     }
                     .render(*cell, buf, state);
+
+                    if hovered_title.is_none() && state.hovered.is_some() {
+                        hovered_title = Some(title)
+                    }
                 } else {
-                    return;
+                    break 'outer;
                 }
+            }
+        }
+
+        if let (Some(card), Some(title)) = (state.hovered, hovered_title) {
+            if stacking {
+                let pt = card.pt_text(self.db);
+                let area = area.inner(&Margin::new(20, 0));
+
+                Block::new().on_gray().render(area, buf);
+
+                let area = area.offset(Offset { x: -1, y: -1 });
+                Clear.render(area, buf);
+                Card {
+                    db: self.db,
+                    card,
+                    title,
+                    pt,
+                    highlight: false,
+                    last_hover: self.last_hover,
+                    last_click: self.last_click,
+                }
+                .render(area, buf, state)
             }
         }
     }

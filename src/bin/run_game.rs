@@ -620,6 +620,7 @@ fn main() -> anyhow::Result<()> {
                             card: *card,
                             title,
                             pt,
+                            highlight: false,
                             last_hover: None,
                             last_click: None,
                         },
