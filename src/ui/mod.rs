@@ -246,7 +246,7 @@ impl<'db> StatefulWidget for Battlefield<'db> {
         let cards_tall = (cards.len() as f32 / cards_wide as f32).ceil();
         let tall_percentage = (1.0 / cards_tall * 100.0).floor() as u16;
 
-        let desired_height = 30;
+        let desired_height = 10;
 
         let mut layout = Layout::default()
             .direction(Direction::Vertical)

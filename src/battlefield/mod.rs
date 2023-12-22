@@ -516,6 +516,10 @@ impl Battlefield {
                     results.all_currently_targeted(),
                 );
 
+                if effect.needs_targets() > targets.len() {
+                    return PendingResults::default();
+                }
+
                 if !targets.is_empty() {
                     results.push_choose_targets(ChooseTargets::new(
                         TargetSource::Effect(effect),
