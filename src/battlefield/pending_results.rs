@@ -711,6 +711,16 @@ impl PayCost {
             PayCost::SpendMana(spend) => spend.is_empty(),
         }
     }
+
+    fn targets(&self) -> Vec<CardId> {
+        match self {
+            PayCost::SacrificePermanent(SacrificePermanent { valid_targets, .. }) => {
+                valid_targets.clone()
+            }
+            PayCost::TapPermanent(TapPermanent { valid_targets, .. }) => valid_targets.clone(),
+            PayCost::SpendMana(_) => vec![],
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -1001,12 +1011,7 @@ impl PendingResults {
             "attackers".to_string()
         } else if self.choose_modes.front().is_some() {
             "mode".to_string()
-        } else if self.apply_in_stages && !self.choose_targets.is_empty()
-            || self
-                .choose_targets
-                .iter()
-                .any(|targets| !targets.is_empty())
-        {
+        } else if !self.choose_targets.is_empty() {
             "targets".to_string()
         } else if let Some(pay) = self.pay_costs.front() {
             pay.description()
@@ -1238,7 +1243,12 @@ impl PendingResults {
             }
         } else if let Some(mut pay) = self.pay_costs.pop_front() {
             let player = self.source.unwrap().card(db).controller(db);
+            let targets = pay.targets();
             pay.compute_targets(db, self.source.unwrap(), &self.all_chosen_targets);
+            if pay.targets() != targets {
+                return ResolutionResult::TryAgain;
+            }
+
             if pay.choose_pay(all_players, player.into(), &self.all_chosen_targets, choice) {
                 if pay.paid() {
                     self.x_is = pay.x_is();

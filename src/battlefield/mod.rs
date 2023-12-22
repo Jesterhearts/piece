@@ -516,8 +516,12 @@ impl Battlefield {
                     results.all_currently_targeted(),
                 );
 
-                results
-                    .push_choose_targets(ChooseTargets::new(TargetSource::Effect(effect), targets));
+                if !targets.is_empty() {
+                    results.push_choose_targets(ChooseTargets::new(
+                        TargetSource::Effect(effect),
+                        targets,
+                    ));
+                }
             }
         }
 
