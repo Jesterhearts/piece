@@ -270,7 +270,7 @@ impl From<&protogen::color::color::Color> for Color {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Component)]
 pub enum StaticAbilityModifier {
     RemoveAll,
     Add(StaticAbility),
@@ -342,7 +342,7 @@ pub enum ModifyKeywords {
     Add(Counter<Keyword>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
+#[derive(Debug, Clone, Default, Component)]
 pub struct Card {
     pub name: String,
     pub types: IndexSet<Type>,

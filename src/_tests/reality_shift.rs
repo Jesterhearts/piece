@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, ResolutionResult},
+    battlefield::ResolutionResult,
     in_play::Database,
     in_play::{cards, CardId, InExile},
     load_cards,
@@ -42,19 +42,6 @@ fn resolves_shift() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        (
-            shift,
-            true,
-            [
-                ActionResult::ExileTarget(ActiveTarget::Battlefield { id: bear1 }),
-                ActionResult::ManifestTopOfLibrary(player.into()),
-                ActionResult::StackToGraveyard(shift),
-            ]
-        )
-            .into()
-    );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

@@ -7,28 +7,20 @@ use bevy_ecs::{
     query::{With, Without},
 };
 use derive_more::{Deref, DerefMut};
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        compute_deck_targets, ActionResult, ChooseTargets, PayCost, PendingResults,
-        SacrificePermanent, Source, SpendMana, TapPermanent, TargetSource,
+        ActionResult, ChooseTargets, PayCost, PendingResults, SacrificePermanent, Source,
+        SpendMana, TapPermanent, TargetSource,
     },
     card::keyword::SplitSecond,
-    controller::ControllerRestriction,
     cost::AdditionalCost,
-    effects::{
-        BattlefieldModifier, DestroyEach, Effect, EffectDuration, ForEachManaOfSource, Mill,
-        TutorLibrary,
-    },
     in_play::{
-        cast_from, AbilityId, CardId, CastFrom, Database, DeleteAbility, InStack, ModifierId,
-        TriggerId, TriggerInStack,
+        cast_from, AbilityId, CardId, CastFrom, Database, DeleteAbility, InStack, TriggerId,
+        TriggerInStack,
     },
     player::{AllPlayers, Owner},
-    targets::Restriction,
-    types::Type,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
@@ -500,7 +492,7 @@ impl Stack {
             let effect = effect.into_effect(db, controller);
             if targets.len() != effect.needs_targets() && effect.needs_targets() != 0 {
                 let valid_targets =
-                    source.targets_for_effect(db, controller, &effect, &HashSet::default());
+                    effect.valid_targets(db, source, controller, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),
                     valid_targets,
@@ -509,8 +501,8 @@ impl Stack {
             }
 
             if effect.wants_targets() > 0 {
-                let valid_targets = source
-                    .targets_for_effect(db, controller, &effect, &HashSet::default())
+                let valid_targets = effect
+                    .valid_targets(db, source, controller, &HashSet::default())
                     .into_iter()
                     .collect::<HashSet<_>>();
                 if !targets.iter().all(|target| valid_targets.contains(target)) {
@@ -522,243 +514,14 @@ impl Stack {
                 }
             }
 
-            match effect {
-                Effect::CounterSpell { .. } => {
-                    let in_stack = Self::in_stack(db);
-                    let in_stack = &in_stack;
-                    let results: &mut PendingResults = &mut results;
-                    for target in targets {
-                        let ActiveTarget::Stack { id } = target else {
-                            unreachable!()
-                        };
-
-                        results.push_settled(ActionResult::SpellCountered {
-                            id: *in_stack.get(&id).unwrap(),
-                        });
-                    }
-                }
-                Effect::BattlefieldModifier(modifier) => {
-                    if apply_to_self {
-                        let modifier = ModifierId::upload_temporary_modifier(db, source, &modifier);
-                        results.push_settled(ActionResult::ModifyCreatures {
-                            modifier,
-                            targets: vec![ActiveTarget::Battlefield { id: source }],
-                        });
-                    } else {
-                        results.push_settled(ActionResult::ApplyToBattlefield(
-                            ModifierId::upload_temporary_modifier(db, source, &modifier),
-                        ));
-                    }
-                }
-                Effect::ControllerDrawCards(count) => {
-                    results.push_settled(ActionResult::DrawCards {
-                        target: controller,
-                        count,
-                    });
-                }
-                Effect::ModifyTarget(modifier) => {
-                    let mut final_targets = vec![];
-                    for target in targets {
-                        match target {
-                            ActiveTarget::Battlefield { .. } => {
-                                final_targets.push(target);
-                            }
-                            ActiveTarget::Graveyard { .. } => {
-                                final_targets.push(target);
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-
-                    let modifier = match modifier.duration {
-                        EffectDuration::UntilTargetLeavesBattlefield => {
-                            ModifierId::upload_temporary_modifier(
-                                db,
-                                final_targets.iter().exactly_one().unwrap().id().unwrap(),
-                                &modifier,
-                            )
-                        }
-                        _ => ModifierId::upload_temporary_modifier(db, source, &modifier),
-                    };
-
-                    results.push_settled(ActionResult::ModifyCreatures {
-                        targets: final_targets,
-                        modifier,
-                    });
-                }
-                Effect::ExileTargetCreature => {
-                    for target in targets {
-                        results.push_settled(ActionResult::ExileTarget(target));
-                    }
-                }
-                Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                    for target in targets {
-                        results.push_settled(ActionResult::ExileTarget(target));
-                        results.push_settled(ActionResult::ManifestTopOfLibrary(
-                            target.id().unwrap().controller(db),
-                        ));
-                    }
-                }
-                Effect::DealDamage(dmg) => {
-                    for target in targets {
-                        results.push_settled(ActionResult::DamageTarget {
-                            quantity: dmg.quantity,
-                            target,
-                        });
-                    }
-                }
-                Effect::TargetToTopOfLibrary { .. } => {
-                    for target in targets {
-                        results
-                            .push_settled(ActionResult::ReturnFromBattlefieldToLibrary { target });
-                    }
-                }
-                Effect::Equip(modifiers) => {
-                    let target = targets.into_iter().exactly_one().unwrap();
-                    // This is a hack. I hope equipement doesn't come with anthem effects.
-                    // It probably works even so.
-                    source.deactivate_modifiers(db);
-                    source.activate_modifiers(db);
-                    for modifier in modifiers {
-                        let modifier = ModifierId::upload_temporary_modifier(
-                            db,
-                            source,
-                            &BattlefieldModifier {
-                                modifier: modifier.clone(),
-                                controller: ControllerRestriction::You,
-                                duration: EffectDuration::UntilSourceLeavesBattlefield,
-                                restrictions: vec![Restriction::OfType {
-                                    types: IndexSet::from([Type::Creature]),
-                                    subtypes: Default::default(),
-                                }],
-                            },
-                        );
-
-                        results.push_settled(ActionResult::ModifyCreatures {
-                            targets: vec![target],
-                            modifier,
-                        });
-                    }
-                }
-                Effect::CreateToken(token) => {
-                    results.push_settled(ActionResult::CreateToken {
-                        source: controller,
-                        token: Box::new(token.clone()),
-                    });
-                }
-                Effect::GainCounter(counter) => {
-                    results.push_settled(ActionResult::AddCounters {
-                        source,
-                        target: source,
-                        counter,
-                    });
-                }
-                Effect::ControllerLosesLife(count) => {
-                    results.push_settled(ActionResult::LoseLife {
-                        target: source.controller(db),
-                        count,
-                    })
-                }
-                Effect::Mill(Mill { count, .. }) => {
-                    results.push_settled(ActionResult::Mill { count, targets });
-                }
-                Effect::ReturnFromGraveyardToBattlefield(_) => {
-                    results
-                        .push_settled(ActionResult::ReturnFromGraveyardToBattlefield { targets });
-                }
-                Effect::ReturnFromGraveyardToLibrary(_) => {
-                    results.push_settled(ActionResult::ReturnFromGraveyardToLibrary { targets });
-                }
-                Effect::TutorLibrary(TutorLibrary {
-                    restrictions,
-                    destination,
-                    reveal,
-                }) => {
-                    let valid_targets = compute_deck_targets(db, controller, &restrictions)
-                        .into_iter()
-                        .map(|card| ActiveTarget::Library { id: card })
-                        .collect_vec();
-
-                    results.push_choose_targets(ChooseTargets::new(
-                        TargetSource::Effect(Effect::TutorLibrary(TutorLibrary {
-                            restrictions,
-                            destination,
-                            reveal,
-                        })),
-                        valid_targets,
-                    ));
-                }
-                Effect::CopyOfAnyCreatureNonTargeting => unreachable!(),
-                Effect::CreateTokenCopy { modifiers } => {
-                    let target = targets.into_iter().next().unwrap();
-                    let target = target.id();
-                    results.push_settled(ActionResult::CreateTokenCopyOf {
-                        target: target.unwrap(),
-                        modifiers,
-                        controller: source.controller(db),
-                    });
-                }
-                Effect::ReturnSelfToHand => {
-                    source.move_to_hand(db);
-                }
-                Effect::RevealEachTopOfLibrary(reveal) => {
-                    results.push_settled(ActionResult::RevealEachTopOfLibrary(source, reveal));
-                }
-                Effect::UntapThis => results.push_settled(ActionResult::Untap(source)),
-                Effect::Cascade => results.push_settled(ActionResult::Cascade {
-                    cascading: source.cost(db).cmc(),
-                    player: controller,
-                }),
-                Effect::UntapTarget => {
-                    let Ok(ActiveTarget::Battlefield { id }) = targets.into_iter().exactly_one()
-                    else {
-                        unreachable!()
-                    };
-                    results.push_settled(ActionResult::Untap(id));
-                }
-                Effect::TargetGainsCounters(counter) => {
-                    let target = match targets.into_iter().exactly_one().unwrap() {
-                        ActiveTarget::Battlefield { id } => id,
-                        ActiveTarget::Graveyard { id } => id,
-                        _ => unreachable!(),
-                    };
-
-                    results.push_settled(ActionResult::AddCounters {
-                        source,
-                        target,
-                        counter,
-                    })
-                }
-                Effect::Scry(count) => {
-                    results.push_settled(ActionResult::Scry(source, count));
-                }
-                Effect::Discover(count) => results.push_settled(ActionResult::Discover {
-                    count,
-                    player: controller,
-                }),
-                Effect::ForEachManaOfSource(ForEachManaOfSource {
-                    source: mana_source,
-                    effect,
-                }) => results.push_settled(ActionResult::ForEachManaOfSource {
-                    card: source,
-                    source: mana_source,
-                    effect,
-                }),
-                Effect::GainLife(count) => results.push_settled(ActionResult::GainLife {
-                    target: source.controller(db),
-                    count,
-                }),
-                Effect::Craft(_) => results.push_settled(ActionResult::Craft {
-                    transforming: source,
-                    targets,
-                }),
-                Effect::DestroyEach(DestroyEach { restrictions }) => {
-                    results.push_settled(ActionResult::DestroyEach(source, restrictions));
-                }
-                Effect::DestroyTarget(_) => results.push_settled(ActionResult::DestroyTarget(
-                    targets.into_iter().exactly_one().unwrap(),
-                )),
-            }
+            effect.push_behavior_with_targets(
+                db,
+                targets,
+                apply_to_self,
+                source,
+                controller,
+                &mut results,
+            );
         }
 
         if let Some(resolving_card) = resolving_card {
@@ -818,7 +581,7 @@ impl Stack {
         let controller = source.controller(db);
         for effect in trigger.effects(db) {
             let effect = effect.into_effect(db, controller);
-            targets.push(source.targets_for_effect(db, controller, &effect, &HashSet::default()));
+            targets.push(effect.valid_targets(db, source, controller, &HashSet::default()));
         }
 
         results.push_settled(ActionResult::AddTriggerToStack {
@@ -882,8 +645,7 @@ fn add_card_to_stack(
                 .exactly_one()
                 .unwrap()
                 .into_effect(db, controller);
-            let valid_targets =
-                card.targets_for_effect(db, controller, &effect, &HashSet::default());
+            let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
             if valid_targets.len() < effect.needs_targets() {
                 return PendingResults::default();
             }
@@ -895,8 +657,7 @@ fn add_card_to_stack(
         } else {
             for effect in card.effects(db) {
                 let effect = effect.into_effect(db, controller);
-                let valid_targets =
-                    card.targets_for_effect(db, controller, &effect, &HashSet::default());
+                let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),
                     valid_targets,
@@ -937,7 +698,7 @@ fn add_card_to_stack(
 #[cfg(test)]
 mod tests {
     use crate::{
-        battlefield::{ActionResult, ResolutionResult},
+        battlefield::{Battlefield, ResolutionResult},
         in_play::{CardId, Database},
         load_cards,
         player::AllPlayers,
@@ -956,14 +717,11 @@ mod tests {
 
         let mut results = Stack::resolve_1(&mut db);
 
-        assert_eq!(
-            results,
-            [ActionResult::AddToBattlefield(card1, None)].into()
-        );
         let result = results.resolve(&mut db, &mut all_players, None);
         assert_eq!(result, ResolutionResult::Complete);
 
         assert!(Stack::is_empty(&mut db));
+        assert_eq!(Battlefield::creatures(&mut db), [card1]);
 
         Ok(())
     }

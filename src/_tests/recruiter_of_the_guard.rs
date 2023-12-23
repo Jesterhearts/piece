@@ -2,8 +2,8 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, ResolutionResult},
-    in_play::CardId,
     in_play::Database,
+    in_play::{CardId, InHand},
     load_cards,
     player::AllPlayers,
     stack::Stack,
@@ -35,11 +35,11 @@ fn etb() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, &mut all_players, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(all_players[player].deck.len(), 2);
+
+    assert_eq!(player.get_cards::<InHand>(&mut db), [bear]);
 
     Ok(())
 }

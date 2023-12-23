@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -39,7 +39,7 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(card2.toughness(&db), Some(2));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, aura);
-    assert_eq!(results, PendingResults::default());
+    assert!(results.is_empty());
 
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
@@ -73,11 +73,9 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     assert!(creature.vigilance(&db));
 
     let results = Battlefield::check_sba(&mut db);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     let results = Battlefield::permanent_to_graveyard(&mut db, creature);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     let mut results = Battlefield::check_sba(&mut db);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -118,8 +116,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     assert!(creature.vigilance(&db));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, card2);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     assert!(!creature.vigilance(&db));
 
     Ok(())

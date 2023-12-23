@@ -60,8 +60,6 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
     // Pay white
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::PendingChoice);

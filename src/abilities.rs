@@ -21,7 +21,7 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct SorcerySpeed;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
 }
@@ -46,10 +46,10 @@ pub struct ETBAbilities(pub Vec<AbilityId>);
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub struct ModifiedETBAbilities(pub Vec<AbilityId>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
+#[derive(Debug, Clone, Deref, DerefMut, Component, Default)]
 pub struct StaticAbilities(pub Vec<StaticAbility>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component, Default)]
+#[derive(Debug, Clone, Deref, DerefMut, Component, Default)]
 pub struct ModifiedStaticAbilities(pub Vec<StaticAbility>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,9 +58,9 @@ pub struct ForceEtbTapped {
     pub types: IndexSet<Type>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum StaticAbility {
-    BattlefieldModifier(BattlefieldModifier),
+    BattlefieldModifier(Box<BattlefieldModifier>),
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
     GreenCannotBeCountered { controller: ControllerRestriction },
@@ -94,7 +94,7 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                 })
             }
             protogen::abilities::static_ability::Ability::BattlefieldModifier(modifier) => {
-                Ok(Self::BattlefieldModifier(modifier.try_into()?))
+                Ok(Self::BattlefieldModifier(Box::new(modifier.try_into()?)))
             }
             protogen::abilities::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
                 Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
@@ -122,7 +122,7 @@ pub struct ModifiedActivatedAbilities(pub Vec<AbilityId>);
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct ApplyToSelf;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ActivatedAbility {
     pub cost: AbilityCost,
     pub effects: Vec<AnyEffect>,
@@ -162,7 +162,7 @@ pub struct ModifiedTriggers(pub Vec<TriggerId>);
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct TriggerListener(pub CardId);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct TriggeredAbility {
     pub trigger: Trigger,
     pub effects: Vec<AnyEffect>,
@@ -293,12 +293,13 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Component)]
 pub enum Ability {
     Activated(ActivatedAbility),
     Mana(GainManaAbility),
     ETB { effects: Vec<AnyEffect> },
 }
+
 impl Ability {
     pub fn cost(&self) -> Option<&AbilityCost> {
         match self {

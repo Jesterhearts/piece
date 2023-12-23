@@ -1,4 +1,7 @@
-use std::collections::{HashSet, VecDeque};
+use std::{
+    collections::{HashSet, VecDeque},
+    fmt::Debug,
+};
 
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -7,8 +10,8 @@ use crate::{
     abilities::GainMana,
     battlefield::{ActionResult, Battlefield},
     controller::ControllerRestriction,
-    effects::{DealDamage, Destination, DestroyEach, Effect, Mill, TutorLibrary},
-    in_play::{AbilityId, AuraId, CardId, CastFrom, Database, ModifierId, OnBattlefield},
+    effects::Effect,
+    in_play::{AbilityId, AuraId, CardId, CastFrom, Database, OnBattlefield},
     mana::{Mana, ManaCost},
     player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Stack, StackEntry},
@@ -65,7 +68,7 @@ impl Source {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum TargetSource {
     Effect(Effect),
     Aura(AuraId),
@@ -87,7 +90,7 @@ impl TargetSource {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ChooseTargets {
     target_source: TargetSource,
     valid_targets: Vec<ActiveTarget>,
@@ -115,8 +118,7 @@ impl ChooseTargets {
         let controller = card.controller(db);
         match &self.target_source {
             TargetSource::Effect(effect) => {
-                self.valid_targets =
-                    card.targets_for_effect(db, controller, effect, already_chosen);
+                self.valid_targets = effect.valid_targets(db, card, controller, already_chosen);
             }
             TargetSource::Aura(_) => {
                 self.valid_targets = card.targets_for_aura(db).unwrap();
@@ -782,7 +784,7 @@ pub struct DeclaringAttackers {
 }
 
 #[must_use]
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct PendingResults {
     source: Option<Source>,
 
@@ -1186,7 +1188,14 @@ impl PendingResults {
                         let player = self.source.unwrap().card(db).controller(db);
                         match effect_or_aura {
                             TargetSource::Effect(effect) => {
-                                self.push_effect_results(db, player, effect, choices.clone());
+                                effect.push_behavior_with_targets(
+                                    db,
+                                    choices.clone(),
+                                    false,
+                                    self.source.unwrap().card(db),
+                                    player,
+                                    self,
+                                );
                             }
                             TargetSource::Aura(aura) => {
                                 self.settled_effects
@@ -1211,11 +1220,13 @@ impl PendingResults {
                             } else {
                                 match effect_or_aura {
                                     TargetSource::Effect(effect) => {
-                                        self.push_effect_results(
+                                        effect.push_behavior_with_targets(
                                             db,
-                                            player,
-                                            effect,
                                             choices.clone(),
+                                            false,
+                                            self.source.unwrap().card(db),
+                                            player,
+                                            self,
                                         );
                                     }
                                     TargetSource::Aura(aura) => self.settled_effects.push_back(
@@ -1376,196 +1387,6 @@ impl PendingResults {
                     && self.pay_costs.iter().all(|pay| {
                         pay.autopay(all_players, self.source.unwrap().card(db).owner(db))
                     })))
-    }
-
-    fn push_effect_results(
-        &mut self,
-        db: &mut Database,
-        player: Controller,
-        effect: Effect,
-        mut targets: Vec<ActiveTarget>,
-    ) {
-        match effect {
-            Effect::CopyOfAnyCreatureNonTargeting => {
-                self.settled_effects
-                    .push_front(ActionResult::CloneCreatureNonTargeting {
-                        source: self.source.unwrap().card(db),
-                        target: targets.first().copied(),
-                    })
-            }
-            Effect::CreateTokenCopy { modifiers } => {
-                let Some(ActiveTarget::Battlefield { id }) = targets.pop() else {
-                    unreachable!()
-                };
-                self.settled_effects
-                    .push_front(ActionResult::CreateTokenCopyOf {
-                        target: id,
-                        modifiers: modifiers.clone(),
-                        controller: player,
-                    })
-            }
-            Effect::DealDamage(DealDamage { quantity, .. }) => {
-                self.settled_effects.push_front(ActionResult::DamageTarget {
-                    quantity,
-                    target: targets.pop().unwrap(),
-                });
-            }
-            Effect::ExileTargetCreature => {
-                self.settled_effects
-                    .push_front(ActionResult::ExileTarget(targets.pop().unwrap()));
-            }
-            Effect::ExileTargetCreatureManifestTopOfLibrary => {
-                let target = targets.pop().unwrap();
-                let ActiveTarget::Battlefield { id } = target else {
-                    unreachable!()
-                };
-
-                self.settled_effects
-                    .push_front(ActionResult::ExileTarget(target));
-                self.settled_effects
-                    .push_front(ActionResult::ManifestTopOfLibrary(id.controller(db)))
-            }
-            Effect::GainCounter(counter) => {
-                let target = targets.pop().unwrap();
-                let ActiveTarget::Battlefield { id } = target else {
-                    unreachable!()
-                };
-                self.settled_effects.push_front(ActionResult::AddCounters {
-                    source: id,
-                    target: id,
-                    counter,
-                });
-            }
-            Effect::Mill(Mill { count, .. }) => self
-                .settled_effects
-                .push_front(ActionResult::Mill { count, targets }),
-            Effect::ModifyTarget(modifier) => {
-                let card = self.source.unwrap().card(db);
-                let modifier = ModifierId::upload_temporary_modifier(db, card, &modifier);
-                self.settled_effects
-                    .push_front(ActionResult::ModifyCreatures { targets, modifier });
-            }
-            Effect::ReturnFromGraveyardToBattlefield(_) => {
-                self.settled_effects
-                    .push_front(ActionResult::ReturnFromGraveyardToBattlefield { targets });
-            }
-            Effect::ReturnFromGraveyardToLibrary(_) => {
-                self.settled_effects
-                    .push_front(ActionResult::ReturnFromGraveyardToLibrary { targets });
-            }
-            Effect::TargetToTopOfLibrary { .. } => {
-                self.settled_effects
-                    .push_front(ActionResult::ReturnFromBattlefieldToLibrary {
-                        target: targets.pop().unwrap(),
-                    });
-            }
-            Effect::TutorLibrary(TutorLibrary {
-                destination,
-                reveal,
-                ..
-            }) => {
-                if reveal {
-                    for target in targets.iter() {
-                        let ActiveTarget::Library { id } = target else {
-                            unreachable!()
-                        };
-
-                        self.settled_effects
-                            .push_front(ActionResult::RevealCard(*id));
-                    }
-                }
-
-                match destination {
-                    Destination::Hand => {
-                        for target in targets {
-                            let ActiveTarget::Library { id } = target else {
-                                unreachable!()
-                            };
-                            self.settled_effects
-                                .push_front(ActionResult::MoveToHandFromLibrary(id));
-                        }
-                    }
-                    Destination::TopOfLibrary => {
-                        for target in targets {
-                            let ActiveTarget::Library { id } = target else {
-                                unreachable!()
-                            };
-                            self.settled_effects
-                                .push_front(ActionResult::MoveFromLibraryToTopOfLibrary(id));
-                        }
-                    }
-                    Destination::Battlefield { enters_tapped } => {
-                        for target in targets {
-                            let ActiveTarget::Library { id } = target else {
-                                unreachable!()
-                            };
-                            self.settled_effects.push_front(
-                                ActionResult::AddToBattlefieldFromLibrary {
-                                    card: id,
-                                    enters_tapped,
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-            Effect::TargetGainsCounters(counter) => {
-                for target in targets.into_iter() {
-                    let target = match target {
-                        ActiveTarget::Battlefield { id } => id,
-                        ActiveTarget::Graveyard { id } => id,
-                        _ => unreachable!(),
-                    };
-
-                    self.settled_effects.push_front(ActionResult::AddCounters {
-                        source: self.source.unwrap().card(db),
-                        target,
-                        counter,
-                    });
-                }
-            }
-            Effect::ControllerDrawCards(count) => {
-                self.settled_effects.push_front(ActionResult::DrawCards {
-                    target: self.source.unwrap().card(db).controller(db),
-                    count,
-                });
-            }
-            Effect::Scry(count) => {
-                self.settled_effects
-                    .push_front(ActionResult::Scry(self.source.unwrap().card(db), count));
-            }
-            Effect::GainLife(count) => {
-                self.settled_effects.push_front(ActionResult::GainLife {
-                    target: self.source.unwrap().card(db).controller(db),
-                    count,
-                });
-            }
-            Effect::DestroyEach(DestroyEach { restrictions }) => {
-                self.settled_effects.push_front(ActionResult::DestroyEach(
-                    self.source.unwrap().card(db),
-                    restrictions,
-                ));
-            }
-            Effect::DestroyTarget(_) => {
-                self.settled_effects.push_front(ActionResult::DestroyTarget(
-                    targets.into_iter().exactly_one().unwrap(),
-                ));
-            }
-
-            Effect::Equip(_) => unreachable!(),
-            Effect::RevealEachTopOfLibrary(_) => unreachable!(),
-            Effect::ReturnSelfToHand => unreachable!(),
-            Effect::CreateToken(_) => unreachable!(),
-            Effect::CounterSpell { .. } => unreachable!(),
-            Effect::BattlefieldModifier(_) => unreachable!(),
-            Effect::ControllerLosesLife(_) => unreachable!(),
-            Effect::UntapThis => unreachable!(),
-            Effect::Cascade => unreachable!(),
-            Effect::Discover(_) => unreachable!(),
-            Effect::UntapTarget => unreachable!(),
-            Effect::ForEachManaOfSource(_) => unreachable!(),
-            Effect::Craft(_) => unreachable!(),
-        }
     }
 
     pub fn can_cancel(&self) -> bool {

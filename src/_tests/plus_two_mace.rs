@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -50,8 +50,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.toughness(&db), Some(2));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, equipment);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
 
@@ -119,8 +118,7 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.toughness(&db), Some(4));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, equipment);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
 

@@ -4,6 +4,7 @@ use std::{
     collections::HashSet,
     ops::{Index, IndexMut},
     sync::atomic::{AtomicUsize, Ordering},
+    vec::IntoIter,
 };
 
 use bevy_ecs::{component::Component, entity::Entity, query::With};
@@ -12,11 +13,11 @@ use itertools::Itertools;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{ActionResult, Battlefield, PendingResults},
+    battlefield::{Battlefield, PendingResults},
     card::Color,
     controller::ControllerRestriction,
     deck::Deck,
-    effects::{replacing, Effect},
+    effects::replacing,
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
     mana::{Mana, ManaCost},
     player::mana_pool::{ManaPool, ManaSource},
@@ -264,7 +265,7 @@ impl Player {
         for _ in 0..count {
             let replacements = ReplacementEffectId::watching::<replacing::Draw>(db);
             if !replacements.is_empty() {
-                self.draw_internal(db, &mut replacements.into_iter(), 1, &mut results);
+                self.draw_with_replacement(db, &mut replacements.into_iter(), 1, &mut results);
             } else if let Some(card) = self.deck.draw() {
                 card.move_to_hand(db);
             } else {
@@ -275,10 +276,10 @@ impl Player {
         results
     }
 
-    fn draw_internal(
+    pub fn draw_with_replacement(
         &mut self,
         db: &mut Database,
-        replacements: &mut impl ExactSizeIterator<Item = ReplacementEffectId>,
+        replacements: &mut IntoIter<ReplacementEffectId>,
         count: usize,
         results: &mut PendingResults,
     ) {
@@ -298,19 +299,14 @@ impl Player {
 
                     let controller = replacement.source(db).controller(db);
                     for effect in replacement.effects(db) {
-                        match effect.into_effect(db, controller) {
-                            Effect::BattlefieldModifier(_) => todo!(),
-                            Effect::ControllerDrawCards(count) => {
-                                self.draw_internal(db, replacements, count, results);
-                            }
-                            Effect::ControllerLosesLife(count) => {
-                                results.push_settled(ActionResult::LoseLife {
-                                    target: controller,
-                                    count,
-                                });
-                            }
-                            _ => todo!(),
-                        }
+                        effect.into_effect(db, controller).replace_draw(
+                            self,
+                            db,
+                            replacements,
+                            controller,
+                            count,
+                            results,
+                        );
                     }
                 }
             } else if let Some(card) = self.deck.draw() {

@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{PendingResults, ResolutionResult},
+    battlefield::{ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -35,8 +35,7 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     assert_eq!(bear.toughness(&db), Some(4));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, elesh);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(2));
 

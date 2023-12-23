@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     card::Color,
     in_play::CardId,
     in_play::Database,
@@ -42,8 +42,7 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(card2.toughness(&db), Some(2));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, aura);
-    assert_eq!(results, PendingResults::default());
-
+    assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
     assert_eq!(creature.colors(&db), HashSet::from([Color::Green]));

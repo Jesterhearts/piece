@@ -28,7 +28,7 @@ pub struct DeleteAbility {
 
 pub use abilityid::AbilityId;
 pub use auraid::AuraId;
-pub use cardid::{push_target_from_location, CardId, Cloning};
+pub use cardid::{target_from_location, CardId, Cloning};
 pub use counterid::CounterId;
 pub use modifierid::{ModifierId, ModifierSeq, Modifiers};
 pub use replacementid::ReplacementEffectId;

@@ -1,12 +1,12 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, ResolutionResult},
-    in_play::CardId,
+    battlefield::ResolutionResult,
     in_play::Database,
+    in_play::{self, CardId, InGraveyard},
     load_cards,
     player::AllPlayers,
-    stack::{Entry, Stack},
+    stack::Stack,
 };
 
 #[test]
@@ -27,24 +27,15 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        (
-            counterspell_2,
-            true,
-            [
-                ActionResult::SpellCountered {
-                    id: Entry::Card(counterspell_1)
-                },
-                ActionResult::StackToGraveyard(counterspell_2)
-            ]
-        )
-            .into()
-    );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Stack::is_empty(&mut db));
+
+    assert_eq!(
+        in_play::cards::<InGraveyard>(&mut db),
+        [counterspell_1, counterspell_2]
+    );
 
     Ok(())
 }

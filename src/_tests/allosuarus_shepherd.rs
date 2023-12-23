@@ -2,12 +2,12 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{ActionResult, Battlefield, ResolutionResult},
+    battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
     player::AllPlayers,
-    stack::{Entry, Stack},
+    stack::Stack,
     turns::{Phase, Turn},
     types::Subtype,
 };
@@ -32,8 +32,6 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
 
-    let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
     // Pay costs
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -87,20 +85,16 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        [ActionResult::StackToGraveyard(counterspell)].into()
-    );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
-    let results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        (card, true, [ActionResult::AddToBattlefield(card, None)]).into()
-    );
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    assert_eq!(Battlefield::creatures(&mut db), [card]);
 
     Ok(())
 }
@@ -128,20 +122,16 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        [ActionResult::StackToGraveyard(counterspell)].into()
-    );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
-    let results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        (card2, true, [ActionResult::AddToBattlefield(card2, None)]).into()
-    );
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    assert_eq!(Battlefield::creatures(&mut db), [card1, card2]);
 
     Ok(())
 }
@@ -170,24 +160,11 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    assert_eq!(
-        results,
-        (
-            counterspell,
-            true,
-            [
-                ActionResult::SpellCountered {
-                    id: Entry::Card(card2)
-                },
-                ActionResult::StackToGraveyard(counterspell)
-            ]
-        )
-            .into()
-    );
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Stack::is_empty(&mut db));
+    assert_eq!(Battlefield::creatures(&mut db), [card1]);
 
     Ok(())
 }
