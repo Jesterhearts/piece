@@ -34,7 +34,7 @@ pub enum Source {
 }
 
 impl Source {
-    fn card(&self, db: &Database) -> CardId {
+    pub fn card(&self, db: &Database) -> CardId {
         match self {
             Source::Card(id) => *id,
             Source::Ability(id) => id.source(db),
@@ -236,7 +236,7 @@ impl TapPermanent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpendMana {
     paying: IndexMap<ManaCost, usize>,
-    paid: IndexMap<ManaCost, IndexMap<Mana, IndexMap<Option<ManaSource>, usize>>>,
+    paid: IndexMap<ManaCost, IndexMap<Mana, IndexMap<ManaSource, usize>>>,
 }
 
 impl SpendMana {
@@ -290,7 +290,7 @@ impl SpendMana {
         self.first_unpaid().is_none()
     }
 
-    pub fn paying(&self) -> (Vec<Mana>, Vec<Option<ManaSource>>) {
+    pub fn paying(&self) -> (Vec<Mana>, Vec<ManaSource>) {
         let mut mana_paid = vec![];
         let mut mana_source = vec![];
         for paid in self.paid.values() {
@@ -354,7 +354,13 @@ pub enum PayCost {
 }
 
 impl PayCost {
-    fn autopay(&self, all_players: &AllPlayers, player: Owner) -> bool {
+    fn autopay(
+        &self,
+        db: &Database,
+        all_players: &AllPlayers,
+        player: Owner,
+        reason: Source,
+    ) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
@@ -366,9 +372,10 @@ impl PayCost {
                     match first_unpaid {
                         ManaCost::TwoX | ManaCost::X | ManaCost::Generic(_) => return false,
                         unpaid => {
-                            let pool_post_pay =
-                                all_players[player].pool_post_pay(&mana, &source).unwrap();
-                            if !pool_post_pay.can_spend(unpaid, None) {
+                            let pool_post_pay = all_players[player]
+                                .pool_post_pay(db, &mana, &source, reason)
+                                .unwrap();
+                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::Any, reason) {
                                 return false;
                             }
                         }
@@ -380,13 +387,21 @@ impl PayCost {
         }
     }
 
-    fn choice_optional(&self, all_players: &AllPlayers, player: Owner) -> bool {
+    fn choice_optional(
+        &self,
+        db: &Database,
+        all_players: &AllPlayers,
+        player: Owner,
+        reason: Source,
+    ) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
             PayCost::SpendMana(spend) => {
                 let (mana, source) = spend.paying();
-                if let Some(pool_post_pay) = all_players[player].pool_post_pay(&mana, &source) {
+                if let Some(pool_post_pay) =
+                    all_players[player].pool_post_pay(db, &mana, &source, reason)
+                {
                     if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
                         match first_unpaid {
                             ManaCost::Generic(_) => true,
@@ -402,7 +417,7 @@ impl PayCost {
                                     % 2
                                     == 0
                             }
-                            unpaid => pool_post_pay.can_spend(unpaid, None),
+                            unpaid => pool_post_pay.can_spend(db, unpaid, ManaSource::Any, reason),
                         }
                     } else {
                         true
@@ -446,9 +461,11 @@ impl PayCost {
                 .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target.id(db),)))
                 .collect_vec(),
             PayCost::SpendMana(spend) => {
-                let (mana, source) = spend.paying();
-                let pool_post_paid = all_players[player].pool_post_pay(&mana, &source);
-                if pool_post_paid.is_none() || pool_post_paid.as_ref().unwrap().max().is_none() {
+                let (mana, sources) = spend.paying();
+                let pool_post_paid = all_players[player].pool_post_pay(db, &mana, &sources, source);
+                if pool_post_paid.is_none()
+                    || pool_post_paid.as_ref().unwrap().max(db, source).is_none()
+                {
                     return vec![];
                 }
                 let pool_post_paid = pool_post_paid.unwrap();
@@ -515,10 +532,12 @@ impl PayCost {
 
     fn choose_pay(
         &mut self,
+        db: &Database,
         all_players: &mut AllPlayers,
         player: Owner,
         all_targets: &HashSet<ActiveTarget>,
         choice: Option<usize>,
+        reason: Source,
     ) -> bool {
         match self {
             PayCost::SacrificePermanent(SacrificePermanent {
@@ -571,13 +590,14 @@ impl PayCost {
                     }
 
                     let (mana, source) = spend.paying();
-                    let mut pool_post_pay =
-                        all_players[player].pool_post_pay(&mana, &source).unwrap();
+                    let mut pool_post_pay = all_players[player]
+                        .pool_post_pay(db, &mana, &source, reason)
+                        .unwrap();
                     let Some(first_unpaid) = spend.first_unpaid() else {
                         return true;
                     };
 
-                    if pool_post_pay.can_spend(first_unpaid, None) {
+                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::Any, reason) {
                         let mana = match first_unpaid {
                             ManaCost::White => Mana::White,
                             ManaCost::Blue => Mana::Blue,
@@ -587,8 +607,9 @@ impl PayCost {
                             ManaCost::Colorless => Mana::Colorless,
                             ManaCost::Generic(count) => {
                                 for _ in 0..count {
-                                    let max = pool_post_pay.max().unwrap();
-                                    let (_, source) = pool_post_pay.spend(max, None);
+                                    let max = pool_post_pay.max(db, reason).unwrap();
+                                    let (_, source) =
+                                        pool_post_pay.spend(db, max, ManaSource::Any, reason);
                                     *spend
                                         .paid
                                         .entry(first_unpaid)
@@ -607,7 +628,7 @@ impl PayCost {
                             ManaCost::X => unreachable!(),
                             ManaCost::TwoX => unreachable!(),
                         };
-                        let (_, source) = pool_post_pay.spend(mana, None);
+                        let (_, source) = pool_post_pay.spend(db, mana, ManaSource::Any, reason);
                         *spend
                             .paid
                             .entry(first_unpaid)
@@ -627,11 +648,10 @@ impl PayCost {
                 }
 
                 let (mana, sources) = spend.paying();
-                if let Some((_, mana, source)) = all_players[player]
-                    .pool_post_pay(&mana, &sources)
+                if let Some((_, mana, source, _)) = all_players[player]
+                    .pool_post_pay(db, &mana, &sources, reason)
                     .unwrap()
                     .available_mana()
-                    .filter(|(count, _, _)| *count > 0)
                     .nth(choice.unwrap())
                 {
                     let cost = spend.first_unpaid_x_always_unpaid().unwrap();
@@ -645,7 +665,7 @@ impl PayCost {
                         .or_default() += 1;
 
                     let (mana, sources) = spend.paying();
-                    if all_players[player].can_spend_mana(&mana, &sources) {
+                    if all_players[player].can_spend_mana(db, &mana, &sources, reason) {
                         !matches!(
                             spend.first_unpaid_x_always_unpaid(),
                             Some(ManaCost::X | ManaCost::TwoX)
@@ -674,6 +694,7 @@ impl PayCost {
                     card: source.card(db),
                     mana,
                     sources,
+                    reason: source,
                 }
             }
         }
@@ -951,7 +972,12 @@ impl PendingResults {
             true
         } else if !self.pay_costs.is_empty() {
             self.pay_costs.iter().all(|cost| {
-                cost.choice_optional(all_players, self.source.unwrap().card(db).owner(db))
+                cost.choice_optional(
+                    db,
+                    all_players,
+                    self.source.unwrap().card(db).owner(db),
+                    self.source.unwrap(),
+                )
             })
         } else {
             true
@@ -1084,23 +1110,26 @@ impl PendingResults {
                 }
                 self.add_to_stack = false;
             } else if let Some(Source::Ability(id)) = self.source {
-                let controller = self.source.unwrap().card(db).controller(db);
-                let mana_source = id.mana_source(db);
+                let target = self.source.unwrap().card(db).controller(db);
+                let source = id.mana_source(db);
+                let restriction = id.mana_restriction(db);
                 if let Some(mana) = id.gain_mana_ability(db) {
                     match mana.gain {
                         GainMana::Specific { gains } => {
                             self.settled_effects.push_back(ActionResult::GainMana {
                                 gain: gains,
-                                target: controller,
-                                source: mana_source,
+                                target,
+                                source,
+                                restriction,
                             })
                         }
                         GainMana::Choice { choices } => {
                             let option = self.chosen_modes.pop().unwrap();
                             self.settled_effects.push_back(ActionResult::GainMana {
                                 gain: choices[option].clone(),
-                                target: controller,
-                                source: mana_source,
+                                target,
+                                source,
+                                restriction,
                             })
                         }
                     }
@@ -1271,7 +1300,14 @@ impl PendingResults {
                 return ResolutionResult::TryAgain;
             }
 
-            if pay.choose_pay(all_players, player.into(), &self.all_chosen_targets, choice) {
+            if pay.choose_pay(
+                db,
+                all_players,
+                player.into(),
+                &self.all_chosen_targets,
+                choice,
+                self.source.unwrap(),
+            ) {
                 if pay.paid() {
                     self.x_is = pay.x_is();
                     debug!("X is {:?}", self.x_is);
@@ -1396,7 +1432,12 @@ impl PendingResults {
                     .iter()
                     .all(|choose| choose.valid_targets.is_empty())
                     && self.pay_costs.iter().all(|pay| {
-                        pay.autopay(all_players, self.source.unwrap().card(db).owner(db))
+                        pay.autopay(
+                            db,
+                            all_players,
+                            self.source.unwrap().card(db).owner(db),
+                            self.source.unwrap(),
+                        )
                     })))
     }
 

@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use bevy_ecs::component::Component;
 
 use crate::{card::Color, protogen};
 
@@ -23,6 +24,12 @@ pub enum ManaCost {
     Generic(usize),
     X,
     TwoX,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash, strum::AsRefStr, Component)]
+pub enum ManaRestriction {
+    None,
+    ArtifactSpellOrAbility,
 }
 
 impl Mana {

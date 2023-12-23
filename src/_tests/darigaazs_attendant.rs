@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -5,7 +6,8 @@ use crate::{
     in_play::CardId,
     in_play::Database,
     load_cards,
-    player::AllPlayers,
+    mana::{Mana, ManaRestriction},
+    player::{mana_pool::ManaSource, AllPlayers},
     turns::{Phase, Turn},
 };
 
@@ -16,7 +18,16 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].mana_pool.colorless_mana += 1;
+    *all_players[player]
+        .mana_pool
+        .sourced
+        .entry(Mana::Colorless)
+        .or_default()
+        .entry(ManaSource::Any)
+        .or_default()
+        .entry(ManaRestriction::None)
+        .or_default() = 1;
+
     let mut turn = Turn::new(&all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
@@ -33,9 +44,17 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(all_players[player].mana_pool.black_mana, 1);
-    assert_eq!(all_players[player].mana_pool.red_mana, 1);
-    assert_eq!(all_players[player].mana_pool.green_mana, 1);
+    assert_eq!(
+        all_players[player].mana_pool.all_mana().collect_vec(),
+        [
+            (0, Mana::White, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Blue, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::Black, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::Red, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::Green, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Colorless, ManaSource::Any, ManaRestriction::None)
+        ]
+    );
 
     Ok(())
 }

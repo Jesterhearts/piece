@@ -1691,9 +1691,9 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub(crate) fn mana_from_source(self, db: &mut Database, sources: &[Option<ManaSource>]) {
+    pub(crate) fn mana_from_source(self, db: &mut Database, sources: &[ManaSource]) {
         let mut sourced = HashMap::default();
-        for source in sources.iter().flatten().copied() {
+        for source in sources.iter().copied() {
             *sourced.entry(source).or_default() += 1
         }
 

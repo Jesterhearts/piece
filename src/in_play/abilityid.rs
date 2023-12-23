@@ -11,12 +11,13 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility, SorcerySpeed},
+    battlefield::Source,
     card::OracleText,
     controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, Effects},
     in_play::{CardId, Database, InStack, OnBattlefield, NEXT_STACK_SEQ},
-    mana::Mana,
+    mana::{Mana, ManaRestriction},
     player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Settled, Stack, Targets},
     turns::{Phase, Turn},
@@ -407,7 +408,7 @@ impl AbilityId {
                     }
                 }
 
-                if !can_pay_costs(db, all_players, &ability.cost, source) {
+                if !can_pay_costs(db, all_players, self, &ability.cost, source) {
                     return false;
                 }
 
@@ -424,20 +425,31 @@ impl AbilityId {
                     return false;
                 };
 
-                can_pay_costs(db, all_players, &ability.cost, source)
+                can_pay_costs(db, all_players, self, &ability.cost, source)
             }
             Ability::ETB { .. } => false,
         }
     }
 
-    pub(crate) fn mana_source(self, db: &Database) -> Option<ManaSource> {
-        db.abilities.get::<ManaSource>(self.0).copied()
+    pub(crate) fn mana_source(self, db: &Database) -> ManaSource {
+        db.abilities
+            .get::<ManaSource>(self.0)
+            .copied()
+            .unwrap_or(ManaSource::Any)
+    }
+
+    pub(crate) fn mana_restriction(self, db: &mut Database) -> ManaRestriction {
+        db.abilities
+            .get::<ManaRestriction>(self.0)
+            .copied()
+            .unwrap_or(ManaRestriction::None)
     }
 }
 
 fn can_pay_costs(
     db: &mut Database,
     all_players: &AllPlayers,
+    ability: AbilityId,
     cost: &AbilityCost,
     source: CardId,
 ) -> bool {
@@ -497,7 +509,7 @@ fn can_pay_costs(
         }
     }
 
-    if !all_players[controller].can_meet_cost(&cost.mana_cost, &[]) {
+    if !all_players[controller].can_meet_cost(db, &cost.mana_cost, &[], Source::Ability(ability)) {
         return false;
     }
 

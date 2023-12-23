@@ -26,7 +26,7 @@ use crate::{
         ExileReason, InExile, InGraveyard, InLibrary, InStack, ModifierId, OnBattlefield,
         ReplacementEffectId, TriggerId,
     },
-    mana::Mana,
+    mana::{Mana, ManaRestriction},
     player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
     stack::{ActiveTarget, Entry, Stack, StackEntry},
     targets::Restriction,
@@ -130,7 +130,8 @@ pub enum ActionResult {
     GainMana {
         gain: Vec<Mana>,
         target: Controller,
-        source: Option<ManaSource>,
+        source: ManaSource,
+        restriction: ManaRestriction,
     },
     CreateToken {
         source: Controller,
@@ -157,7 +158,8 @@ pub enum ActionResult {
     SpendMana {
         card: CardId,
         mana: Vec<Mana>,
-        sources: Vec<Option<ManaSource>>,
+        sources: Vec<ManaSource>,
+        reason: Source,
     },
     Untap(CardId),
     ReturnFromBattlefieldToLibrary {
@@ -697,9 +699,12 @@ impl Battlefield {
                 gain,
                 target,
                 source,
+                restriction,
             } => {
                 for mana in gain {
-                    all_players[*target].mana_pool.apply(*mana, *source)
+                    all_players[*target]
+                        .mana_pool
+                        .apply(*mana, *source, *restriction)
                 }
                 PendingResults::default()
             }
@@ -973,9 +978,10 @@ impl Battlefield {
                 card,
                 mana,
                 sources,
+                reason,
             } => {
                 card.mana_from_source(db, sources);
-                let spent = all_players[card.controller(db)].spend_mana(mana, sources);
+                let spent = all_players[card.controller(db)].spend_mana(db, mana, sources, *reason);
                 assert!(
                     spent,
                     "Should have validated mana could be spent before spending."

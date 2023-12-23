@@ -10,16 +10,17 @@ use std::{
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use indexmap::IndexMap;
 use itertools::Itertools;
+use strum::IntoEnumIterator;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{Battlefield, PendingResults},
+    battlefield::{Battlefield, PendingResults, Source},
     card::Color,
     controller::ControllerRestriction,
     deck::Deck,
     effects::replacing,
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
-    mana::{Mana, ManaCost},
+    mana::{Mana, ManaCost, ManaRestriction},
     player::mana_pool::{ManaPool, ManaSource},
     stack::Stack,
     targets::Restriction,
@@ -240,12 +241,17 @@ pub struct Player {
 
 impl Player {
     pub fn infinite_mana(&mut self) {
-        self.mana_pool.white_mana = usize::MAX;
-        self.mana_pool.blue_mana = usize::MAX;
-        self.mana_pool.black_mana = usize::MAX;
-        self.mana_pool.red_mana = usize::MAX;
-        self.mana_pool.green_mana = usize::MAX;
-        self.mana_pool.colorless_mana = usize::MAX;
+        for mana in Mana::iter() {
+            *self
+                .mana_pool
+                .sourced
+                .entry(mana)
+                .or_default()
+                .entry(ManaSource::Any)
+                .or_default()
+                .entry(ManaRestriction::None)
+                .or_default() = usize::MAX;
+        }
     }
 
     pub fn draw_initial_hand(&mut self, db: &mut Database) {
@@ -334,16 +340,23 @@ impl Player {
         Stack::move_card_to_stack_from_hand(&mut db, card, true)
     }
 
-    pub fn can_meet_cost(&self, mana: &[ManaCost], sources: &[Option<ManaSource>]) -> bool {
+    pub fn can_meet_cost(
+        &self,
+        db: &Database,
+        mana: &[ManaCost],
+        sources: &[ManaSource],
+        reason: Source,
+    ) -> bool {
         let mut mana = mana.to_vec();
         mana.sort();
 
-        for (cost, source) in mana
-            .iter()
-            .copied()
-            .zip(sources.iter().copied().chain(std::iter::repeat(None)))
-        {
-            if !self.mana_pool.can_spend(cost, source) {
+        for (cost, source) in mana.iter().copied().zip(
+            sources
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(ManaSource::Any)),
+        ) {
+            if !self.mana_pool.can_spend(db, cost, source, reason) {
                 return false;
             }
         }
@@ -351,15 +364,22 @@ impl Player {
         true
     }
 
-    pub fn pool_post_pay(&self, mana: &[Mana], sources: &[Option<ManaSource>]) -> Option<ManaPool> {
+    pub fn pool_post_pay(
+        &self,
+        db: &Database,
+        mana: &[Mana],
+        sources: &[ManaSource],
+        reason: Source,
+    ) -> Option<ManaPool> {
         let mut mana_pool = self.mana_pool.clone();
 
-        for (mana, source) in mana
-            .iter()
-            .copied()
-            .zip(sources.iter().copied().chain(std::iter::repeat(None)))
-        {
-            if let (false, _) = mana_pool.spend(mana, source) {
+        for (mana, source) in mana.iter().copied().zip(
+            sources
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(ManaSource::Any)),
+        ) {
+            if let (false, _) = mana_pool.spend(db, mana, source, reason) {
                 return None;
             }
         }
@@ -367,19 +387,32 @@ impl Player {
         Some(mana_pool)
     }
 
-    pub fn can_spend_mana(&self, mana: &[Mana], sources: &[Option<ManaSource>]) -> bool {
-        self.pool_post_pay(mana, sources).is_some()
+    pub fn can_spend_mana(
+        &self,
+        db: &Database,
+        mana: &[Mana],
+        sources: &[ManaSource],
+        reason: Source,
+    ) -> bool {
+        self.pool_post_pay(db, mana, sources, reason).is_some()
     }
 
-    pub fn spend_mana(&mut self, mana: &[Mana], sources: &[Option<ManaSource>]) -> bool {
+    pub fn spend_mana(
+        &mut self,
+        db: &Database,
+        mana: &[Mana],
+        sources: &[ManaSource],
+        reason: Source,
+    ) -> bool {
         let mut mana_pool = self.mana_pool.clone();
 
-        for (mana, source) in mana
-            .iter()
-            .copied()
-            .zip(sources.iter().copied().chain(std::iter::repeat(None)))
-        {
-            if let (false, _) = mana_pool.spend(mana, source) {
+        for (mana, source) in mana.iter().copied().zip(
+            sources
+                .iter()
+                .copied()
+                .chain(std::iter::repeat(ManaSource::Any)),
+        ) {
+            if let (false, _) = mana_pool.spend(db, mana, source, reason) {
                 return false;
             }
         }

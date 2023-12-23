@@ -1,10 +1,12 @@
+use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, ResolutionResult},
     in_play::{CardId, Database, InGraveyard, InHand},
     load_cards,
-    player::AllPlayers,
+    mana::{Mana, ManaRestriction},
+    player::{mana_pool::ManaSource, AllPlayers},
     stack::Stack,
     turns::{Phase, Turn},
 };
@@ -77,7 +79,17 @@ fn add_mana() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(all_players[player].mana_pool.white_mana, 1);
+    assert_eq!(
+        all_players[player].mana_pool.all_mana().collect_vec(),
+        [
+            (1, Mana::White, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Blue, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Black, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Red, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Green, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::Colorless, ManaSource::Any, ManaRestriction::None),
+        ]
+    );
 
     Ok(())
 }
