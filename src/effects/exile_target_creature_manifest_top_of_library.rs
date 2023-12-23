@@ -5,7 +5,7 @@ use indexmap::IndexSet;
 use crate::{
     battlefield::{ActionResult, ChooseTargets, TargetSource},
     controller::ControllerRestriction,
-    effects::{Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{self, OnBattlefield},
     stack::ActiveTarget,
     types::Type,
@@ -72,12 +72,16 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         for target in targets {
-            results.push_settled(ActionResult::ExileTarget(target));
+            results.push_settled(ActionResult::ExileTarget {
+                source,
+                target,
+                duration: EffectDuration::Permanently,
+            });
             results.push_settled(ActionResult::ManifestTopOfLibrary(
                 target.id().unwrap().controller(db),
             ));

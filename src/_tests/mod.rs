@@ -13,6 +13,7 @@ mod dauntless_dismantler;
 mod deadapult;
 mod deconstruction_hammer;
 mod dryad_of_the_ilysian_grove;
+mod dusk_rose_reliquary;
 mod elesh_norn_grand_cenobite;
 mod forbidden_friendship;
 mod glowspore_shaman;

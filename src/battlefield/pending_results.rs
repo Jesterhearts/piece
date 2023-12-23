@@ -1184,6 +1184,16 @@ impl PendingResults {
                 if choosing.choices_complete() {
                     let (choices, effect_or_aura) = choosing.into_chosen_targets_and_effect();
 
+                    for target in choices.iter() {
+                        if let ActiveTarget::Battlefield { id } = target {
+                            if let Some(ward) = id.ward(db) {
+                                self.push_pay_costs(PayCost::SpendMana(SpendMana::new(
+                                    ward.mana_cost.clone(),
+                                )));
+                            }
+                        }
+                    }
+
                     if !self.add_to_stack {
                         let player = self.source.unwrap().card(db).controller(db);
                         match effect_or_aura {
@@ -1257,6 +1267,7 @@ impl PendingResults {
             let targets = pay.targets();
             pay.compute_targets(db, self.source.unwrap(), &self.all_chosen_targets);
             if pay.targets() != targets {
+                self.pay_costs.push_front(pay);
                 return ResolutionResult::TryAgain;
             }
 

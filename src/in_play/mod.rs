@@ -73,6 +73,15 @@ newtype_enum! {
     }
 }
 
+#[derive(Debug, Clone, Copy, Component)]
+pub struct ExiledWith(pub CardId);
+
+impl PartialEq<CardId> for ExiledWith {
+    fn eq(&self, other: &CardId) -> bool {
+        self.0 == *other
+    }
+}
+
 #[derive(Debug, Component)]
 pub struct Active;
 

@@ -13,7 +13,7 @@ use crate::{
     controller::ControllerRestriction,
     effects::{
         effect_duration::{
-            UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilTargetLeavesBattlefield,
+            Permanently, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilTargetLeavesBattlefield,
         },
         BattlefieldModifier, DynamicPowerToughness, EffectDuration,
     },
@@ -84,6 +84,9 @@ impl ModifierId {
             }
             EffectDuration::UntilTargetLeavesBattlefield => {
                 entity.insert(UntilTargetLeavesBattlefield);
+            }
+            EffectDuration::Permanently => {
+                entity.insert(Permanently);
             }
         }
 

@@ -20,6 +20,7 @@ impl EffectBehaviors for Cascade {
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
+            source,
             cascading: source.cost(db).cmc(),
             player: controller,
         });
@@ -33,6 +34,7 @@ impl EffectBehaviors for Cascade {
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
+            source,
             cascading: source.cost(db).cmc(),
             player: source.controller(db),
         })
@@ -48,6 +50,7 @@ impl EffectBehaviors for Cascade {
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
+            source,
             cascading: source.cost(db).cmc(),
             player: controller,
         })

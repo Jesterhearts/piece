@@ -23,7 +23,7 @@ use crate::{
     },
     in_play::{
         self, all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
-        ExileReason, InGraveyard, InLibrary, InStack, ModifierId, OnBattlefield,
+        ExileReason, InExile, InGraveyard, InLibrary, InStack, ModifierId, OnBattlefield,
         ReplacementEffectId, TriggerId,
     },
     mana::Mana,
@@ -56,6 +56,7 @@ pub enum ActionResult {
     Shuffle(Owner),
     AddToBattlefield(CardId, Option<CardId>),
     AddToBattlefieldSkipReplacementEffects(CardId, Option<CardId>),
+    AddToBattlefieldSkipReplacementEffectsFromExile(CardId, Option<CardId>),
     AddToBattlefieldSkipReplacementEffectsFromLibrary {
         card: CardId,
         enters_tapped: bool,
@@ -70,7 +71,11 @@ pub enum ActionResult {
         aura: AuraId,
         target: ActiveTarget,
     },
-    ExileTarget(ActiveTarget),
+    ExileTarget {
+        source: CardId,
+        target: ActiveTarget,
+        duration: EffectDuration,
+    },
     DamageTarget {
         quantity: usize,
         target: ActiveTarget,
@@ -159,12 +164,14 @@ pub enum ActionResult {
         target: ActiveTarget,
     },
     Cascade {
+        source: CardId,
         cascading: usize,
         player: Controller,
     },
     CascadeExileToBottomOfLibrary(Controller),
     Scry(CardId, usize),
     Discover {
+        source: CardId,
         count: usize,
         player: Controller,
     },
@@ -289,6 +296,28 @@ impl Battlefield {
         results
     }
 
+    pub fn add_from_exile(
+        db: &mut Database,
+        source_card_id: CardId,
+        enters_tapped: bool,
+        target: Option<CardId>,
+    ) -> PendingResults {
+        let mut results = match Self::start_adding_to_battlefield(
+            db,
+            source_card_id,
+            enters_tapped,
+            None,
+            |card, _| ActionResult::AddToBattlefieldSkipReplacementEffectsFromExile(card, target),
+        ) {
+            PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
+            PartialAddToBattlefieldResult::Continue(results) => results,
+        };
+
+        complete_add_from_exile(db, source_card_id, &mut results);
+
+        results
+    }
+
     fn start_adding_to_battlefield(
         db: &mut Database,
         source_card_id: CardId,
@@ -392,10 +421,20 @@ impl Battlefield {
         }
     }
 
-    pub fn end_turn(db: &mut Database) {
+    pub fn end_turn(db: &mut Database) -> PendingResults {
         let cards = cards::<OnBattlefield>(db);
         for card in cards {
             card.clear_damage(db);
+        }
+
+        let mut results = PendingResults::default();
+
+        for card in in_play::cards::<InExile>(db)
+            .into_iter()
+            .filter(|card| card.until_end_of_turn(db))
+            .collect_vec()
+        {
+            results.extend(Battlefield::add_from_exile(db, card, false, None));
         }
 
         let all_modifiers = db
@@ -412,6 +451,8 @@ impl Battlefield {
         for card in all_cards(db) {
             card.apply_modifiers_layered(db);
         }
+
+        results
     }
 
     pub fn check_sba(db: &mut Database) -> PendingResults {
@@ -683,11 +724,21 @@ impl Battlefield {
                 modifier.activate(db);
                 PendingResults::default()
             }
-            ActionResult::ExileTarget(target) => {
+            ActionResult::ExileTarget {
+                source,
+                target,
+                duration,
+            } => {
                 let ActiveTarget::Battlefield { id: target } = target else {
                     unreachable!()
                 };
-                Battlefield::exile(db, *target)
+                if let EffectDuration::UntilSourceLeavesBattlefield = *duration {
+                    if !source.is_in_location::<OnBattlefield>(db) {
+                        return PendingResults::default();
+                    }
+                }
+
+                Battlefield::exile(db, *source, *target, *duration)
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -937,6 +988,13 @@ impl Battlefield {
                 complete_add_from_stack_or_hand(db, *card, &mut results);
                 results
             }
+            ActionResult::AddToBattlefieldSkipReplacementEffectsFromExile(card, target) => {
+                let mut results = PendingResults::default();
+                move_card_to_battlefield(db, *card, false, &mut results, *target);
+                complete_add_from_exile(db, *card, &mut results);
+
+                results
+            }
             ActionResult::AddToBattlefieldSkipReplacementEffectsFromLibrary {
                 card,
                 enters_tapped,
@@ -950,14 +1008,19 @@ impl Battlefield {
                 target.untap(db);
                 PendingResults::default()
             }
-            ActionResult::Cascade { cascading, player } => {
+            ActionResult::Cascade {
+                source,
+                cascading,
+                player,
+            } => {
                 let mut results = PendingResults::default();
                 results.cast_from(CastFrom::Exile);
 
-                while let Some(card) = all_players[*player]
-                    .deck
-                    .exile_top_card(db, Some(ExileReason::Cascade))
-                {
+                while let Some(card) = all_players[*player].deck.exile_top_card(
+                    db,
+                    *source,
+                    Some(ExileReason::Cascade),
+                ) {
                     if !card.is_land(db) && card.cost(db).cmc() < *cascading {
                         results.push_choose_cast(card, false);
                         break;
@@ -968,15 +1031,20 @@ impl Battlefield {
 
                 results
             }
-            ActionResult::Discover { count, player } => {
+            ActionResult::Discover {
+                source,
+                count,
+                player,
+            } => {
                 let mut results = PendingResults::default();
                 results.cast_from(CastFrom::Exile);
                 results.discovering();
 
-                while let Some(card) = all_players[*player]
-                    .deck
-                    .exile_top_card(db, Some(ExileReason::Cascade))
-                {
+                while let Some(card) = all_players[*player].deck.exile_top_card(
+                    db,
+                    *source,
+                    Some(ExileReason::Cascade),
+                ) {
                     if !card.is_land(db) && card.cost(db).cmc() < *count {
                         results.push_choose_cast(card, false);
                         break;
@@ -1018,10 +1086,10 @@ impl Battlefield {
                 transforming,
                 targets,
             } => {
-                transforming.move_to_exile(db, None);
+                transforming.move_to_exile(db, *transforming, None, EffectDuration::Permanently);
                 for target in targets {
                     let card = target.id().unwrap();
-                    card.move_to_exile(db, None);
+                    card.move_to_exile(db, *transforming, None, EffectDuration::Permanently);
                 }
                 transforming.transform(db);
                 let mut results = PendingResults::new(Source::Card(transforming.faceup_face(db)));
@@ -1108,6 +1176,7 @@ impl Battlefield {
             }
         }
 
+        pending.extend(Self::leave_battlefield(db, target));
         target.move_to_graveyard(db);
 
         for card in all_cards(db) {
@@ -1144,6 +1213,22 @@ impl Battlefield {
         pending
     }
 
+    pub fn leave_battlefield(db: &mut Database, target: CardId) -> PendingResults {
+        let mut results = PendingResults::default();
+
+        for card in in_play::cards::<InExile>(db)
+            .iter()
+            .filter(|card| {
+                card.exile_source(db) == target && card.until_source_leaves_battlefield(db)
+            })
+            .collect_vec()
+        {
+            results.extend(Battlefield::add_from_exile(db, *card, false, None));
+        }
+
+        results
+    }
+
     pub fn stack_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
@@ -1168,10 +1253,15 @@ impl Battlefield {
         pending
     }
 
-    pub fn exile(db: &mut Database, target: CardId) -> PendingResults {
-        target.move_to_exile(db, None);
+    pub fn exile(
+        db: &mut Database,
+        source: CardId,
+        target: CardId,
+        duration: EffectDuration,
+    ) -> PendingResults {
+        target.move_to_exile(db, source, None, duration);
 
-        PendingResults::default()
+        Self::leave_battlefield(db, target)
     }
 }
 

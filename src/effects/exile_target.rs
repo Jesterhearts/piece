@@ -1,20 +1,39 @@
 use std::sync::Arc;
 
-use indexmap::IndexSet;
-
 use crate::{
     battlefield::{ActionResult, ChooseTargets, TargetSource},
     controller::ControllerRestriction,
-    effects::{Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{self, OnBattlefield},
+    protogen,
     stack::ActiveTarget,
-    types::Type,
+    targets::Restriction,
 };
 
-#[derive(Debug, Clone, Copy)]
-pub struct ExileTargetCreature;
+#[derive(Debug, Clone)]
+pub struct ExileTarget {
+    restrictions: Vec<Restriction>,
+    duration: EffectDuration,
+    controller: ControllerRestriction,
+}
 
-impl EffectBehaviors for ExileTargetCreature {
+impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ExileTarget) -> Result<Self, Self::Error> {
+        Ok(Self {
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
+            duration: value.duration.get_or_default().try_into()?,
+            controller: value.controller.get_or_default().try_into()?,
+        })
+    }
+}
+
+impl EffectBehaviors for ExileTarget {
     fn needs_targets(&self) -> usize {
         1
     }
@@ -38,7 +57,7 @@ impl EffectBehaviors for ExileTargetCreature {
                 ControllerRestriction::Any,
                 &source.restrictions(db),
             ) && card.is_in_location::<OnBattlefield>(db)
-                && card.types_intersect(db, &IndexSet::from([Type::Creature]))
+                && card.passes_restrictions(db, source, self.controller, &self.restrictions)
             {
                 let target = ActiveTarget::Battlefield { id: card };
                 if already_chosen.contains(&target) {
@@ -62,7 +81,7 @@ impl EffectBehaviors for ExileTargetCreature {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(Arc::new(*self) as Arc<_>)),
+            TargetSource::Effect(Effect(Arc::new(self.clone()) as Arc<_>)),
             valid_targets,
         ));
     }
@@ -72,12 +91,16 @@ impl EffectBehaviors for ExileTargetCreature {
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         for target in targets {
-            results.push_settled(ActionResult::ExileTarget(target));
+            results.push_settled(ActionResult::ExileTarget {
+                source,
+                target,
+                duration: self.duration,
+            });
         }
     }
 }

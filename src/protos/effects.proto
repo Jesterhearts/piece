@@ -116,13 +116,15 @@ message Discover {
 }
 
 message Duration {
+  message Permanently {}
   message UntilEndOfTurn {}
   message UntilSourceLeavesBattlefield {}
   message UntilTargetLeavesBattlefield {}
   oneof duration {
-    UntilEndOfTurn until_end_of_turn = 1;
-    UntilSourceLeavesBattlefield until_source_leaves_battlefield = 2;
-    UntilTargetLeavesBattlefield until_target_leaves_battlefield = 3;
+    Permanently permanently = 1;
+    UntilEndOfTurn until_end_of_turn = 2;
+    UntilSourceLeavesBattlefield until_source_leaves_battlefield = 3;
+    UntilTargetLeavesBattlefield until_target_leaves_battlefield = 4;
   }
 }
 
@@ -139,7 +141,11 @@ message Equip {
   repeated ModifyBattlefield modifiers = 1;
 }
 
-message ExileTargetCreature {}
+message ExileTarget {
+  repeated targets.Restriction restrictions = 1;
+  controller.Controller controller = 2;
+  Duration duration = 3;
+}
 
 message ExileTargetCreatureManifestTopOfLibrary {}
 
@@ -282,7 +288,7 @@ message Effect {
     DestroyTarget destroy_target = 13;
     Discover discover = 14;
     Equip equip = 15;
-    ExileTargetCreature exile_target_creature = 16;
+    ExileTarget exile_target = 16;
     ExileTargetCreatureManifestTopOfLibrary
         exile_target_creature_manifest_top_of_library = 17;
     ForEachManaOfSource for_each_mana_of_source = 18;

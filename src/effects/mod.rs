@@ -12,7 +12,7 @@ pub mod destroy_each;
 pub mod destroy_target;
 pub mod discover;
 pub mod equip;
-pub mod exile_target_creature;
+pub mod exile_target;
 pub mod exile_target_creature_manifest_top_of_library;
 pub mod foreach_mana_of_source;
 pub mod gain_counter;
@@ -56,7 +56,7 @@ use crate::{
         destroy_target::DestroyTarget,
         discover::Discover,
         equip::Equip,
-        exile_target_creature::ExileTargetCreature,
+        exile_target::ExileTarget,
         exile_target_creature_manifest_top_of_library::ExileTargetCreatureManifestTopOfLibrary,
         foreach_mana_of_source::ForEachManaOfSource,
         gain_counter::{Counter, GainCounter},
@@ -125,10 +125,23 @@ impl From<&protogen::effects::destination::Destination> for Destination {
 newtype_enum! {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, bevy_ecs::component::Component)]
 pub enum EffectDuration {
+    Permanently,
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
     UntilTargetLeavesBattlefield,
 }
+}
+
+impl TryFrom<&protogen::effects::Duration> for EffectDuration {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Duration) -> Result<Self, Self::Error> {
+        value
+            .duration
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected duration to have a duration set"))
+            .map(Self::from)
+    }
 }
 
 impl From<&protogen::effects::duration::Duration> for EffectDuration {
@@ -141,6 +154,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
             protogen::effects::duration::Duration::UntilTargetLeavesBattlefield(_) => {
                 Self::UntilTargetLeavesBattlefield
             }
+            protogen::effects::duration::Duration::Permanently(_) => Self::Permanently,
         }
     }
 }
@@ -413,8 +427,8 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::Equip(value) => {
                 Ok(Self(Arc::new(Equip::try_from(value)?) as Arc<_>))
             }
-            protogen::effects::effect::Effect::ExileTargetCreature(_) => {
-                Ok(Self(Arc::new(ExileTargetCreature) as Arc<_>))
+            protogen::effects::effect::Effect::ExileTarget(value) => {
+                Ok(Self(Arc::new(ExileTarget::try_from(value)?) as Arc<_>))
             }
             protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => Ok(
                 Self(Arc::new(ExileTargetCreatureManifestTopOfLibrary) as Arc<_>),

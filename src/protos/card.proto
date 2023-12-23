@@ -23,12 +23,14 @@ message Card {
 
   optional abilities.Enchant enchant = 8;
 
-  repeated effects.Effect effects = 9;
-  bool target_individually = 10;
+  optional cost.Ward ward = 9;
 
-  repeated effects.Effect etb_abilities = 11;
-  repeated abilities.StaticAbility static_abilities = 12;
-  repeated effects.ActivatedAbility activated_abilities = 13;
+  repeated effects.Effect effects = 10;
+  bool target_individually = 11;
+
+  repeated effects.Effect etb_abilities = 12;
+  repeated abilities.StaticAbility static_abilities = 13;
+  repeated effects.ActivatedAbility activated_abilities = 14;
   repeated abilities.TriggeredAbility triggered_abilities = 15;
   repeated effects.GainManaAbility mana_abilities = 16;
   repeated effects.ReplacementEffect replacement_effects = 17;

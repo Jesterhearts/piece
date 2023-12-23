@@ -115,7 +115,7 @@ pub enum UiState {
         player2_exile_list_offset: usize,
     },
     SelectingOptions {
-        to_resolve: PendingResults,
+        to_resolve: Box<PendingResults>,
         organizing_stack: bool,
         selection_list_state: ListState,
         selection_list_offset: usize,

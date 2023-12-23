@@ -48,6 +48,10 @@ message AdditionalCost {
   }
 }
 
+message Ward {
+  repeated ManaCost mana_costs = 1;
+}
+
 message CastingCost {
   repeated ManaCost mana_costs = 1;
   repeated AdditionalCost additional_costs = 2;

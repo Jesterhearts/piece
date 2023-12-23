@@ -24,18 +24,18 @@ use crate::{
         PaidX, Revealed, StaticAbilityModifier, TargetIndividually, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
-    cost::CastingCost,
+    cost::{CastingCost, Ward},
     effects::{
-        effect_duration::UntilSourceLeavesBattlefield,
+        effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield},
         gain_counter::{counter, Counter},
-        AnyEffect, DynamicPowerToughness, Effects, ReplacementEffects, Token,
+        AnyEffect, DynamicPowerToughness, EffectDuration, Effects, ReplacementEffects, Token,
     },
     in_play::{
         self, cast_from, exile_reason, AbilityId, Active, Attacking, AuraId, CastFrom, CounterId,
-        Database, EntireBattlefield, ExileReason, FaceDown, Global, InExile, InGraveyard, InHand,
-        InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying,
-        OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
-        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile,
+        InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq,
+        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId,
+        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -154,6 +154,8 @@ impl CardId {
                 .remove::<cast_from::Hand>()
                 .remove::<cast_from::Exile>()
                 .remove::<exile_reason::Cascade>()
+                .remove::<effect_duration::UntilEndOfTurn>()
+                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .insert(InHand(NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed)));
         }
     }
@@ -192,6 +194,8 @@ impl CardId {
                 .remove::<cast_from::Hand>()
                 .remove::<cast_from::Exile>()
                 .remove::<exile_reason::Cascade>()
+                .remove::<effect_duration::UntilEndOfTurn>()
+                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
                 .insert(Targets(targets));
 
@@ -224,6 +228,8 @@ impl CardId {
             .remove::<cast_from::Hand>()
             .remove::<cast_from::Exile>()
             .remove::<exile_reason::Cascade>()
+            .remove::<effect_duration::UntilEndOfTurn>()
+            .remove::<effect_duration::UntilSourceLeavesBattlefield>()
             .insert(OnBattlefield(
                 NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
             ));
@@ -256,6 +262,8 @@ impl CardId {
                 .remove::<cast_from::Hand>()
                 .remove::<cast_from::Exile>()
                 .remove::<exile_reason::Cascade>()
+                .remove::<effect_duration::UntilEndOfTurn>()
+                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .insert(InGraveyard(
                     NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
                 ));
@@ -287,12 +295,20 @@ impl CardId {
                 .remove::<cast_from::Hand>()
                 .remove::<cast_from::Exile>()
                 .remove::<exile_reason::Cascade>()
+                .remove::<effect_duration::UntilEndOfTurn>()
+                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .insert(InLibrary);
             true
         }
     }
 
-    pub fn move_to_exile(self, db: &mut Database, reason: Option<ExileReason>) {
+    pub fn move_to_exile(
+        self,
+        db: &mut Database,
+        source: CardId,
+        reason: Option<ExileReason>,
+        duration: EffectDuration,
+    ) {
         if self.is_token(db) {
             db.cards.despawn(self.0);
         } else {
@@ -317,7 +333,23 @@ impl CardId {
                 .remove::<cast_from::Hand>()
                 .remove::<cast_from::Exile>()
                 .remove::<exile_reason::Cascade>()
-                .insert(InExile);
+                .remove::<effect_duration::UntilEndOfTurn>()
+                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+                .insert(InExile)
+                .insert(ExiledWith(source));
+
+            match duration {
+                EffectDuration::Permanently => {}
+                EffectDuration::UntilEndOfTurn => {
+                    entity.insert(effect_duration::UntilEndOfTurn);
+                }
+                EffectDuration::UntilSourceLeavesBattlefield => {
+                    entity.insert(effect_duration::UntilSourceLeavesBattlefield);
+                }
+                EffectDuration::UntilTargetLeavesBattlefield => {
+                    unreachable!()
+                }
+            }
 
             if let Some(reason) = reason {
                 match reason {
@@ -340,7 +372,9 @@ impl CardId {
             .remove::<InExile>()
             .remove::<cast_from::Hand>()
             .remove::<cast_from::Exile>()
-            .remove::<exile_reason::Cascade>();
+            .remove::<exile_reason::Cascade>()
+            .remove::<effect_duration::UntilEndOfTurn>()
+            .remove::<effect_duration::UntilSourceLeavesBattlefield>();
     }
 
     pub fn remove_all_modifiers(self, db: &mut Database) {
@@ -1170,6 +1204,10 @@ impl CardId {
             entity.insert(IsToken);
         }
 
+        if let Some(ward) = card.ward.as_ref() {
+            entity.insert(ward.clone());
+        }
+
         if card.target_individually {
             entity.insert(TargetIndividually);
         }
@@ -1693,6 +1731,22 @@ impl CardId {
 
     pub(crate) fn can_attack(self, db: &Database) -> bool {
         self.types_intersect(db, &IndexSet::from([Type::Creature]))
+    }
+
+    pub(crate) fn exile_source(self, db: &Database) -> ExiledWith {
+        db.get::<ExiledWith>(self.0).copied().unwrap()
+    }
+
+    pub(crate) fn until_source_leaves_battlefield(self, db: &Database) -> bool {
+        db.get::<UntilSourceLeavesBattlefield>(self.0).is_some()
+    }
+
+    pub(crate) fn until_end_of_turn(self, db: &Database) -> bool {
+        db.get::<UntilEndOfTurn>(self.0).is_some()
+    }
+
+    pub(crate) fn ward(self, db: &mut Database) -> Option<&Ward> {
+        db.get::<Ward>(self.0)
     }
 }
 

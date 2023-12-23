@@ -44,6 +44,7 @@ use piece::{
     UiState,
 };
 
+#[allow(clippy::large_enum_variant)]
 enum UiAction {
     CleanupStack,
     UpdatePushPreviousState(UiState),
@@ -1133,7 +1134,7 @@ fn main() -> anyhow::Result<()> {
                     if pending.is_empty() {
                         maybe_organize_stack(&mut db, &turn, PendingResults::default(), &mut state);
                     } else {
-                        *to_resolve = pending;
+                        *to_resolve = Box::new(pending);
                     }
                 } else {
                     let mut real_choice = choice;
@@ -1207,7 +1208,7 @@ fn main() -> anyhow::Result<()> {
                                             );
                                         }
                                     } else {
-                                        *to_resolve = pending;
+                                        *to_resolve = Box::new(pending);
                                     }
 
                                     break;
@@ -1284,7 +1285,7 @@ fn maybe_organize_stack(
 ) {
     if !pending.is_empty() {
         *state = UiState::SelectingOptions {
-            to_resolve: pending,
+            to_resolve: Box::new(pending),
             selection_list_state: ListState::default(),
             organizing_stack: false,
             selection_list_offset: 0,
@@ -1298,7 +1299,7 @@ fn maybe_organize_stack(
         if entries.len() > 1 {
             pending.set_organize_stack(db, entries, turn);
             *state = UiState::SelectingOptions {
-                to_resolve: pending,
+                to_resolve: Box::new(pending),
                 selection_list_state: ListState::default(),
                 organizing_stack: true,
                 selection_list_offset: 0,

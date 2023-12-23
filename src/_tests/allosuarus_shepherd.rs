@@ -54,7 +54,9 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         IndexSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
     );
 
-    Battlefield::end_turn(&mut db);
+    let mut results = Battlefield::end_turn(&mut db);
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(card.power(&db), Some(1));
     assert_eq!(card.toughness(&db), Some(1));

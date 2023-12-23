@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
+    effects::EffectDuration,
     in_play::{CardId, Database, ExileReason},
     player::Owner,
     Cards,
@@ -91,10 +92,11 @@ impl Deck {
     pub fn exile_top_card(
         &mut self,
         db: &mut Database,
+        source: CardId,
         reason: Option<ExileReason>,
     ) -> Option<CardId> {
         if let Some(card) = self.cards.pop_back() {
-            card.move_to_exile(db, reason);
+            card.move_to_exile(db, source, reason, EffectDuration::Permanently);
             Some(card)
         } else {
             None

@@ -161,8 +161,7 @@ impl Turn {
                 }
                 self.phase = Phase::Cleanup;
 
-                Battlefield::end_turn(db);
-                Battlefield::check_sba(db)
+                Battlefield::end_turn(db)
             }
             Phase::Cleanup => {
                 for player in all_players.all_players() {

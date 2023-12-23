@@ -145,11 +145,31 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
+pub struct Ward {
+    pub mana_cost: Vec<ManaCost>,
+}
+
+impl TryFrom<&protogen::cost::Ward> for Ward {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::Ward) -> Result<Self, Self::Error> {
+        Ok(Self {
+            mana_cost: value
+                .mana_costs
+                .iter()
+                .map(ManaCost::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Component)]
 pub struct AbilityCost {
     pub mana_cost: Vec<ManaCost>,
     pub tap: bool,
     pub additional_cost: Vec<AdditionalCost>,
 }
+
 impl AbilityCost {
     pub fn text(&self, db: &Database, source: CardId) -> String {
         std::iter::once(

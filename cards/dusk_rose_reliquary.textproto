@@ -1,0 +1,60 @@
+name: "Dusk Rose Reliquary"
+types {
+  artifact {
+  }
+}
+cost {
+  mana_costs {
+    white {
+    }
+  }
+  additional_costs {
+    sacrifice_permanent {
+      restrictions {
+        of_type {
+          types {
+            creature {
+            }
+          }
+          types {
+            artifact {
+            }
+          }
+        }
+      }
+    }
+  }
+}
+oracle_text: "As an additional cost to cast this spell, sacrifice an artifact or creature."
+ward {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+}
+etb_abilities {
+  exile_target {
+    restrictions {
+      of_type {
+        types {
+          artifact {
+          }
+        }
+        types {
+          creature {
+          }
+        }
+      }
+    }
+    controller {
+      opponent {
+      }
+    }
+    duration {
+      until_source_leaves_battlefield {
+      }
+    }
+  }
+  oracle_text: "When Dusk Rose Reliquar enters the battlefield, exile target artifact or creature an opponent controls until Dusk Rose Reliquary leaves the battlefield."
+}

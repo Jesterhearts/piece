@@ -27,11 +27,12 @@ impl EffectBehaviors for Discover {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
+            source,
             count: self.count,
             player: controller,
         })
@@ -42,11 +43,12 @@ impl EffectBehaviors for Discover {
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
+            source,
             count: self.count,
             player: controller,
         })
