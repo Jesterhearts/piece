@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::collections::HashSet;
 
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
@@ -217,7 +217,7 @@ impl EffectBehaviors for Craft {
     }
 
     fn push_pending_behavior(
-        &self,
+        &'static self,
         db: &mut Database,
         source: CardId,
         controller: crate::player::Controller,
@@ -227,7 +227,7 @@ impl EffectBehaviors for Craft {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(Arc::new(self.clone()) as Arc<_>)),
+            TargetSource::Effect(Effect(self)),
             valid_targets,
         ));
     }

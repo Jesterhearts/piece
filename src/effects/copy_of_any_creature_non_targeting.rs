@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::collections::HashSet;
 
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -52,7 +52,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     }
 
     fn push_pending_behavior(
-        &self,
+        &'static self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -61,7 +61,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(Arc::new(*self) as Arc<_>)),
+            TargetSource::Effect(Effect(self)),
             valid_targets,
         ));
     }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+
 
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -58,7 +58,7 @@ impl EffectBehaviors for ReturnFromGraveyardToLibrary {
     }
 
     fn push_pending_behavior(
-        &self,
+        &'static self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -68,7 +68,7 @@ impl EffectBehaviors for ReturnFromGraveyardToLibrary {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(Arc::new(self.clone()) as Arc<_>)),
+            TargetSource::Effect(Effect(self)),
             valid_targets,
         ));
     }

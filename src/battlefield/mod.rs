@@ -1,6 +1,6 @@
 mod pending_results;
 
-use std::{collections::HashSet, sync::Arc};
+use std::collections::HashSet;
 
 use bevy_ecs::{entity::Entity, query::With};
 
@@ -849,7 +849,7 @@ impl Battlefield {
                                 restrictions: Default::default(),
                             },
                             effects: vec![AnyEffect {
-                                effect: Effect(Arc::new(Cascade) as Arc<_>),
+                                effect: Effect(&Cascade),
                                 threshold: None,
                                 oracle_text: Default::default(),
                             }],

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+
 
 use itertools::Itertools;
 
@@ -79,7 +79,7 @@ impl EffectBehaviors for TargetToTopOfLibrary {
     }
 
     fn push_pending_behavior(
-        &self,
+        &'static self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -88,7 +88,7 @@ impl EffectBehaviors for TargetToTopOfLibrary {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(Arc::new(self.clone()) as Arc<_>)),
+            TargetSource::Effect(Effect(self)),
             valid_targets,
         ));
     }

@@ -30,7 +30,7 @@ pub mod tutor_library;
 pub mod untap_target;
 pub mod untap_this;
 
-use std::{collections::HashSet, fmt::Debug, str::FromStr, sync::Arc, vec::IntoIter};
+use std::{collections::HashSet, fmt::Debug, str::FromStr, vec::IntoIter};
 
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
@@ -85,7 +85,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct Effect(pub Arc<dyn EffectBehaviors + Send + Sync>);
+pub struct Effect(pub &'static (dyn EffectBehaviors + Send + Sync));
 
 pub use battlefield_modifier::BattlefieldModifier;
 
@@ -293,7 +293,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
 
 pub trait EffectBehaviors: Debug {
     fn choices(
-        &self,
+        &'static self,
         db: &mut Database,
         all_players: &AllPlayers,
         targets: &[ActiveTarget],
@@ -304,16 +304,16 @@ pub trait EffectBehaviors: Debug {
             .collect_vec()
     }
 
-    fn is_sorcery_speed(&self) -> bool {
+    fn is_sorcery_speed(&'static self) -> bool {
         false
     }
 
-    fn needs_targets(&self) -> usize;
+    fn needs_targets(&'static self) -> usize;
 
-    fn wants_targets(&self) -> usize;
+    fn wants_targets(&'static self) -> usize;
 
     fn valid_targets(
-        &self,
+        &'static self,
         _db: &mut Database,
         _source: CardId,
         _controller: Controller,
@@ -323,7 +323,7 @@ pub trait EffectBehaviors: Debug {
     }
 
     fn push_pending_behavior(
-        &self,
+        &'static self,
         db: &mut Database,
         source: CardId,
         controller: Controller,
@@ -331,7 +331,7 @@ pub trait EffectBehaviors: Debug {
     );
 
     fn push_behavior_from_top_of_library(
-        &self,
+        &'static self,
         _db: &Database,
         _source: CardId,
         _target: CardId,
@@ -341,7 +341,7 @@ pub trait EffectBehaviors: Debug {
     }
 
     fn push_behavior_with_targets(
-        &self,
+        &'static self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         apply_to_self: bool,
@@ -351,7 +351,7 @@ pub trait EffectBehaviors: Debug {
     );
 
     fn replace_draw(
-        &self,
+        &'static self,
         _player: &mut Player,
         _db: &mut Database,
         _replacements: &mut IntoIter<ReplacementEffectId>,
@@ -379,106 +379,95 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
 
     fn try_from(value: &protogen::effects::effect::Effect) -> Result<Self, Self::Error> {
         match value {
-            protogen::effects::effect::Effect::BattlefieldModifier(value) => Ok(Self(Arc::new(
-                BattlefieldModifier::try_from(value)?,
-            )
-                as Arc<_>)),
+            protogen::effects::effect::Effect::BattlefieldModifier(value) => Ok(Self(Box::leak(
+                Box::new(BattlefieldModifier::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::ModifyTarget(value) => {
-                Ok(Self(Arc::new(ModifyTarget::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(ModifyTarget::try_from(value)?))))
             }
-            protogen::effects::effect::Effect::Cascade(_) => Ok(Self(Arc::new(Cascade) as Arc<_>)),
+            protogen::effects::effect::Effect::Cascade(_) => Ok(Self(&Cascade)),
             protogen::effects::effect::Effect::ControllerDrawCards(value) => {
-                Ok(Self(Arc::new(ControllerDrawsCards {
+                Ok(Self(Box::leak(Box::new(ControllerDrawsCards {
                     count: usize::try_from(value.count)?,
-                }) as Arc<_>))
+                }))))
             }
             protogen::effects::effect::Effect::ControllerLosesLife(value) => {
-                Ok(Self(Arc::new(ControllerLosesLife {
+                Ok(Self(Box::leak(Box::new(ControllerLosesLife {
                     count: usize::try_from(value.count)?,
-                }) as Arc<_>))
+                }))))
             }
             protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(_) => {
-                Ok(Self(Arc::new(CopyOfAnyCreatureNonTargeting) as Arc<_>))
+                Ok(Self(&CopyOfAnyCreatureNonTargeting))
             }
             protogen::effects::effect::Effect::CounterSpell(value) => {
-                Ok(Self(Arc::new(CounterSpell::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(CounterSpell::try_from(value)?))))
             }
             protogen::effects::effect::Effect::Craft(value) => {
-                Ok(Self(Arc::new(Craft::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(Craft::try_from(value)?))))
             }
             protogen::effects::effect::Effect::CreateToken(value) => {
-                Ok(Self(Arc::new(CreateToken::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(CreateToken::try_from(value)?))))
             }
             protogen::effects::effect::Effect::CreateTokenCopy(value) => {
-                Ok(Self(Arc::new(CreateTokenCopy::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(CreateTokenCopy::try_from(value)?))))
             }
             protogen::effects::effect::Effect::DealDamage(value) => {
-                Ok(Self(Arc::new(DealDamage::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(DealDamage::try_from(value)?))))
             }
             protogen::effects::effect::Effect::DestroyEach(value) => {
-                Ok(Self(Arc::new(DestroyEach::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(DestroyEach::try_from(value)?))))
             }
             protogen::effects::effect::Effect::DestroyTarget(value) => {
-                Ok(Self(Arc::new(DestroyTarget::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(DestroyTarget::try_from(value)?))))
             }
             protogen::effects::effect::Effect::Discover(value) => {
-                Ok(Self(Arc::new(Discover::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(Discover::try_from(value)?))))
             }
             protogen::effects::effect::Effect::Equip(value) => {
-                Ok(Self(Arc::new(Equip::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(Equip::try_from(value)?))))
             }
             protogen::effects::effect::Effect::ExileTarget(value) => {
-                Ok(Self(Arc::new(ExileTarget::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(ExileTarget::try_from(value)?))))
             }
-            protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => Ok(
-                Self(Arc::new(ExileTargetCreatureManifestTopOfLibrary) as Arc<_>),
-            ),
-            protogen::effects::effect::Effect::ForEachManaOfSource(value) => Ok(Self(Arc::new(
-                ForEachManaOfSource::try_from(value)?,
-            )
-                as Arc<_>)),
+            protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
+                Ok(Self(&ExileTargetCreatureManifestTopOfLibrary))
+            }
+            protogen::effects::effect::Effect::ForEachManaOfSource(value) => Ok(Self(Box::leak(
+                Box::new(ForEachManaOfSource::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::GainCounter(value) => {
-                Ok(Self(Arc::new(GainCounter::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(GainCounter::try_from(value)?))))
             }
-            protogen::effects::effect::Effect::TargetGainsCounters(value) => Ok(Self(Arc::new(
-                TargetGainsCounters::try_from(value)?,
-            )
-                as Arc<_>)),
+            protogen::effects::effect::Effect::TargetGainsCounters(value) => Ok(Self(Box::leak(
+                Box::new(TargetGainsCounters::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::GainLife(value) => {
-                Ok(Self(Arc::new(GainLife::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(GainLife::try_from(value)?))))
             }
             protogen::effects::effect::Effect::Mill(value) => {
-                Ok(Self(Arc::new(Mill::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(Mill::try_from(value)?))))
             }
             protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => Ok(Self(
-                Arc::new(ReturnFromGraveyardToBattlefield::try_from(value)?) as Arc<_>,
+                Box::leak(Box::new(ReturnFromGraveyardToBattlefield::try_from(value)?)),
             )),
             protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => Ok(Self(
-                Arc::new(ReturnFromGraveyardToLibrary::try_from(value)?) as Arc<_>,
+                Box::leak(Box::new(ReturnFromGraveyardToLibrary::try_from(value)?)),
             )),
-            protogen::effects::effect::Effect::ReturnSelfToHand(_) => {
-                Ok(Self(Arc::new(ReturnSelfToHand) as Arc<_>))
-            }
-            protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => Ok(Self(Arc::new(
-                RevealEachTopOfLibrary::try_from(value)?,
-            )
-                as Arc<_>)),
+            protogen::effects::effect::Effect::ReturnSelfToHand(_) => Ok(Self(&ReturnSelfToHand)),
+            protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => Ok(Self(
+                Box::leak(Box::new(RevealEachTopOfLibrary::try_from(value)?)),
+            )),
             protogen::effects::effect::Effect::Scry(value) => {
-                Ok(Self(Arc::new(Scry::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(Scry::try_from(value)?))))
             }
-            protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => Ok(Self(Arc::new(
-                TargetToTopOfLibrary::try_from(value)?,
-            )
-                as Arc<_>)),
+            protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => Ok(Self(Box::leak(
+                Box::new(TargetToTopOfLibrary::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::TutorLibrary(value) => {
-                Ok(Self(Arc::new(TutorLibrary::try_from(value)?) as Arc<_>))
+                Ok(Self(Box::leak(Box::new(TutorLibrary::try_from(value)?))))
             }
-            protogen::effects::effect::Effect::UntapThis(_) => {
-                Ok(Self(Arc::new(UntapThis) as Arc<_>))
-            }
-            protogen::effects::effect::Effect::UntapTarget(_) => {
-                Ok(Self(Arc::new(UntapTarget) as Arc<_>))
-            }
+            protogen::effects::effect::Effect::UntapThis(_) => Ok(Self(&UntapThis)),
+            protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self(&UntapTarget)),
         }
     }
 }
