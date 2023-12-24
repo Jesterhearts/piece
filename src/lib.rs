@@ -91,7 +91,7 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     let protos = load_protos()?;
     for (card, card_file) in protos {
         cards.insert(
-            card.name.to_owned(),
+            card.name.clone(),
             (&card)
                 .try_into()
                 .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
