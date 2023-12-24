@@ -13,7 +13,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
 
-use include_dir::{include_dir, Dir};
+use include_dir::{include_dir, Dir, File};
 
 use crate::{
     battlefield::{Battlefield, PendingResults},
@@ -49,13 +49,30 @@ static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
 pub type Cards = HashMap<String, Card>;
 
-pub fn load_cards() -> anyhow::Result<Cards> {
-    let mut cards = Cards::default();
-    for card in CARD_DEFINITIONS.entries().iter() {
-        let card_file = card
-            .as_file()
-            .ok_or_else(|| anyhow!("Non-file entry in cards directory"))?;
+pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<'static>)>> {
+    fn dir_to_files(dir: &'static Dir) -> Vec<&'static File<'static>> {
+        let mut results = vec![];
+        for entry in dir.entries() {
+            match entry {
+                include_dir::DirEntry::Dir(dir) => results.extend(dir_to_files(dir)),
+                include_dir::DirEntry::File(file) => {
+                    results.push(file);
+                }
+            }
+        }
 
+        results
+    }
+
+    let mut results = vec![];
+    for card_file in CARD_DEFINITIONS
+        .entries()
+        .iter()
+        .flat_map(|entry| match entry {
+            include_dir::DirEntry::Dir(dir) => dir_to_files(dir).into_iter(),
+            include_dir::DirEntry::File(file) => vec![file].into_iter(),
+        })
+    {
         let card: protogen::card::Card = protobuf::text_format::parse_from_str(
             card_file
                 .contents_utf8()
@@ -63,6 +80,16 @@ pub fn load_cards() -> anyhow::Result<Cards> {
         )
         .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
 
+        results.push((card, card_file));
+    }
+
+    Ok(results)
+}
+
+pub fn load_cards() -> anyhow::Result<Cards> {
+    let mut cards = Cards::default();
+    let protos = load_protos()?;
+    for (card, card_file) in protos {
         cards.insert(
             card.name.to_owned(),
             (&card)
