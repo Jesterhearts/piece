@@ -313,6 +313,10 @@ message Effect {
   string oracle_text = 33;
 }
 
+message Mode {
+  repeated Effect effects = 1;
+}
+
 message ReplacementEffect {
   message Draw {}
   message Etb {}

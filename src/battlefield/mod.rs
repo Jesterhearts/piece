@@ -146,6 +146,7 @@ pub enum ActionResult {
         targets: Vec<Vec<ActiveTarget>>,
         from: CastFrom,
         x_is: Option<usize>,
+        chosen_modes: Vec<usize>,
     },
     HandFromBattlefield(CardId),
     RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
@@ -844,8 +845,9 @@ impl Battlefield {
                 targets,
                 from,
                 x_is,
+                chosen_modes,
             } => {
-                card.move_to_stack(db, targets.clone(), Some(*from));
+                card.move_to_stack(db, targets.clone(), Some(*from), chosen_modes.clone());
                 if let Some(x_is) = x_is {
                     card.set_x(db, *x_is)
                 };
@@ -880,7 +882,7 @@ impl Battlefield {
                 for entry in entries.iter() {
                     match entry.ty {
                         Entry::Card(card) => {
-                            card.move_to_stack(db, entry.targets.clone(), None);
+                            card.move_to_stack(db, entry.targets.clone(), None, vec![]);
                         }
                         Entry::Ability { in_stack, .. } => {
                             in_stack.update_stack_seq(db);

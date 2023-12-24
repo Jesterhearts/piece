@@ -28,7 +28,8 @@ use crate::{
     effects::{
         effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield},
         gain_counter::{counter, Counter},
-        AnyEffect, DynamicPowerToughness, EffectDuration, Effects, ReplacementEffects, Token,
+        AnyEffect, DynamicPowerToughness, EffectDuration, Effects, Modes, ReplacementEffects,
+        Token,
     },
     in_play::{
         self, cast_from, exile_reason, AbilityId, Active, Attacking, AuraId, CastFrom, CounterId,
@@ -41,7 +42,7 @@ use crate::{
         mana_pool::{ManaSource, SourcedMana},
         Controller, Owner,
     },
-    stack::{ActiveTarget, Settled, Stack, Targets},
+    stack::{self, ActiveTarget, Settled, Stack, Targets},
     targets::{Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
     triggers::trigger_source,
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
@@ -166,6 +167,7 @@ impl CardId {
         db: &mut Database,
         targets: Vec<Vec<ActiveTarget>>,
         from: Option<CastFrom>,
+        chosen_modes: Vec<usize>,
     ) {
         if Stack::split_second(db) {
             return;
@@ -200,6 +202,11 @@ impl CardId {
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
                 .insert(Targets(targets));
+
+            if !chosen_modes.is_empty() {
+                debug!("Chosen modes: {:?}", chosen_modes);
+                entity.insert(stack::Modes(chosen_modes));
+            }
 
             if let Some(from) = from {
                 match from {
@@ -766,6 +773,17 @@ impl CardId {
             .insert(ModifiedActivatedAbilities(activated_abilities));
     }
 
+    pub fn equal(self, db: &Database, other: CardId) -> bool {
+        self.name(db) == other.name(db)
+            && self.power(db) == other.power(db)
+            && self.toughness(db) == other.toughness(db)
+            && self.types(db) == other.types(db)
+            && self.colors(db) == other.colors(db)
+            && self.keywords(db) == other.keywords(db)
+            && self.activated_abilities(db) == other.activated_abilities(db)
+            && self.tapped(db) == other.tapped(db)
+    }
+
     pub fn etb_abilities(self, db: &Database) -> Vec<AbilityId> {
         db.get::<ModifiedETBAbilities>(self.0)
             .cloned()
@@ -820,6 +838,14 @@ impl CardId {
 
     pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.get::<Effects>(self.0).cloned().unwrap_or_default().0
+    }
+
+    pub fn modes(self, db: &Database) -> Option<Modes> {
+        db.get::<Modes>(self.0).cloned()
+    }
+
+    pub(crate) fn has_modes(&self, db: &mut Database) -> bool {
+        db.get::<Modes>(self.0).is_some()
     }
 
     pub fn needs_targets(self, db: &mut Database) -> Vec<usize> {
@@ -1250,6 +1276,10 @@ impl CardId {
 
         if !card.effects.is_empty() {
             entity.insert(Effects(card.effects.clone()));
+        }
+
+        if !card.modes.is_empty() {
+            entity.insert(Modes(card.modes.clone()));
         }
 
         if !card.etb_abilities.is_empty() {

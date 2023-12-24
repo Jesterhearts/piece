@@ -80,9 +80,9 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    card.move_to_stack(&mut db, vec![], None);
+    card.move_to_stack(&mut db, vec![], None, vec![]);
     let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
-    counterspell.move_to_stack(&mut db, targets, None);
+    counterspell.move_to_stack(&mut db, targets, None, vec![]);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
@@ -117,9 +117,9 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    card2.move_to_stack(&mut db, vec![], None);
+    card2.move_to_stack(&mut db, vec![], None, vec![]);
     let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
-    counterspell.move_to_stack(&mut db, targets, None);
+    counterspell.move_to_stack(&mut db, targets, None, vec![]);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
@@ -155,9 +155,9 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
-    card2.move_to_stack(&mut db, vec![], None);
+    card2.move_to_stack(&mut db, vec![], None, vec![]);
     let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
-    counterspell.move_to_stack(&mut db, targets, None);
+    counterspell.move_to_stack(&mut db, targets, None, vec![]);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 

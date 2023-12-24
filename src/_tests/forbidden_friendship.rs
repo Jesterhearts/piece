@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -22,7 +21,7 @@ fn creates_tokens() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
     let targets = card.valid_targets(&mut db, &HashSet::default());
-    card.move_to_stack(&mut db, targets, None);
+    card.move_to_stack(&mut db, targets, None, vec![]);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, &mut all_players, None);

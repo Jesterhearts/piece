@@ -658,3 +658,25 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
         })
     }
 }
+
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub struct Modes(pub Vec<Mode>);
+
+#[derive(Debug, Clone)]
+pub struct Mode {
+    pub effects: Vec<AnyEffect>,
+}
+
+impl TryFrom<&protogen::effects::Mode> for Mode {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::Mode) -> Result<Self, Self::Error> {
+        Ok(Self {
+            effects: value
+                .effects
+                .iter()
+                .map(AnyEffect::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}

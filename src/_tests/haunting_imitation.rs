@@ -24,7 +24,7 @@ fn reveals_clones() -> anyhow::Result<()> {
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let targets = haunting.valid_targets(&mut db, &HashSet::default());
-    haunting.move_to_stack(&mut db, targets, None);
+    haunting.move_to_stack(&mut db, targets, None, vec![]);
 
     let land = CardId::upload(&mut db, &cards, player1, "Forest");
     let creature = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");

@@ -29,6 +29,7 @@ fn metamorphosis() -> anyhow::Result<()> {
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: mantle }]],
         None,
+        vec![],
     );
 
     let mut results = Stack::resolve_1(&mut db);
@@ -68,6 +69,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
+        vec![],
     );
 
     let mut results = Stack::resolve_1(&mut db);

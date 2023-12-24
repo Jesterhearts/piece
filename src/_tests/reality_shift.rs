@@ -39,6 +39,7 @@ fn resolves_shift() -> anyhow::Result<()> {
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear1 }]],
         None,
+        vec![],
     );
 
     let mut results = Stack::resolve_1(&mut db);

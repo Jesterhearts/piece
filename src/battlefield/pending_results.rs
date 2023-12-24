@@ -46,7 +46,19 @@ impl Source {
 
     fn mode_options(&self, db: &mut Database) -> Vec<(usize, String)> {
         match self {
-            Source::Card(_) => todo!(),
+            Source::Card(card) => card
+                .modes(db)
+                .unwrap()
+                .0
+                .into_iter()
+                .map(|mode| {
+                    mode.effects
+                        .into_iter()
+                        .map(|effect| effect.oracle_text)
+                        .join(", ")
+                })
+                .enumerate()
+                .collect_vec(),
             Source::Ability(ability) => {
                 if let Some(gain) = ability.gain_mana_ability(db) {
                     match gain.gain {
@@ -1194,6 +1206,7 @@ impl PendingResults {
                             targets: self.chosen_targets.clone(),
                             from: self.cast_from.unwrap(),
                             x_is: self.x_is,
+                            chosen_modes: self.chosen_modes.clone(),
                         });
                     }
                     Source::Ability(ability) => {

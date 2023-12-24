@@ -10,7 +10,7 @@ use strum::IntoEnumIterator;
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::{CastingCost, Ward},
-    effects::{AnyEffect, ReplacementEffect, Token, TokenCreature},
+    effects::{AnyEffect, Mode, ReplacementEffect, Token, TokenCreature},
     in_play::{AbilityId, CardId, TriggerId},
     newtype_enum::newtype_enum,
     protogen,
@@ -357,8 +357,10 @@ pub struct Card {
 
     pub enchant: Option<Enchant>,
 
-    pub etb_abilities: Vec<AnyEffect>,
     pub effects: Vec<AnyEffect>,
+    pub modes: Vec<Mode>,
+
+    pub etb_abilities: Vec<AnyEffect>,
     pub target_individually: bool,
 
     pub ward: Option<Ward>,
@@ -413,13 +415,18 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .enchant
                 .as_ref()
                 .map_or(Ok(None), |enchant| enchant.try_into().map(Some))?,
-            etb_abilities: value
-                .etb_abilities
+            effects: value
+                .effects
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            effects: value
-                .effects
+            modes: value
+                .modes
+                .iter()
+                .map(Mode::try_from)
+                .collect::<anyhow::Result<_>>()?,
+            etb_abilities: value
+                .etb_abilities
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,

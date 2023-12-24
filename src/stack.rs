@@ -92,14 +92,14 @@ impl Entry {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deref, DerefMut, Component)]
-pub struct Mode(pub usize);
+#[derive(Debug, Clone, Deref, DerefMut, Component)]
+pub struct Modes(pub Vec<usize>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StackEntry {
     pub ty: Entry,
     pub targets: Vec<Vec<ActiveTarget>>,
-    pub mode: Option<usize>,
+    pub mode: Option<Vec<usize>>,
 }
 
 impl StackEntry {
@@ -204,7 +204,7 @@ impl Stack {
 
     pub fn entries_unsettled(db: &mut Database) -> Vec<(InStack, StackEntry)> {
         db.cards
-            .query_filtered::<(&InStack, Entity, &Targets, Option<&Mode>), Without<Settled>>()
+            .query_filtered::<(&InStack, Entity, &Targets, Option<&Modes>), Without<Settled>>()
             .iter(&db.cards)
             .map(|(seq, entity, targets, mode)| {
                 (
@@ -212,7 +212,7 @@ impl Stack {
                     StackEntry {
                         ty: Entry::Card(entity.into()),
                         targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0),
+                        mode: mode.map(|mode| mode.0.clone()),
                     },
                 )
             })
@@ -224,7 +224,7 @@ impl Stack {
                         &AbilityId,
                         &Targets,
                         &CardId,
-                        Option<&Mode>,
+                        Option<&Modes>,
                     ), Without<Settled>>()
                     .iter(&db.abilities)
                     .map(|(seq, entity, source, targets, card_source, mode)| {
@@ -237,14 +237,14 @@ impl Stack {
                                     card_source: *card_source,
                                 },
                                 targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0),
+                        mode: mode.map(|mode| mode.0.clone()),
                             },
                         )
                     }),
             )
             .chain(
                 db.triggers
-                    .query_filtered::<(&TriggerInStack, Entity, &Targets, Option<&Mode>), Without<Settled>>()
+                    .query_filtered::<(&TriggerInStack, Entity, &Targets, Option<&Modes>), Without<Settled>>()
                     .iter(&db.triggers)
                     .map(|(seq, entity, targets, mode)| {
                         (
@@ -256,7 +256,7 @@ impl Stack {
                                     card_source: seq.source,
                                 },
                                 targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0),
+                        mode: mode.map(|mode| mode.0.clone()),
                             },
                         )
                     }),
@@ -267,7 +267,7 @@ impl Stack {
 
     pub fn entries(db: &mut Database) -> Vec<(InStack, StackEntry)> {
         db.cards
-            .query::<(&InStack, Entity, &Targets, Option<&Mode>)>()
+            .query::<(&InStack, Entity, &Targets, Option<&Modes>)>()
             .iter(&db.cards)
             .map(|(seq, entity, targets, mode)| {
                 (
@@ -275,7 +275,7 @@ impl Stack {
                     StackEntry {
                         ty: Entry::Card(entity.into()),
                         targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0),
+                        mode: mode.map(|mode| mode.0.clone()),
                     },
                 )
             })
@@ -287,7 +287,7 @@ impl Stack {
                         &AbilityId,
                         &Targets,
                         &CardId,
-                        Option<&Mode>,
+                        Option<&Modes>,
                     )>()
                     .iter(&db.abilities)
                     .map(|(seq, entity, source, targets, card_source, mode)| {
@@ -300,14 +300,14 @@ impl Stack {
                                     card_source: *card_source,
                                 },
                                 targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0),
+                                mode: mode.map(|mode| mode.0.clone()),
                             },
                         )
                     }),
             )
             .chain(
                 db.triggers
-                    .query::<(&TriggerInStack, Entity, &Targets, Option<&Mode>)>()
+                    .query::<(&TriggerInStack, Entity, &Targets, Option<&Modes>)>()
                     .iter(&db.triggers)
                     .map(|(seq, entity, targets, mode)| {
                         (
@@ -319,7 +319,7 @@ impl Stack {
                                     card_source: seq.source,
                                 },
                                 targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0),
+                                mode: mode.map(|mode| mode.0.clone()),
                             },
                         )
                     }),
@@ -330,7 +330,7 @@ impl Stack {
 
     fn pop(db: &mut Database) -> Option<StackEntry> {
         db.cards
-            .query::<(&InStack, Entity, &Targets, Option<&Mode>)>()
+            .query::<(&InStack, Entity, &Targets, Option<&Modes>)>()
             .iter(&db.cards)
             .map(|(seq, entity, targets, mode)| {
                 (
@@ -338,7 +338,7 @@ impl Stack {
                     StackEntry {
                         ty: Entry::Card(entity.into()),
                         targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0),
+                        mode: mode.map(|mode| mode.0.clone()),
                     },
                 )
             })
@@ -350,7 +350,7 @@ impl Stack {
                         &AbilityId,
                         &Targets,
                         &CardId,
-                        Option<&Mode>,
+                        Option<&Modes>,
                     )>()
                     .iter(&db.abilities)
                     .map(|(seq, entity, source, targets, card_source, mode)| {
@@ -363,14 +363,14 @@ impl Stack {
                                     card_source: *card_source,
                                 },
                                 targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0),
+                                mode: mode.map(|mode| mode.0.clone()),
                             },
                         )
                     }),
             )
             .chain(
                 db.triggers
-                    .query::<(Entity, &TriggerInStack, &Targets, Option<&Mode>)>()
+                    .query::<(Entity, &TriggerInStack, &Targets, Option<&Modes>)>()
                     .iter(&db.triggers)
                     .map(|(entity, seq, targets, mode)| {
                         (
@@ -382,7 +382,7 @@ impl Stack {
                                     card_source: seq.source,
                                 },
                                 targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0),
+                                mode: mode.map(|mode| mode.0.clone()),
                             },
                         )
                     }),
@@ -454,13 +454,21 @@ impl Stack {
 
         Self::settle(db);
         let (apply_to_self, effects, controller, resolving_card, source) = match next.ty {
-            Entry::Card(card) => (
-                false,
-                card.effects(db),
-                card.controller(db),
-                Some(card),
-                card,
-            ),
+            Entry::Card(card) => {
+                let effects = if let Some(modes) = card.modes(db) {
+                    debug!("Modes: {:?}", modes);
+                    modes
+                        .0
+                        .into_iter()
+                        .nth(next.mode.unwrap().into_iter().exactly_one().unwrap())
+                        .unwrap()
+                        .effects
+                } else {
+                    card.effects(db)
+                };
+
+                (false, effects, card.controller(db), Some(card), card)
+            }
             Entry::Ability { source, .. } => (
                 source.apply_to_self(db),
                 source.effects(db),
@@ -628,8 +636,12 @@ fn add_card_to_stack(
     }
     card.apply_modifiers_layered(db);
 
+    if card.has_modes(db) {
+        results.push_choose_mode();
+    }
+
+    results.add_card_to_stack(from);
     if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
-        results.add_card_to_stack(from);
         let controller = card.controller(db);
         if let Some(aura) = card.aura(db) {
             results.push_choose_targets(ChooseTargets::new(
@@ -664,13 +676,6 @@ fn add_card_to_stack(
                 ));
             }
         }
-    } else {
-        results.push_settled(ActionResult::CastCard {
-            card,
-            targets: vec![],
-            from,
-            x_is: None,
-        })
     }
 
     let cost = card.cost(db);
@@ -721,7 +726,7 @@ mod tests {
         let player = all_players.new_player("Player".to_string(), 20);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
-        card1.move_to_stack(&mut db, Default::default(), None);
+        card1.move_to_stack(&mut db, Default::default(), None, vec![]);
 
         let mut results = Stack::resolve_1(&mut db);
 

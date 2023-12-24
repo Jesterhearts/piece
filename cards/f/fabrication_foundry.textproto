@@ -1,4 +1,8 @@
 name: "Fabrication Foundry"
+types {
+  artifact {
+  }
+}
 cost {
   mana_costs {
     generic {
@@ -48,8 +52,8 @@ activated_abilities {
       }
     }
   }
-  sorcery_speed: true
   oracle_text: "Return target artifact card with mana value X or less from yuour graveyard to the battlefield. Activate only as sorcery."
+  sorcery_speed: true
 }
 mana_abilities {
   cost {

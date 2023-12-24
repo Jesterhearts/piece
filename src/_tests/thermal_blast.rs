@@ -26,6 +26,7 @@ fn damages_target() -> anyhow::Result<()> {
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
+        vec![],
     );
 
     let mut results = Stack::resolve_1(&mut db);
@@ -63,6 +64,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
+        vec![],
     );
 
     let mut results = Stack::resolve_1(&mut db);
@@ -103,6 +105,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
+        vec![],
     );
 
     let mut results = Stack::resolve_1(&mut db);
