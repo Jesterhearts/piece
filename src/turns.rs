@@ -36,8 +36,8 @@ pub struct Turn {
 }
 
 impl Turn {
-    pub fn new(players: &AllPlayers) -> Self {
-        let turn_order = players.all_players();
+    pub fn new(all_players: &AllPlayers) -> Self {
+        let turn_order = all_players.all_players();
 
         Self {
             turn_count: 0,

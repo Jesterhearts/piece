@@ -11,7 +11,7 @@ use crate::{
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
-    mana::Mana,
+    mana::{Mana, ManaRestriction},
     player::mana_pool::ManaSource,
     protogen,
     triggers::Trigger,
@@ -190,6 +190,7 @@ pub enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
 }
+
 impl GainMana {
     fn text(&self) -> String {
         match self {
@@ -271,6 +272,7 @@ pub struct GainManaAbility {
     pub cost: AbilityCost,
     pub gain: GainMana,
     pub mana_source: Option<ManaSource>,
+    pub mana_restriction: ManaRestriction,
 }
 impl GainManaAbility {
     pub fn text(&self, db: &Database, source: CardId) -> String {
@@ -289,6 +291,7 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
                 .mana_source
                 .as_ref()
                 .map_or(Ok(None), |value| value.try_into().map(Some))?,
+            mana_restriction: value.mana_restriction.get_or_default().into(),
         })
     }
 }

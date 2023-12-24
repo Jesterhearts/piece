@@ -28,8 +28,8 @@ pub enum ManaCost {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash, strum::AsRefStr, Component)]
 pub enum ManaRestriction {
-    None,
     ArtifactSpellOrAbility,
+    None,
 }
 
 impl Mana {
@@ -138,6 +138,26 @@ impl From<&protogen::mana::mana::Mana> for Mana {
             protogen::mana::mana::Mana::Red(_) => Self::Red,
             protogen::mana::mana::Mana::Green(_) => Self::Green,
             protogen::mana::mana::Mana::Colorless(_) => Self::Colorless,
+        }
+    }
+}
+
+impl From<&protogen::mana::ManaRestriction> for ManaRestriction {
+    fn from(value: &protogen::mana::ManaRestriction) -> Self {
+        value
+            .restriction
+            .as_ref()
+            .map(Self::from)
+            .unwrap_or(Self::None)
+    }
+}
+
+impl From<&protogen::mana::mana_restriction::Restriction> for ManaRestriction {
+    fn from(value: &protogen::mana::mana_restriction::Restriction) -> Self {
+        match value {
+            protogen::mana::mana_restriction::Restriction::ArtifactSpellOrAbility(_) => {
+                Self::ArtifactSpellOrAbility
+            }
         }
     }
 }

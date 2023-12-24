@@ -137,6 +137,7 @@ impl CardId {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
+            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
             self.untap(db);
@@ -176,6 +177,7 @@ impl CardId {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
+            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
             self.untap(db);
@@ -245,6 +247,7 @@ impl CardId {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
+            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
             self.untap(db);
@@ -278,6 +281,7 @@ impl CardId {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
+            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
             self.untap(db);
@@ -315,6 +319,7 @@ impl CardId {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
+            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
             self.untap(db);
@@ -362,6 +367,17 @@ impl CardId {
     }
 
     pub fn move_to_limbo(self, db: &mut Database) {
+        self.remove_all_modifiers(db);
+        TriggerId::deactivate_all_for_card(db, self);
+        ReplacementEffectId::deactivate_all_for_card(db, self);
+        AbilityId::cleanup_temporary_abilities(db, self);
+        self.deactivate_modifiers(db);
+
+        self.untap(db);
+
+        let owner = self.owner(db);
+        *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+
         let mut entity = db.entity_mut(self.0);
         entity
             .remove::<InLibrary>()

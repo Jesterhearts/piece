@@ -32,3 +32,10 @@ message Mana {
     Colorless colorless = 6;
   }
 }
+
+message ManaRestriction {
+  message ArtifactSpellOrAbility {}
+  oneof restriction {
+    ArtifactSpellOrAbility artifact_spell_or_ability = 1;
+  }
+}

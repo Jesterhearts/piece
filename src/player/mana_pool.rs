@@ -7,8 +7,7 @@ use indexmap::IndexSet;
 use strum::IntoEnumIterator;
 
 use crate::{
-    battlefield::Source,
-    in_play::Database,
+    in_play::{AbilityId, CardId, Database},
     mana::{Mana, ManaCost, ManaRestriction},
     protogen,
     types::Type,
@@ -32,8 +31,25 @@ pub struct SourcedMana(pub HashMap<ManaSource, usize>);
 )]
 pub enum ManaSource {
     Any,
-    Cave,
     Treasure,
+    Cave,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpendReason {
+    Casting(CardId),
+    Activating(AbilityId),
+    Other,
+}
+
+impl SpendReason {
+    fn card(&self, db: &Database) -> Option<CardId> {
+        match self {
+            SpendReason::Casting(card) => Some(*card),
+            SpendReason::Activating(ability) => Some(ability.source(db)),
+            SpendReason::Other => None,
+        }
+    }
 }
 
 impl TryFrom<&protogen::cost::ManaSource> for ManaSource {
@@ -102,7 +118,7 @@ impl ManaPool {
         db: &Database,
         mana: Mana,
         source: ManaSource,
-        reason: Source,
+        reason: SpendReason,
     ) -> (bool, ManaSource) {
         let mana = self.sourced.entry(mana).or_default();
         let mut ultimate_source = source;
@@ -133,10 +149,24 @@ impl ManaPool {
         }
 
         if let Some(sourced) = sourced {
-            if reason
-                .card(db)
-                .types_intersect(db, &IndexSet::from([Type::Artifact]))
-            {
+            let card = reason.card(db);
+
+            if card.is_none() {
+                let restricted = sourced.get_mut(&ManaRestriction::None);
+                if let Some(restricted) = restricted {
+                    let Some(mana) = restricted.checked_sub(1) else {
+                        return (false, ManaSource::Any);
+                    };
+
+                    *restricted = mana;
+                    return (true, ultimate_source);
+                } else {
+                    return (false, ManaSource::Any);
+                }
+            }
+
+            let card = card.unwrap();
+            if card.types_intersect(db, &IndexSet::from([Type::Artifact])) {
                 let restricted = if let Some(restricted) =
                     sourced.get_mut(&ManaRestriction::ArtifactSpellOrAbility)
                 {
@@ -178,7 +208,7 @@ impl ManaPool {
         db: &Database,
         cost: ManaCost,
         source: ManaSource,
-        reason: Source,
+        reason: SpendReason,
     ) -> bool {
         let mut mana_pool = self.clone();
         match cost {
@@ -249,16 +279,17 @@ impl ManaPool {
         self.all_mana().filter(|(count, _, _, _)| *count > 0)
     }
 
-    pub fn max(&self, db: &Database, reason: Source) -> Option<Mana> {
+    pub fn max(&self, db: &Database, reason: SpendReason) -> Option<Mana> {
         self.available_mana()
             .filter(|(_, _, _, restriction)| {
-                if reason
-                    .card(db)
-                    .types_intersect(db, &IndexSet::from([Type::Artifact]))
-                {
-                    true
+                if *restriction == ManaRestriction::None {
+                    return true;
+                }
+
+                if let Some(card) = reason.card(db) {
+                    card.types_intersect(db, &IndexSet::from([Type::Artifact]))
                 } else {
-                    *restriction == ManaRestriction::None
+                    false
                 }
             })
             .max_by_key(|(count, _, _, _)| *count)
@@ -280,18 +311,20 @@ impl ManaPool {
 
 fn has_available_mana(
     sourced: &BTreeMap<ManaRestriction, usize>,
-    reason: Source,
+    reason: SpendReason,
     db: &Database,
 ) -> bool {
     sourced
         .iter()
         .filter_map(|(restriction, count)| {
-            if reason
-                .card(db)
-                .types_intersect(db, &IndexSet::from([Type::Artifact]))
-                || *restriction == ManaRestriction::None
-            {
+            if *restriction == ManaRestriction::None {
                 Some(count)
+            } else if let Some(card) = reason.card(db) {
+                if card.types_intersect(db, &IndexSet::from([Type::Artifact])) {
+                    Some(count)
+                } else {
+                    None
+                }
             } else {
                 None
             }

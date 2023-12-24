@@ -200,6 +200,7 @@ message GainManaAbility {
   cost.AbilityCost cost = 1;
   GainMana gain_mana = 2;
   cost.ManaSource mana_source = 3;
+  optional mana.ManaRestriction mana_restriction = 4;
 }
 
 message Mill {
@@ -231,6 +232,7 @@ message ModifyBattlefield {
 message ReturnFromGraveyardToBattlefield {
   int32 count = 1;
   repeated types.Type types = 2;
+  optional cost.XIs x_is = 3;
 }
 
 message ReturnFromGraveyardToLibrary {

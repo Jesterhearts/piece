@@ -14,14 +14,14 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{Battlefield, PendingResults, Source},
+    battlefield::{Battlefield, PendingResults},
     card::Color,
     controller::ControllerRestriction,
     deck::Deck,
     effects::replacing,
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
     mana::{Mana, ManaCost, ManaRestriction},
-    player::mana_pool::{ManaPool, ManaSource},
+    player::mana_pool::{ManaPool, ManaSource, SpendReason},
     stack::Stack,
     targets::Restriction,
 };
@@ -345,7 +345,7 @@ impl Player {
         db: &Database,
         mana: &[ManaCost],
         sources: &[ManaSource],
-        reason: Source,
+        reason: SpendReason,
     ) -> bool {
         let mut mana = mana.to_vec();
         mana.sort();
@@ -369,7 +369,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: Source,
+        reason: SpendReason,
     ) -> Option<ManaPool> {
         let mut mana_pool = self.mana_pool.clone();
 
@@ -392,7 +392,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: Source,
+        reason: SpendReason,
     ) -> bool {
         self.pool_post_pay(db, mana, sources, reason).is_some()
     }
@@ -402,7 +402,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: Source,
+        reason: SpendReason,
     ) -> bool {
         let mut mana_pool = self.mana_pool.clone();
 

@@ -1,0 +1,70 @@
+name: "Fabrication Foundry"
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 2
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    tap: true
+    additional_costs {
+      exile_cards_cmc_x {
+        restrictions {
+          of_type {
+            types {
+              artifact {
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  effects {
+    return_from_graveyard_to_battlefield {
+      count: 1
+      types {
+        artifact {
+        }
+      }
+      x_is {
+        cmc {
+        }
+      }
+    }
+  }
+  sorcery_speed: true
+  oracle_text: "Return target artifact card with mana value X or less from yuour graveyard to the battlefield. Activate only as sorcery."
+}
+mana_abilities {
+  cost {
+    tap: true
+  }
+  gain_mana {
+    specific {
+      gains {
+        white {
+        }
+      }
+    }
+  }
+  mana_restriction {
+    artifact_spell_or_ability {
+    }
+  }
+}

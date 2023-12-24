@@ -27,7 +27,10 @@ use crate::{
         ReplacementEffectId, TriggerId,
     },
     mana::{Mana, ManaRestriction},
-    player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
+    player::{
+        mana_pool::{ManaSource, SpendReason},
+        AllPlayers, Controller, Owner,
+    },
     stack::{ActiveTarget, Entry, Stack, StackEntry},
     targets::Restriction,
     triggers::{self, trigger_source, Trigger, TriggerSource},
@@ -35,10 +38,7 @@ use crate::{
     types::Type,
 };
 
-pub use pending_results::{
-    ChooseTargets, PayCost, PendingResults, ResolutionResult, SacrificePermanent, Source,
-    SpendMana, TapPermanent, TargetSource,
-};
+pub use pending_results::*;
 
 #[must_use]
 #[derive(Debug)]
@@ -159,7 +159,7 @@ pub enum ActionResult {
         card: CardId,
         mana: Vec<Mana>,
         sources: Vec<ManaSource>,
-        reason: Source,
+        reason: SpendReason,
     },
     Untap(CardId),
     ReturnFromBattlefieldToLibrary {
@@ -538,10 +538,18 @@ impl Battlefield {
                             restrictions.clone(),
                         )));
                     }
+                    AdditionalCost::ExileCardsCmcX(restrictions) => {
+                        results.push_pay_costs(PayCost::ExilePermanentsCmcX(
+                            ExilePermanentsCmcX::new(restrictions.clone()),
+                        ));
+                    }
                 }
             }
 
-            results.push_pay_costs(PayCost::SpendMana(SpendMana::new(cost.mana_cost.clone())));
+            results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
+                cost.mana_cost.clone(),
+                SpendReason::Activating(ability_id),
+            )));
         }
 
         if let Ability::Mana(gain) = ability {
@@ -1102,7 +1110,7 @@ impl Battlefield {
                 move_card_to_battlefield(
                     db,
                     transforming.faceup_face(db),
-                    transforming.faceup_face(db).etb_tapped(db),
+                    false,
                     &mut results,
                     None,
                 );

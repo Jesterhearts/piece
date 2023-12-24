@@ -10,10 +10,13 @@ use crate::{
     abilities::GainMana,
     battlefield::{ActionResult, Battlefield},
     controller::ControllerRestriction,
-    effects::Effect,
+    effects::{Effect, EffectDuration},
     in_play::{AbilityId, AuraId, CardId, CastFrom, Database, OnBattlefield},
     mana::{Mana, ManaCost},
-    player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
+    player::{
+        mana_pool::{ManaSource, SpendReason},
+        AllPlayers, Controller, Owner,
+    },
     stack::{ActiveTarget, Stack, StackEntry},
     targets::Restriction,
     turns::Turn,
@@ -234,13 +237,33 @@ impl TapPermanent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExilePermanentsCmcX {
+    restrictions: Vec<Restriction>,
+    valid_targets: Vec<CardId>,
+    chosen: IndexSet<CardId>,
+    target: usize,
+}
+
+impl ExilePermanentsCmcX {
+    pub fn new(restrictions: Vec<Restriction>) -> Self {
+        Self {
+            restrictions,
+            valid_targets: Default::default(),
+            chosen: Default::default(),
+            target: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpendMana {
     paying: IndexMap<ManaCost, usize>,
     paid: IndexMap<ManaCost, IndexMap<Mana, IndexMap<ManaSource, usize>>>,
+    reason: SpendReason,
 }
 
 impl SpendMana {
-    pub fn new(mut mana: Vec<ManaCost>) -> Self {
+    pub fn new(mut mana: Vec<ManaCost>, reason: SpendReason) -> Self {
         mana.sort();
 
         let mut paying = IndexMap::default();
@@ -251,7 +274,11 @@ impl SpendMana {
         paid.entry(ManaCost::X).or_default();
         paid.entry(ManaCost::TwoX).or_default();
 
-        Self { paying, paid }
+        Self {
+            paying,
+            paid,
+            reason,
+        }
     }
 
     pub fn first_unpaid_x_always_unpaid(&self) -> Option<ManaCost> {
@@ -351,19 +378,15 @@ pub enum PayCost {
     SacrificePermanent(SacrificePermanent),
     TapPermanent(TapPermanent),
     SpendMana(SpendMana),
+    ExilePermanentsCmcX(ExilePermanentsCmcX),
 }
 
 impl PayCost {
-    fn autopay(
-        &self,
-        db: &Database,
-        all_players: &AllPlayers,
-        player: Owner,
-        reason: Source,
-    ) -> bool {
+    fn autopay(&self, db: &Database, all_players: &AllPlayers, player: Owner) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
+            PayCost::ExilePermanentsCmcX(_) => false,
             PayCost::SpendMana(spend) => {
                 debug!("Checking autopay: {:?}", spend,);
                 if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
@@ -373,9 +396,9 @@ impl PayCost {
                         ManaCost::TwoX | ManaCost::X | ManaCost::Generic(_) => return false,
                         unpaid => {
                             let pool_post_pay = all_players[player]
-                                .pool_post_pay(db, &mana, &source, reason)
+                                .pool_post_pay(db, &mana, &source, spend.reason)
                                 .unwrap();
-                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::Any, reason) {
+                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::Any, spend.reason) {
                                 return false;
                             }
                         }
@@ -387,20 +410,15 @@ impl PayCost {
         }
     }
 
-    fn choice_optional(
-        &self,
-        db: &Database,
-        all_players: &AllPlayers,
-        player: Owner,
-        reason: Source,
-    ) -> bool {
+    fn choice_optional(&self, db: &Database, all_players: &AllPlayers, player: Owner) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
+            PayCost::ExilePermanentsCmcX(_) => true,
             PayCost::SpendMana(spend) => {
                 let (mana, source) = spend.paying();
                 if let Some(pool_post_pay) =
-                    all_players[player].pool_post_pay(db, &mana, &source, reason)
+                    all_players[player].pool_post_pay(db, &mana, &source, spend.reason)
                 {
                     if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
                         match first_unpaid {
@@ -417,7 +435,9 @@ impl PayCost {
                                     % 2
                                     == 0
                             }
-                            unpaid => pool_post_pay.can_spend(db, unpaid, ManaSource::Any, reason),
+                            unpaid => {
+                                pool_post_pay.can_spend(db, unpaid, ManaSource::Any, spend.reason)
+                            }
                         }
                     } else {
                         true
@@ -429,11 +449,19 @@ impl PayCost {
         }
     }
 
-    fn paid(&self) -> bool {
+    fn paid(&self, db: &Database) -> bool {
         match self {
             PayCost::SacrificePermanent(sac) => sac.chosen.is_some(),
             PayCost::TapPermanent(tap) => tap.chosen.is_some(),
             PayCost::SpendMana(spend) => spend.paid(),
+            PayCost::ExilePermanentsCmcX(exile) => {
+                exile
+                    .chosen
+                    .iter()
+                    .map(|chosen| chosen.cost(db).cmc())
+                    .sum::<usize>()
+                    >= exile.target
+            }
         }
     }
 
@@ -462,9 +490,14 @@ impl PayCost {
                 .collect_vec(),
             PayCost::SpendMana(spend) => {
                 let (mana, sources) = spend.paying();
-                let pool_post_paid = all_players[player].pool_post_pay(db, &mana, &sources, source);
+                let pool_post_paid =
+                    all_players[player].pool_post_pay(db, &mana, &sources, spend.reason);
                 if pool_post_paid.is_none()
-                    || pool_post_paid.as_ref().unwrap().max(db, source).is_none()
+                    || pool_post_paid
+                        .as_ref()
+                        .unwrap()
+                        .max(db, spend.reason)
+                        .is_none()
                 {
                     return vec![];
                 }
@@ -479,6 +512,13 @@ impl PayCost {
                     _ => vec![],
                 }
             }
+            PayCost::ExilePermanentsCmcX(exile) => exile
+                .valid_targets
+                .iter()
+                .enumerate()
+                .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
+                .map(|(idx, target)| (idx, target.name(db)))
+                .collect_vec(),
         }
     }
 
@@ -527,6 +567,29 @@ impl PayCost {
                 tap.valid_targets = valid_targets;
             }
             PayCost::SpendMana(_) => {}
+            PayCost::ExilePermanentsCmcX(exile) => {
+                exile.target = already_chosen
+                    .iter()
+                    .map(|target| target.id().unwrap().cost(db).cmc())
+                    .sum::<usize>();
+
+                let card = source.card(db);
+                let controller = card.controller(db);
+                let valid_targets = controller
+                    .get_cards::<OnBattlefield>(db)
+                    .into_iter()
+                    .filter(|target| {
+                        target.passes_restrictions(
+                            db,
+                            card,
+                            ControllerRestriction::You,
+                            &exile.restrictions,
+                        )
+                    })
+                    .collect_vec();
+
+                exile.valid_targets = valid_targets;
+            }
         }
     }
 
@@ -537,7 +600,6 @@ impl PayCost {
         player: Owner,
         all_targets: &HashSet<ActiveTarget>,
         choice: Option<usize>,
-        reason: Source,
     ) -> bool {
         match self {
             PayCost::SacrificePermanent(SacrificePermanent {
@@ -574,6 +636,23 @@ impl PayCost {
                     false
                 }
             }
+            PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX {
+                valid_targets,
+                chosen,
+                ..
+            }) => {
+                if let Some(choice) = choice {
+                    let target = valid_targets[choice];
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                        chosen.insert(target);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    true
+                }
+            }
             PayCost::SpendMana(spend) => {
                 if choice.is_none() {
                     if spend
@@ -591,13 +670,13 @@ impl PayCost {
 
                     let (mana, source) = spend.paying();
                     let mut pool_post_pay = all_players[player]
-                        .pool_post_pay(db, &mana, &source, reason)
+                        .pool_post_pay(db, &mana, &source, spend.reason)
                         .unwrap();
                     let Some(first_unpaid) = spend.first_unpaid() else {
                         return true;
                     };
 
-                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::Any, reason) {
+                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::Any, spend.reason) {
                         let mana = match first_unpaid {
                             ManaCost::White => Mana::White,
                             ManaCost::Blue => Mana::Blue,
@@ -607,9 +686,9 @@ impl PayCost {
                             ManaCost::Colorless => Mana::Colorless,
                             ManaCost::Generic(count) => {
                                 for _ in 0..count {
-                                    let max = pool_post_pay.max(db, reason).unwrap();
+                                    let max = pool_post_pay.max(db, spend.reason).unwrap();
                                     let (_, source) =
-                                        pool_post_pay.spend(db, max, ManaSource::Any, reason);
+                                        pool_post_pay.spend(db, max, ManaSource::Any, spend.reason);
                                     *spend
                                         .paid
                                         .entry(first_unpaid)
@@ -628,7 +707,8 @@ impl PayCost {
                             ManaCost::X => unreachable!(),
                             ManaCost::TwoX => unreachable!(),
                         };
-                        let (_, source) = pool_post_pay.spend(db, mana, ManaSource::Any, reason);
+                        let (_, source) =
+                            pool_post_pay.spend(db, mana, ManaSource::Any, spend.reason);
                         *spend
                             .paid
                             .entry(first_unpaid)
@@ -649,7 +729,7 @@ impl PayCost {
 
                 let (mana, sources) = spend.paying();
                 if let Some((_, mana, source, _)) = all_players[player]
-                    .pool_post_pay(db, &mana, &sources, reason)
+                    .pool_post_pay(db, &mana, &sources, spend.reason)
                     .unwrap()
                     .available_mana()
                     .nth(choice.unwrap())
@@ -665,7 +745,7 @@ impl PayCost {
                         .or_default() += 1;
 
                     let (mana, sources) = spend.paying();
-                    if all_players[player].can_spend_mana(db, &mana, &sources, reason) {
+                    if all_players[player].can_spend_mana(db, &mana, &sources, spend.reason) {
                         !matches!(
                             spend.first_unpaid_x_always_unpaid(),
                             Some(ManaCost::X | ManaCost::TwoX)
@@ -680,22 +760,33 @@ impl PayCost {
         }
     }
 
-    fn results(&self, db: &Database, source: Source) -> ActionResult {
+    fn results(&self, db: &Database, source: Source) -> Vec<ActionResult> {
         match self {
             PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
-                ActionResult::PermanentToGraveyard(chosen.unwrap())
+                vec![ActionResult::PermanentToGraveyard(chosen.unwrap())]
             }
             PayCost::TapPermanent(TapPermanent { chosen, .. }) => {
-                ActionResult::TapPermanent(chosen.unwrap())
+                vec![ActionResult::TapPermanent(chosen.unwrap())]
+            }
+            PayCost::ExilePermanentsCmcX(exile) => {
+                let mut results = vec![];
+                for target in exile.chosen.iter() {
+                    results.push(ActionResult::ExileTarget {
+                        source: source.card(db),
+                        target: ActiveTarget::Battlefield { id: *target },
+                        duration: EffectDuration::Permanently,
+                    });
+                }
+                results
             }
             PayCost::SpendMana(spend) => {
                 let (mana, sources) = spend.paying();
-                ActionResult::SpendMana {
+                vec![ActionResult::SpendMana {
                     card: source.card(db),
                     mana,
                     sources,
-                    reason: source,
-                }
+                    reason: spend.reason,
+                }]
             }
         }
     }
@@ -705,6 +796,7 @@ impl PayCost {
             PayCost::SacrificePermanent(_) => "sacrificing a permanent".to_string(),
             PayCost::TapPermanent(_) => "tapping a permanent".to_string(),
             PayCost::SpendMana(spend) => spend.description(),
+            PayCost::ExilePermanentsCmcX(_) => "exiling a permanent".to_string(),
         }
     }
 
@@ -712,18 +804,26 @@ impl PayCost {
         match self {
             PayCost::SacrificePermanent(_) | PayCost::TapPermanent(_) => None,
             PayCost::SpendMana(spend) => spend.x_is(),
+            PayCost::ExilePermanentsCmcX(exile) => Some(exile.target),
         }
     }
 
-    fn target(&self) -> Option<ActiveTarget> {
+    fn chosen_targets(&self) -> Vec<ActiveTarget> {
         match self {
-            PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
-                chosen.map(|id| ActiveTarget::Battlefield { id })
-            }
-            PayCost::TapPermanent(TapPermanent { chosen, .. }) => {
-                chosen.map(|id| ActiveTarget::Battlefield { id })
-            }
-            PayCost::SpendMana(_) => None,
+            PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => chosen
+                .map(|id| ActiveTarget::Battlefield { id })
+                .into_iter()
+                .collect_vec(),
+            PayCost::TapPermanent(TapPermanent { chosen, .. }) => chosen
+                .map(|id| ActiveTarget::Battlefield { id })
+                .into_iter()
+                .collect_vec(),
+            PayCost::SpendMana(_) => vec![],
+            PayCost::ExilePermanentsCmcX(exile) => exile
+                .chosen
+                .iter()
+                .map(|chosen| ActiveTarget::Battlefield { id: *chosen })
+                .collect_vec(),
         }
     }
 
@@ -732,6 +832,7 @@ impl PayCost {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
             PayCost::SpendMana(spend) => spend.is_empty(),
+            PayCost::ExilePermanentsCmcX(_) => false,
         }
     }
 
@@ -742,6 +843,9 @@ impl PayCost {
             }
             PayCost::TapPermanent(TapPermanent { valid_targets, .. }) => valid_targets.clone(),
             PayCost::SpendMana(_) => vec![],
+            PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX { valid_targets, .. }) => {
+                valid_targets.clone()
+            }
         }
     }
 }
@@ -972,12 +1076,7 @@ impl PendingResults {
             true
         } else if !self.pay_costs.is_empty() {
             self.pay_costs.iter().all(|cost| {
-                cost.choice_optional(
-                    db,
-                    all_players,
-                    self.source.unwrap().card(db).owner(db),
-                    self.source.unwrap(),
-                )
+                cost.choice_optional(db, all_players, self.source.unwrap().card(db).owner(db))
             })
         } else {
             true
@@ -1218,6 +1317,7 @@ impl PendingResults {
                             if let Some(ward) = id.ward(db) {
                                 self.push_pay_costs(PayCost::SpendMana(SpendMana::new(
                                     ward.mana_cost.clone(),
+                                    SpendReason::Other,
                                 )));
                             }
                         }
@@ -1306,16 +1406,15 @@ impl PendingResults {
                 player.into(),
                 &self.all_chosen_targets,
                 choice,
-                self.source.unwrap(),
             ) {
-                if pay.paid() {
+                if pay.paid(db) {
                     self.x_is = pay.x_is();
                     debug!("X is {:?}", self.x_is);
-                    if let Some(target) = pay.target() {
+                    for target in pay.chosen_targets() {
                         self.all_chosen_targets.insert(target);
                     }
                     self.settled_effects
-                        .push_back(pay.results(db, self.source.unwrap()));
+                        .extend(pay.results(db, self.source.unwrap()));
                 } else {
                     self.pay_costs.push_front(pay);
                 }
@@ -1432,12 +1531,7 @@ impl PendingResults {
                     .iter()
                     .all(|choose| choose.valid_targets.is_empty())
                     && self.pay_costs.iter().all(|pay| {
-                        pay.autopay(
-                            db,
-                            all_players,
-                            self.source.unwrap().card(db).owner(db),
-                            self.source.unwrap(),
-                        )
+                        pay.autopay(db, all_players, self.source.unwrap().card(db).owner(db))
                     })))
     }
 

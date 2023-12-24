@@ -80,6 +80,7 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
+    ExileCardsCmcX(Vec<Restriction>),
     SacrificeSource,
     PayLife(PayLife),
     SacrificePermanent(Vec<Restriction>),
@@ -100,6 +101,10 @@ impl AdditionalCost {
             AdditionalCost::TapPermanent(tap) => {
                 format!("Tap {}", tap.iter().map(|t| t.text()).join(", "))
             }
+            AdditionalCost::ExileCardsCmcX(restrictions) => format!(
+                "Exile one or more {} cards with cmc X",
+                restrictions.iter().map(|r| r.text()).join(", ")
+            ),
         }
     }
 }
@@ -140,6 +145,15 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
                     .map(Restriction::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
+            protogen::cost::additional_cost::Cost::ExileCardsCmcX(value) => {
+                Ok(Self::ExileCardsCmcX(
+                    value
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                ))
+            }
         }
     }
 }
@@ -214,5 +228,30 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
                 .map(AdditionalCost::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum XIs {
+    Cmc,
+}
+
+impl TryFrom<&protogen::cost::XIs> for XIs {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::XIs) -> Result<Self, Self::Error> {
+        value
+            .x_is
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected xis to have an x set"))
+            .map(Self::from)
+    }
+}
+
+impl From<&protogen::cost::xis::X_is> for XIs {
+    fn from(value: &protogen::cost::xis::X_is) -> Self {
+        match value {
+            protogen::cost::xis::X_is::Cmc(_) => Self::Cmc,
+        }
     }
 }

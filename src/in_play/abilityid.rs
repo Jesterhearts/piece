@@ -5,20 +5,22 @@ use std::{
     sync::atomic::Ordering,
 };
 
-use bevy_ecs::{component::Component, entity::Entity};
+use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::From;
 use itertools::Itertools;
 
 use crate::{
     abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility, SorcerySpeed},
-    battlefield::Source,
     card::OracleText,
     controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, Effects},
-    in_play::{CardId, Database, InStack, OnBattlefield, NEXT_STACK_SEQ},
+    in_play::{CardId, Database, InStack, OnBattlefield, Temporary, NEXT_STACK_SEQ},
     mana::{Mana, ManaRestriction},
-    player::{mana_pool::ManaSource, AllPlayers, Controller, Owner},
+    player::{
+        mana_pool::{ManaSource, SpendReason},
+        AllPlayers, Controller, Owner,
+    },
     stack::{ActiveTarget, Settled, Stack, Targets},
     turns::{Phase, Turn},
     types::Subtype,
@@ -56,7 +58,12 @@ impl AbilityId {
                 Self(entity.id())
             }
             Ability::Mana(ability) => {
-                let mut entity = db.abilities.spawn((cardid, ability.cost, ability.gain));
+                let mut entity = db.abilities.spawn((
+                    cardid,
+                    ability.cost,
+                    ability.gain,
+                    ability.mana_restriction,
+                ));
                 if let Some(source) = ability.mana_source {
                     entity.insert(source);
                 }
@@ -72,6 +79,7 @@ impl AbilityId {
     }
 
     pub fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
+        // TODO: These leak
         INIT_LAND_ABILITIES.with(|init| {
             init.get_or_init(|| {
                 let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
@@ -89,6 +97,8 @@ impl AbilityId {
                                     gains: vec![Mana::White],
                                 },
                                 source,
+                                ManaRestriction::None,
+                                Temporary,
                             ))
                             .id(),
                     )
@@ -108,6 +118,8 @@ impl AbilityId {
                                     gains: vec![Mana::Blue],
                                 },
                                 source,
+                                ManaRestriction::None,
+                                Temporary,
                             ))
                             .id(),
                     )
@@ -127,6 +139,8 @@ impl AbilityId {
                                     gains: vec![Mana::Black],
                                 },
                                 source,
+                                ManaRestriction::None,
+                                Temporary,
                             ))
                             .id(),
                     )
@@ -146,6 +160,8 @@ impl AbilityId {
                                     gains: vec![Mana::Red],
                                 },
                                 source,
+                                ManaRestriction::None,
+                                Temporary,
                             ))
                             .id(),
                     )
@@ -165,6 +181,8 @@ impl AbilityId {
                                     gains: vec![Mana::Green],
                                 },
                                 source,
+                                ManaRestriction::None,
+                                Temporary,
                             ))
                             .id(),
                     )
@@ -175,6 +193,24 @@ impl AbilityId {
             })
             .clone()
         })
+    }
+
+    pub fn cleanup_temporary_abilities(db: &mut Database, cardid: CardId) {
+        for ability in db
+            .abilities
+            .query_filtered::<(Entity, &CardId), With<Temporary>>()
+            .iter(&db.abilities)
+            .filter_map(|(e, source)| {
+                if *source == cardid {
+                    Some(Self(e))
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
+        {
+            ability.delete(db)
+        }
     }
 
     pub fn update_stack_seq(self, db: &mut Database) {
@@ -265,20 +301,27 @@ impl AbilityId {
 
     pub fn gain_mana_ability(self, db: &mut Database) -> Option<GainManaAbility> {
         db.abilities
-            .query::<(Entity, &AbilityCost, &GainMana, Option<&ManaSource>)>()
+            .query::<(
+                Entity,
+                &AbilityCost,
+                &GainMana,
+                Option<&ManaSource>,
+                &ManaRestriction,
+            )>()
             .iter(&db.abilities)
-            .filter_map(|(e, cost, effect, mana_source)| {
+            .filter_map(|(e, cost, effect, mana_source, restriction)| {
                 if Self(e) == self {
-                    Some((cost, effect, mana_source))
+                    Some((cost, effect, mana_source, restriction))
                 } else {
                     None
                 }
             })
             .next()
-            .map(|(cost, gain, source)| GainManaAbility {
+            .map(|(cost, gain, source, restriction)| GainManaAbility {
                 cost: cost.clone(),
                 gain: gain.clone(),
                 mana_source: source.copied(),
+                mana_restriction: *restriction,
             })
     }
 
@@ -506,10 +549,34 @@ fn can_pay_costs(
                     return false;
                 }
             }
+            AdditionalCost::ExileCardsCmcX(restrictions) => {
+                let any_target =
+                    controller
+                        .get_cards::<OnBattlefield>(db)
+                        .into_iter()
+                        .any(|card| {
+                            !card.tapped(db)
+                                && card.passes_restrictions(
+                                    db,
+                                    source,
+                                    ControllerRestriction::You,
+                                    restrictions,
+                                )
+                        });
+
+                if !any_target {
+                    return false;
+                }
+            }
         }
     }
 
-    if !all_players[controller].can_meet_cost(db, &cost.mana_cost, &[], Source::Ability(ability)) {
+    if !all_players[controller].can_meet_cost(
+        db,
+        &cost.mana_cost,
+        &[],
+        SpendReason::Activating(ability),
+    ) {
         return false;
     }
 

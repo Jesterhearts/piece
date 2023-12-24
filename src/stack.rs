@@ -11,8 +11,8 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        ActionResult, ChooseTargets, PayCost, PendingResults, SacrificePermanent, Source,
-        SpendMana, TapPermanent, TargetSource,
+        ActionResult, ChooseTargets, ExilePermanentsCmcX, PayCost, PendingResults,
+        SacrificePermanent, Source, SpendMana, TapPermanent, TargetSource,
     },
     card::keyword::SplitSecond,
     cost::AdditionalCost,
@@ -20,7 +20,7 @@ use crate::{
         cast_from, AbilityId, CardId, CastFrom, Database, DeleteAbility, InStack, TriggerId,
         TriggerInStack,
     },
-    player::{AllPlayers, Owner},
+    player::{mana_pool::SpendReason, AllPlayers, Owner},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
@@ -675,7 +675,10 @@ fn add_card_to_stack(
 
     let cost = card.cost(db);
     if paying_costs {
-        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(cost.mana_cost.clone())));
+        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
+            cost.mana_cost.clone(),
+            SpendReason::Casting(card),
+        )));
     }
     for cost in cost.additional_cost.iter() {
         match cost {
@@ -686,8 +689,13 @@ fn add_card_to_stack(
                     restrictions.clone(),
                 )));
             }
-            AdditionalCost::TapPermanent(restrictions) => results.push_pay_costs(
-                PayCost::TapPermanent(TapPermanent::new(restrictions.clone())),
+            AdditionalCost::TapPermanent(restrictions) => {
+                results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
+                    restrictions.clone(),
+                )));
+            }
+            AdditionalCost::ExileCardsCmcX(restrictions) => results.push_pay_costs(
+                PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone())),
             ),
         }
     }

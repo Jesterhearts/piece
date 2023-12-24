@@ -15,6 +15,7 @@ mod deconstruction_hammer;
 mod dryad_of_the_ilysian_grove;
 mod dusk_rose_reliquary;
 mod elesh_norn_grand_cenobite;
+mod fabrication_foundry;
 mod forbidden_friendship;
 mod glowspore_shaman;
 mod haunting_imitation;

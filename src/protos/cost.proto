@@ -29,22 +29,26 @@ message ManaCost {
 }
 
 message AdditionalCost {
-  message SacrificeSource {}
-  message SacrificePermanent {
-    targets.Restriction restrictions = 1;
-  }
-  message TapPermanent {
+  message ExileCardsCmcX {
     targets.Restriction restrictions = 1;
   }
   message PayLife {
     int32 count = 1;
   }
+  message SacrificePermanent {
+    targets.Restriction restrictions = 1;
+  }
+  message SacrificeSource {}
+  message TapPermanent {
+    targets.Restriction restrictions = 1;
+  }
 
   oneof cost {
-    PayLife pay_life = 2;
-    SacrificePermanent sacrifice_permanent = 3;
-    TapPermanent tap_permanent = 4;
+    ExileCardsCmcX exile_cards_cmc_x = 2;
+    PayLife pay_life = 3;
+    SacrificePermanent sacrifice_permanent = 4;
     SacrificeSource sacrifice_source = 5;
+    TapPermanent tap_permanent = 6;
   }
 }
 
@@ -61,4 +65,11 @@ message AbilityCost {
   repeated ManaCost mana_costs = 1;
   optional bool tap = 2;
   repeated AdditionalCost additional_costs = 3;
+}
+
+message XIs {
+  message Cmc {}
+  oneof x_is {
+    Cmc cmc = 1;
+  }
 }
