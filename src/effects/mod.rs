@@ -24,6 +24,8 @@ pub mod return_from_graveyard_to_library;
 pub mod return_self_to_hand;
 pub mod reveal_each_top_of_library;
 pub mod scry;
+pub mod target_controller_gains_tokens;
+pub mod target_creature_explores;
 pub mod target_gains_counters;
 pub mod target_to_top_of_library;
 pub mod tutor_library;
@@ -68,6 +70,7 @@ use crate::{
         return_self_to_hand::ReturnSelfToHand,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         scry::Scry,
+        target_controller_gains_tokens::TargetControllerGainsTokens,
         target_gains_counters::TargetGainsCounters,
         target_to_top_of_library::TargetToTopOfLibrary,
         tutor_library::TutorLibrary,
@@ -460,6 +463,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::Scry(value) => {
                 Ok(Self(Box::leak(Box::new(Scry::try_from(value)?))))
             }
+            protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => Ok(Self(
+                Box::leak(Box::new(TargetControllerGainsTokens::try_from(value)?)),
+            )),
             protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => Ok(Self(Box::leak(
                 Box::new(TargetToTopOfLibrary::try_from(value)?),
             ))),
@@ -579,7 +585,8 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
-    Creature(TokenCreature),
+    Map,
+    Creature(Box<TokenCreature>),
 }
 
 impl TryFrom<&protogen::effects::CreateToken> for Token {
@@ -600,8 +607,9 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
     fn try_from(value: &protogen::effects::create_token::Token) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::create_token::Token::Creature(creature) => {
-                Ok(Self::Creature(creature.try_into()?))
+                Ok(Self::Creature(Box::new(creature.try_into()?)))
             }
+            protogen::effects::create_token::Token::Map(_) => Ok(Self::Map),
         }
     }
 }

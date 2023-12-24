@@ -11,6 +11,7 @@ message Type {
   message Instant {}
   message Land {}
   message Legendary {}
+  message Planeswalker {}
   message Sorcery {}
 
   oneof ty {
@@ -22,7 +23,8 @@ message Type {
     Instant instant = 6;
     Land land = 7;
     Legendary legendary = 8;
-    Sorcery sorcery = 9;
+    Planeswalker planeswalker = 9;
+    Sorcery sorcery = 10;
   }
 }
 

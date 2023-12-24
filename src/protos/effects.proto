@@ -67,9 +67,6 @@ message Craft {
 }
 
 message CreateToken {
-  oneof token {
-    Creature creature = 1;
-  }
   message Creature {
     string name = 1;
     repeated types.Type types = 2;
@@ -78,6 +75,12 @@ message CreateToken {
     int32 power = 5;
     int32 toughness = 6;
     string keywords = 7;
+  }
+  message Map {}
+
+  oneof token {
+    Creature creature = 1;
+    Map map = 2;
   }
 }
 
@@ -284,33 +287,34 @@ message Effect {
     CounterSpell counter_spell = 7;
     Craft craft = 8;
     CreateToken create_token = 9;
-    CreateTokenCopy create_token_copy = 10;
-    DealDamage deal_damage = 11;
-    DestroyEach destroy_each = 12;
-    DestroyTarget destroy_target = 13;
-    Discover discover = 14;
-    Equip equip = 15;
-    ExileTarget exile_target = 16;
+    CreateToken target_controller_gains_tokens = 10;
+    CreateTokenCopy create_token_copy = 11;
+    DealDamage deal_damage = 12;
+    DestroyEach destroy_each = 13;
+    DestroyTarget destroy_target = 14;
+    Discover discover = 15;
+    Equip equip = 16;
+    ExileTarget exile_target = 17;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 17;
-    ForEachManaOfSource for_each_mana_of_source = 18;
-    GainCounter gain_counter = 19;
-    GainCounter target_gains_counters = 20;
-    GainLife gain_life = 21;
-    Mill mill = 22;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 23;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 24;
-    ReturnSelfToHand return_self_to_hand = 25;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 26;
-    Scry scry = 27;
-    TargetToTopOfLibrary target_to_top_of_library = 28;
-    TutorLibrary tutor_library = 29;
-    UntapThis untap_this = 30;
-    UntapTarget untap_target = 31;
+        exile_target_creature_manifest_top_of_library = 18;
+    ForEachManaOfSource for_each_mana_of_source = 19;
+    GainCounter gain_counter = 20;
+    GainCounter target_gains_counters = 21;
+    GainLife gain_life = 22;
+    Mill mill = 23;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 24;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 25;
+    ReturnSelfToHand return_self_to_hand = 26;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 27;
+    Scry scry = 28;
+    TargetToTopOfLibrary target_to_top_of_library = 29;
+    TutorLibrary tutor_library = 30;
+    UntapThis untap_this = 31;
+    UntapTarget untap_target = 32;
   }
 
-  optional Effect threshold = 32;
-  string oracle_text = 33;
+  optional Effect threshold = 33;
+  string oracle_text = 34;
 }
 
 message Mode {

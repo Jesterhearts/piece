@@ -133,7 +133,7 @@ fn main() -> anyhow::Result<()> {
     let card13 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
     card13.move_to_hand(&mut db);
 
-    let card14 = CardId::upload(&mut db, &cards, player1, "Family Reunion");
+    let card14 = CardId::upload(&mut db, &cards, player1, "Get Lost");
     card14.move_to_hand(&mut db);
 
     while !Stack::is_empty(&mut db) {
@@ -1024,7 +1024,8 @@ fn main() -> anyhow::Result<()> {
                             0 => {
                                 turn.pass_priority();
                                 if !turn.passed_full_round() {
-                                    debug!("Giving ai priority");
+                                    assert_eq!(turn.priority_player(), player2);
+                                    debug!("{} Giving ai priority", line!());
                                     let mut pending = ai.priority(
                                         &mut db,
                                         &mut all_players,
@@ -1129,7 +1130,7 @@ fn main() -> anyhow::Result<()> {
                 ..
             } => {
                 if turn.priority_player() == player2 {
-                    debug!("Giving ai priority");
+                    debug!("{} Giving ai priority", line!());
                     let pending = ai.priority(&mut db, &mut all_players, &mut turn, to_resolve);
                     if pending.is_empty() {
                         maybe_organize_stack(&mut db, &turn, PendingResults::default(), &mut state);
@@ -1169,7 +1170,8 @@ fn main() -> anyhow::Result<()> {
                                             *organizing_stack = true;
                                         } else {
                                             turn.step_priority();
-                                            debug!("Giving ai priority");
+                                            assert_eq!(turn.priority_player(), player2);
+                                            debug!("{} Giving ai priority", line!());
                                             let pending = ai.priority(
                                                 &mut db,
                                                 &mut all_players,

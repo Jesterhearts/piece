@@ -3,7 +3,11 @@ use std::{
     sync::atomic::Ordering,
 };
 
-use bevy_ecs::{component::Component, entity::Entity, query::With};
+use bevy_ecs::{
+    component::Component,
+    entity::Entity,
+    query::{With, Without},
+};
 use derive_more::From;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -133,7 +137,7 @@ impl CardId {
 
     pub fn move_to_hand(self, db: &mut Database) {
         if self.is_token(db) {
-            db.cards.despawn(self.0);
+            self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
@@ -174,7 +178,7 @@ impl CardId {
         }
 
         if self.is_token(db) {
-            db.cards.despawn(self.0);
+            self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
@@ -249,7 +253,7 @@ impl CardId {
 
     pub fn move_to_graveyard(self, db: &mut Database) {
         if self.is_token(db) {
-            db.cards.despawn(self.0);
+            self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
@@ -282,7 +286,7 @@ impl CardId {
 
     pub fn move_to_library(self, db: &mut Database) -> bool {
         if self.is_token(db) {
-            db.cards.despawn(self.0);
+            self.move_to_limbo(db);
             false
         } else {
             self.remove_all_modifiers(db);
@@ -321,7 +325,7 @@ impl CardId {
         duration: EffectDuration,
     ) {
         if self.is_token(db) {
-            db.cards.despawn(self.0);
+            self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
@@ -398,6 +402,16 @@ impl CardId {
             .remove::<exile_reason::Cascade>()
             .remove::<effect_duration::UntilEndOfTurn>()
             .remove::<effect_duration::UntilSourceLeavesBattlefield>();
+    }
+
+    pub(crate) fn cleanup_tokens_in_limbo(db: &mut Database) {
+        for entity in db
+            .query_filtered::<Entity, (With<IsToken>, Without<OnBattlefield>)>()
+            .iter(db)
+            .collect_vec()
+        {
+            db.despawn(entity);
+        }
     }
 
     pub fn remove_all_modifiers(self, db: &mut Database) {

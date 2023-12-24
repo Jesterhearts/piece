@@ -29,6 +29,7 @@ impl AI {
         }
 
         turn.pass_priority();
+        assert_ne!(turn.priority_player(), self.player);
         if turn.passed_full_round() {
             let mut pending = turn.step(db, all_players);
             if pending.priority(db, all_players, turn) == self.player {

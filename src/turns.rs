@@ -1,8 +1,11 @@
+use std::collections::HashSet;
+
+use bevy_ecs::event::Events;
 use indexmap::IndexSet;
 
 use crate::{
     battlefield::{Battlefield, PendingResults},
-    in_play::{CardId, Database},
+    in_play::{CardId, Database, DeleteAbility},
     player::{AllPlayers, Owner},
     stack::Stack,
     types::Type,
@@ -68,6 +71,8 @@ impl Turn {
         if self.passed != 0 {
             return PendingResults::default();
         }
+
+        self.priority_player = self.active_player;
 
         match self.phase {
             Phase::Untap => {
@@ -167,8 +172,17 @@ impl Turn {
                 for player in all_players.all_players() {
                     all_players[player].mana_pool.drain();
                 }
+                CardId::cleanup_tokens_in_limbo(db);
+
+                let mut events = db.resource_mut::<Events<DeleteAbility>>();
+                let events = events.drain().collect::<HashSet<_>>();
+                for event in events {
+                    event.ability.delete(db);
+                }
+
                 self.phase = Phase::Untap;
                 self.active_player = (self.active_player + 1) % self.turn_order.len();
+                self.priority_player = self.active_player;
                 Battlefield::untap(db, self.active_player());
                 self.turn_count += 1;
                 PendingResults::default()

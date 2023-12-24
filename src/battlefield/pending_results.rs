@@ -926,6 +926,7 @@ pub struct PendingResults {
     source: Option<Source>,
 
     declare_attackers: Option<DeclaringAttackers>,
+    choose_library_or_graveyard: VecDeque<CardId>,
     choose_modes: VecDeque<()>,
     choose_targets: VecDeque<ChooseTargets>,
     choosing_scry: ChoosingScry,
@@ -1025,6 +1026,10 @@ impl PendingResults {
         &self.all_chosen_targets
     }
 
+    pub(crate) fn push_choose_library_or_graveyard(&mut self, card: CardId) {
+        self.choose_library_or_graveyard.push_back(card);
+    }
+
     pub fn push_choose_mode(&mut self) {
         self.choose_modes.push_back(());
     }
@@ -1080,7 +1085,7 @@ impl PendingResults {
     pub fn choices_optional(&self, db: &Database, all_players: &AllPlayers) -> bool {
         if self.declare_attackers.is_some() {
             true
-        } else if self.choose_modes.front().is_some() {
+        } else if !self.choose_library_or_graveyard.is_empty() || !self.choose_modes.is_empty() {
             false
         } else if let Some(choosing) = self.choose_targets.front() {
             choosing.valid_targets.len() <= 1
@@ -1113,7 +1118,12 @@ impl PendingResults {
                     .enumerate()
                     .collect_vec()
             }
-        } else if self.choose_modes.front().is_some() {
+        } else if !self.choose_library_or_graveyard.is_empty() {
+            ["Library".to_string(), "Graveyard".to_string()]
+                .into_iter()
+                .enumerate()
+                .collect_vec()
+        } else if !self.choose_modes.is_empty() {
             self.source.unwrap().mode_options(db)
         } else if let Some(choosing) = self.choose_targets.front() {
             choosing.options(db, all_players)
@@ -1145,10 +1155,12 @@ impl PendingResults {
         }
     }
 
-    pub fn description(&self, _db: &Database) -> String {
+    pub fn description(&self, db: &Database) -> String {
         if self.declare_attackers.is_some() {
             "attackers".to_string()
-        } else if self.choose_modes.front().is_some() {
+        } else if let Some(card) = self.choose_library_or_graveyard.front() {
+            card.name(db)
+        } else if !self.choose_modes.is_empty() {
             "mode".to_string()
         } else if !self.choose_targets.is_empty() {
             "targets".to_string()
@@ -1165,6 +1177,7 @@ impl PendingResults {
         } else if self.organizing_stack.is_some() {
             "stack order".to_string()
         } else {
+            debug!("Empty description for {:#?}", self);
             String::default()
         }
     }
@@ -1176,7 +1189,7 @@ impl PendingResults {
         choice: Option<usize>,
     ) -> ResolutionResult {
         assert!(!(self.add_to_stack && self.apply_in_stages));
-        debug!("Choosing {:?} for {:?}", choice, self);
+        debug!("Choosing {:?} for {:#?}", choice, self);
 
         if !self.apply_in_stages
             && self.choose_targets.iter().all(|targets| targets.is_empty())
@@ -1191,6 +1204,7 @@ impl PendingResults {
         }
 
         if self.declare_attackers.is_none()
+            && self.choose_library_or_graveyard.is_empty()
             && self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
@@ -1305,6 +1319,19 @@ impl PendingResults {
                     });
                 self.declare_attackers = None;
                 ResolutionResult::TryAgain
+            } else {
+                ResolutionResult::PendingChoice
+            }
+        } else if let Some(choosing) = self.choose_library_or_graveyard.pop_front() {
+            if let Some(choice) = choice {
+                match choice {
+                    0 => all_players[choosing.owner(db)]
+                        .deck
+                        .place_on_top(db, choosing),
+                    1 => choosing.move_to_graveyard(db),
+                    _ => unreachable!(),
+                }
+                ResolutionResult::Complete
             } else {
                 ResolutionResult::PendingChoice
             }
@@ -1505,6 +1532,8 @@ impl PendingResults {
 
         self.source = results.source;
         self.choosing_scry.cards.extend(results.choosing_scry.cards);
+        self.choose_library_or_graveyard
+            .extend(results.choose_library_or_graveyard);
         self.choose_modes.extend(results.choose_modes);
         self.choose_targets.extend(results.choose_targets);
         self.pay_costs.extend(results.pay_costs);
@@ -1522,6 +1551,7 @@ impl PendingResults {
 
     pub fn is_empty(&self) -> bool {
         self.declare_attackers.is_none()
+            && self.choose_library_or_graveyard.is_empty()
             && self.choose_modes.is_empty()
             && self.choose_targets.is_empty()
             && self.pay_costs.is_empty()
@@ -1533,6 +1563,7 @@ impl PendingResults {
 
     pub fn only_immediate_results(&self, db: &Database, all_players: &AllPlayers) -> bool {
         (self.choosing_to_cast.is_empty()
+            && self.choose_library_or_graveyard.is_empty()
             && self.choose_modes.is_empty()
             && self.choosing_scry.cards.is_empty()
             && self.declare_attackers.is_none()

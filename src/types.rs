@@ -27,6 +27,7 @@ pub enum Type {
     Enchantment,
     Battle,
     Land,
+    Planeswalker,
     BasicLand,
 }
 
@@ -54,6 +55,7 @@ impl From<&protogen::types::type_::Ty> for Type {
             protogen::types::type_::Ty::Enchantment(_) => Self::Enchantment,
             protogen::types::type_::Ty::Battle(_) => Self::Battle,
             protogen::types::type_::Ty::Legendary(_) => Self::Legendary,
+            protogen::types::type_::Ty::Planeswalker(_) => Self::Planeswalker,
         }
     }
 }

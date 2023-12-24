@@ -46,8 +46,8 @@ modes {
   effects {
     battlefield_modifier {
       modifier {
-        add_keywords: "Hexproof"
         entire_battlefield: true
+        add_keywords: "Hexproof"
       }
       controller {
         you {

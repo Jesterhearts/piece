@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::{
     battlefield::ActionResult,
     effects::{EffectBehaviors, Token},
@@ -5,11 +7,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct CreateToken {
+pub struct TargetControllerGainsTokens {
     token: Token,
 }
 
-impl TryFrom<&protogen::effects::CreateToken> for CreateToken {
+impl TryFrom<&protogen::effects::CreateToken> for TargetControllerGainsTokens {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::effects::CreateToken) -> Result<Self, Self::Error> {
@@ -19,7 +21,7 @@ impl TryFrom<&protogen::effects::CreateToken> for CreateToken {
     }
 }
 
-impl EffectBehaviors for CreateToken {
+impl EffectBehaviors for TargetControllerGainsTokens {
     fn needs_targets(&self) -> usize {
         0
     }
@@ -32,39 +34,28 @@ impl EffectBehaviors for CreateToken {
         &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        _controller: crate::player::Controller,
+        _results: &mut crate::battlefield::PendingResults,
     ) {
-        results.push_settled(ActionResult::CreateToken {
-            source: controller,
-            token: self.token.clone(),
-        });
-    }
-
-    fn push_behavior_from_top_of_library(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _target: crate::in_play::CardId,
-        results: &mut crate::battlefield::PendingResults,
-    ) {
-        results.push_settled(ActionResult::CreateToken {
-            source: source.controller(db),
-            token: self.token.clone(),
-        });
     }
 
     fn push_behavior_with_targets(
         &self,
         db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
+        targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        source: crate::in_play::CardId,
+        _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
-            source: source.controller(db),
+            source: targets
+                .into_iter()
+                .exactly_one()
+                .unwrap()
+                .id()
+                .unwrap()
+                .controller(db),
             token: self.token.clone(),
         });
     }

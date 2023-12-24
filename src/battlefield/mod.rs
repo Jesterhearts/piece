@@ -16,7 +16,7 @@ use crate::{
     effects::{
         cascade::Cascade,
         effect_duration::UntilEndOfTurn,
-        gain_counter::{DynamicCounter, GainCounter},
+        gain_counter::{Counter, DynamicCounter, GainCounter},
         replacing,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         AnyEffect, BattlefieldModifier, Effect, EffectDuration, Token,
@@ -135,7 +135,7 @@ pub enum ActionResult {
     },
     CreateToken {
         source: Controller,
-        token: Box<Token>,
+        token: Token,
     },
     DrawCards {
         target: Controller,
@@ -197,6 +197,9 @@ pub enum ActionResult {
     },
     DestroyEach(CardId, Vec<Restriction>),
     DestroyTarget(ActiveTarget),
+    Explore {
+        target: ActiveTarget,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -718,7 +721,7 @@ impl Battlefield {
                 PendingResults::default()
             }
             ActionResult::CreateToken { source, token } => {
-                let card = CardId::upload_token(db, (*source).into(), (**token).clone());
+                let card = CardId::upload_token(db, (*source).into(), token.clone());
                 Battlefield::add_from_stack_or_hand(db, card, None)
             }
             ActionResult::DrawCards { target, count } => {
@@ -1157,6 +1160,24 @@ impl Battlefield {
                 };
 
                 Battlefield::permanent_to_graveyard(db, *id)
+            }
+            ActionResult::Explore { target } => {
+                let explorer = target.id().unwrap();
+                if let Some(card) = all_players[explorer.controller(db)].deck.draw() {
+                    card.reveal(db);
+                    if card.types_intersect(db, &IndexSet::from([Type::BasicLand, Type::Land])) {
+                        card.move_to_hand(db);
+                        PendingResults::default()
+                    } else {
+                        CounterId::add_counters(db, explorer, Counter::P1P1, 1);
+                        let mut results = PendingResults::default();
+                        results.push_choose_library_or_graveyard(card);
+
+                        results
+                    }
+                } else {
+                    PendingResults::default()
+                }
             }
         }
     }

@@ -9,9 +9,13 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
-    cost::{CastingCost, Ward},
-    effects::{AnyEffect, Mode, ReplacementEffect, Token, TokenCreature},
+    cost::{AbilityCost, AdditionalCost, CastingCost, Ward},
+    effects::{
+        target_creature_explores::TargetCreatureExplores, AnyEffect, Effect, Mode,
+        ReplacementEffect, Token,
+    },
     in_play::{AbilityId, CardId, TriggerId},
+    mana::ManaCost,
     newtype_enum::newtype_enum,
     protogen,
     targets::Restriction,
@@ -492,22 +496,35 @@ impl TryFrom<&protogen::card::Card> for Card {
 impl From<Token> for Card {
     fn from(value: Token) -> Self {
         match value {
-            Token::Creature(TokenCreature {
-                name,
-                types,
-                subtypes,
-                colors,
-                power,
-                toughness,
-                keywords,
-            }) => Self {
-                name,
-                types,
-                subtypes,
-                colors,
-                power: Some(power),
-                toughness: Some(toughness),
-                keywords,
+            Token::Creature(token) => Self {
+                name: token.name,
+                types: token.types,
+                subtypes: token.subtypes,
+                colors: token.colors,
+                power: Some(token.power),
+                toughness: Some(token.toughness),
+                keywords: token.keywords,
+                ..Default::default()
+            },
+            Token::Map => Self {
+                name: "Map".to_string(),
+                types: IndexSet::from([Type::Artifact]),
+                activated_abilities: vec![ActivatedAbility {
+                    cost: AbilityCost {
+                        mana_cost: vec![ManaCost::Generic(1)],
+                        tap: true,
+                        additional_cost: vec![AdditionalCost::SacrificeSource],
+                    },
+                    effects: vec![AnyEffect {
+                        effect: Effect(&TargetCreatureExplores),
+                        threshold: None,
+                        oracle_text: String::default(),
+                    }],
+                    apply_to_self: false,
+                    oracle_text: "Target creature you control explores. Activate only as sorcery"
+                        .to_string(),
+                    sorcery_speed: true,
+                }],
                 ..Default::default()
             },
         }
