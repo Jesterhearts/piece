@@ -1,0 +1,32 @@
+name: "Helping Hand"
+types {
+  sorcery {
+  }
+}
+cost {
+  mana_costs {
+    white {
+    }
+  }
+}
+effects {
+  return_from_graveyard_to_battlefield {
+  }
+}
+restrictions {
+  of_type {
+    types {
+      creature {
+      }
+    }
+  }
+}
+restrictions {
+  cmc {
+    comparison {
+      less_than_or_equal {
+        value: 3
+      }
+    }
+  }
+}
