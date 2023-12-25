@@ -7,11 +7,13 @@ use crate::{
     in_play::{self, target_from_location},
     protogen,
     stack::ActiveTarget,
+    targets::Restriction,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct TargetGainsCounters {
     gain: GainCounter,
+    restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
@@ -20,6 +22,11 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
     fn try_from(value: &protogen::effects::GainCounter) -> Result<Self, Self::Error> {
         Ok(Self {
             gain: value.try_into()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -42,12 +49,14 @@ impl EffectBehaviors for TargetGainsCounters {
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in in_play::all_cards(db) {
-            if card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::Any,
-                &source.restrictions(db),
-            ) && card.can_be_targeted(db, controller)
+            if card.passes_restrictions(db, source, ControllerRestriction::Any, &self.restrictions)
+                && card.passes_restrictions(
+                    db,
+                    source,
+                    ControllerRestriction::Any,
+                    &source.restrictions(db),
+                )
+                && card.can_be_targeted(db, controller)
             {
                 let target = target_from_location(db, card);
                 if already_chosen.contains(&target) {

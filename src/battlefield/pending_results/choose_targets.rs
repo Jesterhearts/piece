@@ -166,6 +166,7 @@ impl PendingResult for ChooseTargets {
                     }
                 }
 
+                results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {
                     let player = self.card.controller(db);
                     match effect_or_aura {
@@ -187,7 +188,6 @@ impl PendingResult for ChooseTargets {
                         }
                     }
                 } else {
-                    results.all_chosen_targets.extend(choices.iter().copied());
                     results.chosen_targets.push(choices.clone());
                 }
 

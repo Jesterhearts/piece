@@ -309,6 +309,7 @@ impl PendingResults {
 
     pub fn options(&mut self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
         if let Some(pending) = self.pending.front_mut() {
+            let _ = pending.recompute_targets(db, &self.all_chosen_targets);
             pending.options(db, all_players)
         } else {
             vec![]

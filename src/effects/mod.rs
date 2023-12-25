@@ -19,6 +19,7 @@ pub mod gain_counter;
 pub mod gain_life;
 pub mod mill;
 pub mod modify_target;
+pub mod pay_cost_then;
 pub mod return_from_graveyard_to_battlefield;
 pub mod return_from_graveyard_to_library;
 pub mod return_self_to_hand;
@@ -65,6 +66,7 @@ use crate::{
         gain_life::GainLife,
         mill::Mill,
         modify_target::ModifyTarget,
+        pay_cost_then::PayCostThen,
         return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
         return_from_graveyard_to_library::ReturnFromGraveyardToLibrary,
         return_self_to_hand::ReturnSelfToHand,
@@ -449,6 +451,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::Mill(value) => {
                 Ok(Self(Box::leak(Box::new(Mill::try_from(value)?))))
+            }
+            protogen::effects::effect::Effect::PayCostThen(value) => {
+                Ok(Self(Box::leak(Box::new(PayCostThen::try_from(value)?))))
             }
             protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => Ok(Self(
                 Box::leak(Box::new(ReturnFromGraveyardToBattlefield::try_from(value)?)),

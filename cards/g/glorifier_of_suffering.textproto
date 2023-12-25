@@ -1,0 +1,91 @@
+name: "Glorifier of Suffering"
+types {
+  creature {
+  }
+}
+subtypes {
+  vampire {
+  }
+}
+subtypes {
+  soldier {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+target_individually: true
+etb_abilities {
+  pay_cost_then {
+    cost {
+      additional_costs {
+        sacrifice_permanent {
+          restrictions {
+            of_type {
+              types {
+                artifact {
+                }
+              }
+              types {
+                creature {
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    effects {
+      target_gains_counters {
+        single {
+          counter {
+            p1p1 {
+            }
+          }
+        }
+        restrictions {
+          of_type {
+            types {
+              creature {
+              }
+            }
+          }
+        }
+        restrictions {
+          on_battlefield {
+          }
+        }
+      }
+    }
+    effects {
+      target_gains_counters {
+        single {
+          counter {
+            p1p1 {
+            }
+          }
+        }
+        restrictions {
+          of_type {
+            types {
+              creature {
+              }
+            }
+          }
+        }
+        restrictions {
+          on_battlefield {
+          }
+        }
+      }
+    }
+  }
+}

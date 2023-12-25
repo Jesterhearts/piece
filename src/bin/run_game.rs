@@ -133,7 +133,7 @@ fn main() -> anyhow::Result<()> {
     let card13 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
     card13.move_to_hand(&mut db);
 
-    let card14 = CardId::upload(&mut db, &cards, player1, "Get Lost");
+    let card14 = CardId::upload(&mut db, &cards, player1, "Glorifier of Suffering");
     card14.move_to_hand(&mut db);
 
     while !Stack::is_empty(&mut db) {

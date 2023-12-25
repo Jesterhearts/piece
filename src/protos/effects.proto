@@ -177,6 +177,7 @@ message GainCounter {
     Single single = 3;
     Dynamic dynamic = 4;
   }
+  repeated targets.Restriction restrictions = 5;
 }
 
 message GainLife {
@@ -230,6 +231,11 @@ message ModifyBattlefield {
   bool global = 16;
   string add_keywords = 17;
   string remove_keywords = 18;
+}
+
+message PayCostThen {
+  cost.AbilityCost cost = 1;
+  repeated Effect effects = 2;
 }
 
 message ReturnFromGraveyardToBattlefield {
@@ -302,19 +308,20 @@ message Effect {
     GainCounter target_gains_counters = 21;
     GainLife gain_life = 22;
     Mill mill = 23;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 24;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 25;
-    ReturnSelfToHand return_self_to_hand = 26;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 27;
-    Scry scry = 28;
-    TargetToTopOfLibrary target_to_top_of_library = 29;
-    TutorLibrary tutor_library = 30;
-    UntapThis untap_this = 31;
-    UntapTarget untap_target = 32;
+    PayCostThen pay_cost_then = 24;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 25;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 26;
+    ReturnSelfToHand return_self_to_hand = 27;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 28;
+    Scry scry = 29;
+    TargetToTopOfLibrary target_to_top_of_library = 30;
+    TutorLibrary tutor_library = 31;
+    UntapThis untap_this = 32;
+    UntapTarget untap_target = 33;
   }
 
-  optional Effect threshold = 33;
-  string oracle_text = 34;
+  optional Effect threshold = 34;
+  string oracle_text = 35;
 }
 
 message Mode {
