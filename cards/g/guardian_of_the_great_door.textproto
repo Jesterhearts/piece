@@ -1,0 +1,46 @@
+name: "Guardian of the Great Door"
+types {
+  creature {
+  }
+}
+subtypes {
+  angel {
+  }
+}
+cost {
+  mana_costs {
+    white {
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+  additional_costs {
+    tap_permanent {
+      restrictions {
+        of_type {
+          types {
+            artifact {
+            }
+          }
+          types {
+            creature {
+            }
+          }
+          types {
+            land {
+            }
+          }
+          types {
+            basic_land {
+            }
+          }
+        }
+      }
+    }
+  }
+}
+power: 4
+toughness: 4
+keywords: "Flying"
