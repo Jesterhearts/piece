@@ -1,0 +1,38 @@
+name: "Ironpaw Aspirant"
+types {
+  creature {
+  }
+}
+subtypes {
+  cat {
+  }
+}
+subtypes {
+  warrior {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  target_gains_counters {
+    restrictions {
+      of_type {
+        types {
+          creature {
+          }
+        }
+      }
+    }
+  }
+}
+power: 1
+toughness: 2

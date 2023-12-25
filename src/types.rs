@@ -89,6 +89,7 @@ pub enum Subtype {
     Bat,
     Bear,
     Cave,
+    Cat,
     Dinosaur,
     Dryad,
     Eldrazi,
@@ -111,6 +112,7 @@ pub enum Subtype {
     Spirit,
     Swamp,
     Vampire,
+    Warrior,
     Wizard,
     Zombie,
 }
@@ -136,6 +138,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Bat(_) => Self::Bat,
             protogen::types::subtype::Subtype::Bear(_) => Self::Bear,
             &protogen::types::subtype::Subtype::Cave(_) => Self::Cave,
+            &protogen::types::subtype::Subtype::Cat(_) => Self::Cat,
             protogen::types::subtype::Subtype::Dinosaur(_) => Self::Dinosaur,
             protogen::types::subtype::Subtype::Dryad(_) => Self::Dryad,
             protogen::types::subtype::Subtype::Eldrazi(_) => Self::Eldrazi,
@@ -158,6 +161,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Spirit(_) => Self::Spirit,
             protogen::types::subtype::Subtype::Swamp(_) => Self::Swamp,
             protogen::types::subtype::Subtype::Vampire(_) => Self::Vampire,
+            protogen::types::subtype::Subtype::Warrior(_) => Self::Warrior,
             protogen::types::subtype::Subtype::Wizard(_) => Self::Wizard,
             protogen::types::subtype::Subtype::Zombie(_) => Self::Zombie,
         }
