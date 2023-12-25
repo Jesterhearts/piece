@@ -30,6 +30,7 @@ message Type {
 
 message Subtype {
   message Angel {}
+  message Artificer {}
   message Aura {}
   message Bat {}
   message Bear {}
@@ -61,33 +62,34 @@ message Subtype {
 
   oneof subtype {
     Angel angel = 1;
-    Aura aura = 2;
-    Bat bat = 3;
-    Bear bear = 4;
-    Cave cave = 5;
-    Dinosaur dinosaur = 6;
-    Dryad dryad = 7;
-    Eldrazi eldrazi = 8;
-    Elemental elemental = 9;
-    Elf elf = 10;
-    Equipment equipment = 11;
-    Forest forest = 12;
-    Gnome gnome = 13;
-    Golem golem = 14;
-    Human human = 15;
-    Island island = 16;
-    Mountain mountain = 17;
-    Nymph nymph = 18;
-    Plains plains = 19;
-    Praetor praetor = 20;
-    Shade shade = 21;
-    Shaman shaman = 22;
-    Shapeshifter shapeshifter = 23;
-    Soldier soldier = 24;
-    Spirit spirit = 25;
-    Swamp swamp = 26;
-    Vampire vampire = 27;
-    Wizard wizard = 28;
-    Zombie zombie = 29;
+    Artificer artificer = 2;
+    Aura aura = 3;
+    Bat bat = 4;
+    Bear bear = 5;
+    Cave cave = 6;
+    Dinosaur dinosaur = 7;
+    Dryad dryad = 8;
+    Eldrazi eldrazi = 9;
+    Elemental elemental = 10;
+    Elf elf = 11;
+    Equipment equipment = 12;
+    Forest forest = 13;
+    Gnome gnome = 14;
+    Golem golem = 15;
+    Human human = 16;
+    Island island = 17;
+    Mountain mountain = 18;
+    Nymph nymph = 19;
+    Plains plains = 20;
+    Praetor praetor = 21;
+    Shade shade = 22;
+    Shaman shaman = 23;
+    Shapeshifter shapeshifter = 24;
+    Soldier soldier = 25;
+    Spirit spirit = 26;
+    Swamp swamp = 27;
+    Vampire vampire = 28;
+    Wizard wizard = 29;
+    Zombie zombie = 30;
   }
 }

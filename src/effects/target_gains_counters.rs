@@ -95,16 +95,18 @@ impl EffectBehaviors for TargetGainsCounters {
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
-        let target = match targets.into_iter().exactly_one().unwrap() {
-            ActiveTarget::Battlefield { id } => id,
-            ActiveTarget::Graveyard { id } => id,
-            _ => unreachable!(),
-        };
+        if let Ok(target) = targets.into_iter().exactly_one() {
+            let target = match target {
+                ActiveTarget::Battlefield { id } => id,
+                ActiveTarget::Graveyard { id } => id,
+                _ => unreachable!(),
+            };
 
-        results.push_settled(ActionResult::AddCounters {
-            source,
-            target,
-            counter: self.gain,
-        })
+            results.push_settled(ActionResult::AddCounters {
+                source,
+                target,
+                counter: self.gain,
+            });
+        }
     }
 }

@@ -84,6 +84,7 @@ pub struct RemoveAllSubtypes;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::AsRefStr)]
 pub enum Subtype {
     Angel,
+    Artificer,
     Aura,
     Bat,
     Bear,
@@ -130,6 +131,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
     fn from(value: &protogen::types::subtype::Subtype) -> Self {
         match value {
             protogen::types::subtype::Subtype::Angel(_) => Self::Angel,
+            protogen::types::subtype::Subtype::Artificer(_) => Self::Artificer,
             protogen::types::subtype::Subtype::Aura(_) => Self::Aura,
             protogen::types::subtype::Subtype::Bat(_) => Self::Bat,
             protogen::types::subtype::Subtype::Bear(_) => Self::Bear,

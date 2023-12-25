@@ -1,4 +1,27 @@
 name: "Dauntless Dismantler"
+types {
+  creature {
+  }
+}
+subtypes {
+  human {
+  }
+}
+subtypes {
+  artificer {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
 oracle_text: "Artifacts your opponents control enter the battlefield tapped."
 static_abilities {
   force_etb_tapped {
@@ -49,3 +72,5 @@ activated_abilities {
   }
   oracle_text: "Destroy each artifact with mana value X"
 }
+power: 1
+toughness: 4
