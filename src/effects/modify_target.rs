@@ -1,10 +1,8 @@
-
-
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, PendingResults, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, PendingResults, TargetSource},
     controller::ControllerRestriction,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
     in_play::{self, target_from_location, CardId, Database, ModifierId},
@@ -73,6 +71,7 @@ impl EffectBehaviors for ModifyTarget {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

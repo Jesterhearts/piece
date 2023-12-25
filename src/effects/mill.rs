@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     player::AllPlayers,
@@ -71,6 +71,7 @@ impl EffectBehaviors for Mill {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

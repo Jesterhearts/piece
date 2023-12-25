@@ -1,10 +1,10 @@
-
-
 use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{compute_graveyard_targets, ActionResult, ChooseTargets, TargetSource},
+    battlefield::{
+        choose_targets::ChooseTargets, compute_graveyard_targets, ActionResult, TargetSource,
+    },
     controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     protogen,
@@ -72,6 +72,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

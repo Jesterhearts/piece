@@ -44,7 +44,7 @@ fn spawns_bats() -> anyhow::Result<()> {
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, bat_colony, true);
     // Pay white
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay generic
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);

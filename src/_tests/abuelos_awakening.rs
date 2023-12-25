@@ -39,7 +39,7 @@ fn x_is_zero() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the white
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay the generic
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -93,7 +93,7 @@ fn x_is_two() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the white
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay the generic
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::PendingChoice);

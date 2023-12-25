@@ -10,8 +10,9 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        ActionResult, ChooseTargets, ExilePermanentsCmcX, PayCost, PendingResults,
-        SacrificePermanent, Source, SpendMana, TapPermanent, TargetSource,
+        choose_targets::ChooseTargets, pay_costs::ExilePermanentsCmcX, pay_costs::PayCost,
+        pay_costs::SacrificePermanent, pay_costs::SpendMana, pay_costs::TapPermanent, ActionResult,
+        PendingResults, Source, TargetSource,
     },
     card::keyword::SplitSecond,
     cost::AdditionalCost,
@@ -487,7 +488,7 @@ impl Stack {
             ),
         };
 
-        let mut results = PendingResults::new(Source::Card(source));
+        let mut results = PendingResults::default();
         results.apply_in_stages();
 
         let mut targets = next.targets.into_iter();
@@ -502,6 +503,7 @@ impl Stack {
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),
                     valid_targets,
+                    source,
                 ));
                 continue;
             }
@@ -513,7 +515,9 @@ impl Stack {
                     .collect::<HashSet<_>>();
                 if !targets.iter().all(|target| valid_targets.contains(target)) {
                     if let Some(resolving_card) = resolving_card {
-                        return [ActionResult::StackToGraveyard(resolving_card)].into();
+                        let mut results = PendingResults::default();
+                        results.push_settled(ActionResult::StackToGraveyard(resolving_card));
+                        return results;
                     } else {
                         return PendingResults::default();
                     }
@@ -612,7 +616,7 @@ fn add_card_to_stack(
     from: CastFrom,
     paying_costs: bool,
 ) -> PendingResults {
-    let mut results = PendingResults::new(Source::Card(card));
+    let mut results = PendingResults::default();
 
     match from {
         CastFrom::Hand => {
@@ -625,16 +629,17 @@ fn add_card_to_stack(
     card.apply_modifiers_layered(db);
 
     if card.has_modes(db) {
-        results.push_choose_mode();
+        results.push_choose_mode(Source::Card(card));
     }
 
-    results.add_card_to_stack(from);
+    results.add_card_to_stack(card, from);
     if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
         let controller = card.controller(db);
         if let Some(aura) = card.aura(db) {
             results.push_choose_targets(ChooseTargets::new(
                 TargetSource::Aura(aura),
                 card.targets_for_aura(db).unwrap(),
+                card,
             ))
         }
 
@@ -653,6 +658,7 @@ fn add_card_to_stack(
             results.push_choose_targets(ChooseTargets::new(
                 TargetSource::Effect(effect),
                 valid_targets,
+                card,
             ));
         } else {
             for effect in card.effects(db) {
@@ -661,6 +667,7 @@ fn add_card_to_stack(
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),
                     valid_targets,
+                    card,
                 ));
             }
         }
@@ -670,6 +677,7 @@ fn add_card_to_stack(
     if paying_costs {
         results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
             cost.mana_cost.clone(),
+            card,
             SpendReason::Casting(card),
         )));
     }
@@ -680,15 +688,17 @@ fn add_card_to_stack(
             AdditionalCost::SacrificePermanent(restrictions) => {
                 results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
                     restrictions.clone(),
+                    card,
                 )));
             }
             AdditionalCost::TapPermanent(restrictions) => {
                 results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
                     restrictions.clone(),
+                    card,
                 )));
             }
             AdditionalCost::ExileCardsCmcX(restrictions) => results.push_pay_costs(
-                PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone())),
+                PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone(), card)),
             ),
         }
     }

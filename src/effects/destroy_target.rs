@@ -1,9 +1,7 @@
-
-
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location, OnBattlefield},
@@ -85,6 +83,7 @@ impl EffectBehaviors for DestroyTarget {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

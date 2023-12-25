@@ -85,16 +85,15 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     // Activate the ability
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card4, 0);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
-    // Pay the mana
+    // Pay the genric mana
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    // End pay mana
+    // Choose the reliquary as the default only target
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     // Pay for ward
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    // End pay for ward
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -140,11 +139,11 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card5, 0);
     // Pay the costs
-    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay costs
     // Target the bear
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -155,8 +154,8 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
-    let result = results.resolve(&mut db, &mut all_players, None);
     // Pay mana
+    let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Compute sacrifice cost
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -177,12 +176,13 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     // Activate the ability
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card4, 0);
-    let result = results.resolve(&mut db, &mut all_players, Some(1));
-    assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the mana
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay mana
+    // Target the reliquary
+    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    assert_eq!(result, ResolutionResult::TryAgain);
     // Pay for ward
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);

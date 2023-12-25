@@ -21,10 +21,13 @@ fn p1p1() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    // Choose the mode
     let result = results.resolve(&mut db, &mut all_players, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
+    // Pay the white
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
+    // Pay the generic
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);
@@ -53,10 +56,13 @@ fn hexproof() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    // Choose the mode
     let result = results.resolve(&mut db, &mut all_players, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
+    // Pay the white
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
+    // Pay the generic
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, None);

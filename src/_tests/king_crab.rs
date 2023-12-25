@@ -36,14 +36,15 @@ fn place_on_top() -> anyhow::Result<()> {
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
-    // pay costs
+    // Pay the blue
+    let result = results.resolve(&mut db, &mut all_players, None);
+    assert_eq!(result, ResolutionResult::PendingChoice);
+    // Pay the generic
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
+    // Choose the default only target
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    //end pay costs
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::Complete);
 

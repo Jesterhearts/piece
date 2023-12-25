@@ -1,9 +1,7 @@
-
-
 use indexmap::IndexSet;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{self, OnBattlefield},
@@ -64,6 +62,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

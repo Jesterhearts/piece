@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     effects::{Effect, EffectBehaviors},
     in_play::OnBattlefield,
     stack::ActiveTarget,
@@ -48,6 +48,7 @@ impl EffectBehaviors for TargetCreatureExplores {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

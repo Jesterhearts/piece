@@ -1,9 +1,9 @@
-
-
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{compute_deck_targets, ActionResult, ChooseTargets, TargetSource},
+    battlefield::{
+        choose_targets::ChooseTargets, compute_deck_targets, ActionResult, TargetSource,
+    },
     effects::{Destination, Effect, EffectBehaviors},
     protogen,
     stack::ActiveTarget,
@@ -68,6 +68,7 @@ impl EffectBehaviors for TutorLibrary {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

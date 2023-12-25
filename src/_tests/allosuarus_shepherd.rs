@@ -34,9 +34,9 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     // Pay costs
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
     let result = results.resolve(&mut db, &mut all_players, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, ResolutionResult::PendingChoice);
     let result = results.resolve(&mut db, &mut all_players, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // end pay costs

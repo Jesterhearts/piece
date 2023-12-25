@@ -1,4 +1,4 @@
-mod pending_results;
+pub mod pending_results;
 
 use std::collections::HashSet;
 
@@ -10,6 +10,10 @@ use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
+    battlefield::{
+        choose_targets::ChooseTargets,
+        pay_costs::{ExilePermanentsCmcX, PayCost, SacrificePermanent, SpendMana, TapPermanent},
+    },
     card::Color,
     controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
@@ -108,7 +112,7 @@ pub enum ActionResult {
     },
     CloneCreatureNonTargeting {
         source: CardId,
-        target: Option<ActiveTarget>,
+        target: ActiveTarget,
     },
     AddModifier {
         modifier: ModifierId,
@@ -331,7 +335,7 @@ impl Battlefield {
         target: Option<CardId>,
         construct_skip_replacement: impl FnOnce(CardId, bool) -> ActionResult,
     ) -> PartialAddToBattlefieldResult {
-        let mut results = PendingResults::new(Source::Card(source_card_id));
+        let mut results = PendingResults::default();
 
         ReplacementEffectId::activate_all_for_card(db, source_card_id);
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
@@ -506,7 +510,7 @@ impl Battlefield {
         }
 
         let ability = ability_id.ability(db);
-        let mut results = PendingResults::new(pending_results::Source::Ability(ability_id));
+        let mut results = PendingResults::default();
         if let Some(cost) = ability.cost() {
             if cost.tap {
                 if card.tapped(db) {
@@ -534,17 +538,18 @@ impl Battlefield {
                     }
                     AdditionalCost::SacrificePermanent(restrictions) => {
                         results.push_pay_costs(PayCost::SacrificePermanent(
-                            SacrificePermanent::new(restrictions.clone()),
+                            SacrificePermanent::new(restrictions.clone(), card),
                         ));
                     }
                     AdditionalCost::TapPermanent(restrictions) => {
                         results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
                             restrictions.clone(),
+                            card,
                         )));
                     }
                     AdditionalCost::ExileCardsCmcX(restrictions) => {
                         results.push_pay_costs(PayCost::ExilePermanentsCmcX(
-                            ExilePermanentsCmcX::new(restrictions.clone()),
+                            ExilePermanentsCmcX::new(restrictions.clone(), card),
                         ));
                     }
                 }
@@ -552,31 +557,34 @@ impl Battlefield {
 
             results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
                 cost.mana_cost.clone(),
+                card,
                 SpendReason::Activating(ability_id),
             )));
         }
 
         if let Ability::Mana(gain) = ability {
+            results.add_gain_mana(ability_id);
             if let GainMana::Choice { .. } = gain.gain {
-                results.push_choose_mode();
+                results.push_choose_mode(Source::Ability(ability_id));
             }
         } else {
-            results.add_ability_to_stack();
+            results.add_ability_to_stack(ability_id);
             let controller = card.controller(db);
 
             for effect in ability.into_effects() {
                 let effect = effect.into_effect(db, controller);
-                let targets =
+                let valid_targets =
                     effect.valid_targets(db, card, controller, results.all_currently_targeted());
 
-                if effect.needs_targets() > targets.len() {
+                if effect.needs_targets() > valid_targets.len() {
                     return PendingResults::default();
                 }
 
-                if !targets.is_empty() {
+                if !valid_targets.is_empty() {
                     results.push_choose_targets(ChooseTargets::new(
                         TargetSource::Effect(effect),
-                        targets,
+                        valid_targets,
+                        card,
                     ));
                 }
             }
@@ -647,7 +655,7 @@ impl Battlefield {
                 PendingResults::default()
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
-                if let Some(ActiveTarget::Battlefield { id: target }) = target {
+                if let ActiveTarget::Battlefield { id: target } = target {
                     source.clone_card(db, *target, OnBattlefield::new());
                 }
                 PendingResults::default()
@@ -1041,7 +1049,7 @@ impl Battlefield {
                     Some(ExileReason::Cascade),
                 ) {
                     if !card.is_land(db) && card.cost(db).cmc() < *cascading {
-                        results.push_choose_cast(card, false);
+                        results.push_choose_cast(card, false, false);
                         break;
                     }
                 }
@@ -1057,7 +1065,6 @@ impl Battlefield {
             } => {
                 let mut results = PendingResults::default();
                 results.cast_from(CastFrom::Exile);
-                results.discovering();
 
                 while let Some(card) = all_players[*player].deck.exile_top_card(
                     db,
@@ -1065,7 +1072,7 @@ impl Battlefield {
                     Some(ExileReason::Cascade),
                 ) {
                     if !card.is_land(db) && card.cost(db).cmc() < *count {
-                        results.push_choose_cast(card, false);
+                        results.push_choose_cast(card, false, true);
                         break;
                     }
                 }
@@ -1092,8 +1099,8 @@ impl Battlefield {
                     }
                 }
 
-                let mut results = PendingResults::new(Source::Card(*source));
-                results.push_choose_scry(cards);
+                let mut results = PendingResults::default();
+                results.push_choose_scry(source.controller(db), cards);
 
                 results
             }
@@ -1111,7 +1118,7 @@ impl Battlefield {
                     card.move_to_exile(db, *transforming, None, EffectDuration::Permanently);
                 }
                 transforming.transform(db);
-                let mut results = PendingResults::new(Source::Card(transforming.faceup_face(db)));
+                let mut results = PendingResults::default();
                 move_card_to_battlefield(
                     db,
                     transforming.faceup_face(db),

@@ -6,7 +6,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     card::Color,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location, CardId, Database, InGraveyard, OnBattlefield},
@@ -229,6 +229,7 @@ impl EffectBehaviors for Craft {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
 

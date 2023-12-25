@@ -2,7 +2,7 @@ use bevy_ecs::entity::Entity;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, ChooseTargets, TargetSource},
+    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     effects::{Effect, EffectBehaviors},
     in_play::{CardId, InStack},
     protogen,
@@ -70,6 +70,7 @@ impl EffectBehaviors for CounterSpell {
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect(self)),
             valid_targets,
+            source,
         ));
     }
     fn push_behavior_with_targets(
