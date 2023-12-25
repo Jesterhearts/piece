@@ -152,6 +152,8 @@ message ExileTarget {
 
 message ExileTargetCreatureManifestTopOfLibrary {}
 
+message Explore {}
+
 message ExtraLandsPerTurn {
   int32 count = 1;
 }
@@ -303,6 +305,7 @@ message Effect {
     ExileTarget exile_target = 17;
     ExileTargetCreatureManifestTopOfLibrary
         exile_target_creature_manifest_top_of_library = 18;
+    Explore self_explores = 30;
     ForEachManaOfSource for_each_mana_of_source = 19;
     GainCounter gain_counter = 20;
     GainCounter target_gains_counters = 21;
@@ -314,14 +317,14 @@ message Effect {
     ReturnSelfToHand return_self_to_hand = 27;
     RevealEachTopOfLibrary reveal_each_top_of_library = 28;
     Scry scry = 29;
-    TargetToTopOfLibrary target_to_top_of_library = 30;
-    TutorLibrary tutor_library = 31;
-    UntapThis untap_this = 32;
-    UntapTarget untap_target = 33;
+    TargetToTopOfLibrary target_to_top_of_library = 31;
+    TutorLibrary tutor_library = 32;
+    UntapThis untap_this = 33;
+    UntapTarget untap_target = 34;
   }
 
-  optional Effect threshold = 34;
-  string oracle_text = 35;
+  optional Effect threshold = 35;
+  string oracle_text = 36;
 }
 
 message Mode {

@@ -1,0 +1,20 @@
+name: "Kinjalli\'s Dawnrunner"
+types {
+  creature {
+  }
+}
+subtypes {
+  human {
+  }
+}
+subtypes {
+  scout {
+  }
+}
+etb_abilities {
+  self_explores {
+  }
+}
+power: 1
+toughness: 1
+keywords: "DoubleStrike"

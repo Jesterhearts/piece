@@ -51,6 +51,7 @@ message Subtype {
   message Nymph {}
   message Plains {}
   message Praetor {}
+  message Scout {}
   message Shade {}
   message Shaman {}
   message Shapeshifter {}
@@ -85,15 +86,16 @@ message Subtype {
     Nymph nymph = 20;
     Plains plains = 21;
     Praetor praetor = 22;
-    Shade shade = 23;
-    Shaman shaman = 24;
-    Shapeshifter shapeshifter = 25;
-    Soldier soldier = 26;
-    Spirit spirit = 27;
-    Swamp swamp = 28;
-    Vampire vampire = 29;
-    Warrior warrior = 30;
-    Wizard wizard = 31;
-    Zombie zombie = 32;
+    Scout scout = 23;
+    Shade shade = 24;
+    Shaman shaman = 25;
+    Shapeshifter shapeshifter = 26;
+    Soldier soldier = 27;
+    Spirit spirit = 28;
+    Swamp swamp = 29;
+    Vampire vampire = 30;
+    Warrior warrior = 31;
+    Wizard wizard = 32;
+    Zombie zombie = 33;
   }
 }
