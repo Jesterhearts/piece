@@ -1,0 +1,40 @@
+name: "Malamet War Scribe"
+types {
+  creature {
+  }
+}
+subtypes {
+  cat {
+  }
+}
+subtypes {
+  warrior {
+  }
+}
+etb_abilities {
+  battlefield_modifier {
+    modifier {
+      add_power: 2
+      add_toughness: 1
+    }
+    controller {
+      you {
+      }
+    }
+    duration {
+      until_end_of_turn {
+      }
+    }
+    restrictions {
+      of_type {
+        types {
+          creature {
+          }
+        }
+      }
+    }
+  }
+  oracle_text: "When Malamet War Scribe enters the battlefield, creatures you control get +2/+1 until end of turn."
+}
+power: 4
+toughness: 3
