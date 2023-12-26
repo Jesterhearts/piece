@@ -12,6 +12,10 @@ path = "src/bin/run_game.rs"
 name = "format"
 path = "src/bin/format_textproto.rs"
 
+[[bin]]
+name = "export"
+path = "src/bin/export_protos.rs"
+
 [dependencies]
 anyhow        = "1.0.75"
 bevy_ecs      = { version = "0.12.1", default-features = false }
