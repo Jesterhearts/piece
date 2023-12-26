@@ -292,26 +292,27 @@ message Effect {
         exile_target_creature_manifest_top_of_library = 17;
     ExileTargetGraveyard exile_target_graveyard = 18;
     Explore self_explores = 19;
-    ForEachManaOfSource for_each_mana_of_source = 20;
-    GainCounter target_gains_counters = 21;
-    GainLife gain_life = 22;
-    Mill mill = 23;
-    Modes modal = 24;
-    PayCostThen pay_cost_then = 25;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 26;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 27;
-    ReturnSelfToHand return_self_to_hand = 28;
-    ReturnTransformed return_transformed = 29;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 30;
-    Scry scry = 31;
-    TargetToTopOfLibrary target_to_top_of_library = 32;
-    TutorLibrary tutor_library = 33;
-    UntapThis untap_this = 34;
-    UntapTarget untap_target = 35;
+    Explore target_explores = 20;
+    ForEachManaOfSource for_each_mana_of_source = 21;
+    GainCounter target_gains_counters = 22;
+    GainLife gain_life = 23;
+    Mill mill = 24;
+    Modes modal = 25;
+    PayCostThen pay_cost_then = 26;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 27;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 28;
+    ReturnSelfToHand return_self_to_hand = 29;
+    ReturnTransformed return_transformed = 30;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 31;
+    Scry scry = 32;
+    TargetToTopOfLibrary target_to_top_of_library = 33;
+    TutorLibrary tutor_library = 34;
+    UntapThis untap_this = 35;
+    UntapTarget untap_target = 36;
   }
 
-  optional Effect threshold = 36;
-  string oracle_text = 37;
+  optional Effect threshold = 37;
+  string oracle_text = 38;
 }
 
 message Mode {

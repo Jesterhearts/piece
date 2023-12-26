@@ -77,6 +77,7 @@ use crate::{
         scry::Scry,
         self_explores::SelfExplores,
         target_controller_gains_tokens::TargetControllerGainsTokens,
+        target_creature_explores::TargetCreatureExplores,
         target_gains_counters::{Counter, TargetGainsCounters},
         target_to_top_of_library::TargetToTopOfLibrary,
         tutor_library::TutorLibrary,
@@ -481,6 +482,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => Ok(Self(
                 Box::leak(Box::new(TargetControllerGainsTokens::try_from(value)?)),
             )),
+            protogen::effects::effect::Effect::TargetExplores(_) => {
+                Ok(Self(&TargetCreatureExplores))
+            }
             protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => Ok(Self(Box::leak(
                 Box::new(TargetToTopOfLibrary::try_from(value)?),
             ))),

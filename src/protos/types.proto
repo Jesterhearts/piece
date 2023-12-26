@@ -34,6 +34,7 @@ message Subtype {
   message Aura {}
   message Bat {}
   message Bear {}
+  message Bird {}
   message Cat {}
   message Cave {}
   message Dinosaur {}
@@ -69,33 +70,34 @@ message Subtype {
     Aura aura = 3;
     Bat bat = 4;
     Bear bear = 5;
-    Cat cat = 6;
-    Cave cave = 7;
-    Dinosaur dinosaur = 8;
-    Dryad dryad = 9;
-    Eldrazi eldrazi = 10;
-    Elemental elemental = 11;
-    Elf elf = 12;
-    Equipment equipment = 13;
-    Forest forest = 14;
-    Gnome gnome = 15;
-    Golem golem = 16;
-    Human human = 17;
-    Island island = 18;
-    Mountain mountain = 19;
-    Nymph nymph = 20;
-    Plains plains = 21;
-    Praetor praetor = 22;
-    Scout scout = 23;
-    Shade shade = 24;
-    Shaman shaman = 25;
-    Shapeshifter shapeshifter = 26;
-    Soldier soldier = 27;
-    Spirit spirit = 28;
-    Swamp swamp = 29;
-    Vampire vampire = 30;
-    Warrior warrior = 31;
-    Wizard wizard = 32;
-    Zombie zombie = 33;
+    Bird bird = 6;
+    Cat cat = 7;
+    Cave cave = 8;
+    Dinosaur dinosaur = 9;
+    Dryad dryad = 10;
+    Eldrazi eldrazi = 11;
+    Elemental elemental = 12;
+    Elf elf = 13;
+    Equipment equipment = 14;
+    Forest forest = 15;
+    Gnome gnome = 16;
+    Golem golem = 17;
+    Human human = 18;
+    Island island = 19;
+    Mountain mountain = 20;
+    Nymph nymph = 21;
+    Plains plains = 22;
+    Praetor praetor = 23;
+    Scout scout = 24;
+    Shade shade = 25;
+    Shaman shaman = 26;
+    Shapeshifter shapeshifter = 27;
+    Soldier soldier = 28;
+    Spirit spirit = 29;
+    Swamp swamp = 30;
+    Vampire vampire = 31;
+    Warrior warrior = 32;
+    Wizard wizard = 33;
+    Zombie zombie = 34;
   }
 }
