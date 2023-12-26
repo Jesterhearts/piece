@@ -37,7 +37,7 @@ pub struct ModifiedKeywords(pub Counter<Keyword>);
 #[rustfmt::skip]
 newtype_enum!{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, bevy_ecs::component::Component)]
-#[derive(strum::EnumIter, strum::EnumString)]
+#[derive(strum::EnumIter, strum::EnumString, strum::AsRefStr)]
 #[strum(ascii_case_insensitive)]
 pub enum Keyword {
     Absorb,

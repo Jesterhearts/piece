@@ -43,6 +43,7 @@ pub enum TriggerSource {
     EntersTheBattlefield,
     ExiledDuringCraft,
     PutIntoGraveyard,
+    StartOfCombat,
     Tapped,
 }
 }
@@ -97,6 +98,7 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
             protogen::triggers::trigger_source::Trigger::ExiledDuringCraft(_) => {
                 Self::ExiledDuringCraft
             }
+            protogen::triggers::trigger_source::Trigger::StartOfCombat(_) => Self::StartOfCombat,
         }
     }
 }

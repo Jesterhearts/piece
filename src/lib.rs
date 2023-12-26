@@ -87,6 +87,7 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
 }
 
 pub fn load_cards() -> anyhow::Result<Cards> {
+    let start = std::time::Instant::now();
     let mut cards = Cards::default();
     let protos = load_protos()?;
     for (card, card_file) in protos {
@@ -97,6 +98,13 @@ pub fn load_cards() -> anyhow::Result<Cards> {
                 .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
         );
     }
+
+    let stop = std::time::Instant::now();
+    debug!(
+        "Loaded {} cards in {}ms",
+        cards.len(),
+        (start - stop).as_millis()
+    );
 
     Ok(cards)
 }

@@ -51,6 +51,9 @@ impl TriggerId {
             TriggerSource::Cast => {
                 entity.insert(trigger_source::Cast);
             }
+            TriggerSource::StartOfCombat => {
+                entity.insert(trigger_source::StartOfCombat);
+            }
             TriggerSource::Tapped => {
                 entity.insert(trigger_source::Tapped);
             }

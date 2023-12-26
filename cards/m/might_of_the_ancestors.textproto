@@ -1,0 +1,60 @@
+name: "Might of the Ancestors"
+types {
+  enchantment {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+triggered_abilities {
+  trigger {
+    source {
+      start_of_combat {
+      }
+    }
+    from {
+      anywhere {
+      }
+    }
+    controller {
+      you {
+      }
+    }
+  }
+  effects {
+    modify_target {
+      modifier {
+        add_power: 2
+        add_keywords: "Vigilance"
+      }
+      controller {
+        you {
+        }
+      }
+      duration {
+        until_end_of_turn {
+        }
+      }
+      restrictions {
+        of_type {
+          types {
+            creature {
+            }
+          }
+        }
+      }
+      restrictions {
+        on_battlefield {}
+      }
+    }
+  }
+  oracle_text: "At the beginning of combat on your turn, target creature you control gets +2/+0 and gains vigilance until end of turn."
+}

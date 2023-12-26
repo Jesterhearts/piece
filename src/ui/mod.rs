@@ -147,6 +147,12 @@ impl<'db> StatefulWidget for Card<'db> {
         let has_triggers = !triggers.is_empty();
         let abilities = source.abilities_text(self.db);
         let has_abilities = !abilities.is_empty();
+        let keywords = source
+            .keywords(self.db)
+            .keys()
+            .map(|k| k.as_ref())
+            .join(", ");
+        let has_keywords = !keywords.is_empty();
         let modified_by = source.modified_by(self.db);
         let is_modified = !modified_by.is_empty();
         let counters = CounterId::counter_text_on(self.db, source);
@@ -160,6 +166,8 @@ impl<'db> StatefulWidget for Card<'db> {
             .chain(std::iter::once(String::default()).filter(|_| has_effects_text))
             .chain(triggers)
             .chain(std::iter::once(String::default()).filter(|_| has_triggers))
+            .chain(std::iter::once(keywords).filter(|_| has_keywords))
+            .chain(std::iter::once(String::default()).filter(|_| has_keywords))
             .chain(std::iter::once(abilities))
             .chain(std::iter::once(String::default()).filter(|_| has_abilities))
             .chain(std::iter::once("Modified by:".to_string()).filter(|_| is_modified))

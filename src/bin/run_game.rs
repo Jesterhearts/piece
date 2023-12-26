@@ -99,7 +99,7 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
-    let card8 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
+    let card8 = CardId::upload(&mut db, &cards, player1, "Might of the Ancestors");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card8, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, &turn, None),

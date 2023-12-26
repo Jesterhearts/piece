@@ -5,9 +5,11 @@ use indexmap::IndexSet;
 
 use crate::{
     battlefield::{Battlefield, PendingResults},
-    in_play::{CardId, Database, DeleteAbility},
+    controller::ControllerRestriction,
+    in_play::{CardId, Database, DeleteAbility, TriggerId},
     player::{AllPlayers, Owner},
     stack::Stack,
+    triggers::trigger_source,
     types::Type,
 };
 
@@ -104,7 +106,28 @@ impl Turn {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::BeginCombat;
-                PendingResults::default()
+                let mut results = PendingResults::default();
+                for trigger in
+                    TriggerId::active_triggers_of_source::<trigger_source::StartOfCombat>(db)
+                {
+                    match trigger.controller_restriction(db) {
+                        ControllerRestriction::Any => {}
+                        ControllerRestriction::You => {
+                            if trigger.listener(db).controller(db) != self.active_player() {
+                                continue;
+                            }
+                        }
+                        ControllerRestriction::Opponent => {
+                            if trigger.listener(db).controller(db) == self.active_player() {
+                                continue;
+                            }
+                        }
+                    }
+
+                    let listener = trigger.listener(db);
+                    results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                }
+                results
             }
             Phase::BeginCombat => {
                 for player in all_players.all_players() {
