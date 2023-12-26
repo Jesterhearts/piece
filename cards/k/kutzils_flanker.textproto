@@ -48,7 +48,8 @@ etb_abilities {
             }
           }
           restrictions {
-            self {}
+            self {
+            }
           }
         }
         oracle_text: "Put a +1/+1 counter on Kutzil\'s Flanker for each creature that left the battlefield under your control this turn."

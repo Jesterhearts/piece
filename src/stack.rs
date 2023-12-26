@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy_ecs::{
-    all_tuples,
     component::Component,
     entity::Entity,
     query::{With, Without},
