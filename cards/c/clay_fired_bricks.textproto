@@ -61,34 +61,42 @@ activated_abilities {
       exile_card {
         restrictions {
           of_type {
-            types { artifact {} }
+            types {
+              artifact {
+              }
+            }
           }
         }
         restrictions {
           location {
             locations {
-              on_battlefield {}
+              on_battlefield {
+              }
             }
             locations {
-              in_graveyard {}
+              in_graveyard {
+              }
             }
           }
         }
         restrictions {
-          not_self {}
+          not_self {
+          }
         }
       }
     }
     additional_costs {
       exile_card {
         restrictions {
-          self {}
+          self {
+          }
         }
       }
     }
   }
   effects {
-    return_transformed {}
+    return_transformed {
+    }
   }
   oracle_text: "Return to the battlefield transformed under its owners control."
   sorcery_speed: true
