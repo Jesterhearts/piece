@@ -27,50 +27,50 @@ fn destroys_artifact() -> anyhow::Result<()> {
     let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Equip the bear
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card2, 0);
     // Pay the costs
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay costs
     // Target the bear
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the equip
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability on the bear, targeting the banner
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card, 0);
     // Pay the generic mana
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose the default only target
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the ability
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card]);

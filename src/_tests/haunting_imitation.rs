@@ -10,6 +10,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::Turn,
     types::{Subtype, Type},
 };
 
@@ -19,6 +20,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
+    let turn = Turn::new(&all_players);
 
     let mut db = Database::default();
 
@@ -33,9 +35,9 @@ fn reveals_clones() -> anyhow::Result<()> {
     all_players[player2].deck.place_on_top(&mut db, creature);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut on_battlefield = player1.get_cards::<OnBattlefield>(&mut db);
@@ -60,12 +62,13 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
+    let turn = Turn::new(&all_players);
 
     let mut db = Database::default();
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
@@ -75,9 +78,9 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     all_players[player2].deck.place_on_top(&mut db, land2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(player1.get_cards::<OnBattlefield>(&mut db).len(), 0);

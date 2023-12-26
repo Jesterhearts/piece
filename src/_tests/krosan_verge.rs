@@ -15,10 +15,11 @@ fn enters_tapped() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
+    let turn = Turn::new(&all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(card.tapped(&db));
@@ -47,7 +48,7 @@ fn tutors() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     card.untap(&mut db);
@@ -56,17 +57,17 @@ fn tutors() -> anyhow::Result<()> {
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 1);
     let _ability = *card.activated_abilities(&db).first().unwrap();
 
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(forest.is_in_location::<OnBattlefield>(&db));

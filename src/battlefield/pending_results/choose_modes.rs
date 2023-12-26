@@ -28,13 +28,16 @@ impl PendingResult for ChooseModes {
 
     fn make_choice(
         &mut self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         _all_players: &mut crate::player::AllPlayers,
         choice: Option<usize>,
         results: &mut super::PendingResults,
     ) -> bool {
         if let Some(choice) = choice {
             results.push_chosen_mode(choice);
+            if let Source::Effect(effect, source) = &self.source {
+                effect.push_pending_behavior(db, *source, source.controller(db), results);
+            }
             true
         } else {
             false

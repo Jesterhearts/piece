@@ -28,24 +28,24 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 1);
     // Pay banner cost
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay banner costs
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(player.get_cards::<InGraveyard>(&mut db), vec![card]);
@@ -66,17 +66,17 @@ fn add_mana() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(

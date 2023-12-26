@@ -47,6 +47,9 @@ static NEXT_STACK_SEQ: AtomicUsize = AtomicUsize::new(1);
 static UNIQUE_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
+pub struct LeftBattlefieldTurn(pub usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
 pub struct UniqueId(usize);
 
 impl UniqueId {

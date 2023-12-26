@@ -88,21 +88,21 @@ fn main() -> anyhow::Result<()> {
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
     assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
+        results.resolve(&mut db, &mut all_players, &turn, None),
         ResolutionResult::Complete
     );
 
     let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
     assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
+        results.resolve(&mut db, &mut all_players, &turn, None),
         ResolutionResult::Complete
     );
 
     let card8 = CardId::upload(&mut db, &cards, player1, "Adaptive Gemguard");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card8, None);
     assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
+        results.resolve(&mut db, &mut all_players, &turn, None),
         ResolutionResult::Complete
     );
 
@@ -112,33 +112,35 @@ fn main() -> anyhow::Result<()> {
     let card10 = CardId::upload(&mut db, &cards, player1, "Hidden Courtyard");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card10, None);
     assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
+        results.resolve(&mut db, &mut all_players, &turn, None),
         ResolutionResult::Complete
     );
 
     let card11 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card11, None);
     assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
+        results.resolve(&mut db, &mut all_players, &turn, None),
         ResolutionResult::Complete
     );
 
     let card12 = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card12, None);
     assert_eq!(
-        results.resolve(&mut db, &mut all_players, None),
+        results.resolve(&mut db, &mut all_players, &turn, None),
         ResolutionResult::Complete
     );
 
-    let card13 = CardId::upload(&mut db, &cards, player1, "Clay-Fired Bricks");
+    let card13 = CardId::upload(&mut db, &cards, player1, "Glorifier of Suffering");
     card13.move_to_hand(&mut db);
 
-    let card14 = CardId::upload(&mut db, &cards, player1, "Glorifier of Suffering");
+    let card14 = CardId::upload(&mut db, &cards, player1, "Kutzil's Flanker");
     card14.move_to_hand(&mut db);
 
     while !Stack::is_empty(&mut db) {
         let mut results = Stack::resolve_1(&mut db);
-        while results.resolve(&mut db, &mut all_players, None) != ResolutionResult::Complete {}
+        while results.resolve(&mut db, &mut all_players, &turn, None) != ResolutionResult::Complete
+        {
+        }
     }
 
     for card in cards.keys() {
@@ -1035,7 +1037,7 @@ fn main() -> anyhow::Result<()> {
 
                                     while pending.only_immediate_results(&db, &all_players) {
                                         let result =
-                                            pending.resolve(&mut db, &mut all_players, None);
+                                            pending.resolve(&mut db, &mut all_players, &turn, None);
                                         if result == ResolutionResult::Complete {
                                             break;
                                         }
@@ -1047,7 +1049,7 @@ fn main() -> anyhow::Result<()> {
 
                                     while pending.only_immediate_results(&db, &all_players) {
                                         let result =
-                                            pending.resolve(&mut db, &mut all_players, None);
+                                            pending.resolve(&mut db, &mut all_players, &turn, None);
                                         if result == ResolutionResult::Complete {
                                             break;
                                         }
@@ -1064,7 +1066,8 @@ fn main() -> anyhow::Result<()> {
                             2 => {
                                 let mut pending = all_players[player1].draw(&mut db, 1);
                                 while pending.only_immediate_results(&db, &all_players) {
-                                    let result = pending.resolve(&mut db, &mut all_players, None);
+                                    let result =
+                                        pending.resolve(&mut db, &mut all_players, &turn, None);
                                     if result == ResolutionResult::Complete {
                                         break;
                                     }
@@ -1087,7 +1090,8 @@ fn main() -> anyhow::Result<()> {
                         if turn.can_cast(&mut db, card) {
                             let mut pending = all_players[player1].play_card(&mut db, selected);
                             while pending.only_immediate_results(&db, &all_players) {
-                                let result = pending.resolve(&mut db, &mut all_players, None);
+                                let result =
+                                    pending.resolve(&mut db, &mut all_players, &turn, None);
                                 if result == ResolutionResult::Complete {
                                     break;
                                 }
@@ -1113,7 +1117,8 @@ fn main() -> anyhow::Result<()> {
                             );
 
                             while pending.only_immediate_results(&db, &all_players) {
-                                let result = pending.resolve(&mut db, &mut all_players, None);
+                                let result =
+                                    pending.resolve(&mut db, &mut all_players, &turn, None);
                                 if result == ResolutionResult::Complete {
                                     break;
                                 }
@@ -1149,12 +1154,13 @@ fn main() -> anyhow::Result<()> {
                     }
                     if choice.is_some() {
                         loop {
-                            match to_resolve.resolve(&mut db, &mut all_players, real_choice) {
+                            match to_resolve.resolve(&mut db, &mut all_players, &turn, real_choice)
+                            {
                                 battlefield::ResolutionResult::Complete => {
                                     let mut pending = Battlefield::check_sba(&mut db);
                                     while pending.only_immediate_results(&db, &all_players) {
                                         let result =
-                                            pending.resolve(&mut db, &mut all_players, None);
+                                            pending.resolve(&mut db, &mut all_players, &turn, None);
                                         if result == ResolutionResult::Complete {
                                             break;
                                         }
@@ -1260,7 +1266,7 @@ fn cleanup_stack(
 ) {
     let mut pending = Stack::resolve_1(db);
     while pending.only_immediate_results(db, all_players) {
-        let result = pending.resolve(db, all_players, None);
+        let result = pending.resolve(db, all_players, turn, None);
         if result == ResolutionResult::Complete {
             break;
         }
@@ -1269,7 +1275,7 @@ fn cleanup_stack(
     if pending.is_empty() {
         pending = Battlefield::check_sba(db);
         while pending.only_immediate_results(db, all_players) {
-            let result = pending.resolve(db, all_players, None);
+            let result = pending.resolve(db, all_players, turn, None);
             if result == ResolutionResult::Complete {
                 break;
             }

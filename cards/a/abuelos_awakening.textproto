@@ -28,10 +28,10 @@ effects {
   target_gains_counters {
     dynamic {
       x {
-        counter {
-          p1p1 {
-          }
-        }
+      }
+    }
+    counter {
+      p1p1 {
       }
     }
   }

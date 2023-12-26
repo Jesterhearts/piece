@@ -26,25 +26,25 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
 
     // Pay costs
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // end pay costs
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(card.power(&db), Some(5));
@@ -55,7 +55,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     );
 
     let mut results = Battlefield::end_turn(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(card.power(&db), Some(1));
@@ -76,6 +76,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
@@ -87,13 +88,13 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Battlefield::creatures(&mut db), [card]);
@@ -109,13 +110,14 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     card2.move_to_stack(&mut db, vec![], None, vec![]);
     let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
@@ -124,13 +126,13 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Stack::in_stack(&mut db).len(), 1);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(Battlefield::creatures(&mut db), [card1, card2]);
@@ -147,13 +149,14 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let player = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     card2.move_to_stack(&mut db, vec![], None, vec![]);
     let targets = vec![vec![Stack::target_nth(&mut db, 0)]];
@@ -162,7 +165,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Stack::is_empty(&mut db));

@@ -21,27 +21,27 @@ fn mace() -> anyhow::Result<()> {
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, mace, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, mace, 0);
     // Pay the cost
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose the default only target
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(4));
@@ -49,11 +49,11 @@ fn mace() -> anyhow::Result<()> {
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(5));

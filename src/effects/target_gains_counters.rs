@@ -1,18 +1,116 @@
+use anyhow::anyhow;
 use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
     controller::ControllerRestriction,
-    effects::{gain_counter::GainCounter, Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location},
+    newtype_enum::newtype_enum,
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
 };
 
+newtype_enum! {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+#[derive(strum::EnumIter)]
+pub enum Counter {
+    Charge,
+    P1P1,
+    M1M1,
+}
+}
+
 #[derive(Debug, Clone)]
+pub enum DynamicCounter {
+    X,
+    LeftBattlefieldThisTurn {
+        controller: ControllerRestriction,
+        restrictions: Vec<Restriction>,
+    },
+}
+
+impl TryFrom<&protogen::effects::gain_counter::Dynamic> for DynamicCounter {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::gain_counter::Dynamic) -> Result<Self, Self::Error> {
+        value
+            .dynamic
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected dynamic counter to have a value set"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCounter {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::gain_counter::dynamic::Dynamic,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::gain_counter::dynamic::Dynamic::LeftBattlefieldThisTurn(value) => {
+                Ok(Self::LeftBattlefieldThisTurn {
+                    controller: value.controller.get_or_default().try_into()?,
+                    restrictions: value
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                })
+            }
+            protogen::effects::gain_counter::dynamic::Dynamic::X(_) => Ok(Self::X),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum GainCount {
+    Single,
+    Dynamic(DynamicCounter),
+}
+
+impl TryFrom<&protogen::effects::gain_counter::Count> for GainCount {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::gain_counter::Count) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::gain_counter::Count::Single(_) => Ok(Self::Single),
+            protogen::effects::gain_counter::Count::Dynamic(dynamic) => {
+                Ok(Self::Dynamic(dynamic.try_into()?))
+            }
+        }
+    }
+}
+
+impl TryFrom<&protogen::counters::Counter> for Counter {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::counters::Counter) -> Result<Self, Self::Error> {
+        value
+            .type_
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected counter to have a type specified"))
+            .map(Self::from)
+    }
+}
+
+impl From<&protogen::counters::counter::Type> for Counter {
+    fn from(value: &protogen::counters::counter::Type) -> Self {
+        match value {
+            protogen::counters::counter::Type::Charge(_) => Self::Charge,
+            protogen::counters::counter::Type::P1p1(_) => Self::P1P1,
+            protogen::counters::counter::Type::M1m1(_) => Self::M1M1,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct TargetGainsCounters {
-    gain: GainCounter,
+    count: GainCount,
+    counter: Counter,
+    controller: ControllerRestriction,
     restrictions: Vec<Restriction>,
 }
 
@@ -21,7 +119,18 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
 
     fn try_from(value: &protogen::effects::GainCounter) -> Result<Self, Self::Error> {
         Ok(Self {
-            gain: value.try_into()?,
+            count: value
+                .count
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
+                .and_then(GainCount::try_from)?,
+            counter: value.counter.get_or_default().try_into()?,
+            controller: value
+                .controller
+                .controller
+                .as_ref()
+                .map_or(Ok(None), |controller| controller.try_into().map(Some))?
+                .unwrap_or(ControllerRestriction::Any),
             restrictions: value
                 .restrictions
                 .iter()
@@ -49,7 +158,7 @@ impl EffectBehaviors for TargetGainsCounters {
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in in_play::all_cards(db) {
-            if card.passes_restrictions(db, source, ControllerRestriction::Any, &self.restrictions)
+            if card.passes_restrictions(db, source, self.controller, &self.restrictions)
                 && card.passes_restrictions(
                     db,
                     source,
@@ -105,7 +214,8 @@ impl EffectBehaviors for TargetGainsCounters {
             results.push_settled(ActionResult::AddCounters {
                 source,
                 target,
-                counter: self.gain,
+                count: self.count.clone(),
+                counter: self.counter,
             });
         }
     }

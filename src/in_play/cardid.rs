@@ -31,16 +31,17 @@ use crate::{
     cost::{CastingCost, Ward},
     effects::{
         effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield},
-        gain_counter::{counter, Counter},
+        target_gains_counters::{counter, Counter},
         AnyEffect, DynamicPowerToughness, EffectDuration, Effects, Modes, ReplacementEffects,
         Token,
     },
     in_play::{
         self, cast_from, exile_reason, AbilityId, Active, Attacking, AuraId, CastFrom, CounterId,
         Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile,
-        InGraveyard, InHand, InLibrary, InStack, IsToken, Manifested, ModifierId, ModifierSeq,
-        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId,
-        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        InGraveyard, InHand, InLibrary, InStack, IsToken, LeftBattlefieldTurn, Manifested,
+        ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped,
+        Transformed, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ,
+        NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -133,6 +134,24 @@ impl CardId {
         } else {
             db.get::<BackFace>(self.0).map(|b| b.0).unwrap()
         }
+    }
+
+    pub(crate) fn left_battlefield(self, db: &mut Database, turn_count: usize) {
+        db.entity_mut(self.0)
+            .insert(LeftBattlefieldTurn(turn_count));
+    }
+
+    pub(crate) fn left_battlefield_this_turn(db: &mut Database, turn_count: usize) -> Vec<CardId> {
+        db.query::<(Entity, &LeftBattlefieldTurn)>()
+            .iter(db)
+            .filter_map(|(e, turn)| {
+                if turn.0 == turn_count {
+                    Some(Self(e))
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
@@ -243,6 +262,7 @@ impl CardId {
             .remove::<exile_reason::Cascade>()
             .remove::<effect_duration::UntilEndOfTurn>()
             .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+            .remove::<LeftBattlefieldTurn>()
             .insert(OnBattlefield(
                 NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
             ));

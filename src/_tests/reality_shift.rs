@@ -8,6 +8,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
+    turns::Turn,
     types::Subtype,
     Battlefield,
 };
@@ -20,16 +21,17 @@ fn resolves_shift() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let bear1 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear1, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     all_players[player].deck.place_on_top(&mut db, bear3);
@@ -43,7 +45,7 @@ fn resolves_shift() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(cards::<InExile>(&mut db), [bear1]);

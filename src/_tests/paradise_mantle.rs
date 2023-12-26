@@ -31,15 +31,15 @@ fn adds_ability() -> anyhow::Result<()> {
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(creature.activated_abilities(&db).len(), 1);

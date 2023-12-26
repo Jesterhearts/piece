@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
+    turns::Turn,
     types::{Subtype, Type},
     Battlefield,
 };
@@ -17,10 +18,11 @@ fn metamorphosis() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
+    let turn = Turn::new(&all_players);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, mantle, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
@@ -33,7 +35,7 @@ fn metamorphosis() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(mantle.power(&db), Some(4));
@@ -57,10 +59,11 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
+    let turn = Turn::new(&all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
@@ -73,7 +76,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(4));

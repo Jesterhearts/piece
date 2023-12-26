@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy_ecs::{
+    all_tuples,
     component::Component,
     entity::Entity,
     query::{With, Without},
@@ -37,7 +38,7 @@ pub enum ActiveTarget {
     Player { id: Owner },
 }
 impl ActiveTarget {
-    pub fn display(&self, db: &mut Database, _all_players: &AllPlayers) -> String {
+    pub fn display(&self, db: &mut Database, all_players: &AllPlayers) -> String {
         match self {
             ActiveTarget::Stack { id } => {
                 format!("Stack ({}): {}", id, id.title(db))
@@ -51,7 +52,7 @@ impl ActiveTarget {
             ActiveTarget::Library { id } => {
                 format!("{} - ({})", id.name(db), id.id(db),)
             }
-            ActiveTarget::Player { .. } => "Player".to_string(),
+            ActiveTarget::Player { id } => all_players[*id].name.clone(),
         }
     }
 
@@ -714,6 +715,7 @@ mod tests {
         load_cards,
         player::AllPlayers,
         stack::Stack,
+        turns::Turn,
     };
 
     #[test]
@@ -722,13 +724,14 @@ mod tests {
         let mut db = Database::default();
         let mut all_players = AllPlayers::default();
         let player = all_players.new_player("Player".to_string(), 20);
+        let turn = Turn::new(&all_players);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
         card1.move_to_stack(&mut db, Default::default(), None, vec![]);
 
         let mut results = Stack::resolve_1(&mut db);
 
-        let result = results.resolve(&mut db, &mut all_players, None);
+        let result = results.resolve(&mut db, &mut all_players, &turn, None);
         assert_eq!(result, ResolutionResult::Complete);
 
         assert!(Stack::is_empty(&mut db));

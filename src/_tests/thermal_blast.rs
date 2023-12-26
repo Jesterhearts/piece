@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
+    turns::Turn,
 };
 
 #[test]
@@ -17,6 +18,7 @@ fn damages_target() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
@@ -30,12 +32,12 @@ fn damages_target() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(Battlefield::creatures(&mut db), []);
 
@@ -50,6 +52,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     for _ in 0..7 {
         let card = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
@@ -69,12 +72,12 @@ fn damages_target_threshold() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
 
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 5);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(Battlefield::creatures(&mut db), []);
 
@@ -89,6 +92,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let other = all_players.new_player("Player".to_string(), 20);
 
@@ -110,12 +114,12 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
 
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(Battlefield::creatures(&mut db), []);
 

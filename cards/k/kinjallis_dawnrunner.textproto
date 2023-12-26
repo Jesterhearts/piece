@@ -11,6 +11,17 @@ subtypes {
   scout {
   }
 }
+cost {
+  mana_costs {
+    generic {
+      count: 3
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
 etb_abilities {
   self_explores {
   }

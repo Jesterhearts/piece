@@ -9,6 +9,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::Turn,
     types::{Subtype, Type},
 };
 
@@ -20,6 +21,7 @@ fn cascades() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let hand1 = CardId::upload(&mut db, &cards, player, "Hexplate Golem");
     hand1.move_to_hand(&mut db);
@@ -35,29 +37,29 @@ fn cascades() -> anyhow::Result<()> {
 
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, zhul, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1, false);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the first cascade
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose to cast
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose targets for metamorphosis.
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve majestic metamorphosis
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
@@ -71,12 +73,12 @@ fn cascades() -> anyhow::Result<()> {
 
     // Resolve the first cascade
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose not to cast
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
@@ -97,7 +99,7 @@ fn cascades() -> anyhow::Result<()> {
 
     // Resolve the actual golem
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(player.get_cards::<OnBattlefield>(&mut db), [zhul, hand1]);

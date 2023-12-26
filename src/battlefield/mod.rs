@@ -20,9 +20,9 @@ use crate::{
     effects::{
         cascade::Cascade,
         effect_duration::UntilEndOfTurn,
-        gain_counter::{Counter, DynamicCounter, GainCounter},
         replacing,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
+        target_gains_counters::{Counter, DynamicCounter, GainCount},
         AnyEffect, BattlefieldModifier, Effect, EffectDuration, Token,
     },
     in_play::{
@@ -95,7 +95,8 @@ pub enum ActionResult {
     AddCounters {
         source: CardId,
         target: CardId,
-        counter: GainCounter,
+        count: GainCount,
+        counter: Counter,
     },
     TapPermanent(CardId),
     PermanentToGraveyard(CardId),
@@ -203,6 +204,10 @@ pub enum ActionResult {
     DestroyTarget(ActiveTarget),
     Explore {
         target: ActiveTarget,
+    },
+    ExileGraveyard {
+        target: ActiveTarget,
+        source: CardId,
     },
 }
 
@@ -609,12 +614,13 @@ impl Battlefield {
     pub fn apply_action_results(
         db: &mut Database,
         all_players: &mut AllPlayers,
+        turn: &Turn,
         results: &[ActionResult],
     ) -> PendingResults {
         let mut pending = PendingResults::default();
 
         for result in results.iter() {
-            pending.extend(Self::apply_action_result(db, all_players, result));
+            pending.extend(Self::apply_action_result(db, all_players, turn, result));
         }
 
         for card in all_cards(db) {
@@ -627,12 +633,13 @@ impl Battlefield {
     fn apply_action_result(
         db: &mut Database,
         all_players: &mut AllPlayers,
+        turn: &Turn,
         result: &ActionResult,
     ) -> PendingResults {
         match result {
             ActionResult::TapPermanent(card_id) => card_id.tap(db),
             ActionResult::PermanentToGraveyard(card_id) => {
-                Self::permanent_to_graveyard(db, *card_id)
+                Self::permanent_to_graveyard(db, turn, *card_id)
             }
             ActionResult::AddAbilityToStack {
                 source,
@@ -763,7 +770,7 @@ impl Battlefield {
                     }
                 }
 
-                Battlefield::exile(db, *source, *target, *duration)
+                Battlefield::exile(db, turn, *source, *target, *duration)
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -798,15 +805,31 @@ impl Battlefield {
             ActionResult::AddCounters {
                 source,
                 target,
+                count,
                 counter,
             } => {
-                match counter {
-                    GainCounter::Single(counter) => {
+                match count {
+                    GainCount::Single => {
                         CounterId::add_counters(db, *target, *counter, 1);
                     }
-                    GainCounter::Dynamic(dynamic) => match dynamic {
-                        DynamicCounter::X(counter) => {
+                    GainCount::Dynamic(dynamic) => match dynamic {
+                        DynamicCounter::X => {
                             let x = source.get_x(db);
+                            if x > 0 {
+                                CounterId::add_counters(db, *target, *counter, x);
+                            }
+                        }
+                        DynamicCounter::LeftBattlefieldThisTurn {
+                            controller,
+                            restrictions,
+                        } => {
+                            let cards = CardId::left_battlefield_this_turn(db, turn.turn_count);
+                            let x = cards
+                                .into_iter()
+                                .filter(|card| {
+                                    card.passes_restrictions(db, *source, *controller, restrictions)
+                                })
+                                .count();
                             if x > 0 {
                                 CounterId::add_counters(db, *target, *counter, x);
                             }
@@ -1156,7 +1179,7 @@ impl Battlefield {
 
                 let mut results = PendingResults::default();
                 for card in cards {
-                    results.extend(Battlefield::permanent_to_graveyard(db, card));
+                    results.extend(Battlefield::permanent_to_graveyard(db, turn, card));
                 }
 
                 results
@@ -1166,7 +1189,7 @@ impl Battlefield {
                     unreachable!()
                 };
 
-                Battlefield::permanent_to_graveyard(db, *id)
+                Battlefield::permanent_to_graveyard(db, turn, *id)
             }
             ActionResult::Explore { target } => {
                 let explorer = target.id().unwrap();
@@ -1186,6 +1209,17 @@ impl Battlefield {
                     PendingResults::default()
                 }
             }
+            ActionResult::ExileGraveyard { target, source } => {
+                let ActiveTarget::Player { id } = target else {
+                    unreachable!()
+                };
+
+                for card in id.get_cards::<InGraveyard>(db) {
+                    card.move_to_exile(db, *source, None, EffectDuration::Permanently)
+                }
+
+                PendingResults::default()
+            }
         }
     }
 
@@ -1198,7 +1232,11 @@ impl Battlefield {
         PendingResults::default()
     }
 
-    pub fn permanent_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+    pub fn permanent_to_graveyard(
+        db: &mut Database,
+        turn: &Turn,
+        target: CardId,
+    ) -> PendingResults {
         let mut pending = PendingResults::default();
 
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
@@ -1220,7 +1258,7 @@ impl Battlefield {
             }
         }
 
-        pending.extend(Self::leave_battlefield(db, target));
+        pending.extend(Self::leave_battlefield(db, turn, target));
         target.move_to_graveyard(db);
 
         for card in all_cards(db) {
@@ -1257,7 +1295,7 @@ impl Battlefield {
         pending
     }
 
-    pub fn leave_battlefield(db: &mut Database, target: CardId) -> PendingResults {
+    pub fn leave_battlefield(db: &mut Database, turn: &Turn, target: CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
         for card in in_play::cards::<InExile>(db)
@@ -1269,6 +1307,8 @@ impl Battlefield {
         {
             results.extend(Battlefield::add_from_exile(db, *card, false, None));
         }
+
+        target.left_battlefield(db, turn.turn_count);
 
         results
     }
@@ -1299,13 +1339,14 @@ impl Battlefield {
 
     pub fn exile(
         db: &mut Database,
+        turn: &Turn,
         source: CardId,
         target: CardId,
         duration: EffectDuration,
     ) -> PendingResults {
         target.move_to_exile(db, source, None, duration);
 
-        Self::leave_battlefield(db, target)
+        Self::leave_battlefield(db, turn, target)
     }
 }
 

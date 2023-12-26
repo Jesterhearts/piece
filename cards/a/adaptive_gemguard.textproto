@@ -58,11 +58,15 @@ activated_abilities {
     }
   }
   effects {
-    gain_counter {
+    target_gains_counters {
       single {
-        counter {
-          p1p1 {
-          }
+      }
+      counter {
+        p1p1 {
+        }
+      }
+      restrictions {
+        self {
         }
       }
     }

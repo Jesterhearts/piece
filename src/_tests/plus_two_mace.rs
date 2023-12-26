@@ -29,15 +29,15 @@ fn equipment_works() -> anyhow::Result<()> {
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(6));
@@ -49,7 +49,7 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.power(&db), Some(4));
     assert_eq!(creature2.toughness(&db), Some(2));
 
-    let results = Battlefield::permanent_to_graveyard(&mut db, equipment);
+    let results = Battlefield::permanent_to_graveyard(&mut db, &turn, equipment);
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
@@ -78,15 +78,15 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(6));
@@ -101,15 +101,15 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
     // Pay the generic
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(4));
@@ -118,7 +118,7 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.power(&db), Some(6));
     assert_eq!(creature2.toughness(&db), Some(4));
 
-    let results = Battlefield::permanent_to_graveyard(&mut db, equipment);
+    let results = Battlefield::permanent_to_graveyard(&mut db, &turn, equipment);
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));

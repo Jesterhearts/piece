@@ -67,11 +67,15 @@ triggered_abilities {
     }
   }
   effects {
-    gain_counter {
+    target_gains_counters {
       single {
-        counter {
-          charge {
-          }
+      }
+      counter {
+        charge {
+        }
+      }
+      restrictions {
+        self {
         }
       }
     }

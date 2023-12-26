@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::Turn,
 };
 
 #[test]
@@ -16,6 +17,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
+    let turn = Turn::new(&all_players);
 
     let counterspell_1 = CardId::upload(&mut db, &cards, player, "Counterspell");
     let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");
@@ -27,7 +29,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     assert_eq!(Stack::in_stack(&mut db).len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Stack::is_empty(&mut db));

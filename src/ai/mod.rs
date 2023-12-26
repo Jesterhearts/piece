@@ -22,7 +22,7 @@ impl AI {
         pending: &mut PendingResults,
     ) -> PendingResults {
         while pending.priority(db, all_players, turn) == self.player {
-            let result = pending.resolve(db, all_players, Some(0));
+            let result = pending.resolve(db, all_players, turn, Some(0));
             if result == ResolutionResult::Complete {
                 break;
             }

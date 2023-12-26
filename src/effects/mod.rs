@@ -14,10 +14,11 @@ pub mod discover;
 pub mod equip;
 pub mod exile_target;
 pub mod exile_target_creature_manifest_top_of_library;
+pub mod exile_target_graveyard;
 pub mod foreach_mana_of_source;
-pub mod gain_counter;
 pub mod gain_life;
 pub mod mill;
+pub mod modal;
 pub mod modify_target;
 pub mod pay_cost_then;
 pub mod return_from_graveyard_to_battlefield;
@@ -62,10 +63,11 @@ use crate::{
         equip::Equip,
         exile_target::ExileTarget,
         exile_target_creature_manifest_top_of_library::ExileTargetCreatureManifestTopOfLibrary,
+        exile_target_graveyard::ExileTargetGraveyard,
         foreach_mana_of_source::ForEachManaOfSource,
-        gain_counter::{Counter, GainCounter},
         gain_life::GainLife,
         mill::Mill,
+        modal::Modal,
         modify_target::ModifyTarget,
         pay_cost_then::PayCostThen,
         return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
@@ -75,7 +77,7 @@ use crate::{
         scry::Scry,
         self_explores::SelfExplores,
         target_controller_gains_tokens::TargetControllerGainsTokens,
-        target_gains_counters::TargetGainsCounters,
+        target_gains_counters::{Counter, TargetGainsCounters},
         target_to_top_of_library::TargetToTopOfLibrary,
         tutor_library::TutorLibrary,
         untap_target::UntapTarget,
@@ -311,6 +313,10 @@ pub trait EffectBehaviors: Debug {
             .collect_vec()
     }
 
+    fn modes(&'static self) -> Vec<Mode> {
+        vec![]
+    }
+
     fn is_sorcery_speed(&'static self) -> bool {
         false
     }
@@ -439,12 +445,12 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
                 Ok(Self(&ExileTargetCreatureManifestTopOfLibrary))
             }
+            protogen::effects::effect::Effect::ExileTargetGraveyard(_) => {
+                Ok(Self(&ExileTargetGraveyard))
+            }
             protogen::effects::effect::Effect::ForEachManaOfSource(value) => Ok(Self(Box::leak(
                 Box::new(ForEachManaOfSource::try_from(value)?),
             ))),
-            protogen::effects::effect::Effect::GainCounter(value) => {
-                Ok(Self(Box::leak(Box::new(GainCounter::try_from(value)?))))
-            }
             protogen::effects::effect::Effect::TargetGainsCounters(value) => Ok(Self(Box::leak(
                 Box::new(TargetGainsCounters::try_from(value)?),
             ))),
@@ -453,6 +459,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::Mill(value) => {
                 Ok(Self(Box::leak(Box::new(Mill::try_from(value)?))))
+            }
+            protogen::effects::effect::Effect::Modal(value) => {
+                Ok(Self(Box::leak(Box::new(Modal::try_from(value)?))))
             }
             protogen::effects::effect::Effect::PayCostThen(value) => {
                 Ok(Self(Box::leak(Box::new(PayCostThen::try_from(value)?))))

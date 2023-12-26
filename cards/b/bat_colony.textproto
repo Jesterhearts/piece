@@ -66,9 +66,21 @@ triggered_abilities {
   effects {
     target_gains_counters {
       single {
-        counter {
-          p1p1 {
+      }
+      counter {
+        p1p1 {
+        }
+      }
+      restrictions {
+        of_type {
+          types {
+            creature {
+            }
           }
+        }
+      }
+      restrictions {
+        on_battlefield {
         }
       }
     }

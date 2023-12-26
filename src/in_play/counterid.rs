@@ -4,7 +4,7 @@ use derive_more::{Deref, DerefMut};
 use strum::IntoEnumIterator;
 
 use crate::{
-    effects::gain_counter::{counter, Counter},
+    effects::target_gains_counters::{counter, Counter},
     in_play::{CardId, Database},
 };
 

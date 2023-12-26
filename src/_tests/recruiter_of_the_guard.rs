@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::Turn,
 };
 
 #[test]
@@ -17,6 +18,7 @@ fn etb() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     all_players[player].deck.place_on_top(&mut db, bear);
@@ -30,11 +32,11 @@ fn etb() -> anyhow::Result<()> {
     let recruiter = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
     recruiter.move_to_hand(&mut db);
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, recruiter, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(all_players[player].deck.len(), 2);

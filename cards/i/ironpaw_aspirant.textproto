@@ -24,6 +24,12 @@ cost {
 }
 etb_abilities {
   target_gains_counters {
+    single {
+    }
+    counter {
+      p1p1 {
+      }
+    }
     restrictions {
       of_type {
         types {
@@ -32,7 +38,12 @@ etb_abilities {
         }
       }
     }
+    restrictions {
+      on_battlefield {
+      }
+    }
   }
+  oracle_text: "When Ironpaw Aspirant enters the battlefield, put a +1/+1 counter on target creature."
 }
 power: 1
 toughness: 2

@@ -9,6 +9,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
+    turns::Turn,
     types::{Subtype, Type},
 };
 
@@ -20,6 +21,7 @@ fn x_is_zero() -> anyhow::Result<()> {
 
     let player = all_players.new_player("player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
     let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
@@ -35,22 +37,22 @@ fn x_is_zero() -> anyhow::Result<()> {
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Choose the target
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the white
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay the generic
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Skip the X
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let on_battlefield = in_play::cards::<OnBattlefield>(&mut db);
@@ -74,6 +76,7 @@ fn x_is_two() -> anyhow::Result<()> {
 
     let player = all_players.new_player("player".to_string(), 20);
     all_players[player].infinite_mana();
+    let turn = Turn::new(&all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
     let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
@@ -89,29 +92,29 @@ fn x_is_two() -> anyhow::Result<()> {
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Choose the target
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the white
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay the generic
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // pay 1 for X
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     // pay 1 for X
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Skip paying x
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Add card to stack & pay
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let on_battlefield = in_play::cards::<OnBattlefield>(&mut db);

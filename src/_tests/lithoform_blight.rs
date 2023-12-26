@@ -7,6 +7,7 @@ use crate::{
     load_cards,
     player::AllPlayers,
     stack::Stack,
+    turns::Turn,
 };
 
 #[test]
@@ -15,21 +16,22 @@ fn works() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::default();
+    let turn = Turn::new(&all_players);
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
     land.move_to_battlefield(&mut db);
 
     let lithoform = CardId::upload(&mut db, &cards, player, "Lithoform Blight");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, lithoform, false);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(land.subtypes(&db), IndexSet::from([]));

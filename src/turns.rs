@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use bevy_ecs::event::Events;
+use bevy_ecs::{event::Events, system::Resource};
 use indexmap::IndexSet;
 
 use crate::{
@@ -28,7 +28,7 @@ pub enum Phase {
     Cleanup,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct Turn {
     pub turn_count: usize,
     pub phase: Phase,

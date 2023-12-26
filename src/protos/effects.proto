@@ -152,6 +152,8 @@ message ExileTarget {
 
 message ExileTargetCreatureManifestTopOfLibrary {}
 
+message ExileTargetGraveyard {}
+
 message Explore {}
 
 message ExtraLandsPerTurn {
@@ -164,22 +166,28 @@ message ForEachManaOfSource {
 }
 
 message GainCounter {
-  message Single {
-    counters.Counter counter = 1;
-  }
+  message Single {}
   message Dynamic {
-    message X {
-      counters.Counter counter = 1;
+    message X {}
+    message LeftBattlefieldThisTurn {
+      repeated targets.Restriction restrictions = 1;
+      controller.Controller controller = 2;
     }
+
     oneof dynamic {
-      X x = 2;
+      LeftBattlefieldThisTurn left_battlefield_this_turn = 3;
+      X x = 4;
     }
   }
-  oneof counter {
-    Single single = 3;
-    Dynamic dynamic = 4;
+
+  oneof count {
+    Single single = 5;
+    Dynamic dynamic = 6;
   }
-  repeated targets.Restriction restrictions = 5;
+
+  counters.Counter counter = 7;
+  repeated targets.Restriction restrictions = 8;
+  controller.Controller controller = 9;
 }
 
 message GainLife {
@@ -305,30 +313,35 @@ message Effect {
     ExileTarget exile_target = 17;
     ExileTargetCreatureManifestTopOfLibrary
         exile_target_creature_manifest_top_of_library = 18;
-    Explore self_explores = 30;
-    ForEachManaOfSource for_each_mana_of_source = 19;
-    GainCounter gain_counter = 20;
-    GainCounter target_gains_counters = 21;
-    GainLife gain_life = 22;
-    Mill mill = 23;
-    PayCostThen pay_cost_then = 24;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 25;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 26;
-    ReturnSelfToHand return_self_to_hand = 27;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 28;
-    Scry scry = 29;
-    TargetToTopOfLibrary target_to_top_of_library = 31;
-    TutorLibrary tutor_library = 32;
-    UntapThis untap_this = 33;
-    UntapTarget untap_target = 34;
+    ExileTargetGraveyard exile_target_graveyard = 19;
+    Explore self_explores = 20;
+    ForEachManaOfSource for_each_mana_of_source = 21;
+    GainCounter target_gains_counters = 22;
+    GainLife gain_life = 23;
+    Mill mill = 24;
+    Modes modal = 25;
+    PayCostThen pay_cost_then = 26;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 27;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 28;
+    ReturnSelfToHand return_self_to_hand = 29;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 30;
+    Scry scry = 31;
+    TargetToTopOfLibrary target_to_top_of_library = 32;
+    TutorLibrary tutor_library = 33;
+    UntapThis untap_this = 34;
+    UntapTarget untap_target = 35;
   }
 
-  optional Effect threshold = 35;
-  string oracle_text = 36;
+  optional Effect threshold = 36;
+  string oracle_text = 37;
 }
 
 message Mode {
   repeated Effect effects = 1;
+}
+
+message Modes {
+  repeated Mode modes = 1;
 }
 
 message ReplacementEffect {

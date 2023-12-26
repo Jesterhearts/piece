@@ -31,27 +31,27 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 1);
     // Compute exile targets
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose exile card
-    let result = results.resolve(&mut db, &mut all_players, Some(1));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay white
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay generic
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose gy target
-    let result = results.resolve(&mut db, &mut all_players, Some(0));
+    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Complete
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve ability
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(player.get_cards::<OnBattlefield>(&mut db), [card, gy]);

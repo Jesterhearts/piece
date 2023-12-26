@@ -44,20 +44,14 @@ pub enum ResolutionResult {
     PendingChoice,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Source {
     Card(CardId),
     Ability(AbilityId),
+    Effect(Effect, CardId),
 }
 
 impl Source {
-    pub fn card(&self, db: &Database) -> CardId {
-        match self {
-            Source::Card(id) => *id,
-            Source::Ability(id) => id.source(db),
-        }
-    }
-
     fn mode_options(&self, db: &mut Database) -> Vec<(usize, String)> {
         match self {
             Source::Card(card) => card
@@ -93,6 +87,17 @@ impl Source {
                     vec![]
                 }
             }
+            Source::Effect(effect, _) => effect
+                .modes()
+                .into_iter()
+                .map(|mode| {
+                    mode.effects
+                        .into_iter()
+                        .map(|effect| effect.oracle_text)
+                        .join(", ")
+                })
+                .enumerate()
+                .collect_vec(),
         }
     }
 }
@@ -208,7 +213,6 @@ impl PendingResults {
     }
 
     pub fn apply_in_stages(&mut self) {
-        self.applied = true;
         self.apply_in_stages = true;
         self.add_to_stack = None;
     }
@@ -224,6 +228,10 @@ impl PendingResults {
             paying_costs,
             discovering,
         }));
+    }
+
+    pub fn chosen_modes(&self) -> &Vec<usize> {
+        &self.chosen_modes
     }
 
     pub fn push_settled(&mut self, action: ActionResult) {
@@ -328,6 +336,7 @@ impl PendingResults {
         &mut self,
         db: &mut Database,
         all_players: &mut AllPlayers,
+        turn: &Turn,
         choice: Option<usize>,
     ) -> ResolutionResult {
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
@@ -369,6 +378,7 @@ impl PendingResults {
                                 x_is: self.x_is,
                             });
                     }
+                    Source::Effect(_, _) => unreachable!(),
                 }
             } else if let Some(id) = self.gain_mana.take() {
                 let target = id.source(db).controller(db);
@@ -397,14 +407,18 @@ impl PendingResults {
                 }
             }
 
-            self.applied = true;
-            let results = Battlefield::apply_action_results(
-                db,
-                all_players,
-                self.settled_effects.make_contiguous(),
-            );
-            self.settled_effects.clear();
-            self.extend(results);
+            if !self.settled_effects.is_empty() {
+                self.applied = true;
+                let results = Battlefield::apply_action_results(
+                    db,
+                    all_players,
+                    turn,
+                    self.settled_effects.make_contiguous(),
+                );
+                self.settled_effects.clear();
+                self.extend(results);
+            }
+
             if self.is_empty() {
                 return ResolutionResult::Complete;
             }
@@ -412,11 +426,12 @@ impl PendingResults {
             return ResolutionResult::TryAgain;
         }
 
-        if self.apply_in_stages {
+        if self.apply_in_stages && !self.settled_effects.is_empty() {
             self.applied = true;
             let results = Battlefield::apply_action_results(
                 db,
                 all_players,
+                turn,
                 self.settled_effects.make_contiguous(),
             );
             self.settled_effects.clear();
@@ -454,7 +469,6 @@ impl PendingResults {
         self.gain_mana = results.gain_mana;
         self.cast_from = results.cast_from;
         self.apply_in_stages = results.apply_in_stages;
-        self.add_to_stack = results.add_to_stack;
     }
 
     pub fn is_empty(&self) -> bool {
@@ -487,8 +501,6 @@ impl PendingResults {
 
                     all_players.into_iter().exactly_one().unwrap()
                 }
-                Pending::LibraryOrGraveyard(_) => todo!(),
-                Pending::ChoosingScry(_) => todo!(),
                 Pending::OrganizingStack(organizing) => {
                     if let Some(first) = organizing
                         .entries

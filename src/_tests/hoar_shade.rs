@@ -25,24 +25,24 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, shade1, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, shade2, None);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, shade1, 0);
     // Pay Costs
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay costs
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(shade1.power(&db), Some(2));
@@ -52,7 +52,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
     assert_eq!(shade2.toughness(&db), Some(2));
 
     let mut results = Battlefield::end_turn(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, None);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(shade1.power(&db), Some(1));
