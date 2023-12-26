@@ -26,13 +26,15 @@ impl EffectBehaviors for TargetCreatureExplores {
         db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
+        already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         controller
             .get_cards_in::<OnBattlefield>(db)
             .into_iter()
             .filter(|card| card.types_intersect(db, &IndexSet::from([Type::Creature])))
+            .filter(|card| card.can_be_targeted(db, controller))
             .map(|card| ActiveTarget::Battlefield { id: card })
+            .filter(|target| !already_chosen.contains(target))
             .collect_vec()
     }
 

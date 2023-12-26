@@ -1,0 +1,26 @@
+name: "Mischievous Pup"
+types {
+  creature {
+  }
+}
+subtypes {
+  dog {
+  }
+}
+etb_abilities {
+  return_target_to_hand {
+    controller {
+      you {
+      }
+    }
+    restrictions {
+      not_self {
+      }
+    }
+    restrictions {
+      on_battlefield {
+      }
+    }
+  }
+}
+keywords: "Flash"

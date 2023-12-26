@@ -23,6 +23,7 @@ pub mod pay_cost_then;
 pub mod return_from_graveyard_to_battlefield;
 pub mod return_from_graveyard_to_library;
 pub mod return_self_to_hand;
+pub mod return_target_to_hand;
 pub mod return_transformed;
 pub mod reveal_each_top_of_library;
 pub mod scry;
@@ -72,6 +73,7 @@ use crate::{
         return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
         return_from_graveyard_to_library::ReturnFromGraveyardToLibrary,
         return_self_to_hand::ReturnSelfToHand,
+        return_target_to_hand::ReturnTargetToHand,
         return_transformed::ReturnTransformed,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         scry::Scry,
@@ -328,11 +330,15 @@ pub trait EffectBehaviors: Debug {
 
     fn valid_targets(
         &'static self,
-        _db: &mut Database,
-        _source: CardId,
-        _controller: Controller,
-        _already_chosen: &HashSet<ActiveTarget>,
+        db: &mut Database,
+        source: CardId,
+        controller: Controller,
+        already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
+        let _ = db;
+        let _ = source;
+        let _ = controller;
+        let _ = already_chosen;
         vec![]
     }
 
@@ -346,11 +352,15 @@ pub trait EffectBehaviors: Debug {
 
     fn push_behavior_from_top_of_library(
         &'static self,
-        _db: &Database,
-        _source: CardId,
-        _target: CardId,
-        _results: &mut PendingResults,
+        db: &Database,
+        source: CardId,
+        target: CardId,
+        results: &mut PendingResults,
     ) {
+        let _ = db;
+        let _ = source;
+        let _ = target;
+        let _ = results;
         unreachable!()
     }
 
@@ -366,13 +376,19 @@ pub trait EffectBehaviors: Debug {
 
     fn replace_draw(
         &'static self,
-        _player: &mut Player,
-        _db: &mut Database,
-        _replacements: &mut IntoIter<ReplacementEffectId>,
-        _controller: Controller,
-        _count: usize,
-        _results: &mut PendingResults,
+        player: &mut Player,
+        db: &mut Database,
+        replacements: &mut IntoIter<ReplacementEffectId>,
+        controller: Controller,
+        count: usize,
+        results: &mut PendingResults,
     ) {
+        let _ = player;
+        let _ = db;
+        let _ = replacements;
+        let _ = controller;
+        let _ = count;
+        let _ = results;
     }
 }
 
@@ -472,6 +488,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             )),
             protogen::effects::effect::Effect::ReturnTransformed(_) => Ok(Self(&ReturnTransformed)),
             protogen::effects::effect::Effect::ReturnSelfToHand(_) => Ok(Self(&ReturnSelfToHand)),
+            protogen::effects::effect::Effect::ReturnTargetToHand(value) => Ok(Self(Box::leak(
+                Box::new(ReturnTargetToHand::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => Ok(Self(
                 Box::leak(Box::new(RevealEachTopOfLibrary::try_from(value)?)),
             )),

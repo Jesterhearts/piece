@@ -38,6 +38,7 @@ message Subtype {
   message Cat {}
   message Cave {}
   message Dinosaur {}
+  message Dog {}
   message Dryad {}
   message Eldrazi {}
   message Elemental {}
@@ -74,30 +75,31 @@ message Subtype {
     Cat cat = 7;
     Cave cave = 8;
     Dinosaur dinosaur = 9;
-    Dryad dryad = 10;
-    Eldrazi eldrazi = 11;
-    Elemental elemental = 12;
-    Elf elf = 13;
-    Equipment equipment = 14;
-    Forest forest = 15;
-    Gnome gnome = 16;
-    Golem golem = 17;
-    Human human = 18;
-    Island island = 19;
-    Mountain mountain = 20;
-    Nymph nymph = 21;
-    Plains plains = 22;
-    Praetor praetor = 23;
-    Scout scout = 24;
-    Shade shade = 25;
-    Shaman shaman = 26;
-    Shapeshifter shapeshifter = 27;
-    Soldier soldier = 28;
-    Spirit spirit = 29;
-    Swamp swamp = 30;
-    Vampire vampire = 31;
-    Warrior warrior = 32;
-    Wizard wizard = 33;
-    Zombie zombie = 34;
+    Dog dog = 10;
+    Dryad dryad = 11;
+    Eldrazi eldrazi = 12;
+    Elemental elemental = 13;
+    Elf elf = 14;
+    Equipment equipment = 15;
+    Forest forest = 16;
+    Gnome gnome = 17;
+    Golem golem = 18;
+    Human human = 19;
+    Island island = 20;
+    Mountain mountain = 21;
+    Nymph nymph = 22;
+    Plains plains = 23;
+    Praetor praetor = 24;
+    Scout scout = 25;
+    Shade shade = 26;
+    Shaman shaman = 27;
+    Shapeshifter shapeshifter = 28;
+    Soldier soldier = 29;
+    Spirit spirit = 30;
+    Swamp swamp = 31;
+    Vampire vampire = 32;
+    Warrior warrior = 33;
+    Wizard wizard = 34;
+    Zombie zombie = 35;
   }
 }

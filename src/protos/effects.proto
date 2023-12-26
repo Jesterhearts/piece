@@ -238,6 +238,11 @@ message ReturnFromGraveyardToLibrary {
 
 message ReturnSelfToHand {}
 
+message ReturnTargetToHand {
+  controller.Controller controller = 1;
+  repeated targets.Restriction restrictions = 2;
+}
+
 message RevealEachTopOfLibrary {
   message ForEach {
     message IfNone {
@@ -302,17 +307,18 @@ message Effect {
     ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 27;
     ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 28;
     ReturnSelfToHand return_self_to_hand = 29;
-    ReturnTransformed return_transformed = 30;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 31;
-    Scry scry = 32;
-    TargetToTopOfLibrary target_to_top_of_library = 33;
-    TutorLibrary tutor_library = 34;
-    UntapThis untap_this = 35;
-    UntapTarget untap_target = 36;
+    ReturnTargetToHand return_target_to_hand = 30;
+    ReturnTransformed return_transformed = 31;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 32;
+    Scry scry = 33;
+    TargetToTopOfLibrary target_to_top_of_library = 34;
+    TutorLibrary tutor_library = 35;
+    UntapThis untap_this = 36;
+    UntapTarget untap_target = 37;
   }
 
-  optional Effect threshold = 37;
-  string oracle_text = 38;
+  optional Effect threshold = 38;
+  string oracle_text = 39;
 }
 
 message Mode {
