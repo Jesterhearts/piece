@@ -100,6 +100,7 @@ activated_abilities {
   }
   oracle_text: "Return to the battlefield transformed under its owners control."
   sorcery_speed: true
+  craft: true
 }
 back_face {
   name: "Cosmium Kiln"
