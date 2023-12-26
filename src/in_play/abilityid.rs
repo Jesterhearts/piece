@@ -514,60 +514,89 @@ fn can_pay_costs(
                 }
             }
             AdditionalCost::SacrificePermanent(restrictions) => {
-                let any_target =
-                    controller
-                        .get_cards::<OnBattlefield>(db)
-                        .into_iter()
-                        .any(|card| {
-                            card.passes_restrictions(
-                                db,
-                                source,
-                                ControllerRestriction::You,
-                                restrictions,
-                            )
-                        });
+                let any_target = controller
+                    .get_cards_in::<OnBattlefield>(db)
+                    .into_iter()
+                    .any(|card| {
+                        card.passes_restrictions(
+                            db,
+                            source,
+                            ControllerRestriction::You,
+                            restrictions,
+                        )
+                    });
                 if !any_target {
                     return false;
                 }
             }
             AdditionalCost::TapPermanent(restrictions) => {
-                let any_target =
-                    controller
-                        .get_cards::<OnBattlefield>(db)
-                        .into_iter()
-                        .any(|card| {
-                            !card.tapped(db)
-                                && card.passes_restrictions(
-                                    db,
-                                    source,
-                                    ControllerRestriction::You,
-                                    restrictions,
-                                )
-                        });
+                let any_target = controller
+                    .get_cards_in::<OnBattlefield>(db)
+                    .into_iter()
+                    .any(|card| {
+                        !card.tapped(db)
+                            && card.passes_restrictions(
+                                db,
+                                source,
+                                ControllerRestriction::You,
+                                restrictions,
+                            )
+                    });
 
                 if !any_target {
                     return false;
                 }
             }
             AdditionalCost::ExileCardsCmcX(restrictions) => {
-                let any_target =
-                    controller
-                        .get_cards::<OnBattlefield>(db)
-                        .into_iter()
-                        .any(|card| {
-                            !card.tapped(db)
-                                && card.passes_restrictions(
-                                    db,
-                                    source,
-                                    ControllerRestriction::You,
-                                    restrictions,
-                                )
-                        });
+                let any_target = controller
+                    .get_cards_in::<OnBattlefield>(db)
+                    .into_iter()
+                    .any(|card| {
+                        !card.tapped(db)
+                            && card.passes_restrictions(
+                                db,
+                                source,
+                                ControllerRestriction::You,
+                                restrictions,
+                            )
+                    });
 
                 if !any_target {
                     return false;
                 }
             }
+            AdditionalCost::ExileCard { restrictions } => {
+                let any_target = controller.get_cards(db).into_iter().any(|card| {
+                    card.passes_restrictions(db, source, ControllerRestriction::You, restrictions)
+                });
+
+                if !any_target {
+                    return false;
+                }
+            }
+            AdditionalCost::ExileXOrMoreCards {
+                minimum,
+                restrictions,
+            } => {
+                let targets = controller
+                    .get_cards(db)
+                    .into_iter()
+                    .filter(|card| {
+                        card.passes_restrictions(
+                            db,
+                            source,
+                            ControllerRestriction::You,
+                            restrictions,
+                        )
+                    })
+                    .count();
+
+                if targets < *minimum {
+                    return false;
+                }
+            }
+            // These are too complicated to compute, so just give up. The user can cancel if they can't actually pay.
+            AdditionalCost::ExileSharingCardType { .. } => {}
         }
     }
 

@@ -48,7 +48,7 @@ use crate::{
         Controller, Owner,
     },
     stack::{self, ActiveTarget, Settled, Stack, Targets},
-    targets::{Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
+    targets::{self, Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
     triggers::trigger_source,
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
     Cards,
@@ -1069,6 +1069,18 @@ impl CardId {
                 Restriction::AttackingOrBlocking => {
                     // TODO blocking
                     if !self.attacking(db) {
+                        return false;
+                    }
+                }
+                Restriction::InLocation { locations } => {
+                    if !locations.iter().any(|loc| match loc {
+                        targets::Location::Battlefield => self.is_in_location::<OnBattlefield>(db),
+                        targets::Location::Graveyard => self.is_in_location::<InGraveyard>(db),
+                        targets::Location::Exile => self.is_in_location::<InExile>(db),
+                        targets::Location::Library => self.is_in_location::<InLibrary>(db),
+                        targets::Location::Hand => self.is_in_location::<InHand>(db),
+                        targets::Location::Stack => self.is_in_location::<InStack>(db),
+                    }) {
                         return false;
                     }
                 }

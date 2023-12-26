@@ -120,6 +120,9 @@ impl Owner {
                 Restriction::OnBattlefield => {
                     return false;
                 }
+                Restriction::InLocation { .. } => {
+                    return false;
+                }
             }
         }
 
@@ -137,11 +140,24 @@ impl From<Owner> for Controller {
 }
 
 impl Controller {
-    pub fn get_cards<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
+    pub fn get_cards_in<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
         db.query::<(Entity, &Controller, &Zone)>()
             .iter(db)
             .sorted_by_key(|(_, _, zone)| *zone)
             .filter_map(|(card, owner, _)| {
+                if self == *owner {
+                    Some(card.into())
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
+    }
+
+    pub fn get_cards(self, db: &mut Database) -> Vec<CardId> {
+        db.query::<(Entity, &Controller)>()
+            .iter(db)
+            .filter_map(|(card, owner)| {
                 if self == *owner {
                     Some(card.into())
                 } else {

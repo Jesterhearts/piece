@@ -316,8 +316,11 @@ impl PendingResults {
     }
 
     pub fn options(&mut self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
-        if let Some(pending) = self.pending.front_mut() {
+        for pending in self.pending.iter_mut() {
             let _ = pending.recompute_targets(db, &self.all_chosen_targets);
+        }
+
+        if let Some(pending) = self.pending.front_mut() {
             pending.options(db, all_players)
         } else {
             vec![]
@@ -342,10 +345,13 @@ impl PendingResults {
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
         debug!("Choosing {:?} for {:#?}", choice, self);
 
+        let mut recomputed = false;
         for pend in self.pending.iter_mut() {
-            if pend.recompute_targets(db, &self.all_chosen_targets) {
-                return ResolutionResult::TryAgain;
-            }
+            recomputed |= pend.recompute_targets(db, &self.all_chosen_targets);
+        }
+
+        if recomputed {
+            return ResolutionResult::TryAgain;
         }
 
         self.pending.retain(|pend| {

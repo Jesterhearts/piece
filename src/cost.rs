@@ -80,6 +80,16 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
+    ExileCard {
+        restrictions: Vec<Restriction>,
+    },
+    ExileXOrMoreCards {
+        minimum: usize,
+        restrictions: Vec<Restriction>,
+    },
+    ExileSharingCardType {
+        count: usize,
+    },
     ExileCardsCmcX(Vec<Restriction>),
     SacrificeSource,
     PayLife(PayLife),
@@ -105,6 +115,20 @@ impl AdditionalCost {
                 "Exile one or more {} cards with cmc X",
                 restrictions.iter().map(|r| r.text()).join(", ")
             ),
+            AdditionalCost::ExileCard { restrictions } => {
+                format!("Exile {}", restrictions.iter().map(|r| r.text()).join(", "))
+            }
+            AdditionalCost::ExileXOrMoreCards {
+                minimum,
+                restrictions,
+            } => format!(
+                "Exile {} or more {}",
+                minimum,
+                restrictions.iter().map(|r| r.text()).join(", ")
+            ),
+            AdditionalCost::ExileSharingCardType { count } => {
+                format!("Exile {} cards sharing a card type", count)
+            }
         }
     }
 }
@@ -153,6 +177,28 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
                         .map(Restriction::try_from)
                         .collect::<anyhow::Result<_>>()?,
                 ))
+            }
+            protogen::cost::additional_cost::Cost::ExileCard(value) => Ok(Self::ExileCard {
+                restrictions: value
+                    .restrictions
+                    .iter()
+                    .map(Restriction::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
+            protogen::cost::additional_cost::Cost::ExileSharingCardType(value) => {
+                Ok(Self::ExileSharingCardType {
+                    count: usize::try_from(value.count)?,
+                })
+            }
+            protogen::cost::additional_cost::Cost::ExileXOrMoreCards(value) => {
+                Ok(Self::ExileXOrMoreCards {
+                    minimum: usize::try_from(value.minimum)?,
+                    restrictions: value
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                })
             }
         }
     }

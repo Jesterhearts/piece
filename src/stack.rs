@@ -10,9 +10,13 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{
-        choose_targets::ChooseTargets, pay_costs::ExilePermanentsCmcX, pay_costs::PayCost,
-        pay_costs::SacrificePermanent, pay_costs::SpendMana, pay_costs::TapPermanent, ActionResult,
-        PendingResults, Source, TargetSource,
+        choose_targets::ChooseTargets,
+        pay_costs::SacrificePermanent,
+        pay_costs::SpendMana,
+        pay_costs::TapPermanent,
+        pay_costs::{ExileCards, ExilePermanentsCmcX},
+        pay_costs::{ExileCardsSharingType, PayCost},
+        ActionResult, PendingResults, Source, TargetSource,
     },
     card::keyword::SplitSecond,
     cost::AdditionalCost,
@@ -697,9 +701,36 @@ fn add_card_to_stack(
                     card,
                 )));
             }
-            AdditionalCost::ExileCardsCmcX(restrictions) => results.push_pay_costs(
-                PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone(), card)),
-            ),
+            AdditionalCost::ExileCardsCmcX(restrictions) => {
+                results.push_pay_costs(PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(
+                    restrictions.clone(),
+                    card,
+                )));
+            }
+            AdditionalCost::ExileCard { restrictions } => {
+                results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                    1,
+                    1,
+                    restrictions.clone(),
+                    card,
+                )));
+            }
+            AdditionalCost::ExileXOrMoreCards {
+                minimum,
+                restrictions,
+            } => {
+                results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                    *minimum,
+                    usize::MAX,
+                    restrictions.clone(),
+                    card,
+                )));
+            }
+            AdditionalCost::ExileSharingCardType { count } => {
+                results.push_pay_costs(PayCost::ExileCardsSharingType(ExileCardsSharingType::new(
+                    card, *count,
+                )));
+            }
         }
     }
 

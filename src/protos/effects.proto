@@ -41,31 +41,6 @@ message CounterSpell {
   targets.SpellTarget valid_target = 1;
 }
 
-message Craft {
-  message One {
-    repeated types.Type types = 1;
-    repeated types.Subtype subtypes = 2;
-  }
-  message XOrMore {
-    int32 minimum = 1;
-    repeated types.Type types = 2;
-    repeated types.Subtype subtypes = 3;
-    repeated color.Color colors = 4;
-  }
-  message SharingCardType {
-    int32 count = 1;
-  }
-  message OneOfEach {
-    repeated types.Subtype subtypes = 1;
-  }
-  oneof source {
-    One one = 1;
-    XOrMore x_or_more = 2;
-    SharingCardType sharing_card_type = 3;
-    OneOfEach one_of_each = 4;
-  }
-}
-
 message CreateToken {
   message Creature {
     string name = 1;
@@ -288,6 +263,8 @@ message TutorLibrary {
   bool reveal = 3;
 }
 
+message ReturnTransformed {}
+
 message UntapTarget {}
 
 message UntapThis {}
@@ -301,29 +278,29 @@ message Effect {
     ControllerLosesLife controller_loses_life = 5;
     CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 6;
     CounterSpell counter_spell = 7;
-    Craft craft = 8;
-    CreateToken create_token = 9;
-    CreateToken target_controller_gains_tokens = 10;
-    CreateTokenCopy create_token_copy = 11;
-    DealDamage deal_damage = 12;
-    DestroyEach destroy_each = 13;
-    DestroyTarget destroy_target = 14;
-    Discover discover = 15;
-    Equip equip = 16;
-    ExileTarget exile_target = 17;
+    CreateToken create_token = 8;
+    CreateToken target_controller_gains_tokens = 9;
+    CreateTokenCopy create_token_copy = 10;
+    DealDamage deal_damage = 11;
+    DestroyEach destroy_each = 12;
+    DestroyTarget destroy_target = 13;
+    Discover discover = 14;
+    Equip equip = 15;
+    ExileTarget exile_target = 16;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 18;
-    ExileTargetGraveyard exile_target_graveyard = 19;
-    Explore self_explores = 20;
-    ForEachManaOfSource for_each_mana_of_source = 21;
-    GainCounter target_gains_counters = 22;
-    GainLife gain_life = 23;
-    Mill mill = 24;
-    Modes modal = 25;
-    PayCostThen pay_cost_then = 26;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 27;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 28;
-    ReturnSelfToHand return_self_to_hand = 29;
+        exile_target_creature_manifest_top_of_library = 17;
+    ExileTargetGraveyard exile_target_graveyard = 18;
+    Explore self_explores = 19;
+    ForEachManaOfSource for_each_mana_of_source = 20;
+    GainCounter target_gains_counters = 21;
+    GainLife gain_life = 22;
+    Mill mill = 23;
+    Modes modal = 24;
+    PayCostThen pay_cost_then = 25;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 26;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 27;
+    ReturnSelfToHand return_self_to_hand = 28;
+    ReturnTransformed return_transformed = 29;
     RevealEachTopOfLibrary reveal_each_top_of_library = 30;
     Scry scry = 31;
     TargetToTopOfLibrary target_to_top_of_library = 32;

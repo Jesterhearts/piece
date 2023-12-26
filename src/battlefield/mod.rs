@@ -12,7 +12,10 @@ use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
     battlefield::{
         choose_targets::ChooseTargets,
-        pay_costs::{ExilePermanentsCmcX, PayCost, SacrificePermanent, SpendMana, TapPermanent},
+        pay_costs::{
+            ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
+            SpendMana, TapPermanent,
+        },
     },
     card::Color,
     controller::ControllerRestriction,
@@ -192,10 +195,6 @@ pub enum ActionResult {
         target: crate::player::Controller,
         count: usize,
     },
-    Craft {
-        transforming: CardId,
-        targets: Vec<ActiveTarget>,
-    },
     DeclareAttackers {
         attackers: Vec<CardId>,
         targets: Vec<Owner>,
@@ -209,6 +208,7 @@ pub enum ActionResult {
         target: ActiveTarget,
         source: CardId,
     },
+    ReturnTransformed(CardId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -377,7 +377,7 @@ impl Battlefield {
     ) -> Vec<CardId> {
         let mut results = vec![];
 
-        for card in player.get_cards::<InLibrary>(db) {
+        for card in player.get_cards_in::<InLibrary>(db) {
             if !card.passes_restrictions(db, card, ControllerRestriction::You, restrictions) {
                 continue;
             }
@@ -418,7 +418,7 @@ impl Battlefield {
     }
 
     pub fn controlled_colors(db: &mut Database, player: Controller) -> HashSet<Color> {
-        let cards = player.get_cards::<OnBattlefield>(db);
+        let cards = player.get_cards_in::<OnBattlefield>(db);
 
         let mut colors = HashSet::default();
         for card in cards {
@@ -555,6 +555,30 @@ impl Battlefield {
                     AdditionalCost::ExileCardsCmcX(restrictions) => {
                         results.push_pay_costs(PayCost::ExilePermanentsCmcX(
                             ExilePermanentsCmcX::new(restrictions.clone(), card),
+                        ));
+                    }
+                    AdditionalCost::ExileCard { restrictions } => {
+                        results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                            1,
+                            1,
+                            restrictions.clone(),
+                            card,
+                        )));
+                    }
+                    AdditionalCost::ExileXOrMoreCards {
+                        minimum,
+                        restrictions,
+                    } => {
+                        results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                            *minimum,
+                            usize::MAX,
+                            restrictions.clone(),
+                            card,
+                        )));
+                    }
+                    AdditionalCost::ExileSharingCardType { count } => {
+                        results.push_pay_costs(PayCost::ExileCardsSharingType(
+                            ExileCardsSharingType::new(card, *count),
                         ));
                     }
                 }
@@ -761,7 +785,7 @@ impl Battlefield {
                 target,
                 duration,
             } => {
-                let ActiveTarget::Battlefield { id: target } = target else {
+                let Some(target) = target.id() else {
                     unreachable!()
                 };
                 if let EffectDuration::UntilSourceLeavesBattlefield = *duration {
@@ -770,7 +794,7 @@ impl Battlefield {
                     }
                 }
 
-                Battlefield::exile(db, turn, *source, *target, *duration)
+                Battlefield::exile(db, turn, *source, target, *duration)
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -1131,28 +1155,6 @@ impl Battlefield {
                 all_players[*target].life_total += *count as i32;
                 PendingResults::default()
             }
-            ActionResult::Craft {
-                transforming,
-                targets,
-            } => {
-                transforming.move_to_exile(db, *transforming, None, EffectDuration::Permanently);
-                for target in targets {
-                    let card = target.id().unwrap();
-                    card.move_to_exile(db, *transforming, None, EffectDuration::Permanently);
-                }
-                transforming.transform(db);
-                let mut results = PendingResults::default();
-                move_card_to_battlefield(
-                    db,
-                    transforming.faceup_face(db),
-                    false,
-                    &mut results,
-                    None,
-                );
-                complete_add_from_exile(db, transforming.faceup_face(db), &mut results);
-                transforming.move_to_limbo(db);
-                results
-            }
             ActionResult::DeclareAttackers { attackers, targets } => {
                 let mut results = PendingResults::default();
                 for (attacker, target) in attackers.iter().zip(targets.iter()) {
@@ -1219,6 +1221,20 @@ impl Battlefield {
                 }
 
                 PendingResults::default()
+            }
+            ActionResult::ReturnTransformed(transforming) => {
+                transforming.transform(db);
+                let mut results = PendingResults::default();
+                move_card_to_battlefield(
+                    db,
+                    transforming.faceup_face(db),
+                    false,
+                    &mut results,
+                    None,
+                );
+                complete_add_from_exile(db, transforming.faceup_face(db), &mut results);
+                transforming.move_to_limbo(db);
+                results
             }
         }
     }
@@ -1357,7 +1373,7 @@ pub fn compute_deck_targets(
 ) -> Vec<CardId> {
     let mut results = vec![];
 
-    for card in player.get_cards::<InLibrary>(db) {
+    for card in player.get_cards_in::<InLibrary>(db) {
         if !card.passes_restrictions(db, card, ControllerRestriction::You, restrictions) {
             continue;
         }

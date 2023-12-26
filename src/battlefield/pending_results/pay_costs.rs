@@ -7,7 +7,7 @@ use crate::{
     battlefield::{ActionResult, PendingResult, PendingResults},
     controller::ControllerRestriction,
     effects::EffectDuration,
-    in_play::{CardId, Database, OnBattlefield},
+    in_play::{target_from_location, CardId, Database, OnBattlefield},
     mana::{Mana, ManaCost},
     player::{
         mana_pool::{ManaSource, SpendReason},
@@ -72,6 +72,53 @@ impl ExilePermanentsCmcX {
             valid_targets: Default::default(),
             chosen: Default::default(),
             target: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExileCards {
+    source: CardId,
+    minimum: usize,
+    maximum: usize,
+    restrictions: Vec<Restriction>,
+    valid_targets: Vec<CardId>,
+    chosen: IndexSet<CardId>,
+}
+
+impl ExileCards {
+    pub fn new(
+        minimum: usize,
+        maximum: usize,
+        restrictions: Vec<Restriction>,
+        source: CardId,
+    ) -> Self {
+        Self {
+            source,
+            minimum,
+            maximum,
+            restrictions,
+            valid_targets: Default::default(),
+            chosen: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExileCardsSharingType {
+    source: CardId,
+    count: usize,
+    chosen: IndexSet<CardId>,
+    valid_targets: Vec<CardId>,
+}
+
+impl ExileCardsSharingType {
+    pub fn new(source: CardId, count: usize) -> Self {
+        Self {
+            source,
+            count,
+            chosen: Default::default(),
+            valid_targets: Default::default(),
         }
     }
 }
@@ -202,6 +249,8 @@ pub enum PayCost {
     TapPermanent(TapPermanent),
     SpendMana(SpendMana),
     ExilePermanentsCmcX(ExilePermanentsCmcX),
+    ExileCards(ExileCards),
+    ExileCardsSharingType(ExileCardsSharingType),
 }
 
 impl PayCost {
@@ -230,6 +279,8 @@ impl PayCost {
 
                 true
             }
+            PayCost::ExileCards(_) => false,
+            PayCost::ExileCardsSharingType(_) => false,
         }
     }
 
@@ -246,6 +297,8 @@ impl PayCost {
                     .sum::<usize>()
                     >= exile.target
             }
+            PayCost::ExileCards(exile) => exile.chosen.len() >= exile.minimum,
+            PayCost::ExileCardsSharingType(exile) => exile.chosen.len() >= exile.count,
         }
     }
 
@@ -258,7 +311,7 @@ impl PayCost {
             PayCost::SacrificePermanent(sac) => {
                 let controller = sac.source.controller(db);
                 let valid_targets = controller
-                    .get_cards::<OnBattlefield>(db)
+                    .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
@@ -280,7 +333,7 @@ impl PayCost {
             PayCost::TapPermanent(tap) => {
                 let controller = tap.source.controller(db);
                 let valid_targets = controller
-                    .get_cards::<OnBattlefield>(db)
+                    .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
@@ -309,7 +362,7 @@ impl PayCost {
 
                 let controller = exile.source.controller(db);
                 let valid_targets = controller
-                    .get_cards::<OnBattlefield>(db)
+                    .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
                     .filter(|target| {
                         target.passes_restrictions(
@@ -328,12 +381,59 @@ impl PayCost {
                     false
                 }
             }
+            PayCost::ExileCards(exile) => {
+                let controller = exile.source.controller(db);
+                let valid_targets = controller
+                    .get_cards(db)
+                    .into_iter()
+                    .filter(|target| {
+                        target.passes_restrictions(
+                            db,
+                            exile.source,
+                            ControllerRestriction::You,
+                            &exile.restrictions,
+                        )
+                    })
+                    .collect_vec();
+
+                if valid_targets != exile.valid_targets {
+                    exile.valid_targets = valid_targets;
+                    true
+                } else {
+                    false
+                }
+            }
+            PayCost::ExileCardsSharingType(exile) => {
+                let controller = exile.source.controller(db);
+                let card_types = exile
+                    .chosen
+                    .iter()
+                    .map(|chosen| chosen.types(db))
+                    .collect_vec();
+
+                let valid_targets = controller
+                    .get_cards(db)
+                    .into_iter()
+                    .filter(|target| {
+                        card_types
+                            .iter()
+                            .all(|types| target.types_intersect(db, types))
+                    })
+                    .collect_vec();
+
+                if valid_targets != exile.valid_targets {
+                    exile.valid_targets = valid_targets;
+                    true
+                } else {
+                    false
+                }
+            }
         }
     }
 
     fn choose_pay(
         &mut self,
-        db: &Database,
+        db: &mut Database,
         all_players: &mut AllPlayers,
         all_targets: &HashSet<ActiveTarget>,
         choice: Option<usize>,
@@ -388,6 +488,40 @@ impl PayCost {
                     }
                 } else {
                     true
+                }
+            }
+            PayCost::ExileCards(ExileCards {
+                valid_targets,
+                chosen,
+                ..
+            }) => {
+                if let Some(choice) = choice {
+                    let target = valid_targets[choice];
+                    if !all_targets.contains(&target_from_location(db, target)) {
+                        chosen.insert(target);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            PayCost::ExileCardsSharingType(ExileCardsSharingType {
+                chosen,
+                valid_targets,
+                ..
+            }) => {
+                if let Some(choice) = choice {
+                    let target = valid_targets[choice];
+                    if !all_targets.contains(&target_from_location(db, target)) {
+                        chosen.insert(target);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
                 }
             }
             PayCost::SpendMana(spend) => {
@@ -502,7 +636,7 @@ impl PayCost {
         }
     }
 
-    fn results(&self) -> Vec<ActionResult> {
+    fn results(&self, db: &mut Database) -> Vec<ActionResult> {
         match self {
             PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
                 vec![ActionResult::PermanentToGraveyard(chosen.unwrap())]
@@ -530,18 +664,45 @@ impl PayCost {
                     reason: spend.reason,
                 }]
             }
+            PayCost::ExileCards(exile) => {
+                let mut results = vec![];
+                for target in exile.chosen.iter() {
+                    results.push(ActionResult::ExileTarget {
+                        source: exile.source,
+                        target: target_from_location(db, *target),
+                        duration: EffectDuration::Permanently,
+                    });
+                }
+
+                results
+            }
+            PayCost::ExileCardsSharingType(exile) => {
+                let mut results = vec![];
+                for target in exile.chosen.iter() {
+                    results.push(ActionResult::ExileTarget {
+                        source: exile.source,
+                        target: target_from_location(db, *target),
+                        duration: EffectDuration::Permanently,
+                    });
+                }
+
+                results
+            }
         }
     }
 
     fn x_is(&self) -> Option<usize> {
         match self {
-            PayCost::SacrificePermanent(_) | PayCost::TapPermanent(_) => None,
+            PayCost::SacrificePermanent(_)
+            | PayCost::TapPermanent(_)
+            | PayCost::ExileCards(_)
+            | PayCost::ExileCardsSharingType(_) => None,
             PayCost::SpendMana(spend) => spend.x_is(),
             PayCost::ExilePermanentsCmcX(exile) => Some(exile.target),
         }
     }
 
-    fn chosen_targets(&self) -> Vec<ActiveTarget> {
+    fn chosen_targets(&self, db: &mut Database) -> Vec<ActiveTarget> {
         match self {
             PayCost::SacrificePermanent(SacrificePermanent { chosen, .. }) => chosen
                 .map(|id| ActiveTarget::Battlefield { id })
@@ -557,19 +718,16 @@ impl PayCost {
                 .iter()
                 .map(|chosen| ActiveTarget::Battlefield { id: *chosen })
                 .collect_vec(),
-        }
-    }
-
-    fn targets(&self) -> Vec<CardId> {
-        match self {
-            PayCost::SacrificePermanent(SacrificePermanent { valid_targets, .. }) => {
-                valid_targets.clone()
-            }
-            PayCost::TapPermanent(TapPermanent { valid_targets, .. }) => valid_targets.clone(),
-            PayCost::SpendMana(_) => vec![],
-            PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX { valid_targets, .. }) => {
-                valid_targets.clone()
-            }
+            PayCost::ExileCards(exile) => exile
+                .chosen
+                .iter()
+                .map(|card| target_from_location(db, *card))
+                .collect_vec(),
+            PayCost::ExileCardsSharingType(exile) => exile
+                .chosen
+                .iter()
+                .map(|card| target_from_location(db, *card))
+                .collect_vec(),
         }
     }
 }
@@ -580,6 +738,8 @@ impl PendingResult for PayCost {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
             PayCost::ExilePermanentsCmcX(_) => true,
+            PayCost::ExileCards(ExileCards { minimum, .. }) => *minimum == 0,
+            PayCost::ExileCardsSharingType(_) => false,
             PayCost::SpendMana(spend) => {
                 let (mana, source) = spend.paying();
                 if let Some(pool_post_pay) = all_players[spend.source.controller(db)].pool_post_pay(
@@ -666,6 +826,26 @@ impl PendingResult for PayCost {
                 .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
                 .map(|(idx, target)| (idx, target.name(db)))
                 .collect_vec(),
+            PayCost::ExileCards(exile) => {
+                if exile.chosen.len() == exile.maximum {
+                    vec![]
+                } else {
+                    exile
+                        .valid_targets
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
+                        .map(|(idx, target)| (idx, target.name(db)))
+                        .collect_vec()
+                }
+            }
+            PayCost::ExileCardsSharingType(exile) => exile
+                .valid_targets
+                .iter()
+                .enumerate()
+                .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
+                .map(|(idx, target)| (idx, target.name(db)))
+                .collect_vec(),
         }
     }
 
@@ -674,7 +854,9 @@ impl PendingResult for PayCost {
             PayCost::SacrificePermanent(_) => "sacrificing a permanent".to_string(),
             PayCost::TapPermanent(_) => "tapping a permanent".to_string(),
             PayCost::SpendMana(spend) => spend.description(),
-            PayCost::ExilePermanentsCmcX(_) => "exiling a permanent".to_string(),
+            PayCost::ExilePermanentsCmcX(_)
+            | PayCost::ExileCards(_)
+            | PayCost::ExileCardsSharingType(_) => "exiling a permanent".to_string(),
         }
     }
 
@@ -684,6 +866,8 @@ impl PendingResult for PayCost {
             PayCost::TapPermanent(_) => false,
             PayCost::SpendMana(spend) => spend.is_empty(),
             PayCost::ExilePermanentsCmcX(_) => false,
+            PayCost::ExileCards(_) => false,
+            PayCost::ExileCardsSharingType(_) => false,
         }
     }
 
@@ -694,20 +878,14 @@ impl PendingResult for PayCost {
         choice: Option<usize>,
         results: &mut PendingResults,
     ) -> bool {
-        let targets = self.targets();
-        self.compute_targets(db, &results.all_chosen_targets);
-        if self.targets() != targets {
-            return false;
-        }
-
         if self.choose_pay(db, all_players, &results.all_chosen_targets, choice) {
             if self.paid(db) {
                 results.x_is = self.x_is();
                 debug!("X is {:?}", results.x_is);
-                for target in self.chosen_targets() {
+                for target in self.chosen_targets(db) {
                     results.all_chosen_targets.insert(target);
                 }
-                for result in self.results() {
+                for result in self.results(db) {
                     results.push_settled(result);
                 }
                 true

@@ -4,7 +4,6 @@ pub mod controller_draws_cards;
 pub mod controller_loses_life;
 pub mod copy_of_any_creature_non_targeting;
 pub mod counter_spell;
-pub mod craft;
 pub mod create_token;
 pub mod create_token_copy;
 pub mod deal_damage;
@@ -24,6 +23,7 @@ pub mod pay_cost_then;
 pub mod return_from_graveyard_to_battlefield;
 pub mod return_from_graveyard_to_library;
 pub mod return_self_to_hand;
+pub mod return_transformed;
 pub mod reveal_each_top_of_library;
 pub mod scry;
 pub mod self_explores;
@@ -53,7 +53,6 @@ use crate::{
         controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
         counter_spell::CounterSpell,
-        craft::Craft,
         create_token::CreateToken,
         create_token_copy::CreateTokenCopy,
         deal_damage::DealDamage,
@@ -73,6 +72,7 @@ use crate::{
         return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
         return_from_graveyard_to_library::ReturnFromGraveyardToLibrary,
         return_self_to_hand::ReturnSelfToHand,
+        return_transformed::ReturnTransformed,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         scry::Scry,
         self_explores::SelfExplores,
@@ -415,9 +415,6 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::CounterSpell(value) => {
                 Ok(Self(Box::leak(Box::new(CounterSpell::try_from(value)?))))
             }
-            protogen::effects::effect::Effect::Craft(value) => {
-                Ok(Self(Box::leak(Box::new(Craft::try_from(value)?))))
-            }
             protogen::effects::effect::Effect::CreateToken(value) => {
                 Ok(Self(Box::leak(Box::new(CreateToken::try_from(value)?))))
             }
@@ -472,6 +469,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => Ok(Self(
                 Box::leak(Box::new(ReturnFromGraveyardToLibrary::try_from(value)?)),
             )),
+            protogen::effects::effect::Effect::ReturnTransformed(_) => Ok(Self(&ReturnTransformed)),
             protogen::effects::effect::Effect::ReturnSelfToHand(_) => Ok(Self(&ReturnSelfToHand)),
             protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => Ok(Self(
                 Box::leak(Box::new(RevealEachTopOfLibrary::try_from(value)?)),

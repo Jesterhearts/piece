@@ -29,7 +29,7 @@ impl EffectBehaviors for TargetCreatureExplores {
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         controller
-            .get_cards::<OnBattlefield>(db)
+            .get_cards_in::<OnBattlefield>(db)
             .into_iter()
             .filter(|card| card.types_intersect(db, &IndexSet::from([Type::Creature])))
             .map(|card| ActiveTarget::Battlefield { id: card })

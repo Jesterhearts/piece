@@ -16,6 +16,40 @@ use crate::{
     types::{Subtype, Type},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
+pub enum Location {
+    Battlefield,
+    Graveyard,
+    Exile,
+    Library,
+    Hand,
+    Stack,
+}
+
+impl TryFrom<&protogen::targets::Location> for Location {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::Location) -> Result<Self, Self::Error> {
+        value
+            .location
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected location to have a location set"))
+            .map(Self::from)
+    }
+}
+
+impl From<&protogen::targets::location::Location> for Location {
+    fn from(value: &protogen::targets::location::Location) -> Self {
+        match value {
+            protogen::targets::location::Location::OnBattlefield(_) => Self::Battlefield,
+            protogen::targets::location::Location::InGraveyard(_) => Self::Graveyard,
+            protogen::targets::location::Location::InLibrary(_) => Self::Library,
+            protogen::targets::location::Location::InExile(_) => Self::Exile,
+            protogen::targets::location::Location::InStack(_) => Self::Stack,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Comparison {
     LessThan(i32),
@@ -197,6 +231,9 @@ pub enum Restriction {
     Toughness(Comparison),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
+    InLocation {
+        locations: Vec<Location>,
+    },
     InGraveyard,
     OnBattlefield,
 }
@@ -248,6 +285,9 @@ impl Restriction {
             Restriction::CastFromHand => "cast from your hand".to_string(),
             Restriction::InGraveyard => "in a graveyard".to_string(),
             Restriction::OnBattlefield => "on the battlefield".to_string(),
+            Restriction::InLocation { locations } => {
+                format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
+            }
         }
     }
 }
@@ -320,6 +360,13 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::OnBattlefield(_) => {
                 Ok(Self::OnBattlefield)
             }
+            protogen::targets::restriction::Restriction::Location(value) => Ok(Self::InLocation {
+                locations: value
+                    .locations
+                    .iter()
+                    .map(Location::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
         }
     }
 }

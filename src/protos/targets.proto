@@ -42,6 +42,22 @@ message SpellTarget {
   repeated types.Subtype subtypes = 3;
 }
 
+message Location {
+  message OnBattlefield {}
+  message InGraveyard {}
+  message InLibrary {}
+  message InExile {}
+  message InStack {}
+
+  oneof location {
+    OnBattlefield on_battlefield = 1;
+    InGraveyard in_graveyard = 2;
+    InLibrary in_library = 3;
+    InExile in_exile = 4;
+    InStack in_stack = 5;
+  }
+}
+
 message Restriction {
   message AttackingOrBlocking {}
   message CastFromHand {}
@@ -69,6 +85,9 @@ message Restriction {
   message Toughness {
     Comparison comparison = 1;
   }
+  message Locations {
+    repeated Location locations = 1;
+  }
   message OnBattlefield {}
   message InGraveyard {}
 
@@ -79,12 +98,13 @@ message Restriction {
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 4;
     ControllerHandEmpty controller_hand_empty = 5;
     InGraveyard in_graveyard = 6;
-    NotOfType not_of_type = 7;
-    NotSelf not_self = 8;
-    OfColor of_color = 9;
-    OfType of_type = 10;
-    OnBattlefield on_battlefield = 11;
-    Self self = 12;
-    Toughness toughness = 13;
+    Locations location = 7;
+    NotOfType not_of_type = 8;
+    NotSelf not_self = 9;
+    OfColor of_color = 10;
+    OfType of_type = 11;
+    OnBattlefield on_battlefield = 12;
+    Self self = 13;
+    Toughness toughness = 14;
   }
 }

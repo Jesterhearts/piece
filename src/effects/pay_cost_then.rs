@@ -56,6 +56,9 @@ impl EffectBehaviors for PayCostThen {
                 AdditionalCost::ExileCardsCmcX(_) => unreachable!(),
                 AdditionalCost::SacrificeSource => unreachable!(),
                 AdditionalCost::PayLife(_) => todo!(),
+                AdditionalCost::ExileCard { .. } => todo!(),
+                AdditionalCost::ExileXOrMoreCards { .. } => todo!(),
+                AdditionalCost::ExileSharingCardType { .. } => todo!(),
                 AdditionalCost::SacrificePermanent(restrictions) => {
                     results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
                         restrictions.clone(),
@@ -100,6 +103,9 @@ impl EffectBehaviors for PayCostThen {
                 AdditionalCost::ExileCardsCmcX(_) => unreachable!(),
                 AdditionalCost::SacrificeSource => unreachable!(),
                 AdditionalCost::PayLife(_) => todo!(),
+                AdditionalCost::ExileCard { .. } => todo!(),
+                AdditionalCost::ExileXOrMoreCards { .. } => todo!(),
+                AdditionalCost::ExileSharingCardType { .. } => todo!(),
                 AdditionalCost::SacrificePermanent(restrictions) => {
                     results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
                         restrictions.clone(),
