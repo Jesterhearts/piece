@@ -16,6 +16,7 @@ message ActivatedAbility {
   bool apply_to_self = 3;
   string oracle_text = 4;
   bool sorcery_speed = 5;
+  bool craft = 6;
 }
 
 message BattlefieldModifier {

@@ -7,7 +7,7 @@ use crate::{
     battlefield::{ActionResult, PendingResult, PendingResults},
     controller::ControllerRestriction,
     effects::EffectDuration,
-    in_play::{target_from_location, CardId, Database, OnBattlefield},
+    in_play::{target_from_location, CardId, Database, ExileReason, OnBattlefield},
     mana::{Mana, ManaCost},
     player::{
         mana_pool::{ManaSource, SpendReason},
@@ -78,6 +78,7 @@ impl ExilePermanentsCmcX {
 
 #[derive(Debug)]
 pub struct ExileCards {
+    reason: Option<ExileReason>,
     source: CardId,
     minimum: usize,
     maximum: usize,
@@ -88,12 +89,14 @@ pub struct ExileCards {
 
 impl ExileCards {
     pub fn new(
+        reason: Option<ExileReason>,
         minimum: usize,
         maximum: usize,
         restrictions: Vec<Restriction>,
         source: CardId,
     ) -> Self {
         Self {
+            reason,
             source,
             minimum,
             maximum,
@@ -106,6 +109,7 @@ impl ExileCards {
 
 #[derive(Debug)]
 pub struct ExileCardsSharingType {
+    reason: Option<ExileReason>,
     source: CardId,
     count: usize,
     chosen: IndexSet<CardId>,
@@ -113,8 +117,9 @@ pub struct ExileCardsSharingType {
 }
 
 impl ExileCardsSharingType {
-    pub fn new(source: CardId, count: usize) -> Self {
+    pub fn new(reason: Option<ExileReason>, source: CardId, count: usize) -> Self {
         Self {
+            reason,
             source,
             count,
             chosen: Default::default(),
@@ -651,6 +656,7 @@ impl PayCost {
                         source: exile.source,
                         target: ActiveTarget::Battlefield { id: *target },
                         duration: EffectDuration::Permanently,
+                        reason: None,
                     });
                 }
                 results
@@ -671,6 +677,7 @@ impl PayCost {
                         source: exile.source,
                         target: target_from_location(db, *target),
                         duration: EffectDuration::Permanently,
+                        reason: exile.reason,
                     });
                 }
 
@@ -683,6 +690,7 @@ impl PayCost {
                         source: exile.source,
                         target: target_from_location(db, *target),
                         duration: EffectDuration::Permanently,
+                        reason: exile.reason,
                     });
                 }
 

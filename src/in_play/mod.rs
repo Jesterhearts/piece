@@ -73,6 +73,7 @@ newtype_enum! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
     pub enum ExileReason {
         Cascade,
+        Craft,
     }
 }
 

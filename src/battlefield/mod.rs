@@ -56,44 +56,11 @@ pub enum PartialAddToBattlefieldResult {
 
 #[derive(Debug, Clone)]
 pub enum ActionResult {
-    UpdateStackEntries(Vec<StackEntry>),
-    PlayerLoses(Owner),
-    RevealCard(CardId),
-    MoveToHandFromLibrary(CardId),
-    Shuffle(Owner),
-    AddToBattlefield(CardId, Option<CardId>),
-    AddToBattlefieldSkipReplacementEffects(CardId, Option<CardId>),
-    AddToBattlefieldSkipReplacementEffectsFromExile(CardId, Option<CardId>),
-    AddToBattlefieldSkipReplacementEffectsFromLibrary {
-        card: CardId,
-        enters_tapped: bool,
-    },
-    AddToBattlefieldFromLibrary {
-        card: CardId,
-        enters_tapped: bool,
-    },
-    StackToGraveyard(CardId),
-    ApplyToBattlefield(ModifierId),
-    ApplyAuraToTarget {
-        aura: AuraId,
-        target: ActiveTarget,
-    },
-    ExileTarget {
+    AddAbilityToStack {
         source: CardId,
-        target: ActiveTarget,
-        duration: EffectDuration,
-    },
-    DamageTarget {
-        quantity: usize,
-        target: ActiveTarget,
-    },
-    ManifestTopOfLibrary(Controller),
-    ModifyCreatures {
-        targets: Vec<ActiveTarget>,
-        modifier: ModifierId,
-    },
-    SpellCountered {
-        id: Entry,
+        ability: AbilityId,
+        targets: Vec<Vec<ActiveTarget>>,
+        x_is: Option<usize>,
     },
     AddCounters {
         source: CardId,
@@ -101,54 +68,36 @@ pub enum ActionResult {
         count: GainCount,
         counter: Counter,
     },
-    TapPermanent(CardId),
-    PermanentToGraveyard(CardId),
-    AddAbilityToStack {
-        source: CardId,
-        ability: AbilityId,
-        targets: Vec<Vec<ActiveTarget>>,
-        x_is: Option<usize>,
+    AddModifier {
+        modifier: ModifierId,
+    },
+    AddToBattlefield(CardId, Option<CardId>),
+    AddToBattlefieldFromLibrary {
+        card: CardId,
+        enters_tapped: bool,
+    },
+    AddToBattlefieldSkipReplacementEffects(CardId, Option<CardId>),
+    AddToBattlefieldSkipReplacementEffectsFromExile(CardId, Option<CardId>),
+    AddToBattlefieldSkipReplacementEffectsFromLibrary {
+        card: CardId,
+        enters_tapped: bool,
     },
     AddTriggerToStack {
         trigger: TriggerId,
         source: CardId,
         targets: Vec<Vec<ActiveTarget>>,
     },
-    CloneCreatureNonTargeting {
-        source: CardId,
+    ApplyAuraToTarget {
+        aura: AuraId,
         target: ActiveTarget,
     },
-    AddModifier {
-        modifier: ModifierId,
+    ApplyToBattlefield(ModifierId),
+    Cascade {
+        source: CardId,
+        cascading: usize,
+        player: Controller,
     },
-    Mill {
-        count: usize,
-        targets: Vec<ActiveTarget>,
-    },
-    ReturnFromGraveyardToLibrary {
-        targets: Vec<ActiveTarget>,
-    },
-    ReturnFromGraveyardToBattlefield {
-        targets: Vec<ActiveTarget>,
-    },
-    LoseLife {
-        target: Controller,
-        count: usize,
-    },
-    GainMana {
-        gain: Vec<Mana>,
-        target: Controller,
-        source: ManaSource,
-        restriction: ManaRestriction,
-    },
-    CreateToken {
-        source: Controller,
-        token: Token,
-    },
-    DrawCards {
-        target: Controller,
-        count: usize,
-    },
+    CascadeExileToBottomOfLibrary(Controller),
     CastCard {
         card: CardId,
         targets: Vec<Vec<ActiveTarget>>,
@@ -156,35 +105,50 @@ pub enum ActionResult {
         x_is: Option<usize>,
         chosen_modes: Vec<usize>,
     },
-    HandFromBattlefield(CardId),
-    RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
+    CloneCreatureNonTargeting {
+        source: CardId,
+        target: ActiveTarget,
+    },
+    CreateToken {
+        source: Controller,
+        token: Token,
+    },
     CreateTokenCopyOf {
         target: CardId,
         modifiers: Vec<crate::effects::ModifyBattlefield>,
         controller: Controller,
     },
-    MoveFromLibraryToTopOfLibrary(CardId),
-    SpendMana {
-        card: CardId,
-        mana: Vec<Mana>,
-        sources: Vec<ManaSource>,
-        reason: SpendReason,
-    },
-    Untap(CardId),
-    ReturnFromBattlefieldToLibrary {
+    DamageTarget {
+        quantity: usize,
         target: ActiveTarget,
     },
-    Cascade {
-        source: CardId,
-        cascading: usize,
-        player: Controller,
+    DeclareAttackers {
+        attackers: Vec<CardId>,
+        targets: Vec<Owner>,
     },
-    CascadeExileToBottomOfLibrary(Controller),
-    Scry(CardId, usize),
+    DestroyEach(CardId, Vec<Restriction>),
+    DestroyTarget(ActiveTarget),
     Discover {
         source: CardId,
         count: usize,
         player: Controller,
+    },
+    DrawCards {
+        target: Controller,
+        count: usize,
+    },
+    ExileGraveyard {
+        target: ActiveTarget,
+        source: CardId,
+    },
+    ExileTarget {
+        source: CardId,
+        target: ActiveTarget,
+        duration: EffectDuration,
+        reason: Option<ExileReason>,
+    },
+    Explore {
+        target: ActiveTarget,
     },
     ForEachManaOfSource {
         card: CardId,
@@ -195,20 +159,57 @@ pub enum ActionResult {
         target: crate::player::Controller,
         count: usize,
     },
-    DeclareAttackers {
-        attackers: Vec<CardId>,
-        targets: Vec<Owner>,
+    GainMana {
+        gain: Vec<Mana>,
+        target: Controller,
+        source: ManaSource,
+        restriction: ManaRestriction,
     },
-    DestroyEach(CardId, Vec<Restriction>),
-    DestroyTarget(ActiveTarget),
-    Explore {
+    HandFromBattlefield(CardId),
+    LoseLife {
+        target: Controller,
+        count: usize,
+    },
+    ManifestTopOfLibrary(Controller),
+    Mill {
+        count: usize,
+        targets: Vec<ActiveTarget>,
+    },
+    ModifyCreatures {
+        targets: Vec<ActiveTarget>,
+        modifier: ModifierId,
+    },
+    MoveFromLibraryToTopOfLibrary(CardId),
+    MoveToHandFromLibrary(CardId),
+    PermanentToGraveyard(CardId),
+    PlayerLoses(Owner),
+    ReturnFromBattlefieldToLibrary {
         target: ActiveTarget,
     },
-    ExileGraveyard {
-        target: ActiveTarget,
-        source: CardId,
+    ReturnFromGraveyardToBattlefield {
+        targets: Vec<ActiveTarget>,
+    },
+    ReturnFromGraveyardToLibrary {
+        targets: Vec<ActiveTarget>,
     },
     ReturnTransformed(CardId),
+    RevealCard(CardId),
+    RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
+    Scry(CardId, usize),
+    Shuffle(Owner),
+    SpellCountered {
+        id: Entry,
+    },
+    SpendMana {
+        card: CardId,
+        mana: Vec<Mana>,
+        sources: Vec<ManaSource>,
+        reason: SpendReason,
+    },
+    StackToGraveyard(CardId),
+    TapPermanent(CardId),
+    Untap(CardId),
+    UpdateStackEntries(Vec<StackEntry>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -525,6 +526,17 @@ impl Battlefield {
                 results.push_settled(ActionResult::TapPermanent(card));
             }
 
+            let exile_reason = match &ability {
+                Ability::Activated(activated) => {
+                    if activated.craft {
+                        Some(ExileReason::Craft)
+                    } else {
+                        None
+                    }
+                }
+                Ability::Mana(_) | Ability::ETB { .. } => None,
+            };
+
             for cost in cost.additional_cost.iter() {
                 match cost {
                     AdditionalCost::SacrificeSource => {
@@ -559,6 +571,7 @@ impl Battlefield {
                     }
                     AdditionalCost::ExileCard { restrictions } => {
                         results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                            exile_reason,
                             1,
                             1,
                             restrictions.clone(),
@@ -570,6 +583,7 @@ impl Battlefield {
                         restrictions,
                     } => {
                         results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                            exile_reason,
                             *minimum,
                             usize::MAX,
                             restrictions.clone(),
@@ -578,7 +592,7 @@ impl Battlefield {
                     }
                     AdditionalCost::ExileSharingCardType { count } => {
                         results.push_pay_costs(PayCost::ExileCardsSharingType(
-                            ExileCardsSharingType::new(card, *count),
+                            ExileCardsSharingType::new(exile_reason, card, *count),
                         ));
                     }
                 }
@@ -784,6 +798,7 @@ impl Battlefield {
                 source,
                 target,
                 duration,
+                reason,
             } => {
                 let Some(target) = target.id() else {
                     unreachable!()
@@ -794,7 +809,7 @@ impl Battlefield {
                     }
                 }
 
-                Battlefield::exile(db, turn, *source, target, *duration)
+                Battlefield::exile(db, turn, *source, target, *reason, *duration)
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -1358,11 +1373,36 @@ impl Battlefield {
         turn: &Turn,
         source: CardId,
         target: CardId,
+        reason: Option<ExileReason>,
         duration: EffectDuration,
     ) -> PendingResults {
-        target.move_to_exile(db, source, None, duration);
+        target.move_to_exile(db, source, reason, duration);
 
-        Self::leave_battlefield(db, turn, target)
+        let mut results = PendingResults::default();
+        if let Some(ExileReason::Craft) = reason {
+            for trigger in
+                TriggerId::active_triggers_of_source::<trigger_source::ExiledDuringCraft>(db)
+            {
+                if matches!(
+                    trigger.location_from(db),
+                    triggers::Location::Anywhere | triggers::Location::Battlefield
+                ) {
+                    let restrictions = trigger.restrictions(db);
+                    if source.passes_restrictions(
+                        db,
+                        trigger.listener(db),
+                        trigger.controller_restriction(db),
+                        &restrictions,
+                    ) {
+                        let listener = trigger.listener(db);
+                        results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                    }
+                }
+            }
+        }
+
+        results.extend(Self::leave_battlefield(db, turn, target));
+        results
     }
 }
 

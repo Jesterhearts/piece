@@ -10,7 +10,9 @@ use derive_more::From;
 use itertools::Itertools;
 
 use crate::{
-    abilities::{Ability, ActivatedAbility, ApplyToSelf, GainMana, GainManaAbility, SorcerySpeed},
+    abilities::{
+        Ability, ActivatedAbility, ApplyToSelf, Craft, GainMana, GainManaAbility, SorcerySpeed,
+    },
     card::OracleText,
     controller::ControllerRestriction,
     cost::{AbilityCost, AdditionalCost},
@@ -53,6 +55,10 @@ impl AbilityId {
 
                 if ability.sorcery_speed {
                     entity.insert(SorcerySpeed);
+                }
+
+                if ability.craft {
+                    entity.insert(Craft);
                 }
 
                 Self(entity.id())
@@ -249,7 +255,7 @@ impl AbilityId {
     pub fn ability(self, db: &mut Database) -> Ability {
         let this = self.original(db);
 
-        if let Some((cost, effects, text, apply_to_self, sourcery_speed)) = db
+        if let Some((cost, effects, text, apply_to_self, sourcery_speed, craft)) = db
             .abilities
             .query::<(
                 Entity,
@@ -258,15 +264,18 @@ impl AbilityId {
                 Option<&OracleText>,
                 Option<&ApplyToSelf>,
                 Option<&SorcerySpeed>,
+                Option<&Craft>,
             )>()
             .iter(&db.abilities)
-            .filter_map(|(e, cost, effect, text, apply_to_self, sorcery_speed)| {
-                if Self(e) == this {
-                    Some((cost, effect, text, apply_to_self, sorcery_speed))
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |(e, cost, effect, text, apply_to_self, sorcery_speed, craft)| {
+                    if Self(e) == this {
+                        Some((cost, effect, text, apply_to_self, sorcery_speed, craft))
+                    } else {
+                        None
+                    }
+                },
+            )
             .next()
         {
             Ability::Activated(ActivatedAbility {
@@ -275,6 +284,7 @@ impl AbilityId {
                 apply_to_self: apply_to_self.is_some(),
                 oracle_text: text.map(|t| t.0.clone()).unwrap_or_default(),
                 sorcery_speed: sourcery_speed.is_some(),
+                craft: craft.is_some(),
             })
         } else if let Some(effects) = db
             .abilities

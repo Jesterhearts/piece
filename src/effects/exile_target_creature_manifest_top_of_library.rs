@@ -80,6 +80,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                 source,
                 target,
                 duration: EffectDuration::Permanently,
+                reason: None,
             });
             results.push_settled(ActionResult::ManifestTopOfLibrary(
                 target.id().unwrap().controller(db),

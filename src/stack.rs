@@ -709,6 +709,7 @@ fn add_card_to_stack(
             }
             AdditionalCost::ExileCard { restrictions } => {
                 results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                    None,
                     1,
                     1,
                     restrictions.clone(),
@@ -720,6 +721,7 @@ fn add_card_to_stack(
                 restrictions,
             } => {
                 results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
+                    None,
                     *minimum,
                     usize::MAX,
                     restrictions.clone(),
@@ -728,7 +730,7 @@ fn add_card_to_stack(
             }
             AdditionalCost::ExileSharingCardType { count } => {
                 results.push_pay_costs(PayCost::ExileCardsSharingType(ExileCardsSharingType::new(
-                    card, *count,
+                    None, card, *count,
                 )));
             }
         }

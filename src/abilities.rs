@@ -21,6 +21,9 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub struct SorcerySpeed;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub struct Craft;
+
 #[derive(Debug, Clone)]
 pub struct Enchant {
     pub modifiers: Vec<BattlefieldModifier>,
@@ -129,6 +132,7 @@ pub struct ActivatedAbility {
     pub apply_to_self: bool,
     pub oracle_text: String,
     pub sorcery_speed: bool,
+    pub craft: bool,
 }
 
 impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
@@ -149,6 +153,7 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
             apply_to_self: value.apply_to_self,
             oracle_text: value.oracle_text.clone(),
             sorcery_speed: value.sorcery_speed,
+            craft: value.craft,
         })
     }
 }

@@ -392,6 +392,9 @@ impl CardId {
                     ExileReason::Cascade => {
                         entity.insert(exile_reason::Cascade);
                     }
+                    ExileReason::Craft => {
+                        entity.insert(exile_reason::Craft);
+                    }
                 }
             }
         }

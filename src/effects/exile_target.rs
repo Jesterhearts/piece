@@ -99,6 +99,7 @@ impl EffectBehaviors for ExileTarget {
                 source,
                 target,
                 duration: self.duration,
+                reason: None,
             });
         }
     }

@@ -45,6 +45,9 @@ impl TriggerId {
             TriggerSource::EntersTheBattlefield => {
                 entity.insert(trigger_source::EntersTheBattlefield);
             }
+            TriggerSource::ExiledDuringCraft => {
+                entity.insert(trigger_source::ExiledDuringCraft);
+            }
             TriggerSource::Cast => {
                 entity.insert(trigger_source::Cast);
             }

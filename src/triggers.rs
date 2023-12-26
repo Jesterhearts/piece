@@ -40,8 +40,9 @@ newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
 pub enum TriggerSource {
     Cast,
-    PutIntoGraveyard,
     EntersTheBattlefield,
+    ExiledDuringCraft,
+    PutIntoGraveyard,
     Tapped,
 }
 }
@@ -93,6 +94,9 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
                 Self::EntersTheBattlefield
             }
             protogen::triggers::trigger_source::Trigger::Tapped(_) => Self::Tapped,
+            protogen::triggers::trigger_source::Trigger::ExiledDuringCraft(_) => {
+                Self::ExiledDuringCraft
+            }
         }
     }
 }

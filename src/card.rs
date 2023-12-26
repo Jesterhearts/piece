@@ -524,6 +524,7 @@ impl From<Token> for Card {
                     oracle_text: "Target creature you control explores. Activate only as sorcery"
                         .to_string(),
                     sorcery_speed: true,
+                    craft: false,
                 }],
                 ..Default::default()
             },
