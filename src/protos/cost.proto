@@ -66,6 +66,16 @@ message AdditionalCost {
   }
 }
 
+message AbilityRestriction {
+  message AttackedWithXOrMoreCreatures {
+    int32 x_is = 1;
+  }
+
+  oneof restriction {
+    AttackedWithXOrMoreCreatures attacked_with_x_or_more_creatures = 2;
+  }
+}
+
 message Ward {
   repeated ManaCost mana_costs = 1;
 }
@@ -79,6 +89,7 @@ message AbilityCost {
   repeated ManaCost mana_costs = 1;
   optional bool tap = 2;
   repeated AdditionalCost additional_costs = 3;
+  repeated AbilityRestriction restrictions = 4;
 }
 
 message XIs {

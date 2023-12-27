@@ -31,32 +31,32 @@ impl EffectBehaviors for CreateToken {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
-        controller: crate::player::Controller,
+        source: crate::in_play::CardId,
+        _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
-            source: controller,
+            source,
             token: self.token.clone(),
         });
     }
 
     fn push_behavior_from_top_of_library(
         &self,
-        db: &crate::in_play::Database,
+        _db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _target: crate::in_play::CardId,
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
-            source: source.controller(db),
+            source,
             token: self.token.clone(),
         });
     }
 
     fn push_behavior_with_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
@@ -64,7 +64,7 @@ impl EffectBehaviors for CreateToken {
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
-            source: source.controller(db),
+            source,
             token: self.token.clone(),
         });
     }

@@ -1,6 +1,6 @@
 pub mod pending_results;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, vec::IntoIter};
 
 use bevy_ecs::{entity::Entity, query::With};
 
@@ -26,12 +26,12 @@ use crate::{
         replacing,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{Counter, DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Effect, EffectDuration, Token,
+        AnyEffect, BattlefieldModifier, Effect, EffectDuration, ModifyBattlefield, Token,
     },
     in_play::{
         self, all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
-        ExileReason, InExile, InGraveyard, InLibrary, InStack, ModifierId, OnBattlefield,
-        ReplacementEffectId, TriggerId,
+        ExileReason, InExile, InGraveyard, InLibrary, InStack, ModifierId, NumberOfAttackers,
+        OnBattlefield, ReplacementEffectId, TriggerId,
     },
     mana::{Mana, ManaRestriction},
     player::{
@@ -110,13 +110,13 @@ pub enum ActionResult {
         target: ActiveTarget,
     },
     CreateToken {
-        source: Controller,
+        source: CardId,
         token: Token,
     },
     CreateTokenCopyOf {
+        source: CardId,
         target: CardId,
         modifiers: Vec<crate::effects::ModifyBattlefield>,
-        controller: Controller,
     },
     DamageTarget {
         quantity: usize,
@@ -192,7 +192,10 @@ pub enum ActionResult {
     ReturnFromGraveyardToLibrary {
         targets: Vec<ActiveTarget>,
     },
-    ReturnTransformed(CardId),
+    ReturnTransformed {
+        target: CardId,
+        enters_tapped: bool,
+    },
     RevealCard(CardId),
     RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
     Scry(CardId, usize),
@@ -210,6 +213,9 @@ pub enum ActionResult {
     TapPermanent(CardId),
     Untap(CardId),
     UpdateStackEntries(Vec<StackEntry>),
+    Transform {
+        target: crate::in_play::CardId,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -346,12 +352,14 @@ impl Battlefield {
         ReplacementEffectId::activate_all_for_card(db, source_card_id);
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
             let source = replacement.source(db);
-            if source != source_card_id {
-                continue;
-            }
-
             let restrictions = replacement.restrictions(db);
-            if !source.passes_restrictions(db, source, ControllerRestriction::Any, &restrictions) {
+            let controller_restriction = replacement.controller_restriction(db);
+            if !source_card_id.passes_restrictions(
+                db,
+                source,
+                controller_restriction,
+                &restrictions,
+            ) {
                 continue;
             }
 
@@ -774,8 +782,23 @@ impl Battlefield {
                 PendingResults::default()
             }
             ActionResult::CreateToken { source, token } => {
-                let card = CardId::upload_token(db, (*source).into(), token.clone());
-                Battlefield::add_from_stack_or_hand(db, card, None)
+                let mut results = PendingResults::default();
+
+                let mut replacements =
+                    ReplacementEffectId::watching::<replacing::TokenCreation>(db).into_iter();
+
+                let card = CardId::upload_token(db, source.controller(db).into(), token.clone());
+                card.move_to_limbo(db);
+                create_token_copy_with_replacements(
+                    db,
+                    *source,
+                    card,
+                    &[],
+                    &mut replacements,
+                    &mut results,
+                );
+
+                results
             }
             ActionResult::DrawCards { target, count } => {
                 let _ = all_players[*target].draw(db, *count);
@@ -1029,27 +1052,25 @@ impl Battlefield {
                 results
             }
             ActionResult::CreateTokenCopyOf {
+                source,
                 target,
                 modifiers,
-                controller,
             } => {
-                let token = target.token_copy_of(db, (*controller).into());
+                let mut results = PendingResults::default();
 
-                for modifier in modifiers.iter() {
-                    let modifier = ModifierId::upload_temporary_modifier(
-                        db,
-                        token,
-                        &BattlefieldModifier {
-                            modifier: modifier.clone(),
-                            controller: ControllerRestriction::Any,
-                            duration: EffectDuration::UntilSourceLeavesBattlefield,
-                            restrictions: vec![],
-                        },
-                    );
+                let mut replacements =
+                    ReplacementEffectId::watching::<replacing::TokenCreation>(db).into_iter();
 
-                    token.apply_modifier(db, modifier);
-                }
-                PendingResults::default()
+                create_token_copy_with_replacements(
+                    db,
+                    *source,
+                    *target,
+                    modifiers,
+                    &mut replacements,
+                    &mut results,
+                );
+
+                results
             }
             ActionResult::MoveFromLibraryToTopOfLibrary(card) => {
                 let owner = card.owner(db);
@@ -1178,6 +1199,15 @@ impl Battlefield {
                         results.extend(attacker.tap(db));
                     }
                 }
+                debug!(
+                    "Set number of attackers to {} in turn {}",
+                    attackers.len(),
+                    turn.turn_count
+                );
+                db.insert_resource(NumberOfAttackers {
+                    count: attackers.len(),
+                    turn: turn.turn_count,
+                });
                 // TODO declare blockers
                 results
             }
@@ -1237,19 +1267,36 @@ impl Battlefield {
 
                 PendingResults::default()
             }
-            ActionResult::ReturnTransformed(transforming) => {
-                transforming.transform(db);
+            ActionResult::ReturnTransformed {
+                target,
+                enters_tapped,
+            } => {
+                target.transform(db);
                 let mut results = PendingResults::default();
                 move_card_to_battlefield(
                     db,
-                    transforming.faceup_face(db),
-                    false,
+                    target.faceup_face(db),
+                    *enters_tapped,
                     &mut results,
                     None,
                 );
-                complete_add_from_exile(db, transforming.faceup_face(db), &mut results);
-                transforming.move_to_limbo(db);
+                if target.is_in_location::<InExile>(db) {
+                    complete_add_from_exile(db, target.faceup_face(db), &mut results);
+                } else if target.is_in_location::<InGraveyard>(db) {
+                    complete_add_from_graveyard(db, target.faceup_face(db), &mut results);
+                } else {
+                    unreachable!()
+                }
+
+                target.move_to_limbo(db);
                 results
+            }
+            ActionResult::Transform { target } => {
+                target.transform(db);
+                target.move_to_limbo(db);
+                target.faceup_face(db).move_to_battlefield(db);
+
+                PendingResults::default()
             }
         }
     }
@@ -1406,6 +1453,61 @@ impl Battlefield {
     }
 }
 
+pub fn create_token_copy_with_replacements(
+    db: &mut Database,
+    source: CardId,
+    copying: CardId,
+    modifiers: &[ModifyBattlefield],
+    replacements: &mut IntoIter<ReplacementEffectId>,
+    results: &mut PendingResults,
+) {
+    let mut replaced = false;
+    if replacements.len() > 0 {
+        while let Some(replacement) = replacements.next() {
+            let replacement_source = replacement.source(db);
+            let controller_restriction = replacement.controller_restriction(db);
+            let restrictions = replacement.restrictions(db);
+            if !source.passes_restrictions(
+                db,
+                replacement_source,
+                controller_restriction,
+                &source.restrictions(db),
+            ) || !copying.passes_restrictions(db, source, controller_restriction, &restrictions)
+            {
+                continue;
+            }
+
+            debug!("Replacing token creation");
+
+            replaced = true;
+            for effect in replacement.effects(db) {
+                effect
+                    .into_effect(db, replacement_source.controller(db))
+                    .replace_token_creation(db, source, replacements, copying, modifiers, results);
+            }
+        }
+    }
+
+    if !replaced {
+        let token = copying.token_copy_of(db, source.controller(db).into());
+        for modifier in modifiers.iter() {
+            let modifier = ModifierId::upload_temporary_modifier(
+                db,
+                token,
+                &BattlefieldModifier {
+                    modifier: modifier.clone(),
+                    controller: ControllerRestriction::Any,
+                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    restrictions: vec![],
+                },
+            );
+
+            token.apply_modifier(db, modifier);
+        }
+        results.extend(Battlefield::add_from_stack_or_hand(db, token, None));
+    }
+}
+
 pub fn compute_deck_targets(
     db: &mut Database,
     player: Controller,
@@ -1428,7 +1530,7 @@ pub fn compute_graveyard_targets(
     db: &mut Database,
     controller: ControllerRestriction,
     source_card: CardId,
-    types: &IndexSet<Type>,
+    restrictions: &[Restriction],
 ) -> Vec<CardId> {
     let targets = match controller {
         ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
@@ -1445,11 +1547,8 @@ pub fn compute_graveyard_targets(
         let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
         for card in cards_in_graveyard {
             if !card.passes_restrictions(db, source_card, controller, &source_card.restrictions(db))
+                || !card.passes_restrictions(db, source_card, controller, restrictions)
             {
-                continue;
-            }
-
-            if !card.types_intersect(db, types) {
                 continue;
             }
 
@@ -1490,6 +1589,32 @@ fn complete_add_from_library(
 }
 
 fn complete_add_from_exile(
+    db: &mut Database,
+    source_card_id: CardId,
+    results: &mut PendingResults,
+) {
+    for trigger in TriggerId::active_triggers_of_source::<trigger_source::EntersTheBattlefield>(db)
+    {
+        if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
+            let restrictions = trigger.restrictions(db);
+            if source_card_id.passes_restrictions(
+                db,
+                trigger.listener(db),
+                trigger.controller_restriction(db),
+                &restrictions,
+            ) {
+                let listener = trigger.listener(db);
+                results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+            }
+        }
+    }
+
+    for card in all_cards(db) {
+        card.apply_modifiers_layered(db);
+    }
+}
+
+fn complete_add_from_graveyard(
     db: &mut Database,
     source_card_id: CardId,
     results: &mut PendingResults,

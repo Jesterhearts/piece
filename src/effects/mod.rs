@@ -19,6 +19,7 @@ pub mod gain_life;
 pub mod mill;
 pub mod modal;
 pub mod modify_target;
+pub mod multiply_tokens;
 pub mod pay_cost_then;
 pub mod return_from_graveyard_to_battlefield;
 pub mod return_from_graveyard_to_library;
@@ -32,6 +33,7 @@ pub mod target_controller_gains_tokens;
 pub mod target_creature_explores;
 pub mod target_gains_counters;
 pub mod target_to_top_of_library;
+pub mod transform;
 pub mod tutor_library;
 pub mod untap_target;
 pub mod untap_this;
@@ -48,6 +50,7 @@ use crate::{
     abilities::{ActivatedAbility, GainManaAbility},
     battlefield::PendingResults,
     card::{Color, Keyword},
+    controller::ControllerRestriction,
     effects::{
         cascade::Cascade,
         controller_draws_cards::ControllerDrawsCards,
@@ -69,6 +72,7 @@ use crate::{
         mill::Mill,
         modal::Modal,
         modify_target::ModifyTarget,
+        multiply_tokens::MultiplyTokens,
         pay_cost_then::PayCostThen,
         return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
         return_from_graveyard_to_library::ReturnFromGraveyardToLibrary,
@@ -82,6 +86,7 @@ use crate::{
         target_creature_explores::TargetCreatureExplores,
         target_gains_counters::{Counter, TargetGainsCounters},
         target_to_top_of_library::TargetToTopOfLibrary,
+        transform::Transform,
         tutor_library::TutorLibrary,
         untap_target::UntapTarget,
         untap_this::UntapThis,
@@ -389,6 +394,25 @@ pub trait EffectBehaviors: Debug {
         let _ = controller;
         let _ = count;
         let _ = results;
+        unreachable!()
+    }
+
+    fn replace_token_creation(
+        &'static self,
+        db: &mut Database,
+        source: CardId,
+        replacements: &mut IntoIter<ReplacementEffectId>,
+        token: CardId,
+        modifiers: &[ModifyBattlefield],
+        results: &mut PendingResults,
+    ) {
+        let _ = db;
+        let _ = source;
+        let _ = replacements;
+        let _ = token;
+        let _ = modifiers;
+        let _ = results;
+        unreachable!()
     }
 }
 
@@ -477,6 +501,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::Modal(value) => {
                 Ok(Self(Box::leak(Box::new(Modal::try_from(value)?))))
             }
+            protogen::effects::effect::Effect::MultiplyTokens(value) => {
+                Ok(Self(Box::leak(Box::new(MultiplyTokens::try_from(value)?))))
+            }
             protogen::effects::effect::Effect::PayCostThen(value) => {
                 Ok(Self(Box::leak(Box::new(PayCostThen::try_from(value)?))))
             }
@@ -486,7 +513,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => Ok(Self(
                 Box::leak(Box::new(ReturnFromGraveyardToLibrary::try_from(value)?)),
             )),
-            protogen::effects::effect::Effect::ReturnTransformed(_) => Ok(Self(&ReturnTransformed)),
+            protogen::effects::effect::Effect::ReturnTransformed(value) => Ok(Self(Box::leak(
+                Box::new(ReturnTransformed::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::ReturnSelfToHand(_) => Ok(Self(&ReturnSelfToHand)),
             protogen::effects::effect::Effect::ReturnTargetToHand(value) => Ok(Self(Box::leak(
                 Box::new(ReturnTargetToHand::try_from(value)?),
@@ -507,6 +536,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => Ok(Self(Box::leak(
                 Box::new(TargetToTopOfLibrary::try_from(value)?),
             ))),
+            protogen::effects::effect::Effect::Transform(_) => Ok(Self(&Transform)),
             protogen::effects::effect::Effect::TutorLibrary(value) => {
                 Ok(Self(Box::leak(Box::new(TutorLibrary::try_from(value)?))))
             }
@@ -657,6 +687,7 @@ newtype_enum! {
 pub enum Replacing {
     Draw,
     Etb,
+    TokenCreation,
 }
 }
 
@@ -665,6 +696,9 @@ impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
         match value {
             protogen::effects::replacement_effect::Replacing::Draw(_) => Self::Draw,
             protogen::effects::replacement_effect::Replacing::Etb(_) => Self::Etb,
+            protogen::effects::replacement_effect::Replacing::TokenCreation(_) => {
+                Self::TokenCreation
+            }
         }
     }
 }
@@ -675,6 +709,7 @@ pub struct ReplacementEffects(pub Vec<ReplacementEffectId>);
 #[derive(Debug, Clone)]
 pub struct ReplacementEffect {
     pub replacing: Replacing,
+    pub controller: ControllerRestriction,
     pub restrictions: Vec<Restriction>,
     pub effects: Vec<AnyEffect>,
 }
@@ -691,6 +726,7 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
                     anyhow!("Expected replacement effect to have a replacement specified")
                 })
                 .map(Replacing::from)?,
+            controller: value.controller.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()

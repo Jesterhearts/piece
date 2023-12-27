@@ -29,12 +29,20 @@ cost {
 etb_abilities {
   return_from_graveyard_to_battlefield {
     count: 1
-    types {
-      land {
+    controller {
+      you {
       }
     }
-    types {
-      basic_land {
+    restrictions {
+      of_type {
+        types {
+          land {
+          }
+        }
+        types {
+          basic_land {
+          }
+        }
       }
     }
   }

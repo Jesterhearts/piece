@@ -109,7 +109,7 @@ fn main() -> anyhow::Result<()> {
     let card9 = CardId::upload(&mut db, &cards, player1, "Bat Colony");
     card9.move_to_hand(&mut db);
 
-    let card10 = CardId::upload(&mut db, &cards, player1, "Hidden Courtyard");
+    let card10 = CardId::upload(&mut db, &cards, player1, "Ojer Taq, Deepest Foundation");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card10, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, &turn, None),
@@ -130,7 +130,7 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
-    let card13 = CardId::upload(&mut db, &cards, player1, "Glorifier of Suffering");
+    let card13 = CardId::upload(&mut db, &cards, player1, "Get Lost");
     card13.move_to_hand(&mut db);
 
     let card14 = CardId::upload(&mut db, &cards, player1, "Kutzil's Flanker");

@@ -108,6 +108,12 @@ impl CardId {
             CounterId::remove_counters(db, front_face, counter, count);
         }
 
+        for modifier in front_face.modifiers(db) {
+            back_face.apply_modifier(db, modifier);
+        }
+
+        front_face.remove_all_modifiers(db);
+
         let transformed = self.transformed(db);
         if transformed {
             db.entity_mut(front_face.0).remove::<Transformed>();

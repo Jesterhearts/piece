@@ -42,8 +42,16 @@ activated_abilities {
   effects {
     return_from_graveyard_to_battlefield {
       count: 1
-      types {
-        artifact {
+      controller {
+        you {
+        }
+      }
+      restrictions {
+        of_type {
+          types {
+            artifact {
+            }
+          }
         }
       }
       x_is {

@@ -16,6 +16,7 @@ use bevy_ecs::{
     component::Component,
     entity::Entity,
     event::{Event, Events},
+    system::Resource,
     world::World,
 };
 use derive_more::{Deref, DerefMut};
@@ -34,7 +35,7 @@ pub use modifierid::{ModifierId, ModifierSeq, Modifiers};
 pub use replacementid::ReplacementEffectId;
 pub use triggerid::TriggerId;
 
-use crate::{newtype_enum::newtype_enum, player::Owner};
+use crate::{newtype_enum::newtype_enum, player::Owner, turns::Turn};
 
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
@@ -233,6 +234,24 @@ pub fn cards<Location: Component + Ord>(db: &mut Database) -> Vec<CardId> {
         .sorted_by_key(|(_, loc)| *loc)
         .map(|(card, _)| CardId(card))
         .collect()
+}
+
+#[derive(Debug, Resource)]
+pub struct NumberOfAttackers {
+    pub count: usize,
+    pub turn: usize,
+}
+
+pub fn number_of_attackers_this_turn(db: &Database, turn: &Turn) -> usize {
+    if let Some(number) = db.get_resource::<NumberOfAttackers>() {
+        if number.turn == turn.turn_count {
+            number.count
+        } else {
+            0
+        }
+    } else {
+        0
+    }
 }
 
 #[derive(Debug, Deref, DerefMut, Default)]

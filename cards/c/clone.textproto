@@ -22,6 +22,14 @@ oracle_text: "You may have Clone enter the battlefield as a copy of any creature
 replacement_effects {
   etb {
   }
+  controller {
+    you {
+    }
+  }
+  restrictions {
+    self {
+    }
+  }
   effects {
     copy_of_any_creature_non_targeting {
     }

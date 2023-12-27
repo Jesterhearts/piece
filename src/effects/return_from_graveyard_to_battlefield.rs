@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -9,13 +8,14 @@ use crate::{
     effects::{Effect, EffectBehaviors},
     protogen,
     stack::ActiveTarget,
-    types::Type,
+    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReturnFromGraveyardToBattlefield {
     pub count: usize,
-    pub types: IndexSet<Type>,
+    pub controller: ControllerRestriction,
+    pub restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
@@ -28,10 +28,11 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             count: usize::try_from(value.count)?,
-            types: value
-                .types
+            controller: value.controller.get_or_default().try_into()?,
+            restrictions: value
+                .restrictions
                 .iter()
-                .map(Type::try_from)
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
         })
     }
@@ -53,7 +54,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        compute_graveyard_targets(db, ControllerRestriction::You, source, &self.types)
+        compute_graveyard_targets(db, self.controller, source, &self.restrictions)
             .into_iter()
             .map(|card| ActiveTarget::Graveyard { id: card })
             .collect_vec()

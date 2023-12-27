@@ -85,7 +85,7 @@ impl EffectBehaviors for CreateTokenCopy {
 
     fn push_behavior_with_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
@@ -95,22 +95,22 @@ impl EffectBehaviors for CreateTokenCopy {
         let target = targets.into_iter().exactly_one().unwrap();
         let target = target.id();
         results.push_settled(ActionResult::CreateTokenCopyOf {
+            source,
             target: target.unwrap(),
             modifiers: self.modifiers.clone(),
-            controller: source.controller(db),
         });
     }
 
     fn push_behavior_from_top_of_library(
         &self,
-        db: &in_play::Database,
+        _db: &in_play::Database,
         source: in_play::CardId,
         target: in_play::CardId,
         results: &mut crate::battlefield::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateTokenCopyOf {
+            source,
             target,
-            controller: source.controller(db),
             modifiers: self.modifiers.clone(),
         })
     }

@@ -17,7 +17,7 @@ pub struct DeclaringAttackers {
 
 impl PendingResult for DeclaringAttackers {
     fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
-        false
+        true
     }
 
     fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {

@@ -4,6 +4,7 @@ use bevy_ecs::{component::Component, entity::Entity, query::With};
 use itertools::Itertools;
 
 use crate::{
+    controller::ControllerRestriction,
     effects::{replacing, AnyEffect, Effects, ReplacementEffect, Replacing},
     in_play::{Active, CardId, Database, NEXT_REPLACEMENT_SEQ},
     targets::{Restriction, Restrictions},
@@ -32,6 +33,7 @@ impl ReplacementEffectId {
     ) -> Self {
         let mut entity = db.replacement_effects.spawn((
             source,
+            effect.controller,
             Restrictions(effect.restrictions.clone()),
             Effects(effect.effects.clone()),
         ));
@@ -42,6 +44,9 @@ impl ReplacementEffectId {
             }
             Replacing::Etb => {
                 entity.insert(replacing::Etb);
+            }
+            Replacing::TokenCreation => {
+                entity.insert(replacing::TokenCreation);
             }
         }
 
@@ -85,6 +90,12 @@ impl ReplacementEffectId {
             .unwrap()
             .0
             .clone()
+    }
+
+    pub fn controller_restriction(self, db: &Database) -> ControllerRestriction {
+        *db.replacement_effects
+            .get::<ControllerRestriction>(self.0)
+            .unwrap()
     }
 
     pub fn effects(self, db: &Database) -> Vec<AnyEffect> {

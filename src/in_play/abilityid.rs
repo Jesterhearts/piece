@@ -15,9 +15,12 @@ use crate::{
     },
     card::OracleText,
     controller::ControllerRestriction,
-    cost::{AbilityCost, AdditionalCost},
+    cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     effects::{AnyEffect, Effects},
-    in_play::{CardId, Database, InStack, OnBattlefield, Temporary, NEXT_STACK_SEQ},
+    in_play::{
+        number_of_attackers_this_turn, CardId, Database, InStack, OnBattlefield, Temporary,
+        NEXT_STACK_SEQ,
+    },
     mana::{Mana, ManaRestriction},
     player::{
         mana_pool::{ManaSource, SpendReason},
@@ -98,6 +101,7 @@ impl AbilityId {
                                     mana_cost: vec![],
                                     tap: true,
                                     additional_cost: vec![],
+                                    restrictions: vec![],
                                 },
                                 GainMana::Specific {
                                     gains: vec![Mana::White],
@@ -119,6 +123,7 @@ impl AbilityId {
                                     mana_cost: vec![],
                                     tap: true,
                                     additional_cost: vec![],
+                                    restrictions: vec![],
                                 },
                                 GainMana::Specific {
                                     gains: vec![Mana::Blue],
@@ -140,6 +145,7 @@ impl AbilityId {
                                     mana_cost: vec![],
                                     tap: true,
                                     additional_cost: vec![],
+                                    restrictions: vec![],
                                 },
                                 GainMana::Specific {
                                     gains: vec![Mana::Black],
@@ -161,6 +167,7 @@ impl AbilityId {
                                     mana_cost: vec![],
                                     tap: true,
                                     additional_cost: vec![],
+                                    restrictions: vec![],
                                 },
                                 GainMana::Specific {
                                     gains: vec![Mana::Red],
@@ -182,6 +189,7 @@ impl AbilityId {
                                     mana_cost: vec![],
                                     tap: true,
                                     additional_cost: vec![],
+                                    restrictions: vec![],
                                 },
                                 GainMana::Specific {
                                     gains: vec![Mana::Green],
@@ -461,7 +469,7 @@ impl AbilityId {
                     }
                 }
 
-                if !can_pay_costs(db, all_players, self, &ability.cost, source) {
+                if !can_pay_costs(db, all_players, turn, self, &ability.cost, source) {
                     return false;
                 }
 
@@ -478,7 +486,7 @@ impl AbilityId {
                     return false;
                 };
 
-                can_pay_costs(db, all_players, self, &ability.cost, source)
+                can_pay_costs(db, all_players, turn, self, &ability.cost, source)
             }
             Ability::ETB { .. } => false,
         }
@@ -502,6 +510,7 @@ impl AbilityId {
 fn can_pay_costs(
     db: &mut Database,
     all_players: &AllPlayers,
+    turn: &Turn,
     ability: AbilityId,
     cost: &AbilityCost,
     source: CardId,
@@ -607,6 +616,16 @@ fn can_pay_costs(
             }
             // These are too complicated to compute, so just give up. The user can cancel if they can't actually pay.
             AdditionalCost::ExileSharingCardType { .. } => {}
+        }
+    }
+
+    for restriction in cost.restrictions.iter() {
+        match restriction {
+            AbilityRestriction::AttackedWithXOrMoreCreatures(x) => {
+                if number_of_attackers_this_turn(db, turn) < *x {
+                    return false;
+                }
+            }
         }
     }
 

@@ -1,7 +1,19 @@
-use crate::{battlefield::ActionResult, effects::EffectBehaviors};
+use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen};
 
 #[derive(Debug)]
-pub struct ReturnTransformed;
+pub struct ReturnTransformed {
+    enters_tapped: bool,
+}
+
+impl TryFrom<&protogen::effects::ReturnTransformed> for ReturnTransformed {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ReturnTransformed) -> Result<Self, Self::Error> {
+        Ok(Self {
+            enters_tapped: value.enters_tapped,
+        })
+    }
+}
 
 impl EffectBehaviors for ReturnTransformed {
     fn needs_targets(&'static self) -> usize {
@@ -19,7 +31,10 @@ impl EffectBehaviors for ReturnTransformed {
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
-        results.push_settled(ActionResult::ReturnTransformed(source))
+        results.push_settled(ActionResult::ReturnTransformed {
+            target: source,
+            enters_tapped: self.enters_tapped,
+        })
     }
 
     fn push_behavior_with_targets(
@@ -31,6 +46,9 @@ impl EffectBehaviors for ReturnTransformed {
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
-        results.push_settled(ActionResult::ReturnTransformed(source))
+        results.push_settled(ActionResult::ReturnTransformed {
+            target: source,
+            enters_tapped: self.enters_tapped,
+        })
     }
 }

@@ -514,6 +514,7 @@ impl From<Token> for Card {
                         mana_cost: vec![ManaCost::Generic(1)],
                         tap: true,
                         additional_cost: vec![AdditionalCost::SacrificeSource],
+                        restrictions: vec![],
                     },
                     effects: vec![AnyEffect {
                         effect: Effect(&TargetCreatureExplores),

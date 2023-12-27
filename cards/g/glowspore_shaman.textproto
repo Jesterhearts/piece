@@ -39,12 +39,16 @@ etb_abilities {
       you {
       }
     }
-    types {
-      land {
-      }
-    }
-    types {
-      basic_land {
+    restrictions {
+      of_type {
+        types {
+          land {
+          }
+        }
+        types {
+          basic_land {
+          }
+        }
       }
     }
   }

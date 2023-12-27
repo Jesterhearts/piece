@@ -219,6 +219,10 @@ message ModifyBattlefield {
   string remove_keywords = 18;
 }
 
+message MultiplyTokens {
+  int32 multiplier = 1;
+}
+
 message PayCostThen {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
@@ -226,14 +230,16 @@ message PayCostThen {
 
 message ReturnFromGraveyardToBattlefield {
   int32 count = 1;
-  repeated types.Type types = 2;
-  optional cost.XIs x_is = 3;
+  controller.Controller controller = 2;
+  repeated targets.Restriction restrictions = 3;
+  optional cost.XIs x_is = 4;
+  bool enters_tapped = 5;
 }
 
 message ReturnFromGraveyardToLibrary {
   int32 count = 1;
   controller.Controller controller = 2;
-  repeated types.Type types = 3;
+  repeated targets.Restriction restrictions = 3;
 }
 
 message ReturnSelfToHand {}
@@ -263,13 +269,17 @@ message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
 
+message Transform {}
+
 message TutorLibrary {
   repeated targets.Restriction restrictions = 1;
   Destination destination = 2;
   bool reveal = 3;
 }
 
-message ReturnTransformed {}
+message ReturnTransformed {
+  bool enters_tapped = 1;
+}
 
 message UntapTarget {}
 
@@ -303,22 +313,24 @@ message Effect {
     GainLife gain_life = 23;
     Mill mill = 24;
     Modes modal = 25;
-    PayCostThen pay_cost_then = 26;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 27;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 28;
-    ReturnSelfToHand return_self_to_hand = 29;
-    ReturnTargetToHand return_target_to_hand = 30;
-    ReturnTransformed return_transformed = 31;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 32;
-    Scry scry = 33;
-    TargetToTopOfLibrary target_to_top_of_library = 34;
-    TutorLibrary tutor_library = 35;
-    UntapThis untap_this = 36;
-    UntapTarget untap_target = 37;
+    MultiplyTokens multiply_tokens = 26;
+    PayCostThen pay_cost_then = 27;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 28;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 29;
+    ReturnSelfToHand return_self_to_hand = 30;
+    ReturnTargetToHand return_target_to_hand = 31;
+    ReturnTransformed return_transformed = 32;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 33;
+    Scry scry = 34;
+    TargetToTopOfLibrary target_to_top_of_library = 35;
+    Transform transform = 36;
+    TutorLibrary tutor_library = 37;
+    UntapThis untap_this = 38;
+    UntapTarget untap_target = 39;
   }
 
-  optional Effect threshold = 38;
-  string oracle_text = 39;
+  optional Effect threshold = 40;
+  string oracle_text = 41;
 }
 
 message Mode {
@@ -332,12 +344,15 @@ message Modes {
 message ReplacementEffect {
   message Draw {}
   message Etb {}
+  message TokenCreation {}
 
   oneof replacing {
     Draw draw = 1;
     Etb etb = 2;
+    TokenCreation token_creation = 3;
   }
 
-  repeated targets.Restriction restrictions = 3;
-  repeated Effect effects = 4;
+  controller.Controller controller = 4;
+  repeated targets.Restriction restrictions = 5;
+  repeated Effect effects = 6;
 }

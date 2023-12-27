@@ -22,6 +22,10 @@ oracle_text: "Return target artifact or non-aura enchantment from your graveyard
 effects {
   return_from_graveyard_to_battlefield {
     count: 1
+    controller {
+      you {
+      }
+    }
   }
 }
 effects {

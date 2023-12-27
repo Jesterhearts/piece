@@ -269,10 +269,10 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
 pub struct GainManaAbilities(pub Vec<GainManaAbility>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Component)]
 pub struct GainManaAbility {
     pub cost: AbilityCost,
     pub gain: GainMana,

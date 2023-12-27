@@ -16,7 +16,6 @@ use crate::{
     abilities::StaticAbility,
     battlefield::{Battlefield, PendingResults},
     card::Color,
-    controller::ControllerRestriction,
     deck::Deck,
     effects::replacing,
     in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
@@ -313,7 +312,7 @@ impl Player {
                     if !source.passes_restrictions(
                         db,
                         source,
-                        ControllerRestriction::Any,
+                        replacement.controller_restriction(db),
                         &restrictions,
                     ) {
                         continue;

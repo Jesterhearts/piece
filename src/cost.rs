@@ -223,11 +223,45 @@ impl TryFrom<&protogen::cost::Ward> for Ward {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy)]
+pub enum AbilityRestriction {
+    AttackedWithXOrMoreCreatures(usize),
+}
+
+impl TryFrom<&protogen::cost::AbilityRestriction> for AbilityRestriction {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::AbilityRestriction) -> Result<Self, Self::Error> {
+        value
+            .restriction
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected ability restriction to have a restriction set"))
+            .and_then(Self::try_from)
+    }
+}
+
+impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestriction {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::cost::ability_restriction::Restriction,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::cost::ability_restriction::Restriction::AttackedWithXOrMoreCreatures(
+                value,
+            ) => Ok(Self::AttackedWithXOrMoreCreatures(usize::try_from(
+                value.x_is,
+            )?)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Component)]
 pub struct AbilityCost {
     pub mana_cost: Vec<ManaCost>,
     pub tap: bool,
     pub additional_cost: Vec<AdditionalCost>,
+    pub restrictions: Vec<AbilityRestriction>,
 }
 
 impl AbilityCost {
@@ -273,6 +307,11 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
                 .iter()
                 .map(AdditionalCost::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(AbilityRestriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
