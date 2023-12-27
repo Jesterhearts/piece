@@ -217,28 +217,29 @@ impl TryFrom<&protogen::targets::restriction::cmc::Cmc> for Cmc {
 pub enum Restriction {
     Attacking,
     AttackingOrBlocking,
-    NotSelf,
-    Self_,
-    OfColor(HashSet<Color>),
-    OfType {
-        types: IndexSet<Type>,
-        subtypes: IndexSet<Subtype>,
+    CastFromHand,
+    Cmc(Cmc),
+    ControllerControlsBlackOrGreen,
+    ControllerHandEmpty,
+    InGraveyard,
+    InLocation {
+        locations: Vec<Location>,
     },
+    LifeGainedThisTurn(usize),
     NotKeywords(IndexSet<Keyword>),
     NotOfType {
         types: IndexSet<Type>,
         subtypes: IndexSet<Subtype>,
     },
-    CastFromHand,
-    Cmc(Cmc),
-    Toughness(Comparison),
-    ControllerControlsBlackOrGreen,
-    ControllerHandEmpty,
-    InLocation {
-        locations: Vec<Location>,
+    NotSelf,
+    OfColor(HashSet<Color>),
+    OfType {
+        types: IndexSet<Type>,
+        subtypes: IndexSet<Subtype>,
     },
-    InGraveyard,
     OnBattlefield,
+    Self_,
+    Toughness(Comparison),
 }
 
 impl Restriction {
@@ -260,6 +261,9 @@ impl Restriction {
                 } else {
                     format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" or "))
                 }
+            }
+            Restriction::LifeGainedThisTurn(count) => {
+                format!("{} or more life this turn", count)
             }
             Restriction::NotOfType { types, subtypes } => {
                 if !types.is_empty() && !subtypes.is_empty() {
@@ -382,6 +386,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Location::try_from)
                     .collect::<anyhow::Result<_>>()?,
             }),
+            protogen::targets::restriction::Restriction::LifeGainedThisTurn(value) => {
+                Ok(Self::LifeGainedThisTurn(usize::try_from(value.count)?))
+            }
         }
     }
 }

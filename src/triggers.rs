@@ -41,6 +41,7 @@ newtype_enum! {
 pub enum TriggerSource {
     Attacks,
     Cast,
+    EndStep,
     EntersTheBattlefield,
     ExiledDuringCraft,
     PutIntoGraveyard,
@@ -89,20 +90,19 @@ impl TryFrom<&protogen::triggers::TriggerSource> for TriggerSource {
 impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
     fn from(value: &protogen::triggers::trigger_source::Trigger) -> Self {
         match value {
-            protogen::triggers::trigger_source::Trigger::Attacks(_) => {
-                Self::Attacks
+            protogen::triggers::trigger_source::Trigger::Attacks(_) => Self::Attacks,
+            protogen::triggers::trigger_source::Trigger::EndStep(_) => Self::EndStep,
+            protogen::triggers::trigger_source::Trigger::EntersTheBattlefield(_) => {
+                Self::EntersTheBattlefield
+            }
+            protogen::triggers::trigger_source::Trigger::ExiledDuringCraft(_) => {
+                Self::ExiledDuringCraft
             }
             protogen::triggers::trigger_source::Trigger::PutIntoGraveyard(_) => {
                 Self::PutIntoGraveyard
             }
-            protogen::triggers::trigger_source::Trigger::EntersTheBattlefield(_) => {
-                Self::EntersTheBattlefield
-            }
-            protogen::triggers::trigger_source::Trigger::Tapped(_) => Self::Tapped,
-            protogen::triggers::trigger_source::Trigger::ExiledDuringCraft(_) => {
-                Self::ExiledDuringCraft
-            }
             protogen::triggers::trigger_source::Trigger::StartOfCombat(_) => Self::StartOfCombat,
+            protogen::triggers::trigger_source::Trigger::Tapped(_) => Self::Tapped,
         }
     }
 }

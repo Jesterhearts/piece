@@ -18,7 +18,7 @@ use crate::{
     card::Color,
     deck::Deck,
     effects::replacing,
-    in_play::{cards, CardId, Database, InHand, ReplacementEffectId},
+    in_play::{cards, life_gained_this_turn, CardId, Database, InHand, ReplacementEffectId},
     mana::{Mana, ManaCost, ManaRestriction},
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
     stack::Stack,
@@ -127,6 +127,12 @@ impl Owner {
                 }
                 Restriction::NotKeywords(_) => {
                     return false;
+                }
+                Restriction::LifeGainedThisTurn(count) => {
+                    let life_gained = life_gained_this_turn(db, self);
+                    if life_gained < *count {
+                        return false;
+                    }
                 }
             }
         }

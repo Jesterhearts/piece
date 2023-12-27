@@ -29,9 +29,9 @@ use crate::{
         AnyEffect, BattlefieldModifier, Effect, EffectDuration, ModifyBattlefield, Token,
     },
     in_play::{
-        self, all_cards, cards, AbilityId, Active, AuraId, CardId, CastFrom, CounterId, Database,
-        ExileReason, InExile, InGraveyard, InLibrary, InStack, ModifierId, NumberOfAttackers,
-        OnBattlefield, ReplacementEffectId, TriggerId,
+        self, all_cards, cards, update_life_gained_this_turn, AbilityId, Active, AuraId, CardId,
+        CastFrom, CounterId, Database, ExileReason, InExile, InGraveyard, InLibrary, InStack,
+        ModifierId, NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
     },
     mana::{Mana, ManaRestriction},
     player::{
@@ -1203,6 +1203,7 @@ impl Battlefield {
             }
             ActionResult::GainLife { target, count } => {
                 all_players[*target].life_total += *count as i32;
+                update_life_gained_this_turn(db, (*target).into(), *count);
                 PendingResults::default()
             }
             ActionResult::DeclareAttackers { attackers, targets } => {

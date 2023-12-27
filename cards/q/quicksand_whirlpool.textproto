@@ -23,6 +23,7 @@ cost_reducer {
     }
   }
 }
+oracle_text: "This spell costs {3} less to cast if it targets a tapped creature\nExile target creature."
 effects {
   exile_target {
     restrictions {

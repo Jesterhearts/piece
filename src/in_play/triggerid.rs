@@ -65,6 +65,9 @@ impl TriggerId {
             TriggerSource::Attacks => {
                 entity.insert(trigger_source::Attacks);
             }
+            TriggerSource::EndStep => {
+                entity.insert(trigger_source::EndStep);
+            }
         }
 
         Self(entity.id())

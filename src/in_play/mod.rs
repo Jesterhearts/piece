@@ -7,7 +7,7 @@ mod replacementid;
 mod triggerid;
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     ops::Neg,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -249,6 +249,29 @@ pub fn number_of_attackers_this_turn(db: &Database, turn: &Turn) -> usize {
         } else {
             0
         }
+    } else {
+        0
+    }
+}
+
+#[derive(Debug, Resource)]
+pub struct LifeGained {
+    pub counts: HashMap<Owner, usize>,
+}
+
+pub fn update_life_gained_this_turn(db: &mut Database, player: Owner, amount: usize) {
+    if let Some(mut number) = db.get_resource_mut::<LifeGained>() {
+        *number.counts.entry(player).or_default() += amount
+    } else {
+        db.insert_resource(LifeGained {
+            counts: HashMap::from([(player, amount)]),
+        })
+    }
+}
+
+pub fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
+    if let Some(number) = db.get_resource::<LifeGained>() {
+        number.counts.get(&player).copied().unwrap_or_default()
     } else {
         0
     }

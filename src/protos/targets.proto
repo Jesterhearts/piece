@@ -70,6 +70,13 @@ message Restriction {
   }
   message ControllerControlsBlackOrGreen {}
   message ControllerHandEmpty {}
+  message InGraveyard {}
+  message LifeGainedThisTurn {
+    int32 count = 1;
+  }
+  message Locations {
+    repeated Location locations = 1;
+  }
   message NotKeywords {
     string keywords = 1;
   }
@@ -85,32 +92,29 @@ message Restriction {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
   }
+  message OnBattlefield {}
   message Self {}
   message Toughness {
     Comparison comparison = 1;
   }
-  message Locations {
-    repeated Location locations = 1;
-  }
-  message OnBattlefield {}
-  message InGraveyard {}
 
   oneof restriction {
-    Attacking attacking = 1;
-    AttackingOrBlocking attacking_or_blocking = 2;
-    CastFromHand cast_from_hand = 3;
-    Cmc cmc = 4;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 5;
-    ControllerHandEmpty controller_hand_empty = 6;
-    InGraveyard in_graveyard = 7;
-    Locations location = 8;
-    NotKeywords not_keywords = 9;
-    NotOfType not_of_type = 10;
-    NotSelf not_self = 11;
-    OfColor of_color = 12;
-    OfType of_type = 13;
-    OnBattlefield on_battlefield = 14;
-    Self self = 15;
-    Toughness toughness = 16;
+    Attacking attacking = 2;
+    AttackingOrBlocking attacking_or_blocking = 3;
+    CastFromHand cast_from_hand = 4;
+    Cmc cmc = 5;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 6;
+    ControllerHandEmpty controller_hand_empty = 7;
+    InGraveyard in_graveyard = 8;
+    LifeGainedThisTurn life_gained_this_turn = 9;
+    Locations location = 10;
+    NotKeywords not_keywords = 11;
+    NotOfType not_of_type = 12;
+    NotSelf not_self = 13;
+    OfColor of_color = 14;
+    OfType of_type = 15;
+    OnBattlefield on_battlefield = 16;
+    Self self = 17;
+    Toughness toughness = 18;
   }
 }

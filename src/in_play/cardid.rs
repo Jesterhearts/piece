@@ -36,12 +36,12 @@ use crate::{
         Token,
     },
     in_play::{
-        self, cast_from, exile_reason, AbilityId, Active, Attacking, AuraId, CastFrom, CounterId,
-        Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile,
-        InGraveyard, InHand, InLibrary, InStack, IsToken, LeftBattlefieldTurn, Manifested,
-        ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped,
-        Transformed, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ,
-        NEXT_STACK_SEQ,
+        self, cast_from, exile_reason, life_gained_this_turn, AbilityId, Active, Attacking, AuraId,
+        CastFrom, CounterId, Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown,
+        Global, InExile, InGraveyard, InHand, InLibrary, InStack, IsToken, LeftBattlefieldTurn,
+        Manifested, ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield,
+        ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ,
+        NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -1140,6 +1140,12 @@ impl CardId {
                         .keys()
                         .any(|keyword| not_keywords.contains(keyword))
                     {
+                        return false;
+                    }
+                }
+                Restriction::LifeGainedThisTurn(count) => {
+                    let gained_this_turn = life_gained_this_turn(db, self_controller.into());
+                    if gained_this_turn < *count {
                         return false;
                     }
                 }
