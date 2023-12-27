@@ -21,6 +21,7 @@ use crate::{
     controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
     effects::{
+        battle_cry::BattleCry,
         cascade::Cascade,
         effect_duration::UntilEndOfTurn,
         replacing,
@@ -1221,17 +1222,32 @@ impl Battlefield {
                             trigger.controller_restriction(db),
                             &trigger.restrictions(db),
                         ) {
-                            for effect in trigger.effects(db) {
-                                effect
-                                    .into_effect(db, attacker.controller(db))
-                                    .push_pending_behavior(
-                                        db,
-                                        *attacker,
-                                        attacker.controller(db),
-                                        &mut results,
-                                    );
-                            }
+                            results.extend(Stack::move_trigger_to_stack(db, trigger, *attacker));
                         }
+                    }
+
+                    if attacker.battle_cry(db) {
+                        let trigger = TriggerId::upload(
+                            db,
+                            &TriggeredAbility {
+                                trigger: Trigger {
+                                    trigger: TriggerSource::Attacks,
+                                    from: triggers::Location::Anywhere,
+                                    controller: ControllerRestriction::You,
+                                    restrictions: vec![],
+                                },
+                                effects: vec![AnyEffect {
+                                    effect: Effect(&BattleCry),
+                                    threshold: None,
+                                    oracle_text: String::default(),
+                                }],
+                                oracle_text: String::default(),
+                            },
+                            *attacker,
+                            true,
+                        );
+
+                        results.extend(Stack::move_trigger_to_stack(db, trigger, *attacker));
                     }
 
                     if !attacker.vigilance(db) {

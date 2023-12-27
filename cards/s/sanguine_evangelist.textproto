@@ -1,0 +1,56 @@
+name: "Sanguine Evangelist"
+types {
+  creature {
+  }
+}
+subtypes {
+  vampire {
+  }
+}
+subtypes {
+  cleric {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  create_token {
+    creature {
+      name: "Bat"
+      types {
+        creature {
+        }
+      }
+      subtypes {
+        bat {
+        }
+      }
+      colors {
+        black {
+        }
+      }
+      power: 1
+      toughness: 1
+    }
+  }
+}
+triggered_abilities {
+  trigger {
+    source {
+      put_into_graveyard {
+      }
+    }
+  }
+}
+power: 2
+toughness: 1
+keywords: "BattleCry"

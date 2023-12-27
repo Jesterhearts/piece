@@ -1929,6 +1929,10 @@ impl CardId {
     pub(crate) fn cost_reducer(&self, db: &Database) -> Option<CostReducer> {
         db.get::<CostReducer>(self.0).cloned()
     }
+
+    pub(crate) fn battle_cry(&self, db: &Database) -> bool {
+        self.keywords(db).contains_key(&Keyword::BattleCry)
+    }
 }
 
 pub fn target_from_location(db: &mut Database, card: CardId) -> ActiveTarget {

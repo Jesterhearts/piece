@@ -1,3 +1,4 @@
+pub mod battle_cry;
 pub mod battlefield_modifier;
 pub mod cascade;
 pub mod controller_draws_cards;
