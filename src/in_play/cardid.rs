@@ -36,12 +36,12 @@ use crate::{
         Token,
     },
     in_play::{
-        self, cast_from, exile_reason, life_gained_this_turn, AbilityId, Active, Attacking, AuraId,
-        CastFrom, CounterId, Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown,
-        Global, InExile, InGraveyard, InHand, InLibrary, InStack, IsToken, LeftBattlefieldTurn,
-        Manifested, ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield,
-        ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ,
-        NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        self, cast_from, descend, exile_reason, life_gained_this_turn, times_descended_this_turn,
+        AbilityId, Active, Attacking, AuraId, CastFrom, CounterId, Database, EntireBattlefield,
+        ExileReason, ExiledWith, FaceDown, Global, InExile, InGraveyard, InHand, InLibrary,
+        InStack, IsToken, LeftBattlefieldTurn, Manifested, ModifierId, ModifierSeq, Modifiers,
+        Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
+        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -281,6 +281,8 @@ impl CardId {
         if self.is_token(db) {
             self.move_to_limbo(db);
         } else {
+            descend(db, self.owner(db));
+
             self.remove_all_modifiers(db);
             TriggerId::deactivate_all_for_card(db, self);
             ReplacementEffectId::deactivate_all_for_card(db, self);
@@ -1146,6 +1148,12 @@ impl CardId {
                 Restriction::LifeGainedThisTurn(count) => {
                     let gained_this_turn = life_gained_this_turn(db, self_controller.into());
                     if gained_this_turn < *count {
+                        return false;
+                    }
+                }
+                Restriction::DescendedThisTurn => {
+                    let descended = times_descended_this_turn(db, self.controller(db).into());
+                    if descended < 1 {
                         return false;
                     }
                 }

@@ -1,0 +1,44 @@
+name: "Ruin-Lurker Bat"
+types {
+  creature {
+  }
+}
+subtypes {
+  bat {
+  }
+}
+cost {
+  mana_costs {
+    white {
+    }
+  }
+}
+triggered_abilities {
+  trigger {
+    source {
+      end_step {
+      }
+    }
+    from {
+      anywhere {
+      }
+    }
+    controller {
+      you {
+      }
+    }
+    restrictions {
+      descended_this_turn {
+      }
+    }
+  }
+  effects {
+    scry {
+      count: 1
+    }
+  }
+  oracle_text: "At the beginning of your end step, if you descended this turn, scry 1."
+}
+power: 1
+toughness: 1
+keywords: "Flying, Lifelink"

@@ -221,6 +221,7 @@ pub enum Restriction {
     Cmc(Cmc),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
+    DescendedThisTurn,
     InGraveyard,
     InLocation {
         locations: Vec<Location>,
@@ -247,23 +248,22 @@ impl Restriction {
         match self {
             Restriction::Attacking => "attacking".to_string(),
             Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),
-            Restriction::NotSelf => "other permanent".to_string(),
-            Restriction::Self_ => "self".to_string(),
-            Restriction::OfType { types, subtypes } => {
-                if !types.is_empty() && !subtypes.is_empty() {
-                    format!(
-                        "a {} - {}",
-                        types.iter().map(|ty| ty.as_ref()).join(" or "),
-                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
-                    )
-                } else if !types.is_empty() {
-                    format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" or "))
-                } else {
-                    format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" or "))
-                }
+            Restriction::CastFromHand => "cast from your hand".to_string(),
+            Restriction::Cmc(cmc) => format!("cmc {}", cmc),
+            Restriction::ControllerControlsBlackOrGreen => {
+                "controller controls black or green".to_string()
+            }
+            Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
+            Restriction::DescendedThisTurn => "descended this turn".to_string(),
+            Restriction::InGraveyard => "in a graveyard".to_string(),
+            Restriction::InLocation { locations } => {
+                format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
             }
             Restriction::LifeGainedThisTurn(count) => {
                 format!("{} or more life this turn", count)
+            }
+            Restriction::NotKeywords(keywords) => {
+                format!("without {}", keywords.iter().map(|k| k.as_ref()).join(", "))
             }
             Restriction::NotOfType { types, subtypes } => {
                 if !types.is_empty() && !subtypes.is_empty() {
@@ -282,23 +282,25 @@ impl Restriction {
                 }
             }
             Restriction::Toughness(toughness) => format!("toughness {}", toughness),
-            Restriction::ControllerControlsBlackOrGreen => {
-                "controller controls black or green".to_string()
-            }
-            Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
+            Restriction::NotSelf => "other permanent".to_string(),
             Restriction::OfColor(colors) => {
                 format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
             }
-            Restriction::Cmc(cmc) => format!("cmc {}", cmc),
-            Restriction::CastFromHand => "cast from your hand".to_string(),
-            Restriction::InGraveyard => "in a graveyard".to_string(),
+            Restriction::OfType { types, subtypes } => {
+                if !types.is_empty() && !subtypes.is_empty() {
+                    format!(
+                        "a {} - {}",
+                        types.iter().map(|ty| ty.as_ref()).join(" or "),
+                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
+                    )
+                } else if !types.is_empty() {
+                    format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" or "))
+                } else {
+                    format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" or "))
+                }
+            }
             Restriction::OnBattlefield => "on the battlefield".to_string(),
-            Restriction::InLocation { locations } => {
-                format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
-            }
-            Restriction::NotKeywords(keywords) => {
-                format!("without {}", keywords.iter().map(|k| k.as_ref()).join(", "))
-            }
+            Restriction::Self_ => "self".to_string(),
         }
     }
 }
@@ -320,42 +322,31 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
 
     fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
+            protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
             protogen::targets::restriction::Restriction::Attacking(_) => Ok(Self::Attacking),
             protogen::targets::restriction::Restriction::AttackingOrBlocking(_) => {
                 Ok(Self::AttackingOrBlocking)
             }
-            protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
-            protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
-            protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {
-                types: types
-                    .types
-                    .iter()
-                    .map(Type::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-                subtypes: types
-                    .subtypes
-                    .iter()
-                    .map(Subtype::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-            }),
-            protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
-                Self::Toughness(toughness.comparison.get_or_default().try_into()?),
-            ),
             protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
                 Ok(Self::ControllerControlsBlackOrGreen)
             }
             protogen::targets::restriction::Restriction::ControllerHandEmpty(_) => {
                 Ok(Self::ControllerHandEmpty)
             }
-            protogen::targets::restriction::Restriction::OfColor(colors) => Ok(Self::OfColor(
-                colors
-                    .colors
+            protogen::targets::restriction::Restriction::DescendedThisTurn(_) => {
+                Ok(Self::DescendedThisTurn)
+            }
+            protogen::targets::restriction::Restriction::InGraveyard(_) => Ok(Self::InGraveyard),
+            protogen::targets::restriction::Restriction::LifeGainedThisTurn(value) => {
+                Ok(Self::LifeGainedThisTurn(usize::try_from(value.count)?))
+            }
+            protogen::targets::restriction::Restriction::Location(value) => Ok(Self::InLocation {
+                locations: value
+                    .locations
                     .iter()
-                    .map(Color::try_from)
+                    .map(Location::try_from)
                     .collect::<anyhow::Result<_>>()?,
-            )),
-            protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
-            protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
+            }),
             protogen::targets::restriction::Restriction::NotKeywords(not) => Ok(Self::NotKeywords(
                 not.keywords
                     .split(',')
@@ -375,20 +366,34 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Subtype::try_from)
                     .collect::<anyhow::Result<_>>()?,
             }),
-            protogen::targets::restriction::Restriction::InGraveyard(_) => Ok(Self::InGraveyard),
+            protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
+            protogen::targets::restriction::Restriction::OfColor(colors) => Ok(Self::OfColor(
+                colors
+                    .colors
+                    .iter()
+                    .map(Color::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            )),
+            protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
+            protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {
+                types: types
+                    .types
+                    .iter()
+                    .map(Type::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+                subtypes: types
+                    .subtypes
+                    .iter()
+                    .map(Subtype::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            }),
             protogen::targets::restriction::Restriction::OnBattlefield(_) => {
                 Ok(Self::OnBattlefield)
             }
-            protogen::targets::restriction::Restriction::Location(value) => Ok(Self::InLocation {
-                locations: value
-                    .locations
-                    .iter()
-                    .map(Location::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-            }),
-            protogen::targets::restriction::Restriction::LifeGainedThisTurn(value) => {
-                Ok(Self::LifeGainedThisTurn(usize::try_from(value.count)?))
-            }
+            protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
+            protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
+                Self::Toughness(toughness.comparison.get_or_default().try_into()?),
+            ),
         }
     }
 }

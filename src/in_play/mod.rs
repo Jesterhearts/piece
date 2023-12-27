@@ -277,6 +277,29 @@ pub fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
     }
 }
 
+#[derive(Debug, Resource)]
+pub struct TimesDescended {
+    counts: HashMap<Owner, usize>,
+}
+
+pub fn descend(db: &mut Database, player: Owner) {
+    if let Some(mut number) = db.get_resource_mut::<LifeGained>() {
+        *number.counts.entry(player).or_default() += 1;
+    } else {
+        db.insert_resource(LifeGained {
+            counts: HashMap::from([(player, 1)]),
+        })
+    }
+}
+
+pub fn times_descended_this_turn(db: &Database, player: Owner) -> usize {
+    if let Some(number) = db.get_resource::<TimesDescended>() {
+        number.counts.get(&player).copied().unwrap_or_default()
+    } else {
+        0
+    }
+}
+
 #[derive(Debug, Deref, DerefMut, Default)]
 pub struct CardDb(World);
 

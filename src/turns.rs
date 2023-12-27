@@ -6,7 +6,7 @@ use indexmap::IndexSet;
 use crate::{
     battlefield::{Battlefield, PendingResults},
     controller::ControllerRestriction,
-    in_play::{CardId, Database, DeleteAbility, LifeGained, TriggerId},
+    in_play::{CardId, Database, DeleteAbility, LifeGained, TimesDescended, TriggerId},
     player::{AllPlayers, Owner},
     stack::Stack,
     triggers::trigger_source,
@@ -220,6 +220,7 @@ impl Turn {
                 CardId::cleanup_tokens_in_limbo(db);
 
                 db.remove_resource::<LifeGained>();
+                db.remove_resource::<TimesDescended>();
 
                 let mut events = db.resource_mut::<Events<DeleteAbility>>();
                 let events = events.drain().collect::<HashSet<_>>();
