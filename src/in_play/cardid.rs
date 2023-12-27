@@ -47,6 +47,7 @@ use crate::{
         mana_pool::{ManaSource, SourcedMana},
         Controller, Owner,
     },
+    protogen::color,
     stack::{self, ActiveTarget, Settled, Stack, Targets},
     targets::{self, Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
     triggers::trigger_source,
@@ -528,6 +529,8 @@ impl CardId {
             })
             .collect_vec();
 
+        debug!("Modifiers for {}: {:?}", self.name(db), modifiers);
+
         let facedown = self.facedown(db) && !self.transformed(db);
         let source = self.faceup_face(db);
 
@@ -609,13 +612,17 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
-                if !self.passes_restrictions_given_types(
+                if !self.passes_restrictions_given_attributes(
                     db,
                     source,
+                    self.controller(db),
                     controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
+                    &keywords,
+                    &colors,
+                    base_toughness,
                 ) {
                     continue;
                 }
@@ -657,13 +664,17 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
-                if !self.passes_restrictions_given_types(
+                if !self.passes_restrictions_given_attributes(
                     db,
                     source,
+                    self.controller(db),
                     controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
+                    &keywords,
+                    &colors,
+                    base_toughness,
                 ) {
                     continue;
                 }
@@ -689,13 +700,17 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
-                if !self.passes_restrictions_given_types(
+                if !self.passes_restrictions_given_attributes(
                     db,
                     source,
+                    self.controller(db),
                     controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
+                    &keywords,
+                    &colors,
+                    base_toughness,
                 ) {
                     continue;
                 }
@@ -749,13 +764,17 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
-                if !self.passes_restrictions_given_types(
+                if !self.passes_restrictions_given_attributes(
                     db,
                     source,
+                    self.controller(db),
                     controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
+                    &keywords,
+                    &colors,
+                    base_toughness.map(|t| t + add_toughness),
                 ) {
                     continue;
                 }
@@ -803,6 +822,13 @@ impl CardId {
             trigger.add_listener(db, source);
         }
 
+        debug!(
+            "Modified keywords for {} ({:?}): {:?}",
+            self.name(db),
+            self,
+            keywords,
+        );
+
         db.entity_mut(source.0)
             .insert(AddPower(add_power))
             .insert(AddToughness(add_toughness))
@@ -814,6 +840,13 @@ impl CardId {
             .insert(ModifiedETBAbilities(etb_abilities))
             .insert(ModifiedStaticAbilities(static_abilities))
             .insert(ModifiedActivatedAbilities(activated_abilities));
+    }
+
+    pub fn triggers(self, db: &Database) -> Vec<TriggerId> {
+        db.get::<ModifiedTriggers>(self.0)
+            .map(|t| t.0.clone())
+            .or_else(|| db.get::<Triggers>(self.0).map(|t| t.0.clone()))
+            .unwrap_or_default()
     }
 
     pub fn equal(self, db: &Database, other: CardId) -> bool {
@@ -935,39 +968,43 @@ impl CardId {
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
     ) -> bool {
-        let types = self.types(db);
-        let subtypes = self.subtypes(db);
-
-        self.passes_restrictions_given_types(
+        self.passes_restrictions_given_attributes(
             db,
             source,
+            self.controller(db),
             controller_restriction,
             restrictions,
-            &types,
-            &subtypes,
+            &self.types(db),
+            &self.subtypes(db),
+            &self.keywords(db),
+            &self.colors(db),
+            self.toughness(db),
         )
     }
 
-    fn passes_restrictions_given_types(
+    #[allow(clippy::too_many_arguments)]
+    fn passes_restrictions_given_attributes(
         self,
         db: &mut Database,
         source: CardId,
+        self_controller: Controller,
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
         self_types: &IndexSet<Type>,
         self_subtypes: &IndexSet<Subtype>,
+        self_keywords: &::counter::Counter<Keyword>,
+        self_colors: &HashSet<Color>,
+        self_toughness: Option<i32>,
     ) -> bool {
         match controller_restriction {
             ControllerRestriction::Any => {}
             ControllerRestriction::You => {
-                let source_controller = source.controller(db);
-                if source_controller != self.controller(db) {
+                if source.controller(db) != self_controller {
                     return false;
                 }
             }
             ControllerRestriction::Opponent => {
-                let source_controller = source.controller(db);
-                if source_controller == self.controller(db) {
+                if source.controller(db) == self_controller {
                     return false;
                 }
             }
@@ -1003,12 +1040,11 @@ impl CardId {
                     }
                 }
                 Restriction::Toughness(comparison) => {
-                    let toughness = self.toughness(db);
-                    if toughness.is_none() {
+                    if self_toughness.is_none() {
                         return false;
                     }
 
-                    let toughness = toughness.unwrap();
+                    let toughness = self_toughness.unwrap();
                     if !match comparison {
                         Comparison::LessThan(target) => toughness < *target,
                         Comparison::LessThanOrEqual(target) => toughness <= *target,
@@ -1019,20 +1055,18 @@ impl CardId {
                     }
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
-                    let controller = self.controller(db);
-                    let colors = Battlefield::controlled_colors(db, controller);
+                    let colors = Battlefield::controlled_colors(db, self_controller);
                     if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
                         return false;
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if self.controller(db).has_cards::<InHand>(db) {
+                    if self_controller.has_cards::<InHand>(db) {
                         return false;
                     }
                 }
-                Restriction::OfColor(colors) => {
-                    let self_colors = self.colors(db);
-                    if self_colors.is_disjoint(colors) {
+                Restriction::OfColor(ofcolors) => {
+                    if self_colors.is_disjoint(ofcolors) {
                         return false;
                     }
                 }
@@ -1090,6 +1124,19 @@ impl CardId {
                         targets::Location::Hand => self.is_in_location::<InHand>(db),
                         targets::Location::Stack => self.is_in_location::<InStack>(db),
                     }) {
+                        return false;
+                    }
+                }
+                Restriction::Attacking => {
+                    if !self.attacking(db) {
+                        return false;
+                    }
+                }
+                Restriction::NotKeywords(not_keywords) => {
+                    if self_keywords
+                        .keys()
+                        .any(|keyword| not_keywords.contains(keyword))
+                    {
                         return false;
                     }
                 }
@@ -1420,6 +1467,7 @@ impl CardId {
 
         if let Some(back) = &card.back_face {
             let id = CardId::upload_card(db, back, player, destination, is_token);
+            id.move_to_limbo(db);
 
             db.entity_mut(id.0).insert(FrontFace(cardid));
             db.entity_mut(id.0).insert(BackFace(id));
@@ -1742,7 +1790,7 @@ impl CardId {
     }
 
     pub fn triggers_text(self, db: &mut Database) -> Vec<String> {
-        let triggers = TriggerId::all_for_card(db, self);
+        let triggers = self.triggers(db);
 
         let mut results = vec![];
         for trigger in triggers {

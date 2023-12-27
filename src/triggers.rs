@@ -39,6 +39,7 @@ impl From<&protogen::triggers::location::Location> for Location {
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
 pub enum TriggerSource {
+    Attacks,
     Cast,
     EntersTheBattlefield,
     ExiledDuringCraft,
@@ -88,6 +89,9 @@ impl TryFrom<&protogen::triggers::TriggerSource> for TriggerSource {
 impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
     fn from(value: &protogen::triggers::trigger_source::Trigger) -> Self {
         match value {
+            protogen::triggers::trigger_source::Trigger::Attacks(_) => {
+                Self::Attacks
+            }
             protogen::triggers::trigger_source::Trigger::PutIntoGraveyard(_) => {
                 Self::PutIntoGraveyard
             }

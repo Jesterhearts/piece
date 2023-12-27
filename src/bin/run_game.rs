@@ -123,7 +123,7 @@ fn main() -> anyhow::Result<()> {
         ResolutionResult::Complete
     );
 
-    let card12 = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
+    let card12 = CardId::upload(&mut db, &cards, player1, "Oteclan Landmark");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card12, None);
     assert_eq!(
         results.resolve(&mut db, &mut all_players, &turn, None),

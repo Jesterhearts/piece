@@ -19,6 +19,7 @@ message Location {
 }
 
 message TriggerSource {
+  message Attacks {}
   message EntersTheBattlefield {}
   message ExiledDuringCraft {}
   message PutIntoGraveyard {}
@@ -26,11 +27,12 @@ message TriggerSource {
   message Tapped {}
 
   oneof trigger {
-    EntersTheBattlefield enters_the_battlefield = 1;
-    ExiledDuringCraft exiled_during_craft = 2;
-    PutIntoGraveyard put_into_graveyard = 3;
-    StartOfCombat start_of_combat = 4;
-    Tapped tapped = 5;
+    Attacks attacks = 1;
+    EntersTheBattlefield enters_the_battlefield = 2;
+    ExiledDuringCraft exiled_during_craft = 3;
+    PutIntoGraveyard put_into_graveyard = 4;
+    StartOfCombat start_of_combat = 5;
+    Tapped tapped = 6;
   }
 }
 

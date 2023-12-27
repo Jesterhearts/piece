@@ -153,6 +153,7 @@ impl ModifierId {
         }
 
         if !modifier.modifier.add_keywords.is_empty() {
+            debug!("Adding keywords {:?}", modifier.modifier.add_keywords);
             entity.insert(ModifyKeywords::Add(modifier.modifier.add_keywords.clone()));
         }
 

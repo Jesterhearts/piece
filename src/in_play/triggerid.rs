@@ -25,6 +25,11 @@ impl TriggerId {
         card: CardId,
         temporary: bool,
     ) -> Self {
+        debug!(
+            "Uploading triggered ability for {}: {:?}",
+            card.name(db),
+            ability
+        );
         let mut entity = db.triggers.spawn((
             TriggerListener(card),
             ability.trigger.from,
@@ -56,6 +61,9 @@ impl TriggerId {
             }
             TriggerSource::Tapped => {
                 entity.insert(trigger_source::Tapped);
+            }
+            TriggerSource::Attacks => {
+                entity.insert(trigger_source::Attacks);
             }
         }
 
@@ -128,65 +136,32 @@ impl TriggerId {
     }
 
     pub fn activate_all_for_card(db: &mut Database, cardid: CardId) {
-        let entities = Self::all_for_card(db, cardid);
+        let triggers = cardid.triggers(db);
 
-        for entity in entities {
-            db.triggers.entity_mut(entity.0).insert(Active);
+        debug!("All triggers for card {}: {:?}", cardid.name(db), triggers);
+        for trigger in triggers {
+            db.triggers.entity_mut(trigger.0).insert(Active);
         }
     }
 
-    pub fn all_for_card(db: &mut Database, cardid: CardId) -> Vec<TriggerId> {
-        db.triggers
-            .query::<(Entity, &TriggerListener)>()
-            .iter(&db.triggers)
-            .filter_map(|(entity, listener)| {
-                if listener.0 == cardid {
-                    Some(Self(entity))
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
-    }
-
     pub fn unsubscribe_all_for_card(db: &mut Database, cardid: CardId) {
-        let entities = db
-            .triggers
-            .query::<(Entity, &TriggerListener)>()
-            .iter(&db.triggers)
-            .filter_map(|(entity, listener)| {
-                if listener.0 == cardid {
-                    Some(entity)
-                } else {
-                    None
-                }
-            })
-            .collect_vec();
+        let triggers = cardid.triggers(db);
 
-        for entity in entities {
-            db.triggers.entity_mut(entity).remove::<TriggerListener>();
+        for trigger in triggers {
+            db.triggers
+                .entity_mut(trigger.0)
+                .remove::<TriggerListener>();
         }
     }
 
     pub fn deactivate_all_for_card(db: &mut Database, cardid: CardId) {
-        let entities = db
-            .triggers
-            .query_filtered::<(Entity, &TriggerListener), With<Active>>()
-            .iter(&db.triggers)
-            .filter_map(|(entity, listener)| {
-                if listener.0 == cardid {
-                    Some(entity)
-                } else {
-                    None
-                }
-            })
-            .collect_vec();
+        let triggers = cardid.triggers(db);
 
-        for entity in entities {
-            if db.triggers.get::<Temporary>(entity).is_some() {
-                db.triggers.despawn(entity);
+        for trigger in triggers {
+            if db.triggers.get::<Temporary>(trigger.0).is_some() {
+                db.triggers.despawn(trigger.0);
             } else {
-                db.triggers.entity_mut(entity).remove::<Active>();
+                db.triggers.entity_mut(trigger.0).remove::<Active>();
             }
         }
     }

@@ -122,6 +122,12 @@ impl Owner {
                 Restriction::InLocation { .. } => {
                     return false;
                 }
+                Restriction::Attacking => {
+                    return false;
+                }
+                Restriction::NotKeywords(_) => {
+                    return false;
+                }
             }
         }
 

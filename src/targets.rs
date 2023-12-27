@@ -1,16 +1,17 @@
 use std::{
     collections::HashSet,
     fmt::{Display, Write},
+    str::FromStr,
 };
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    card::Color,
+    card::{Color, Keyword},
     controller::ControllerRestriction,
     protogen,
     types::{Subtype, Type},
@@ -214,6 +215,7 @@ impl TryFrom<&protogen::targets::restriction::cmc::Cmc> for Cmc {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Restriction {
+    Attacking,
     AttackingOrBlocking,
     NotSelf,
     Self_,
@@ -222,6 +224,7 @@ pub enum Restriction {
         types: IndexSet<Type>,
         subtypes: IndexSet<Subtype>,
     },
+    NotKeywords(IndexSet<Keyword>),
     NotOfType {
         types: IndexSet<Type>,
         subtypes: IndexSet<Subtype>,
@@ -241,6 +244,7 @@ pub enum Restriction {
 impl Restriction {
     pub fn text(&self) -> String {
         match self {
+            Restriction::Attacking => "attacking".to_string(),
             Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),
             Restriction::NotSelf => "other permanent".to_string(),
             Restriction::Self_ => "self".to_string(),
@@ -288,6 +292,9 @@ impl Restriction {
             Restriction::InLocation { locations } => {
                 format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
             }
+            Restriction::NotKeywords(keywords) => {
+                format!("without {}", keywords.iter().map(|k| k.as_ref()).join(", "))
+            }
         }
     }
 }
@@ -309,6 +316,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
 
     fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
+            protogen::targets::restriction::Restriction::Attacking(_) => Ok(Self::Attacking),
             protogen::targets::restriction::Restriction::AttackingOrBlocking(_) => {
                 Ok(Self::AttackingOrBlocking)
             }
@@ -344,6 +352,13 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             )),
             protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
             protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
+            protogen::targets::restriction::Restriction::NotKeywords(not) => Ok(Self::NotKeywords(
+                not.keywords
+                    .split(',')
+                    .filter(|s| !s.trim().is_empty())
+                    .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                    .collect::<anyhow::Result<_>>()?,
+            )),
             protogen::targets::restriction::Restriction::NotOfType(not) => Ok(Self::NotOfType {
                 types: not
                     .types

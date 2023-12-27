@@ -1209,6 +1209,30 @@ impl Battlefield {
                 let mut results = PendingResults::default();
                 for (attacker, target) in attackers.iter().zip(targets.iter()) {
                     attacker.set_attacking(db, *target);
+
+                    let listeners =
+                        TriggerId::active_triggers_of_source::<trigger_source::Attacks>(db);
+                    debug!("attack listeners {:?}", listeners);
+                    for trigger in listeners {
+                        if attacker.passes_restrictions(
+                            db,
+                            trigger.listener(db),
+                            trigger.controller_restriction(db),
+                            &trigger.restrictions(db),
+                        ) {
+                            for effect in trigger.effects(db) {
+                                effect
+                                    .into_effect(db, attacker.controller(db))
+                                    .push_pending_behavior(
+                                        db,
+                                        *attacker,
+                                        attacker.controller(db),
+                                        &mut results,
+                                    );
+                            }
+                        }
+                    }
+
                     if !attacker.vigilance(db) {
                         results.extend(attacker.tap(db));
                     }

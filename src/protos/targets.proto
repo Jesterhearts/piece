@@ -59,6 +59,7 @@ message Location {
 }
 
 message Restriction {
+  message Attacking {}
   message AttackingOrBlocking {}
   message CastFromHand {}
   message Cmc {
@@ -69,6 +70,9 @@ message Restriction {
   }
   message ControllerControlsBlackOrGreen {}
   message ControllerHandEmpty {}
+  message NotKeywords {
+    string keywords = 1;
+  }
   message NotOfType {
     repeated types.Type types = 1;
     repeated types.Subtype subtypes = 2;
@@ -92,19 +96,21 @@ message Restriction {
   message InGraveyard {}
 
   oneof restriction {
-    AttackingOrBlocking attacking_or_blocking = 1;
-    CastFromHand cast_from_hand = 2;
-    Cmc cmc = 3;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 4;
-    ControllerHandEmpty controller_hand_empty = 5;
-    InGraveyard in_graveyard = 6;
-    Locations location = 7;
-    NotOfType not_of_type = 8;
-    NotSelf not_self = 9;
-    OfColor of_color = 10;
-    OfType of_type = 11;
-    OnBattlefield on_battlefield = 12;
-    Self self = 13;
-    Toughness toughness = 14;
+    Attacking attacking = 1;
+    AttackingOrBlocking attacking_or_blocking = 2;
+    CastFromHand cast_from_hand = 3;
+    Cmc cmc = 4;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 5;
+    ControllerHandEmpty controller_hand_empty = 6;
+    InGraveyard in_graveyard = 7;
+    Locations location = 8;
+    NotKeywords not_keywords = 9;
+    NotOfType not_of_type = 10;
+    NotSelf not_self = 11;
+    OfColor of_color = 12;
+    OfType of_type = 13;
+    OnBattlefield on_battlefield = 14;
+    Self self = 15;
+    Toughness toughness = 16;
   }
 }
