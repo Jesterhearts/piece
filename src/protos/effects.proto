@@ -210,9 +210,9 @@ message ModifyBattlefield {
   bool remove_all_colors = 9;
   optional int32 add_power = 10;
   optional int32 add_toughness = 11;
-  optional ActivatedAbility add_ability = 13;
-  optional GainManaAbility mana_ability = 14;
-  repeated StaticAbility add_static_abilities = 12;
+  optional ActivatedAbility add_ability = 12;
+  optional GainManaAbility mana_ability = 13;
+  repeated StaticAbility add_static_abilities = 14;
   bool remove_all_subtypes = 15;
   bool entire_battlefield = 16;
   bool global = 17;
