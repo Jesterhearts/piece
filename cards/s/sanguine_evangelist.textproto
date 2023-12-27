@@ -49,6 +49,39 @@ triggered_abilities {
       put_into_graveyard {
       }
     }
+    from {
+      battlefield {
+      }
+    }
+    controller {
+      you {
+      }
+    }
+    restrictions {
+      self {
+      }
+    }
+  }
+  effects {
+    create_token {
+      creature {
+        name: "Bat"
+        types {
+          creature {
+          }
+        }
+        subtypes {
+          bat {
+          }
+        }
+        colors {
+          black {
+          }
+        }
+        power: 1
+        toughness: 1
+      }
+    }
   }
 }
 power: 2
