@@ -1,4 +1,8 @@
 name: "Quicksand Whirlpool"
+types {
+  instant {
+  }
+}
 cost {
   mana_costs {
     generic {
