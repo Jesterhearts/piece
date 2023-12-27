@@ -64,6 +64,7 @@ activated_abilities {
     }
   }
   apply_to_self: true
+  oracle_text: "Until end of turn, Resplendent Angel gets +2/+2 and gains lifelink."
 }
 triggered_abilities {
   trigger {
