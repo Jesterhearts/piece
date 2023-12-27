@@ -98,3 +98,13 @@ message XIs {
     Cmc cmc = 1;
   }
 }
+
+message CostReducer {
+  message TargetTappedCreature {}
+
+  oneof when {
+    TargetTappedCreature target_tapped_creature = 1;
+  }
+
+  ManaCost reduction = 2;
+}

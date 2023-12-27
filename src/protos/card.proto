@@ -15,34 +15,36 @@ message Card {
   repeated types.Subtype subtypes = 3;
 
   cost.CastingCost cost = 4;
-  bool cannot_be_countered = 5;
+  optional cost.CostReducer cost_reducer = 5;
 
-  repeated color.Color colors = 6;
+  bool cannot_be_countered = 6;
 
-  string oracle_text = 7;
+  repeated color.Color colors = 7;
 
-  optional abilities.Enchant enchant = 8;
+  string oracle_text = 8;
 
-  optional cost.Ward ward = 9;
+  optional abilities.Enchant enchant = 9;
 
-  repeated effects.Effect effects = 10;
-  repeated effects.Mode modes = 11;
-  bool target_individually = 12;
+  optional cost.Ward ward = 10;
 
-  repeated effects.Effect etb_abilities = 13;
-  repeated effects.StaticAbility static_abilities = 14;
-  repeated effects.ActivatedAbility activated_abilities = 15;
-  repeated abilities.TriggeredAbility triggered_abilities = 16;
-  repeated effects.GainManaAbility mana_abilities = 17;
-  repeated effects.ReplacementEffect replacement_effects = 18;
+  repeated effects.Effect effects = 11;
+  repeated effects.Mode modes = 12;
+  bool target_individually = 13;
 
-  optional int32 power = 19;
-  optional int32 toughness = 20;
-  bool etb_tapped = 21;
+  repeated effects.Effect etb_abilities = 14;
+  repeated effects.StaticAbility static_abilities = 15;
+  repeated effects.ActivatedAbility activated_abilities = 16;
+  repeated abilities.TriggeredAbility triggered_abilities = 17;
+  repeated effects.GainManaAbility mana_abilities = 18;
+  repeated effects.ReplacementEffect replacement_effects = 19;
 
-  string keywords = 22;
+  optional int32 power = 20;
+  optional int32 toughness = 21;
+  bool etb_tapped = 22;
 
-  repeated targets.Restriction restrictions = 23;
+  string keywords = 23;
 
-  optional Card back_face = 24;
+  repeated targets.Restriction restrictions = 24;
+
+  optional Card back_face = 25;
 }

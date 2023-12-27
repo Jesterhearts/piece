@@ -677,6 +677,7 @@ fn add_card_to_stack(
         }
     }
 
+    // It is important that paying costs happens last, because some cards have effects that depend on what they are targeting.
     let cost = card.cost(db);
     if paying_costs {
         results.push_pay_costs(PayCost::SpendMana(SpendMana::new(

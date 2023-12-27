@@ -28,7 +28,7 @@ use crate::{
         PaidX, Revealed, StaticAbilityModifier, TargetIndividually, TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
-    cost::{CastingCost, Ward},
+    cost::{CastingCost, CostReducer, Ward},
     effects::{
         effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield},
         target_gains_counters::{counter, Counter},
@@ -83,8 +83,8 @@ impl CardId {
         db.get::<UniqueId>(self.0).unwrap().0
     }
 
-    pub fn is_in_location<Location: Component + Ord>(self, database: &Database) -> bool {
-        database.get::<Location>(self.0).is_some()
+    pub fn is_in_location<Location: Component + Ord>(self, db: &Database) -> bool {
+        db.get::<Location>(self.0).is_some()
     }
 
     pub fn is_token(self, db: &Database) -> bool {
@@ -1351,6 +1351,10 @@ impl CardId {
             entity.insert(IsToken);
         }
 
+        if let Some(reducer) = card.reducer.as_ref() {
+            entity.insert(reducer.clone());
+        }
+
         if let Some(ward) = card.ward.as_ref() {
             entity.insert(ward.clone());
         }
@@ -1906,6 +1910,10 @@ impl CardId {
 
     pub(crate) fn ward(self, db: &mut Database) -> Option<&Ward> {
         db.get::<Ward>(self.0)
+    }
+
+    pub(crate) fn cost_reducer(&self, db: &Database) -> Option<CostReducer> {
+        db.get::<CostReducer>(self.0).cloned()
     }
 }
 

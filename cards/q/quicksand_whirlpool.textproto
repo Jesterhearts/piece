@@ -1,0 +1,45 @@
+name: "Quicksand Whirlpool"
+cost {
+  mana_costs {
+    generic {
+      count: 5
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+cost_reducer {
+  target_tapped_creature {
+  }
+  reduction {
+    generic {
+      count: 3
+    }
+  }
+}
+effects {
+  exile_target {
+    restrictions {
+      of_type {
+        types {
+          creature {
+          }
+        }
+      }
+    }
+    restrictions {
+      on_battlefield {
+      }
+    }
+    controller {
+      any {
+      }
+    }
+    duration {
+      permanently {
+      }
+    }
+  }
+}

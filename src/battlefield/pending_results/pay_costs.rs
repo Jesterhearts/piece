@@ -6,6 +6,7 @@ use itertools::Itertools;
 use crate::{
     battlefield::{ActionResult, PendingResult, PendingResults},
     controller::ControllerRestriction,
+    cost::ReduceWhen,
     effects::EffectDuration,
     in_play::{target_from_location, CardId, Database, ExileReason, OnBattlefield},
     mana::{Mana, ManaCost},
@@ -134,6 +135,7 @@ pub struct SpendMana {
     paying: IndexMap<ManaCost, usize>,
     paid: IndexMap<ManaCost, IndexMap<Mana, IndexMap<ManaSource, usize>>>,
     reason: SpendReason,
+    reduced: bool,
 }
 
 impl SpendMana {
@@ -153,6 +155,7 @@ impl SpendMana {
             paying,
             paid,
             reason,
+            reduced: false,
         }
     }
 
@@ -358,7 +361,59 @@ impl PayCost {
                     false
                 }
             }
-            PayCost::SpendMana(_) => false,
+            PayCost::SpendMana(spend) => {
+                if spend.reduced {
+                    return false;
+                }
+
+                if let Some(reducer) = spend.source.cost_reducer(db) {
+                    match reducer.when {
+                        ReduceWhen::TargetTappedCreature => {
+                            if let Ok(Some(target)) = already_chosen
+                                .iter()
+                                .exactly_one()
+                                .map(|target| target.id())
+                            {
+                                if target.tapped(db) {
+                                    let (reducing, count) = spend
+                                        .paying
+                                        .iter()
+                                        .find(|paying| {
+                                            std::mem::discriminant(paying.0)
+                                                == std::mem::discriminant(&reducer.reduction)
+                                        })
+                                        .map(|(cost, count)| (*cost, *count))
+                                        .unwrap();
+
+                                    spend.paying.remove(&reducing);
+
+                                    match reducing {
+                                        ManaCost::Generic(count) => {
+                                            let ManaCost::Generic(reduce) = reducer.reduction
+                                            else {
+                                                unreachable!()
+                                            };
+
+                                            if reduce < count {
+                                                spend
+                                                    .paying
+                                                    .insert(ManaCost::Generic(count - reduce), 1);
+                                            }
+                                        }
+                                        _ => {
+                                            spend.paying.insert(reducing, count - 1);
+                                        }
+                                    }
+                                    spend.reduced = true;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                false
+            }
             PayCost::ExilePermanentsCmcX(exile) => {
                 exile.target = already_chosen
                     .iter()

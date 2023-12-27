@@ -9,7 +9,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
-    cost::{AbilityCost, AdditionalCost, CastingCost, Ward},
+    cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer, Ward},
     effects::{
         target_creature_explores::TargetCreatureExplores, AnyEffect, Effect, Mode,
         ReplacementEffect, Token,
@@ -353,6 +353,7 @@ pub struct Card {
     pub subtypes: IndexSet<Subtype>,
 
     pub cost: CastingCost,
+    pub reducer: Option<CostReducer>,
     pub cannot_be_countered: bool,
 
     pub colors: HashSet<Color>,
@@ -408,6 +409,10 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .map(Subtype::try_from)
                 .collect::<anyhow::Result<_>>()?,
             cost: value.cost.get_or_default().try_into()?,
+            reducer: value
+                .cost_reducer
+                .as_ref()
+                .map_or(Ok(None), |reducer| reducer.try_into().map(Some))?,
             cannot_be_countered: value.cannot_be_countered,
             colors: value
                 .colors

@@ -340,3 +340,39 @@ impl From<&protogen::cost::xis::X_is> for XIs {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum ReduceWhen {
+    TargetTappedCreature,
+}
+
+impl From<&protogen::cost::cost_reducer::When> for ReduceWhen {
+    fn from(value: &protogen::cost::cost_reducer::When) -> Self {
+        match value {
+            protogen::cost::cost_reducer::When::TargetTappedCreature(_) => {
+                Self::TargetTappedCreature
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct CostReducer {
+    pub when: ReduceWhen,
+    pub reduction: ManaCost,
+}
+
+impl TryFrom<&protogen::cost::CostReducer> for CostReducer {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::cost::CostReducer) -> Result<Self, Self::Error> {
+        Ok(Self {
+            when: value
+                .when
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected reducer to have a when set"))
+                .map(ReduceWhen::from)?,
+            reduction: value.reduction.get_or_default().try_into()?,
+        })
+    }
+}
