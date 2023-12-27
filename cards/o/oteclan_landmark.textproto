@@ -81,6 +81,10 @@ back_face {
     golem {
     }
   }
+  colors {
+    white {
+    }
+  }
   triggered_abilities {
     trigger {
       source {
