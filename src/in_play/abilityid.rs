@@ -224,7 +224,7 @@ impl AbilityId {
             })
             .collect_vec()
         {
-            ability.delete(db)
+            ability.delete(db);
         }
     }
 
@@ -276,7 +276,7 @@ impl AbilityId {
                 Option<&Craft>,
             )>()
             .iter(&db.abilities)
-            .filter_map(
+            .find_map(
                 |(e, cost, effect, text, apply_to_self, sorcery_speed, craft)| {
                     if Self(e) == this {
                         Some((cost, effect, text, apply_to_self, sorcery_speed, craft))
@@ -285,7 +285,6 @@ impl AbilityId {
                     }
                 },
             )
-            .next()
         {
             Ability::Activated(ActivatedAbility {
                 cost: cost.clone(),
@@ -299,7 +298,7 @@ impl AbilityId {
             .abilities
             .query::<(Entity, &Effects)>()
             .iter(&db.abilities)
-            .filter_map(
+            .find_map(
                 |(e, effects)| {
                     if Self(e) == this {
                         Some(effects)
@@ -308,7 +307,6 @@ impl AbilityId {
                     }
                 },
             )
-            .next()
         {
             Ability::ETB {
                 effects: effects.0.clone(),
@@ -328,14 +326,13 @@ impl AbilityId {
                 &ManaRestriction,
             )>()
             .iter(&db.abilities)
-            .filter_map(|(e, cost, effect, mana_source, restriction)| {
+            .find_map(|(e, cost, effect, mana_source, restriction)| {
                 if Self(e) == self {
                     Some((cost, effect, mana_source, restriction))
                 } else {
                     None
                 }
             })
-            .next()
             .map(|(cost, gain, source, restriction)| GainManaAbility {
                 cost: cost.clone(),
                 gain: gain.clone(),
