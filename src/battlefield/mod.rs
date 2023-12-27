@@ -216,6 +216,9 @@ pub enum ActionResult {
     Transform {
         target: crate::in_play::CardId,
     },
+    ReturnFromGraveyardToHand {
+        targets: Vec<ActiveTarget>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -755,6 +758,17 @@ impl Battlefield {
                 }
 
                 pending
+            }
+            ActionResult::ReturnFromGraveyardToHand { targets } => {
+                for target in targets {
+                    let ActiveTarget::Battlefield { id } = target else {
+                        unreachable!()
+                    };
+
+                    id.move_to_hand(db);
+                }
+
+                PendingResults::default()
             }
             ActionResult::ReturnFromBattlefieldToLibrary { target } => {
                 let ActiveTarget::Battlefield { id: target } = target else {

@@ -236,6 +236,12 @@ message ReturnFromGraveyardToBattlefield {
   bool enters_tapped = 5;
 }
 
+message ReturnFromGraveyardToHand {
+  int32 count = 1;
+  controller.Controller controller = 2;
+  repeated targets.Restriction restrictions = 3;
+}
+
 message ReturnFromGraveyardToLibrary {
   int32 count = 1;
   controller.Controller controller = 2;
@@ -316,21 +322,22 @@ message Effect {
     MultiplyTokens multiply_tokens = 26;
     PayCostThen pay_cost_then = 27;
     ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 28;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 29;
-    ReturnSelfToHand return_self_to_hand = 30;
-    ReturnTargetToHand return_target_to_hand = 31;
-    ReturnTransformed return_transformed = 32;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 33;
-    Scry scry = 34;
-    TargetToTopOfLibrary target_to_top_of_library = 35;
-    Transform transform = 36;
-    TutorLibrary tutor_library = 37;
-    UntapThis untap_this = 38;
-    UntapTarget untap_target = 39;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 29;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 30;
+    ReturnSelfToHand return_self_to_hand = 31;
+    ReturnTargetToHand return_target_to_hand = 32;
+    ReturnTransformed return_transformed = 33;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 34;
+    Scry scry = 35;
+    TargetToTopOfLibrary target_to_top_of_library = 36;
+    Transform transform = 37;
+    TutorLibrary tutor_library = 38;
+    UntapThis untap_this = 39;
+    UntapTarget untap_target = 40;
   }
 
-  optional Effect threshold = 40;
-  string oracle_text = 41;
+  optional Effect threshold = 41;
+  string oracle_text = 42;
 }
 
 message Mode {

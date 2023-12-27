@@ -22,6 +22,7 @@ pub mod modify_target;
 pub mod multiply_tokens;
 pub mod pay_cost_then;
 pub mod return_from_graveyard_to_battlefield;
+pub mod return_from_graveyard_to_hand;
 pub mod return_from_graveyard_to_library;
 pub mod return_self_to_hand;
 pub mod return_target_to_hand;
@@ -75,6 +76,7 @@ use crate::{
         multiply_tokens::MultiplyTokens,
         pay_cost_then::PayCostThen,
         return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
+        return_from_graveyard_to_hand::ReturnFromGraveyardToHand,
         return_from_graveyard_to_library::ReturnFromGraveyardToLibrary,
         return_self_to_hand::ReturnSelfToHand,
         return_target_to_hand::ReturnTargetToHand,
@@ -509,6 +511,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => Ok(Self(
                 Box::leak(Box::new(ReturnFromGraveyardToBattlefield::try_from(value)?)),
+            )),
+            protogen::effects::effect::Effect::ReturnFromGraveyardToHand(value) => Ok(Self(
+                Box::leak(Box::new(ReturnFromGraveyardToHand::try_from(value)?)),
             )),
             protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => Ok(Self(
                 Box::leak(Box::new(ReturnFromGraveyardToLibrary::try_from(value)?)),

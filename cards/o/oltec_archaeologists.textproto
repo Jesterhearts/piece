@@ -1,0 +1,48 @@
+name: "Oltec Archaeologists"
+types {
+  creature {
+  }
+}
+subtypes {
+  human {
+  }
+}
+subtypes {
+  artificer {
+  }
+}
+subtypes {
+  scout {
+  }
+}
+etb_abilities {
+  modal {
+    modes {
+      effects {
+        return_from_graveyard_to_hand {
+          controller {
+            you {
+            }
+          }
+          restrictions {
+            of_type {
+              types {
+                artifact {
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    modes {
+      effects {
+        scry {
+          count: 3
+        }
+      }
+    }
+  }
+}
+power: 4
+toughness: 4
