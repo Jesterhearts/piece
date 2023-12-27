@@ -12,6 +12,7 @@ use itertools::Itertools;
 use crate::{
     abilities::{
         Ability, ActivatedAbility, ApplyToSelf, Craft, GainMana, GainManaAbility, SorcerySpeed,
+        StaticAbility,
     },
     card::OracleText,
     controller::ControllerRestriction,
@@ -434,6 +435,15 @@ impl AbilityId {
         activator: Owner,
     ) -> bool {
         let source = self.source(db);
+        let banned = source
+            .static_abilities(db)
+            .iter()
+            .any(|ability| matches!(ability, StaticAbility::PreventAbilityActivation));
+
+        if banned {
+            return false;
+        }
+
         let in_battlefield = source.is_in_location::<OnBattlefield>(db);
 
         match self.ability(db) {

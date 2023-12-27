@@ -1723,6 +1723,9 @@ fn move_card_to_battlefield(
             }
             StaticAbility::ExtraLandsPerTurn(_) => {}
             StaticAbility::ForceEtbTapped(_) => {}
+            StaticAbility::PreventAttacks => {}
+            StaticAbility::PreventBlocks => {}
+            StaticAbility::PreventAbilityActivation => {}
         }
     }
     for ability in source_card_id.etb_abilities(db) {

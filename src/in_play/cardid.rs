@@ -734,7 +734,11 @@ impl CardId {
             if let Some(modify) = modifier.static_ability_modifiers(db) {
                 applied_modifiers.insert(modifier);
                 match modify {
-                    StaticAbilityModifier::Add(add) => static_abilities.push(add.clone()),
+                    StaticAbilityModifier::AddAll(add) => {
+                        for ability in add.iter() {
+                            static_abilities.push(ability.clone());
+                        }
+                    }
                     StaticAbilityModifier::RemoveAll => static_abilities.clear(),
                 }
             }
@@ -1613,9 +1617,12 @@ impl CardId {
                         }
                     }
                 }
-                StaticAbility::BattlefieldModifier(_) => {}
-                StaticAbility::ExtraLandsPerTurn(_) => {}
-                StaticAbility::ForceEtbTapped(_) => {}
+                StaticAbility::BattlefieldModifier(_)
+                | StaticAbility::ExtraLandsPerTurn(_)
+                | StaticAbility::ForceEtbTapped(_)
+                | StaticAbility::PreventAttacks
+                | StaticAbility::PreventBlocks
+                | StaticAbility::PreventAbilityActivation => {}
             }
         }
 
@@ -1879,6 +1886,10 @@ impl CardId {
 
     pub(crate) fn can_attack(self, db: &Database) -> bool {
         self.types_intersect(db, &IndexSet::from([Type::Creature]))
+            && !self
+                .static_abilities(db)
+                .into_iter()
+                .any(|ability| matches!(ability, StaticAbility::PreventAttacks))
     }
 
     pub(crate) fn exile_source(self, db: &Database) -> ExiledWith {

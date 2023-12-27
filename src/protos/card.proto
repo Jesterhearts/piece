@@ -30,7 +30,7 @@ message Card {
   bool target_individually = 12;
 
   repeated effects.Effect etb_abilities = 13;
-  repeated abilities.StaticAbility static_abilities = 14;
+  repeated effects.StaticAbility static_abilities = 14;
   repeated effects.ActivatedAbility activated_abilities = 15;
   repeated abilities.TriggeredAbility triggered_abilities = 16;
   repeated effects.GainManaAbility mana_abilities = 17;

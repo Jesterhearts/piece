@@ -210,13 +210,14 @@ message ModifyBattlefield {
   bool remove_all_colors = 9;
   optional int32 add_power = 10;
   optional int32 add_toughness = 11;
-  optional ActivatedAbility add_ability = 12;
-  optional GainManaAbility mana_ability = 13;
-  bool remove_all_subtypes = 14;
-  bool entire_battlefield = 15;
-  bool global = 16;
-  string add_keywords = 17;
-  string remove_keywords = 18;
+  optional ActivatedAbility add_ability = 13;
+  optional GainManaAbility mana_ability = 14;
+  repeated StaticAbility add_static_abilities = 12;
+  bool remove_all_subtypes = 15;
+  bool entire_battlefield = 16;
+  bool global = 17;
+  string add_keywords = 18;
+  string remove_keywords = 19;
 }
 
 message MultiplyTokens {
@@ -269,6 +270,29 @@ message RevealEachTopOfLibrary {
 
 message Scry {
   int32 count = 1;
+}
+
+message StaticAbility {
+  message GreenCannotBeCountered {
+    controller.Controller controller = 1;
+  }
+  message ForceEtbTapped {
+    controller.Controller controller = 1;
+    repeated types.Type types = 2;
+  }
+  message PreventAttacks {}
+  message PreventBlocks {}
+  message PreventAbilityActivation {}
+
+  oneof ability {
+    BattlefieldModifier battlefield_modifier = 1;
+    ExtraLandsPerTurn extra_lands_per_turn = 2;
+    ForceEtbTapped force_etb_tapped = 3;
+    GreenCannotBeCountered green_cannot_be_countered = 4;
+    PreventAttacks prevent_attacks = 5;
+    PreventBlocks prevent_blocks = 6;
+    PreventAbilityActivation prevent_ability_activation = 7;
+  }
 }
 
 message TargetToTopOfLibrary {

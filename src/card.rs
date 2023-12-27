@@ -277,7 +277,7 @@ impl From<&protogen::color::color::Color> for Color {
 #[derive(Debug, Clone, Component)]
 pub enum StaticAbilityModifier {
     RemoveAll,
-    Add(StaticAbility),
+    AddAll(Vec<StaticAbility>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]

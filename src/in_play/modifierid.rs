@@ -173,6 +173,14 @@ impl ModifierId {
                 .insert(ActivatedAbilityModifier::Add(id));
         }
 
+        if !modifier.modifier.add_static_abilities.is_empty() {
+            db.modifiers
+                .entity_mut(modifierid.0)
+                .insert(StaticAbilityModifier::AddAll(
+                    modifier.modifier.add_static_abilities.clone(),
+                ));
+        }
+
         if modifier.modifier.remove_all_abilities {
             modifierid.remove_all_abilities(db);
         }

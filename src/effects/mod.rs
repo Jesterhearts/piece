@@ -48,7 +48,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    abilities::{ActivatedAbility, GainManaAbility},
+    abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
     battlefield::PendingResults,
     card::{Color, Keyword},
     controller::ControllerRestriction,
@@ -229,6 +229,7 @@ pub struct ModifyBattlefield {
 
     pub add_colors: HashSet<Color>,
 
+    pub add_static_abilities: Vec<StaticAbility>,
     pub add_ability: Option<ActivatedAbility>,
     pub mana_ability: Option<GainManaAbility>,
 
@@ -280,6 +281,11 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .remove_subtypes
                 .iter()
                 .map(Subtype::try_from)
+                .collect::<anyhow::Result<_>>()?,
+            add_static_abilities: value
+                .add_static_abilities
+                .iter()
+                .map(StaticAbility::try_from)
                 .collect::<anyhow::Result<_>>()?,
             add_ability: value
                 .add_ability

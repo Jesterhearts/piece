@@ -67,12 +67,15 @@ pub enum StaticAbility {
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
     GreenCannotBeCountered { controller: ControllerRestriction },
+    PreventAttacks,
+    PreventBlocks,
+    PreventAbilityActivation,
 }
 
-impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
+impl TryFrom<&protogen::effects::StaticAbility> for StaticAbility {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::abilities::StaticAbility) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::StaticAbility) -> Result<Self, Self::Error> {
         value
             .ability
             .as_ref()
@@ -81,12 +84,12 @@ impl TryFrom<&protogen::abilities::StaticAbility> for StaticAbility {
     }
 }
 
-impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
+impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::abilities::static_ability::Ability) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::static_ability::Ability) -> Result<Self, Self::Error> {
         match value {
-            protogen::abilities::static_ability::Ability::GreenCannotBeCountered(ability) => {
+            protogen::effects::static_ability::Ability::GreenCannotBeCountered(ability) => {
                 Ok(Self::GreenCannotBeCountered {
                     controller: ability
                         .controller
@@ -96,13 +99,13 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                         .unwrap_or_default(),
                 })
             }
-            protogen::abilities::static_ability::Ability::BattlefieldModifier(modifier) => {
+            protogen::effects::static_ability::Ability::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(Box::new(modifier.try_into()?)))
             }
-            protogen::abilities::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
+            protogen::effects::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
                 Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
             }
-            protogen::abilities::static_ability::Ability::ForceEtbTapped(force) => {
+            protogen::effects::static_ability::Ability::ForceEtbTapped(force) => {
                 Ok(Self::ForceEtbTapped(ForceEtbTapped {
                     controller: force.controller.get_or_default().try_into()?,
                     types: force
@@ -111,6 +114,13 @@ impl TryFrom<&protogen::abilities::static_ability::Ability> for StaticAbility {
                         .map(Type::try_from)
                         .collect::<anyhow::Result<_>>()?,
                 }))
+            }
+            protogen::effects::static_ability::Ability::PreventAttacks(_) => {
+                Ok(Self::PreventAttacks)
+            }
+            protogen::effects::static_ability::Ability::PreventBlocks(_) => Ok(Self::PreventBlocks),
+            protogen::effects::static_ability::Ability::PreventAbilityActivation(_) => {
+                Ok(Self::PreventAbilityActivation)
             }
         }
     }

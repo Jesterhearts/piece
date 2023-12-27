@@ -13,23 +13,6 @@ message Enchant {
   repeated effects.BattlefieldModifier modifiers = 1;
 }
 
-message StaticAbility {
-  message GreenCannotBeCountered {
-    controller.Controller controller = 1;
-  }
-  message ForceEtbTapped {
-    controller.Controller controller = 1;
-    repeated types.Type types = 2;
-  }
-
-  oneof ability {
-    effects.BattlefieldModifier battlefield_modifier = 1;
-    effects.ExtraLandsPerTurn extra_lands_per_turn = 2;
-    ForceEtbTapped force_etb_tapped = 3;
-    GreenCannotBeCountered green_cannot_be_countered = 4;
-  }
-}
-
 message TriggeredAbility {
   triggers.Trigger trigger = 1;
   repeated effects.Effect effects = 2;
