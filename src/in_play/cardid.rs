@@ -47,7 +47,6 @@ use crate::{
         mana_pool::{ManaSource, SourcedMana},
         Controller, Owner,
     },
-    protogen::color,
     stack::{self, ActiveTarget, Settled, Stack, Targets},
     targets::{self, Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
     triggers::trigger_source,
