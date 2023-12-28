@@ -12,7 +12,6 @@ use ratatui::{
         Block, BorderType, Borders, Clear, Paragraph, StatefulWidget, Widget, Wrap,
     },
 };
-use tracing::Level;
 
 use crate::{
     in_play::{CardId, CounterId, Database, InHand, OnBattlefield},
