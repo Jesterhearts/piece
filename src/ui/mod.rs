@@ -386,8 +386,6 @@ impl<'db, 'ap, 't> StatefulWidget for SelectedAbilities<'db, 'ap, 't> {
                             self.turn,
                             self.player,
                         ) {
-                            let text = ability.text(self.db);
-                            event!(Level::DEBUG, ?text, "Can activate ability");
                             Some((idx, ability.text(self.db)))
                         } else {
                             None

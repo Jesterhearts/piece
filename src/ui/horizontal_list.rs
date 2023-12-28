@@ -148,7 +148,6 @@ impl StatefulWidget for HorizontalList<'_> {
 
             remaining_width = remaining_width.saturating_sub(item_width);
             if current_page > self.page {
-                debug!("Overflowed current page");
                 break;
             }
 

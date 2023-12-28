@@ -496,13 +496,6 @@ impl AbilityId {
                 let targets = source.targets_for_ability(db, self, &HashSet::default());
                 let needs_targets = self.needs_targets(db);
 
-                event!(
-                    Level::DEBUG,
-                    ?targets,
-                    ?needs_targets,
-                    "for activating ability"
-                );
-
                 needs_targets
                     .into_iter()
                     .zip(targets)
