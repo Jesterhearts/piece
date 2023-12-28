@@ -29,14 +29,21 @@ impl AI {
         }
 
         turn.pass_priority();
-        assert_ne!(turn.priority_player(), self.player);
+        debug!("Passing priority: full round {}", turn.passed_full_round());
+
         if turn.passed_full_round() {
             let mut pending = turn.step(db, all_players);
+            debug!(
+                "Pending priority {:?}",
+                pending.priority(db, all_players, turn)
+            );
             if pending.priority(db, all_players, turn) == self.player {
                 self.priority(db, all_players, turn, &mut pending)
             } else {
                 pending
             }
+        } else if turn.priority_player() == self.player {
+            return self.priority(db, all_players, turn, pending);
         } else {
             PendingResults::default()
         }

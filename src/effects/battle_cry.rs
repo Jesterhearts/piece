@@ -35,12 +35,14 @@ impl EffectBehaviors for BattleCry {
                 &BattlefieldModifier {
                     modifier: ModifyBattlefield {
                         add_power: Some(1),
+                        entire_battlefield: true,
                         ..Default::default()
                     },
                     controller: ControllerRestriction::You,
                     duration: EffectDuration::UntilEndOfTurn,
                     restrictions: vec![
                         Restriction::Attacking,
+                        Restriction::NotSelf,
                         Restriction::OfType {
                             types: IndexSet::from([Type::Creature]),
                             subtypes: Default::default(),

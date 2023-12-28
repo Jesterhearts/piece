@@ -75,6 +75,9 @@ impl Turn {
         }
 
         self.priority_player = self.active_player;
+        if !Stack::is_empty(db) {
+            return Stack::resolve_1(db);
+        }
 
         match self.phase {
             Phase::Untap => {
@@ -197,6 +200,15 @@ impl Turn {
                                 continue;
                             }
                         }
+                    }
+
+                    if !trigger.listener(db).passes_restrictions(
+                        db,
+                        trigger.listener(db),
+                        trigger.controller_restriction(db),
+                        &trigger.restrictions(db),
+                    ) {
+                        continue;
                     }
 
                     let listener = trigger.listener(db);

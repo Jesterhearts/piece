@@ -1244,7 +1244,7 @@ impl Battlefield {
                                     threshold: None,
                                     oracle_text: String::default(),
                                 }],
-                                oracle_text: String::default(),
+                                oracle_text: "Battle cry".to_string(),
                             },
                             *attacker,
                             true,

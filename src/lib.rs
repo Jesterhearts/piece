@@ -1,13 +1,7 @@
 #![allow(clippy::single_match)]
 
-#[allow(unused_imports)]
 #[macro_use]
-extern crate slog;
-extern crate slog_scope;
-extern crate slog_stdlog;
-extern crate slog_term;
-#[macro_use]
-extern crate log;
+extern crate tracing;
 
 use std::collections::HashMap;
 

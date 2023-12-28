@@ -1,10 +1,5 @@
 #[macro_use]
-extern crate slog;
-extern crate slog_scope;
-extern crate slog_stdlog;
-extern crate slog_term;
-#[macro_use]
-extern crate log;
+extern crate tracing;
 
 use std::{fs::OpenOptions, io::stdout};
 
@@ -25,7 +20,6 @@ use ratatui::{
     text::Span,
     widgets::{block::Title, Block, Borders, Paragraph},
 };
-use slog::Drain;
 
 use piece::{
     ai::AI,
@@ -43,6 +37,7 @@ use piece::{
     },
     UiState,
 };
+use tui_textarea::{Input, Key, TextArea};
 
 #[allow(clippy::large_enum_variant)]
 enum UiAction {
@@ -57,13 +52,16 @@ fn main() -> anyhow::Result<()> {
         .truncate(true)
         .open("logs.log")?;
 
-    let decorator = slog_term::PlainSyncDecorator::new(file);
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let logger = slog::Logger::root(drain, o!());
-
-    // slog_stdlog uses the logger from slog_scope, so set a logger there
-    let _guard = slog_scope::set_global_logger(logger);
-    slog_stdlog::init()?;
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file);
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_writer(non_blocking)
+        .init();
 
     let cards = load_cards()?;
     let mut db = Database::default();
@@ -178,6 +176,9 @@ fn main() -> anyhow::Result<()> {
         player2_exile_list_offset: 0,
     };
 
+    let mut textarea = TextArea::default();
+    let mut displaying_textarea = false;
+
     let mut last_down = None;
     let mut last_click = None;
     let mut last_rclick = false;
@@ -192,8 +193,49 @@ fn main() -> anyhow::Result<()> {
     let mut next_action = None;
 
     loop {
+        if turn.priority_player() == player2 {
+            debug!("Giving ai priority");
+            let mut pending = ai.priority(
+                &mut db,
+                &mut all_players,
+                &mut turn,
+                &mut PendingResults::default(),
+            );
+
+            while pending.only_immediate_results(&db, &all_players) {
+                let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                if result == ResolutionResult::Complete {
+                    break;
+                }
+            }
+
+            maybe_organize_stack(&mut db, &turn, pending, &mut state);
+        }
+
         if event::poll(std::time::Duration::from_millis(16))? {
             let event = event::read()?;
+
+            if displaying_textarea {
+                match event.into() {
+                    Input {
+                        key: Key::Enter, ..
+                    } => {
+                        let text = &textarea.lines()[0];
+                        if cards.contains_key(text) {
+                            displaying_textarea = false;
+                            let card = CardId::upload(&mut db, &cards, player1, text);
+                            card.move_to_hand(&mut db);
+                        }
+                    }
+                    Input { key: Key::Esc, .. } => {
+                        displaying_textarea = false;
+                    }
+                    input => {
+                        textarea.input(input);
+                    }
+                }
+                continue;
+            }
 
             if let event::Event::Mouse(mouse) = event {
                 if let MouseEventKind::Down(_) = mouse.kind {
@@ -480,6 +522,7 @@ fn main() -> anyhow::Result<()> {
                                     "(Debug) Untap all",
                                     "(Debug) Draw",
                                     "(Debug) infinite mana",
+                                    "(Debug) Add card to hand",
                                 ]
                                 .into_iter()
                                 .enumerate()
@@ -656,6 +699,21 @@ fn main() -> anyhow::Result<()> {
                                 UiState::ExaminingCard(hovered),
                             ));
                         }
+                    }
+
+                    if displaying_textarea {
+                        let layout = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints([Constraint::Length(3), Constraint::Min(1)])
+                            .split(battlefield_layout[0]);
+
+                        if cards.contains_key(&textarea.lines()[0]) {
+                            textarea.set_block(Block::default().borders(Borders::ALL).green())
+                        } else {
+                            textarea.set_block(Block::default().borders(Borders::ALL).red())
+                        }
+
+                        frame.render_widget(textarea.widget(), layout[0]);
                     }
 
                     frame.render_stateful_widget(
@@ -999,7 +1057,6 @@ fn main() -> anyhow::Result<()> {
             UiState::Battlefield {
                 phase_options_selection_state:
                     HorizontalListState {
-                        hovered: phases_hovered,
                         start_index: phases_start_index,
                         ..
                     },
@@ -1017,90 +1074,7 @@ fn main() -> anyhow::Result<()> {
                 selected_state,
                 ..
             } => {
-                if phases_hovered.is_some() {
-                    if let Some(index) = key_selected
-                        .map(|offset| *phases_start_index + offset)
-                        .or(last_entry_clicked)
-                    {
-                        match index {
-                            0 => {
-                                turn.pass_priority();
-                                if !turn.passed_full_round() {
-                                    assert_eq!(turn.priority_player(), player2);
-                                    debug!("{} Giving ai priority", line!());
-                                    let mut pending = ai.priority(
-                                        &mut db,
-                                        &mut all_players,
-                                        &mut turn,
-                                        &mut PendingResults::default(),
-                                    );
-
-                                    while pending.only_immediate_results(&db, &all_players) {
-                                        let result =
-                                            pending.resolve(&mut db, &mut all_players, &turn, None);
-                                        if result == ResolutionResult::Complete {
-                                            break;
-                                        }
-                                    }
-
-                                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                                } else {
-                                    let mut pending = turn.step(&mut db, &mut all_players);
-
-                                    while pending.only_immediate_results(&db, &all_players) {
-                                        let result =
-                                            pending.resolve(&mut db, &mut all_players, &turn, None);
-                                        if result == ResolutionResult::Complete {
-                                            break;
-                                        }
-                                    }
-
-                                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                                }
-                            }
-                            1 => {
-                                for card in in_play::cards::<OnBattlefield>(&mut db) {
-                                    card.untap(&mut db);
-                                }
-                            }
-                            2 => {
-                                let mut pending = all_players[player1].draw(&mut db, 1);
-                                while pending.only_immediate_results(&db, &all_players) {
-                                    let result =
-                                        pending.resolve(&mut db, &mut all_players, &turn, None);
-                                    if result == ResolutionResult::Complete {
-                                        break;
-                                    }
-                                }
-
-                                maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                            }
-                            3 => {
-                                all_players[player1].infinite_mana();
-                            }
-                            _ => {}
-                        }
-                    }
-                } else if hand_hovered.is_some() {
-                    if let Some(selected) = key_selected
-                        .map(|offset| *hand_start_index + offset)
-                        .or(last_entry_clicked)
-                    {
-                        let card = player1.get_cards::<InHand>(&mut db)[selected];
-                        if turn.can_cast(&mut db, card) {
-                            let mut pending = all_players[player1].play_card(&mut db, selected);
-                            while pending.only_immediate_results(&db, &all_players) {
-                                let result =
-                                    pending.resolve(&mut db, &mut all_players, &turn, None);
-                                if result == ResolutionResult::Complete {
-                                    break;
-                                }
-                            }
-
-                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                        }
-                    }
-                } else if let Some(card) = selected_state.selected {
+                if let Some(card) = selected_state.selected {
                     let abilities = card.activated_abilities(&db);
                     if let Some(selected) = key_selected
                         .map(|offset| *actions_start_index + offset)
@@ -1127,6 +1101,73 @@ fn main() -> anyhow::Result<()> {
                             maybe_organize_stack(&mut db, &turn, pending, &mut state);
                         }
                     }
+                } else if hand_hovered.is_some() {
+                    if let Some(selected) = key_selected
+                        .map(|offset| *hand_start_index + offset)
+                        .or(last_entry_clicked)
+                    {
+                        let card = player1.get_cards::<InHand>(&mut db)[selected];
+                        if turn.can_cast(&mut db, card) {
+                            let mut pending = all_players[player1].play_card(&mut db, selected);
+                            while pending.only_immediate_results(&db, &all_players) {
+                                let result =
+                                    pending.resolve(&mut db, &mut all_players, &turn, None);
+                                if result == ResolutionResult::Complete {
+                                    break;
+                                }
+                            }
+
+                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                        }
+                    }
+                } else if let Some(index) = key_selected
+                    .map(|offset| *phases_start_index + offset)
+                    .or(last_entry_clicked)
+                {
+                    match index {
+                        0 => {
+                            debug!("Passing priority");
+                            assert_eq!(turn.priority_player(), player1);
+                            turn.pass_priority();
+
+                            if turn.passed_full_round() {
+                                let mut pending = turn.step(&mut db, &mut all_players);
+                                while pending.only_immediate_results(&db, &all_players) {
+                                    let result =
+                                        pending.resolve(&mut db, &mut all_players, &turn, None);
+                                    if result == ResolutionResult::Complete {
+                                        break;
+                                    }
+                                }
+
+                                maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                            }
+                        }
+                        1 => {
+                            for card in in_play::cards::<OnBattlefield>(&mut db) {
+                                card.untap(&mut db);
+                            }
+                        }
+                        2 => {
+                            let mut pending = all_players[player1].draw(&mut db, 1);
+                            while pending.only_immediate_results(&db, &all_players) {
+                                let result =
+                                    pending.resolve(&mut db, &mut all_players, &turn, None);
+                                if result == ResolutionResult::Complete {
+                                    break;
+                                }
+                            }
+
+                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                        }
+                        3 => {
+                            all_players[player1].infinite_mana();
+                        }
+                        4 => {
+                            displaying_textarea = true;
+                        }
+                        _ => {}
+                    }
                 }
             }
             UiState::SelectingOptions {
@@ -1134,14 +1175,17 @@ fn main() -> anyhow::Result<()> {
                 organizing_stack,
                 ..
             } => {
-                if turn.priority_player() == player2 {
-                    debug!("{} Giving ai priority", line!());
-                    let pending = ai.priority(&mut db, &mut all_players, &mut turn, to_resolve);
-                    if pending.is_empty() {
-                        maybe_organize_stack(&mut db, &turn, PendingResults::default(), &mut state);
-                    } else {
-                        *to_resolve = Box::new(pending);
+                if to_resolve.priority(&db, &all_players, &turn) == player2 {
+                    let mut pending = ai.priority(&mut db, &mut all_players, &mut turn, to_resolve);
+
+                    while pending.only_immediate_results(&db, &all_players) {
+                        let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                        if result == ResolutionResult::Complete {
+                            break;
+                        }
                     }
+
+                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
                 } else {
                     let mut real_choice = choice;
                     #[allow(clippy::unnecessary_unwrap)] // I would if I could
@@ -1175,9 +1219,10 @@ fn main() -> anyhow::Result<()> {
                                             to_resolve.set_organize_stack(&db, entries, &turn);
                                             *organizing_stack = true;
                                         } else {
+                                            debug!("Stepping priority");
                                             turn.step_priority();
                                             assert_eq!(turn.priority_player(), player2);
-                                            debug!("{} Giving ai priority", line!());
+                                            debug!("Giving ai priority",);
                                             let pending = ai.priority(
                                                 &mut db,
                                                 &mut all_players,
@@ -1311,6 +1356,26 @@ fn maybe_organize_stack(
                 selection_list_state: ListState::default(),
                 organizing_stack: true,
                 selection_list_offset: 0,
+            };
+        } else {
+            *state = UiState::Battlefield {
+                phase_options_selection_state: HorizontalListState::default(),
+                phase_options_list_page: 0,
+                selected_state: CardSelectionState::default(),
+                action_selection_state: HorizontalListState::default(),
+                action_list_page: 0,
+                hand_selection_state: HorizontalListState::default(),
+                hand_list_page: 0,
+                stack_view_state: ListState::default(),
+                stack_list_offset: 0,
+                player1_mana_list_offset: 0,
+                player2_mana_list_offset: 0,
+                player1_graveyard_selection_state: ListState::default(),
+                player1_graveyard_list_offset: 0,
+                player1_exile_selection_state: ListState::default(),
+                player1_exile_list_offset: 0,
+                player2_graveyard_list_offset: 0,
+                player2_exile_list_offset: 0,
             };
         }
     }

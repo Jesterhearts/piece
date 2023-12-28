@@ -310,7 +310,7 @@ impl<'db> StatefulWidget for Battlefield<'db> {
         if let (Some(card), Some(title)) = (state.hovered, hovered_title) {
             if stacking {
                 let pt = card.pt_text(self.db);
-                let area = area.inner(&Margin::new(20, 0));
+                let area = area.inner(&Margin::new(20, 1));
 
                 Block::new().on_gray().render(area, buf);
 
