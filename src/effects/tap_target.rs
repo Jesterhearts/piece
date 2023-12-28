@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult},
@@ -81,6 +82,7 @@ impl EffectBehaviors for TapTarget {
         ));
     }
 
+    #[instrument(level = Level::INFO, skip(_db, results))]
     fn push_behavior_with_targets(
         &'static self,
         _db: &mut crate::in_play::Database,

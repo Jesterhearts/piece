@@ -49,7 +49,6 @@ use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use tracing::Level;
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
@@ -387,9 +386,6 @@ pub trait EffectBehaviors: Debug {
         unreachable!()
     }
 
-    #[allow(unused_variables)]
-    #[allow(clippy::needless_return)]
-    #[instrument(level = Level::INFO, skip(db, results))]
     fn push_behavior_with_targets(
         &'static self,
         db: &mut Database,

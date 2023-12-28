@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use indexmap::IndexSet;
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
@@ -67,6 +68,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         ));
     }
 
+    #[instrument(level = Level::INFO, skip(_db, results))]
     fn push_behavior_with_targets(
         &self,
         _db: &mut crate::in_play::Database,
