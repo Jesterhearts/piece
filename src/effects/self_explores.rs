@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct SelfExplores;
+pub(crate) struct SelfExplores;
 
 impl EffectBehaviors for SelfExplores {
     fn needs_targets(&'static self) -> usize {

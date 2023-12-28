@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, ResolutionResult},
-    in_play::{CardId, Database},
+    battlefield::ResolutionResult,
+    in_play::{self, CardId, Database, OnBattlefield},
     load_cards,
     player::AllPlayers,
     stack::Stack,
@@ -29,7 +29,7 @@ fn creates_tokens() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(Battlefield::creatures(&mut db).len(), 2);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db).len(), 2);
 
     Ok(())
 }

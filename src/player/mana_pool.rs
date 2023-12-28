@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
-pub struct SourcedMana(pub HashMap<ManaSource, usize>);
+pub(crate) struct SourcedMana(pub(crate) HashMap<ManaSource, usize>);
 
 #[derive(
     Debug,
@@ -29,14 +29,14 @@ pub struct SourcedMana(pub HashMap<ManaSource, usize>);
     strum::AsRefStr,
     strum::EnumIter,
 )]
-pub enum ManaSource {
+pub(crate) enum ManaSource {
     Any,
     Treasure,
     Cave,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SpendReason {
+pub(crate) enum SpendReason {
     Casting(CardId),
     Activating(AbilityId),
     Other,
@@ -75,7 +75,7 @@ impl From<&protogen::cost::mana_source::Source> for ManaSource {
 
 #[derive(Debug, Clone)]
 pub struct ManaPool {
-    pub sourced: BTreeMap<Mana, BTreeMap<ManaSource, BTreeMap<ManaRestriction, usize>>>,
+    pub(crate) sourced: BTreeMap<Mana, BTreeMap<ManaSource, BTreeMap<ManaRestriction, usize>>>,
 }
 
 impl Default for ManaPool {
@@ -98,11 +98,11 @@ impl Default for ManaPool {
 }
 
 impl ManaPool {
-    pub fn drain(&mut self) {
+    pub(crate) fn drain(&mut self) {
         self.sourced.clear();
     }
 
-    pub fn apply(&mut self, mana: Mana, source: ManaSource, restriction: ManaRestriction) {
+    pub(crate) fn apply(&mut self, mana: Mana, source: ManaSource, restriction: ManaRestriction) {
         *self
             .sourced
             .entry(mana)
@@ -113,7 +113,7 @@ impl ManaPool {
             .or_default() += 1;
     }
 
-    pub fn spend(
+    pub(crate) fn spend(
         &mut self,
         db: &Database,
         mana: Mana,
@@ -203,7 +203,7 @@ impl ManaPool {
         }
     }
 
-    pub fn can_spend(
+    pub(crate) fn can_spend(
         &self,
         db: &Database,
         cost: ManaCost,
@@ -260,7 +260,7 @@ impl ManaPool {
         true
     }
 
-    pub fn all_mana(
+    pub(crate) fn all_mana(
         &self,
     ) -> impl Iterator<Item = (usize, Mana, ManaSource, ManaRestriction)> + std::fmt::Debug + '_
     {
@@ -273,13 +273,13 @@ impl ManaPool {
         })
     }
 
-    pub fn available_mana(
+    pub(crate) fn available_mana(
         &self,
     ) -> impl Iterator<Item = (usize, Mana, ManaSource, ManaRestriction)> + '_ {
         self.all_mana().filter(|(count, _, _, _)| *count > 0)
     }
 
-    pub fn max(&self, db: &Database, reason: SpendReason) -> Option<Mana> {
+    pub(crate) fn max(&self, db: &Database, reason: SpendReason) -> Option<Mana> {
         self.available_mana()
             .filter(|(_, _, _, restriction)| {
                 if *restriction == ManaRestriction::None {

@@ -26,22 +26,16 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord, Component)]
-pub struct ModifierSeq(usize);
-
-impl ModifierSeq {
-    pub fn next() -> Self {
-        Self(NEXT_MODIFIER_SEQ.fetch_add(1, Ordering::Relaxed))
-    }
-}
+pub(crate) struct ModifierSeq(usize);
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, Component, Deref, DerefMut)]
-pub struct Modifiers(pub Vec<ModifierId>);
+pub(crate) struct Modifiers(pub(crate) Vec<ModifierId>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
-pub struct ModifierId(Entity);
+pub(crate) struct ModifierId(Entity);
 
 impl ModifierId {
-    pub fn remove_all_abilities(self, db: &mut Database) {
+    pub(crate) fn remove_all_abilities(self, db: &mut Database) {
         db.modifiers
             .entity_mut(self.0)
             .insert(ActivatedAbilityModifier::RemoveAll)
@@ -50,7 +44,7 @@ impl ModifierId {
             .insert(ModifyKeywords::Remove(Keyword::all()));
     }
 
-    pub fn upload_temporary_modifier(
+    pub(crate) fn upload_temporary_modifier(
         db: &mut Database,
         cardid: CardId,
         modifier: &BattlefieldModifier,
@@ -58,7 +52,7 @@ impl ModifierId {
         Self::upload_modifier(db, cardid, modifier, true)
     }
 
-    pub fn upload_modifier(
+    pub(crate) fn upload_modifier(
         db: &mut Database,
         source: CardId,
         modifier: &BattlefieldModifier,
@@ -188,17 +182,17 @@ impl ModifierId {
         modifierid
     }
 
-    pub fn modifying(self, db: &Database) -> &Modifying {
+    pub(crate) fn modifying(self, db: &Database) -> &Modifying {
         db.modifiers.get::<Modifying>(self.0).unwrap()
     }
 
-    pub fn ability_modifier(self, db: &Database) -> Option<ActivatedAbilityModifier> {
+    pub(crate) fn ability_modifier(self, db: &Database) -> Option<ActivatedAbilityModifier> {
         db.modifiers
             .get::<ActivatedAbilityModifier>(self.0)
             .copied()
     }
 
-    pub fn activate(self, db: &mut Database) {
+    pub(crate) fn activate(self, db: &mut Database) {
         db.modifiers
             .entity_mut(self.0)
             .insert(Active)
@@ -207,7 +201,7 @@ impl ModifierId {
             ));
     }
 
-    pub fn deactivate(self, db: &mut Database) {
+    pub(crate) fn deactivate(self, db: &mut Database) {
         let is_temporary = db.modifiers.get::<Temporary>(self.0).is_some();
         let modifying = self.modifying(db);
 
@@ -222,89 +216,95 @@ impl ModifierId {
         }
     }
 
-    pub fn detach_all(&self, db: &mut Database) {
+    pub(crate) fn detach_all(&self, db: &mut Database) {
         db.modifiers.get_mut::<Modifying>(self.0).unwrap().clear();
         self.deactivate(db);
     }
 
-    pub fn add_types(self, db: &Database) -> Option<&AddTypes> {
+    pub(crate) fn add_types(self, db: &Database) -> Option<&AddTypes> {
         db.modifiers.get::<AddTypes>(self.0)
     }
 
-    pub fn add_subtypes(self, db: &Database) -> Option<&AddSubtypes> {
+    pub(crate) fn add_subtypes(self, db: &Database) -> Option<&AddSubtypes> {
         db.modifiers.get::<AddSubtypes>(self.0)
     }
 
-    pub fn remove_types(self, db: &Database) -> Option<&RemoveTypes> {
+    pub(crate) fn remove_types(self, db: &Database) -> Option<&RemoveTypes> {
         db.modifiers.get::<RemoveTypes>(self.0)
     }
 
-    pub fn remove_subtypes(self, db: &Database) -> Option<&RemoveSubtypes> {
+    pub(crate) fn remove_subtypes(self, db: &Database) -> Option<&RemoveSubtypes> {
         db.modifiers.get::<RemoveSubtypes>(self.0)
     }
 
-    pub fn source(self, db: &Database) -> CardId {
+    pub(crate) fn source(self, db: &Database) -> CardId {
         db.modifiers.get::<CardId>(self.0).copied().unwrap()
     }
 
-    pub fn controller_restriction(self, db: &Database) -> ControllerRestriction {
+    pub(crate) fn controller_restriction(self, db: &Database) -> ControllerRestriction {
         db.modifiers
             .get::<ControllerRestriction>(self.0)
             .copied()
             .unwrap()
     }
 
-    pub fn restrictions(self, db: &Database) -> Vec<Restriction> {
+    pub(crate) fn restrictions(self, db: &Database) -> Vec<Restriction> {
         db.modifiers.get::<Restrictions>(self.0).cloned().unwrap().0
     }
 
-    pub fn add_colors(self, db: &Database) -> Option<&AddColors> {
+    pub(crate) fn add_colors(self, db: &Database) -> Option<&AddColors> {
         db.modifiers.get::<AddColors>(self.0)
     }
 
-    pub fn triggered_ability_modifiers(self, db: &Database) -> Option<&TriggeredAbilityModifier> {
+    pub(crate) fn triggered_ability_modifiers(
+        self,
+        db: &Database,
+    ) -> Option<&TriggeredAbilityModifier> {
         db.modifiers.get::<TriggeredAbilityModifier>(self.0)
     }
 
-    pub fn etb_ability_modifiers(self, db: &Database) -> Option<&EtbAbilityModifier> {
+    pub(crate) fn etb_ability_modifiers(self, db: &Database) -> Option<&EtbAbilityModifier> {
         db.modifiers.get::<EtbAbilityModifier>(self.0)
     }
 
-    pub fn static_ability_modifiers(self, db: &Database) -> Option<&StaticAbilityModifier> {
+    pub(crate) fn static_ability_modifiers(self, db: &Database) -> Option<&StaticAbilityModifier> {
         db.modifiers.get::<StaticAbilityModifier>(self.0)
     }
 
-    pub fn activated_ability_modifiers(self, db: &Database) -> Option<&ActivatedAbilityModifier> {
+    pub(crate) fn activated_ability_modifiers(
+        self,
+        db: &Database,
+    ) -> Option<&ActivatedAbilityModifier> {
         db.modifiers.get::<ActivatedAbilityModifier>(self.0)
     }
 
-    pub fn keyword_modifiers(self, db: &Database) -> Option<&ModifyKeywords> {
+    pub(crate) fn keyword_modifiers(self, db: &Database) -> Option<&ModifyKeywords> {
         db.modifiers.get::<ModifyKeywords>(self.0)
     }
 
-    pub fn base_power(self, db: &Database) -> Option<i32> {
+    pub(crate) fn base_power(self, db: &Database) -> Option<i32> {
         db.modifiers.get::<BasePowerModifier>(self.0).map(|m| m.0)
     }
 
-    pub fn base_toughness(self, db: &Database) -> Option<i32> {
+    pub(crate) fn base_toughness(self, db: &Database) -> Option<i32> {
         db.modifiers
             .get::<BaseToughnessModifier>(self.0)
             .map(|m| m.0)
     }
 
-    pub fn add_power(self, db: &Database) -> Option<i32> {
+    pub(crate) fn add_power(self, db: &Database) -> Option<i32> {
         db.modifiers.get::<AddPower>(self.0).map(|a| a.0)
     }
 
-    pub fn add_toughness(self, db: &Database) -> Option<i32> {
+    pub(crate) fn add_toughness(self, db: &Database) -> Option<i32> {
         db.modifiers.get::<AddToughness>(self.0).map(|a| a.0)
     }
 
-    pub fn dynamic_power(self, db: &Database) -> Option<DynamicPowerToughness> {
+    pub(crate) fn dynamic_power(self, db: &Database) -> Option<DynamicPowerToughness> {
         db.modifiers.get::<DynamicPowerToughness>(self.0).cloned()
     }
 
-    pub fn remove_all_colors(self, db: &Database) -> bool {
+    pub(crate) fn remove_all_colors(self, db: &Database) -> bool {
         db.modifiers.get::<RemoveAllColors>(self.0).is_some()
     }
 }

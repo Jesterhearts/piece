@@ -9,9 +9,9 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct OrganizingStack {
-    pub entries: Vec<StackEntry>,
-    pub choices: IndexSet<usize>,
+pub(crate) struct OrganizingStack {
+    pub(crate) entries: Vec<StackEntry>,
+    pub(crate) choices: IndexSet<usize>,
 }
 impl OrganizingStack {
     pub(crate) fn new(entries: Vec<StackEntry>) -> Self {

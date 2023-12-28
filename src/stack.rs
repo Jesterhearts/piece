@@ -27,13 +27,13 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
-pub struct Settled;
+pub(crate) struct Settled;
 
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
-pub struct Targets(pub Vec<Vec<ActiveTarget>>);
+pub(crate) struct Targets(pub(crate) Vec<Vec<ActiveTarget>>);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub enum ActiveTarget {
+pub(crate) enum ActiveTarget {
     Stack { id: InStack },
     Battlefield { id: CardId },
     Graveyard { id: CardId },
@@ -41,7 +41,7 @@ pub enum ActiveTarget {
     Player { id: Owner },
 }
 impl ActiveTarget {
-    pub fn display(&self, db: &mut Database, all_players: &AllPlayers) -> String {
+    pub(crate) fn display(&self, db: &mut Database, all_players: &AllPlayers) -> String {
         match self {
             ActiveTarget::Stack { id } => {
                 format!("Stack ({}): {}", id, id.title(db))
@@ -59,7 +59,7 @@ impl ActiveTarget {
         }
     }
 
-    pub fn id(&self) -> Option<CardId> {
+    pub(crate) fn id(&self) -> Option<CardId> {
         match self {
             ActiveTarget::Battlefield { id }
             | ActiveTarget::Graveyard { id }
@@ -71,7 +71,7 @@ impl ActiveTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub enum Entry {
+pub(crate) enum Entry {
     Card(CardId),
     Ability {
         in_stack: AbilityId,
@@ -86,7 +86,7 @@ pub enum Entry {
 }
 
 impl Entry {
-    pub fn source(&self) -> CardId {
+    pub(crate) fn source(&self) -> CardId {
         match self {
             Entry::Card(card_source)
             | Entry::Ability { card_source, .. }
@@ -96,17 +96,17 @@ impl Entry {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub struct Modes(pub Vec<usize>);
+pub(crate) struct Modes(pub(crate) Vec<usize>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StackEntry {
-    pub ty: Entry,
-    pub targets: Vec<Vec<ActiveTarget>>,
-    pub mode: Option<Vec<usize>>,
+    pub(crate) ty: Entry,
+    pub(crate) targets: Vec<Vec<ActiveTarget>>,
+    pub(crate) mode: Option<Vec<usize>>,
 }
 
 impl StackEntry {
-    pub fn remove_from_stack(&self, db: &mut Database) {
+    pub(crate) fn remove_from_stack(&self, db: &mut Database) {
         match self.ty {
             Entry::Card(_) => {}
             Entry::Ability { in_stack, .. } => in_stack.remove_from_stack(db),
@@ -135,14 +135,15 @@ impl StackEntry {
 pub struct Stack;
 
 impl Stack {
-    pub fn split_second(db: &mut Database) -> bool {
+    pub(crate) fn split_second(db: &mut Database) -> bool {
         db.query_filtered::<(), (With<InStack>, With<SplitSecond>)>()
             .iter(db)
             .next()
             .is_some()
     }
 
-    pub fn target_nth(db: &mut Database, nth: usize) -> ActiveTarget {
+    #[cfg(test)]
+    pub(crate) fn target_nth(db: &mut Database, nth: usize) -> ActiveTarget {
         let nth = db
             .cards
             .query::<&InStack>()
@@ -166,7 +167,7 @@ impl Stack {
         ActiveTarget::Stack { id: nth }
     }
 
-    pub fn in_stack(db: &mut Database) -> HashMap<InStack, Entry> {
+    pub(crate) fn in_stack(db: &mut Database) -> HashMap<InStack, Entry> {
         db.cards
             .query::<(&InStack, Entity)>()
             .iter(&db.cards)
@@ -416,7 +417,8 @@ impl Stack {
             .is_none()
     }
 
-    pub fn len(db: &mut Database) -> usize {
+    #[allow(unused)]
+    pub(crate) fn len(db: &mut Database) -> usize {
         db.cards
             .query_filtered::<(), With<InStack>>()
             .iter(&db.cards)
@@ -433,7 +435,7 @@ impl Stack {
             .count()
     }
 
-    pub fn settle(db: &mut Database) {
+    pub(crate) fn settle(db: &mut Database) {
         let in_stack = Self::in_stack(db);
         for (_, entry) in in_stack.iter() {
             match entry {
@@ -557,7 +559,7 @@ impl Stack {
         results
     }
 
-    pub fn move_etb_ability_to_stack(
+    pub(crate) fn move_etb_ability_to_stack(
         db: &mut Database,
         ability: AbilityId,
         source: CardId,
@@ -574,7 +576,7 @@ impl Stack {
         results
     }
 
-    pub fn move_trigger_to_stack(
+    pub(crate) fn move_trigger_to_stack(
         db: &mut Database,
         trigger: TriggerId,
         source: CardId,
@@ -597,7 +599,7 @@ impl Stack {
         results
     }
 
-    pub fn move_card_to_stack_from_hand(
+    pub(crate) fn move_card_to_stack_from_hand(
         db: &mut Database,
         card: CardId,
         paying_costs: bool,
@@ -605,7 +607,7 @@ impl Stack {
         add_card_to_stack(card, db, CastFrom::Hand, paying_costs)
     }
 
-    pub fn move_card_to_stack_from_exile(
+    pub(crate) fn move_card_to_stack_from_exile(
         db: &mut Database,
         card: CardId,
         paying_costs: bool,
@@ -749,8 +751,8 @@ fn add_card_to_stack(
 #[cfg(test)]
 mod tests {
     use crate::{
-        battlefield::{Battlefield, ResolutionResult},
-        in_play::{CardId, Database},
+        battlefield::ResolutionResult,
+        in_play::{self, CardId, Database, OnBattlefield},
         load_cards,
         player::AllPlayers,
         stack::Stack,
@@ -774,7 +776,7 @@ mod tests {
         assert_eq!(result, ResolutionResult::Complete);
 
         assert!(Stack::is_empty(&mut db));
-        assert_eq!(Battlefield::creatures(&mut db), [card1]);
+        assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card1]);
 
         Ok(())
     }

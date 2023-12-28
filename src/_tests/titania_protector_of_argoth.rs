@@ -63,7 +63,7 @@ fn graveyard_trigger() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(Battlefield::creatures(&mut db).len(), 2);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db).len(), 2);
 
     Ok(())
 }

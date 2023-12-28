@@ -1,8 +1,8 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen, targets::Restriction};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct DestroyEach {
-    pub restrictions: Vec<Restriction>,
+pub(crate) struct DestroyEach {
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::DestroyEach> for DestroyEach {

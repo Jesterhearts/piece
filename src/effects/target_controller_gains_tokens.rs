@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct TargetControllerGainsTokens {
+pub(crate) struct TargetControllerGainsTokens {
     token: Token,
 }
 

@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct TapTarget {
+pub(crate) struct TapTarget {
     restrictions: Vec<Restriction>,
 }
 

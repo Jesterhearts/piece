@@ -18,7 +18,8 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
-pub enum Location {
+#[allow(unused)]
+pub(crate) enum Location {
     Battlefield,
     Graveyard,
     Exile,
@@ -52,7 +53,7 @@ impl From<&protogen::targets::location::Location> for Location {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Comparison {
+pub(crate) enum Comparison {
     LessThan(i32),
     LessThanOrEqual(i32),
     GreaterThan(i32),
@@ -104,10 +105,10 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct SpellTarget {
-    pub controller: ControllerRestriction,
-    pub types: IndexSet<Type>,
-    pub subtypes: IndexSet<Subtype>,
+pub(crate) struct SpellTarget {
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) types: IndexSet<Type>,
+    pub(crate) subtypes: IndexSet<Subtype>,
 }
 
 impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
@@ -136,10 +137,10 @@ impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct Restrictions(pub Vec<Restriction>);
+pub(crate) struct Restrictions(pub(crate) Vec<Restriction>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Dynamic {
+pub(crate) enum Dynamic {
     X,
 }
 
@@ -172,7 +173,7 @@ impl std::fmt::Display for Dynamic {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cmc {
+pub(crate) enum Cmc {
     Comparison(Comparison),
     Dynamic(Dynamic),
 }
@@ -214,7 +215,7 @@ impl TryFrom<&protogen::targets::restriction::cmc::Cmc> for Cmc {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Restriction {
+pub(crate) enum Restriction {
     Attacking,
     AttackingOrBlocking,
     CastFromHand,
@@ -245,7 +246,7 @@ pub enum Restriction {
 }
 
 impl Restriction {
-    pub fn text(&self) -> String {
+    pub(crate) fn text(&self) -> String {
         match self {
             Restriction::Attacking => "attacking".to_string(),
             Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),

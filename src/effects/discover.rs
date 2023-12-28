@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen};
 
 #[derive(Debug, Clone, Copy)]
-pub struct Discover {
+pub(crate) struct Discover {
     count: usize,
 }
 

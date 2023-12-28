@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct DeclaringAttackers {
+pub(crate) struct DeclaringAttackers {
     pub(super) candidates: Vec<CardId>,
     pub(super) choices: IndexSet<usize>,
     pub(super) targets: Vec<Owner>,

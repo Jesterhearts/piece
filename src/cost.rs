@@ -15,11 +15,11 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
 pub struct CastingCost {
     pub mana_cost: Vec<ManaCost>,
-    pub additional_cost: Vec<AdditionalCost>,
+    pub(crate) additional_cost: Vec<AdditionalCost>,
 }
 
 impl CastingCost {
-    pub fn colors(&self) -> HashSet<Color> {
+    pub(crate) fn colors(&self) -> HashSet<Color> {
         self.mana_cost.iter().map(|mana| mana.color()).collect()
     }
 
@@ -64,8 +64,8 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PayLife {
-    pub count: usize,
+pub(crate) struct PayLife {
+    pub(crate) count: usize,
 }
 
 impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
@@ -79,7 +79,7 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AdditionalCost {
+pub(crate) enum AdditionalCost {
     DiscardThis,
     ExileCard {
         restrictions: Vec<Restriction>,
@@ -103,7 +103,7 @@ pub enum AdditionalCost {
 }
 
 impl AdditionalCost {
-    pub fn text(&self, db: &Database, source: CardId) -> String {
+    pub(crate) fn text(&self, db: &Database, source: CardId) -> String {
         match self {
             AdditionalCost::DiscardThis => format!("discard {}", source.name(db)),
             AdditionalCost::SacrificeSource => format!("Sacrifice {}", source.name(db)),
@@ -229,8 +229,8 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
-pub struct Ward {
-    pub mana_cost: Vec<ManaCost>,
+pub(crate) struct Ward {
+    pub(crate) mana_cost: Vec<ManaCost>,
 }
 
 impl TryFrom<&protogen::cost::Ward> for Ward {
@@ -248,7 +248,7 @@ impl TryFrom<&protogen::cost::Ward> for Ward {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum AbilityRestriction {
+pub(crate) enum AbilityRestriction {
     AttackedWithXOrMoreCreatures(usize),
 }
 
@@ -281,15 +281,15 @@ impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestr
 }
 
 #[derive(Debug, Clone, Component)]
-pub struct AbilityCost {
-    pub mana_cost: Vec<ManaCost>,
-    pub tap: bool,
-    pub additional_cost: Vec<AdditionalCost>,
-    pub restrictions: Vec<AbilityRestriction>,
+pub(crate) struct AbilityCost {
+    pub(crate) mana_cost: Vec<ManaCost>,
+    pub(crate) tap: bool,
+    pub(crate) additional_cost: Vec<AdditionalCost>,
+    pub(crate) restrictions: Vec<AbilityRestriction>,
 }
 
 impl AbilityCost {
-    pub fn text(&self, db: &Database, source: CardId) -> String {
+    pub(crate) fn text(&self, db: &Database, source: CardId) -> String {
         std::iter::once(
             self.mana_cost
                 .iter()
@@ -341,7 +341,7 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum XIs {
+pub(crate) enum XIs {
     Cmc,
 }
 
@@ -366,7 +366,7 @@ impl From<&protogen::cost::xis::X_is> for XIs {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ReduceWhen {
+pub(crate) enum ReduceWhen {
     TargetTappedCreature,
 }
 
@@ -381,9 +381,9 @@ impl From<&protogen::cost::cost_reducer::When> for ReduceWhen {
 }
 
 #[derive(Debug, Clone, Component)]
-pub struct CostReducer {
-    pub when: ReduceWhen,
-    pub reduction: ManaCost,
+pub(crate) struct CostReducer {
+    pub(crate) when: ReduceWhen,
+    pub(crate) reduction: ManaCost,
 }
 
 impl TryFrom<&protogen::cost::CostReducer> for CostReducer {

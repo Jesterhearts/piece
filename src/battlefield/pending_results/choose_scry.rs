@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ChoosingScry {
+pub(crate) struct ChoosingScry {
     cards: Vec<CardId>,
     cards_on_bottom: Vec<CardId>,
     cards_on_top: Vec<CardId>,
@@ -16,7 +16,7 @@ pub struct ChoosingScry {
 }
 
 impl ChoosingScry {
-    pub fn new(cards: Vec<CardId>, controller: Controller) -> Self {
+    pub(crate) fn new(cards: Vec<CardId>, controller: Controller) -> Self {
         Self {
             cards,
             cards_on_bottom: Default::default(),

@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct ExileTarget {
+pub(crate) struct ExileTarget {
     restrictions: Vec<Restriction>,
     duration: EffectDuration,
     controller: ControllerRestriction,

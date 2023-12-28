@@ -9,13 +9,13 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deref, DerefMut, Component)]
-pub struct Count(pub usize);
+pub(crate) struct Count(pub(crate) usize);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct CounterId(Entity);
+pub(crate) struct CounterId(Entity);
 
 impl CounterId {
-    pub fn add_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
+    pub(crate) fn add_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
         match counter {
             Counter::Charge => Self::add_counters_of_type::<counter::Charge>(db, card, count),
             Counter::P1P1 => Self::add_counters_of_type::<counter::P1P1>(db, card, count),
@@ -23,7 +23,7 @@ impl CounterId {
         }
     }
 
-    pub fn remove_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
+    pub(crate) fn remove_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
         match counter {
             Counter::Charge => Self::remove_counters_of_type::<counter::Charge>(db, card, count),
             Counter::P1P1 => Self::remove_counters_of_type::<counter::P1P1>(db, card, count),
@@ -31,7 +31,7 @@ impl CounterId {
         }
     }
 
-    pub fn add_counters_of_type<Type: Component + Default>(
+    pub(crate) fn add_counters_of_type<Type: Component + Default>(
         db: &mut Database,
         card: CardId,
         count: usize,
@@ -57,7 +57,7 @@ impl CounterId {
         }
     }
 
-    pub fn remove_counters_of_type<Type: Component + Default>(
+    pub(crate) fn remove_counters_of_type<Type: Component + Default>(
         db: &mut Database,
         card: CardId,
         count: usize,
@@ -83,7 +83,7 @@ impl CounterId {
         }
     }
 
-    pub fn counters_on(db: &mut Database, card: CardId, counter: Counter) -> usize {
+    pub(crate) fn counters_on(db: &mut Database, card: CardId, counter: Counter) -> usize {
         match counter {
             Counter::Charge => Self::counters_of_type_on::<counter::Charge>(db, card),
             Counter::P1P1 => Self::counters_of_type_on::<counter::P1P1>(db, card),
@@ -91,7 +91,7 @@ impl CounterId {
         }
     }
 
-    pub fn counters_of_type_on<Type: Component>(db: &mut Database, card: CardId) -> usize {
+    pub(crate) fn counters_of_type_on<Type: Component>(db: &mut Database, card: CardId) -> usize {
         db.counters
             .query_filtered::<(&CardId, &Count), With<Type>>()
             .iter_mut(&mut db.counters)
@@ -107,7 +107,7 @@ impl CounterId {
             .unwrap_or_default()
     }
 
-    pub fn counter_text_on(db: &mut Database, card: CardId) -> Vec<String> {
+    pub(crate) fn counter_text_on(db: &mut Database, card: CardId) -> Vec<String> {
         let mut results = vec![];
 
         for counter in Counter::iter() {

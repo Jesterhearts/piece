@@ -2,8 +2,8 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, ResolutionResult},
-    in_play::CardId,
     in_play::Database,
+    in_play::{self, CardId, OnBattlefield},
     load_cards,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
@@ -39,7 +39,7 @@ fn damages_target() -> anyhow::Result<()> {
     let mut results = Battlefield::check_sba(&mut db);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(Battlefield::creatures(&mut db), []);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), []);
 
     Ok(())
 }
@@ -79,7 +79,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     let mut results = Battlefield::check_sba(&mut db);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(Battlefield::creatures(&mut db), []);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), []);
 
     Ok(())
 }
@@ -121,7 +121,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     let mut results = Battlefield::check_sba(&mut db);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(Battlefield::creatures(&mut db), []);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), []);
 
     Ok(())
 }

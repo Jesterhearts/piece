@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ExileTargetGraveyard;
+pub(crate) struct ExileTargetGraveyard;
 
 impl EffectBehaviors for ExileTargetGraveyard {
     fn needs_targets(&'static self) -> usize {

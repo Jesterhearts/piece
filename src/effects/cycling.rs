@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Cycling {
+pub(crate) struct Cycling {
     types: IndexSet<Type>,
     subtypes: IndexSet<Subtype>,
 }

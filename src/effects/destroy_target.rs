@@ -10,8 +10,8 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct DestroyTarget {
-    pub restrictions: Vec<Restriction>,
+pub(crate) struct DestroyTarget {
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::DestroyTarget> for DestroyTarget {

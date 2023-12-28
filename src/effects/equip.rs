@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Equip {
+pub(crate) struct Equip {
     modifiers: Vec<ModifyBattlefield>,
 }
 

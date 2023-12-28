@@ -11,10 +11,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TutorLibrary {
-    pub restrictions: Vec<Restriction>,
-    pub destination: Destination,
-    pub reveal: bool,
+pub(crate) struct TutorLibrary {
+    pub(crate) restrictions: Vec<Restriction>,
+    pub(crate) destination: Destination,
+    pub(crate) reveal: bool,
 }
 
 impl TryFrom<&protogen::effects::TutorLibrary> for TutorLibrary {
@@ -78,7 +78,7 @@ impl EffectBehaviors for TutorLibrary {
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
         if self.reveal {
@@ -120,5 +120,7 @@ impl EffectBehaviors for TutorLibrary {
                 }
             }
         }
+
+        results.push_settled(ActionResult::Shuffle(controller.into()));
     }
 }

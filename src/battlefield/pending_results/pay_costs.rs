@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct SacrificePermanent {
+pub(crate) struct SacrificePermanent {
     source: CardId,
     restrictions: Vec<Restriction>,
     valid_targets: Vec<CardId>,
@@ -27,7 +27,7 @@ pub struct SacrificePermanent {
 }
 
 impl SacrificePermanent {
-    pub fn new(restrictions: Vec<Restriction>, source: CardId) -> Self {
+    pub(crate) fn new(restrictions: Vec<Restriction>, source: CardId) -> Self {
         Self {
             source,
             restrictions,
@@ -38,7 +38,7 @@ impl SacrificePermanent {
 }
 
 #[derive(Debug)]
-pub struct TapPermanent {
+pub(crate) struct TapPermanent {
     source: CardId,
     restrictions: Vec<Restriction>,
     valid_targets: Vec<CardId>,
@@ -46,7 +46,7 @@ pub struct TapPermanent {
 }
 
 impl TapPermanent {
-    pub fn new(restrictions: Vec<Restriction>, source: CardId) -> Self {
+    pub(crate) fn new(restrictions: Vec<Restriction>, source: CardId) -> Self {
         Self {
             source,
             restrictions,
@@ -57,7 +57,7 @@ impl TapPermanent {
 }
 
 #[derive(Debug)]
-pub struct TapPermanentsPowerXOrMore {
+pub(crate) struct TapPermanentsPowerXOrMore {
     restrictions: Vec<Restriction>,
     x_is: usize,
     source: CardId,
@@ -66,7 +66,7 @@ pub struct TapPermanentsPowerXOrMore {
 }
 
 impl TapPermanentsPowerXOrMore {
-    pub fn new(restrictions: Vec<Restriction>, x_is: usize, source: CardId) -> Self {
+    pub(crate) fn new(restrictions: Vec<Restriction>, x_is: usize, source: CardId) -> Self {
         Self {
             restrictions,
             x_is,
@@ -78,7 +78,7 @@ impl TapPermanentsPowerXOrMore {
 }
 
 #[derive(Debug)]
-pub struct ExilePermanentsCmcX {
+pub(crate) struct ExilePermanentsCmcX {
     source: CardId,
     restrictions: Vec<Restriction>,
     valid_targets: Vec<CardId>,
@@ -87,7 +87,7 @@ pub struct ExilePermanentsCmcX {
 }
 
 impl ExilePermanentsCmcX {
-    pub fn new(restrictions: Vec<Restriction>, source: CardId) -> Self {
+    pub(crate) fn new(restrictions: Vec<Restriction>, source: CardId) -> Self {
         Self {
             source,
             restrictions,
@@ -99,7 +99,7 @@ impl ExilePermanentsCmcX {
 }
 
 #[derive(Debug)]
-pub struct ExileCards {
+pub(crate) struct ExileCards {
     reason: Option<ExileReason>,
     source: CardId,
     minimum: usize,
@@ -110,7 +110,7 @@ pub struct ExileCards {
 }
 
 impl ExileCards {
-    pub fn new(
+    pub(crate) fn new(
         reason: Option<ExileReason>,
         minimum: usize,
         maximum: usize,
@@ -130,7 +130,7 @@ impl ExileCards {
 }
 
 #[derive(Debug)]
-pub struct ExileCardsSharingType {
+pub(crate) struct ExileCardsSharingType {
     reason: Option<ExileReason>,
     source: CardId,
     count: usize,
@@ -139,7 +139,7 @@ pub struct ExileCardsSharingType {
 }
 
 impl ExileCardsSharingType {
-    pub fn new(reason: Option<ExileReason>, source: CardId, count: usize) -> Self {
+    pub(crate) fn new(reason: Option<ExileReason>, source: CardId, count: usize) -> Self {
         Self {
             reason,
             source,
@@ -151,7 +151,7 @@ impl ExileCardsSharingType {
 }
 
 #[derive(Debug)]
-pub struct SpendMana {
+pub(crate) struct SpendMana {
     source: CardId,
     paying: IndexMap<ManaCost, usize>,
     paid: IndexMap<ManaCost, IndexMap<Mana, IndexMap<ManaSource, usize>>>,
@@ -160,7 +160,7 @@ pub struct SpendMana {
 }
 
 impl SpendMana {
-    pub fn new(mut mana: Vec<ManaCost>, source: CardId, reason: SpendReason) -> Self {
+    pub(crate) fn new(mut mana: Vec<ManaCost>, source: CardId, reason: SpendReason) -> Self {
         mana.sort();
 
         let mut paying = IndexMap::default();
@@ -180,7 +180,7 @@ impl SpendMana {
         }
     }
 
-    pub fn first_unpaid_x_always_unpaid(&self) -> Option<ManaCost> {
+    pub(crate) fn first_unpaid_x_always_unpaid(&self) -> Option<ManaCost> {
         let unpaid = self
             .paying
             .iter()
@@ -207,16 +207,16 @@ impl SpendMana {
         unpaid
     }
 
-    pub fn first_unpaid(&self) -> Option<ManaCost> {
+    pub(crate) fn first_unpaid(&self) -> Option<ManaCost> {
         self.first_unpaid_x_always_unpaid()
             .filter(|unpaid| !matches!(unpaid, ManaCost::X | ManaCost::TwoX))
     }
 
-    pub fn paid(&self) -> bool {
+    pub(crate) fn paid(&self) -> bool {
         self.first_unpaid().is_none()
     }
 
-    pub fn paying(&self) -> (Vec<Mana>, Vec<ManaSource>) {
+    pub(crate) fn paying(&self) -> (Vec<Mana>, Vec<ManaSource>) {
         let mut mana_paid = vec![];
         let mut mana_source = vec![];
         for paid in self.paid.values() {
@@ -273,7 +273,7 @@ impl SpendMana {
 }
 
 #[derive(Debug)]
-pub enum PayCost {
+pub(crate) enum PayCost {
     SacrificePermanent(SacrificePermanent),
     TapPermanent(TapPermanent),
     TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore),
@@ -284,7 +284,7 @@ pub enum PayCost {
 }
 
 impl PayCost {
-    pub fn autopay(&self, db: &Database, all_players: &AllPlayers) -> bool {
+    pub(crate) fn autopay(&self, db: &Database, all_players: &AllPlayers) -> bool {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,

@@ -8,8 +8,8 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct ControllerDrawsCards {
-    pub count: usize,
+pub(crate) struct ControllerDrawsCards {
+    pub(crate) count: usize,
 }
 
 impl EffectBehaviors for ControllerDrawsCards {

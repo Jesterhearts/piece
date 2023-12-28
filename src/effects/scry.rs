@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen};
 
 #[derive(Debug, Clone, Copy)]
-pub struct Scry {
+pub(crate) struct Scry {
     count: usize,
 }
 

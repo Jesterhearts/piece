@@ -1,11 +1,11 @@
-pub mod choose_modes;
-pub mod choose_scry;
-pub mod choose_targets;
-pub mod choosing_cast;
-pub mod declaring_attackers;
-pub mod library_or_graveyard;
-pub mod organizing_stack;
-pub mod pay_costs;
+pub(crate) mod choose_modes;
+pub(crate) mod choose_scry;
+pub(crate) mod choose_targets;
+pub(crate) mod choosing_cast;
+pub(crate) mod declaring_attackers;
+pub(crate) mod library_or_graveyard;
+pub(crate) mod organizing_stack;
+pub(crate) mod pay_costs;
 
 use std::{
     collections::{HashSet, VecDeque},
@@ -45,7 +45,7 @@ pub enum ResolutionResult {
 }
 
 #[derive(Debug, Clone)]
-pub enum Source {
+pub(crate) enum Source {
     Card(CardId),
     Ability(AbilityId),
     Effect(Effect, CardId),
@@ -103,7 +103,7 @@ impl Source {
 }
 
 #[derive(Debug, Clone)]
-pub enum TargetSource {
+pub(crate) enum TargetSource {
     Effect(Effect),
     Aura(AuraId),
 }
@@ -126,7 +126,7 @@ impl TargetSource {
 
 #[derive(Debug)]
 #[enum_dispatch(PendingResult)]
-pub enum Pending {
+pub(crate) enum Pending {
     ChooseModes(ChooseModes),
     ChooseTargets(ChooseTargets),
     ChooseCast(ChoosingCast),
@@ -138,7 +138,7 @@ pub enum Pending {
 }
 
 #[enum_dispatch]
-pub trait PendingResult: std::fmt::Debug {
+pub(crate) trait PendingResult: std::fmt::Debug {
     #[must_use]
     fn optional(&self, db: &Database, all_players: &AllPlayers) -> bool;
 
@@ -192,27 +192,27 @@ pub struct PendingResults {
 }
 
 impl PendingResults {
-    pub fn add_gain_mana(&mut self, source: AbilityId) {
+    pub(crate) fn add_gain_mana(&mut self, source: AbilityId) {
         self.gain_mana = Some(source);
         self.apply_in_stages = false;
     }
 
-    pub fn add_ability_to_stack(&mut self, source: AbilityId) {
+    pub(crate) fn add_ability_to_stack(&mut self, source: AbilityId) {
         self.add_to_stack = Some(Source::Ability(source));
         self.apply_in_stages = false;
     }
 
-    pub fn add_card_to_stack(&mut self, source: CardId, from: CastFrom) {
+    pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: CastFrom) {
         self.add_to_stack = Some(Source::Card(source));
         self.cast_from(from);
         self.apply_in_stages = false;
     }
 
-    pub fn cast_from(&mut self, from: CastFrom) {
+    pub(crate) fn cast_from(&mut self, from: CastFrom) {
         self.cast_from = Some(from);
     }
 
-    pub fn apply_in_stages(&mut self) {
+    pub(crate) fn apply_in_stages(&mut self) {
         self.apply_in_stages = true;
         self.add_to_stack = None;
     }
@@ -222,7 +222,7 @@ impl PendingResults {
             .push_back(Pending::ChoosingScry(ChoosingScry::new(cards, controller)));
     }
 
-    pub fn push_choose_cast(&mut self, card: CardId, paying_costs: bool, discovering: bool) {
+    pub(crate) fn push_choose_cast(&mut self, card: CardId, paying_costs: bool, discovering: bool) {
         self.pending.push_back(Pending::ChooseCast(ChoosingCast {
             choosing_to_cast: vec![card],
             paying_costs,
@@ -230,19 +230,19 @@ impl PendingResults {
         }));
     }
 
-    pub fn chosen_modes(&self) -> &Vec<usize> {
+    pub(crate) fn chosen_modes(&self) -> &Vec<usize> {
         &self.chosen_modes
     }
 
-    pub fn push_settled(&mut self, action: ActionResult) {
+    pub(crate) fn push_settled(&mut self, action: ActionResult) {
         self.settled_effects.push_back(action);
     }
 
-    pub fn push_invalid_target(&mut self, target: ActiveTarget) {
+    pub(crate) fn push_invalid_target(&mut self, target: ActiveTarget) {
         self.all_chosen_targets.insert(target);
     }
 
-    pub fn all_currently_targeted(&self) -> &HashSet<ActiveTarget> {
+    pub(crate) fn all_currently_targeted(&self) -> &HashSet<ActiveTarget> {
         &self.all_chosen_targets
     }
 
@@ -251,20 +251,20 @@ impl PendingResults {
             .push_back(Pending::LibraryOrGraveyard(LibraryOrGraveyard { card }));
     }
 
-    pub fn push_choose_mode(&mut self, source: Source) {
+    pub(crate) fn push_choose_mode(&mut self, source: Source) {
         self.pending
             .push_back(Pending::ChooseModes(ChooseModes { source }));
     }
 
-    pub fn push_chosen_mode(&mut self, choice: usize) {
+    pub(crate) fn push_chosen_mode(&mut self, choice: usize) {
         self.chosen_modes.push(choice);
     }
 
-    pub fn push_choose_targets(&mut self, choice: ChooseTargets) {
+    pub(crate) fn push_choose_targets(&mut self, choice: ChooseTargets) {
         self.pending.push_back(Pending::ChooseTargets(choice));
     }
 
-    pub fn push_pay_costs(&mut self, pay: PayCost) {
+    pub(crate) fn push_pay_costs(&mut self, pay: PayCost) {
         if !pay.is_empty() {
             self.pending.push_back(Pending::PayCosts(pay));
         }
@@ -279,7 +279,7 @@ impl PendingResults {
             .push_back(Pending::OrganizingStack(OrganizingStack::new(entries)))
     }
 
-    pub fn set_declare_attackers(
+    pub(crate) fn set_declare_attackers(
         &mut self,
         db: &mut Database,
         all_players: &AllPlayers,
@@ -462,7 +462,7 @@ impl PendingResults {
         }
     }
 
-    pub fn extend(&mut self, results: PendingResults) {
+    pub(crate) fn extend(&mut self, results: PendingResults) {
         if results.is_empty() {
             return;
         }

@@ -4,7 +4,7 @@ use pretty_assertions::assert_eq;
 use crate::{
     battlefield::{Battlefield, ResolutionResult},
     in_play::CardId,
-    in_play::Database,
+    in_play::{self, Database, OnBattlefield},
     load_cards,
     player::AllPlayers,
     stack::Stack,
@@ -97,7 +97,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(Battlefield::creatures(&mut db), [card]);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card]);
 
     Ok(())
 }
@@ -135,7 +135,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(Battlefield::creatures(&mut db), [card1, card2]);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card1, card2]);
 
     Ok(())
 }
@@ -169,7 +169,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(Stack::is_empty(&mut db));
-    assert_eq!(Battlefield::creatures(&mut db), [card1]);
+    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card1]);
 
     Ok(())
 }

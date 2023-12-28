@@ -23,17 +23,18 @@ use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Event)]
-pub struct DeleteAbility {
-    pub ability: AbilityId,
+pub(crate) struct DeleteAbility {
+    pub(crate) ability: AbilityId,
 }
 
 pub use abilityid::AbilityId;
-pub use auraid::AuraId;
-pub use cardid::{target_from_location, CardId, Cloning};
-pub use counterid::CounterId;
-pub use modifierid::{ModifierId, ModifierSeq, Modifiers};
-pub use replacementid::ReplacementEffectId;
-pub use triggerid::TriggerId;
+pub(crate) use auraid::AuraId;
+pub(crate) use cardid::target_from_location;
+pub use cardid::CardId;
+pub(crate) use counterid::CounterId;
+pub(crate) use modifierid::{ModifierId, ModifierSeq, Modifiers};
+pub(crate) use replacementid::ReplacementEffectId;
+pub(crate) use triggerid::TriggerId;
 
 use crate::{newtype_enum::newtype_enum, player::Owner, turns::Turn};
 
@@ -48,23 +49,23 @@ static NEXT_STACK_SEQ: AtomicUsize = AtomicUsize::new(1);
 static UNIQUE_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
-pub struct LeftBattlefieldTurn(pub usize);
+pub(crate) struct LeftBattlefieldTurn(pub(crate) usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
-pub struct UniqueId(usize);
+pub(crate) struct UniqueId(usize);
 
 impl UniqueId {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(UNIQUE_ID.fetch_add(1, Ordering::Relaxed))
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub struct Attacking(pub Owner);
+pub(crate) struct Attacking(pub(crate) Owner);
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub enum CastFrom {
+pub(crate)enum CastFrom {
     Hand,
     Exile,
 }
@@ -72,14 +73,14 @@ pub enum CastFrom {
 
 newtype_enum! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-    pub enum ExileReason {
+    pub(crate)enum ExileReason {
         Cascade,
         Craft,
     }
 }
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct ExiledWith(pub CardId);
+pub(crate) struct ExiledWith(pub(crate) CardId);
 
 impl PartialEq<CardId> for ExiledWith {
     fn eq(&self, other: &CardId) -> bool {
@@ -88,19 +89,19 @@ impl PartialEq<CardId> for ExiledWith {
 }
 
 #[derive(Debug, Component)]
-pub struct Active;
+pub(crate) struct Active;
 
 #[derive(Debug, Component)]
-pub struct Tapped;
+pub(crate) struct Tapped;
 
 #[derive(Debug, Component)]
-pub struct Temporary;
+pub(crate) struct Temporary;
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct Global;
+pub(crate) struct Global;
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct EntireBattlefield;
+pub(crate) struct EntireBattlefield;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
 pub struct InLibrary;
@@ -120,7 +121,7 @@ impl Neg for InStack {
 }
 
 impl InStack {
-    pub fn title(self, db: &mut Database) -> String {
+    pub(crate) fn title(self, db: &mut Database) -> String {
         if let Some(found) = db
             .query::<(Entity, &InStack)>()
             .iter(db)
@@ -180,10 +181,10 @@ impl std::fmt::Display for InStack {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Hash)]
-pub struct TriggerInStack {
-    pub seq: usize,
-    pub source: CardId,
-    pub trigger: TriggerId,
+pub(crate) struct TriggerInStack {
+    pub(crate) seq: usize,
+    pub(crate) source: CardId,
+    pub(crate) trigger: TriggerId,
 }
 
 impl Neg for TriggerInStack {
@@ -198,7 +199,7 @@ impl Neg for TriggerInStack {
 pub struct OnBattlefield(usize);
 
 impl OnBattlefield {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed))
     }
 }
@@ -210,21 +211,21 @@ pub struct InGraveyard(usize);
 pub struct InExile;
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct IsToken;
+pub(crate) struct IsToken;
 
 #[derive(Debug, Clone, Component, Deref, DerefMut, Default)]
-pub struct Modifying(HashSet<CardId>);
+pub(crate) struct Modifying(HashSet<CardId>);
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct FaceDown;
+pub(crate) struct FaceDown;
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct Transformed;
+pub(crate) struct Transformed;
 
 #[derive(Debug, Clone, Copy, Component)]
-pub struct Manifested;
+pub(crate) struct Manifested;
 
-pub fn all_cards(db: &mut Database) -> Vec<CardId> {
+pub(crate) fn all_cards(db: &mut Database) -> Vec<CardId> {
     db.query::<Entity>().iter(db).map(CardId).collect()
 }
 
@@ -237,12 +238,12 @@ pub fn cards<Location: Component + Ord>(db: &mut Database) -> Vec<CardId> {
 }
 
 #[derive(Debug, Resource)]
-pub struct NumberOfAttackers {
-    pub count: usize,
-    pub turn: usize,
+pub(crate) struct NumberOfAttackers {
+    pub(crate) count: usize,
+    pub(crate) turn: usize,
 }
 
-pub fn number_of_attackers_this_turn(db: &Database, turn: &Turn) -> usize {
+pub(crate) fn number_of_attackers_this_turn(db: &Database, turn: &Turn) -> usize {
     if let Some(number) = db.get_resource::<NumberOfAttackers>() {
         if number.turn == turn.turn_count {
             number.count
@@ -255,11 +256,11 @@ pub fn number_of_attackers_this_turn(db: &Database, turn: &Turn) -> usize {
 }
 
 #[derive(Debug, Resource)]
-pub struct LifeGained {
-    pub counts: HashMap<Owner, usize>,
+pub(crate) struct LifeGained {
+    pub(crate) counts: HashMap<Owner, usize>,
 }
 
-pub fn update_life_gained_this_turn(db: &mut Database, player: Owner, amount: usize) {
+pub(crate) fn update_life_gained_this_turn(db: &mut Database, player: Owner, amount: usize) {
     if let Some(mut number) = db.get_resource_mut::<LifeGained>() {
         *number.counts.entry(player).or_default() += amount
     } else {
@@ -269,7 +270,7 @@ pub fn update_life_gained_this_turn(db: &mut Database, player: Owner, amount: us
     }
 }
 
-pub fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
+pub(crate) fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
     if let Some(number) = db.get_resource::<LifeGained>() {
         number.counts.get(&player).copied().unwrap_or_default()
     } else {
@@ -278,11 +279,11 @@ pub fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
 }
 
 #[derive(Debug, Resource)]
-pub struct TimesDescended {
+pub(crate) struct TimesDescended {
     counts: HashMap<Owner, usize>,
 }
 
-pub fn descend(db: &mut Database, player: Owner) {
+pub(crate) fn descend(db: &mut Database, player: Owner) {
     if let Some(mut number) = db.get_resource_mut::<LifeGained>() {
         *number.counts.entry(player).or_default() += 1;
     } else {
@@ -292,7 +293,7 @@ pub fn descend(db: &mut Database, player: Owner) {
     }
 }
 
-pub fn times_descended_this_turn(db: &Database, player: Owner) -> usize {
+pub(crate) fn times_descended_this_turn(db: &Database, player: Owner) -> usize {
     if let Some(number) = db.get_resource::<TimesDescended>() {
         number.counts.get(&player).copied().unwrap_or_default()
     } else {
@@ -304,38 +305,34 @@ pub fn times_descended_this_turn(db: &Database, player: Owner) -> usize {
 pub struct CardDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
-pub struct ModifierDb(World);
+pub(crate) struct ModifierDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
-pub struct TriggerDb(World);
+pub(crate) struct TriggerDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
-pub struct ActivatedAbilityDb(World);
+pub(crate) struct ActivatedAbilityDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
-pub struct StaticAbilityDb(World);
+pub(crate) struct AurasDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
-pub struct AurasDb(World);
+pub(crate) struct CountersDb(World);
 
 #[derive(Debug, Deref, DerefMut, Default)]
-pub struct CountersDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub struct ReplacementDb(World);
+pub(crate) struct ReplacementDb(World);
 
 #[derive(Debug, Deref, DerefMut)]
 pub struct Database {
     #[deref]
     #[deref_mut]
-    pub cards: CardDb,
-    pub modifiers: ModifierDb,
-    pub triggers: TriggerDb,
-    pub abilities: ActivatedAbilityDb,
-    pub static_abilities: StaticAbilityDb,
-    pub auras: AurasDb,
-    pub counters: CountersDb,
-    pub replacement_effects: ReplacementDb,
+    pub(crate) cards: CardDb,
+    pub(crate) modifiers: ModifierDb,
+    pub(crate) triggers: TriggerDb,
+    pub(crate) abilities: ActivatedAbilityDb,
+    pub(crate) auras: AurasDb,
+    pub(crate) counters: CountersDb,
+    pub(crate) replacement_effects: ReplacementDb,
 }
 
 impl Default for Database {
@@ -348,7 +345,6 @@ impl Default for Database {
             modifiers: Default::default(),
             triggers: Default::default(),
             abilities: Default::default(),
-            static_abilities: Default::default(),
             auras: Default::default(),
             counters: Default::default(),
             replacement_effects: Default::default(),

@@ -32,7 +32,7 @@ use crate::{
     types::Subtype,
 };
 
-pub type MakeLandAbility = Rc<dyn Fn(&mut Database, CardId) -> AbilityId>;
+pub(crate) type MakeLandAbility = Rc<dyn Fn(&mut Database, CardId) -> AbilityId>;
 
 thread_local! {
     static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, MakeLandAbility>> = OnceCell::new();
@@ -42,7 +42,7 @@ thread_local! {
 pub struct AbilityId(Entity);
 
 impl AbilityId {
-    pub fn upload_ability(db: &mut Database, cardid: CardId, ability: Ability) -> AbilityId {
+    pub(crate) fn upload_ability(db: &mut Database, cardid: CardId, ability: Ability) -> AbilityId {
         match ability {
             Ability::Activated(ability) => {
                 let mut entity =
@@ -80,7 +80,7 @@ impl AbilityId {
 
                 Self(entity.id())
             }
-            Ability::ETB { effects } => {
+            Ability::Etb { effects } => {
                 let entity = db.abilities.spawn((cardid, Effects(effects)));
                 debug!("Uploaded {:?}", entity.id());
                 Self(entity.id())
@@ -88,7 +88,7 @@ impl AbilityId {
         }
     }
 
-    pub fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
+    pub(crate) fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
         // TODO: These leak
         INIT_LAND_ABILITIES.with(|init| {
             init.get_or_init(|| {
@@ -210,7 +210,7 @@ impl AbilityId {
         })
     }
 
-    pub fn cleanup_temporary_abilities(db: &mut Database, cardid: CardId) {
+    pub(crate) fn cleanup_temporary_abilities(db: &mut Database, cardid: CardId) {
         for ability in db
             .abilities
             .query_filtered::<(Entity, &CardId), With<Temporary>>()
@@ -228,12 +228,17 @@ impl AbilityId {
         }
     }
 
-    pub fn update_stack_seq(self, db: &mut Database) {
+    pub(crate) fn update_stack_seq(self, db: &mut Database) {
         *db.abilities.get_mut::<InStack>(self.0).unwrap() =
             InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed));
     }
 
-    pub fn move_to_stack(self, db: &mut Database, source: CardId, targets: Vec<Vec<ActiveTarget>>) {
+    pub(crate) fn move_to_stack(
+        self,
+        db: &mut Database,
+        source: CardId,
+        targets: Vec<Vec<ActiveTarget>>,
+    ) {
         if Stack::split_second(db) {
             return;
         }
@@ -246,22 +251,18 @@ impl AbilityId {
         ));
     }
 
-    pub fn remove_from_stack(self, db: &mut Database) {
+    pub(crate) fn remove_from_stack(self, db: &mut Database) {
         db.abilities.despawn(self.0);
     }
 
-    pub fn original(self, db: &Database) -> AbilityId {
+    pub(crate) fn original(self, db: &Database) -> AbilityId {
         db.abilities
             .get::<AbilityId>(self.0)
             .copied()
             .unwrap_or(self)
     }
 
-    pub fn is_sorcery_speed(self, db: &Database) -> bool {
-        db.abilities.get::<SorcerySpeed>(self.0).is_some()
-    }
-
-    pub fn ability(self, db: &mut Database) -> Ability {
+    pub(crate) fn ability(self, db: &mut Database) -> Ability {
         let this = self.original(db);
 
         if let Some((cost, effects, text, apply_to_self, sourcery_speed, craft)) = db
@@ -308,7 +309,7 @@ impl AbilityId {
                 },
             )
         {
-            Ability::ETB {
+            Ability::Etb {
                 effects: effects.0.clone(),
             }
         } else {
@@ -316,7 +317,7 @@ impl AbilityId {
         }
     }
 
-    pub fn gain_mana_ability(self, db: &mut Database) -> Option<GainManaAbility> {
+    pub(crate) fn gain_mana_ability(self, db: &mut Database) -> Option<GainManaAbility> {
         db.abilities
             .query::<(
                 Entity,
@@ -341,7 +342,7 @@ impl AbilityId {
             })
     }
 
-    pub fn text(self, db: &mut Database) -> String {
+    pub(crate) fn text(self, db: &mut Database) -> String {
         match self.ability(db) {
             Ability::Activated(activated) => {
                 format!(
@@ -351,7 +352,7 @@ impl AbilityId {
                 )
             }
             Ability::Mana(ability) => ability.text(db, self.source(db)),
-            Ability::ETB { effects } => {
+            Ability::Etb { effects } => {
                 let text = effects
                     .iter()
                     .map(|effect| effect.oracle_text.clone())
@@ -365,7 +366,7 @@ impl AbilityId {
         }
     }
 
-    pub fn apply_to_self(self, db: &Database) -> bool {
+    pub(crate) fn apply_to_self(self, db: &Database) -> bool {
         db.abilities
             .get::<ApplyToSelf>(self.original(db).0)
             .is_some()
@@ -379,7 +380,7 @@ impl AbilityId {
             .0
     }
 
-    pub fn needs_targets(self, db: &mut Database) -> Vec<usize> {
+    pub(crate) fn needs_targets(self, db: &mut Database) -> Vec<usize> {
         let controller = self.original(db).controller(db);
         self.effects(db)
             .into_iter()
@@ -387,7 +388,8 @@ impl AbilityId {
             .collect_vec()
     }
 
-    pub fn wants_targets(self, db: &mut Database) -> Vec<usize> {
+    #[allow(unused)]
+    pub(crate) fn wants_targets(self, db: &mut Database) -> Vec<usize> {
         let controller = self.original(db).controller(db);
         self.effects(db)
             .into_iter()
@@ -395,22 +397,22 @@ impl AbilityId {
             .collect_vec()
     }
 
-    pub fn source(self, db: &Database) -> CardId {
+    pub(crate) fn source(self, db: &Database) -> CardId {
         db.abilities
             .get::<CardId>(self.original(db).0)
             .copied()
             .unwrap()
     }
 
-    pub fn controller(self, db: &Database) -> Controller {
+    pub(crate) fn controller(self, db: &Database) -> Controller {
         self.source(db).controller(db)
     }
 
-    pub fn delete(self, db: &mut Database) {
+    pub(crate) fn delete(self, db: &mut Database) {
         db.abilities.despawn(self.0);
     }
 
-    pub fn short_text(self, db: &mut Database) -> String {
+    pub(crate) fn short_text(self, db: &mut Database) -> String {
         let mut text = self.text(db);
         if text.len() > 10 {
             text.truncate(10);
@@ -420,7 +422,7 @@ impl AbilityId {
         text
     }
 
-    pub fn settle(self, db: &mut Database) {
+    pub(crate) fn settle(self, db: &mut Database) {
         db.abilities.entity_mut(self.0).insert(Settled);
     }
 
@@ -507,7 +509,7 @@ impl AbilityId {
 
                 can_pay_costs(db, all_players, turn, self, &ability.cost, source)
             }
-            Ability::ETB { .. } => false,
+            Ability::Etb { .. } => false,
         }
     }
 

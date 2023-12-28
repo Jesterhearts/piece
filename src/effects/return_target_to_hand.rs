@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct ReturnTargetToHand {
+pub(crate) struct ReturnTargetToHand {
     controller: ControllerRestriction,
     restrictions: Vec<Restriction>,
 }

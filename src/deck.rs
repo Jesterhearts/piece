@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct DeckDefinition {
-    pub cards: HashMap<String, usize>,
+    pub(crate) cards: HashMap<String, usize>,
 }
 
 impl DeckDefinition {
@@ -34,53 +34,55 @@ impl DeckDefinition {
 
 #[derive(Debug)]
 pub struct Deck {
-    pub cards: VecDeque<CardId>,
+    pub(crate) cards: VecDeque<CardId>,
 }
 
 impl Deck {
-    pub fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Self {
             cards: Default::default(),
         }
     }
 
-    pub fn new(cards: VecDeque<CardId>) -> Self {
+    pub(crate) fn new(cards: VecDeque<CardId>) -> Self {
         Self { cards }
     }
 
-    pub fn shuffle(&mut self) {
+    pub(crate) fn shuffle(&mut self) {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
-    pub fn place_on_top(&mut self, db: &mut Database, card: CardId) {
+    pub(crate) fn place_on_top(&mut self, db: &mut Database, card: CardId) {
         if card.move_to_library(db) {
             self.cards.push_back(card);
         }
     }
 
-    pub fn place_on_bottom(&mut self, db: &mut Database, card: CardId) {
+    pub(crate) fn place_on_bottom(&mut self, db: &mut Database, card: CardId) {
         if card.move_to_library(db) {
             self.cards.push_front(card);
         }
     }
 
-    pub fn draw(&mut self) -> Option<CardId> {
+    pub(crate) fn draw(&mut self) -> Option<CardId> {
         self.cards.pop_back()
     }
 
-    pub fn len(&self) -> usize {
+    #[allow(unused)]
+    pub(crate) fn len(&self) -> usize {
         self.cards.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    #[allow(unused)]
+    pub(crate) fn is_empty(&self) -> bool {
         self.cards.is_empty()
     }
 
-    pub fn remove(&mut self, card: CardId) {
+    pub(crate) fn remove(&mut self, card: CardId) {
         self.cards.retain(|deck| *deck != card);
     }
 
-    pub fn reveal_top(&self, db: &mut Database) -> Option<CardId> {
+    pub(crate) fn reveal_top(&self, db: &mut Database) -> Option<CardId> {
         if let Some(card) = self.cards.back() {
             card.reveal(db);
             Some(*card)
@@ -89,7 +91,7 @@ impl Deck {
         }
     }
 
-    pub fn exile_top_card(
+    pub(crate) fn exile_top_card(
         &mut self,
         db: &mut Database,
         source: CardId,

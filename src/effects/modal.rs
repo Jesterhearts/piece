@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Modal {
+pub(crate) struct Modal {
     modes: Vec<Mode>,
 }
 

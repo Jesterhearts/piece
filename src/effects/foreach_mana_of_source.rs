@@ -6,9 +6,9 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ForEachManaOfSource {
-    pub source: ManaSource,
-    pub effect: Effect,
+pub(crate) struct ForEachManaOfSource {
+    pub(crate) source: ManaSource,
+    pub(crate) effect: Effect,
 }
 
 impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {

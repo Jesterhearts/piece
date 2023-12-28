@@ -11,13 +11,13 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
-pub struct ReplacementSeq(usize);
+pub(crate) struct ReplacementSeq(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ReplacementEffectId(Entity);
+pub(crate) struct ReplacementEffectId(Entity);
 
 impl ReplacementEffectId {
-    pub fn watching<Replacing: Component>(db: &mut Database) -> Vec<Self> {
+    pub(crate) fn watching<Replacing: Component>(db: &mut Database) -> Vec<Self> {
         db.replacement_effects
             .query_filtered::<(Entity, &ReplacementSeq), (With<Active>, With<Replacing>)>()
             .iter(&db.replacement_effects)
@@ -26,7 +26,7 @@ impl ReplacementEffectId {
             .collect_vec()
     }
 
-    pub fn upload_replacement_effect(
+    pub(crate) fn upload_replacement_effect(
         db: &mut Database,
         effect: &ReplacementEffect,
         source: CardId,
@@ -53,7 +53,7 @@ impl ReplacementEffectId {
         Self(entity.id())
     }
 
-    pub fn activate_all_for_card(db: &mut Database, card: CardId) {
+    pub(crate) fn activate_all_for_card(db: &mut Database, card: CardId) {
         let all = db
             .replacement_effects
             .query::<(Entity, &CardId)>()
@@ -71,7 +71,7 @@ impl ReplacementEffectId {
         }
     }
 
-    pub fn deactivate_all_for_card(db: &mut Database, card: CardId) {
+    pub(crate) fn deactivate_all_for_card(db: &mut Database, card: CardId) {
         let all = db
             .replacement_effects
             .query::<(Entity, &CardId)>()
@@ -84,7 +84,7 @@ impl ReplacementEffectId {
         }
     }
 
-    pub fn restrictions(self, db: &Database) -> Vec<Restriction> {
+    pub(crate) fn restrictions(self, db: &Database) -> Vec<Restriction> {
         db.replacement_effects
             .get::<Restrictions>(self.0)
             .unwrap()
@@ -92,13 +92,13 @@ impl ReplacementEffectId {
             .clone()
     }
 
-    pub fn controller_restriction(self, db: &Database) -> ControllerRestriction {
+    pub(crate) fn controller_restriction(self, db: &Database) -> ControllerRestriction {
         *db.replacement_effects
             .get::<ControllerRestriction>(self.0)
             .unwrap()
     }
 
-    pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
+    pub(crate) fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.replacement_effects
             .get::<Effects>(self.0)
             .unwrap()
@@ -106,7 +106,7 @@ impl ReplacementEffectId {
             .clone()
     }
 
-    pub fn source(self, db: &Database) -> CardId {
+    pub(crate) fn source(self, db: &Database) -> CardId {
         db.replacement_effects
             .get::<CardId>(self.0)
             .copied()

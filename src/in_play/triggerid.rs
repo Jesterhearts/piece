@@ -16,10 +16,10 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
-pub struct TriggerId(Entity);
+pub(crate) struct TriggerId(Entity);
 
 impl TriggerId {
-    pub fn upload(
+    pub(crate) fn upload(
         db: &mut Database,
         ability: &TriggeredAbility,
         card: CardId,
@@ -73,12 +73,12 @@ impl TriggerId {
         Self(entity.id())
     }
 
-    pub fn update_stack_seq(self, db: &mut Database) {
+    pub(crate) fn update_stack_seq(self, db: &mut Database) {
         db.triggers.get_mut::<TriggerInStack>(self.0).unwrap().seq =
             NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn move_to_stack(
+    pub(crate) fn move_to_stack(
         self,
         db: &mut Database,
         listener: CardId,
@@ -98,26 +98,26 @@ impl TriggerId {
         ));
     }
 
-    pub fn remove_from_stack(self, db: &mut Database) {
+    pub(crate) fn remove_from_stack(self, db: &mut Database) {
         db.triggers.despawn(self.0);
     }
 
-    pub fn location_from(self, db: &Database) -> Location {
+    pub(crate) fn location_from(self, db: &Database) -> Location {
         db.triggers.get::<Location>(self.0).copied().unwrap()
     }
 
-    pub fn restrictions(self, db: &Database) -> Restrictions {
+    pub(crate) fn restrictions(self, db: &Database) -> Restrictions {
         db.triggers.get::<Restrictions>(self.0).cloned().unwrap()
     }
 
-    pub fn listener(self, db: &Database) -> CardId {
+    pub(crate) fn listener(self, db: &Database) -> CardId {
         db.triggers
             .get::<TriggerListener>(self.0)
             .map(|l| l.0)
             .unwrap()
     }
 
-    pub fn effects(self, db: &Database) -> Vec<AnyEffect> {
+    pub(crate) fn effects(self, db: &Database) -> Vec<AnyEffect> {
         db.triggers
             .get::<Effects>(self.0)
             .cloned()
@@ -125,7 +125,9 @@ impl TriggerId {
             .0
     }
 
-    pub fn active_triggers_of_source<Source: Component>(db: &mut Database) -> Vec<TriggerId> {
+    pub(crate) fn active_triggers_of_source<Source: Component>(
+        db: &mut Database,
+    ) -> Vec<TriggerId> {
         let mut results = vec![];
         let mut of_type = db
             .triggers
@@ -138,7 +140,7 @@ impl TriggerId {
         results
     }
 
-    pub fn activate_all_for_card(db: &mut Database, cardid: CardId) {
+    pub(crate) fn activate_all_for_card(db: &mut Database, cardid: CardId) {
         let triggers = cardid.triggers(db);
 
         for trigger in triggers {
@@ -146,7 +148,7 @@ impl TriggerId {
         }
     }
 
-    pub fn unsubscribe_all_for_card(db: &mut Database, cardid: CardId) {
+    pub(crate) fn unsubscribe_all_for_card(db: &mut Database, cardid: CardId) {
         let triggers = cardid.triggers(db);
 
         for trigger in triggers {
@@ -156,7 +158,7 @@ impl TriggerId {
         }
     }
 
-    pub fn deactivate_all_for_card(db: &mut Database, cardid: CardId) {
+    pub(crate) fn deactivate_all_for_card(db: &mut Database, cardid: CardId) {
         let triggers = cardid.triggers(db);
 
         for trigger in triggers {
@@ -168,7 +170,7 @@ impl TriggerId {
         }
     }
 
-    pub fn cleanup_temporary_triggers(db: &mut Database) {
+    pub(crate) fn cleanup_temporary_triggers(db: &mut Database) {
         for trigger in db
             .triggers
             .query_filtered::<Entity, With<Temporary>>()
@@ -179,13 +181,13 @@ impl TriggerId {
         }
     }
 
-    pub fn add_listener(self, db: &mut Database, listener: CardId) {
+    pub(crate) fn add_listener(self, db: &mut Database, listener: CardId) {
         db.triggers
             .entity_mut(self.0)
             .insert(TriggerListener(listener));
     }
 
-    pub fn text(self, db: &Database) -> String {
+    pub(crate) fn text(self, db: &Database) -> String {
         db.triggers
             .get::<OracleText>(self.0)
             .cloned()
@@ -193,7 +195,7 @@ impl TriggerId {
             .unwrap_or_default()
     }
 
-    pub fn short_text(self, db: &Database) -> String {
+    pub(crate) fn short_text(self, db: &Database) -> String {
         let mut text = self.text(db);
         if text.len() > 10 {
             text.truncate(10);
@@ -202,21 +204,11 @@ impl TriggerId {
         text
     }
 
-    pub fn needs_targets(self, db: &mut Database, source: CardId) -> Vec<usize> {
-        let effects = self.effects(db);
-        let controller = source.controller(db);
-        effects
-            .into_iter()
-            .map(|effect| effect.into_effect(db, controller))
-            .map(|effect| effect.needs_targets())
-            .collect_vec()
-    }
-
-    pub fn settle(self, db: &mut Database) {
+    pub(crate) fn settle(self, db: &mut Database) {
         db.triggers.entity_mut(self.0).insert(Settled);
     }
 
-    pub fn controller_restriction(self, db: &Database) -> ControllerRestriction {
+    pub(crate) fn controller_restriction(self, db: &Database) -> ControllerRestriction {
         db.triggers
             .get::<ControllerRestriction>(self.0)
             .copied()

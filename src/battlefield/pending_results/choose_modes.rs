@@ -5,8 +5,8 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ChooseModes {
-    pub source: Source,
+pub(crate) struct ChooseModes {
+    pub(crate) source: Source,
 }
 
 impl PendingResult for ChooseModes {

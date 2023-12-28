@@ -13,9 +13,9 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct DealDamage {
-    pub quantity: usize,
-    pub restrictions: Vec<Restriction>,
+pub(crate) struct DealDamage {
+    pub(crate) quantity: usize,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::DealDamage> for DealDamage {

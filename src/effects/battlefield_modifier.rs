@@ -12,11 +12,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct BattlefieldModifier {
-    pub modifier: ModifyBattlefield,
-    pub controller: ControllerRestriction,
-    pub duration: EffectDuration,
-    pub restrictions: Vec<Restriction>,
+pub(crate) struct BattlefieldModifier {
+    pub(crate) modifier: ModifyBattlefield,
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) duration: EffectDuration,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {

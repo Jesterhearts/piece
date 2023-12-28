@@ -11,8 +11,8 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct CounterSpell {
-    pub target: SpellTarget,
+pub(crate) struct CounterSpell {
+    pub(crate) target: SpellTarget,
 }
 
 impl TryFrom<&protogen::effects::CounterSpell> for CounterSpell {

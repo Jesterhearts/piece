@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct CreateTokenCopy {
+pub(crate) struct CreateTokenCopy {
     modifiers: Vec<ModifyBattlefield>,
 }
 

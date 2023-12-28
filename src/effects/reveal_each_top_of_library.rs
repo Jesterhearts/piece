@@ -6,10 +6,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct ForEach {
-    pub restrictions: Vec<Restriction>,
-    pub effects: Vec<Effect>,
-    pub if_none: Vec<Effect>,
+pub(crate) struct ForEach {
+    pub(crate) restrictions: Vec<Restriction>,
+    pub(crate) effects: Vec<Effect>,
+    pub(crate) if_none: Vec<Effect>,
 }
 
 impl TryFrom<&protogen::effects::reveal_each_top_of_library::ForEach> for ForEach {
@@ -40,8 +40,8 @@ impl TryFrom<&protogen::effects::reveal_each_top_of_library::ForEach> for ForEac
 }
 
 #[derive(Debug, Clone)]
-pub struct RevealEachTopOfLibrary {
-    pub for_each: ForEach,
+pub(crate) struct RevealEachTopOfLibrary {
+    pub(crate) for_each: ForEach,
 }
 
 impl TryFrom<&protogen::effects::RevealEachTopOfLibrary> for RevealEachTopOfLibrary {

@@ -4,7 +4,7 @@ use bevy_ecs::component::Component;
 use crate::{card::Color, protogen};
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Copy, Hash, strum::EnumIter)]
-pub enum Mana {
+pub(crate) enum Mana {
     White,
     Blue,
     Black,
@@ -27,13 +27,13 @@ pub enum ManaCost {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash, strum::AsRefStr, Component)]
-pub enum ManaRestriction {
+pub(crate) enum ManaRestriction {
     ArtifactSpellOrAbility,
     None,
 }
 
 impl Mana {
-    pub fn push_mana_symbol(self, result: &mut String) {
+    pub(crate) fn push_mana_symbol(self, result: &mut String) {
         match self {
             Mana::White => result.push('🔆'),
             Mana::Blue => result.push('💧'),
@@ -44,7 +44,7 @@ impl Mana {
         }
     }
 
-    pub fn color(&self) -> Color {
+    pub(crate) fn color(&self) -> Color {
         match self {
             Mana::White => Color::White,
             Mana::Blue => Color::Blue,
@@ -57,7 +57,7 @@ impl Mana {
 }
 
 impl ManaCost {
-    pub fn push_mana_symbol(self, result: &mut String) {
+    pub(crate) fn push_mana_symbol(self, result: &mut String) {
         match self {
             ManaCost::White => result.push('🔆'),
             ManaCost::Blue => result.push('💧'),
@@ -71,7 +71,7 @@ impl ManaCost {
         }
     }
 
-    pub fn color(&self) -> Color {
+    pub(crate) fn color(&self) -> Color {
         match self {
             ManaCost::White => Color::White,
             ManaCost::Blue => Color::Blue,

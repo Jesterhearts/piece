@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Cascade;
+pub(crate) struct Cascade;
 
 impl EffectBehaviors for Cascade {
     fn needs_targets(&self) -> usize {

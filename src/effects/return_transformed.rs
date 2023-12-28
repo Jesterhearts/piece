@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen};
 
 #[derive(Debug)]
-pub struct ReturnTransformed {
+pub(crate) struct ReturnTransformed {
     enters_tapped: bool,
 }
 

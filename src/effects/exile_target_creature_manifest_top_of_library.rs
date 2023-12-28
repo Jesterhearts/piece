@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct ExileTargetCreatureManifestTopOfLibrary;
+pub(crate) struct ExileTargetCreatureManifestTopOfLibrary;
 
 impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn needs_targets(&self) -> usize {

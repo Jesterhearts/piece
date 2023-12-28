@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct TargetCreatureExplores;
+pub(crate) struct TargetCreatureExplores;
 
 impl EffectBehaviors for TargetCreatureExplores {
     fn needs_targets(&'static self) -> usize {

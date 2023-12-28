@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct CreateToken {
+pub(crate) struct CreateToken {
     token: Token,
 }
 

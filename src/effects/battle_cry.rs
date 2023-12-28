@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct BattleCry;
+pub(crate) struct BattleCry;
 
 impl EffectBehaviors for BattleCry {
     fn needs_targets(&'static self) -> usize {

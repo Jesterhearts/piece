@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct TargetToTopOfLibrary {
+pub(crate) struct TargetToTopOfLibrary {
     restrictions: Vec<Restriction>,
 }
 

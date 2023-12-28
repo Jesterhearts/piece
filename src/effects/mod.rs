@@ -1,46 +1,46 @@
-pub mod battle_cry;
-pub mod battlefield_modifier;
-pub mod cascade;
-pub mod controller_draws_cards;
-pub mod controller_loses_life;
-pub mod copy_of_any_creature_non_targeting;
-pub mod counter_spell;
-pub mod create_token;
-pub mod create_token_copy;
-pub mod cycling;
-pub mod deal_damage;
-pub mod destroy_each;
-pub mod destroy_target;
-pub mod discover;
-pub mod equip;
-pub mod exile_target;
-pub mod exile_target_creature_manifest_top_of_library;
-pub mod exile_target_graveyard;
-pub mod foreach_mana_of_source;
-pub mod gain_life;
-pub mod mill;
-pub mod modal;
-pub mod modify_target;
-pub mod multiply_tokens;
-pub mod pay_cost_then;
-pub mod return_from_graveyard_to_battlefield;
-pub mod return_from_graveyard_to_hand;
-pub mod return_from_graveyard_to_library;
-pub mod return_self_to_hand;
-pub mod return_target_to_hand;
-pub mod return_transformed;
-pub mod reveal_each_top_of_library;
-pub mod scry;
-pub mod self_explores;
-pub mod tap_target;
-pub mod target_controller_gains_tokens;
-pub mod target_creature_explores;
-pub mod target_gains_counters;
-pub mod target_to_top_of_library;
-pub mod transform;
-pub mod tutor_library;
-pub mod untap_target;
-pub mod untap_this;
+pub(crate) mod battle_cry;
+pub(crate) mod battlefield_modifier;
+pub(crate) mod cascade;
+pub(crate) mod controller_draws_cards;
+pub(crate) mod controller_loses_life;
+pub(crate) mod copy_of_any_creature_non_targeting;
+pub(crate) mod counter_spell;
+pub(crate) mod create_token;
+pub(crate) mod create_token_copy;
+pub(crate) mod cycling;
+pub(crate) mod deal_damage;
+pub(crate) mod destroy_each;
+pub(crate) mod destroy_target;
+pub(crate) mod discover;
+pub(crate) mod equip;
+pub(crate) mod exile_target;
+pub(crate) mod exile_target_creature_manifest_top_of_library;
+pub(crate) mod exile_target_graveyard;
+pub(crate) mod foreach_mana_of_source;
+pub(crate) mod gain_life;
+pub(crate) mod mill;
+pub(crate) mod modal;
+pub(crate) mod modify_target;
+pub(crate) mod multiply_tokens;
+pub(crate) mod pay_cost_then;
+pub(crate) mod return_from_graveyard_to_battlefield;
+pub(crate) mod return_from_graveyard_to_hand;
+pub(crate) mod return_from_graveyard_to_library;
+pub(crate) mod return_self_to_hand;
+pub(crate) mod return_target_to_hand;
+pub(crate) mod return_transformed;
+pub(crate) mod reveal_each_top_of_library;
+pub(crate) mod scry;
+pub(crate) mod self_explores;
+pub(crate) mod tap_target;
+pub(crate) mod target_controller_gains_tokens;
+pub(crate) mod target_creature_explores;
+pub(crate) mod target_gains_counters;
+pub(crate) mod target_to_top_of_library;
+pub(crate) mod transform;
+pub(crate) mod tutor_library;
+pub(crate) mod untap_target;
+pub(crate) mod untap_this;
 
 use std::{collections::HashSet, fmt::Debug, str::FromStr, vec::IntoIter};
 
@@ -109,12 +109,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct Effect(pub &'static (dyn EffectBehaviors + Send + Sync));
+pub(crate) struct Effect(pub(crate) &'static (dyn EffectBehaviors + Send + Sync));
 
-pub use battlefield_modifier::BattlefieldModifier;
+pub(crate) use battlefield_modifier::BattlefieldModifier;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Destination {
+pub(crate) enum Destination {
     Hand,
     TopOfLibrary,
     Battlefield { enters_tapped: bool },
@@ -148,7 +148,7 @@ impl From<&protogen::effects::destination::Destination> for Destination {
 
 newtype_enum! {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, bevy_ecs::component::Component)]
-pub enum EffectDuration {
+pub(crate)enum EffectDuration {
     Permanently,
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
@@ -184,7 +184,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
-pub enum DynamicPowerToughness {
+pub(crate) enum DynamicPowerToughness {
     NumberOfCountersOnThis(Counter),
 }
 
@@ -217,36 +217,36 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPow
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ModifyBattlefield {
-    pub base_power: Option<i32>,
-    pub base_toughness: Option<i32>,
+pub(crate) struct ModifyBattlefield {
+    pub(crate) base_power: Option<i32>,
+    pub(crate) base_toughness: Option<i32>,
 
-    pub add_power: Option<i32>,
-    pub add_toughness: Option<i32>,
+    pub(crate) add_power: Option<i32>,
+    pub(crate) add_toughness: Option<i32>,
 
-    pub dynamic_power_toughness: Option<DynamicPowerToughness>,
+    pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
 
-    pub add_types: IndexSet<Type>,
-    pub add_subtypes: IndexSet<Subtype>,
+    pub(crate) add_types: IndexSet<Type>,
+    pub(crate) add_subtypes: IndexSet<Subtype>,
 
-    pub remove_types: IndexSet<Type>,
-    pub remove_subtypes: IndexSet<Subtype>,
+    pub(crate) remove_types: IndexSet<Type>,
+    pub(crate) remove_subtypes: IndexSet<Subtype>,
 
-    pub add_colors: HashSet<Color>,
+    pub(crate) add_colors: HashSet<Color>,
 
-    pub add_static_abilities: Vec<StaticAbility>,
-    pub add_ability: Option<ActivatedAbility>,
-    pub mana_ability: Option<GainManaAbility>,
+    pub(crate) add_static_abilities: Vec<StaticAbility>,
+    pub(crate) add_ability: Option<ActivatedAbility>,
+    pub(crate) mana_ability: Option<GainManaAbility>,
 
-    pub remove_all_subtypes: bool,
-    pub remove_all_abilities: bool,
-    pub remove_all_colors: bool,
+    pub(crate) remove_all_subtypes: bool,
+    pub(crate) remove_all_abilities: bool,
+    pub(crate) remove_all_colors: bool,
 
-    pub entire_battlefield: bool,
-    pub global: bool,
+    pub(crate) entire_battlefield: bool,
+    pub(crate) global: bool,
 
-    pub add_keywords: ::counter::Counter<Keyword>,
-    pub remove_keywords: HashSet<Keyword>,
+    pub(crate) add_keywords: ::counter::Counter<Keyword>,
+    pub(crate) remove_keywords: HashSet<Keyword>,
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -321,7 +321,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
     }
 }
 
-pub trait EffectBehaviors: Debug {
+pub(crate) trait EffectBehaviors: Debug {
     fn choices(
         &'static self,
         db: &mut Database,
@@ -573,13 +573,13 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
 }
 
 #[derive(Debug, Deref, Clone, DerefMut, Component, Default)]
-pub struct Effects(pub Vec<AnyEffect>);
+pub(crate) struct Effects(pub(crate) Vec<AnyEffect>);
 
 #[derive(Debug, Clone)]
 pub struct AnyEffect {
-    pub effect: Effect,
-    pub threshold: Option<Effect>,
-    pub oracle_text: String,
+    pub(crate) effect: Effect,
+    pub(crate) threshold: Option<Effect>,
+    pub(crate) oracle_text: String,
 }
 
 impl TryFrom<&protogen::effects::Effect> for AnyEffect {
@@ -606,7 +606,7 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
 }
 
 impl AnyEffect {
-    pub fn effect(&self, db: &mut Database, controller: Controller) -> Effect {
+    pub(crate) fn effect(&self, db: &mut Database, controller: Controller) -> Effect {
         if self.threshold.is_some()
             && Battlefield::number_of_cards_in_graveyard(db, controller) >= 7
         {
@@ -616,7 +616,7 @@ impl AnyEffect {
         }
     }
 
-    pub fn into_effect(self, db: &mut Database, controller: Controller) -> Effect {
+    pub(crate) fn into_effect(self, db: &mut Database, controller: Controller) -> Effect {
         if self.threshold.is_some()
             && Battlefield::number_of_cards_in_graveyard(db, controller) >= 7
         {
@@ -626,21 +626,21 @@ impl AnyEffect {
         }
     }
 
-    pub fn needs_targets(&self, db: &mut Database, controller: Controller) -> usize {
+    pub(crate) fn needs_targets(&self, db: &mut Database, controller: Controller) -> usize {
         let effect = self.effect(db, controller);
         effect.needs_targets()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TokenCreature {
-    pub name: String,
-    pub types: IndexSet<Type>,
-    pub subtypes: IndexSet<Subtype>,
-    pub colors: HashSet<Color>,
-    pub keywords: ::counter::Counter<Keyword>,
-    pub power: usize,
-    pub toughness: usize,
+pub(crate) struct TokenCreature {
+    pub(crate) name: String,
+    pub(crate) types: IndexSet<Type>,
+    pub(crate) subtypes: IndexSet<Subtype>,
+    pub(crate) colors: HashSet<Color>,
+    pub(crate) keywords: ::counter::Counter<Keyword>,
+    pub(crate) power: usize,
+    pub(crate) toughness: usize,
 }
 
 impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
@@ -678,7 +678,7 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Token {
+pub(crate) enum Token {
     Map,
     Creature(Box<TokenCreature>),
 }
@@ -710,7 +710,7 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub enum Replacing {
+pub(crate)enum Replacing {
     Draw,
     Etb,
     TokenCreation,
@@ -730,14 +730,14 @@ impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub struct ReplacementEffects(pub Vec<ReplacementEffectId>);
+pub(crate) struct ReplacementEffects(pub(crate) Vec<ReplacementEffectId>);
 
 #[derive(Debug, Clone)]
-pub struct ReplacementEffect {
-    pub replacing: Replacing,
-    pub controller: ControllerRestriction,
-    pub restrictions: Vec<Restriction>,
-    pub effects: Vec<AnyEffect>,
+pub(crate) struct ReplacementEffect {
+    pub(crate) replacing: Replacing,
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) restrictions: Vec<Restriction>,
+    pub(crate) effects: Vec<AnyEffect>,
 }
 
 impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
@@ -768,11 +768,11 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
 }
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct Modes(pub Vec<Mode>);
+pub(crate) struct Modes(pub(crate) Vec<Mode>);
 
 #[derive(Debug, Clone)]
-pub struct Mode {
-    pub effects: Vec<AnyEffect>,
+pub(crate) struct Mode {
+    pub(crate) effects: Vec<AnyEffect>,
 }
 
 impl TryFrom<&protogen::effects::Mode> for Mode {

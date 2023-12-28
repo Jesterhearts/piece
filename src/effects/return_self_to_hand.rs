@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
 #[derive(Debug, Clone, Copy)]
-pub struct ReturnSelfToHand;
+pub(crate) struct ReturnSelfToHand;
 
 impl EffectBehaviors for ReturnSelfToHand {
     fn needs_targets(&self) -> usize {

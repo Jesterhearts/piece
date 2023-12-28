@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct PayCostThen {
+pub(crate) struct PayCostThen {
     cost: AbilityCost,
     effects: Vec<AnyEffect>,
 }
@@ -79,7 +79,7 @@ impl EffectBehaviors for PayCostThen {
         results.add_ability_to_stack(AbilityId::upload_ability(
             db,
             source,
-            Ability::ETB {
+            Ability::Etb {
                 effects: self.effects.clone(),
             },
         ))
@@ -128,7 +128,7 @@ impl EffectBehaviors for PayCostThen {
         results.add_ability_to_stack(AbilityId::upload_ability(
             db,
             source,
-            Ability::ETB {
+            Ability::Etb {
                 effects: self.effects.clone(),
             },
         ))

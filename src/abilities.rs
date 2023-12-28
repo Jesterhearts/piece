@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
@@ -19,14 +17,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-pub struct SorcerySpeed;
+pub(crate) struct SorcerySpeed;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-pub struct Craft;
+pub(crate) struct Craft;
 
 #[derive(Debug, Clone)]
-pub struct Enchant {
-    pub modifiers: Vec<BattlefieldModifier>,
+pub(crate) struct Enchant {
+    pub(crate) modifiers: Vec<BattlefieldModifier>,
 }
 
 impl TryFrom<&protogen::abilities::Enchant> for Enchant {
@@ -44,25 +42,25 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct ETBAbilities(pub Vec<AbilityId>);
+pub(crate) struct ETBAbilities(pub(crate) Vec<AbilityId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct ModifiedETBAbilities(pub Vec<AbilityId>);
+pub(crate) struct ModifiedETBAbilities(pub(crate) Vec<AbilityId>);
 
 #[derive(Debug, Clone, Deref, DerefMut, Component, Default)]
-pub struct StaticAbilities(pub Vec<StaticAbility>);
+pub(crate) struct StaticAbilities(pub(crate) Vec<StaticAbility>);
 
 #[derive(Debug, Clone, Deref, DerefMut, Component, Default)]
-pub struct ModifiedStaticAbilities(pub Vec<StaticAbility>);
+pub(crate) struct ModifiedStaticAbilities(pub(crate) Vec<StaticAbility>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ForceEtbTapped {
-    pub controller: ControllerRestriction,
-    pub types: IndexSet<Type>,
+pub(crate) struct ForceEtbTapped {
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) types: IndexSet<Type>,
 }
 
 #[derive(Debug, Clone)]
-pub enum StaticAbility {
+pub(crate) enum StaticAbility {
     BattlefieldModifier(Box<BattlefieldModifier>),
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
@@ -131,22 +129,22 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut, Default)]
-pub struct ActivatedAbilities(pub Vec<AbilityId>);
+pub(crate) struct ActivatedAbilities(pub(crate) Vec<AbilityId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut, Default)]
-pub struct ModifiedActivatedAbilities(pub Vec<AbilityId>);
+pub(crate) struct ModifiedActivatedAbilities(pub(crate) Vec<AbilityId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
-pub struct ApplyToSelf;
+pub(crate) struct ApplyToSelf;
 
 #[derive(Debug, Clone)]
-pub struct ActivatedAbility {
-    pub cost: AbilityCost,
-    pub effects: Vec<AnyEffect>,
-    pub apply_to_self: bool,
-    pub oracle_text: String,
-    pub sorcery_speed: bool,
-    pub craft: bool,
+pub(crate) struct ActivatedAbility {
+    pub(crate) cost: AbilityCost,
+    pub(crate) effects: Vec<AnyEffect>,
+    pub(crate) apply_to_self: bool,
+    pub(crate) oracle_text: String,
+    pub(crate) sorcery_speed: bool,
+    pub(crate) craft: bool,
 }
 
 impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
@@ -173,7 +171,11 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
 }
 
 impl ActivatedAbility {
-    pub fn can_be_played_from_hand(&self, db: &mut Database, controller: Controller) -> bool {
+    pub(crate) fn can_be_played_from_hand(
+        &self,
+        db: &mut Database,
+        controller: Controller,
+    ) -> bool {
         self.effects
             .iter()
             .any(|effect| effect.effect(db, controller).cycling())
@@ -181,19 +183,19 @@ impl ActivatedAbility {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
-pub struct Triggers(pub Vec<TriggerId>);
+pub(crate) struct Triggers(pub(crate) Vec<TriggerId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
-pub struct ModifiedTriggers(pub Vec<TriggerId>);
+pub(crate) struct ModifiedTriggers(pub(crate) Vec<TriggerId>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
-pub struct TriggerListener(pub CardId);
+pub(crate) struct TriggerListener(pub(crate) CardId);
 
 #[derive(Debug, Clone)]
-pub struct TriggeredAbility {
-    pub trigger: Trigger,
-    pub effects: Vec<AnyEffect>,
-    pub oracle_text: String,
+pub(crate) struct TriggeredAbility {
+    pub(crate) trigger: Trigger,
+    pub(crate) effects: Vec<AnyEffect>,
+    pub(crate) oracle_text: String,
 }
 
 impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
@@ -213,7 +215,7 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
-pub enum GainMana {
+pub(crate) enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
 }
@@ -292,17 +294,17 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
 }
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct GainManaAbilities(pub Vec<GainManaAbility>);
+pub(crate) struct GainManaAbilities(pub(crate) Vec<GainManaAbility>);
 
 #[derive(Debug, Clone, Component)]
-pub struct GainManaAbility {
-    pub cost: AbilityCost,
-    pub gain: GainMana,
-    pub mana_source: Option<ManaSource>,
-    pub mana_restriction: ManaRestriction,
+pub(crate) struct GainManaAbility {
+    pub(crate) cost: AbilityCost,
+    pub(crate) gain: GainMana,
+    pub(crate) mana_source: Option<ManaSource>,
+    pub(crate) mana_restriction: ManaRestriction,
 }
 impl GainManaAbility {
-    pub fn text(&self, db: &Database, source: CardId) -> String {
+    pub(crate) fn text(&self, db: &Database, source: CardId) -> String {
         format!("{}: {}", self.cost.text(db, source), self.gain.text())
     }
 }
@@ -324,57 +326,34 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
 }
 
 #[derive(Debug, Clone, Component)]
-pub enum Ability {
+pub(crate) enum Ability {
     Activated(ActivatedAbility),
     Mana(GainManaAbility),
-    ETB { effects: Vec<AnyEffect> },
+    Etb { effects: Vec<AnyEffect> },
 }
 
 impl Ability {
-    pub fn cost(&self) -> Option<&AbilityCost> {
+    pub(crate) fn cost(&self) -> Option<&AbilityCost> {
         match self {
             Ability::Activated(ActivatedAbility { cost, .. })
             | Ability::Mana(GainManaAbility { cost, .. }) => Some(cost),
-            Ability::ETB { .. } => None,
+            Ability::Etb { .. } => None,
         }
     }
 
-    pub fn apply_to_self(&self) -> bool {
+    pub(crate) fn apply_to_self(&self) -> bool {
         match self {
             Ability::Activated(ActivatedAbility { apply_to_self, .. }) => *apply_to_self,
             Ability::Mana(_) => false,
-            Ability::ETB { .. } => false,
+            Ability::Etb { .. } => false,
         }
     }
 
-    pub fn into_effects(self) -> Vec<AnyEffect> {
+    pub(crate) fn into_effects(self) -> Vec<AnyEffect> {
         match self {
             Ability::Activated(ActivatedAbility { effects, .. }) => effects,
             Ability::Mana(_) => vec![],
-            Ability::ETB { effects, .. } => effects,
+            Ability::Etb { effects, .. } => effects,
         }
     }
-}
-
-pub fn compute_mana_gain(mana: &GainMana, mode: Option<usize>) -> Option<HashMap<Mana, usize>> {
-    let mut manas: HashMap<Mana, usize> = HashMap::default();
-    match mana {
-        GainMana::Specific { gains } => {
-            for gain in gains.iter() {
-                *manas.entry(*gain).or_default() += 1;
-            }
-        }
-        GainMana::Choice { choices } => {
-            let Some(mode) = mode else {
-                // No mode selected for modal ability.
-                return None;
-            };
-
-            for gain in choices[mode].iter() {
-                *manas.entry(*gain).or_default() += 1;
-            }
-        }
-    };
-
-    Some(manas)
 }

@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct UntapTarget;
+pub(crate) struct UntapTarget;
 
 impl EffectBehaviors for UntapTarget {
     fn needs_targets(&self) -> usize {

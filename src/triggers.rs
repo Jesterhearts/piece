@@ -6,7 +6,7 @@ use crate::{
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub enum Location {
+pub(crate)enum Location {
     Anywhere,
     Battlefield,
     Hand,
@@ -38,7 +38,7 @@ impl From<&protogen::triggers::location::Location> for Location {
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub enum TriggerSource {
+pub(crate)enum TriggerSource {
     Attacks,
     Cast,
     EndStep,
@@ -51,11 +51,11 @@ pub enum TriggerSource {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
-pub struct Trigger {
-    pub trigger: TriggerSource,
-    pub from: Location,
-    pub controller: ControllerRestriction,
-    pub restrictions: Vec<Restriction>,
+pub(crate) struct Trigger {
+    pub(crate) trigger: TriggerSource,
+    pub(crate) from: Location,
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::triggers::Trigger> for Trigger {

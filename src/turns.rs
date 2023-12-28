@@ -55,7 +55,7 @@ impl Turn {
     }
 
     #[cfg(test)]
-    pub fn set_phase(&mut self, phase: Phase) {
+    pub(crate) fn set_phase(&mut self, phase: Phase) {
         self.phase = phase;
     }
 

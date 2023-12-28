@@ -24,6 +24,7 @@ use ratatui::{
 use piece::{
     ai::AI,
     battlefield::{self, Battlefield, PendingResults, ResolutionResult},
+    deck::DeckDefinition,
     in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
     player::AllPlayers,
@@ -142,11 +143,11 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    let mut def = DeckDefinition::default();
     for card in cards.keys() {
-        let card = CardId::upload(&mut db, &cards, player1, card);
-        all_players[player1].deck.place_on_top(&mut db, card);
+        def.add_card(card.clone(), 1);
     }
-    all_players[player1].deck.shuffle();
+    all_players[player1].deck = def.build_deck(&mut db, &cards, player1);
 
     stdout()
         .execute(EnterAlternateScreen)?
@@ -1304,13 +1305,13 @@ fn main() -> anyhow::Result<()> {
 
                                     break;
                                 }
-                                battlefield::ResolutionResult::TryAgain => {
+                                ResolutionResult::TryAgain => {
                                     debug!("Trying again for {:#?}", to_resolve);
                                     if !to_resolve.only_immediate_results(&db, &all_players) {
                                         break;
                                     }
                                 }
-                                battlefield::ResolutionResult::PendingChoice => {
+                                ResolutionResult::PendingChoice => {
                                     break;
                                 }
                             }

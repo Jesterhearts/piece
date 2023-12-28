@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
 #[derive(Debug)]
-pub struct Transform;
+pub(crate) struct Transform;
 
 impl EffectBehaviors for Transform {
     fn needs_targets(&'static self) -> usize {

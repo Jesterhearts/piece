@@ -1,7 +1,7 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
 #[derive(Debug, Clone, Copy)]
-pub struct UntapThis;
+pub(crate) struct UntapThis;
 
 impl EffectBehaviors for UntapThis {
     fn needs_targets(&self) -> usize {

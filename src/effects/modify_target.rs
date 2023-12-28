@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct ModifyTarget(pub BattlefieldModifier);
+pub(crate) struct ModifyTarget(pub(crate) BattlefieldModifier);
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for ModifyTarget {
     type Error = anyhow::Error;

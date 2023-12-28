@@ -1,7 +1,7 @@
 use crate::{battlefield::create_token_copy_with_replacements, effects::EffectBehaviors, protogen};
 
 #[derive(Debug)]
-pub struct MultiplyTokens {
+pub(crate) struct MultiplyTokens {
     multiplier: usize,
 }
 

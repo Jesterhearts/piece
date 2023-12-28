@@ -8,10 +8,10 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ChoosingCast {
-    pub choosing_to_cast: Vec<CardId>,
-    pub paying_costs: bool,
-    pub discovering: bool,
+pub(crate) struct ChoosingCast {
+    pub(crate) choosing_to_cast: Vec<CardId>,
+    pub(crate) paying_costs: bool,
+    pub(crate) discovering: bool,
 }
 
 impl PendingResult for ChoosingCast {

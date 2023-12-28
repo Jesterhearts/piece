@@ -6,19 +6,19 @@ use indexmap::IndexSet;
 use crate::protogen;
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct Types(pub IndexSet<Type>);
+pub(crate) struct Types(pub(crate) IndexSet<Type>);
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct ModifiedTypes(pub IndexSet<Type>);
+pub(crate) struct ModifiedTypes(pub(crate) IndexSet<Type>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct AddTypes(pub IndexSet<Type>);
+pub(crate) struct AddTypes(pub(crate) IndexSet<Type>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct RemoveTypes(pub IndexSet<Type>);
+pub(crate) struct RemoveTypes(pub(crate) IndexSet<Type>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, strum::AsRefStr)]
-pub enum Type {
+pub(crate) enum Type {
     Legendary,
     Instant,
     Sorcery,
@@ -60,29 +60,23 @@ impl From<&protogen::types::type_::Ty> for Type {
     }
 }
 
-impl Type {
-    pub fn is_permanent(&self) -> bool {
-        !matches!(self, Type::Instant | Type::Sorcery)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct Subtypes(pub IndexSet<Subtype>);
+pub(crate) struct Subtypes(pub(crate) IndexSet<Subtype>);
 
 #[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub struct ModifiedSubtypes(pub IndexSet<Subtype>);
+pub(crate) struct ModifiedSubtypes(pub(crate) IndexSet<Subtype>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct AddSubtypes(pub IndexSet<Subtype>);
+pub(crate) struct AddSubtypes(pub(crate) IndexSet<Subtype>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub struct RemoveSubtypes(pub IndexSet<Subtype>);
+pub(crate) struct RemoveSubtypes(pub(crate) IndexSet<Subtype>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-pub struct RemoveAllSubtypes;
+pub(crate) struct RemoveAllSubtypes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::AsRefStr)]
-pub enum Subtype {
+pub(crate) enum Subtype {
     Angel,
     Artificer,
     Aura,

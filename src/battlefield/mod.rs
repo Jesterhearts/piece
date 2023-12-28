@@ -1,4 +1,4 @@
-pub mod pending_results;
+pub(crate) mod pending_results;
 
 use std::{collections::HashSet, vec::IntoIter};
 
@@ -51,13 +51,13 @@ pub use pending_results::*;
 
 #[must_use]
 #[derive(Debug)]
-pub enum PartialAddToBattlefieldResult {
+pub(crate) enum PartialAddToBattlefieldResult {
     NeedsResolution(PendingResults),
     Continue(PendingResults),
 }
 
 #[derive(Debug, Clone)]
-pub enum ActionResult {
+pub(crate) enum ActionResult {
     AddAbilityToStack {
         source: CardId,
         ability: AbilityId,
@@ -224,29 +224,25 @@ pub enum ActionResult {
     Discard(CardId),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ModifierSource {
-    UntilEndOfTurn,
-    Card(CardId),
-}
-
 #[derive(Debug, PartialEq, Clone)]
-pub struct Permanent {
-    pub tapped: bool,
+pub(crate) struct Permanent {
+    pub(crate) tapped: bool,
 }
 
 #[derive(Debug)]
 pub struct Battlefield;
 
 impl Battlefield {
-    pub fn is_empty(db: &mut Database) -> bool {
+    #[cfg(test)]
+    pub(crate) fn is_empty(db: &mut Database) -> bool {
         db.query_filtered::<(), With<OnBattlefield>>()
             .iter(db)
             .next()
             .is_none()
     }
 
-    pub fn no_modifiers(db: &mut Database) -> bool {
+    #[cfg(test)]
+    pub(crate) fn no_modifiers(db: &mut Database) -> bool {
         db.modifiers
             .query_filtered::<Entity, With<Active>>()
             .iter(&db.modifiers)
@@ -254,7 +250,7 @@ impl Battlefield {
             .is_none()
     }
 
-    pub fn number_of_cards_in_graveyard(db: &mut Database, player: Controller) -> usize {
+    pub(crate) fn number_of_cards_in_graveyard(db: &mut Database, player: Controller) -> usize {
         let mut query = db.query_filtered::<&Controller, With<InGraveyard>>();
 
         let mut count = 0;
@@ -265,21 +261,6 @@ impl Battlefield {
         }
 
         count
-    }
-
-    pub fn creatures(db: &mut Database) -> Vec<CardId> {
-        let on_battlefield = cards::<OnBattlefield>(db);
-
-        let mut results = vec![];
-
-        for card in on_battlefield.into_iter() {
-            let types = card.types(db);
-            if types.contains(&Type::Creature) {
-                results.push(card);
-            }
-        }
-
-        results
     }
 
     pub fn add_from_stack_or_hand(
@@ -300,7 +281,7 @@ impl Battlefield {
         results
     }
 
-    pub fn add_from_library(
+    pub(crate) fn add_from_library(
         db: &mut Database,
         source_card_id: CardId,
         enters_tapped: bool,
@@ -324,7 +305,7 @@ impl Battlefield {
         results
     }
 
-    pub fn add_from_exile(
+    pub(crate) fn add_from_exile(
         db: &mut Database,
         source_card_id: CardId,
         enters_tapped: bool,
@@ -385,54 +366,7 @@ impl Battlefield {
         PartialAddToBattlefieldResult::Continue(results)
     }
 
-    pub fn compute_deck_targets(
-        db: &mut Database,
-        player: Controller,
-        restrictions: &[Restriction],
-    ) -> Vec<CardId> {
-        let mut results = vec![];
-
-        for card in player.get_cards_in::<InLibrary>(db) {
-            if !card.passes_restrictions(db, card, ControllerRestriction::You, restrictions) {
-                continue;
-            }
-
-            results.push(card);
-        }
-
-        results
-    }
-
-    pub fn compute_graveyard_targets(
-        db: &mut Database,
-        controller: ControllerRestriction,
-        source_card: CardId,
-        types: &IndexSet<Type>,
-    ) -> Vec<CardId> {
-        let targets = match controller {
-            ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
-            ControllerRestriction::You => HashSet::from([source_card.controller(db).into()]),
-            ControllerRestriction::Opponent => {
-                let mut all = AllPlayers::all_players_in_db(db);
-                all.remove(&source_card.controller(db).into());
-                all
-            }
-        };
-        let mut target_cards = vec![];
-
-        for target in targets.into_iter() {
-            let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
-            for card in cards_in_graveyard {
-                if card.types_intersect(db, types) {
-                    target_cards.push(card);
-                }
-            }
-        }
-
-        target_cards
-    }
-
-    pub fn controlled_colors(db: &mut Database, player: Controller) -> HashSet<Color> {
+    pub(crate) fn controlled_colors(db: &mut Database, player: Controller) -> HashSet<Color> {
         let cards = player.get_cards_in::<OnBattlefield>(db);
 
         let mut colors = HashSet::default();
@@ -444,7 +378,7 @@ impl Battlefield {
         colors
     }
 
-    pub fn untap(db: &mut Database, player: Owner) {
+    pub(crate) fn untap(db: &mut Database, player: Owner) {
         let cards = in_play::cards::<OnBattlefield>(db)
             .into_iter()
             .filter(|card| {
@@ -460,7 +394,7 @@ impl Battlefield {
         }
     }
 
-    pub fn end_turn(db: &mut Database) -> PendingResults {
+    pub(crate) fn end_turn(db: &mut Database) -> PendingResults {
         let cards = cards::<OnBattlefield>(db);
         for card in cards {
             card.clear_damage(db);
@@ -557,7 +491,7 @@ impl Battlefield {
                         None
                     }
                 }
-                Ability::Mana(_) | Ability::ETB { .. } => None,
+                Ability::Mana(_) | Ability::Etb { .. } => None,
             };
 
             for cost in cost.additional_cost.iter() {
@@ -667,7 +601,7 @@ impl Battlefield {
         results
     }
 
-    pub fn static_abilities(db: &mut Database) -> Vec<(StaticAbility, Controller)> {
+    pub(crate) fn static_abilities(db: &mut Database) -> Vec<(StaticAbility, Controller)> {
         let mut result: Vec<(StaticAbility, Controller)> = Default::default();
 
         for card in cards::<OnBattlefield>(db) {
@@ -681,7 +615,7 @@ impl Battlefield {
     }
 
     #[instrument(skip(db, all_players, turn), level = Level::DEBUG)]
-    pub fn apply_action_results(
+    pub(crate) fn apply_action_results(
         db: &mut Database,
         all_players: &mut AllPlayers,
         turn: &Turn,
@@ -1385,7 +1319,7 @@ impl Battlefield {
         }
     }
 
-    pub fn permanent_to_hand(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn permanent_to_hand(db: &mut Database, target: CardId) -> PendingResults {
         target.move_to_hand(db);
         for card in all_cards(db) {
             card.apply_modifiers_layered(db);
@@ -1394,7 +1328,7 @@ impl Battlefield {
         PendingResults::default()
     }
 
-    pub fn permanent_to_graveyard(
+    pub(crate) fn permanent_to_graveyard(
         db: &mut Database,
         turn: &Turn,
         target: CardId,
@@ -1430,7 +1364,7 @@ impl Battlefield {
         pending
     }
 
-    pub fn library_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn library_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
@@ -1457,7 +1391,11 @@ impl Battlefield {
         pending
     }
 
-    pub fn leave_battlefield(db: &mut Database, turn: &Turn, target: CardId) -> PendingResults {
+    pub(crate) fn leave_battlefield(
+        db: &mut Database,
+        turn: &Turn,
+        target: CardId,
+    ) -> PendingResults {
         let mut results = PendingResults::default();
 
         for card in in_play::cards::<InExile>(db)
@@ -1475,7 +1413,7 @@ impl Battlefield {
         results
     }
 
-    pub fn stack_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn stack_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::PutIntoGraveyard>(db)
@@ -1499,7 +1437,7 @@ impl Battlefield {
         pending
     }
 
-    pub fn exile(
+    pub(crate) fn exile(
         db: &mut Database,
         turn: &Turn,
         source: CardId,
@@ -1538,7 +1476,7 @@ impl Battlefield {
 }
 
 #[instrument(skip(db, modifiers, results))]
-pub fn create_token_copy_with_replacements(
+pub(crate) fn create_token_copy_with_replacements(
     db: &mut Database,
     source: CardId,
     copying: CardId,
@@ -1595,7 +1533,7 @@ pub fn create_token_copy_with_replacements(
     }
 }
 
-pub fn compute_deck_targets(
+pub(crate) fn compute_deck_targets(
     db: &mut Database,
     player: Controller,
     restrictions: &[Restriction],
@@ -1613,7 +1551,7 @@ pub fn compute_deck_targets(
     results
 }
 
-pub fn compute_graveyard_targets(
+pub(crate) fn compute_graveyard_targets(
     db: &mut Database,
     controller: ControllerRestriction,
     source_card: CardId,

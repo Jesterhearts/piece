@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Mill {
+pub(crate) struct Mill {
     count: usize,
     target: ControllerRestriction,
 }

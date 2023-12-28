@@ -1,12 +1,14 @@
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::{Battlefield, ResolutionResult},
-    in_play::{CardId, Database},
+    in_play::{self, CardId, Database, OnBattlefield},
     load_cards,
     player::AllPlayers,
     stack::Stack,
     turns::{Phase, Turn},
+    types::Type,
 };
 
 #[test]
@@ -67,7 +69,13 @@ fn spawns_bats() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Should have 3 bats
-    assert_eq!(Battlefield::creatures(&mut db).len(), 3);
+    assert_eq!(
+        in_play::cards::<OnBattlefield>(&mut db)
+            .into_iter()
+            .filter(|card| card.types_intersect(&db, &IndexSet::from([Type::Creature])))
+            .count(),
+        3
+    );
 
     Ok(())
 }

@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CopyOfAnyCreatureNonTargeting;
+pub(crate) struct CopyOfAnyCreatureNonTargeting;
 
 impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn needs_targets(&self) -> usize {

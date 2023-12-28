@@ -1,4 +1,4 @@
-pub mod mana_pool;
+pub(crate) mod mana_pool;
 
 use std::{
     collections::HashSet,
@@ -14,7 +14,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{Battlefield, PendingResults},
+    battlefield::{ActionResult, Battlefield, PendingResults},
     card::Color,
     deck::Deck,
     effects::replacing,
@@ -163,7 +163,7 @@ impl From<Owner> for Controller {
 }
 
 impl Controller {
-    pub fn get_cards_in<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
+    pub(crate) fn get_cards_in<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
         db.query::<(Entity, &Controller, &Zone)>()
             .iter(db)
             .sorted_by_key(|(_, _, zone)| *zone)
@@ -177,7 +177,7 @@ impl Controller {
             .collect_vec()
     }
 
-    pub fn get_cards(self, db: &mut Database) -> Vec<CardId> {
+    pub(crate) fn get_cards(self, db: &mut Database) -> Vec<CardId> {
         db.query::<(Entity, &Controller)>()
             .iter(db)
             .filter_map(|(card, owner)| {
@@ -190,7 +190,7 @@ impl Controller {
             .collect_vec()
     }
 
-    pub fn has_cards<Zone: Component>(self, db: &mut Database) -> bool {
+    pub(crate) fn has_cards<Zone: Component>(self, db: &mut Database) -> bool {
         db.query_filtered::<&Controller, With<Zone>>()
             .iter(db)
             .any(|owner| self == *owner)
@@ -242,6 +242,7 @@ impl AllPlayers {
             id,
             Player {
                 name,
+                id,
                 hexproof: false,
                 life_total,
                 lands_played: 0,
@@ -254,11 +255,11 @@ impl AllPlayers {
         id
     }
 
-    pub fn all_players(&self) -> Vec<Owner> {
+    pub(crate) fn all_players(&self) -> Vec<Owner> {
         self.players.keys().copied().collect_vec()
     }
 
-    pub fn all_players_in_db(db: &mut Database) -> HashSet<Owner> {
+    pub(crate) fn all_players_in_db(db: &mut Database) -> HashSet<Owner> {
         db.query::<&Owner>().iter(db).copied().collect()
     }
 }
@@ -267,8 +268,11 @@ impl AllPlayers {
 pub struct Player {
     pub name: String,
 
-    pub hexproof: bool,
-    pub lands_played: usize,
+    pub(crate) id: Owner,
+
+    #[allow(unused)]
+    pub(crate) hexproof: bool,
+    pub(crate) lands_played: usize,
     pub mana_pool: ManaPool,
 
     pub life_total: i32,
@@ -314,6 +318,7 @@ impl Player {
             } else if let Some(card) = self.deck.draw() {
                 card.move_to_hand(db);
             } else {
+                results.push_settled(ActionResult::PlayerLoses(self.id));
                 return results;
             }
         }
@@ -321,7 +326,7 @@ impl Player {
         results
     }
 
-    pub fn draw_with_replacement(
+    pub(crate) fn draw_with_replacement(
         &mut self,
         db: &mut Database,
         replacements: &mut IntoIter<ReplacementEffectId>,
@@ -378,7 +383,7 @@ impl Player {
         Stack::move_card_to_stack_from_hand(&mut db, card, true)
     }
 
-    pub fn can_meet_cost(
+    pub(crate) fn can_meet_cost(
         &self,
         db: &Database,
         mana: &[ManaCost],
@@ -402,7 +407,7 @@ impl Player {
         true
     }
 
-    pub fn pool_post_pay(
+    pub(crate) fn pool_post_pay(
         &self,
         db: &Database,
         mana: &[Mana],
@@ -425,7 +430,7 @@ impl Player {
         Some(mana_pool)
     }
 
-    pub fn can_spend_mana(
+    pub(crate) fn can_spend_mana(
         &self,
         db: &Database,
         mana: &[Mana],
@@ -435,7 +440,7 @@ impl Player {
         self.pool_post_pay(db, mana, sources, reason).is_some()
     }
 
-    pub fn spend_mana(
+    pub(crate) fn spend_mana(
         &mut self,
         db: &Database,
         mana: &[Mana],
@@ -459,7 +464,7 @@ impl Player {
         true
     }
 
-    pub fn manifest(&mut self, db: &mut Database) -> PendingResults {
+    pub(crate) fn manifest(&mut self, db: &mut Database) -> PendingResults {
         if let Some(manifested) = self.deck.draw() {
             manifested.manifest(db);
             Battlefield::add_from_stack_or_hand(db, manifested, None)
@@ -468,7 +473,7 @@ impl Player {
         }
     }
 
-    pub fn lands_per_turn(db: &mut Database) -> usize {
+    pub(crate) fn lands_per_turn(db: &mut Database) -> usize {
         1 + Battlefield::static_abilities(db)
             .into_iter()
             .filter_map(|(ability, _)| match ability {

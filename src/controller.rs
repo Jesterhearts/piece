@@ -4,7 +4,7 @@ use bevy_ecs::component::Component;
 use crate::protogen;
 
 #[derive(Debug, PartialEq, Eq, Clone, Default, Copy, Component)]
-pub enum ControllerRestriction {
+pub(crate) enum ControllerRestriction {
     #[default]
     Any,
     You,

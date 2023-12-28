@@ -7,8 +7,8 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct LibraryOrGraveyard {
-    pub card: CardId,
+pub(crate) struct LibraryOrGraveyard {
+    pub(crate) card: CardId,
 }
 
 impl PendingResult for LibraryOrGraveyard {

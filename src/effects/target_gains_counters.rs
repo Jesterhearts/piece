@@ -16,7 +16,7 @@ use crate::{
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
 #[derive(strum::EnumIter)]
-pub enum Counter {
+pub(crate)enum Counter {
     Charge,
     P1P1,
     M1M1,
@@ -24,7 +24,7 @@ pub enum Counter {
 }
 
 #[derive(Debug, Clone)]
-pub enum DynamicCounter {
+pub(crate) enum DynamicCounter {
     X,
     LeftBattlefieldThisTurn {
         controller: ControllerRestriction,
@@ -67,7 +67,7 @@ impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCoun
 }
 
 #[derive(Debug, Clone)]
-pub enum GainCount {
+pub(crate) enum GainCount {
     Single,
     Dynamic(DynamicCounter),
 }
@@ -108,7 +108,7 @@ impl From<&protogen::counters::counter::Type> for Counter {
 }
 
 #[derive(Debug)]
-pub struct TargetGainsCounters {
+pub(crate) struct TargetGainsCounters {
     count: GainCount,
     counter: Counter,
     controller: ControllerRestriction,

@@ -12,10 +12,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReturnFromGraveyardToHand {
-    pub count: usize,
-    pub controller: ControllerRestriction,
-    pub restrictions: Vec<Restriction>,
+pub(crate) struct ReturnFromGraveyardToHand {
+    pub(crate) count: usize,
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ReturnFromGraveyardToHand> for ReturnFromGraveyardToHand {

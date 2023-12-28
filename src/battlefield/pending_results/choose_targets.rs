@@ -14,16 +14,16 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct ChooseTargets {
+pub(crate) struct ChooseTargets {
     target_source: TargetSource,
-    pub valid_targets: Vec<ActiveTarget>,
+    pub(crate) valid_targets: Vec<ActiveTarget>,
     chosen: IndexMap<usize, usize>,
     skipping_remainder: bool,
     card: CardId,
 }
 
 impl ChooseTargets {
-    pub fn new(
+    pub(crate) fn new(
         target_source: TargetSource,
         valid_targets: Vec<ActiveTarget>,
         card: CardId,
@@ -37,7 +37,7 @@ impl ChooseTargets {
         }
     }
 
-    pub fn compute_targets(
+    pub(crate) fn compute_targets(
         &mut self,
         db: &mut Database,
         already_chosen: &HashSet<ActiveTarget>,
@@ -66,7 +66,7 @@ impl ChooseTargets {
     }
 
     #[must_use]
-    pub fn choose_targets(&mut self, choice: Option<usize>) -> bool {
+    pub(crate) fn choose_targets(&mut self, choice: Option<usize>) -> bool {
         debug!("choosing target: {:?}", choice);
         if let Some(choice) = choice {
             if self.valid_targets.is_empty() {
@@ -89,7 +89,7 @@ impl ChooseTargets {
         }
     }
 
-    pub fn chosen_targets_and_effect(&self) -> (Vec<ActiveTarget>, TargetSource) {
+    pub(crate) fn chosen_targets_and_effect(&self) -> (Vec<ActiveTarget>, TargetSource) {
         let mut results = vec![];
         for choice in self
             .chosen
@@ -106,17 +106,17 @@ impl ChooseTargets {
         self.target_source.clone()
     }
 
-    pub fn chosen_targets_count(&self) -> usize {
+    pub(crate) fn chosen_targets_count(&self) -> usize {
         self.chosen.values().sum()
     }
 
-    pub fn choices_complete(&self) -> bool {
+    pub(crate) fn choices_complete(&self) -> bool {
         self.chosen_targets_count() >= self.target_source.wants_targets()
             || self.chosen_targets_count() >= self.valid_targets.len()
             || (self.can_skip() && self.skipping_remainder)
     }
 
-    pub fn can_skip(&self) -> bool {
+    pub(crate) fn can_skip(&self) -> bool {
         self.chosen_targets_count() >= self.target_source.needs_targets()
             || self.chosen_targets_count() >= self.valid_targets.len()
     }

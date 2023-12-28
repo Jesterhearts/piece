@@ -7,7 +7,7 @@ macro_rules! newtype_enum {
         ::paste::paste! {
             $v mod [< $name:snake:lower >] {
                 $(
-                    pub struct $case;
+                    pub(crate)struct $case;
                 )+
             }
         }
@@ -23,7 +23,7 @@ macro_rules! newtype_enum {
                 $(
                     #[derive $d]
                     #[derive(Default)]
-                    pub struct $case;
+                    pub(crate)struct $case;
                 )+
             }
         }
@@ -45,7 +45,7 @@ macro_rules! newtype_enum {
                     $(
                         #[derive $d]
                         #[derive(Default)]
-                        pub struct $case;
+                        pub(crate)struct $case;
                     )+
                 }
             }
@@ -58,14 +58,14 @@ pub(crate) use newtype_enum;
 mod tests {
     newtype_enum!(
         #[derive(Debug, Clone, Copy)]
-        pub enum Test {
+        pub(crate) enum Test {
             Example1,
             Example2,
         }
     );
 
     newtype_enum!(
-        pub enum Test2 {
+        pub(crate) enum Test2 {
             Example1,
             Example2,
         }
@@ -76,7 +76,7 @@ mod tests {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         #[derive(strum::EnumIter, strum::EnumString)]
         #[strum(ascii_case_insensitive)]
-        pub enum Test3 {
+        pub(crate)enum Test3 {
             Example1,
             Example2,
         }
