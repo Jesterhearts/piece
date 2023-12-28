@@ -225,6 +225,7 @@ fn main() -> anyhow::Result<()> {
                             displaying_textarea = false;
                             let card = CardId::upload(&mut db, &cards, player1, text);
                             card.move_to_hand(&mut db);
+                            textarea = TextArea::default();
                         }
                     }
                     Input { key: Key::Esc, .. } => {

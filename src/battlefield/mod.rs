@@ -7,6 +7,7 @@ use bevy_ecs::{entity::Entity, query::With};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
+use tracing::Level;
 
 use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
@@ -661,6 +662,7 @@ impl Battlefield {
         result
     }
 
+    #[instrument(skip(db, all_players, turn), level = Level::DEBUG)]
     pub fn apply_action_results(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -680,6 +682,7 @@ impl Battlefield {
         pending
     }
 
+    #[instrument(skip(db, all_players, turn), level = Level::DEBUG)]
     fn apply_action_result(
         db: &mut Database,
         all_players: &mut AllPlayers,
@@ -1511,6 +1514,7 @@ impl Battlefield {
     }
 }
 
+#[instrument(skip(db, modifiers, results))]
 pub fn create_token_copy_with_replacements(
     db: &mut Database,
     source: CardId,
@@ -1543,10 +1547,12 @@ pub fn create_token_copy_with_replacements(
                     .into_effect(db, replacement_source.controller(db))
                     .replace_token_creation(db, source, replacements, copying, modifiers, results);
             }
+            break;
         }
     }
 
     if !replaced {
+        debug!("Creating token");
         let token = copying.token_copy_of(db, source.controller(db).into());
         for modifier in modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(

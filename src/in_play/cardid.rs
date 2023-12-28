@@ -530,8 +530,6 @@ impl CardId {
             })
             .collect_vec();
 
-        debug!("Modifiers for {}: {:?}", self.name(db), modifiers);
-
         let facedown = self.facedown(db) && !self.transformed(db);
         let source = self.faceup_face(db);
 
@@ -826,13 +824,6 @@ impl CardId {
         for trigger in triggers.iter() {
             trigger.add_listener(db, source);
         }
-
-        debug!(
-            "Modified keywords for {} ({:?}): {:?}",
-            self.name(db),
-            self,
-            keywords,
-        );
 
         db.entity_mut(source.0)
             .insert(AddPower(add_power))
@@ -1323,7 +1314,7 @@ impl CardId {
         db.get::<Card>(self.0).cloned().unwrap()
     }
 
-    fn upload_card<Location: Component + std::marker::Copy>(
+    fn upload_card<Location: Component + std::marker::Copy + std::fmt::Debug>(
         db: &mut Database,
         card: &Card,
         player: Owner,
@@ -1335,7 +1326,8 @@ impl CardId {
         cardid
     }
 
-    fn insert_components<Location: Component + std::marker::Copy>(
+    #[instrument(skip(db, card))]
+    fn insert_components<Location: Component + std::marker::Copy + std::fmt::Debug>(
         db: &mut Database,
         cardid: CardId,
         card: &Card,
@@ -1694,7 +1686,7 @@ impl CardId {
         db.entity_mut(self.0).remove::<Tapped>();
     }
 
-    pub fn clone_card<Location: Component + std::marker::Copy>(
+    pub fn clone_card<Location: Component + std::marker::Copy + std::fmt::Debug>(
         self,
         db: &mut Database,
         source: CardId,

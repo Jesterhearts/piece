@@ -141,7 +141,6 @@ impl TriggerId {
     pub fn activate_all_for_card(db: &mut Database, cardid: CardId) {
         let triggers = cardid.triggers(db);
 
-        debug!("All triggers for card {}: {:?}", cardid.name(db), triggers);
         for trigger in triggers {
             db.triggers.entity_mut(trigger.0).insert(Active);
         }
