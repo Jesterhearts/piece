@@ -1,0 +1,47 @@
+name: "Soaring Sandwing"
+cost {
+  mana_costs {
+    generic {
+      count: 4
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  gain_life {
+    count: 3
+  }
+  oracle_text: "When Soaring Sandwing enters the battlefield, you gain 3 life."
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 2
+      }
+    }
+    additional_costs {
+      discard_this {
+      }
+    }
+  }
+  effects {
+    cycling {
+      subtypes {
+        plains {
+        }
+      }
+    }
+  }
+  oracle_text: "Plainscycling"
+}
+power: 3
+toughness: 5
+keywords: "Flying"

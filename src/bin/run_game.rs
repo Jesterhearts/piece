@@ -37,6 +37,7 @@ use piece::{
     },
     UiState,
 };
+use tracing::Level;
 use tui_textarea::{Input, Key, TextArea};
 
 #[allow(clippy::large_enum_variant)]
@@ -810,6 +811,7 @@ fn main() -> anyhow::Result<()> {
                                 )));
                         } else if last_click.is_some() {
                             last_entry_clicked = Some(hovered);
+                            selected_card = Some(player1.get_cards::<InHand>(&mut db)[hovered]);
                         }
                     }
 
@@ -1064,6 +1066,7 @@ fn main() -> anyhow::Result<()> {
                 action_selection_state:
                     HorizontalListState {
                         start_index: actions_start_index,
+                        hovered: actions_hovered,
                         ..
                     },
                 hand_selection_state:
@@ -1075,31 +1078,59 @@ fn main() -> anyhow::Result<()> {
                 selected_state,
                 ..
             } => {
-                if let Some(card) = selected_state.selected {
-                    let abilities = card.activated_abilities(&db);
-                    if let Some(selected) = key_selected
-                        .map(|offset| *actions_start_index + offset)
-                        .or(last_entry_clicked)
-                    {
-                        if selected < abilities.len() {
-                            let mut pending = Battlefield::activate_ability(
-                                &mut db,
-                                &mut all_players,
-                                &turn,
-                                player1,
-                                card,
-                                selected,
+                if actions_hovered.is_some() {
+                    if let Some(card) = selected_state.selected.or(selected_card) {
+                        let abilities = card.activated_abilities(&db);
+
+                        if let Some(mut selected) = key_selected
+                            .map(|offset| *actions_start_index + offset)
+                            .or(last_entry_clicked)
+                        {
+                            event!(
+                                Level::DEBUG,
+                                ?key_selected,
+                                ?last_entry_clicked,
+                                "{}",
+                                card.name(&db),
                             );
 
-                            while pending.only_immediate_results(&db, &all_players) {
-                                let result =
-                                    pending.resolve(&mut db, &mut all_players, &turn, None);
-                                if result == ResolutionResult::Complete {
-                                    break;
+                            debug!("Selected {}", selected);
+                            if !card.is_in_location::<InHand>(&db) || selected > 0 {
+                                if card.is_in_location::<InHand>(&db) {
+                                    selected -= 1;
                                 }
-                            }
+                                if selected < abilities.len() {
+                                    let mut pending = Battlefield::activate_ability(
+                                        &mut db,
+                                        &mut all_players,
+                                        &turn,
+                                        player1,
+                                        card,
+                                        selected,
+                                    );
 
-                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                                    while pending.only_immediate_results(&db, &all_players) {
+                                        let result =
+                                            pending.resolve(&mut db, &mut all_players, &turn, None);
+                                        if result == ResolutionResult::Complete {
+                                            break;
+                                        }
+                                    }
+
+                                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                                }
+                            } else if turn.can_cast(&mut db, card) {
+                                let mut pending = all_players[player1].play_card(&mut db, card);
+                                while pending.only_immediate_results(&db, &all_players) {
+                                    let result =
+                                        pending.resolve(&mut db, &mut all_players, &turn, None);
+                                    if result == ResolutionResult::Complete {
+                                        break;
+                                    }
+                                }
+
+                                maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                            }
                         }
                     }
                 } else if hand_hovered.is_some() {
@@ -1108,8 +1139,14 @@ fn main() -> anyhow::Result<()> {
                         .or(last_entry_clicked)
                     {
                         let card = player1.get_cards::<InHand>(&mut db)[selected];
-                        if turn.can_cast(&mut db, card) {
-                            let mut pending = all_players[player1].play_card(&mut db, selected);
+                        let has_hand_ability =
+                            card.activated_abilities(&db).into_iter().any(|ability| {
+                                debug!("effects {:?}", ability.effects(&db));
+                                ability.can_be_activated(&mut db, &all_players, &turn, player1)
+                            });
+
+                        if !has_hand_ability && turn.can_cast(&mut db, card) {
+                            let mut pending = all_players[player1].play_card(&mut db, card);
                             while pending.only_immediate_results(&db, &all_players) {
                                 let result =
                                     pending.resolve(&mut db, &mut all_players, &turn, None);

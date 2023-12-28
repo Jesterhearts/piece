@@ -32,8 +32,8 @@ use crate::{
     },
     in_play::{
         self, all_cards, cards, update_life_gained_this_turn, AbilityId, Active, AuraId, CardId,
-        CastFrom, CounterId, Database, ExileReason, InExile, InGraveyard, InLibrary, InStack,
-        ModifierId, NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
+        CastFrom, CounterId, Database, ExileReason, InExile, InGraveyard, InHand, InLibrary,
+        InStack, ModifierId, NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
     },
     mana::{Mana, ManaRestriction},
     player::{
@@ -221,6 +221,7 @@ pub enum ActionResult {
     ReturnFromGraveyardToHand {
         targets: Vec<ActiveTarget>,
     },
+    Discard(CardId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -552,6 +553,9 @@ impl Battlefield {
 
             for cost in cost.additional_cost.iter() {
                 match cost {
+                    AdditionalCost::DiscardThis => {
+                        results.push_settled(ActionResult::Discard(card));
+                    }
                     AdditionalCost::SacrificeSource => {
                         results.push_settled(ActionResult::PermanentToGraveyard(
                             ability_id.source(db),
@@ -690,6 +694,11 @@ impl Battlefield {
         result: &ActionResult,
     ) -> PendingResults {
         match result {
+            ActionResult::Discard(card) => {
+                assert!(card.is_in_location::<InHand>(db));
+                card.move_to_graveyard(db);
+                PendingResults::default()
+            }
             ActionResult::TapPermanent(card_id) => card_id.tap(db),
             ActionResult::PermanentToGraveyard(card_id) => {
                 Self::permanent_to_graveyard(db, turn, *card_id)

@@ -688,6 +688,7 @@ fn add_card_to_stack(
     }
     for cost in cost.additional_cost.iter() {
         match cost {
+            AdditionalCost::DiscardThis => unreachable!(),
             AdditionalCost::SacrificeSource => unreachable!(),
             AdditionalCost::PayLife(_) => todo!(),
             AdditionalCost::SacrificePermanent(restrictions) => {

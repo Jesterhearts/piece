@@ -2,10 +2,8 @@ syntax = "proto3";
 
 package abilities;
 
-import "controller.proto";
 import "cost.proto";
 import "effects.proto";
-import "targets.proto";
 import "triggers.proto";
 import "types.proto";
 

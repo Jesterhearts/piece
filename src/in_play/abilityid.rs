@@ -19,7 +19,7 @@ use crate::{
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     effects::{AnyEffect, Effects},
     in_play::{
-        number_of_attackers_this_turn, CardId, Database, InStack, OnBattlefield, Temporary,
+        number_of_attackers_this_turn, CardId, Database, InHand, InStack, OnBattlefield, Temporary,
         NEXT_STACK_SEQ,
     },
     mana::{Mana, ManaRestriction},
@@ -445,7 +445,19 @@ impl AbilityId {
 
         match self.ability(db) {
             Ability::Activated(ability) => {
-                if !in_battlefield {
+                if source.is_in_location::<InHand>(db)
+                    && !ability.can_be_played_from_hand(db, activator.into())
+                {
+                    return false;
+                }
+
+                if ability.can_be_played_from_hand(db, activator.into())
+                    && !source.is_in_location::<InHand>(db)
+                {
+                    return false;
+                }
+
+                if !in_battlefield && !source.is_in_location::<InHand>(db) {
                     return false;
                 }
 
@@ -618,6 +630,11 @@ fn can_pay_costs(
                     .count();
 
                 if targets < *minimum {
+                    return false;
+                }
+            }
+            AdditionalCost::DiscardThis => {
+                if !source.is_in_location::<InHand>(db) {
                     return false;
                 }
             }

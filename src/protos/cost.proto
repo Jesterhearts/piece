@@ -30,6 +30,7 @@ message ManaCost {
 }
 
 message AdditionalCost {
+  message DiscardThis {}
   message ExileCard {
     repeated targets.Restriction restrictions = 1;
   }
@@ -55,14 +56,15 @@ message AdditionalCost {
   }
 
   oneof cost {
-    ExileCard exile_card = 2;
-    ExileCardsCmcX exile_cards_cmc_x = 3;
-    ExileSharingCardType exile_sharing_card_type = 4;
-    ExileXOrMoreCards exile_x_or_more_cards = 5;
-    PayLife pay_life = 6;
-    SacrificePermanent sacrifice_permanent = 7;
-    SacrificeSource sacrifice_source = 8;
-    TapPermanent tap_permanent = 9;
+    DiscardThis discard_this = 2;
+    ExileCard exile_card = 3;
+    ExileCardsCmcX exile_cards_cmc_x = 4;
+    ExileSharingCardType exile_sharing_card_type = 5;
+    ExileXOrMoreCards exile_x_or_more_cards = 6;
+    PayLife pay_life = 7;
+    SacrificePermanent sacrifice_permanent = 8;
+    SacrificeSource sacrifice_source = 9;
+    TapPermanent tap_permanent = 10;
   }
 }
 

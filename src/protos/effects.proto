@@ -64,6 +64,11 @@ message CreateTokenCopy {
   repeated ModifyBattlefield modifiers = 1;
 }
 
+message Cycling {
+  repeated types.Type types = 1;
+  repeated types.Subtype subtypes = 2;
+}
+
 message DealDamage {
   int32 quantity = 1;
   repeated targets.Restriction restrictions = 2;
@@ -327,41 +332,42 @@ message Effect {
     CreateToken create_token = 8;
     CreateToken target_controller_gains_tokens = 9;
     CreateTokenCopy create_token_copy = 10;
-    DealDamage deal_damage = 11;
-    DestroyEach destroy_each = 12;
-    DestroyTarget destroy_target = 13;
-    Discover discover = 14;
-    Equip equip = 15;
-    ExileTarget exile_target = 16;
+    Cycling cycling = 11;
+    DealDamage deal_damage = 12;
+    DestroyEach destroy_each = 13;
+    DestroyTarget destroy_target = 14;
+    Discover discover = 15;
+    Equip equip = 16;
+    ExileTarget exile_target = 17;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 17;
-    ExileTargetGraveyard exile_target_graveyard = 18;
-    Explore self_explores = 19;
-    Explore target_explores = 20;
-    ForEachManaOfSource for_each_mana_of_source = 21;
-    GainCounter target_gains_counters = 22;
-    GainLife gain_life = 23;
-    Mill mill = 24;
-    Modes modal = 25;
-    MultiplyTokens multiply_tokens = 26;
-    PayCostThen pay_cost_then = 27;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 28;
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 29;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 30;
-    ReturnSelfToHand return_self_to_hand = 31;
-    ReturnTargetToHand return_target_to_hand = 32;
-    ReturnTransformed return_transformed = 33;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 34;
-    Scry scry = 35;
-    TargetToTopOfLibrary target_to_top_of_library = 36;
-    Transform transform = 37;
-    TutorLibrary tutor_library = 38;
-    UntapThis untap_this = 39;
-    UntapTarget untap_target = 40;
+        exile_target_creature_manifest_top_of_library = 18;
+    ExileTargetGraveyard exile_target_graveyard = 19;
+    Explore self_explores = 20;
+    Explore target_explores = 21;
+    ForEachManaOfSource for_each_mana_of_source = 22;
+    GainCounter target_gains_counters = 23;
+    GainLife gain_life = 24;
+    Mill mill = 25;
+    Modes modal = 26;
+    MultiplyTokens multiply_tokens = 27;
+    PayCostThen pay_cost_then = 28;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 29;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 30;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 31;
+    ReturnSelfToHand return_self_to_hand = 32;
+    ReturnTargetToHand return_target_to_hand = 33;
+    ReturnTransformed return_transformed = 34;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 35;
+    Scry scry = 36;
+    TargetToTopOfLibrary target_to_top_of_library = 37;
+    Transform transform = 38;
+    TutorLibrary tutor_library = 39;
+    UntapThis untap_this = 40;
+    UntapTarget untap_target = 41;
   }
 
-  optional Effect threshold = 41;
-  string oracle_text = 42;
+  optional Effect threshold = 42;
+  string oracle_text = 43;
 }
 
 message Mode {

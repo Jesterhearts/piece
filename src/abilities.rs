@@ -12,7 +12,7 @@ use crate::{
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
     mana::{Mana, ManaRestriction},
-    player::mana_pool::ManaSource,
+    player::{mana_pool::ManaSource, Controller},
     protogen,
     triggers::Trigger,
     types::Type,
@@ -165,6 +165,14 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
             sorcery_speed: value.sorcery_speed,
             craft: value.craft,
         })
+    }
+}
+
+impl ActivatedAbility {
+    pub fn can_be_played_from_hand(&self, db: &mut Database, controller: Controller) -> bool {
+        self.effects
+            .iter()
+            .any(|effect| effect.effect(db, controller).cycling())
     }
 }
 

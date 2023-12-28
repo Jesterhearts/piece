@@ -7,6 +7,7 @@ pub mod copy_of_any_creature_non_targeting;
 pub mod counter_spell;
 pub mod create_token;
 pub mod create_token_copy;
+pub mod cycling;
 pub mod deal_damage;
 pub mod destroy_each;
 pub mod destroy_target;
@@ -61,6 +62,7 @@ use crate::{
         counter_spell::CounterSpell,
         create_token::CreateToken,
         create_token_copy::CreateTokenCopy,
+        cycling::Cycling,
         deal_damage::DealDamage,
         destroy_each::DestroyEach,
         destroy_target::DestroyTarget,
@@ -338,6 +340,10 @@ pub trait EffectBehaviors: Debug {
         false
     }
 
+    fn cycling(&'static self) -> bool {
+        false
+    }
+
     fn needs_targets(&'static self) -> usize;
 
     fn wants_targets(&'static self) -> usize;
@@ -470,6 +476,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::CreateTokenCopy(value) => {
                 Ok(Self(Box::leak(Box::new(CreateTokenCopy::try_from(value)?))))
+            }
+            protogen::effects::effect::Effect::Cycling(value) => {
+                Ok(Self(Box::leak(Box::new(Cycling::try_from(value)?))))
             }
             protogen::effects::effect::Effect::DealDamage(value) => {
                 Ok(Self(Box::leak(Box::new(DealDamage::try_from(value)?))))

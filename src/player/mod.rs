@@ -19,7 +19,7 @@ use crate::{
     deck::Deck,
     effects::replacing,
     in_play::{
-        cards, life_gained_this_turn, times_descended_this_turn, CardId, Database, InHand,
+        life_gained_this_turn, times_descended_this_turn, CardId, Database, InHand,
         ReplacementEffectId,
     },
     mana::{Mana, ManaCost, ManaRestriction},
@@ -359,9 +359,8 @@ impl Player {
         }
     }
 
-    pub fn play_card(&mut self, db: &mut Database, index: usize) -> PendingResults {
-        let cards = cards::<InHand>(db);
-        let card = cards[index];
+    pub fn play_card(&mut self, db: &mut Database, card: CardId) -> PendingResults {
+        assert!(card.is_in_location::<InHand>(db));
 
         if card.is_land(db) && self.lands_played >= Self::lands_per_turn(db) {
             return PendingResults::default();

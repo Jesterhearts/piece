@@ -80,6 +80,7 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditionalCost {
+    DiscardThis,
     ExileCard {
         restrictions: Vec<Restriction>,
     },
@@ -100,6 +101,7 @@ pub enum AdditionalCost {
 impl AdditionalCost {
     pub fn text(&self, db: &Database, source: CardId) -> String {
         match self {
+            AdditionalCost::DiscardThis => format!("discard {}", source.name(db)),
             AdditionalCost::SacrificeSource => format!("Sacrifice {}", source.name(db)),
             AdditionalCost::PayLife(pay) => format!("Pay {} life", pay.count),
             AdditionalCost::SacrificePermanent(restrictions) => {
@@ -150,6 +152,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 
     fn try_from(value: &protogen::cost::additional_cost::Cost) -> Result<Self, Self::Error> {
         match value {
+            protogen::cost::additional_cost::Cost::DiscardThis(_) => Ok(Self::DiscardThis),
             protogen::cost::additional_cost::Cost::SacrificeSource(_) => Ok(Self::SacrificeSource),
             protogen::cost::additional_cost::Cost::PayLife(pay) => {
                 Ok(Self::PayLife(pay.try_into()?))

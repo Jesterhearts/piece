@@ -42,6 +42,7 @@ etb_abilities {
       toughness: 1
     }
   }
+  oracle_text: "When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying."
 }
 triggered_abilities {
   trigger {
@@ -83,6 +84,7 @@ triggered_abilities {
       }
     }
   }
+  oracle_text: "When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying."
 }
 power: 2
 toughness: 1

@@ -14,7 +14,7 @@ use ratatui::{
 };
 
 use crate::{
-    in_play::{CardId, CounterId, Database, OnBattlefield},
+    in_play::{CardId, CounterId, Database, InHand, OnBattlefield},
     player::{AllPlayers, Owner},
     turns::Turn,
     ui::horizontal_list::{HorizontalList, HorizontalListState},
@@ -353,19 +353,50 @@ impl<'db, 'ap, 't> StatefulWidget for SelectedAbilities<'db, 'ap, 't> {
         let area = inner_area;
 
         if let Some(card) = self.card {
-            let abilites = card
-                .activated_abilities(self.db)
-                .into_iter()
-                .enumerate()
-                .filter(|(_, ability)| {
-                    ability.can_be_activated(self.db, self.all_players, self.turn, self.player)
-                })
-                .collect_vec();
+            let abilities = if card.is_in_location::<InHand>(self.db) {
+                [(0, "Cast".to_string())]
+                    .into_iter()
+                    .chain(
+                        card.activated_abilities(self.db)
+                            .into_iter()
+                            .enumerate()
+                            .filter_map(|(idx, ability)| {
+                                if ability.can_be_activated(
+                                    self.db,
+                                    self.all_players,
+                                    self.turn,
+                                    self.player,
+                                ) {
+                                    Some((idx + 1, ability.text(self.db)))
+                                } else {
+                                    None
+                                }
+                            }),
+                    )
+                    .collect_vec()
+            } else {
+                card.activated_abilities(self.db)
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(idx, ability)| {
+                        if ability.can_be_activated(
+                            self.db,
+                            self.all_players,
+                            self.turn,
+                            self.player,
+                        ) {
+                            Some((idx, ability.text(self.db)))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect_vec()
+            };
 
             HorizontalList::new(
-                abilites
+                abilities
                     .into_iter()
-                    .map(|(idx, ability)| (idx, Span::from(ability.text(self.db))))
+                    .map(|(idx, text)| (idx, Span::from(text)))
                     .collect_vec(),
                 self.last_hover,
                 self.last_click,

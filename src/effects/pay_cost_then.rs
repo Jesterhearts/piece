@@ -53,6 +53,7 @@ impl EffectBehaviors for PayCostThen {
 
         for cost in self.cost.additional_cost.iter() {
             match cost {
+                AdditionalCost::DiscardThis => unreachable!(),
                 AdditionalCost::ExileCardsCmcX(_) => unreachable!(),
                 AdditionalCost::SacrificeSource => unreachable!(),
                 AdditionalCost::PayLife(_) => todo!(),
@@ -100,6 +101,7 @@ impl EffectBehaviors for PayCostThen {
 
         for cost in self.cost.additional_cost.iter() {
             match cost {
+                AdditionalCost::DiscardThis => unreachable!(),
                 AdditionalCost::ExileCardsCmcX(_) => unreachable!(),
                 AdditionalCost::SacrificeSource => unreachable!(),
                 AdditionalCost::PayLife(_) => todo!(),
