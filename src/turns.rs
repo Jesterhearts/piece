@@ -218,6 +218,7 @@ impl Turn {
                     all_players[player].mana_pool.drain();
                 }
                 CardId::cleanup_tokens_in_limbo(db);
+                TriggerId::cleanup_temporary_triggers(db);
 
                 db.remove_resource::<LifeGained>();
                 db.remove_resource::<TimesDescended>();

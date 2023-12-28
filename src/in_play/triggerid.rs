@@ -169,6 +169,17 @@ impl TriggerId {
         }
     }
 
+    pub fn cleanup_temporary_triggers(db: &mut Database) {
+        for trigger in db
+            .triggers
+            .query_filtered::<Entity, With<Temporary>>()
+            .iter(&db.triggers)
+            .collect_vec()
+        {
+            db.triggers.despawn(trigger);
+        }
+    }
+
     pub fn add_listener(self, db: &mut Database, listener: CardId) {
         db.triggers
             .entity_mut(self.0)
