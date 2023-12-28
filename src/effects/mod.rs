@@ -32,6 +32,7 @@ pub mod return_transformed;
 pub mod reveal_each_top_of_library;
 pub mod scry;
 pub mod self_explores;
+pub mod tap_target;
 pub mod target_controller_gains_tokens;
 pub mod target_creature_explores;
 pub mod target_gains_counters;
@@ -48,6 +49,7 @@ use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
@@ -87,6 +89,7 @@ use crate::{
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         scry::Scry,
         self_explores::SelfExplores,
+        tap_target::TapTarget,
         target_controller_gains_tokens::TargetControllerGainsTokens,
         target_creature_explores::TargetCreatureExplores,
         target_gains_counters::{Counter, TargetGainsCounters},
@@ -384,6 +387,9 @@ pub trait EffectBehaviors: Debug {
         unreachable!()
     }
 
+    #[allow(unused_variables)]
+    #[allow(clippy::needless_return)]
+    #[instrument(level = Level::INFO, skip(db, results))]
     fn push_behavior_with_targets(
         &'static self,
         db: &mut Database,
@@ -548,6 +554,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Ok(Self(Box::leak(Box::new(Scry::try_from(value)?))))
             }
             protogen::effects::effect::Effect::SelfExplores(_) => Ok(Self(&SelfExplores)),
+            protogen::effects::effect::Effect::TapTarget(value) => {
+                Ok(Self(Box::leak(Box::new(TapTarget::try_from(value)?))))
+            }
             protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => Ok(Self(
                 Box::leak(Box::new(TargetControllerGainsTokens::try_from(value)?)),
             )),

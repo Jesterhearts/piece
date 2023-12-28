@@ -217,6 +217,8 @@ impl EffectBehaviors for TargetGainsCounters {
                 count: self.count.clone(),
                 counter: self.counter,
             });
+        } else {
+            warn!("Skpping targets");
         }
     }
 }

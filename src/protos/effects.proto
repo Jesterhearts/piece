@@ -301,6 +301,10 @@ message StaticAbility {
   }
 }
 
+message TapTarget {
+  repeated targets.Restriction restrictions = 1;
+}
+
 message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
@@ -360,15 +364,16 @@ message Effect {
     ReturnTransformed return_transformed = 34;
     RevealEachTopOfLibrary reveal_each_top_of_library = 35;
     Scry scry = 36;
-    TargetToTopOfLibrary target_to_top_of_library = 37;
-    Transform transform = 38;
-    TutorLibrary tutor_library = 39;
-    UntapThis untap_this = 40;
-    UntapTarget untap_target = 41;
+    TapTarget tap_target = 37;
+    TargetToTopOfLibrary target_to_top_of_library = 38;
+    Transform transform = 39;
+    TutorLibrary tutor_library = 40;
+    UntapThis untap_this = 41;
+    UntapTarget untap_target = 42;
   }
 
-  optional Effect threshold = 42;
-  string oracle_text = 43;
+  optional Effect threshold = 43;
+  string oracle_text = 44;
 }
 
 message Mode {

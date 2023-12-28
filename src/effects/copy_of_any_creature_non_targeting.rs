@@ -78,6 +78,8 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     ) {
         if let Ok(target) = targets.into_iter().exactly_one() {
             results.push_settled(ActionResult::CloneCreatureNonTargeting { source, target })
+        } else {
+            warn!("Skipping targets");
         }
     }
 }

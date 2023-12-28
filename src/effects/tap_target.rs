@@ -1,26 +1,24 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
+    battlefield::{choose_targets::ChooseTargets, ActionResult},
     effects::{Effect, EffectBehaviors},
-    in_play::{all_cards, target_from_location},
+    in_play::{self, OnBattlefield},
     protogen,
+    stack::ActiveTarget,
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
-pub struct ReturnTargetToHand {
-    controller: ControllerRestriction,
+#[derive(Debug)]
+pub struct TapTarget {
     restrictions: Vec<Restriction>,
 }
 
-impl TryFrom<&protogen::effects::ReturnTargetToHand> for ReturnTargetToHand {
+impl TryFrom<&protogen::effects::TapTarget> for TapTarget {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::ReturnTargetToHand) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::TapTarget) -> Result<Self, Self::Error> {
         Ok(Self {
-            controller: value.controller.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()
@@ -30,12 +28,12 @@ impl TryFrom<&protogen::effects::ReturnTargetToHand> for ReturnTargetToHand {
     }
 }
 
-impl EffectBehaviors for ReturnTargetToHand {
-    fn needs_targets(&self) -> usize {
+impl EffectBehaviors for TapTarget {
+    fn needs_targets(&'static self) -> usize {
         1
     }
 
-    fn wants_targets(&self) -> usize {
+    fn wants_targets(&'static self) -> usize {
         1
     }
 
@@ -43,26 +41,25 @@ impl EffectBehaviors for ReturnTargetToHand {
         &'static self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
-        controller: crate::player::Controller,
+        _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        all_cards(db)
+        in_play::cards::<OnBattlefield>(db)
             .into_iter()
-            .filter_map(|card| {
-                if card.passes_restrictions(db, source, self.controller, &self.restrictions)
-                    && card.passes_restrictions(
-                        db,
-                        source,
-                        ControllerRestriction::Any,
-                        &source.restrictions(db),
-                    )
-                    && card.can_be_targeted(db, controller)
-                {
-                    Some(target_from_location(db, card))
-                } else {
-                    None
-                }
+            .filter(|card| {
+                card.passes_restrictions(
+                    db,
+                    source,
+                    crate::controller::ControllerRestriction::Any,
+                    &self.restrictions,
+                ) && card.passes_restrictions(
+                    db,
+                    source,
+                    crate::controller::ControllerRestriction::Any,
+                    &source.restrictions(db),
+                )
             })
+            .map(|card| crate::stack::ActiveTarget::Battlefield { id: card })
             .filter(|target| !already_chosen.contains(target))
             .collect_vec()
     }
@@ -76,15 +73,16 @@ impl EffectBehaviors for ReturnTargetToHand {
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
+
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(self)),
+            crate::battlefield::TargetSource::Effect(Effect(self)),
             valid_targets,
             source,
         ));
     }
 
     fn push_behavior_with_targets(
-        &self,
+        &'static self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
@@ -92,10 +90,10 @@ impl EffectBehaviors for ReturnTargetToHand {
         _controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
-        if let Ok(Some(target)) = targets.into_iter().exactly_one().map(|t| t.id()) {
-            results.push_settled(ActionResult::HandFromBattlefield(target))
+        if let Ok(ActiveTarget::Battlefield { id }) = targets.into_iter().exactly_one() {
+            results.push_settled(ActionResult::TapPermanent(id))
         } else {
-            warn!("Skipping targets")
+            warn!("Skipping targeting")
         }
     }
 }

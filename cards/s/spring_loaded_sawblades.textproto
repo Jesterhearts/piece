@@ -92,9 +92,9 @@ activated_abilities {
     return_transformed {
     }
   }
+  oracle_text: "Return this card transformed under its owner\'s control. Craft only as sorcery."
   sorcery_speed: true
   craft: true
-  oracle_text: "Return this card transformed under its owner's control. Craft only as sorcery."
 }
 keywords: "Flash"
 back_face {
