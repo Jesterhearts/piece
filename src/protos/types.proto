@@ -63,6 +63,7 @@ message Subtype {
   message Spirit {}
   message Swamp {}
   message Vampire {}
+  message Vehicle {}
   message Warrior {}
   message Wizard {}
   message Zombie {}
@@ -102,8 +103,9 @@ message Subtype {
     Spirit spirit = 32;
     Swamp swamp = 33;
     Vampire vampire = 34;
-    Warrior warrior = 35;
-    Wizard wizard = 36;
-    Zombie zombie = 37;
+    Vehicle vehicle = 35;
+    Warrior warrior = 36;
+    Wizard wizard = 37;
+    Zombie zombie = 38;
   }
 }

@@ -96,6 +96,10 @@ pub enum AdditionalCost {
     PayLife(PayLife),
     SacrificePermanent(Vec<Restriction>),
     TapPermanent(Vec<Restriction>),
+    TapPermanentsPowerXOrMore {
+        x_is: usize,
+        restrictions: Vec<Restriction>,
+    },
 }
 
 impl AdditionalCost {
@@ -130,6 +134,13 @@ impl AdditionalCost {
             ),
             AdditionalCost::ExileSharingCardType { count } => {
                 format!("Exile {} cards sharing a card type", count)
+            }
+            AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
+                format!(
+                    "Tap any number of {} with power {} or more",
+                    restrictions.iter().map(|r| r.text()).join(", "),
+                    x_is
+                )
             }
         }
     }
@@ -172,6 +183,16 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
                     .map(Restriction::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
+            protogen::cost::additional_cost::Cost::TapPermanentsPowerXOrMore(tap) => {
+                Ok(Self::TapPermanentsPowerXOrMore {
+                    x_is: usize::try_from(tap.x_is)?,
+                    restrictions: tap
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                })
+            }
             protogen::cost::additional_cost::Cost::ExileCardsCmcX(value) => {
                 Ok(Self::ExileCardsCmcX(
                     value

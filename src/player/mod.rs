@@ -143,6 +143,9 @@ impl Owner {
                         return false;
                     }
                 }
+                Restriction::Tapped => {
+                    return false;
+                }
             }
         }
 

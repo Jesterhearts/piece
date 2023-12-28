@@ -54,17 +54,22 @@ message AdditionalCost {
   message TapPermanent {
     repeated targets.Restriction restrictions = 1;
   }
+  message TapPermanentsPowerXOrMore {
+    int32 x_is = 1;
+    repeated targets.Restriction restrictions = 2;
+  }
 
   oneof cost {
-    DiscardThis discard_this = 2;
-    ExileCard exile_card = 3;
-    ExileCardsCmcX exile_cards_cmc_x = 4;
-    ExileSharingCardType exile_sharing_card_type = 5;
-    ExileXOrMoreCards exile_x_or_more_cards = 6;
-    PayLife pay_life = 7;
-    SacrificePermanent sacrifice_permanent = 8;
-    SacrificeSource sacrifice_source = 9;
-    TapPermanent tap_permanent = 10;
+    DiscardThis discard_this = 3;
+    ExileCard exile_card = 4;
+    ExileCardsCmcX exile_cards_cmc_x = 5;
+    ExileSharingCardType exile_sharing_card_type = 6;
+    ExileXOrMoreCards exile_x_or_more_cards = 7;
+    PayLife pay_life = 8;
+    SacrificePermanent sacrifice_permanent = 9;
+    SacrificeSource sacrifice_source = 10;
+    TapPermanent tap_permanent = 11;
+    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 12;
   }
 }
 

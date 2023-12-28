@@ -95,6 +95,7 @@ message Restriction {
   }
   message OnBattlefield {}
   message Self {}
+  message Tapped {}
   message Toughness {
     Comparison comparison = 1;
   }
@@ -117,6 +118,7 @@ message Restriction {
     OfType of_type = 16;
     OnBattlefield on_battlefield = 17;
     Self self = 18;
-    Toughness toughness = 19;
+    Tapped tapped = 19;
+    Toughness toughness = 20;
   }
 }

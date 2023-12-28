@@ -8,6 +8,7 @@ use std::{
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::From;
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
     abilities::{
@@ -495,6 +496,13 @@ impl AbilityId {
                 let targets = source.targets_for_ability(db, self, &HashSet::default());
                 let needs_targets = self.needs_targets(db);
 
+                event!(
+                    Level::DEBUG,
+                    ?targets,
+                    ?needs_targets,
+                    "for activating ability"
+                );
+
                 needs_targets
                     .into_iter()
                     .zip(targets)
@@ -638,8 +646,10 @@ fn can_pay_costs(
                     return false;
                 }
             }
+
             // These are too complicated to compute, so just give up. The user can cancel if they can't actually pay.
             AdditionalCost::ExileSharingCardType { .. } => {}
+            AdditionalCost::TapPermanentsPowerXOrMore { .. } => {}
         }
     }
 

@@ -58,6 +58,7 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
         results
     }
 
+    let mut total_lines = 0;
     let mut results = vec![];
     for card_file in CARD_DEFINITIONS
         .entries()
@@ -67,15 +68,17 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
             include_dir::DirEntry::File(file) => vec![file].into_iter(),
         })
     {
-        let card: protogen::card::Card = protobuf::text_format::parse_from_str(
-            card_file
-                .contents_utf8()
-                .ok_or_else(|| anyhow!("Non utf-8 text proto"))?,
-        )
-        .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
+        let contents = card_file
+            .contents_utf8()
+            .ok_or_else(|| anyhow!("Non utf-8 text proto"))?;
+        total_lines += contents.lines().count();
+        let card: protogen::card::Card = protobuf::text_format::parse_from_str(contents)
+            .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
 
         results.push((card, card_file));
     }
+
+    debug!("Loaded {} lines", total_lines);
 
     Ok(results)
 }

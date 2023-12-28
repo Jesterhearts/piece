@@ -1,4 +1,12 @@
 name: "Soaring Sandwing"
+types {
+  creature {
+  }
+}
+subtypes {
+  dinosaur {
+  }
+}
 cost {
   mana_costs {
     generic {

@@ -240,6 +240,7 @@ pub enum Restriction {
     },
     OnBattlefield,
     Self_,
+    Tapped,
     Toughness(Comparison),
 }
 
@@ -281,7 +282,6 @@ impl Restriction {
                     )
                 }
             }
-            Restriction::Toughness(toughness) => format!("toughness {}", toughness),
             Restriction::NotSelf => "other permanent".to_string(),
             Restriction::OfColor(colors) => {
                 format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
@@ -289,18 +289,20 @@ impl Restriction {
             Restriction::OfType { types, subtypes } => {
                 if !types.is_empty() && !subtypes.is_empty() {
                     format!(
-                        "a {} - {}",
+                        "{} - {}",
                         types.iter().map(|ty| ty.as_ref()).join(" or "),
                         subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
                     )
                 } else if !types.is_empty() {
-                    format!("a {}", types.iter().map(|ty| ty.as_ref()).join(" or "))
+                    types.iter().map(|ty| ty.as_ref()).join(" or ")
                 } else {
-                    format!("a {}", subtypes.iter().map(|ty| ty.as_ref()).join(" or "))
+                    subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
                 }
             }
             Restriction::OnBattlefield => "on the battlefield".to_string(),
             Restriction::Self_ => "self".to_string(),
+            Restriction::Tapped => "tapped".to_string(),
+            Restriction::Toughness(toughness) => format!("toughness {}", toughness),
         }
     }
 }
@@ -322,11 +324,12 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
 
     fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
-            protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
             protogen::targets::restriction::Restriction::Attacking(_) => Ok(Self::Attacking),
             protogen::targets::restriction::Restriction::AttackingOrBlocking(_) => {
                 Ok(Self::AttackingOrBlocking)
             }
+            protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
+            protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
             protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
                 Ok(Self::ControllerControlsBlackOrGreen)
             }
@@ -374,7 +377,6 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Color::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
-            protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
             protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {
                 types: types
                     .types
@@ -391,6 +393,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                 Ok(Self::OnBattlefield)
             }
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
+            protogen::targets::restriction::Restriction::Tapped(_) => Ok(Self::Tapped),
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),
             ),

@@ -1,0 +1,221 @@
+name: "Spring-Loaded Sawblades"
+types {
+  artifact {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  deal_damage {
+    quantity: 5
+    controller {
+      opponent {
+      }
+    }
+    restrictions {
+      tapped {
+      }
+    }
+    restrictions {
+      of_type {
+        types {
+          creature {
+          }
+        }
+      }
+    }
+    restrictions {
+      on_battlefield {
+      }
+    }
+  }
+  oracle_text: "When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage to target tapped creature an opponent controls."
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 3
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    additional_costs {
+      exile_card {
+        restrictions {
+          of_type {
+            types {
+              artifact {
+              }
+            }
+          }
+        }
+        restrictions {
+          location {
+            locations {
+              on_battlefield {
+              }
+            }
+            locations {
+              in_graveyard {
+              }
+            }
+          }
+        }
+        restrictions {
+          not_self {
+          }
+        }
+      }
+    }
+    additional_costs {
+      exile_card {
+        restrictions {
+          self {
+          }
+        }
+      }
+    }
+  }
+  effects {
+    return_transformed {
+    }
+  }
+  sorcery_speed: true
+  craft: true
+  oracle_text: "Return this card transformed under its owner's control. Craft only as sorcery."
+}
+keywords: "Flash"
+back_face {
+  name: "Bladewheel Chariot"
+  types {
+    artifact {
+    }
+  }
+  subtypes {
+    vehicle {
+    }
+  }
+  colors {
+    white {
+    }
+  }
+  activated_abilities {
+    cost {
+      additional_costs {
+        tap_permanent {
+          restrictions {
+            of_type {
+              types {
+                artifact {
+                }
+              }
+            }
+          }
+          restrictions {
+            not_self {
+            }
+          }
+        }
+      }
+      additional_costs {
+        tap_permanent {
+          restrictions {
+            of_type {
+              types {
+                artifact {
+                }
+              }
+            }
+          }
+          restrictions {
+            not_self {
+            }
+          }
+        }
+      }
+    }
+    effects {
+      battlefield_modifier {
+        modifier {
+          add_types {
+            creature {
+            }
+          }
+          add_types {
+            artifact {
+            }
+          }
+        }
+        controller {
+          you {
+          }
+        }
+        duration {
+          until_end_of_turn {
+          }
+        }
+      }
+    }
+    apply_to_self: true
+    oracle_text: "Bladewheel Chariot becomes an artifact creature until end of turn."
+  }
+  activated_abilities {
+    cost {
+      additional_costs {
+        tap_permanents_power_x_or_more {
+          x_is: 1
+          restrictions {
+            of_type {
+              types {
+                creature {
+                }
+              }
+            }
+          }
+          restrictions {
+            not_self {
+            }
+          }
+        }
+      }
+    }
+    effects {
+      battlefield_modifier {
+        modifier {
+          add_types {
+            creature {
+            }
+          }
+          add_types {
+            artifact {
+            }
+          }
+        }
+        controller {
+          you {
+          }
+        }
+        duration {
+          until_end_of_turn {
+          }
+        }
+      }
+    }
+    apply_to_self: true
+    oracle_text: "Bladewheel Chariot becomes an artifact creature until end of turn."
+  }
+  power: 5
+  toughness: 5
+}

@@ -12,6 +12,7 @@ use ratatui::{
         Block, BorderType, Borders, Clear, Paragraph, StatefulWidget, Widget, Wrap,
     },
 };
+use tracing::Level;
 
 use crate::{
     in_play::{CardId, CounterId, Database, InHand, OnBattlefield},
@@ -385,6 +386,8 @@ impl<'db, 'ap, 't> StatefulWidget for SelectedAbilities<'db, 'ap, 't> {
                             self.turn,
                             self.player,
                         ) {
+                            let text = ability.text(self.db);
+                            event!(Level::DEBUG, ?text, "Can activate ability");
                             Some((idx, ability.text(self.db)))
                         } else {
                             None

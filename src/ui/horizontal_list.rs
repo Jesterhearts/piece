@@ -130,7 +130,7 @@ impl StatefulWidget for HorizontalList<'_> {
 
             if remaining_width == list_area.width - 5 && item_width > remaining_width {
                 let mut graphemes = item.styled_graphemes(Style::default());
-                let mut lines = WordWrapper::new(&mut graphemes, list_area.right() - 1 - x, true);
+                let mut lines = WordWrapper::new(&mut graphemes, list_area.right() - 5 - x, true);
                 let mut max = 0;
                 while let Some(line) = lines.next_line() {
                     max = line.1.max(max);
@@ -148,6 +148,7 @@ impl StatefulWidget for HorizontalList<'_> {
 
             remaining_width = remaining_width.saturating_sub(item_width);
             if current_page > self.page {
+                debug!("Overflowed current page");
                 break;
             }
 

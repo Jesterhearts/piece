@@ -71,7 +71,8 @@ message Cycling {
 
 message DealDamage {
   int32 quantity = 1;
-  repeated targets.Restriction restrictions = 2;
+  optional controller.Controller controller = 2;
+  repeated targets.Restriction restrictions = 3;
 }
 
 message Destination {

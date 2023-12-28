@@ -11,11 +11,11 @@ use itertools::Itertools;
 use crate::{
     battlefield::{
         choose_targets::ChooseTargets,
-        pay_costs::SacrificePermanent,
         pay_costs::SpendMana,
         pay_costs::TapPermanent,
         pay_costs::{ExileCards, ExilePermanentsCmcX},
         pay_costs::{ExileCardsSharingType, PayCost},
+        pay_costs::{SacrificePermanent, TapPermanentsPowerXOrMore},
         ActionResult, PendingResults, Source, TargetSource,
     },
     card::keyword::SplitSecond,
@@ -702,6 +702,11 @@ fn add_card_to_stack(
                     restrictions.clone(),
                     card,
                 )));
+            }
+            AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
+                results.push_pay_costs(PayCost::TapPermanentsPowerXOrMore(
+                    TapPermanentsPowerXOrMore::new(restrictions.clone(), *x_is, card),
+                ));
             }
             AdditionalCost::ExileCardsCmcX(restrictions) => {
                 results.push_pay_costs(PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(

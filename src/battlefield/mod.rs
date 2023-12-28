@@ -15,7 +15,7 @@ use crate::{
         choose_targets::ChooseTargets,
         pay_costs::{
             ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
-            SpendMana, TapPermanent,
+            SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
         },
     },
     card::Color,
@@ -580,6 +580,11 @@ impl Battlefield {
                             restrictions.clone(),
                             card,
                         )));
+                    }
+                    AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
+                        results.push_pay_costs(PayCost::TapPermanentsPowerXOrMore(
+                            TapPermanentsPowerXOrMore::new(restrictions.clone(), *x_is, card),
+                        ));
                     }
                     AdditionalCost::ExileCardsCmcX(restrictions) => {
                         results.push_pay_costs(PayCost::ExilePermanentsCmcX(

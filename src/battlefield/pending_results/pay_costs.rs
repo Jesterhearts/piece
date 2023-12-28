@@ -57,6 +57,27 @@ impl TapPermanent {
 }
 
 #[derive(Debug)]
+pub struct TapPermanentsPowerXOrMore {
+    restrictions: Vec<Restriction>,
+    x_is: usize,
+    source: CardId,
+    valid_targets: Vec<CardId>,
+    chosen: IndexSet<CardId>,
+}
+
+impl TapPermanentsPowerXOrMore {
+    pub fn new(restrictions: Vec<Restriction>, x_is: usize, source: CardId) -> Self {
+        Self {
+            restrictions,
+            x_is,
+            source,
+            valid_targets: Default::default(),
+            chosen: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ExilePermanentsCmcX {
     source: CardId,
     restrictions: Vec<Restriction>,
@@ -255,6 +276,7 @@ impl SpendMana {
 pub enum PayCost {
     SacrificePermanent(SacrificePermanent),
     TapPermanent(TapPermanent),
+    TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore),
     SpendMana(SpendMana),
     ExilePermanentsCmcX(ExilePermanentsCmcX),
     ExileCards(ExileCards),
@@ -266,6 +288,7 @@ impl PayCost {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
+            PayCost::TapPermanentsPowerXOrMore(_) => false,
             PayCost::ExilePermanentsCmcX(_) => false,
             PayCost::SpendMana(spend) => {
                 debug!("Checking autopay: {:?}", spend,);
@@ -296,6 +319,13 @@ impl PayCost {
         match self {
             PayCost::SacrificePermanent(sac) => sac.chosen.is_some(),
             PayCost::TapPermanent(tap) => tap.chosen.is_some(),
+            PayCost::TapPermanentsPowerXOrMore(tap) => {
+                tap.chosen
+                    .iter()
+                    .map(|card| card.power(db).unwrap_or_default())
+                    .sum::<i32>()
+                    >= tap.x_is as i32
+            }
             PayCost::SpendMana(spend) => spend.paid(),
             PayCost::ExilePermanentsCmcX(exile) => {
                 exile
@@ -339,6 +369,29 @@ impl PayCost {
                 }
             }
             PayCost::TapPermanent(tap) => {
+                let controller = tap.source.controller(db);
+                let valid_targets = controller
+                    .get_cards_in::<OnBattlefield>(db)
+                    .into_iter()
+                    .filter(|target| {
+                        !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
+                            && !target.tapped(db)
+                            && target.passes_restrictions(
+                                db,
+                                tap.source,
+                                ControllerRestriction::You,
+                                &tap.restrictions,
+                            )
+                    })
+                    .collect_vec();
+                if valid_targets != tap.valid_targets {
+                    tap.valid_targets = valid_targets;
+                    true
+                } else {
+                    false
+                }
+            }
+            PayCost::TapPermanentsPowerXOrMore(tap) => {
                 let controller = tap.source.controller(db);
                 let valid_targets = controller
                     .get_cards_in::<OnBattlefield>(db)
@@ -533,6 +586,23 @@ impl PayCost {
                     false
                 }
             }
+            PayCost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore {
+                valid_targets,
+                chosen,
+                ..
+            }) => {
+                if let Some(choice) = choice {
+                    let target = valid_targets[choice];
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                        chosen.insert(target);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
             PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX {
                 valid_targets,
                 chosen,
@@ -704,6 +774,10 @@ impl PayCost {
             PayCost::TapPermanent(TapPermanent { chosen, .. }) => {
                 vec![ActionResult::TapPermanent(chosen.unwrap())]
             }
+            PayCost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore { chosen, .. }) => chosen
+                .iter()
+                .map(|chosen| ActionResult::TapPermanent(*chosen))
+                .collect_vec(),
             PayCost::ExilePermanentsCmcX(exile) => {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
@@ -754,14 +828,26 @@ impl PayCost {
         }
     }
 
-    fn x_is(&self) -> Option<usize> {
+    fn x_is(&self, db: &Database) -> Option<usize> {
         match self {
             PayCost::SacrificePermanent(_)
             | PayCost::TapPermanent(_)
             | PayCost::ExileCards(_)
             | PayCost::ExileCardsSharingType(_) => None,
             PayCost::SpendMana(spend) => spend.x_is(),
-            PayCost::ExilePermanentsCmcX(exile) => Some(exile.target),
+            PayCost::ExilePermanentsCmcX(exile) => Some(
+                exile
+                    .chosen
+                    .iter()
+                    .map(|chosen| chosen.cost(db).cmc())
+                    .sum::<usize>(),
+            ),
+            PayCost::TapPermanentsPowerXOrMore(tap) => Some(
+                tap.chosen
+                    .iter()
+                    .map(|tapped| tapped.power(db).unwrap_or_default())
+                    .sum::<i32>() as usize,
+            ),
         }
     }
 
@@ -774,6 +860,10 @@ impl PayCost {
             PayCost::TapPermanent(TapPermanent { chosen, .. }) => chosen
                 .map(|id| ActiveTarget::Battlefield { id })
                 .into_iter()
+                .collect_vec(),
+            PayCost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore { chosen, .. }) => chosen
+                .iter()
+                .map(|id| ActiveTarget::Battlefield { id: *id })
                 .collect_vec(),
             PayCost::SpendMana(_) => vec![],
             PayCost::ExilePermanentsCmcX(exile) => exile
@@ -800,6 +890,7 @@ impl PendingResult for PayCost {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
+            PayCost::TapPermanentsPowerXOrMore(_) => false,
             PayCost::ExilePermanentsCmcX(_) => true,
             PayCost::ExileCards(ExileCards { minimum, .. }) => *minimum == 0,
             PayCost::ExileCardsSharingType(_) => false,
@@ -853,6 +944,13 @@ impl PendingResult for PayCost {
                 .iter()
                 .enumerate()
                 .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target.id(db),)))
+                .collect_vec(),
+            PayCost::TapPermanentsPowerXOrMore(tap) => tap
+                .valid_targets
+                .iter()
+                .enumerate()
+                .filter(|(_, chosen)| !tap.chosen.contains(*chosen))
+                .map(|(idx, target)| (idx, target.name(db)))
                 .collect_vec(),
             PayCost::SpendMana(spend) => {
                 let (mana, sources) = spend.paying();
@@ -915,7 +1013,9 @@ impl PendingResult for PayCost {
     fn description(&self, _db: &Database) -> String {
         match self {
             PayCost::SacrificePermanent(_) => "sacrificing a permanent".to_string(),
-            PayCost::TapPermanent(_) => "tapping a permanent".to_string(),
+            PayCost::TapPermanent(_) | PayCost::TapPermanentsPowerXOrMore(_) => {
+                "tapping a permanent".to_string()
+            }
             PayCost::SpendMana(spend) => spend.description(),
             PayCost::ExilePermanentsCmcX(_)
             | PayCost::ExileCards(_)
@@ -927,6 +1027,7 @@ impl PendingResult for PayCost {
         match self {
             PayCost::SacrificePermanent(_) => false,
             PayCost::TapPermanent(_) => false,
+            PayCost::TapPermanentsPowerXOrMore(_) => false,
             PayCost::SpendMana(spend) => spend.is_empty(),
             PayCost::ExilePermanentsCmcX(_) => false,
             PayCost::ExileCards(_) => false,
@@ -943,7 +1044,7 @@ impl PendingResult for PayCost {
     ) -> bool {
         if self.choose_pay(db, all_players, &results.all_chosen_targets, choice) {
             if self.paid(db) {
-                results.x_is = self.x_is();
+                results.x_is = self.x_is(db);
                 debug!("X is {:?}", results.x_is);
                 for target in self.chosen_targets(db) {
                     results.all_chosen_targets.insert(target);

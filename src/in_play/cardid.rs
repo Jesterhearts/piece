@@ -1148,6 +1148,11 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::Tapped => {
+                    if !self.tapped(db) {
+                        return false;
+                    }
+                }
             }
         }
 
