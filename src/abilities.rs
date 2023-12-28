@@ -70,6 +70,7 @@ pub enum StaticAbility {
     PreventAttacks,
     PreventBlocks,
     PreventAbilityActivation,
+    UntapEachUntapStep,
 }
 
 impl TryFrom<&protogen::effects::StaticAbility> for StaticAbility {
@@ -121,6 +122,9 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
             protogen::effects::static_ability::Ability::PreventBlocks(_) => Ok(Self::PreventBlocks),
             protogen::effects::static_ability::Ability::PreventAbilityActivation(_) => {
                 Ok(Self::PreventAbilityActivation)
+            }
+            protogen::effects::static_ability::Ability::UntapEachUntapStep(_) => {
+                Ok(Self::UntapEachUntapStep)
             }
         }
     }

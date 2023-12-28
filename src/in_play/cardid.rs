@@ -1632,12 +1632,7 @@ impl CardId {
                         }
                     }
                 }
-                StaticAbility::BattlefieldModifier(_)
-                | StaticAbility::ExtraLandsPerTurn(_)
-                | StaticAbility::ForceEtbTapped(_)
-                | StaticAbility::PreventAttacks
-                | StaticAbility::PreventBlocks
-                | StaticAbility::PreventAbilityActivation => {}
+                _ => {}
             }
         }
 

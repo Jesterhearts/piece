@@ -1,0 +1,19 @@
+name: "Thousand Moons Infantry"
+cost {
+  mana_costs {
+    generic{
+      count :2
+    }
+  }
+  mana_costs {
+    white {}
+  }
+}
+types{ creature{}}
+subtypes{human{}}
+subtypes{soldier{}}
+power: 2
+toughness: 4
+static_abilities {
+  untap_each_untap_step {}
+}

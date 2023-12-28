@@ -445,7 +445,16 @@ impl Battlefield {
     }
 
     pub fn untap(db: &mut Database, player: Owner) {
-        let cards = player.get_cards::<OnBattlefield>(db);
+        let cards = in_play::cards::<OnBattlefield>(db)
+            .into_iter()
+            .filter(|card| {
+                card.controller(db) == player
+                    || card
+                        .static_abilities(db)
+                        .into_iter()
+                        .any(|ability| matches!(ability, StaticAbility::UntapEachUntapStep))
+            })
+            .collect_vec();
         for card in cards {
             card.untap(db);
         }
@@ -1756,16 +1765,11 @@ fn move_card_to_battlefield(
     }
     for ability in source_card_id.static_abilities(db) {
         match ability {
-            StaticAbility::GreenCannotBeCountered { .. } => {}
             StaticAbility::BattlefieldModifier(modifier) => {
                 let modifier = ModifierId::upload_temporary_modifier(db, source_card_id, &modifier);
                 results.push_settled(ActionResult::AddModifier { modifier })
             }
-            StaticAbility::ExtraLandsPerTurn(_) => {}
-            StaticAbility::ForceEtbTapped(_) => {}
-            StaticAbility::PreventAttacks => {}
-            StaticAbility::PreventBlocks => {}
-            StaticAbility::PreventAbilityActivation => {}
+            _ => {}
         }
     }
     for ability in source_card_id.etb_abilities(db) {
