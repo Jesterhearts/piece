@@ -958,6 +958,8 @@ impl Battlefield {
                 x_is,
                 chosen_modes,
             } => {
+                let mut results = PendingResults::default();
+
                 card.move_to_stack(db, targets.clone(), Some(*from), chosen_modes.clone());
                 if let Some(x_is) = x_is {
                     card.set_x(db, *x_is)
@@ -985,9 +987,10 @@ impl Battlefield {
                         true,
                     );
 
-                    id.move_to_stack(db, *card, Default::default());
+                    results.extend(Stack::move_trigger_to_stack(db, id, *card));
                 }
-                PendingResults::default()
+
+                results
             }
             ActionResult::UpdateStackEntries(entries) => {
                 for entry in entries.iter() {

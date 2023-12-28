@@ -42,6 +42,8 @@ fn cascades() -> anyhow::Result<()> {
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1, false);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the first cascade
