@@ -1,0 +1,55 @@
+name: "Tinker\'s Tote"
+types {
+  artifact {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 2
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  create_token {
+    creature {
+      name: "Gnome"
+      types {
+        artifact {
+        }
+      }
+      types {
+        creature {
+        }
+      }
+      subtypes {
+        gnome {
+        }
+      }
+      power: 1
+      toughness: 1
+    }
+  }
+  oracle_text: "When Tinker\'s Tote enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens."
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      white {
+      }
+    }
+    additional_costs {
+      sacrifice_source {
+      }
+    }
+  }
+  effects {
+    gain_life {
+      count: 3
+    }
+  }
+}

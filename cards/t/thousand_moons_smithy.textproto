@@ -42,6 +42,10 @@ etb_abilities {
         soldier {
         }
       }
+      colors {
+        white {
+        }
+      }
       dynamic_power_toughness {
         number_of_permanents_matching {
           controller {
@@ -230,6 +234,10 @@ back_face {
             soldier {
             }
           }
+          colors {
+            white {
+            }
+          }
           dynamic_power_toughness {
             number_of_permanents_matching {
               controller {
@@ -249,7 +257,7 @@ back_face {
         }
       }
     }
-    oracle_text: "Whenever you cast an artifact or creature spell using mana from Barracks of the Thousand, create a white Gnome Soldier artifact creature token with \"This creature's power and toughness are each equal to the number of artifacts and/or creatures you control.\""
+    oracle_text: "Whenever you cast an artifact or creature spell using mana from Barracks of the Thousand, create a white Gnome Soldier artifact creature token with \"This creature\'s power and toughness are each equal to the number of artifacts and/or creatures you control.\""
   }
   mana_abilities {
     cost {
