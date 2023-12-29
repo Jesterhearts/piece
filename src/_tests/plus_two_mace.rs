@@ -40,19 +40,19 @@ fn equipment_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(creature.power(&db), Some(6));
-    assert_eq!(creature.toughness(&db), Some(4));
+    assert_eq!(creature.power(&mut db), Some(6));
+    assert_eq!(creature.toughness(&mut db), Some(4));
 
     let creature2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, creature2, None);
 
-    assert_eq!(creature2.power(&db), Some(4));
-    assert_eq!(creature2.toughness(&db), Some(2));
+    assert_eq!(creature2.power(&mut db), Some(4));
+    assert_eq!(creature2.toughness(&mut db), Some(2));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, &turn, equipment);
     assert!(results.is_empty());
-    assert_eq!(creature.power(&db), Some(4));
-    assert_eq!(creature.toughness(&db), Some(2));
+    assert_eq!(creature.power(&mut db), Some(4));
+    assert_eq!(creature.toughness(&mut db), Some(2));
 
     assert!(Battlefield::no_modifiers(&mut db));
 
@@ -89,14 +89,14 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(creature.power(&db), Some(6));
-    assert_eq!(creature.toughness(&db), Some(4));
+    assert_eq!(creature.power(&mut db), Some(6));
+    assert_eq!(creature.toughness(&mut db), Some(4));
 
     let creature2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, creature2, None);
 
-    assert_eq!(creature2.power(&db), Some(4));
-    assert_eq!(creature2.toughness(&db), Some(2));
+    assert_eq!(creature2.power(&mut db), Some(4));
+    assert_eq!(creature2.toughness(&mut db), Some(2));
 
     let mut results =
         Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
@@ -112,16 +112,16 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(creature.power(&db), Some(4));
-    assert_eq!(creature.toughness(&db), Some(2));
+    assert_eq!(creature.power(&mut db), Some(4));
+    assert_eq!(creature.toughness(&mut db), Some(2));
 
-    assert_eq!(creature2.power(&db), Some(6));
-    assert_eq!(creature2.toughness(&db), Some(4));
+    assert_eq!(creature2.power(&mut db), Some(6));
+    assert_eq!(creature2.toughness(&mut db), Some(4));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, &turn, equipment);
     assert!(results.is_empty());
-    assert_eq!(creature.power(&db), Some(4));
-    assert_eq!(creature.toughness(&db), Some(2));
+    assert_eq!(creature.power(&mut db), Some(4));
+    assert_eq!(creature.toughness(&mut db), Some(2));
 
     assert!(Battlefield::no_modifiers(&mut db));
 

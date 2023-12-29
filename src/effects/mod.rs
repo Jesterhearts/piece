@@ -98,7 +98,7 @@ use crate::{
         untap_target::UntapTarget,
         untap_this::UntapThis,
     },
-    in_play::{CardId, Database, ReplacementEffectId},
+    in_play::{self, CardId, Database, OnBattlefield, ReplacementEffectId},
     newtype_enum::newtype_enum,
     player::{AllPlayers, Controller, Player},
     protogen,
@@ -183,9 +183,75 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
+#[derive(Debug, Clone)]
+pub struct NumberOfPermanentsMatching {
+    pub(crate) controller: ControllerRestriction,
+    pub(crate) types: IndexSet<Type>,
+    pub(crate) subtypes: IndexSet<Subtype>,
+}
+
+impl TryFrom<&protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatching>
+    for NumberOfPermanentsMatching
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatching,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            controller: value.controller.get_or_default().try_into()?,
+            types: value
+                .types
+                .iter()
+                .map(Type::try_from)
+                .collect::<anyhow::Result<_>>()?,
+
+            subtypes: value
+                .subtypes
+                .iter()
+                .map(Subtype::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
+impl NumberOfPermanentsMatching {
+    pub(crate) fn matching(&self, db: &mut Database, source: CardId) -> usize {
+        in_play::cards::<OnBattlefield>(db)
+            .into_iter()
+            .filter(|card| {
+                match self.controller {
+                    ControllerRestriction::Any => {}
+                    ControllerRestriction::You => {
+                        if card.controller(db) != source.controller(db) {
+                            return false;
+                        }
+                    }
+                    ControllerRestriction::Opponent => {
+                        if card.controller(db) == source.controller(db) {
+                            return false;
+                        }
+                    }
+                }
+
+                if !card.types_intersect(db, &self.types) {
+                    return false;
+                }
+
+                if !card.subtypes_intersect(db, &self.subtypes) {
+                    return false;
+                }
+
+                true
+            })
+            .count()
+    }
+}
+
+#[derive(Debug, Clone, Component)]
 pub(crate) enum DynamicPowerToughness {
     NumberOfCountersOnThis(Counter),
+    NumberOfPermanentsMatching(NumberOfPermanentsMatching),
 }
 
 impl TryFrom<&protogen::effects::DynamicPowerToughness> for DynamicPowerToughness {
@@ -212,6 +278,9 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPow
                     counter.counter.get_or_default().try_into()?,
                 ))
             }
+            protogen::effects::dynamic_power_toughness::Source::NumberOfPermanentsMatching(
+                value,
+            ) => Ok(Self::NumberOfPermanentsMatching(value.try_into()?)),
         }
     }
 }
@@ -632,13 +701,14 @@ impl AnyEffect {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct TokenCreature {
     pub(crate) name: String,
     pub(crate) types: IndexSet<Type>,
     pub(crate) subtypes: IndexSet<Subtype>,
     pub(crate) colors: HashSet<Color>,
     pub(crate) keywords: ::counter::Counter<Keyword>,
+    pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
     pub(crate) power: usize,
     pub(crate) toughness: usize,
 }
@@ -671,13 +741,17 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
                 .filter(|s| !s.trim().is_empty())
                 .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
                 .collect::<anyhow::Result<_>>()?,
+            dynamic_power_toughness: value
+                .dynamic_power_toughness
+                .as_ref()
+                .map_or(Ok(None), |dynamic| dynamic.try_into().map(Some))?,
             power: usize::try_from(value.power)?,
             toughness: usize::try_from(value.toughness)?,
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) enum Token {
     Map,
     Creature(Box<TokenCreature>),

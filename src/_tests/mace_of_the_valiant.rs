@@ -44,8 +44,8 @@ fn mace() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(bear.power(&db), Some(4));
-    assert_eq!(bear.toughness(&db), Some(2));
+    assert_eq!(bear.power(&mut db), Some(4));
+    assert_eq!(bear.toughness(&mut db), Some(2));
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
@@ -56,10 +56,10 @@ fn mace() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(bear.power(&db), Some(5));
-    assert_eq!(bear.toughness(&db), Some(3));
-    assert_eq!(bear2.power(&db), Some(4));
-    assert_eq!(bear2.toughness(&db), Some(2));
+    assert_eq!(bear.power(&mut db), Some(5));
+    assert_eq!(bear.toughness(&mut db), Some(3));
+    assert_eq!(bear2.power(&mut db), Some(4));
+    assert_eq!(bear2.toughness(&mut db), Some(2));
 
     Ok(())
 }

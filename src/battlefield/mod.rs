@@ -86,7 +86,6 @@ pub(crate) enum ActionResult {
     },
     AddTriggerToStack {
         trigger: TriggerId,
-        source: CardId,
         targets: Vec<Vec<ActiveTarget>>,
     },
     ApplyAuraToTarget {
@@ -663,12 +662,8 @@ impl Battlefield {
                 }
                 PendingResults::default()
             }
-            ActionResult::AddTriggerToStack {
-                trigger,
-                source,
-                targets,
-            } => {
-                trigger.move_to_stack(db, *source, targets.clone());
+            ActionResult::AddTriggerToStack { trigger, targets } => {
+                trigger.move_to_stack(db, targets.clone());
                 PendingResults::default()
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
@@ -925,6 +920,18 @@ impl Battlefield {
                     card.set_x(db, *x_is)
                 };
                 card.apply_modifiers_layered(db);
+
+                for trigger in TriggerId::active_triggers_of_source::<trigger_source::Cast>(db) {
+                    if card.passes_restrictions(
+                        db,
+                        trigger.listener(db),
+                        trigger.controller_restriction(db),
+                        &trigger.restrictions(db),
+                    ) {
+                        results.extend(Stack::move_trigger_to_stack(db, trigger));
+                    }
+                }
+
                 let cascade = card.cascade(db);
                 for _ in 0..cascade {
                     let id = TriggerId::upload(
@@ -947,7 +954,7 @@ impl Battlefield {
                         true,
                     );
 
-                    results.extend(Stack::move_trigger_to_stack(db, id, *card));
+                    results.extend(Stack::move_trigger_to_stack(db, id));
                 }
 
                 results
@@ -1185,7 +1192,7 @@ impl Battlefield {
                             trigger.controller_restriction(db),
                             &trigger.restrictions(db),
                         ) {
-                            results.extend(Stack::move_trigger_to_stack(db, trigger, *attacker));
+                            results.extend(Stack::move_trigger_to_stack(db, trigger));
                         }
                     }
 
@@ -1210,7 +1217,7 @@ impl Battlefield {
                             true,
                         );
 
-                        results.extend(Stack::move_trigger_to_stack(db, trigger, *attacker));
+                        results.extend(Stack::move_trigger_to_stack(db, trigger));
                     }
 
                     if !attacker.vigilance(db) {
@@ -1348,8 +1355,7 @@ impl Battlefield {
                     trigger.controller_restriction(db),
                     &restrictions,
                 ) {
-                    let listener = trigger.listener(db);
-                    pending.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                    pending.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
             }
         }
@@ -1380,8 +1386,7 @@ impl Battlefield {
                     trigger.controller_restriction(db),
                     &restrictions,
                 ) {
-                    let listener = trigger.listener(db);
-                    pending.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                    pending.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
             }
         }
@@ -1426,8 +1431,7 @@ impl Battlefield {
                     trigger.controller_restriction(db),
                     &restrictions,
                 ) {
-                    let listener = trigger.listener(db);
-                    pending.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                    pending.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
             }
         }
@@ -1463,8 +1467,7 @@ impl Battlefield {
                         trigger.controller_restriction(db),
                         &restrictions,
                     ) {
-                        let listener = trigger.listener(db);
-                        results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                        results.extend(Stack::move_trigger_to_stack(db, trigger));
                     }
                 }
             }
@@ -1602,8 +1605,7 @@ fn complete_add_from_library(
                 trigger.controller_restriction(db),
                 &restrictions,
             ) {
-                let listener = trigger.listener(db);
-                results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
     }
@@ -1628,8 +1630,7 @@ fn complete_add_from_exile(
                 trigger.controller_restriction(db),
                 &restrictions,
             ) {
-                let listener = trigger.listener(db);
-                results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
     }
@@ -1654,8 +1655,7 @@ fn complete_add_from_graveyard(
                 trigger.controller_restriction(db),
                 &restrictions,
             ) {
-                let listener = trigger.listener(db);
-                results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
     }
@@ -1680,8 +1680,7 @@ fn complete_add_from_stack_or_hand(
                 trigger.controller_restriction(db),
                 &restrictions,
             ) {
-                let listener = trigger.listener(db);
-                results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
     }

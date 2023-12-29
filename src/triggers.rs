@@ -44,6 +44,7 @@ pub(crate)enum TriggerSource {
     EndStep,
     EntersTheBattlefield,
     ExiledDuringCraft,
+    PreCombatMainPhase,
     PutIntoGraveyard,
     StartOfCombat,
     Tapped,
@@ -91,12 +92,16 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
     fn from(value: &protogen::triggers::trigger_source::Trigger) -> Self {
         match value {
             protogen::triggers::trigger_source::Trigger::Attacks(_) => Self::Attacks,
+            protogen::triggers::trigger_source::Trigger::Cast(_) => Self::Cast,
             protogen::triggers::trigger_source::Trigger::EndStep(_) => Self::EndStep,
             protogen::triggers::trigger_source::Trigger::EntersTheBattlefield(_) => {
                 Self::EntersTheBattlefield
             }
             protogen::triggers::trigger_source::Trigger::ExiledDuringCraft(_) => {
                 Self::ExiledDuringCraft
+            }
+            protogen::triggers::trigger_source::Trigger::PreCombatMainPhase(_) => {
+                Self::PreCombatMainPhase
             }
             protogen::triggers::trigger_source::Trigger::PutIntoGraveyard(_) => {
                 Self::PutIntoGraveyard

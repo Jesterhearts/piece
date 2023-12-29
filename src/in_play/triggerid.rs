@@ -68,6 +68,9 @@ impl TriggerId {
             TriggerSource::EndStep => {
                 entity.insert(trigger_source::EndStep);
             }
+            TriggerSource::PreCombatMainPhase => {
+                entity.insert(trigger_source::PreCombatMainPhase);
+            }
         }
 
         Self(entity.id())
@@ -78,20 +81,16 @@ impl TriggerId {
             NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub(crate) fn move_to_stack(
-        self,
-        db: &mut Database,
-        listener: CardId,
-        targets: Vec<Vec<ActiveTarget>>,
-    ) {
+    pub(crate) fn move_to_stack(self, db: &mut Database, targets: Vec<Vec<ActiveTarget>>) {
         if Stack::split_second(db) {
             return;
         }
 
+        let source = self.listener(db);
         db.triggers.spawn((
             TriggerInStack {
                 seq: NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed),
-                source: listener,
+                source,
                 trigger: self,
             },
             Targets(targets),

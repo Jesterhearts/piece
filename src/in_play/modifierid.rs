@@ -101,7 +101,7 @@ impl ModifierId {
         }
 
         if let Some(dynamic) = &modifier.modifier.dynamic_power_toughness {
-            entity.insert(*dynamic);
+            entity.insert(dynamic.clone());
         }
 
         if let Some(power) = modifier.modifier.add_power {

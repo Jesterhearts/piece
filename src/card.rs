@@ -11,8 +11,8 @@ use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer, Ward},
     effects::{
-        target_creature_explores::TargetCreatureExplores, AnyEffect, Effect, Mode,
-        ReplacementEffect, Token,
+        target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
+        Mode, ReplacementEffect, Token, TokenCreature,
     },
     in_play::{AbilityId, CardId, TriggerId},
     mana::ManaCost,
@@ -300,6 +300,18 @@ pub(crate) enum EtbAbilityModifier {
     Add(AbilityId),
 }
 
+#[derive(Debug, Clone, Component)]
+pub(crate) enum BasePowerType {
+    Static(i32),
+    Dynamic(DynamicPowerToughness),
+}
+
+#[derive(Debug, Clone, Component)]
+pub(crate) enum BaseToughnessType {
+    Static(i32),
+    Dynamic(DynamicPowerToughness),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub(crate) struct Name(pub(crate) String);
 
@@ -311,11 +323,11 @@ pub(crate) struct OracleText(pub(crate) String);
 )]
 pub(crate) struct MarkedDamage(pub(crate) i32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct BasePower(pub(crate) i32);
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub(crate) struct BasePower(pub(crate) BasePowerType);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct ModifiedBasePower(pub(crate) i32);
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub(crate) struct ModifiedBasePower(pub(crate) BasePowerType);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub(crate) struct BasePowerModifier(pub(crate) i32);
@@ -325,11 +337,11 @@ pub(crate) struct BasePowerModifier(pub(crate) i32);
 )]
 pub(crate) struct AddPower(pub(crate) i32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct BaseToughness(pub(crate) i32);
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub(crate) struct BaseToughness(pub(crate) BaseToughnessType);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct ModifiedBaseToughness(pub(crate) i32);
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
+pub(crate) struct ModifiedBaseToughness(pub(crate) BaseToughnessType);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
 pub(crate) struct BaseToughnessModifier(pub(crate) i32);
@@ -382,6 +394,7 @@ pub struct Card {
 
     pub(crate) mana_abilities: Vec<GainManaAbility>,
 
+    pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
     pub(crate) power: Option<usize>,
     pub(crate) toughness: Option<usize>,
 
@@ -472,6 +485,10 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .map(GainManaAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             etb_tapped: value.etb_tapped,
+            dynamic_power_toughness: value
+                .dynamic_power_toughness
+                .as_ref()
+                .map_or(Ok(None), |dynamic| dynamic.try_into().map(Some))?,
             power: value
                 .power
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
@@ -503,16 +520,30 @@ impl TryFrom<&protogen::card::Card> for Card {
 impl From<Token> for Card {
     fn from(value: Token) -> Self {
         match value {
-            Token::Creature(token) => Self {
-                name: token.name,
-                types: token.types,
-                subtypes: token.subtypes,
-                colors: token.colors,
-                power: Some(token.power),
-                toughness: Some(token.toughness),
-                keywords: token.keywords,
-                ..Default::default()
-            },
+            Token::Creature(token) => {
+                let TokenCreature {
+                    name,
+                    types,
+                    subtypes,
+                    colors,
+                    keywords,
+                    dynamic_power_toughness,
+                    power,
+                    toughness,
+                } = *token;
+
+                Self {
+                    name,
+                    types,
+                    subtypes,
+                    colors,
+                    power: Some(power),
+                    toughness: Some(toughness),
+                    keywords,
+                    dynamic_power_toughness,
+                    ..Default::default()
+                }
+            }
             Token::Map => Self {
                 name: "Map".to_string(),
                 types: IndexSet::from([Type::Artifact]),

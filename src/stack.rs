@@ -576,25 +576,22 @@ impl Stack {
         results
     }
 
-    pub(crate) fn move_trigger_to_stack(
-        db: &mut Database,
-        trigger: TriggerId,
-        source: CardId,
-    ) -> PendingResults {
+    pub(crate) fn move_trigger_to_stack(db: &mut Database, trigger: TriggerId) -> PendingResults {
         let mut results = PendingResults::default();
 
         let mut targets = vec![];
-        let controller = source.controller(db);
+        let controller = trigger.listener(db).controller(db);
         for effect in trigger.effects(db) {
             let effect = effect.into_effect(db, controller);
-            targets.push(effect.valid_targets(db, source, controller, &HashSet::default()));
+            targets.push(effect.valid_targets(
+                db,
+                trigger.listener(db),
+                controller,
+                &HashSet::default(),
+            ));
         }
 
-        results.push_settled(ActionResult::AddTriggerToStack {
-            trigger,
-            source,
-            targets,
-        });
+        results.push_settled(ActionResult::AddTriggerToStack { trigger, targets });
 
         results
     }

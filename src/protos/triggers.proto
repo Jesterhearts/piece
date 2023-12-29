@@ -20,21 +20,25 @@ message Location {
 
 message TriggerSource {
   message Attacks {}
+  message Cast {}
   message EndStep {}
   message EntersTheBattlefield {}
   message ExiledDuringCraft {}
+  message PreCombatMainPhase {}
   message PutIntoGraveyard {}
   message StartOfCombat {}
   message Tapped {}
 
   oneof trigger {
     Attacks attacks = 1;
-    EndStep end_step = 2;
-    EntersTheBattlefield enters_the_battlefield = 3;
-    ExiledDuringCraft exiled_during_craft = 4;
-    PutIntoGraveyard put_into_graveyard = 5;
-    StartOfCombat start_of_combat = 6;
-    Tapped tapped = 7;
+    Cast cast = 2;
+    EndStep end_step = 3;
+    EntersTheBattlefield enters_the_battlefield = 4;
+    ExiledDuringCraft exiled_during_craft = 5;
+    PreCombatMainPhase pre_combat_main_phase = 6;
+    PutIntoGraveyard put_into_graveyard = 7;
+    StartOfCombat start_of_combat = 8;
+    Tapped tapped = 9;
   }
 }
 

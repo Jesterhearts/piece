@@ -1027,7 +1027,7 @@ fn main() -> anyhow::Result<()> {
                     } else {
                         format!("{} - {}", card.name(&db), cost.text())
                     };
-                    let pt = card.pt_text(&db);
+                    let pt = card.pt_text(&mut db);
                     frame.render_stateful_widget(
                         ui::Card {
                             db: &mut db,

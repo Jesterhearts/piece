@@ -45,18 +45,18 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(shade1.power(&db), Some(2));
-    assert_eq!(shade1.toughness(&db), Some(3));
+    assert_eq!(shade1.power(&mut db), Some(2));
+    assert_eq!(shade1.toughness(&mut db), Some(3));
 
-    assert_eq!(shade2.power(&db), Some(1));
-    assert_eq!(shade2.toughness(&db), Some(2));
+    assert_eq!(shade2.power(&mut db), Some(1));
+    assert_eq!(shade2.toughness(&mut db), Some(2));
 
     let mut results = Battlefield::end_turn(&mut db);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(shade1.power(&db), Some(1));
-    assert_eq!(shade1.toughness(&db), Some(2));
+    assert_eq!(shade1.power(&mut db), Some(1));
+    assert_eq!(shade1.toughness(&mut db), Some(2));
 
     Ok(())
 }

@@ -31,6 +31,7 @@ pub(crate) struct SourcedMana(pub(crate) HashMap<ManaSource, usize>);
 )]
 pub(crate) enum ManaSource {
     Any,
+    BarracksOfTheThousand,
     Treasure,
     Cave,
 }
@@ -52,10 +53,10 @@ impl SpendReason {
     }
 }
 
-impl TryFrom<&protogen::cost::ManaSource> for ManaSource {
+impl TryFrom<&protogen::targets::ManaSource> for ManaSource {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::cost::ManaSource) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::targets::ManaSource) -> Result<Self, Self::Error> {
         value
             .source
             .as_ref()
@@ -64,11 +65,14 @@ impl TryFrom<&protogen::cost::ManaSource> for ManaSource {
     }
 }
 
-impl From<&protogen::cost::mana_source::Source> for ManaSource {
-    fn from(value: &protogen::cost::mana_source::Source) -> Self {
+impl From<&protogen::targets::mana_source::Source> for ManaSource {
+    fn from(value: &protogen::targets::mana_source::Source) -> Self {
         match value {
-            protogen::cost::mana_source::Source::Cave(_) => Self::Cave,
-            protogen::cost::mana_source::Source::Treasure(_) => Self::Treasure,
+            protogen::targets::mana_source::Source::BarracksOfTheThousand(_) => {
+                Self::BarracksOfTheThousand
+            }
+            protogen::targets::mana_source::Source::Cave(_) => Self::Cave,
+            protogen::targets::mana_source::Source::Treasure(_) => Self::Treasure,
         }
     }
 }

@@ -47,8 +47,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(card.power(&db), Some(5));
-    assert_eq!(card.toughness(&db), Some(5));
+    assert_eq!(card.power(&mut db), Some(5));
+    assert_eq!(card.toughness(&mut db), Some(5));
     assert_eq!(
         card.subtypes(&db),
         IndexSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
@@ -58,8 +58,8 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(card.power(&db), Some(1));
-    assert_eq!(card.toughness(&db), Some(1));
+    assert_eq!(card.power(&mut db), Some(1));
+    assert_eq!(card.toughness(&mut db), Some(1));
     assert_eq!(
         card.subtypes(&db),
         IndexSet::from([Subtype::Elf, Subtype::Shaman])

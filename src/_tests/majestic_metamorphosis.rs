@@ -38,8 +38,8 @@ fn metamorphosis() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(mantle.power(&db), Some(4));
-    assert_eq!(mantle.toughness(&db), Some(4));
+    assert_eq!(mantle.power(&mut db), Some(4));
+    assert_eq!(mantle.toughness(&mut db), Some(4));
     assert_eq!(
         mantle.subtypes(&db),
         IndexSet::from([Subtype::Equipment, Subtype::Angel])
@@ -79,8 +79,8 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(bear.power(&db), Some(4));
-    assert_eq!(bear.toughness(&db), Some(4));
+    assert_eq!(bear.power(&mut db), Some(4));
+    assert_eq!(bear.toughness(&mut db), Some(4));
     assert_eq!(
         bear.subtypes(&db),
         IndexSet::from([Subtype::Bear, Subtype::Angel])

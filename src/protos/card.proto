@@ -38,13 +38,14 @@ message Card {
   repeated effects.GainManaAbility mana_abilities = 18;
   repeated effects.ReplacementEffect replacement_effects = 19;
 
-  optional int32 power = 20;
-  optional int32 toughness = 21;
-  bool etb_tapped = 22;
+  optional effects.DynamicPowerToughness dynamic_power_toughness = 20;
+  optional int32 power = 21;
+  optional int32 toughness = 22;
+  bool etb_tapped = 23;
 
-  string keywords = 23;
+  string keywords = 24;
 
-  repeated targets.Restriction restrictions = 24;
+  repeated targets.Restriction restrictions = 25;
 
-  optional Card back_face = 25;
+  optional Card back_face = 26;
 }

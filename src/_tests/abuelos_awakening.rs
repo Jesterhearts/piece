@@ -57,8 +57,8 @@ fn x_is_zero() -> anyhow::Result<()> {
 
     let on_battlefield = in_play::cards::<OnBattlefield>(&mut db);
     assert_eq!(on_battlefield, [target]);
-    assert_eq!(target.power(&db), Some(1));
-    assert_eq!(target.toughness(&db), Some(1));
+    assert_eq!(target.power(&mut db), Some(1));
+    assert_eq!(target.toughness(&mut db), Some(1));
     assert_eq!(
         target.types(&db),
         IndexSet::from([Type::Creature, Type::Artifact])
@@ -119,8 +119,8 @@ fn x_is_two() -> anyhow::Result<()> {
 
     let on_battlefield = in_play::cards::<OnBattlefield>(&mut db);
     assert_eq!(on_battlefield, [target]);
-    assert_eq!(target.power(&db), Some(3));
-    assert_eq!(target.toughness(&db), Some(3));
+    assert_eq!(target.power(&mut db), Some(3));
+    assert_eq!(target.toughness(&mut db), Some(3));
     assert_eq!(
         target.types(&db),
         IndexSet::from([Type::Creature, Type::Artifact])

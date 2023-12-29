@@ -6,15 +6,6 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
-message ManaSource {
-  message Cave {}
-  message Treasure {}
-  oneof source {
-    Cave cave = 1;
-    Treasure treasure = 2;
-  }
-}
-
 message ManaCost {
   oneof cost {
     mana.White white = 1;

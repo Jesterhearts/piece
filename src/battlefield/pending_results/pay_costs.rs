@@ -315,7 +315,7 @@ impl PayCost {
         }
     }
 
-    fn paid(&self, db: &Database) -> bool {
+    fn paid(&self, db: &mut Database) -> bool {
         match self {
             PayCost::SacrificePermanent(sac) => sac.chosen.is_some(),
             PayCost::TapPermanent(tap) => tap.chosen.is_some(),
@@ -828,7 +828,7 @@ impl PayCost {
         }
     }
 
-    fn x_is(&self, db: &Database) -> Option<usize> {
+    fn x_is(&self, db: &mut Database) -> Option<usize> {
         match self {
             PayCost::SacrificePermanent(_)
             | PayCost::TapPermanent(_)

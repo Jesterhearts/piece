@@ -13,6 +13,7 @@ use itertools::Itertools;
 use crate::{
     card::{Color, Keyword},
     controller::ControllerRestriction,
+    player::mana_pool::ManaSource,
     protogen,
     types::{Subtype, Type},
 };
@@ -228,6 +229,7 @@ pub(crate) enum Restriction {
         locations: Vec<Location>,
     },
     LifeGainedThisTurn(usize),
+    ManaSpentFromSource(ManaSource),
     NotKeywords(IndexSet<Keyword>),
     NotOfType {
         types: IndexSet<Type>,
@@ -263,6 +265,9 @@ impl Restriction {
             }
             Restriction::LifeGainedThisTurn(count) => {
                 format!("{} or more life this turn", count)
+            }
+            Restriction::ManaSpentFromSource(source) => {
+                format!("mana from {}", source.as_ref())
             }
             Restriction::NotKeywords(keywords) => {
                 format!("without {}", keywords.iter().map(|k| k.as_ref()).join(", "))
@@ -351,6 +356,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Location::try_from)
                     .collect::<anyhow::Result<_>>()?,
             }),
+            protogen::targets::restriction::Restriction::ManaSpentFromSource(spent) => Ok(
+                Self::ManaSpentFromSource(spent.source.get_or_default().try_into()?),
+            ),
             protogen::targets::restriction::Restriction::NotKeywords(not) => Ok(Self::NotKeywords(
                 not.keywords
                     .split(',')

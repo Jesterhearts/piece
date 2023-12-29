@@ -39,8 +39,8 @@ fn p1p1() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(creature.power(&db), Some(5));
-    assert_eq!(creature.toughness(&db), Some(3));
+    assert_eq!(creature.power(&mut db), Some(5));
+    assert_eq!(creature.toughness(&mut db), Some(3));
 
     Ok(())
 }

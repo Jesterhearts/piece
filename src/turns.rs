@@ -102,7 +102,30 @@ impl Turn {
                     all_players[player].mana_pool.drain();
                 }
                 self.phase = Phase::PreCombatMainPhase;
-                PendingResults::default()
+
+                let mut results = PendingResults::default();
+
+                for trigger in
+                    TriggerId::active_triggers_of_source::<trigger_source::PreCombatMainPhase>(db)
+                {
+                    match trigger.controller_restriction(db) {
+                        ControllerRestriction::Any => {}
+                        ControllerRestriction::You => {
+                            if trigger.listener(db).controller(db) != self.active_player() {
+                                continue;
+                            }
+                        }
+                        ControllerRestriction::Opponent => {
+                            if trigger.listener(db).controller(db) == self.active_player() {
+                                continue;
+                            }
+                        }
+                    }
+
+                    results.extend(Stack::move_trigger_to_stack(db, trigger));
+                }
+
+                results
             }
             Phase::PreCombatMainPhase => {
                 for player in all_players.all_players() {
@@ -127,8 +150,7 @@ impl Turn {
                         }
                     }
 
-                    let listener = trigger.listener(db);
-                    results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                    results.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
                 results
             }
@@ -211,8 +233,7 @@ impl Turn {
                         continue;
                     }
 
-                    let listener = trigger.listener(db);
-                    results.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                    results.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
 
                 results

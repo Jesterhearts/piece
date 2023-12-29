@@ -25,16 +25,16 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(elesh.power(&db), Some(4));
-    assert_eq!(elesh.toughness(&db), Some(7));
+    assert_eq!(elesh.power(&mut db), Some(4));
+    assert_eq!(elesh.toughness(&mut db), Some(7));
 
-    assert_eq!(bear.power(&db), Some(6));
-    assert_eq!(bear.toughness(&db), Some(4));
+    assert_eq!(bear.power(&mut db), Some(6));
+    assert_eq!(bear.toughness(&mut db), Some(4));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, &turn, elesh);
     assert!(results.is_empty());
-    assert_eq!(bear.power(&db), Some(4));
-    assert_eq!(bear.toughness(&db), Some(2));
+    assert_eq!(bear.power(&mut db), Some(4));
+    assert_eq!(bear.toughness(&mut db), Some(2));
 
     Ok(())
 }

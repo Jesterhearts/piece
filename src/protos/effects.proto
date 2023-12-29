@@ -48,6 +48,7 @@ message CreateToken {
     repeated types.Type types = 2;
     repeated types.Subtype subtypes = 3;
     repeated color.Color colors = 4;
+    optional DynamicPowerToughness dynamic_power_toughness = 20;
     int32 power = 5;
     int32 toughness = 6;
     string keywords = 7;
@@ -116,9 +117,15 @@ message Duration {
 message DynamicPowerToughness {
   oneof source {
     NumberOfCountersOnThis number_of_counters_on_this = 1;
+    NumberOfPermanentsMatching number_of_permanents_matching = 2;
   }
   message NumberOfCountersOnThis {
     counters.Counter counter = 1;
+  }
+  message NumberOfPermanentsMatching {
+    controller.Controller controller = 1;
+    repeated types.Type types = 2;
+    repeated types.Subtype subtypes = 3;
   }
 }
 
@@ -143,7 +150,7 @@ message ExtraLandsPerTurn {
 }
 
 message ForEachManaOfSource {
-  cost.ManaSource source = 1;
+  targets.ManaSource source = 1;
   Effect effect = 2;
 }
 
@@ -195,7 +202,7 @@ message GainMana {
 message GainManaAbility {
   cost.AbilityCost cost = 1;
   GainMana gain_mana = 2;
-  cost.ManaSource mana_source = 3;
+  targets.ManaSource mana_source = 3;
   optional mana.ManaRestriction mana_restriction = 4;
 }
 

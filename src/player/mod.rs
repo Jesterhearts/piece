@@ -146,6 +146,9 @@ impl Owner {
                 Restriction::Tapped => {
                     return false;
                 }
+                Restriction::ManaSpentFromSource(_) => {
+                    return false;
+                }
             }
         }
 

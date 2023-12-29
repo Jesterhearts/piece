@@ -50,12 +50,12 @@ fn resolves_shift() -> anyhow::Result<()> {
 
     assert_eq!(cards::<InExile>(&mut db), [bear1]);
 
-    assert_eq!(bear2.power(&db), Some(4));
-    assert_eq!(bear2.toughness(&db), Some(2));
+    assert_eq!(bear2.power(&mut db), Some(4));
+    assert_eq!(bear2.toughness(&mut db), Some(2));
     assert_eq!(bear2.subtypes(&db), IndexSet::from([Subtype::Bear]));
 
-    assert_eq!(bear3.power(&db), Some(2));
-    assert_eq!(bear3.toughness(&db), Some(2));
+    assert_eq!(bear3.power(&mut db), Some(2));
+    assert_eq!(bear3.toughness(&mut db), Some(2));
     assert_eq!(bear3.subtypes(&db), IndexSet::from([]));
 
     Ok(())

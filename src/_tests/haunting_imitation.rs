@@ -49,8 +49,8 @@ fn reveals_clones() -> anyhow::Result<()> {
         token.subtypes(&db),
         IndexSet::from([Subtype::Bear, Subtype::Spirit])
     );
-    assert_eq!(token.power(&db), Some(1));
-    assert_eq!(token.toughness(&db), Some(1));
+    assert_eq!(token.power(&mut db), Some(1));
+    assert_eq!(token.toughness(&mut db), Some(1));
     assert_eq!(token.keywords(&db), [Keyword::Flying].into_iter().collect());
 
     Ok(())

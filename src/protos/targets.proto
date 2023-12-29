@@ -6,6 +6,17 @@ import "color.proto";
 import "controller.proto";
 import "types.proto";
 
+message ManaSource {
+  message BarracksOfTheThousand {}
+  message Cave {}
+  message Treasure {}
+  oneof source {
+    BarracksOfTheThousand barracks_of_the_thousand = 1;
+    Cave cave = 2;
+    Treasure treasure = 3;
+  }
+}
+
 message Comparison {
   message LessThan {
     int32 value = 1;
@@ -21,10 +32,10 @@ message Comparison {
   }
 
   oneof value {
-    LessThan less_than = 1;
-    LessThanOrEqual less_than_or_equal = 2;
-    GreaterThan greater_than = 3;
-    GreaterThanOrEqual greater_than_or_equal = 4;
+    LessThan less_than = 2;
+    LessThanOrEqual less_than_or_equal = 3;
+    GreaterThan greater_than = 4;
+    GreaterThanOrEqual greater_than_or_equal = 5;
   }
 }
 
@@ -78,6 +89,9 @@ message Restriction {
   message Locations {
     repeated Location locations = 1;
   }
+  message ManaSpentFromSource {
+    ManaSource source = 1;
+  }
   message NotKeywords {
     string keywords = 1;
   }
@@ -111,14 +125,15 @@ message Restriction {
     InGraveyard in_graveyard = 9;
     LifeGainedThisTurn life_gained_this_turn = 10;
     Locations location = 11;
-    NotKeywords not_keywords = 12;
-    NotOfType not_of_type = 13;
-    NotSelf not_self = 14;
-    OfColor of_color = 15;
-    OfType of_type = 16;
-    OnBattlefield on_battlefield = 17;
-    Self self = 18;
-    Tapped tapped = 19;
-    Toughness toughness = 20;
+    ManaSpentFromSource mana_spent_from_source = 12;
+    NotKeywords not_keywords = 13;
+    NotOfType not_of_type = 14;
+    NotSelf not_self = 15;
+    OfColor of_color = 16;
+    OfType of_type = 17;
+    OnBattlefield on_battlefield = 18;
+    Self self = 19;
+    Tapped tapped = 20;
+    Toughness toughness = 21;
   }
 }

@@ -22,10 +22,11 @@ use crate::{
     battlefield::{Battlefield, PendingResults},
     card::{
         keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BackFace,
-        BasePower, BaseToughness, CannotBeCountered, Card, Color, Colors, EtbAbilityModifier,
-        EtbTapped, FrontFace, Keyword, Keywords, MarkedDamage, ModifiedBasePower,
-        ModifiedBaseToughness, ModifiedColors, ModifiedKeywords, ModifyKeywords, Name, OracleText,
-        PaidX, Revealed, StaticAbilityModifier, TargetIndividually, TriggeredAbilityModifier,
+        BasePower, BasePowerType, BaseToughness, BaseToughnessType, CannotBeCountered, Card, Color,
+        Colors, EtbAbilityModifier, EtbTapped, FrontFace, Keyword, Keywords, MarkedDamage,
+        ModifiedBasePower, ModifiedBaseToughness, ModifiedColors, ModifiedKeywords, ModifyKeywords,
+        Name, OracleText, PaidX, Revealed, StaticAbilityModifier, TargetIndividually,
+        TriggeredAbilityModifier,
     },
     controller::ControllerRestriction,
     cost::{CastingCost, CostReducer, Ward},
@@ -534,14 +535,14 @@ impl CardId {
         let source = self.faceup_face(db);
 
         let mut base_power = if facedown {
-            Some(2)
+            Some(BasePowerType::Static(2))
         } else {
-            db.get::<BasePower>(source.0).map(|bp| bp.0)
+            db.get::<BasePower>(source.0).map(|bp| bp.0.clone())
         };
         let mut base_toughness = if facedown {
-            Some(2)
+            Some(BaseToughnessType::Static(2))
         } else {
-            db.get::<BaseToughness>(source.0).map(|bt| bt.0)
+            db.get::<BaseToughness>(source.0).map(|bt| bt.0.clone())
         };
         let mut types = if facedown {
             IndexSet::from([Type::Creature])
@@ -611,6 +612,14 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let toughness = base_toughness.as_ref().map(|base| match base {
+                    BaseToughnessType::Static(value) => *value,
+                    BaseToughnessType::Dynamic(dynamic) => {
+                        self.dynamic_power_toughness_given_types(
+                            dynamic, modifier, db, &types, &subtypes,
+                        ) as i32
+                    }
+                });
                 if !self.passes_restrictions_given_attributes(
                     db,
                     source,
@@ -621,7 +630,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
-                    base_toughness,
+                    toughness,
                 ) {
                     continue;
                 }
@@ -663,6 +672,14 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let toughness = base_toughness.as_ref().map(|base| match base {
+                    BaseToughnessType::Static(value) => *value,
+                    BaseToughnessType::Dynamic(dynamic) => {
+                        self.dynamic_power_toughness_given_types(
+                            dynamic, modifier, db, &types, &subtypes,
+                        ) as i32
+                    }
+                });
                 if !self.passes_restrictions_given_attributes(
                     db,
                     source,
@@ -673,7 +690,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
-                    base_toughness,
+                    toughness,
                 ) {
                     continue;
                 }
@@ -699,6 +716,14 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let toughness = base_toughness.as_ref().map(|base| match base {
+                    BaseToughnessType::Static(value) => *value,
+                    BaseToughnessType::Dynamic(dynamic) => {
+                        self.dynamic_power_toughness_given_types(
+                            dynamic, modifier, db, &types, &subtypes,
+                        ) as i32
+                    }
+                });
                 if !self.passes_restrictions_given_attributes(
                     db,
                     source,
@@ -709,7 +734,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
-                    base_toughness,
+                    toughness,
                 ) {
                     continue;
                 }
@@ -767,6 +792,16 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let toughness = base_toughness
+                    .as_ref()
+                    .map(|base| match base {
+                        BaseToughnessType::Static(value) => *value,
+                        BaseToughnessType::Dynamic(dynamic) => self
+                            .dynamic_power_toughness_given_types(
+                                dynamic, modifier, db, &types, &subtypes,
+                            ) as i32,
+                    })
+                    .map(|t| t + add_toughness);
                 if !self.passes_restrictions_given_attributes(
                     db,
                     source,
@@ -777,32 +812,29 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
-                    base_toughness.map(|t| t + add_toughness),
+                    toughness,
                 ) {
                     continue;
                 }
             }
 
             if let Some(base) = modifier.base_power(db) {
-                base_power = Some(base);
+                base_power = Some(BasePowerType::Static(base));
             }
 
             if let Some(base) = modifier.base_toughness(db) {
-                base_toughness = Some(base);
+                base_toughness = Some(BaseToughnessType::Static(base));
             }
 
             add_power += modifier.add_power(db).unwrap_or_default();
             add_toughness += modifier.add_toughness(db).unwrap_or_default();
 
             if let Some(dynamic) = modifier.dynamic_power(db) {
-                match dynamic {
-                    DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
-                        let source = modifier.source(db);
-                        let to_add = CounterId::counters_on(db, source, counter);
-                        add_power += to_add as i32;
-                        add_toughness += to_add as i32;
-                    }
-                }
+                let to_add = self
+                    .dynamic_power_toughness_given_types(&dynamic, modifier, db, &types, &subtypes);
+
+                add_power += to_add as i32;
+                add_toughness += to_add as i32;
             }
         }
 
@@ -838,6 +870,62 @@ impl CardId {
             .insert(ModifiedActivatedAbilities(activated_abilities));
     }
 
+    fn dynamic_power_toughness_given_types(
+        self,
+        dynamic: &DynamicPowerToughness,
+        modifier: ModifierId,
+        db: &mut Database,
+        types: &IndexSet<Type>,
+        subtypes: &IndexSet<Subtype>,
+    ) -> usize {
+        match dynamic {
+            DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
+                let source = modifier.source(db);
+                CounterId::counters_on(db, source, *counter)
+            }
+            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => in_play::cards::<
+                OnBattlefield,
+            >(db)
+            .into_iter()
+            .filter(|card| {
+                match matching.controller {
+                    ControllerRestriction::Any => {}
+                    ControllerRestriction::You => {
+                        if card.controller(db) != self.controller(db) {
+                            return false;
+                        }
+                    }
+                    ControllerRestriction::Opponent => {
+                        if card.controller(db) == self.controller(db) {
+                            return false;
+                        }
+                    }
+                }
+
+                if *card == self {
+                    if !matching.types.is_empty() && matching.types.is_disjoint(types) {
+                        return false;
+                    }
+
+                    if !matching.subtypes.is_empty() && matching.subtypes.is_disjoint(subtypes) {
+                        return false;
+                    }
+                } else {
+                    if !card.types_intersect(db, &matching.types) {
+                        return false;
+                    }
+
+                    if !card.subtypes_intersect(db, &matching.subtypes) {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .count(),
+        }
+    }
+
     pub(crate) fn triggers(self, db: &Database) -> Vec<TriggerId> {
         db.get::<ModifiedTriggers>(self.0)
             .map(|t| t.0.clone())
@@ -845,7 +933,7 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub fn equal(self, db: &Database, other: CardId) -> bool {
+    pub fn equal(self, db: &mut Database, other: CardId) -> bool {
         self.name(db) == other.name(db)
             && self.power(db) == other.power(db)
             && self.toughness(db) == other.toughness(db)
@@ -957,6 +1045,7 @@ impl CardId {
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
     ) -> bool {
+        let toughness = self.toughness(db);
         self.passes_restrictions_given_attributes(
             db,
             source,
@@ -967,7 +1056,7 @@ impl CardId {
             &self.subtypes(db),
             &self.keywords(db),
             &self.colors(db),
-            self.toughness(db),
+            toughness,
         )
     }
 
@@ -1146,6 +1235,15 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::ManaSpentFromSource(source) => {
+                    if let Some(sources) = self.get_mana_from_sources(db) {
+                        if !sources.contains_key(source) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1181,19 +1279,42 @@ impl CardId {
         }
     }
 
-    pub(crate) fn power(self, db: &Database) -> Option<i32> {
+    pub(crate) fn power(self, db: &mut Database) -> Option<i32> {
         db.get::<ModifiedBasePower>(self.0)
-            .map(|bp| bp.0)
-            .or_else(|| db.get::<BasePower>(self.0).map(|bp| bp.0))
+            .map(|bp| bp.0.clone())
+            .or_else(|| db.get::<BasePower>(self.0).map(|bp| bp.0.clone()))
+            .map(|bp| match bp {
+                BasePowerType::Static(value) => value,
+                BasePowerType::Dynamic(dynamic) => {
+                    self.dynamic_power_toughness(db, &dynamic) as i32
+                }
+            })
             .map(|bp| bp + db.get::<AddPower>(self.0).map(|a| a.0).unwrap_or_default())
     }
 
-    pub(crate) fn toughness(self, db: &Database) -> Option<i32> {
+    fn dynamic_power_toughness(self, db: &mut Database, dynamic: &DynamicPowerToughness) -> usize {
+        match dynamic {
+            DynamicPowerToughness::NumberOfCountersOnThis(counters) => {
+                CounterId::counters_on(db, self, *counters)
+            }
+            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => {
+                matching.matching(db, self)
+            }
+        }
+    }
+
+    pub(crate) fn toughness(self, db: &mut Database) -> Option<i32> {
         db.get::<ModifiedBaseToughness>(self.0)
-            .map(|bp| bp.0)
-            .or_else(|| db.get::<BaseToughness>(self.0).map(|bt| bt.0))
-            .map(|bp| {
-                bp + db
+            .map(|bt| bt.0.clone())
+            .or_else(|| db.get::<BaseToughness>(self.0).map(|bt| bt.0.clone()))
+            .map(|bt| match bt {
+                BaseToughnessType::Static(value) => value,
+                BaseToughnessType::Dynamic(dynamic) => {
+                    self.dynamic_power_toughness(db, &dynamic) as i32
+                }
+            })
+            .map(|bt| {
+                bt + db
                     .get::<AddToughness>(self.0)
                     .map(|a| a.0)
                     .unwrap_or_default()
@@ -1372,11 +1493,16 @@ impl CardId {
         }
 
         if let Some(power) = card.power {
-            entity.insert(BasePower(power as i32));
+            entity.insert(BasePower(BasePowerType::Static(power as i32)));
         }
 
         if let Some(toughness) = card.toughness {
-            entity.insert(BaseToughness(toughness as i32));
+            entity.insert(BaseToughness(BaseToughnessType::Static(toughness as i32)));
+        }
+
+        if let Some(pt) = &card.dynamic_power_toughness {
+            entity.insert(BasePower(BasePowerType::Dynamic(pt.clone())));
+            entity.insert(BaseToughness(BaseToughnessType::Dynamic(pt.clone())));
         }
 
         if card.cannot_be_countered {
@@ -1666,8 +1792,7 @@ impl CardId {
                 trigger.controller_restriction(db),
                 &restrictions,
             ) {
-                let listener = trigger.listener(db);
-                pending.extend(Stack::move_trigger_to_stack(db, trigger, listener));
+                pending.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
 
@@ -1761,7 +1886,7 @@ impl CardId {
             .join("\n")
     }
 
-    pub fn pt_text(&self, db: &Database) -> Option<String> {
+    pub fn pt_text(&self, db: &mut Database) -> Option<String> {
         let power = self.power(db);
         let toughness = self.toughness(db);
 
