@@ -1,9 +1,12 @@
-use anyhow::anyhow;
+use std::str::FromStr;
+
+use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
+    card::Keyword,
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
@@ -52,14 +55,43 @@ pub(crate) struct StaticAbilities(pub(crate) Vec<StaticAbility>);
 pub(crate) struct ModifiedStaticAbilities(pub(crate) Vec<StaticAbility>);
 
 #[derive(Debug, Clone)]
+pub(crate) struct AddKeywordsIf {
+    pub(crate) keywords: ::counter::Counter<Keyword>,
+    pub(crate) restrictions: Vec<Restriction>,
+}
+
+impl TryFrom<&protogen::effects::static_ability::AddKeywordsIf> for AddKeywordsIf {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::static_ability::AddKeywordsIf,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            keywords: value
+                .keywords
+                .split(',')
+                .filter(|s| !s.trim().is_empty())
+                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .collect::<anyhow::Result<_>>()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct ForceEtbTapped {
     pub(crate) restrictions: Vec<Restriction>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum StaticAbility {
-    CantCastIfAttacked,
+    AddKeywordsIf(AddKeywordsIf),
     BattlefieldModifier(Box<BattlefieldModifier>),
+    CantCastIfAttacked,
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
     GreenCannotBeCountered { restrictions: Vec<Restriction> },
@@ -86,6 +118,9 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
 
     fn try_from(value: &protogen::effects::static_ability::Ability) -> Result<Self, Self::Error> {
         match value {
+            protogen::effects::static_ability::Ability::AddKeywordsIf(value) => {
+                Ok(Self::AddKeywordsIf(value.try_into()?))
+            }
             protogen::effects::static_ability::Ability::CantCastIfAttacked(_) => {
                 Ok(Self::CantCastIfAttacked)
             }

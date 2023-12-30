@@ -3,6 +3,7 @@ syntax = "proto3";
 package targets;
 
 import "color.proto";
+import "counters.proto";
 import "types.proto";
 
 message ManaSource {
@@ -105,6 +106,10 @@ message Restriction {
     repeated types.Subtype subtypes = 2;
   }
   message NotSelf {}
+  message NumberOfCountersOnThis {
+    counters.Counter counter = 1;
+    Comparison comparison = 2;
+  }
   message OfColor {
     repeated color.Color colors = 1;
   }
@@ -142,13 +147,14 @@ message Restriction {
     NotKeywords not_keywords = 17;
     NotOfType not_of_type = 18;
     NotSelf not_self = 19;
-    OfColor of_color = 20;
-    OfType of_type = 21;
-    OnBattlefield on_battlefield = 22;
-    Power power = 23;
-    Self self = 24;
-    SourceCast source_cast = 25;
-    Tapped tapped = 26;
-    Toughness toughness = 27;
+    NumberOfCountersOnThis number_of_counters_on_this = 20;
+    OfColor of_color = 21;
+    OfType of_type = 22;
+    OnBattlefield on_battlefield = 23;
+    Power power = 24;
+    Self self = 25;
+    SourceCast source_cast = 26;
+    Tapped tapped = 27;
+    Toughness toughness = 28;
   }
 }

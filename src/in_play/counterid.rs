@@ -17,6 +17,14 @@ pub(crate) struct CounterId(Entity);
 impl CounterId {
     pub(crate) fn add_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
         match counter {
+            Counter::Any => {
+                for counter in Counter::iter() {
+                    if let Counter::Any = counter {
+                        continue;
+                    }
+                    Self::add_counters(db, card, counter, count);
+                }
+            }
             Counter::Charge => Self::add_counters_of_type::<counter::Charge>(db, card, count),
             Counter::P1P1 => Self::add_counters_of_type::<counter::P1P1>(db, card, count),
             Counter::M1M1 => Self::add_counters_of_type::<counter::M1M1>(db, card, count),
@@ -25,6 +33,14 @@ impl CounterId {
 
     pub(crate) fn remove_counters(db: &mut Database, card: CardId, counter: Counter, count: usize) {
         match counter {
+            Counter::Any => {
+                for counter in Counter::iter() {
+                    if let Counter::Any = counter {
+                        continue;
+                    }
+                    Self::remove_counters(db, card, counter, count);
+                }
+            }
             Counter::Charge => Self::remove_counters_of_type::<counter::Charge>(db, card, count),
             Counter::P1P1 => Self::remove_counters_of_type::<counter::P1P1>(db, card, count),
             Counter::M1M1 => Self::remove_counters_of_type::<counter::M1M1>(db, card, count),
@@ -85,6 +101,16 @@ impl CounterId {
 
     pub(crate) fn counters_on(db: &mut Database, card: CardId, counter: Counter) -> usize {
         match counter {
+            Counter::Any => {
+                let mut sum = 0;
+                for counter in Counter::iter() {
+                    if let Counter::Any = counter {
+                        continue;
+                    }
+                    sum += Self::counters_on(db, card, counter);
+                }
+                sum
+            }
             Counter::Charge => Self::counters_of_type_on::<counter::Charge>(db, card),
             Counter::P1P1 => Self::counters_of_type_on::<counter::P1P1>(db, card),
             Counter::M1M1 => Self::counters_of_type_on::<counter::M1M1>(db, card),
@@ -117,6 +143,7 @@ impl CounterId {
                     Counter::Charge => format!("Charge x{}", amount),
                     Counter::P1P1 => format!("+1/+1 x{}", amount),
                     Counter::M1M1 => format!("-1/-1 x{}", amount),
+                    Counter::Any => format!("{} total counters", amount),
                 });
             }
         }

@@ -75,7 +75,7 @@ fn hexproof() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert!(creature.hexproof(&db));
+    assert!(creature.hexproof(&mut db));
 
     Ok(())
 }

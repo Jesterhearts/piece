@@ -48,7 +48,7 @@ fn metamorphosis() -> anyhow::Result<()> {
         mantle.types(&db),
         IndexSet::from([Type::Artifact, Type::Creature])
     );
-    assert!(mantle.flying(&db));
+    assert!(mantle.flying(&mut db));
 
     Ok(())
 }
@@ -89,7 +89,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
         bear.types(&db),
         IndexSet::from([Type::Artifact, Type::Creature])
     );
-    assert!(bear.flying(&db));
+    assert!(bear.flying(&mut db));
 
     Ok(())
 }

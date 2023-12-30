@@ -180,6 +180,10 @@ impl Owner {
                         }
                     }
                 },
+                Restriction::NumberOfCountersOnThis { .. } => {
+                    // TODO: Poison counters
+                    return false;
+                }
             }
         }
 

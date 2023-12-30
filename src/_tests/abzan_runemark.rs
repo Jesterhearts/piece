@@ -30,7 +30,7 @@ fn aura_works() -> anyhow::Result<()> {
 
     assert_eq!(creature.power(&mut db), Some(6));
     assert_eq!(creature.toughness(&mut db), Some(4));
-    assert!(creature.vigilance(&db));
+    assert!(creature.vigilance(&mut db));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
@@ -45,7 +45,7 @@ fn aura_works() -> anyhow::Result<()> {
 
     assert_eq!(creature.power(&mut db), Some(4));
     assert_eq!(creature.toughness(&mut db), Some(2));
-    assert!(!creature.vigilance(&db));
+    assert!(!creature.vigilance(&mut db));
 
     assert!(Battlefield::no_modifiers(&mut db));
 
@@ -73,7 +73,7 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
 
     assert_eq!(creature.power(&mut db), Some(6));
     assert_eq!(creature.toughness(&mut db), Some(4));
-    assert!(creature.vigilance(&db));
+    assert!(creature.vigilance(&mut db));
 
     let results = Battlefield::check_sba(&mut db);
     assert!(results.is_empty());
@@ -108,7 +108,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
 
     assert_eq!(creature.power(&mut db), Some(3));
     assert_eq!(creature.toughness(&mut db), Some(3));
-    assert!(!creature.vigilance(&db));
+    assert!(!creature.vigilance(&mut db));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
@@ -117,11 +117,11 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
 
     assert_eq!(card2.power(&mut db), Some(4));
     assert_eq!(card2.toughness(&mut db), Some(2));
-    assert!(creature.vigilance(&db));
+    assert!(creature.vigilance(&mut db));
 
     let results = Battlefield::permanent_to_graveyard(&mut db, &turn, card2);
     assert!(results.is_empty());
-    assert!(!creature.vigilance(&db));
+    assert!(!creature.vigilance(&mut db));
 
     Ok(())
 }

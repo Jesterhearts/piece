@@ -31,8 +31,10 @@ impl EffectBehaviors for TargetCreatureExplores {
         controller
             .get_cards_in::<OnBattlefield>(db)
             .into_iter()
-            .filter(|card| card.types_intersect(db, &IndexSet::from([Type::Creature])))
-            .filter(|card| card.can_be_targeted(db, controller))
+            .filter(|card| {
+                card.types_intersect(db, &IndexSet::from([Type::Creature]))
+                    && card.can_be_targeted(db, controller)
+            })
             .map(|card| ActiveTarget::Battlefield { id: card })
             .filter(|target| !already_chosen.contains(target))
             .collect_vec()

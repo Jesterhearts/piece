@@ -12,6 +12,7 @@ use itertools::Itertools;
 
 use crate::{
     card::{Color, Keyword},
+    effects::target_gains_counters::Counter,
     player::mana_pool::ManaSource,
     protogen,
     types::{Subtype, Type},
@@ -234,6 +235,10 @@ pub(crate) enum Restriction {
         subtypes: IndexSet<Subtype>,
     },
     NotSelf,
+    NumberOfCountersOnThis {
+        comparison: Comparison,
+        counter: Counter,
+    },
     OfColor(HashSet<Color>),
     OfType {
         types: IndexSet<Type>,
@@ -293,6 +298,12 @@ impl Restriction {
                 }
             }
             Restriction::NotSelf => "other permanent".to_string(),
+            Restriction::NumberOfCountersOnThis {
+                comparison,
+                counter,
+            } => {
+                format!("{} counters {}", counter.as_ref(), comparison)
+            }
             Restriction::OfColor(colors) => {
                 format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
             }
@@ -393,6 +404,12 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .collect::<anyhow::Result<_>>()?,
             }),
             protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
+            protogen::targets::restriction::Restriction::NumberOfCountersOnThis(value) => {
+                Ok(Self::NumberOfCountersOnThis {
+                    comparison: value.comparison.get_or_default().try_into()?,
+                    counter: value.counter.get_or_default().try_into()?,
+                })
+            }
             protogen::targets::restriction::Restriction::OfColor(colors) => Ok(Self::OfColor(
                 colors
                     .colors

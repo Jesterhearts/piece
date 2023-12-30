@@ -14,8 +14,9 @@ use crate::{
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-#[derive(strum::EnumIter)]
-pub(crate)enum Counter {
+#[derive(strum::EnumIter, strum::AsRefStr)]
+pub(crate) enum Counter {
+    Any,
     Charge,
     P1P1,
     M1M1,
@@ -95,6 +96,7 @@ impl TryFrom<&protogen::counters::Counter> for Counter {
 impl From<&protogen::counters::counter::Type> for Counter {
     fn from(value: &protogen::counters::counter::Type) -> Self {
         match value {
+            protogen::counters::counter::Type::Any(_) => Self::Any,
             protogen::counters::counter::Type::Charge(_) => Self::Charge,
             protogen::counters::counter::Type::P1p1(_) => Self::P1P1,
             protogen::counters::counter::Type::M1m1(_) => Self::M1M1,

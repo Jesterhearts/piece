@@ -15,9 +15,9 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{
-        Ability, ActivatedAbilities, ETBAbilities, GainMana, ModifiedActivatedAbilities,
-        ModifiedETBAbilities, ModifiedStaticAbilities, ModifiedTriggers, StaticAbilities,
-        StaticAbility, Triggers,
+        Ability, ActivatedAbilities, AddKeywordsIf, ETBAbilities, GainMana,
+        ModifiedActivatedAbilities, ModifiedETBAbilities, ModifiedStaticAbilities,
+        ModifiedTriggers, StaticAbilities, StaticAbility, Triggers,
     },
     battlefield::{Battlefield, PendingResults},
     card::{
@@ -1121,6 +1121,7 @@ impl CardId {
     ) -> bool {
         let power = self.power(db);
         let toughness = self.toughness(db);
+        let keywords = self.keywords(db);
         self.passes_restrictions_given_attributes(
             db,
             source,
@@ -1128,7 +1129,7 @@ impl CardId {
             restrictions,
             &self.types(db),
             &self.subtypes(db),
-            &self.keywords(db),
+            &keywords,
             &self.colors(db),
             power,
             toughness,
@@ -1352,6 +1353,22 @@ impl CardId {
                         }
                     }
                 },
+                Restriction::NumberOfCountersOnThis {
+                    comparison,
+                    counter,
+                } => {
+                    let count = CounterId::counters_on(db, self, *counter) as i32;
+                    let matched = match comparison {
+                        Comparison::LessThan(value) => count < *value,
+                        Comparison::LessThanOrEqual(value) => count <= *value,
+                        Comparison::GreaterThan(value) => count > *value,
+                        Comparison::GreaterThanOrEqual(value) => count >= *value,
+                    };
+
+                    if !matched {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1827,7 +1844,7 @@ impl CardId {
         true
     }
 
-    pub(crate) fn can_be_targeted(self, db: &Database, caster: Controller) -> bool {
+    pub(crate) fn can_be_targeted(self, db: &mut Database, caster: Controller) -> bool {
         if self.shroud(db) {
             return false;
         }
@@ -1906,31 +1923,52 @@ impl CardId {
         !self.types_intersect(db, &IndexSet::from([Type::Instant, Type::Sorcery]))
     }
 
-    pub(crate) fn keywords(self, db: &Database) -> ::counter::Counter<Keyword> {
-        db.get::<ModifiedKeywords>(self.0)
+    pub(crate) fn keywords(self, db: &mut Database) -> ::counter::Counter<Keyword> {
+        let mut base_keywords = db
+            .get::<ModifiedKeywords>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Keywords>(self.0).map(|t| t.0.clone()))
-            .unwrap_or_default()
+            .unwrap_or_default();
+        let add = self.static_abilities(db).into_iter().filter_map(|sa| {
+            if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
+                keywords,
+                restrictions,
+            }) = sa
+            {
+                if self.passes_restrictions(db, self, &restrictions) {
+                    Some(keywords)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+        for add in add {
+            base_keywords.extend(add);
+        }
+
+        base_keywords
     }
 
-    pub(crate) fn shroud(self, db: &Database) -> bool {
+    pub(crate) fn shroud(self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Shroud)
     }
 
-    pub(crate) fn hexproof(self, db: &Database) -> bool {
+    pub(crate) fn hexproof(self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Hexproof)
     }
 
     #[allow(unused)]
-    pub(crate) fn flying(self, db: &Database) -> bool {
+    pub(crate) fn flying(self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Flying)
     }
 
-    pub(crate) fn indestructible(self, db: &Database) -> bool {
+    pub(crate) fn indestructible(self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Indestructible)
     }
 
-    pub(crate) fn vigilance(self, db: &Database) -> bool {
+    pub(crate) fn vigilance(self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Vigilance)
     }
 
@@ -1942,7 +1980,7 @@ impl CardId {
         db.get::<OracleText>(self.0).unwrap().0.clone()
     }
 
-    pub(crate) fn has_flash(&self, db: &Database) -> bool {
+    pub(crate) fn has_flash(&self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Flash)
     }
 
@@ -2018,7 +2056,7 @@ impl CardId {
         false
     }
 
-    pub(crate) fn cascade(self, db: &Database) -> usize {
+    pub(crate) fn cascade(self, db: &mut Database) -> usize {
         self.keywords(db)
             .get(&Keyword::Cascade)
             .copied()
@@ -2112,7 +2150,7 @@ impl CardId {
         db.get::<CostReducer>(self.0).cloned()
     }
 
-    pub(crate) fn battle_cry(&self, db: &Database) -> bool {
+    pub(crate) fn battle_cry(&self, db: &mut Database) -> bool {
         self.keywords(db).contains_key(&Keyword::BattleCry)
     }
 

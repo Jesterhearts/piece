@@ -283,6 +283,10 @@ message Scry {
 }
 
 message StaticAbility {
+  message AddKeywordsIf {
+    string keywords = 1;
+    repeated targets.Restriction restrictions = 2;
+  }
   message CantCastIfAttacked {}
   message ForceEtbTapped {
     repeated targets.Restriction restrictions = 1;
@@ -296,15 +300,16 @@ message StaticAbility {
   message UntapEachUntapStep {}
 
   oneof ability {
-    BattlefieldModifier battlefield_modifier = 1;
-    CantCastIfAttacked cant_cast_if_attacked = 2;
-    ExtraLandsPerTurn extra_lands_per_turn = 3;
-    ForceEtbTapped force_etb_tapped = 4;
-    GreenCannotBeCountered green_cannot_be_countered = 5;
-    PreventAttacks prevent_attacks = 6;
-    PreventBlocks prevent_blocks = 7;
-    PreventAbilityActivation prevent_ability_activation = 8;
-    UntapEachUntapStep untap_each_untap_step = 9;
+    AddKeywordsIf add_keywords_if = 1;
+    BattlefieldModifier battlefield_modifier = 2;
+    CantCastIfAttacked cant_cast_if_attacked = 3;
+    ExtraLandsPerTurn extra_lands_per_turn = 4;
+    ForceEtbTapped force_etb_tapped = 5;
+    GreenCannotBeCountered green_cannot_be_countered = 6;
+    PreventAttacks prevent_attacks = 7;
+    PreventBlocks prevent_blocks = 8;
+    PreventAbilityActivation prevent_ability_activation = 9;
+    UntapEachUntapStep untap_each_untap_step = 10;
   }
 }
 

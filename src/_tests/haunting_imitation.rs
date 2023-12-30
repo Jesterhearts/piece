@@ -51,7 +51,10 @@ fn reveals_clones() -> anyhow::Result<()> {
     );
     assert_eq!(token.power(&mut db), Some(1));
     assert_eq!(token.toughness(&mut db), Some(1));
-    assert_eq!(token.keywords(&db), [Keyword::Flying].into_iter().collect());
+    assert_eq!(
+        token.keywords(&mut db),
+        [Keyword::Flying].into_iter().collect()
+    );
 
     Ok(())
 }
