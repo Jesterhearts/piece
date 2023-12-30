@@ -1,0 +1,17 @@
+name: Deadapult
+types:
+- type_: !Enchantment {}
+oracle_text: '{R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.'
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Red {}
+    additional_costs:
+    - cost: !SacrificePermanent
+        restrictions:
+        - restriction: !OfType
+            subtypes:
+            - subtype: !Zombie {}
+  effects:
+  - effect: !DealDamage
+      quantity: 2

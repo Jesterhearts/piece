@@ -1,0 +1,21 @@
+name: Bog Initiate
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Human {}
+- subtype: !Wizard {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !Black {}
+oracle_text: '{1}: Add {B}'
+mana_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 1
+  gain_mana:
+    gain: !Specific
+      gains:
+      - mana: !Black {}

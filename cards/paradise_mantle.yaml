@@ -1,0 +1,34 @@
+name: Paradise Mantle
+types:
+- type_: !Artifact {}
+subtypes:
+- subtype: !Equipment {}
+cost:
+  mana_costs:
+  - cost: !Generic {}
+oracle_text: 'Equipped creature has "{T}: Add one mana of any color."'
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 1
+  effects:
+  - effect: !Equip
+      modifiers:
+      - mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Choice
+              choices:
+              - gains:
+                - mana: !White {}
+              - gains:
+                - mana: !Blue {}
+              - gains:
+                - mana: !Black {}
+              - gains:
+                - mana: !Red {}
+              - gains:
+                - mana: !Green {}
+  oracle_text: Equip

@@ -1,0 +1,39 @@
+name: Dauntless Dismantler
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Human {}
+- subtype: !Artificer {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !White {}
+oracle_text: Artifacts your opponents control enter the battlefield tapped.
+static_abilities:
+- ability: !ForceEtbTapped
+    restrictions:
+    - restriction: !Controller
+        controller: !Opponent {}
+    - restriction: !OfType
+        types:
+        - type_: !Artifact {}
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Twox {}
+    - cost: !White {}
+    additional_costs:
+    - cost: !SacrificeSource {}
+  effects:
+  - effect: !DestroyEach
+      restrictions:
+      - restriction: !Cmc
+          cmc: !Dynamic
+            dynamic: !X {}
+      - restriction: !OfType
+          types:
+          - type_: !Artifact {}
+  oracle_text: Destroy each artifact with mana value X
+power: 1
+toughness: 4

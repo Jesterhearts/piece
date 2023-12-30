@@ -1,0 +1,28 @@
+name: Hoar Shade
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Shade {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 3
+  - cost: !Black {}
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Black {}
+  effects:
+  - effect: !BattlefieldModifier
+      modifier:
+        add_power: 1
+        add_toughness: 1
+      duration:
+        duration: !UntilEndOfTurn {}
+      restrictions:
+      - restriction: !Controller
+          controller: !Self_ {}
+  apply_to_self: true
+  oracle_text: Hoar Shade gets +1/+1 until end of turn
+power: 1
+toughness: 2

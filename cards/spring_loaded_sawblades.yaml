@@ -1,0 +1,106 @@
+name: Spring-Loaded Sawblades
+types:
+- type_: !Artifact {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !White {}
+etb_abilities:
+- oracle_text: When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage to target tapped creature an opponent controls.
+  effect: !DealDamage
+    quantity: 5
+    restrictions:
+    - restriction: !Controller
+        controller: !Opponent {}
+    - restriction: !Tapped {}
+    - restriction: !OfType
+        types:
+        - type_: !Creature {}
+    - restriction: !OnBattlefield {}
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 3
+    - cost: !White {}
+    additional_costs:
+    - cost: !ExileCard
+        restrictions:
+        - restriction: !OfType
+            types:
+            - type_: !Artifact {}
+        - restriction: !Location
+            locations:
+            - location: !OnBattlefield {}
+            - location: !InGraveyard {}
+        - restriction: !NotSelf {}
+    - cost: !ExileCard
+        restrictions:
+        - restriction: !Self_ {}
+  effects:
+  - effect: !ReturnTransformed {}
+  oracle_text: Return this card transformed under its owner's control. Craft only as sorcery.
+  sorcery_speed: true
+  craft: true
+keywords: Flash
+back_face:
+  name: Bladewheel Chariot
+  types:
+  - type_: !Artifact {}
+  subtypes:
+  - subtype: !Vehicle {}
+  colors:
+  - color: !White {}
+  activated_abilities:
+  - cost:
+      additional_costs:
+      - cost: !TapPermanent
+          restrictions:
+          - restriction: !OfType
+              types:
+              - type_: !Artifact {}
+          - restriction: !NotSelf {}
+      - cost: !TapPermanent
+          restrictions:
+          - restriction: !OfType
+              types:
+              - type_: !Artifact {}
+          - restriction: !NotSelf {}
+    effects:
+    - effect: !BattlefieldModifier
+        modifier:
+          add_types:
+          - type_: !Creature {}
+          - type_: !Artifact {}
+        duration:
+          duration: !UntilEndOfTurn {}
+        restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+    apply_to_self: true
+    oracle_text: Bladewheel Chariot becomes an artifact creature until end of turn.
+  - cost:
+      additional_costs:
+      - cost: !TapPermanentsPowerXOrMore
+          x_is: 1
+          restrictions:
+          - restriction: !OfType
+              types:
+              - type_: !Creature {}
+          - restriction: !NotSelf {}
+    effects:
+    - effect: !BattlefieldModifier
+        modifier:
+          add_types:
+          - type_: !Creature {}
+          - type_: !Artifact {}
+        duration:
+          duration: !UntilEndOfTurn {}
+        restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+    apply_to_self: true
+    oracle_text: Bladewheel Chariot becomes an artifact creature until end of turn.
+  power: 5
+  toughness: 5

@@ -20,11 +20,14 @@ fn main() {
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {
-            if !field.is_repeated() && field.proto().type_() == Type::TYPE_MESSAGE {
-                Customize::default().before(
-                    "#[serde(serialize_with = \"crate::serialize_message\", deserialize_with = \"crate::deserialize_message\")]")
-            } else {
+            if field.is_repeated() {
                 Customize::default()
+                    .before("#[serde(default, skip_serializing_if=\"Vec::is_empty\")]")
+            } else if !field.is_repeated() && field.proto().type_() == Type::TYPE_MESSAGE {
+                Customize::default().before(
+                    "#[serde(serialize_with = \"crate::serialize_message\", deserialize_with = \"crate::deserialize_message\", default, skip_serializing_if=\"::protobuf::MessageField::is_none\")]")
+            } else {
+                Customize::default().before("#[serde(default, skip_serializing_if=\"crate::is_default_value\")]")
             }
         }
 

@@ -1,0 +1,21 @@
+name: Clone
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Shapeshifter {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 3
+  - cost: !Blue {}
+oracle_text: You may have Clone enter the battlefield as a copy of any creature on the battlefield.
+replacement_effects:
+- restrictions:
+  - restriction: !Controller
+      controller: !Self_ {}
+  - restriction: !Self_ {}
+  effects:
+  - effect: !CopyOfAnyCreatureNonTargeting {}
+  replacing: !Etb {}
+power: 0
+toughness: 0

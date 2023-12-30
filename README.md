@@ -6,28 +6,23 @@ Future plans:
 - An AI capable of making interesting matches.
 
 # Adding Cards
-Cards are written in `textproto` format. You can see examples in the [cards directory](cards). Protos are defined in the [protos directory](src/protos).
-
-## Formatting
-There is a tool for formatting protos which can be invoked with `cargo run --bin format`. This will also perform validation on the protos to make sure they can be loaded by the engine. Please use it before attempting to submit any changes to the textprotos.
+Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto schema is defined in the [protos directory](src/protos).
 
 ## Quirks to be aware of
 - When adding restrictions, individual restrictions are AND'd together. So
-  ```textproto
-  restrictions {
-    of_type { types { artifact {} } }
-  }
-  restrictions {
-    of_type { types { creature {} } }
-  }
+  ```yaml
+  - restriction: !OfType
+      types:
+      - type_: !Artifact {}
+  - restrictions: !OfType
+      types:
+      - type_: !Creature {}
   ```
   will match anything that is _both_ an artifact and a creature. This is different from subfields in restrictions, which are OR'd together. So
-  ```textproto
-  restrictions {
-    of_type {
-      types { artifact {} }
-      types { creature {} }
-    }
-  }
+  ```yaml
+  - restriction: !OfType
+      types:
+      - type_: !Artifact {}
+      - type_: !Creature {}
   ```
   will matching anything that is either an artifact or a creature (or both).

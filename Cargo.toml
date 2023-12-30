@@ -9,8 +9,8 @@ name = "game"
 path = "src/bin/run_game.rs"
 
 [[bin]]
-name = "format"
-path = "src/bin/format_textproto.rs"
+name = "textproto"
+path = "src/bin/export_textproto.rs"
 
 [[bin]]
 name = "yaml"

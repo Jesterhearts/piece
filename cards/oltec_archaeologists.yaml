@@ -1,0 +1,23 @@
+name: Oltec Archaeologists
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Human {}
+- subtype: !Artificer {}
+- subtype: !Scout {}
+etb_abilities:
+- effect: !Modal
+    modes:
+    - effects:
+      - effect: !ReturnFromGraveyardToHand
+          restrictions:
+          - restriction: !Controller
+              controller: !Self_ {}
+          - restriction: !OfType
+              types:
+              - type_: !Artifact {}
+    - effects:
+      - effect: !Scry
+          count: 3
+power: 4
+toughness: 4

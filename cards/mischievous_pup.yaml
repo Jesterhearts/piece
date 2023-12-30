@@ -1,0 +1,15 @@
+name: Mischievous Pup
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Dog {}
+etb_abilities:
+- effect: !ReturnTargetToHand
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !NotSelf {}
+    - restriction: !OnBattlefield {}
+power: 3
+toughness: 1
+keywords: Flash

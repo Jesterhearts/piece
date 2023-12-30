@@ -1,0 +1,25 @@
+name: Blood Scrivener
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Zombie {}
+- subtype: !Wizard {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !Black {}
+oracle_text: If you would draw a card while you have no cards in hand, instead you draw two cards and you lose 1 life.
+replacement_effects:
+- restrictions:
+  - restriction: !Controller
+      controller: !Self_ {}
+  - restriction: !ControllerHandEmpty {}
+  effects:
+  - effect: !ControllerDrawCards
+      count: 2
+  - effect: !ControllerLosesLife
+      count: 1
+  replacing: !Draw {}
+power: 2
+toughness: 1

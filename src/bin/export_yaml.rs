@@ -1,4 +1,4 @@
-use piece::load_protos;
+use piece::{card::Card, load_protos};
 
 fn main() -> anyhow::Result<()> {
     let cards = load_protos()?;
@@ -6,6 +6,8 @@ fn main() -> anyhow::Result<()> {
     std::fs::create_dir_all("experimental/yaml")?;
 
     for (card, file) in cards {
+        let _: Card = (&card).try_into()?;
+
         std::fs::write(
             std::path::Path::new("experimental/yaml")
                 .join(file.path().file_name().unwrap())

@@ -1,9 +1,0 @@
-name: "Swamp"
-types {
-  basic_land {
-  }
-}
-subtypes {
-  swamp {
-  }
-}

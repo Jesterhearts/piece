@@ -1,0 +1,42 @@
+name: Elesh Norn, Grand Cenobite
+types:
+- type_: !Legendary {}
+- type_: !Creature {}
+subtypes:
+- subtype: !Praetor {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 5
+  - cost: !White {}
+  - cost: !White {}
+oracle_text: |
+  Vigilance
+  Other creatures you control get +2/+2
+  Creatures your opponents control get -2/-2
+static_abilities:
+- ability: !BattlefieldModifier
+    modifier:
+      add_power: 2
+      add_toughness: 2
+      entire_battlefield: true
+    duration:
+      duration: !UntilSourceLeavesBattlefield {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !NotSelf {}
+- ability: !BattlefieldModifier
+    modifier:
+      add_power: -2
+      add_toughness: -2
+      entire_battlefield: true
+    duration:
+      duration: !UntilSourceLeavesBattlefield {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Opponent {}
+    - restriction: !NotSelf {}
+power: 4
+toughness: 7
+keywords: Vigilance

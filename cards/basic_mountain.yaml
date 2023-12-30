@@ -1,0 +1,5 @@
+name: Mountain
+types:
+- type_: !BasicLand {}
+subtypes:
+- subtype: !Mountain {}

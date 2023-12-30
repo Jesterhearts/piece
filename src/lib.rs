@@ -72,7 +72,7 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
             .contents_utf8()
             .ok_or_else(|| anyhow!("Non utf-8 text proto"))?;
         total_lines += contents.lines().count();
-        let card: protogen::card::Card = protobuf::text_format::parse_from_str(contents)
+        let card: protogen::card::Card = serde_yaml::from_str(contents)
             .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
 
         results.push((card, card_file));
@@ -154,6 +154,10 @@ pub enum UiState {
     ExaminingCard(CardId),
 }
 
+pub fn is_default_value<T: Default + PartialEq>(t: &T) -> bool {
+    *t == T::default()
+}
+
 pub fn serialize_message<T, S>(
     value: &::protobuf::MessageField<T>,
     serializer: S,
@@ -176,5 +180,5 @@ where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
 {
-    T::deserialize(deserializer).map(|t| ::protobuf::MessageField::from_option(Some(t)))
+    Option::<T>::deserialize(deserializer).map(|t| ::protobuf::MessageField::from_option(t))
 }

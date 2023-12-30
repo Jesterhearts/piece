@@ -1,0 +1,24 @@
+name: Darigaaz's Attendant
+types:
+- type_: !Artifact {}
+- type_: !Creature {}
+subtypes:
+- subtype: !Golem {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 5
+oracle_text: '{1}, Sacrifice Darigaaz''s Attendant: Add {B}{R}{G}.'
+mana_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 1
+    additional_costs:
+    - cost: !SacrificeSource {}
+  gain_mana:
+    gain: !Specific
+      gains:
+      - mana: !Black {}
+      - mana: !Red {}
+      - mana: !Green {}

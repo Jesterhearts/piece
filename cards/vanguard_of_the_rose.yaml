@@ -1,0 +1,37 @@
+name: Vanguard of the Rose
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Vampire {}
+- subtype: !Knight {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !White {}
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 1
+    additional_costs:
+    - cost: !SacrificePermanent
+        restrictions:
+        - restriction: !OfType
+            types:
+            - type_: !Artifact {}
+            - type_: !Creature {}
+  effects:
+  - effect: !BattlefieldModifier
+      modifier:
+        add_keywords: Indestructible
+      duration:
+        duration: !UntilEndOfTurn {}
+      restrictions:
+      - restriction: !Controller
+          controller: !Self_ {}
+      - restriction: !Self_ {}
+  - effect: !TapThis {}
+  apply_to_self: true
+power: 3
+toughness: 1

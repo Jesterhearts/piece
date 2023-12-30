@@ -1,0 +1,59 @@
+name: Resplendent Angel
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Angel {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !White {}
+  - cost: !White {}
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 3
+    - cost: !White {}
+    - cost: !White {}
+    - cost: !White {}
+  effects:
+  - effect: !BattlefieldModifier
+      modifier:
+        add_power: 2
+        add_toughness: 2
+        add_keywords: Lifelink
+      duration:
+        duration: !UntilEndOfTurn {}
+      restrictions:
+      - restriction: !Controller
+          controller: !Self_ {}
+      - restriction: !Self_ {}
+  apply_to_self: true
+  oracle_text: Until end of turn, Resplendent Angel gets +2/+2 and gains lifelink.
+triggered_abilities:
+- trigger:
+    source:
+      trigger: !EndStep {}
+    from:
+      location: !Anywhere {}
+    restrictions:
+    - restriction: !LifeGainedThisTurn
+        count: 5
+  effects:
+  - effect: !CreateToken
+      token: !Creature
+        name: Angel
+        types:
+        - type_: !Creature {}
+        subtypes:
+        - subtype: !Angel {}
+        colors:
+        - color: !White {}
+        power: 4
+        toughness: 4
+        keywords: Flying, Vigilance
+  oracle_text: At the beginning of each end step, if you gained 5 or more life this turn, create a 4/4 white Angel creature token with flying and vigilance.
+power: 3
+toughness: 3
+keywords: Flying

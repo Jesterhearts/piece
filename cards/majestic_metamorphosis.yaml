@@ -1,0 +1,32 @@
+name: Majestic Metamorphosis
+types:
+- type_: !Instant {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 2
+  - cost: !Blue {}
+effects:
+- oracle_text: Until end of turn, target artifact or creature becomes a 4/4 Angel artifact creature and gains flying.
+  effect: !ModifyTarget
+    modifier:
+      base_power: 4
+      base_toughness: 4
+      add_types:
+      - type_: !Creature {}
+      - type_: !Artifact {}
+      add_subtypes:
+      - subtype: !Angel {}
+      add_keywords: Flying
+    duration:
+      duration: !UntilEndOfTurn {}
+    restrictions:
+    - restriction: !OfType
+        types:
+        - type_: !Creature {}
+        - type_: !Artifact {}
+- oracle_text: Draw a card
+  effect: !ControllerDrawCards
+    count: 1
+restrictions:
+- restriction: !OnBattlefield {}

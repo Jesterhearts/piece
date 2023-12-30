@@ -1,0 +1,5 @@
+name: Island
+types:
+- type_: !BasicLand {}
+subtypes:
+- subtype: !Island {}

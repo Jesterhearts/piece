@@ -1,9 +1,0 @@
-name: "Forest"
-types {
-  basic_land {
-  }
-}
-subtypes {
-  forest {
-  }
-}

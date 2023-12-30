@@ -1,0 +1,25 @@
+name: Quicksand Whirlpool
+types:
+- type_: !Instant {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 5
+  - cost: !White {}
+cost_reducer:
+  reduction:
+    cost: !Generic
+      count: 3
+  when: !TargetTappedCreature {}
+oracle_text: |-
+  This spell costs {3} less to cast if it targets a tapped creature
+  Exile target creature.
+effects:
+- effect: !ExileTarget
+    duration:
+      duration: !Permanently {}
+    restrictions:
+    - restriction: !OfType
+        types:
+        - type_: !Creature {}
+    - restriction: !OnBattlefield {}

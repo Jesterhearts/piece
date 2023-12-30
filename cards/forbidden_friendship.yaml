@@ -1,0 +1,30 @@
+name: Forbidden Friendship
+types:
+- type_: !Sorcery {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !Red {}
+oracle_text: 'Create a 1/1 red Dinosaur creature token with haste and a 1/1 white Human Soldier creature token. '
+effects:
+- effect: !CreateToken
+    token: !Creature
+      name: Dinosaur
+      subtypes:
+      - subtype: !Dinosaur {}
+      colors:
+      - color: !Red {}
+      power: 1
+      toughness: 1
+      keywords: Haste
+- effect: !CreateToken
+    token: !Creature
+      name: Human Soldier
+      subtypes:
+      - subtype: !Human {}
+      - subtype: !Soldier {}
+      colors:
+      - color: !White {}
+      power: 1
+      toughness: 1

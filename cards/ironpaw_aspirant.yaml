@@ -1,0 +1,24 @@
+name: Ironpaw Aspirant
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Cat {}
+- subtype: !Warrior {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !White {}
+etb_abilities:
+- oracle_text: When Ironpaw Aspirant enters the battlefield, put a +1/+1 counter on target creature.
+  effect: !TargetGainsCounters
+    counter:
+      type_: !P1p1 {}
+    restrictions:
+    - restriction: !OfType
+        types:
+        - type_: !Creature {}
+    - restriction: !OnBattlefield {}
+    count: !Single {}
+power: 1
+toughness: 2

@@ -1,0 +1,12 @@
+name: Hexplate Golem
+types:
+- type_: !Artifact {}
+- type_: !Creature {}
+subtypes:
+- subtype: !Golem {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 7
+power: 5
+toughness: 7

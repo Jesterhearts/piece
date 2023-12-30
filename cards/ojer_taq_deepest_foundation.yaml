@@ -1,0 +1,64 @@
+name: Ojer Taq, Deepest Foundation
+types:
+- type_: !Legendary {}
+- type_: !Creature {}
+subtypes:
+- subtype: !God {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 4
+  - cost: !White {}
+  - cost: !White {}
+triggered_abilities:
+- trigger:
+    source:
+      trigger: !PutIntoGraveyard {}
+    from:
+      location: !Battlefield {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !Self_ {}
+  effects:
+  - effect: !ReturnTransformed {}
+  oracle_text: When Ojer Taq dies, return it to the battlefield tapped and transformed under its owner's control.
+replacement_effects:
+- restrictions:
+  - restriction: !Controller
+      controller: !Self_ {}
+  - restriction: !OfType
+      types:
+      - type_: !Creature {}
+  effects:
+  - effect: !MultiplyTokens
+      multiplier: 3
+  replacing: !TokenCreation {}
+power: 6
+toughness: 6
+keywords: Vigilance
+back_face:
+  name: Temple of Civilization
+  types:
+  - type_: !Land {}
+  activated_abilities:
+  - cost:
+      mana_costs:
+      - cost: !Generic
+          count: 2
+      - cost: !White {}
+      tap: true
+      restrictions:
+      - restriction: !AttackedWithXOrMoreCreatures
+          x_is: 3
+    effects:
+    - effect: !Transform {}
+    oracle_text: Transform Temple of Civilization. Activate only if you attacked with three or more creatures this turn and only as sorcery.
+    sorcery_speed: true
+  mana_abilities:
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gains:
+        - mana: !White {}

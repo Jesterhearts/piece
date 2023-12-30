@@ -1,0 +1,30 @@
+name: Glowspore Shaman
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Elf {}
+- subtype: !Shaman {}
+cost:
+  mana_costs:
+  - cost: !Black {}
+  - cost: !Green {}
+target_individually: true
+etb_abilities:
+- oracle_text: When Glowspore Shaman enters the battlefield, mill three cards.
+  effect: !Mill
+    count: 3
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+- oracle_text: You may put a land card from your graveyard on top of your library.
+  effect: !ReturnFromGraveyardToLibrary
+    count: 1
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !OfType
+        types:
+        - type_: !Land {}
+        - type_: !BasicLand {}
+power: 3
+toughness: 1

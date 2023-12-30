@@ -1,0 +1,44 @@
+name: Allosaurus Shepherd
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Elf {}
+- subtype: !Shaman {}
+cost:
+  mana_costs:
+  - cost: !Green {}
+cannot_be_countered: true
+oracle_text: |-
+  This spell can't be countered.
+  Green spells you control can't be countered
+static_abilities:
+- ability: !GreenCannotBeCountered
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 4
+    - cost: !Green {}
+    - cost: !Green {}
+  effects:
+  - effect: !BattlefieldModifier
+      modifier:
+        base_power: 5
+        base_toughness: 5
+        add_subtypes:
+        - subtype: !Dinosaur {}
+        entire_battlefield: true
+      duration:
+        duration: !UntilEndOfTurn {}
+      restrictions:
+      - restriction: !Controller
+          controller: !Self_ {}
+      - restriction: !OfType
+          subtypes:
+          - subtype: !Elf {}
+  oracle_text: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a dinosaur in addition to its other creature types.
+power: 1
+toughness: 1

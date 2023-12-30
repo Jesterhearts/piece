@@ -1,0 +1,40 @@
+name: Market Gnome
+types:
+- type_: !Artifact {}
+- type_: !Creature {}
+subtypes:
+- subtype: !Gnome {}
+cost:
+  mana_costs:
+  - cost: !White {}
+triggered_abilities:
+- trigger:
+    source:
+      trigger: !PutIntoGraveyard {}
+    from:
+      location: !Battlefield {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !Self_ {}
+  effects:
+  - effect: !GainLife
+      count: 1
+  - effect: !ControllerDrawCards
+      count: 1
+- trigger:
+    source:
+      trigger: !ExiledDuringCraft {}
+    from:
+      location: !Battlefield {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !Self_ {}
+  effects:
+  - effect: !GainLife
+      count: 1
+  - effect: !ControllerDrawCards
+      count: 1
+power: 0
+toughness: 3

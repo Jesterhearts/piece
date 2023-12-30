@@ -1,0 +1,10 @@
+name: Counterspell
+types:
+- type_: !Instant {}
+cost:
+  mana_costs:
+  - cost: !Blue {}
+  - cost: !Blue {}
+oracle_text: Counter target spell.
+effects:
+- effect: !CounterSpell {}

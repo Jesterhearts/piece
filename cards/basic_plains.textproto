@@ -1,9 +1,0 @@
-name: "Plains"
-types {
-  basic_land {
-  }
-}
-subtypes {
-  plains {
-  }
-}

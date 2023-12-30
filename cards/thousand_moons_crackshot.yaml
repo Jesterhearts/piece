@@ -1,0 +1,37 @@
+name: Thousand Moons Crackshot
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Human {}
+- subtype: !Soldier {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 1
+  - cost: !White {}
+triggered_abilities:
+- trigger:
+    source:
+      trigger: !Attacks {}
+    from:
+      location: !Anywhere {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !Self_ {}
+  effects:
+  - effect: !PayCostThen
+      cost:
+        mana_costs:
+        - cost: !Generic
+            count: 2
+        - cost: !White {}
+      effects:
+      - effect: !TapTarget
+          restrictions:
+          - restriction: !OfType
+              types:
+              - type_: !Creature {}
+  oracle_text: Whenever Thousand Moons Crackshot attacks, you may pay {2}{W}. When you do, tap target creature.
+power: 2
+toughness: 2

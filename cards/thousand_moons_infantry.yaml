@@ -1,0 +1,15 @@
+name: Thousand Moons Infantry
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Human {}
+- subtype: !Soldier {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 2
+  - cost: !White {}
+static_abilities:
+- ability: !UntapEachUntapStep {}
+power: 2
+toughness: 4

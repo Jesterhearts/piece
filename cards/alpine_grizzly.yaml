@@ -1,0 +1,12 @@
+name: Alpine Grizzly
+types:
+- type_: !Creature {}
+subtypes:
+- subtype: !Bear {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 2
+  - cost: !Green {}
+power: 4
+toughness: 2

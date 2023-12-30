@@ -1,0 +1,38 @@
+name: Krosan Verge
+types:
+- type_: !Land {}
+target_individually: true
+activated_abilities:
+- cost:
+    mana_costs:
+    - cost: !Generic
+        count: 2
+    tap: true
+    additional_costs:
+    - cost: !SacrificeSource {}
+  effects:
+  - effect: !TutorLibrary
+      restrictions:
+      - restriction: !OfType
+          subtypes:
+          - subtype: !Forest {}
+      destination:
+        destination: !Battlefield
+          enters_tapped: true
+  - effect: !TutorLibrary
+      restrictions:
+      - restriction: !OfType
+          subtypes:
+          - subtype: !Plains {}
+      destination:
+        destination: !Battlefield
+          enters_tapped: true
+  oracle_text: Search your library for a Forest card and a Plains cards, put them onto the battlefield tapped, then shuffle.
+mana_abilities:
+- cost:
+    tap: true
+  gain_mana:
+    gain: !Specific
+      gains:
+      - mana: !Colorless {}
+etb_tapped: true

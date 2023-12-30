@@ -1,0 +1,49 @@
+name: Titania, Protector of Argoth
+types:
+- type_: !Legendary {}
+- type_: !Creature {}
+subtypes:
+- subtype: !Elemental {}
+cost:
+  mana_costs:
+  - cost: !Generic
+      count: 3
+  - cost: !Green {}
+  - cost: !Green {}
+etb_abilities:
+- oracle_text: When Titania, Protector of Argoth enters the battlefield, return target land card from your graveyard to the battlefield.
+  effect: !ReturnFromGraveyardToBattlefield
+    count: 1
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !OfType
+        types:
+        - type_: !Land {}
+        - type_: !BasicLand {}
+triggered_abilities:
+- trigger:
+    source:
+      trigger: !PutIntoGraveyard {}
+    from:
+      location: !Battlefield {}
+    restrictions:
+    - restriction: !Controller
+        controller: !Self_ {}
+    - restriction: !OfType
+        types:
+        - type_: !Land {}
+        - type_: !BasicLand {}
+  effects:
+  - effect: !CreateToken
+      token: !Creature
+        name: Elemental
+        subtypes:
+        - subtype: !Elemental {}
+        colors:
+        - color: !Green {}
+        power: 5
+        toughness: 3
+  oracle_text: Whenever a land you control is put into a graveyard from the battlefield, create a 5/3 green Elemental creature token.
+power: 5
+toughness: 3
