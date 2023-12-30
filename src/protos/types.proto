@@ -3,6 +3,7 @@ syntax = "proto3";
 package types;
 
 message Type {
+  message Adventure {}
   message Artifact {}
   message BasicLand {}
   message Battle {}
@@ -12,6 +13,7 @@ message Type {
   message Land {}
   message Legendary {}
   message Planeswalker {}
+  message Siege {}
   message Snow {}
   message Sorcery {}
   message Stickers {}
@@ -19,20 +21,22 @@ message Type {
   message World {}
 
   oneof ty {
-    Artifact artifact = 1;
-    BasicLand basic_land = 2;
-    Battle battle = 3;
-    Creature creature = 4;
-    Enchantment enchantment = 5;
-    Instant instant = 6;
-    Land land = 7;
-    Legendary legendary = 8;
-    Planeswalker planeswalker = 9;
-    Snow snow = 10;
-    Sorcery sorcery = 11;
-    Stickers stickers = 12;
-    Tribal tribal = 13;
-    World world = 14;
+    Adventure adventure = 1;
+    Artifact artifact = 2;
+    BasicLand basic_land = 3;
+    Battle battle = 4;
+    Creature creature = 5;
+    Enchantment enchantment = 6;
+    Instant instant = 7;
+    Land land = 8;
+    Legendary legendary = 9;
+    Planeswalker planeswalker = 10;
+    Siege siege = 11;
+    Snow snow = 12;
+    Sorcery sorcery = 13;
+    Stickers stickers = 14;
+    Tribal tribal = 15;
+    World world = 16;
   }
 }
 

@@ -22,11 +22,13 @@ pub(crate) enum Type {
     Legendary,
     World,
     Tribal,
+    Adventure,
     Instant,
     Sorcery,
     Creature,
     Artifact,
     Enchantment,
+    Siege,
     Battle,
     Snow,
     Land,
@@ -64,6 +66,8 @@ impl From<&protogen::types::type_::Ty> for Type {
             protogen::types::type_::Ty::Stickers(_) => Self::Stickers,
             protogen::types::type_::Ty::Tribal(_) => Self::Tribal,
             protogen::types::type_::Ty::World(_) => Self::World,
+            protogen::types::type_::Ty::Adventure(_) => Self::Adventure,
+            protogen::types::type_::Ty::Siege(_) => Self::Siege,
         }
     }
 }
