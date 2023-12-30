@@ -82,7 +82,9 @@ message Restriction {
   message ControllerControlsBlackOrGreen {}
   message ControllerHandEmpty {}
   message DescendedThisTurn {}
+  message DuringControllersTurn {}
   message InGraveyard {}
+  message JustCast {}
   message LifeGainedThisTurn {
     int32 count = 1;
   }
@@ -92,6 +94,7 @@ message Restriction {
   message ManaSpentFromSource {
     ManaSource source = 1;
   }
+  message NotChosen {}
   message NotKeywords {
     string keywords = 1;
   }
@@ -108,7 +111,11 @@ message Restriction {
     repeated types.Subtype subtypes = 2;
   }
   message OnBattlefield {}
+  message Power {
+    Comparison comparison = 1;
+  }
   message Self {}
+  message SourceCast {}
   message Tapped {}
   message Toughness {
     Comparison comparison = 1;
@@ -122,18 +129,23 @@ message Restriction {
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 6;
     ControllerHandEmpty controller_hand_empty = 7;
     DescendedThisTurn descended_this_turn = 8;
-    InGraveyard in_graveyard = 9;
-    LifeGainedThisTurn life_gained_this_turn = 10;
-    Locations location = 11;
-    ManaSpentFromSource mana_spent_from_source = 12;
-    NotKeywords not_keywords = 13;
-    NotOfType not_of_type = 14;
-    NotSelf not_self = 15;
-    OfColor of_color = 16;
-    OfType of_type = 17;
-    OnBattlefield on_battlefield = 18;
-    Self self = 19;
-    Tapped tapped = 20;
-    Toughness toughness = 21;
+    DuringControllersTurn during_controllers_turn = 9;
+    InGraveyard in_graveyard = 10;
+    JustCast just_cast = 11;
+    LifeGainedThisTurn life_gained_this_turn = 12;
+    Locations location = 13;
+    ManaSpentFromSource mana_spent_from_source = 14;
+    NotChosen not_chosen = 15;
+    NotKeywords not_keywords = 16;
+    NotOfType not_of_type = 17;
+    NotSelf not_self = 18;
+    OfColor of_color = 19;
+    OfType of_type = 20;
+    OnBattlefield on_battlefield = 21;
+    Power power = 22;
+    Self self = 23;
+    SourceCast source_cast = 24;
+    Tapped tapped = 25;
+    Toughness toughness = 26;
   }
 }

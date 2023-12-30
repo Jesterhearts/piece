@@ -393,7 +393,7 @@ impl AbilityId {
         let controller = self.original(db).controller(db);
         self.effects(db)
             .into_iter()
-            .map(|effect| effect.effect(db, controller).wants_targets())
+            .map(|effect| effect.effect(db, controller).wants_targets(db))
             .collect_vec()
     }
 
@@ -490,7 +490,7 @@ impl AbilityId {
                     }
                 }
 
-                if !can_pay_costs(db, all_players, turn, self, &ability.cost, source) {
+                if !can_pay_costs(db, all_players, self, &ability.cost, source) {
                     return false;
                 }
 
@@ -507,7 +507,7 @@ impl AbilityId {
                     return false;
                 };
 
-                can_pay_costs(db, all_players, turn, self, &ability.cost, source)
+                can_pay_costs(db, all_players, self, &ability.cost, source)
             }
             Ability::Etb { .. } => false,
         }
@@ -531,7 +531,6 @@ impl AbilityId {
 fn can_pay_costs(
     db: &mut Database,
     all_players: &AllPlayers,
-    turn: &Turn,
     ability: AbilityId,
     cost: &AbilityCost,
     source: CardId,
@@ -650,7 +649,7 @@ fn can_pay_costs(
     for restriction in cost.restrictions.iter() {
         match restriction {
             AbilityRestriction::AttackedWithXOrMoreCreatures(x) => {
-                if number_of_attackers_this_turn(db, turn) < *x {
+                if number_of_attackers_this_turn(db) < *x {
                     return false;
                 }
             }

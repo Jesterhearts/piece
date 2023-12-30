@@ -3,7 +3,7 @@ use std::vec::IntoIter;
 use crate::{
     battlefield::{ActionResult, PendingResults},
     effects::EffectBehaviors,
-    in_play::{Database, ReplacementEffectId},
+    in_play::ReplacementEffectId,
     player::Player,
 };
 
@@ -13,11 +13,11 @@ pub(crate) struct ControllerLosesLife {
 }
 
 impl EffectBehaviors for ControllerLosesLife {
-    fn needs_targets(&self) -> usize {
+    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         0
     }
 
-    fn wants_targets(&self) -> usize {
+    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         0
     }
 
@@ -65,7 +65,7 @@ impl EffectBehaviors for ControllerLosesLife {
     fn replace_draw(
         &self,
         _player: &mut Player,
-        _db: &mut Database,
+        _db: &mut crate::in_play::Database,
         _replacements: &mut IntoIter<ReplacementEffectId>,
         controller: crate::player::Controller,
         _count: usize,

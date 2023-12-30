@@ -26,6 +26,10 @@ message BattlefieldModifier {
   repeated targets.Restriction restrictions = 4;
 }
 
+message CantAttackThisTurn {
+  repeated targets.Restriction restrictions = 1;
+}
+
 message Cascade {}
 
 message ControllerDrawCards {
@@ -48,10 +52,10 @@ message CreateToken {
     repeated types.Type types = 2;
     repeated types.Subtype subtypes = 3;
     repeated color.Color colors = 4;
-    optional DynamicPowerToughness dynamic_power_toughness = 20;
-    int32 power = 5;
-    int32 toughness = 6;
-    string keywords = 7;
+    optional DynamicPowerToughness dynamic_power_toughness = 5;
+    int32 power = 6;
+    int32 toughness = 7;
+    string keywords = 8;
   }
   message Map {}
 
@@ -152,6 +156,11 @@ message ExtraLandsPerTurn {
 message ForEachManaOfSource {
   targets.ManaSource source = 1;
   Effect effect = 2;
+}
+
+message ForEachPlayerChooseThen {
+  repeated targets.Restriction restrictions = 1;
+  repeated Effect effects = 2;
 }
 
 message GainCounter {
@@ -286,12 +295,13 @@ message Scry {
 }
 
 message StaticAbility {
-  message GreenCannotBeCountered {
-    controller.Controller controller = 1;
-  }
+  message CantCastIfAttacked {}
   message ForceEtbTapped {
     controller.Controller controller = 1;
     repeated types.Type types = 2;
+  }
+  message GreenCannotBeCountered {
+    controller.Controller controller = 1;
   }
   message PreventAttacks {}
   message PreventBlocks {}
@@ -300,13 +310,14 @@ message StaticAbility {
 
   oneof ability {
     BattlefieldModifier battlefield_modifier = 1;
-    ExtraLandsPerTurn extra_lands_per_turn = 2;
-    ForceEtbTapped force_etb_tapped = 3;
-    GreenCannotBeCountered green_cannot_be_countered = 4;
-    PreventAttacks prevent_attacks = 5;
-    PreventBlocks prevent_blocks = 6;
-    PreventAbilityActivation prevent_ability_activation = 7;
-    UntapEachUntapStep untap_each_untap_step = 8;
+    CantCastIfAttacked cant_cast_if_attacked = 2;
+    ExtraLandsPerTurn extra_lands_per_turn = 3;
+    ForceEtbTapped force_etb_tapped = 4;
+    GreenCannotBeCountered green_cannot_be_countered = 5;
+    PreventAttacks prevent_attacks = 6;
+    PreventBlocks prevent_blocks = 7;
+    PreventAbilityActivation prevent_ability_activation = 8;
+    UntapEachUntapStep untap_each_untap_step = 9;
   }
 }
 
@@ -338,51 +349,53 @@ message Effect {
   oneof effect {
     BattlefieldModifier battlefield_modifier = 1;
     BattlefieldModifier modify_target = 2;
-    Cascade cascade = 3;
-    ControllerDrawCards controller_draw_cards = 4;
-    ControllerLosesLife controller_loses_life = 5;
-    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 6;
-    CounterSpell counter_spell = 7;
-    CreateToken create_token = 8;
-    CreateToken target_controller_gains_tokens = 9;
-    CreateTokenCopy create_token_copy = 10;
-    Cycling cycling = 11;
-    DealDamage deal_damage = 12;
-    DestroyEach destroy_each = 13;
-    DestroyTarget destroy_target = 14;
-    Discover discover = 15;
-    Equip equip = 16;
-    ExileTarget exile_target = 17;
+    CantAttackThisTurn cant_attack_this_turn = 3;
+    Cascade cascade = 4;
+    ControllerDrawCards controller_draw_cards = 5;
+    ControllerLosesLife controller_loses_life = 6;
+    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 7;
+    CounterSpell counter_spell = 8;
+    CreateToken create_token = 9;
+    CreateToken target_controller_gains_tokens = 10;
+    CreateTokenCopy create_token_copy = 11;
+    Cycling cycling = 12;
+    DealDamage deal_damage = 13;
+    DestroyEach destroy_each = 14;
+    DestroyTarget destroy_target = 15;
+    Discover discover = 16;
+    Equip equip = 17;
+    ExileTarget exile_target = 18;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 18;
-    ExileTargetGraveyard exile_target_graveyard = 19;
-    Explore self_explores = 20;
-    Explore target_explores = 21;
-    ForEachManaOfSource for_each_mana_of_source = 22;
-    GainCounter target_gains_counters = 23;
-    GainLife gain_life = 24;
-    Mill mill = 25;
-    Modes modal = 26;
-    MultiplyTokens multiply_tokens = 27;
-    PayCostThen pay_cost_then = 28;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 29;
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 30;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 31;
-    ReturnSelfToHand return_self_to_hand = 32;
-    ReturnTargetToHand return_target_to_hand = 33;
-    ReturnTransformed return_transformed = 34;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 35;
-    Scry scry = 36;
-    TapTarget tap_target = 37;
-    TargetToTopOfLibrary target_to_top_of_library = 38;
-    Transform transform = 39;
-    TutorLibrary tutor_library = 40;
-    UntapThis untap_this = 41;
-    UntapTarget untap_target = 42;
+        exile_target_creature_manifest_top_of_library = 19;
+    ExileTargetGraveyard exile_target_graveyard = 20;
+    Explore self_explores = 21;
+    Explore target_explores = 22;
+    ForEachManaOfSource for_each_mana_of_source = 23;
+    ForEachPlayerChooseThen for_each_player_choose_then = 24;
+    GainCounter target_gains_counters = 25;
+    GainLife gain_life = 26;
+    Mill mill = 27;
+    Modes modal = 28;
+    MultiplyTokens multiply_tokens = 29;
+    PayCostThen pay_cost_then = 30;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 31;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 32;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 33;
+    ReturnSelfToHand return_self_to_hand = 34;
+    ReturnTargetToHand return_target_to_hand = 35;
+    ReturnTransformed return_transformed = 36;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 37;
+    Scry scry = 38;
+    TapTarget tap_target = 39;
+    TargetToTopOfLibrary target_to_top_of_library = 40;
+    Transform transform = 41;
+    TutorLibrary tutor_library = 42;
+    UntapThis untap_this = 43;
+    UntapTarget untap_target = 44;
   }
 
-  optional Effect threshold = 43;
-  string oracle_text = 44;
+  optional Effect threshold = 45;
+  string oracle_text = 46;
 }
 
 message Mode {

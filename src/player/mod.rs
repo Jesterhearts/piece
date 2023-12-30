@@ -19,8 +19,8 @@ use crate::{
     deck::Deck,
     effects::replacing,
     in_play::{
-        life_gained_this_turn, times_descended_this_turn, CardId, Database, InHand,
-        ReplacementEffectId,
+        current_turn, just_cast, life_gained_this_turn, times_descended_this_turn, CardId,
+        Database, InHand, ReplacementEffectId,
     },
     mana::{Mana, ManaCost, ManaRestriction},
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
@@ -148,6 +148,25 @@ impl Owner {
                 }
                 Restriction::ManaSpentFromSource(_) => {
                     return false;
+                }
+                Restriction::Power(_) => {
+                    return false;
+                }
+                Restriction::NotChosen => {
+                    return false;
+                }
+                Restriction::SourceCast => {
+                    return false;
+                }
+                Restriction::DuringControllersTurn => {
+                    if self != current_turn(db).player {
+                        return false;
+                    }
+                }
+                Restriction::JustCast => {
+                    if !just_cast(db, self.into()) {
+                        return false;
+                    }
                 }
             }
         }

@@ -6,7 +6,10 @@ use indexmap::IndexSet;
 use crate::{
     battlefield::{Battlefield, PendingResults},
     controller::ControllerRestriction,
-    in_play::{CardId, Database, DeleteAbility, LifeGained, TimesDescended, TriggerId},
+    in_play::{
+        set_current_turn, AttackingBannedThisTurn, CardId, Database, DeleteAbility, LifeGained,
+        TimesDescended, TriggerId,
+    },
     player::{AllPlayers, Owner},
     stack::Stack,
     triggers::trigger_source,
@@ -255,6 +258,7 @@ impl Turn {
 
                 db.remove_resource::<LifeGained>();
                 db.remove_resource::<TimesDescended>();
+                db.remove_resource::<AttackingBannedThisTurn>();
 
                 let mut events = db.resource_mut::<Events<DeleteAbility>>();
                 let events = events.drain().collect::<HashSet<_>>();
@@ -265,6 +269,9 @@ impl Turn {
                 self.phase = Phase::Untap;
                 self.active_player = (self.active_player + 1) % self.turn_order.len();
                 self.priority_player = self.active_player;
+
+                set_current_turn(db, self.active_player(), self.turn_count);
+
                 Battlefield::untap(db, self.active_player());
                 self.turn_count += 1;
                 PendingResults::default()

@@ -20,11 +20,11 @@ impl TryFrom<&protogen::effects::DestroyEach> for DestroyEach {
 }
 
 impl EffectBehaviors for DestroyEach {
-    fn needs_targets(&self) -> usize {
+    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         0
     }
 
-    fn wants_targets(&self) -> usize {
+    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         0
     }
 

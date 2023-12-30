@@ -61,6 +61,7 @@ pub(crate) struct ForceEtbTapped {
 
 #[derive(Debug, Clone)]
 pub(crate) enum StaticAbility {
+    CantCastIfAttacked,
     BattlefieldModifier(Box<BattlefieldModifier>),
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
@@ -88,15 +89,8 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
 
     fn try_from(value: &protogen::effects::static_ability::Ability) -> Result<Self, Self::Error> {
         match value {
-            protogen::effects::static_ability::Ability::GreenCannotBeCountered(ability) => {
-                Ok(Self::GreenCannotBeCountered {
-                    controller: ability
-                        .controller
-                        .controller
-                        .as_ref()
-                        .map(ControllerRestriction::from)
-                        .unwrap_or_default(),
-                })
+            protogen::effects::static_ability::Ability::CantCastIfAttacked(_) => {
+                Ok(Self::CantCastIfAttacked)
             }
             protogen::effects::static_ability::Ability::BattlefieldModifier(modifier) => {
                 Ok(Self::BattlefieldModifier(Box::new(modifier.try_into()?)))
@@ -113,6 +107,16 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
                         .map(Type::try_from)
                         .collect::<anyhow::Result<_>>()?,
                 }))
+            }
+            protogen::effects::static_ability::Ability::GreenCannotBeCountered(ability) => {
+                Ok(Self::GreenCannotBeCountered {
+                    controller: ability
+                        .controller
+                        .controller
+                        .as_ref()
+                        .map(ControllerRestriction::from)
+                        .unwrap_or_default(),
+                })
             }
             protogen::effects::static_ability::Ability::PreventAttacks(_) => {
                 Ok(Self::PreventAttacks)

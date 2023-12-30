@@ -32,11 +32,11 @@ impl TryFrom<&protogen::effects::Equip> for Equip {
 }
 
 impl EffectBehaviors for Equip {
-    fn needs_targets(&self) -> usize {
+    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         1
     }
 
-    fn wants_targets(&self) -> usize {
+    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         1
     }
 

@@ -37,12 +37,13 @@ use crate::{
         Token,
     },
     in_play::{
-        self, cast_from, descend, exile_reason, life_gained_this_turn, times_descended_this_turn,
-        AbilityId, Active, Attacking, AuraId, CastFrom, CounterId, Database, EntireBattlefield,
-        ExileReason, ExiledWith, FaceDown, Global, InExile, InGraveyard, InHand, InLibrary,
-        InStack, IsToken, LeftBattlefieldTurn, Manifested, ModifierId, ModifierSeq, Modifiers,
-        Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
-        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        self, cast_from, current_turn, descend, exile_reason, just_cast, life_gained_this_turn,
+        times_descended_this_turn, AbilityId, Active, Attacking, AuraId, CastFrom, Chosen,
+        CounterId, Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile,
+        InGraveyard, InHand, InLibrary, InStack, IsToken, LeftBattlefieldTurn, Manifested,
+        ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped,
+        Transformed, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ,
+        NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -612,6 +613,12 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let power = base_power.as_ref().map(|base| match base {
+                    BasePowerType::Static(value) => *value,
+                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                        dynamic, modifier, db, &types, &subtypes,
+                    ) as i32,
+                });
                 let toughness = base_toughness.as_ref().map(|base| match base {
                     BaseToughnessType::Static(value) => *value,
                     BaseToughnessType::Dynamic(dynamic) => {
@@ -630,6 +637,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
+                    power,
                     toughness,
                 ) {
                     continue;
@@ -672,6 +680,12 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let power = base_power.as_ref().map(|base| match base {
+                    BasePowerType::Static(value) => *value,
+                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                        dynamic, modifier, db, &types, &subtypes,
+                    ) as i32,
+                });
                 let toughness = base_toughness.as_ref().map(|base| match base {
                     BaseToughnessType::Static(value) => *value,
                     BaseToughnessType::Dynamic(dynamic) => {
@@ -690,6 +704,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
+                    power,
                     toughness,
                 ) {
                     continue;
@@ -716,6 +731,12 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let power = base_power.as_ref().map(|base| match base {
+                    BasePowerType::Static(value) => *value,
+                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                        dynamic, modifier, db, &types, &subtypes,
+                    ) as i32,
+                });
                 let toughness = base_toughness.as_ref().map(|base| match base {
                     BaseToughnessType::Static(value) => *value,
                     BaseToughnessType::Dynamic(dynamic) => {
@@ -734,6 +755,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
+                    power,
                     toughness,
                 ) {
                     continue;
@@ -792,6 +814,12 @@ impl CardId {
                 let source = modifier.source(db);
                 let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
+                let power = base_power.as_ref().map(|base| match base {
+                    BasePowerType::Static(value) => *value,
+                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                        dynamic, modifier, db, &types, &subtypes,
+                    ) as i32,
+                });
                 let toughness = base_toughness
                     .as_ref()
                     .map(|base| match base {
@@ -812,6 +840,7 @@ impl CardId {
                     &subtypes,
                     &keywords,
                     &colors,
+                    power,
                     toughness,
                 ) {
                     continue;
@@ -1010,8 +1039,7 @@ impl CardId {
             .chain(
                 effects
                     .into_iter()
-                    .map(|effect| effect.into_effect(db, controller))
-                    .map(|effect| effect.needs_targets()),
+                    .map(|effect| effect.into_effect(db, controller).needs_targets(db)),
             )
             .collect_vec()
     }
@@ -1025,8 +1053,7 @@ impl CardId {
             .chain(
                 effects
                     .into_iter()
-                    .map(|effect| effect.into_effect(db, controller))
-                    .map(|effect| effect.wants_targets()),
+                    .map(|effect| effect.into_effect(db, controller).wants_targets(db)),
             )
             .collect_vec()
     }
@@ -1045,6 +1072,7 @@ impl CardId {
         controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
     ) -> bool {
+        let power = self.power(db);
         let toughness = self.toughness(db);
         self.passes_restrictions_given_attributes(
             db,
@@ -1056,6 +1084,7 @@ impl CardId {
             &self.subtypes(db),
             &self.keywords(db),
             &self.colors(db),
+            power,
             toughness,
         )
     }
@@ -1072,6 +1101,7 @@ impl CardId {
         self_subtypes: &IndexSet<Subtype>,
         self_keywords: &::counter::Counter<Keyword>,
         self_colors: &HashSet<Color>,
+        self_power: Option<i32>,
         self_toughness: Option<i32>,
     ) -> bool {
         match controller_restriction {
@@ -1128,6 +1158,21 @@ impl CardId {
                         Comparison::LessThanOrEqual(target) => toughness <= *target,
                         Comparison::GreaterThan(target) => toughness > *target,
                         Comparison::GreaterThanOrEqual(target) => toughness >= *target,
+                    } {
+                        return false;
+                    }
+                }
+                Restriction::Power(comparison) => {
+                    if self_power.is_none() {
+                        return false;
+                    }
+
+                    let power = self_power.unwrap();
+                    if !match comparison {
+                        Comparison::LessThan(target) => power < *target,
+                        Comparison::LessThanOrEqual(target) => power <= *target,
+                        Comparison::GreaterThan(target) => power > *target,
+                        Comparison::GreaterThanOrEqual(target) => power >= *target,
                     } {
                         return false;
                     }
@@ -1241,6 +1286,26 @@ impl CardId {
                             return false;
                         }
                     } else {
+                        return false;
+                    }
+                }
+                Restriction::NotChosen => {
+                    if self.chosen(db) {
+                        return false;
+                    }
+                }
+                Restriction::SourceCast => {
+                    if !source.was_cast(db) {
+                        return false;
+                    }
+                }
+                Restriction::DuringControllersTurn => {
+                    if self.controller(db) != current_turn(db).player {
+                        return false;
+                    }
+                }
+                Restriction::JustCast => {
+                    if !just_cast(db, self.controller(db)) {
                         return false;
                     }
                 }
@@ -1932,6 +1997,25 @@ impl CardId {
         db.entity_mut(self.0).insert(Location::default());
     }
 
+    pub(crate) fn was_cast(self, db: &mut Database) -> bool {
+        for location in CastFrom::iter() {
+            match location {
+                CastFrom::Hand => {
+                    if db.get::<cast_from::Hand>(self.0).is_some() {
+                        return true;
+                    }
+                }
+                CastFrom::Exile => {
+                    if db.get::<cast_from::Exile>(self.0).is_some() {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
     pub(crate) fn cascade(self, db: &Database) -> usize {
         self.keywords(db)
             .get(&Keyword::Cascade)
@@ -2028,6 +2112,24 @@ impl CardId {
 
     pub(crate) fn battle_cry(&self, db: &Database) -> bool {
         self.keywords(db).contains_key(&Keyword::BattleCry)
+    }
+
+    pub(crate) fn chosen(self, db: &Database) -> bool {
+        db.get::<Chosen>(self.0).is_some()
+    }
+
+    pub(crate) fn choose(self, db: &mut Database) {
+        db.entity_mut(self.0).insert(Chosen);
+    }
+
+    pub(crate) fn clear_all_chosen(db: &mut Database) {
+        let entities = db
+            .query_filtered::<Entity, With<Chosen>>()
+            .iter(db)
+            .collect_vec();
+        for e in entities {
+            db.entity_mut(e).remove::<Chosen>();
+        }
     }
 }
 

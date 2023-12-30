@@ -503,7 +503,7 @@ impl Stack {
             .zip((&mut targets).chain(std::iter::repeat(vec![])))
         {
             let effect = effect.into_effect(db, controller);
-            if targets.len() != effect.needs_targets() && effect.needs_targets() != 0 {
+            if targets.len() != effect.needs_targets(db) && effect.needs_targets(db) != 0 {
                 let valid_targets =
                     effect.valid_targets(db, source, controller, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
@@ -514,7 +514,7 @@ impl Stack {
                 continue;
             }
 
-            if effect.wants_targets() > 0 {
+            if effect.wants_targets(db) > 0 {
                 let valid_targets = effect
                     .valid_targets(db, source, controller, &HashSet::default())
                     .into_iter()
@@ -654,7 +654,7 @@ fn add_card_to_stack(
                 .unwrap()
                 .into_effect(db, controller);
             let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
-            if valid_targets.len() < effect.needs_targets() {
+            if valid_targets.len() < effect.needs_targets(db) {
                 return PendingResults::default();
             }
 

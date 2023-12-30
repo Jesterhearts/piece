@@ -31,9 +31,10 @@ use crate::{
         AnyEffect, BattlefieldModifier, Effect, EffectDuration, ModifyBattlefield, Token,
     },
     in_play::{
-        self, all_cards, cards, update_life_gained_this_turn, AbilityId, Active, AuraId, CardId,
-        CastFrom, CounterId, Database, ExileReason, InExile, InGraveyard, InHand, InLibrary,
-        InStack, ModifierId, NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
+        self, add_just_cast, all_cards, ban_attacking_this_turn, cards, clear_just_cast,
+        update_life_gained_this_turn, AbilityId, Active, AuraId, CardId, CastFrom, CounterId,
+        Database, ExileReason, InExile, InGraveyard, InHand, InLibrary, InStack, ModifierId,
+        NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
     },
     mana::{Mana, ManaRestriction},
     player::{
@@ -93,6 +94,7 @@ pub(crate) enum ActionResult {
         target: ActiveTarget,
     },
     ApplyToBattlefield(ModifierId),
+    BanAttacking(Owner),
     Cascade {
         source: CardId,
         cascading: usize,
@@ -129,6 +131,7 @@ pub(crate) enum ActionResult {
     },
     DestroyEach(CardId, Vec<Restriction>),
     DestroyTarget(ActiveTarget),
+    Discard(CardId),
     Discover {
         source: CardId,
         count: usize,
@@ -220,7 +223,6 @@ pub(crate) enum ActionResult {
     ReturnFromGraveyardToHand {
         targets: Vec<ActiveTarget>,
     },
-    Discard(CardId),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -583,7 +585,7 @@ impl Battlefield {
                 let valid_targets =
                     effect.valid_targets(db, card, controller, results.all_currently_targeted());
 
-                if effect.needs_targets() > valid_targets.len() {
+                if effect.needs_targets(db) > valid_targets.len() {
                     return PendingResults::default();
                 }
 
@@ -629,6 +631,9 @@ impl Battlefield {
         for card in all_cards(db) {
             card.apply_modifiers_layered(db);
         }
+
+        clear_just_cast(db);
+        CardId::clear_all_chosen(db);
 
         pending
     }
@@ -914,6 +919,8 @@ impl Battlefield {
                 chosen_modes,
             } => {
                 let mut results = PendingResults::default();
+
+                add_just_cast(db, card.controller(db));
 
                 card.move_to_stack(db, targets.clone(), Some(*from), chosen_modes.clone());
                 if let Some(x_is) = x_is {
@@ -1321,6 +1328,10 @@ impl Battlefield {
                 target.move_to_limbo(db);
                 target.faceup_face(db).move_to_battlefield(db);
 
+                PendingResults::default()
+            }
+            ActionResult::BanAttacking(player) => {
+                ban_attacking_this_turn(db, *player);
                 PendingResults::default()
             }
         }

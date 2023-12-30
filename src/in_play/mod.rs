@@ -36,7 +36,10 @@ pub(crate) use modifierid::{ModifierId, ModifierSeq, Modifiers};
 pub(crate) use replacementid::ReplacementEffectId;
 pub(crate) use triggerid::TriggerId;
 
-use crate::{newtype_enum::newtype_enum, player::Owner, turns::Turn};
+use crate::{
+    newtype_enum::newtype_enum,
+    player::{Controller, Owner},
+};
 
 static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
 static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
@@ -65,6 +68,7 @@ pub(crate) struct Attacking(pub(crate) Owner);
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+#[derive(strum::EnumIter)]
 pub(crate)enum CastFrom {
     Hand,
     Exile,
@@ -213,6 +217,9 @@ pub struct InExile;
 #[derive(Debug, Clone, Copy, Component)]
 pub(crate) struct IsToken;
 
+#[derive(Debug, Clone, Copy, Component)]
+pub(crate) struct Chosen;
+
 #[derive(Debug, Clone, Component, Deref, DerefMut, Default)]
 pub(crate) struct Modifying(HashSet<CardId>);
 
@@ -237,15 +244,32 @@ pub fn cards<Location: Component + Ord>(db: &mut Database) -> Vec<CardId> {
         .collect()
 }
 
+#[derive(Debug, Clone, Copy, Resource)]
+pub(crate) struct CurrentTurn {
+    pub(crate) player: Owner,
+    pub(crate) turn: usize,
+}
+
+pub(crate) fn current_turn(db: &Database) -> CurrentTurn {
+    *db.get_resource::<CurrentTurn>().unwrap()
+}
+
+pub(crate) fn set_current_turn(db: &mut Database, player: Owner, turn_count: usize) {
+    db.insert_resource(CurrentTurn {
+        player,
+        turn: turn_count,
+    });
+}
+
 #[derive(Debug, Resource)]
 pub(crate) struct NumberOfAttackers {
     pub(crate) count: usize,
     pub(crate) turn: usize,
 }
 
-pub(crate) fn number_of_attackers_this_turn(db: &Database, turn: &Turn) -> usize {
+pub(crate) fn number_of_attackers_this_turn(db: &Database) -> usize {
     if let Some(number) = db.get_resource::<NumberOfAttackers>() {
-        if number.turn == turn.turn_count {
+        if number.turn == current_turn(db).turn {
             number.count
         } else {
             0
@@ -278,6 +302,29 @@ pub(crate) fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
     }
 }
 
+#[derive(Debug, Resource, Deref, DerefMut)]
+pub(crate) struct JustCast(HashSet<Controller>);
+
+pub(crate) fn just_cast(db: &mut Database, controller: Controller) -> bool {
+    if let Some(just_cast) = db.get_resource::<JustCast>() {
+        just_cast.contains(&controller)
+    } else {
+        false
+    }
+}
+
+pub(crate) fn add_just_cast(db: &mut Database, controller: Controller) {
+    if let Some(mut just_cast) = db.get_resource_mut::<JustCast>() {
+        just_cast.insert(controller);
+    } else {
+        db.insert_resource(JustCast(HashSet::from([controller])));
+    }
+}
+
+pub(crate) fn clear_just_cast(db: &mut Database) {
+    db.remove_resource::<JustCast>();
+}
+
 #[derive(Debug, Resource)]
 pub(crate) struct TimesDescended {
     counts: HashMap<Owner, usize>,
@@ -298,6 +345,17 @@ pub(crate) fn times_descended_this_turn(db: &Database, player: Owner) -> usize {
         number.counts.get(&player).copied().unwrap_or_default()
     } else {
         0
+    }
+}
+
+#[derive(Debug, Resource, Deref, DerefMut)]
+pub(crate) struct AttackingBannedThisTurn(HashSet<Owner>);
+
+pub(crate) fn ban_attacking_this_turn(db: &mut Database, player: Owner) {
+    if let Some(mut banned) = db.get_resource_mut::<AttackingBannedThisTurn>() {
+        banned.insert(player);
+    } else {
+        db.insert_resource(AttackingBannedThisTurn(HashSet::from([player])));
     }
 }
 

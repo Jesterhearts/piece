@@ -38,11 +38,11 @@ impl TryFrom<&protogen::effects::Cycling> for Cycling {
 }
 
 impl EffectBehaviors for Cycling {
-    fn needs_targets(&'static self) -> usize {
+    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         0
     }
 
-    fn wants_targets(&'static self) -> usize {
+    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
         if !self.types.is_empty() || !self.subtypes.is_empty() {
             1
         } else {

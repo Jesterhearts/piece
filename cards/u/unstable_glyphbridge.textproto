@@ -1,0 +1,175 @@
+name: "Unstable Glyphbridge"
+types {
+  artifact {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 3
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+etb_abilities {
+  for_each_player_choose_then {
+    restrictions {
+      source_cast {
+      }
+    }
+    restrictions {
+      of_type {
+        types {
+          creature {
+          }
+        }
+      }
+    }
+    restrictions {
+      on_battlefield {
+      }
+    }
+    restrictions {
+      power {
+        comparison {
+          less_than_or_equal {
+            value: 2
+          }
+        }
+      }
+    }
+    effects {
+      destroy_each {
+        restrictions {
+          not_chosen {
+          }
+        }
+      }
+    }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 3
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    mana_costs {
+      white {
+      }
+    }
+    additional_costs {
+      exile_card {
+        restrictions {
+          not_self {
+          }
+        }
+        restrictions {
+          of_type {
+            types {
+              artifact {
+              }
+            }
+          }
+        }
+        restrictions {
+          location {
+            locations {
+              on_battlefield {
+              }
+            }
+            locations {
+              in_graveyard {
+              }
+            }
+          }
+        }
+      }
+    }
+    additional_costs {
+      exile_card {
+        restrictions {
+          self {
+          }
+        }
+      }
+    }
+  }
+  effects {
+    return_transformed {
+    }
+  }
+  oracle_text: "Return to the battlefield transformed under its owners control."
+  sorcery_speed: true
+  craft: true
+}
+back_face {
+  name: "Sandswirl Wanderglyph"
+  types {
+    artifact {
+    }
+  }
+  types {
+    creature {
+    }
+  }
+  subtypes {
+    golem {
+    }
+  }
+  colors {
+    white {
+    }
+  }
+  static_abilities {
+    cant_cast_if_attacked {
+    }
+  }
+  triggered_abilities {
+    trigger {
+      source {
+        cast {
+        }
+      }
+      from {
+        anywhere {
+        }
+      }
+      controller {
+        opponent {
+        }
+      }
+      restrictions {
+        during_controllers_turn {
+        }
+      }
+    }
+    effects {
+      cant_attack_this_turn {
+        restrictions {
+          just_cast {
+          }
+        }
+        restrictions {
+          not_self {
+          }
+        }
+      }
+    }
+  }
+  power: 5
+  toughness: 3
+  keywords: "Flying"
+}

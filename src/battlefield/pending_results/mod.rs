@@ -1,3 +1,4 @@
+pub(crate) mod choose_for_each_player;
 pub(crate) mod choose_modes;
 pub(crate) mod choose_scry;
 pub(crate) mod choose_targets;
@@ -19,6 +20,7 @@ use itertools::Itertools;
 use crate::{
     abilities::GainMana,
     battlefield::{
+        choose_for_each_player::ChooseForEachPlayer,
         choose_scry::ChoosingScry,
         choosing_cast::ChoosingCast,
         organizing_stack::OrganizingStack,
@@ -109,16 +111,16 @@ pub(crate) enum TargetSource {
 }
 
 impl TargetSource {
-    fn wants_targets(&self) -> usize {
+    fn wants_targets(&self, db: &mut Database) -> usize {
         match self {
-            TargetSource::Effect(effect) => effect.wants_targets(),
+            TargetSource::Effect(effect) => effect.wants_targets(db),
             TargetSource::Aura(_) => 1,
         }
     }
 
-    fn needs_targets(&self) -> usize {
+    fn needs_targets(&self, db: &mut Database) -> usize {
         match self {
-            TargetSource::Effect(effect) => effect.needs_targets(),
+            TargetSource::Effect(effect) => effect.needs_targets(db),
             TargetSource::Aura(_) => 1,
         }
     }
@@ -127,6 +129,7 @@ impl TargetSource {
 #[derive(Debug)]
 #[enum_dispatch(PendingResult)]
 pub(crate) enum Pending {
+    ChooseForEachPlayer(ChooseForEachPlayer),
     ChooseModes(ChooseModes),
     ChooseTargets(ChooseTargets),
     ChooseCast(ChoosingCast),
@@ -258,6 +261,10 @@ impl PendingResults {
 
     pub(crate) fn push_chosen_mode(&mut self, choice: usize) {
         self.chosen_modes.push(choice);
+    }
+
+    pub(crate) fn push_choose_for_each(&mut self, choice: ChooseForEachPlayer) {
+        self.pending.push_back(Pending::ChooseForEachPlayer(choice));
     }
 
     pub(crate) fn push_choose_targets(&mut self, choice: ChooseTargets) {

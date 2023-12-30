@@ -1,5 +1,6 @@
 pub(crate) mod battle_cry;
 pub(crate) mod battlefield_modifier;
+mod cant_attack_this_turn;
 pub(crate) mod cascade;
 pub(crate) mod controller_draws_cards;
 pub(crate) mod controller_loses_life;
@@ -16,6 +17,7 @@ pub(crate) mod equip;
 pub(crate) mod exile_target;
 pub(crate) mod exile_target_creature_manifest_top_of_library;
 pub(crate) mod exile_target_graveyard;
+pub(crate) mod for_each_player_choose_then;
 pub(crate) mod foreach_mana_of_source;
 pub(crate) mod gain_life;
 pub(crate) mod mill;
@@ -56,6 +58,7 @@ use crate::{
     card::{Color, Keyword},
     controller::ControllerRestriction,
     effects::{
+        cant_attack_this_turn::CantAttackThisTurn,
         cascade::Cascade,
         controller_draws_cards::ControllerDrawsCards,
         controller_loses_life::ControllerLosesLife,
@@ -72,6 +75,7 @@ use crate::{
         exile_target::ExileTarget,
         exile_target_creature_manifest_top_of_library::ExileTargetCreatureManifestTopOfLibrary,
         exile_target_graveyard::ExileTargetGraveyard,
+        for_each_player_choose_then::ForEachPlayerChooseThen,
         foreach_mana_of_source::ForEachManaOfSource,
         gain_life::GainLife,
         mill::Mill,
@@ -415,9 +419,9 @@ pub(crate) trait EffectBehaviors: Debug {
         false
     }
 
-    fn needs_targets(&'static self) -> usize;
+    fn needs_targets(&'static self, db: &mut Database) -> usize;
 
-    fn wants_targets(&'static self) -> usize;
+    fn wants_targets(&'static self, db: &mut Database) -> usize;
 
     fn valid_targets(
         &'static self,
@@ -525,6 +529,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ModifyTarget(value) => {
                 Ok(Self(Box::leak(Box::new(ModifyTarget::try_from(value)?))))
             }
+            protogen::effects::effect::Effect::CantAttackThisTurn(value) => Ok(Self(Box::leak(
+                Box::new(CantAttackThisTurn::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::Cascade(_) => Ok(Self(&Cascade)),
             protogen::effects::effect::Effect::ControllerDrawCards(value) => {
                 Ok(Self(Box::leak(Box::new(ControllerDrawsCards {
@@ -578,6 +585,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ForEachManaOfSource(value) => Ok(Self(Box::leak(
                 Box::new(ForEachManaOfSource::try_from(value)?),
             ))),
+            protogen::effects::effect::Effect::ForEachPlayerChooseThen(value) => Ok(Self(
+                Box::leak(Box::new(ForEachPlayerChooseThen::try_from(value)?)),
+            )),
             protogen::effects::effect::Effect::TargetGainsCounters(value) => Ok(Self(Box::leak(
                 Box::new(TargetGainsCounters::try_from(value)?),
             ))),
@@ -697,7 +707,7 @@ impl AnyEffect {
 
     pub(crate) fn needs_targets(&self, db: &mut Database, controller: Controller) -> usize {
         let effect = self.effect(db, controller);
-        effect.needs_targets()
+        effect.needs_targets(db)
     }
 }
 

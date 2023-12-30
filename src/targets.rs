@@ -224,12 +224,15 @@ pub(crate) enum Restriction {
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
     DescendedThisTurn,
+    DuringControllersTurn,
     InGraveyard,
     InLocation {
         locations: Vec<Location>,
     },
+    JustCast,
     LifeGainedThisTurn(usize),
     ManaSpentFromSource(ManaSource),
+    NotChosen,
     NotKeywords(IndexSet<Keyword>),
     NotOfType {
         types: IndexSet<Type>,
@@ -242,7 +245,9 @@ pub(crate) enum Restriction {
         subtypes: IndexSet<Subtype>,
     },
     OnBattlefield,
+    Power(Comparison),
     Self_,
+    SourceCast,
     Tapped,
     Toughness(Comparison),
 }
@@ -259,16 +264,19 @@ impl Restriction {
             }
             Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
             Restriction::DescendedThisTurn => "descended this turn".to_string(),
+            Restriction::DuringControllersTurn => "during controller's turn".to_string(),
             Restriction::InGraveyard => "in a graveyard".to_string(),
             Restriction::InLocation { locations } => {
                 format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
             }
+            Self::JustCast => "just cast".to_string(),
             Restriction::LifeGainedThisTurn(count) => {
                 format!("{} or more life this turn", count)
             }
             Restriction::ManaSpentFromSource(source) => {
                 format!("mana from {}", source.as_ref())
             }
+            Restriction::NotChosen => "not chosen".to_string(),
             Restriction::NotKeywords(keywords) => {
                 format!("without {}", keywords.iter().map(|k| k.as_ref()).join(", "))
             }
@@ -306,7 +314,9 @@ impl Restriction {
                 }
             }
             Restriction::OnBattlefield => "on the battlefield".to_string(),
+            Restriction::Power(power) => format!("power {}", power),
             Restriction::Self_ => "self".to_string(),
+            Restriction::SourceCast => "cast".to_string(),
             Restriction::Tapped => "tapped".to_string(),
             Restriction::Toughness(toughness) => format!("toughness {}", toughness),
         }
@@ -345,7 +355,11 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::DescendedThisTurn(_) => {
                 Ok(Self::DescendedThisTurn)
             }
+            protogen::targets::restriction::Restriction::DuringControllersTurn(_) => {
+                Ok(Self::DuringControllersTurn)
+            }
             protogen::targets::restriction::Restriction::InGraveyard(_) => Ok(Self::InGraveyard),
+            protogen::targets::restriction::Restriction::JustCast(_) => Ok(Self::JustCast),
             protogen::targets::restriction::Restriction::LifeGainedThisTurn(value) => {
                 Ok(Self::LifeGainedThisTurn(usize::try_from(value.count)?))
             }
@@ -359,6 +373,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::ManaSpentFromSource(spent) => Ok(
                 Self::ManaSpentFromSource(spent.source.get_or_default().try_into()?),
             ),
+            protogen::targets::restriction::Restriction::NotChosen(_) => Ok(Self::NotChosen),
             protogen::targets::restriction::Restriction::NotKeywords(not) => Ok(Self::NotKeywords(
                 not.keywords
                     .split(',')
@@ -401,7 +416,11 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::OnBattlefield(_) => {
                 Ok(Self::OnBattlefield)
             }
+            protogen::targets::restriction::Restriction::Power(power) => {
+                Ok(Self::Power(power.comparison.get_or_default().try_into()?))
+            }
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
+            protogen::targets::restriction::Restriction::SourceCast(_) => Ok(Self::SourceCast),
             protogen::targets::restriction::Restriction::Tapped(_) => Ok(Self::Tapped),
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),
