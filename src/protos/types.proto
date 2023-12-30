@@ -12,7 +12,11 @@ message Type {
   message Land {}
   message Legendary {}
   message Planeswalker {}
+  message Snow {}
   message Sorcery {}
+  message Stickers {}
+  message Tribal {}
+  message World {}
 
   oneof ty {
     Artifact artifact = 1;
@@ -24,90 +28,770 @@ message Type {
     Land land = 7;
     Legendary legendary = 8;
     Planeswalker planeswalker = 9;
-    Sorcery sorcery = 10;
+    Snow snow = 10;
+    Sorcery sorcery = 11;
+    Stickers stickers = 12;
+    Tribal tribal = 13;
+    World world = 14;
   }
 }
 
 message Subtype {
+  message Advisor {}
+  message Aetherborn {}
+  message Ajani {}
+  message Alien {}
+  message Ally {}
+  message Aminatou {}
   message Angel {}
+  message Angrath {}
+  message Antelope {}
+  message Ape {}
+  message Arcane {}
+  message Archer {}
+  message Archon {}
+  message Arlinn {}
   message Artificer {}
+  message Ashiok {}
+  message Assassin {}
+  message AssemblyWorker {}
+  message Astartes {}
+  message Atog {}
+  message Attraction {}
   message Aura {}
+  message Aurochs {}
+  message Avatar {}
+  message Azra {}
+  message Background {}
+  message Badger {}
+  message Bahamut {}
+  message Barbarian {}
+  message Bard {}
+  message Basilisk {}
+  message Basri {}
   message Bat {}
   message Bear {}
+  message Beast {}
+  message Beeble {}
+  message Beholder {}
+  message Berserker {}
   message Bird {}
+  message Boar {}
+  message Bolas {}
+  message Bringer {}
+  message Brushwagg {}
+  message Calix {}
+  message Camel {}
+  message Capybara {}
+  message Carrier {}
+  message Cartouche {}
   message Cat {}
   message Cave {}
+  message Centaur {}
+  message Cephalid {}
+  message Chandra {}
+  message Child {}
+  message Chimera {}
+  message Citizen {}
+  message Class {}
   message Cleric {}
+  message Clown {}
+  message Clue {}
+  message Cockatrice {}
+  message Comet {}
+  message Construct {}
+  message Coward {}
+  message Crab {}
+  message Crocodile {}
+  message Ctan {}
+  message Curse {}
+  message Custodes {}
+  message Cyberman {}
+  message Cyclops {}
+  message Dack {}
+  message Dakkon {}
+  message Dalek {}
+  message Daretti {}
+  message Dauthi {}
+  message Davriel {}
+  message Demigod {}
+  message Demon {}
+  message Desert {}
+  message Detective {}
+  message Devil {}
+  message Dihada {}
   message Dinosaur {}
+  message Djinn {}
+  message Doctor {}
   message Dog {}
+  message Domri {}
+  message Dovin {}
+  message Dragon {}
+  message Drake {}
+  message Dreadnought {}
+  message Drone {}
+  message Druid {}
   message Dryad {}
+  message Dwarf {}
+  message Efreet {}
+  message Egg {}
+  message Elder {}
   message Eldrazi {}
   message Elemental {}
+  message Elephant {}
   message Elf {}
+  message Elk {}
+  message Ellywick {}
+  message Elminster {}
+  message Elspeth {}
+  message Employee {}
   message Equipment {}
+  message Estrid {}
+  message Eye {}
+  message Faerie {}
+  message Ferret {}
+  message Fish {}
+  message Flagbearer {}
+  message Food {}
   message Forest {}
+  message Fortification {}
+  message Fox {}
+  message Fractal {}
+  message Freyalise {}
+  message Frog {}
+  message Fungus {}
+  message Gamer {}
+  message Gargoyle {}
+  message Garruk {}
+  message Gate {}
+  message Giant {}
+  message Gideon {}
+  message Gith {}
+  message Gnoll {}
   message Gnome {}
+  message Goat {}
+  message Goblin {}
   message God {}
   message Golem {}
+  message Gorgon {}
+  message Gremlin {}
+  message Griffin {}
+  message Grist {}
+  message Guest {}
+  message Guff {}
+  message Hag {}
+  message Halfling {}
+  message Harpy {}
+  message Hellion {}
+  message Hippo {}
+  message Hippogriff {}
+  message Homarid {}
+  message Homunculus {}
+  message Horror {}
+  message Horse {}
+  message Huatli {}
   message Human {}
+  message Hydra {}
+  message Hyena {}
+  message Illusion {}
+  message Imp {}
+  message Incarnation {}
+  message Inquisitor {}
+  message Insect {}
   message Island {}
+  message Jace {}
+  message Jackal {}
+  message Jared {}
+  message Jaya {}
+  message Jellyfish {}
+  message Jeska {}
+  message Juggernaut {}
+  message Kaito {}
+  message Karn {}
+  message Kasmina {}
+  message Kavu {}
+  message Kaya {}
+  message Kiora {}
+  message Kirin {}
+  message Kithkin {}
   message Knight {}
+  message Kobold {}
+  message Kor {}
+  message Koth {}
+  message Kraken {}
+  message Lair {}
+  message Lamia {}
+  message Lammasu {}
+  message Leech {}
+  message Lesson {}
+  message Leviathan {}
+  message Lhurgoyf {}
+  message Licid {}
+  message Liliana {}
+  message Lizard {}
+  message Locus {}
+  message Lolth {}
+  message Lord {}
+  message Lukka {}
+  message Manticore {}
+  message Masticore {}
+  message Mercenary {}
+  message Merfolk {}
+  message Metathran {}
+  message Mine {}
+  message Minion {}
+  message Minotaur {}
+  message Minsc {}
+  message Mite {}
+  message Mole {}
+  message Monger {}
+  message Mongoose {}
+  message Monk {}
+  message Monkey {}
+  message Moonfolk {}
+  message Mordenkainen {}
   message Mountain {}
+  message Mouse {}
+  message Mutant {}
+  message Myr {}
+  message Mystic {}
+  message Naga {}
+  message Nahiri {}
+  message Narset {}
+  message Nautilus {}
+  message Necron {}
+  message Nephilim {}
+  message Nightmare {}
+  message Nightstalker {}
+  message Niko {}
+  message Ninja {}
+  message Nissa {}
+  message Nixilis {}
+  message Noble {}
+  message Noggle {}
+  message Nomad {}
   message Nymph {}
+  message Octopus {}
+  message Ogre {}
+  message Oko {}
+  message Ooze {}
+  message Orc {}
+  message Orgg {}
+  message Otter {}
+  message Ouphe {}
+  message Ox {}
+  message Oyster {}
+  message Pangolin {}
+  message Peasant {}
+  message Pegasus {}
+  message Performer {}
+  message Pest {}
+  message Phelddagrif {}
+  message Phoenix {}
+  message Phyrexian {}
+  message Pilot {}
+  message Pirate {}
   message Plains {}
+  message Plant {}
+  message PowerPlant {}
+  message Powerstone {}
   message Praetor {}
+  message Primarch {}
+  message Processor {}
+  message Quintorius {}
+  message Rabbit {}
+  message Raccoon {}
+  message Ral {}
+  message Ranger {}
+  message Rat {}
+  message Rebel {}
+  message Rhino {}
+  message Rigger {}
+  message Robot {}
+  message Rogue {}
+  message Rowan {}
+  message Rune {}
+  message Sable {}
+  message Saga {}
+  message Saheeli {}
+  message Salamander {}
+  message Samurai {}
+  message Samut {}
+  message Sarkhan {}
+  message Satyr {}
+  message Scarecrow {}
+  message Scientist {}
+  message Scorpion {}
   message Scout {}
+  message Serpent {}
+  message Serra {}
   message Shade {}
   message Shaman {}
   message Shapeshifter {}
+  message Shark {}
+  message Sheep {}
+  message Shrine {}
+  message Siren {}
+  message Sivitri {}
+  message Skeleton {}
+  message Slith {}
+  message Sliver {}
+  message Slug {}
+  message Snail {}
+  message Snake {}
   message Soldier {}
+  message Soltari {}
+  message Sorin {}
+  message Spawn {}
+  message Specter {}
+  message Spellshaper {}
+  message Sphere {}
+  message Sphinx {}
+  message Spider {}
+  message Spike {}
   message Spirit {}
+  message Sponge {}
+  message Squid {}
+  message Squirrel {}
+  message Starfish {}
+  message Surrakar {}
   message Swamp {}
+  message Szat {}
+  message Tamiyo {}
+  message Tasha {}
+  message Teferi {}
+  message Teyo {}
+  message Tezzeret {}
+  message Thalakos {}
+  message Thopter {}
+  message Thrull {}
+  message Tibalt {}
+  message Tiefling {}
+  message Time {}
+  message Tower {}
+  message Trap {}
+  message Treasure {}
+  message Treefolk {}
+  message Trilobite {}
+  message Troll {}
+  message Turtle {}
+  message Tyranid {}
+  message Tyvar {}
+  message Ugin {}
+  message Unicorn {}
+  message Urza {}
+  message Urzas {}
   message Vampire {}
+  message Vedalken {}
   message Vehicle {}
+  message Venser {}
+  message Viashino {}
+  message Vivien {}
+  message Volver {}
+  message Vraska {}
+  message Vronos {}
+  message Wall {}
+  message Walrus {}
+  message Warlock {}
   message Warrior {}
+  message Weird {}
+  message Werewolf {}
+  message Whale {}
+  message Will {}
+  message Windgrace {}
   message Wizard {}
+  message Wolf {}
+  message Wolverine {}
+  message Wombat {}
+  message Worm {}
+  message Wraith {}
+  message Wrenn {}
+  message Wurm {}
+  message Xenagos {}
+  message Yanggu {}
+  message Yanling {}
+  message Yeti {}
+  message Zariel {}
   message Zombie {}
+  message Zubera {}
 
   oneof subtype {
-    Angel angel = 1;
-    Artificer artificer = 2;
-    Aura aura = 3;
-    Bat bat = 4;
-    Bear bear = 5;
-    Bird bird = 6;
-    Cat cat = 7;
-    Cave cave = 8;
-    Cleric cleric = 9;
-    Dinosaur dinosaur = 10;
-    Dog dog = 11;
-    Dryad dryad = 12;
-    Eldrazi eldrazi = 13;
-    Elemental elemental = 14;
-    Elf elf = 15;
-    Equipment equipment = 16;
-    Forest forest = 17;
-    Gnome gnome = 18;
-    God god = 19;
-    Golem golem = 20;
-    Human human = 21;
-    Island island = 22;
-    Knight knight = 23;
-    Mountain mountain = 24;
-    Nymph nymph = 25;
-    Plains plains = 26;
-    Praetor praetor = 27;
-    Scout scout = 28;
-    Shade shade = 29;
-    Shaman shaman = 30;
-    Shapeshifter shapeshifter = 31;
-    Soldier soldier = 32;
-    Spirit spirit = 33;
-    Swamp swamp = 34;
-    Vampire vampire = 35;
-    Vehicle vehicle = 36;
-    Warrior warrior = 37;
-    Wizard wizard = 38;
-    Zombie zombie = 39;
+    Advisor advisor = 1;
+    Aetherborn aetherborn = 2;
+    Ajani ajani = 3;
+    Alien alien = 4;
+    Ally ally = 5;
+    Aminatou aminatou = 6;
+    Angel angel = 7;
+    Angrath angrath = 8;
+    Antelope antelope = 9;
+    Ape ape = 10;
+    Arcane arcane = 11;
+    Archer archer = 12;
+    Archon archon = 13;
+    Arlinn arlinn = 14;
+    Artificer artificer = 15;
+    Ashiok ashiok = 16;
+    Assassin assassin = 17;
+    AssemblyWorker assemblyWorker = 18;
+    Astartes astartes = 19;
+    Atog atog = 20;
+    Attraction attraction = 21;
+    Aura aura = 22;
+    Aurochs aurochs = 23;
+    Avatar avatar = 24;
+    Azra azra = 25;
+    Background background = 26;
+    Badger badger = 27;
+    Bahamut bahamut = 28;
+    Barbarian barbarian = 29;
+    Bard bard = 30;
+    Basilisk basilisk = 31;
+    Basri basri = 32;
+    Bat bat = 33;
+    Bear bear = 34;
+    Beast beast = 35;
+    Beeble beeble = 36;
+    Beholder beholder = 37;
+    Berserker berserker = 38;
+    Bird bird = 39;
+    Boar boar = 40;
+    Bolas bolas = 41;
+    Bringer bringer = 42;
+    Brushwagg brushwagg = 43;
+    Calix calix = 44;
+    Camel camel = 45;
+    Capybara capybara = 46;
+    Carrier carrier = 47;
+    Cartouche cartouche = 48;
+    Cat cat = 49;
+    Cave cave = 50;
+    Centaur centaur = 51;
+    Cephalid cephalid = 52;
+    Chandra chandra = 53;
+    Child child = 54;
+    Chimera chimera = 55;
+    Citizen citizen = 56;
+    Class class = 57;
+    Cleric cleric = 58;
+    Clown clown = 59;
+    Clue clue = 60;
+    Cockatrice cockatrice = 61;
+    Comet comet = 62;
+    Construct construct = 63;
+    Coward coward = 64;
+    Crab crab = 65;
+    Crocodile crocodile = 66;
+    Ctan ctan = 67;
+    Curse curse = 68;
+    Custodes custodes = 69;
+    Cyberman cyberman = 70;
+    Cyclops cyclops = 71;
+    Dack dack = 72;
+    Dakkon dakkon = 73;
+    Dalek dalek = 74;
+    Daretti daretti = 75;
+    Dauthi dauthi = 76;
+    Davriel davriel = 77;
+    Demigod demigod = 78;
+    Demon demon = 79;
+    Desert desert = 80;
+    Detective detective = 81;
+    Devil devil = 82;
+    Dihada dihada = 83;
+    Dinosaur dinosaur = 84;
+    Djinn djinn = 85;
+    Doctor doctor = 86;
+    Dog dog = 87;
+    Domri domri = 88;
+    Dovin dovin = 89;
+    Dragon dragon = 90;
+    Drake drake = 91;
+    Dreadnought dreadnought = 92;
+    Drone drone = 93;
+    Druid druid = 94;
+    Dryad dryad = 95;
+    Dwarf dwarf = 96;
+    Efreet efreet = 97;
+    Egg egg = 98;
+    Elder elder = 99;
+    Eldrazi eldrazi = 100;
+    Elemental elemental = 101;
+    Elephant elephant = 102;
+    Elf elf = 103;
+    Elk elk = 104;
+    Ellywick ellywick = 105;
+    Elminster elminster = 106;
+    Elspeth elspeth = 107;
+    Employee employee = 108;
+    Equipment equipment = 109;
+    Estrid estrid = 110;
+    Eye eye = 111;
+    Faerie faerie = 112;
+    Ferret ferret = 113;
+    Fish fish = 114;
+    Flagbearer flagbearer = 115;
+    Food food = 116;
+    Forest forest = 117;
+    Fortification fortification = 118;
+    Fox fox = 119;
+    Fractal fractal = 120;
+    Freyalise freyalise = 121;
+    Frog frog = 122;
+    Fungus fungus = 123;
+    Gamer gamer = 124;
+    Gargoyle gargoyle = 125;
+    Garruk garruk = 126;
+    Gate gate = 127;
+    Giant giant = 128;
+    Gideon gideon = 129;
+    Gith gith = 130;
+    Gnoll gnoll = 131;
+    Gnome gnome = 132;
+    Goat goat = 133;
+    Goblin goblin = 134;
+    God god = 135;
+    Golem golem = 136;
+    Gorgon gorgon = 137;
+    Gremlin gremlin = 138;
+    Griffin griffin = 139;
+    Grist grist = 140;
+    Guest guest = 141;
+    Guff guff = 142;
+    Hag hag = 143;
+    Halfling halfling = 144;
+    Harpy harpy = 145;
+    Hellion hellion = 146;
+    Hippo hippo = 147;
+    Hippogriff hippogriff = 148;
+    Homarid homarid = 149;
+    Homunculus homunculus = 150;
+    Horror horror = 151;
+    Horse horse = 152;
+    Huatli huatli = 153;
+    Human human = 154;
+    Hydra hydra = 155;
+    Hyena hyena = 156;
+    Illusion illusion = 157;
+    Imp imp = 158;
+    Incarnation incarnation = 159;
+    Inquisitor inquisitor = 160;
+    Insect insect = 161;
+    Island island = 162;
+    Jace jace = 163;
+    Jackal jackal = 164;
+    Jared jared = 165;
+    Jaya jaya = 166;
+    Jellyfish jellyfish = 167;
+    Jeska jeska = 168;
+    Juggernaut juggernaut = 169;
+    Kaito kaito = 170;
+    Karn karn = 171;
+    Kasmina kasmina = 172;
+    Kavu kavu = 173;
+    Kaya kaya = 174;
+    Kiora kiora = 175;
+    Kirin kirin = 176;
+    Kithkin kithkin = 177;
+    Knight knight = 178;
+    Kobold kobold = 179;
+    Kor kor = 180;
+    Koth koth = 181;
+    Kraken kraken = 182;
+    Lair lair = 183;
+    Lamia lamia = 184;
+    Lammasu lammasu = 185;
+    Leech leech = 186;
+    Lesson lesson = 187;
+    Leviathan leviathan = 188;
+    Lhurgoyf lhurgoyf = 189;
+    Licid licid = 190;
+    Liliana liliana = 191;
+    Lizard lizard = 192;
+    Locus locus = 193;
+    Lolth lolth = 194;
+    Lord lord = 195;
+    Lukka lukka = 196;
+    Manticore manticore = 197;
+    Masticore masticore = 198;
+    Mercenary mercenary = 199;
+    Merfolk merfolk = 200;
+    Metathran metathran = 201;
+    Mine mine = 202;
+    Minion minion = 203;
+    Minotaur minotaur = 204;
+    Minsc minsc = 205;
+    Mite mite = 206;
+    Mole mole = 207;
+    Monger monger = 208;
+    Mongoose mongoose = 209;
+    Monk monk = 210;
+    Monkey monkey = 211;
+    Moonfolk moonfolk = 212;
+    Mordenkainen mordenkainen = 213;
+    Mountain mountain = 214;
+    Mouse mouse = 215;
+    Mutant mutant = 216;
+    Myr myr = 217;
+    Mystic mystic = 218;
+    Naga naga = 219;
+    Nahiri nahiri = 220;
+    Narset narset = 221;
+    Nautilus nautilus = 222;
+    Necron necron = 223;
+    Nephilim nephilim = 224;
+    Nightmare nightmare = 225;
+    Nightstalker nightstalker = 226;
+    Niko niko = 227;
+    Ninja ninja = 228;
+    Nissa nissa = 229;
+    Nixilis nixilis = 230;
+    Noble noble = 231;
+    Noggle noggle = 232;
+    Nomad nomad = 233;
+    Nymph nymph = 234;
+    Octopus octopus = 235;
+    Ogre ogre = 236;
+    Oko oko = 237;
+    Ooze ooze = 238;
+    Orc orc = 239;
+    Orgg orgg = 240;
+    Otter otter = 241;
+    Ouphe ouphe = 242;
+    Ox ox = 243;
+    Oyster oyster = 244;
+    Pangolin pangolin = 245;
+    Peasant peasant = 246;
+    Pegasus pegasus = 247;
+    Performer performer = 248;
+    Pest pest = 249;
+    Phelddagrif phelddagrif = 250;
+    Phoenix phoenix = 251;
+    Phyrexian phyrexian = 252;
+    Pilot pilot = 253;
+    Pirate pirate = 254;
+    Plains plains = 255;
+    Plant plant = 256;
+    PowerPlant powerPlant = 257;
+    Powerstone powerstone = 258;
+    Praetor praetor = 259;
+    Primarch primarch = 260;
+    Processor processor = 261;
+    Quintorius quintorius = 262;
+    Rabbit rabbit = 263;
+    Raccoon raccoon = 264;
+    Ral ral = 265;
+    Ranger ranger = 266;
+    Rat rat = 267;
+    Rebel rebel = 268;
+    Rhino rhino = 269;
+    Rigger rigger = 270;
+    Robot robot = 271;
+    Rogue rogue = 272;
+    Rowan rowan = 273;
+    Rune rune = 274;
+    Sable sable = 275;
+    Saga saga = 276;
+    Saheeli saheeli = 277;
+    Salamander salamander = 278;
+    Samurai samurai = 279;
+    Samut samut = 280;
+    Sarkhan sarkhan = 281;
+    Satyr satyr = 282;
+    Scarecrow scarecrow = 283;
+    Scientist scientist = 284;
+    Scorpion scorpion = 285;
+    Scout scout = 286;
+    Serpent serpent = 287;
+    Serra serra = 288;
+    Shade shade = 289;
+    Shaman shaman = 290;
+    Shapeshifter shapeshifter = 291;
+    Shark shark = 292;
+    Sheep sheep = 293;
+    Shrine shrine = 294;
+    Siren siren = 295;
+    Sivitri sivitri = 296;
+    Skeleton skeleton = 297;
+    Slith slith = 298;
+    Sliver sliver = 299;
+    Slug slug = 300;
+    Snail snail = 301;
+    Snake snake = 302;
+    Soldier soldier = 303;
+    Soltari soltari = 304;
+    Sorin sorin = 305;
+    Spawn spawn = 306;
+    Specter specter = 307;
+    Spellshaper spellshaper = 308;
+    Sphere sphere = 309;
+    Sphinx sphinx = 310;
+    Spider spider = 311;
+    Spike spike = 312;
+    Spirit spirit = 313;
+    Sponge sponge = 314;
+    Squid squid = 315;
+    Squirrel squirrel = 316;
+    Starfish starfish = 317;
+    Surrakar surrakar = 318;
+    Swamp swamp = 319;
+    Szat szat = 320;
+    Tamiyo tamiyo = 321;
+    Tasha tasha = 322;
+    Teferi teferi = 323;
+    Teyo teyo = 324;
+    Tezzeret tezzeret = 325;
+    Thalakos thalakos = 326;
+    Thopter thopter = 327;
+    Thrull thrull = 328;
+    Tibalt tibalt = 329;
+    Tiefling tiefling = 330;
+    Time time = 331;
+    Tower tower = 332;
+    Trap trap = 333;
+    Treasure treasure = 334;
+    Treefolk treefolk = 335;
+    Trilobite trilobite = 336;
+    Troll troll = 337;
+    Turtle turtle = 338;
+    Tyranid tyranid = 339;
+    Tyvar tyvar = 340;
+    Ugin ugin = 341;
+    Unicorn unicorn = 342;
+    Urza urza = 343;
+    Urzas urzas = 344;
+    Vampire vampire = 345;
+    Vedalken vedalken = 346;
+    Vehicle vehicle = 347;
+    Venser venser = 348;
+    Viashino viashino = 349;
+    Vivien vivien = 350;
+    Volver volver = 351;
+    Vraska vraska = 352;
+    Vronos vronos = 353;
+    Wall wall = 354;
+    Walrus walrus = 355;
+    Warlock warlock = 356;
+    Warrior warrior = 357;
+    Weird weird = 358;
+    Werewolf werewolf = 359;
+    Whale whale = 360;
+    Will will = 361;
+    Windgrace windgrace = 362;
+    Wizard wizard = 363;
+    Wolf wolf = 364;
+    Wolverine wolverine = 365;
+    Wombat wombat = 366;
+    Worm worm = 367;
+    Wraith wraith = 368;
+    Wrenn wrenn = 369;
+    Wurm wurm = 370;
+    Xenagos xenagos = 371;
+    Yanggu yanggu = 372;
+    Yanling yanling = 373;
+    Yeti yeti = 374;
+    Zariel zariel = 375;
+    Zombie zombie = 376;
+    Zubera zubera = 377;
   }
 }
