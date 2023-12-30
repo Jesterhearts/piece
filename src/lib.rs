@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Context};
 
 use include_dir::{include_dir, Dir, File};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     battlefield::{Battlefield, PendingResults},
@@ -151,4 +152,29 @@ pub enum UiState {
         selection_list_offset: usize,
     },
     ExaminingCard(CardId),
+}
+
+pub fn serialize_message<T, S>(
+    value: &::protobuf::MessageField<T>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Serialize,
+{
+    if let Some(value) = value.as_ref() {
+        value.serialize(serializer)
+    } else {
+        serializer.serialize_none()
+    }
+}
+
+pub fn deserialize_message<'de, T, D>(
+    deserializer: D,
+) -> Result<::protobuf::MessageField<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    T::deserialize(deserializer).map(|t| ::protobuf::MessageField::from_option(Some(t)))
 }
