@@ -18,7 +18,7 @@ message Type {
   message Tribal {}
   message World {}
 
-  oneof ty {
+  oneof type {
     Artifact artifact = 1;
     BasicLand basic_land = 2;
     Battle battle = 3;

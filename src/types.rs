@@ -40,30 +40,30 @@ impl TryFrom<&protogen::types::Type> for Type {
 
     fn try_from(value: &protogen::types::Type) -> Result<Self, Self::Error> {
         value
-            .ty
+            .type_
             .as_ref()
             .ok_or_else(|| anyhow!("Expected type to have a type set"))
             .map(Self::from)
     }
 }
 
-impl From<&protogen::types::type_::Ty> for Type {
-    fn from(value: &protogen::types::type_::Ty) -> Self {
+impl From<&protogen::types::type_::Type> for Type {
+    fn from(value: &protogen::types::type_::Type) -> Self {
         match value {
-            protogen::types::type_::Ty::BasicLand(_) => Self::BasicLand,
-            protogen::types::type_::Ty::Land(_) => Self::Land,
-            protogen::types::type_::Ty::Instant(_) => Self::Instant,
-            protogen::types::type_::Ty::Sorcery(_) => Self::Sorcery,
-            protogen::types::type_::Ty::Creature(_) => Self::Creature,
-            protogen::types::type_::Ty::Artifact(_) => Self::Artifact,
-            protogen::types::type_::Ty::Enchantment(_) => Self::Enchantment,
-            protogen::types::type_::Ty::Battle(_) => Self::Battle,
-            protogen::types::type_::Ty::Legendary(_) => Self::Legendary,
-            protogen::types::type_::Ty::Planeswalker(_) => Self::Planeswalker,
-            protogen::types::type_::Ty::Snow(_) => Self::Snow,
-            protogen::types::type_::Ty::Stickers(_) => Self::Stickers,
-            protogen::types::type_::Ty::Tribal(_) => Self::Tribal,
-            protogen::types::type_::Ty::World(_) => Self::World,
+            protogen::types::type_::Type::BasicLand(_) => Self::BasicLand,
+            protogen::types::type_::Type::Land(_) => Self::Land,
+            protogen::types::type_::Type::Instant(_) => Self::Instant,
+            protogen::types::type_::Type::Sorcery(_) => Self::Sorcery,
+            protogen::types::type_::Type::Creature(_) => Self::Creature,
+            protogen::types::type_::Type::Artifact(_) => Self::Artifact,
+            protogen::types::type_::Type::Enchantment(_) => Self::Enchantment,
+            protogen::types::type_::Type::Battle(_) => Self::Battle,
+            protogen::types::type_::Type::Legendary(_) => Self::Legendary,
+            protogen::types::type_::Type::Planeswalker(_) => Self::Planeswalker,
+            protogen::types::type_::Type::Snow(_) => Self::Snow,
+            protogen::types::type_::Type::Stickers(_) => Self::Stickers,
+            protogen::types::type_::Type::Tribal(_) => Self::Tribal,
+            protogen::types::type_::Type::World(_) => Self::World,
         }
     }
 }
