@@ -1,8 +1,6 @@
 use anyhow::anyhow;
 
-use crate::{
-    controller::ControllerRestriction, newtype_enum::newtype_enum, protogen, targets::Restriction,
-};
+use crate::{newtype_enum::newtype_enum, protogen, targets::Restriction};
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
@@ -51,11 +49,10 @@ pub(crate)enum TriggerSource {
 }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+#[derive(Debug, Clone, bevy_ecs::component::Component)]
 pub(crate) struct Trigger {
     pub(crate) trigger: TriggerSource,
     pub(crate) from: Location,
-    pub(crate) controller: ControllerRestriction,
     pub(crate) restrictions: Vec<Restriction>,
 }
 
@@ -66,7 +63,6 @@ impl TryFrom<&protogen::triggers::Trigger> for Trigger {
         Ok(Self {
             trigger: value.source.get_or_default().try_into()?,
             from: value.from.get_or_default().try_into()?,
-            controller: value.controller.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()

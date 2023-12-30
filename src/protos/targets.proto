@@ -3,7 +3,6 @@ syntax = "proto3";
 package targets;
 
 import "color.proto";
-import "controller.proto";
 import "types.proto";
 
 message ManaSource {
@@ -47,12 +46,6 @@ message Dynamic {
   }
 }
 
-message SpellTarget {
-  controller.Controller controller = 1;
-  repeated types.Type types = 2;
-  repeated types.Subtype subtypes = 3;
-}
-
 message Location {
   message OnBattlefield {}
   message InGraveyard {}
@@ -77,6 +70,15 @@ message Restriction {
     oneof cmc {
       Dynamic dynamic = 1;
       Comparison comparison = 2;
+    }
+  }
+  message Controller {
+    message Self {}
+    message Opponent {}
+
+    oneof controller {
+      Self self = 1;
+      Opponent opponent = 2;
     }
   }
   message ControllerControlsBlackOrGreen {}
@@ -126,26 +128,27 @@ message Restriction {
     AttackingOrBlocking attacking_or_blocking = 3;
     CastFromHand cast_from_hand = 4;
     Cmc cmc = 5;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 6;
-    ControllerHandEmpty controller_hand_empty = 7;
-    DescendedThisTurn descended_this_turn = 8;
-    DuringControllersTurn during_controllers_turn = 9;
-    InGraveyard in_graveyard = 10;
-    JustCast just_cast = 11;
-    LifeGainedThisTurn life_gained_this_turn = 12;
-    Locations location = 13;
-    ManaSpentFromSource mana_spent_from_source = 14;
-    NotChosen not_chosen = 15;
-    NotKeywords not_keywords = 16;
-    NotOfType not_of_type = 17;
-    NotSelf not_self = 18;
-    OfColor of_color = 19;
-    OfType of_type = 20;
-    OnBattlefield on_battlefield = 21;
-    Power power = 22;
-    Self self = 23;
-    SourceCast source_cast = 24;
-    Tapped tapped = 25;
-    Toughness toughness = 26;
+    Controller controller = 6;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 7;
+    ControllerHandEmpty controller_hand_empty = 8;
+    DescendedThisTurn descended_this_turn = 9;
+    DuringControllersTurn during_controllers_turn = 10;
+    InGraveyard in_graveyard = 11;
+    JustCast just_cast = 12;
+    LifeGainedThisTurn life_gained_this_turn = 13;
+    Locations location = 14;
+    ManaSpentFromSource mana_spent_from_source = 15;
+    NotChosen not_chosen = 16;
+    NotKeywords not_keywords = 17;
+    NotOfType not_of_type = 18;
+    NotSelf not_self = 19;
+    OfColor of_color = 20;
+    OfType of_type = 21;
+    OnBattlefield on_battlefield = 22;
+    Power power = 23;
+    Self self = 24;
+    SourceCast source_cast = 25;
+    Tapped tapped = 26;
+    Toughness toughness = 27;
   }
 }

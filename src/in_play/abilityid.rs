@@ -15,7 +15,6 @@ use crate::{
         StaticAbility,
     },
     card::OracleText,
-    controller::ControllerRestriction,
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     effects::{AnyEffect, Effects},
     in_play::{
@@ -556,14 +555,7 @@ fn can_pay_costs(
                 let any_target = controller
                     .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
-                    .any(|card| {
-                        card.passes_restrictions(
-                            db,
-                            source,
-                            ControllerRestriction::You,
-                            restrictions,
-                        )
-                    });
+                    .any(|card| card.passes_restrictions(db, source, restrictions));
                 if !any_target {
                     return false;
                 }
@@ -573,13 +565,7 @@ fn can_pay_costs(
                     .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
                     .any(|card| {
-                        !card.tapped(db)
-                            && card.passes_restrictions(
-                                db,
-                                source,
-                                ControllerRestriction::You,
-                                restrictions,
-                            )
+                        !card.tapped(db) && card.passes_restrictions(db, source, restrictions)
                     });
 
                 if !any_target {
@@ -591,13 +577,7 @@ fn can_pay_costs(
                     .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
                     .any(|card| {
-                        !card.tapped(db)
-                            && card.passes_restrictions(
-                                db,
-                                source,
-                                ControllerRestriction::You,
-                                restrictions,
-                            )
+                        !card.tapped(db) && card.passes_restrictions(db, source, restrictions)
                     });
 
                 if !any_target {
@@ -605,9 +585,10 @@ fn can_pay_costs(
                 }
             }
             AdditionalCost::ExileCard { restrictions } => {
-                let any_target = controller.get_cards(db).into_iter().any(|card| {
-                    card.passes_restrictions(db, source, ControllerRestriction::You, restrictions)
-                });
+                let any_target = controller
+                    .get_cards(db)
+                    .into_iter()
+                    .any(|card| card.passes_restrictions(db, source, restrictions));
 
                 if !any_target {
                     return false;
@@ -620,14 +601,7 @@ fn can_pay_costs(
                 let targets = controller
                     .get_cards(db)
                     .into_iter()
-                    .filter(|card| {
-                        card.passes_restrictions(
-                            db,
-                            source,
-                            ControllerRestriction::You,
-                            restrictions,
-                        )
-                    })
+                    .filter(|card| card.passes_restrictions(db, source, restrictions))
                     .count();
 
                 if targets < *minimum {

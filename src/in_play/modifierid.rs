@@ -10,7 +10,6 @@ use crate::{
         BaseToughnessModifier, EtbAbilityModifier, Keyword, ModifyKeywords, RemoveAllColors,
         StaticAbilityModifier, TriggeredAbilityModifier,
     },
-    controller::ControllerRestriction,
     effects::{
         effect_duration::{
             Permanently, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilTargetLeavesBattlefield,
@@ -59,7 +58,6 @@ impl ModifierId {
         temporary: bool,
     ) -> ModifierId {
         let mut entity = db.modifiers.spawn((
-            modifier.controller,
             Restrictions(modifier.restrictions.clone()),
             source,
             Modifying::default(),
@@ -239,13 +237,6 @@ impl ModifierId {
 
     pub(crate) fn source(self, db: &Database) -> CardId {
         db.modifiers.get::<CardId>(self.0).copied().unwrap()
-    }
-
-    pub(crate) fn controller_restriction(self, db: &Database) -> ControllerRestriction {
-        db.modifiers
-            .get::<ControllerRestriction>(self.0)
-            .copied()
-            .unwrap()
     }
 
     pub(crate) fn restrictions(self, db: &Database) -> Vec<Restriction> {

@@ -1,19 +1,17 @@
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    controller::ControllerRestriction,
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
     mana::{Mana, ManaRestriction},
     player::{mana_pool::ManaSource, Controller},
     protogen,
+    targets::Restriction,
     triggers::Trigger,
-    types::Type,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
@@ -53,10 +51,9 @@ pub(crate) struct StaticAbilities(pub(crate) Vec<StaticAbility>);
 #[derive(Debug, Clone, Deref, DerefMut, Component, Default)]
 pub(crate) struct ModifiedStaticAbilities(pub(crate) Vec<StaticAbility>);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct ForceEtbTapped {
-    pub(crate) controller: ControllerRestriction,
-    pub(crate) types: IndexSet<Type>,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 #[derive(Debug, Clone)]
@@ -65,7 +62,7 @@ pub(crate) enum StaticAbility {
     BattlefieldModifier(Box<BattlefieldModifier>),
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
-    GreenCannotBeCountered { controller: ControllerRestriction },
+    GreenCannotBeCountered { restrictions: Vec<Restriction> },
     PreventAttacks,
     PreventBlocks,
     PreventAbilityActivation,
@@ -100,22 +97,20 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
             }
             protogen::effects::static_ability::Ability::ForceEtbTapped(force) => {
                 Ok(Self::ForceEtbTapped(ForceEtbTapped {
-                    controller: force.controller.get_or_default().try_into()?,
-                    types: force
-                        .types
+                    restrictions: force
+                        .restrictions
                         .iter()
-                        .map(Type::try_from)
+                        .map(Restriction::try_from)
                         .collect::<anyhow::Result<_>>()?,
                 }))
             }
             protogen::effects::static_ability::Ability::GreenCannotBeCountered(ability) => {
                 Ok(Self::GreenCannotBeCountered {
-                    controller: ability
-                        .controller
-                        .controller
-                        .as_ref()
-                        .map(ControllerRestriction::from)
-                        .unwrap_or_default(),
+                    restrictions: ability
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
                 })
             }
             protogen::effects::static_ability::Ability::PreventAttacks(_) => {

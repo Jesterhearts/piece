@@ -2,7 +2,6 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, OnBattlefield},
     protogen,
@@ -48,23 +47,11 @@ impl EffectBehaviors for TargetToTopOfLibrary {
         let mut targets = vec![];
         for target in in_play::cards::<OnBattlefield>(db)
             .into_iter()
-            .filter(|card| {
-                card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &source.restrictions(db),
-                )
-            })
+            .filter(|card| card.passes_restrictions(db, source, &source.restrictions(db)))
             .collect_vec()
         {
             if target.can_be_targeted(db, controller)
-                && target.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &self.restrictions,
-                )
+                && target.passes_restrictions(db, source, &self.restrictions)
             {
                 let target = ActiveTarget::Battlefield { id: target };
                 if !already_chosen.contains(&target) {

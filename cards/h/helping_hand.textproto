@@ -11,8 +11,10 @@ cost {
 }
 effects {
   return_from_graveyard_to_battlefield {
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
   }

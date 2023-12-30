@@ -3,7 +3,6 @@ use tracing::Level;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{all_cards, target_from_location},
     protogen,
@@ -12,7 +11,6 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct ReturnTargetToHand {
-    controller: ControllerRestriction,
     restrictions: Vec<Restriction>,
 }
 
@@ -21,7 +19,6 @@ impl TryFrom<&protogen::effects::ReturnTargetToHand> for ReturnTargetToHand {
 
     fn try_from(value: &protogen::effects::ReturnTargetToHand) -> Result<Self, Self::Error> {
         Ok(Self {
-            controller: value.controller.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()
@@ -50,13 +47,8 @@ impl EffectBehaviors for ReturnTargetToHand {
         all_cards(db)
             .into_iter()
             .filter_map(|card| {
-                if card.passes_restrictions(db, source, self.controller, &self.restrictions)
-                    && card.passes_restrictions(
-                        db,
-                        source,
-                        ControllerRestriction::Any,
-                        &source.restrictions(db),
-                    )
+                if card.passes_restrictions(db, source, &self.restrictions)
+                    && card.passes_restrictions(db, source, &source.restrictions(db))
                     && card.can_be_targeted(db, controller)
                 {
                     Some(target_from_location(db, card))

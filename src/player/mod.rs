@@ -168,6 +168,18 @@ impl Owner {
                         return false;
                     }
                 }
+                Restriction::Controller(controller_restriction) => match controller_restriction {
+                    crate::targets::ControllerRestriction::Self_ => {
+                        if self != controller {
+                            return false;
+                        }
+                    }
+                    crate::targets::ControllerRestriction::Opponent => {
+                        if self == controller {
+                            return false;
+                        }
+                    }
+                },
             }
         }
 
@@ -360,12 +372,7 @@ impl Player {
                 while let Some(replacement) = replacements.next() {
                     let source = replacement.source(db);
                     let restrictions = replacement.restrictions(db);
-                    if !source.passes_restrictions(
-                        db,
-                        source,
-                        replacement.controller_restriction(db),
-                        &restrictions,
-                    ) {
+                    if !source.passes_restrictions(db, source, &restrictions) {
                         continue;
                     }
 

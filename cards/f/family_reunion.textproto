@@ -22,12 +22,14 @@ modes {
         add_toughness: 1
         entire_battlefield: true
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {
@@ -49,12 +51,14 @@ modes {
         entire_battlefield: true
         add_keywords: "Hexproof"
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {

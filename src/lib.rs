@@ -23,7 +23,6 @@ pub mod abilities;
 pub mod ai;
 pub mod battlefield;
 pub mod card;
-pub mod controller;
 pub mod cost;
 pub mod deck;
 pub mod effects;

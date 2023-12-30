@@ -163,12 +163,14 @@ back_face {
         add_toughness: 1
         entire_battlefield: true
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_source_leaves_battlefield {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {

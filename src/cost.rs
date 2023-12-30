@@ -12,7 +12,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Component)]
+#[derive(Debug, Clone, Default, Component)]
 pub struct CastingCost {
     pub mana_cost: Vec<ManaCost>,
     pub(crate) additional_cost: Vec<AdditionalCost>,
@@ -78,7 +78,7 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) enum AdditionalCost {
     DiscardThis,
     ExileCard {

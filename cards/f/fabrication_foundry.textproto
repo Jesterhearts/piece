@@ -42,8 +42,10 @@ activated_abilities {
   effects {
     return_from_graveyard_to_battlefield {
       count: 1
-      controller {
-        you {
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {

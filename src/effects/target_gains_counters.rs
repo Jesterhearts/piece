@@ -4,7 +4,6 @@ use tracing::Level;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location},
     newtype_enum::newtype_enum,
@@ -26,10 +25,7 @@ pub(crate)enum Counter {
 #[derive(Debug, Clone)]
 pub(crate) enum DynamicCounter {
     X,
-    LeftBattlefieldThisTurn {
-        controller: ControllerRestriction,
-        restrictions: Vec<Restriction>,
-    },
+    LeftBattlefieldThisTurn { restrictions: Vec<Restriction> },
 }
 
 impl TryFrom<&protogen::effects::gain_counter::Dynamic> for DynamicCounter {
@@ -53,7 +49,6 @@ impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCoun
         match value {
             protogen::effects::gain_counter::dynamic::Dynamic::LeftBattlefieldThisTurn(value) => {
                 Ok(Self::LeftBattlefieldThisTurn {
-                    controller: value.controller.get_or_default().try_into()?,
                     restrictions: value
                         .restrictions
                         .iter()
@@ -111,7 +106,6 @@ impl From<&protogen::counters::counter::Type> for Counter {
 pub(crate) struct TargetGainsCounters {
     count: GainCount,
     counter: Counter,
-    controller: ControllerRestriction,
     restrictions: Vec<Restriction>,
 }
 
@@ -126,12 +120,6 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
                 .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
                 .and_then(GainCount::try_from)?,
             counter: value.counter.get_or_default().try_into()?,
-            controller: value
-                .controller
-                .controller
-                .as_ref()
-                .map_or(Ok(None), |controller| controller.try_into().map(Some))?
-                .unwrap_or(ControllerRestriction::Any),
             restrictions: value
                 .restrictions
                 .iter()
@@ -159,13 +147,8 @@ impl EffectBehaviors for TargetGainsCounters {
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in in_play::all_cards(db) {
-            if card.passes_restrictions(db, source, self.controller, &self.restrictions)
-                && card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &source.restrictions(db),
-                )
+            if card.passes_restrictions(db, source, &self.restrictions)
+                && card.passes_restrictions(db, source, &source.restrictions(db))
                 && card.can_be_targeted(db, controller)
             {
                 let target = target_from_location(db, card);

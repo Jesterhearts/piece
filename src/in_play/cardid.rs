@@ -28,7 +28,6 @@ use crate::{
         Name, OracleText, PaidX, Revealed, StaticAbilityModifier, TargetIndividually,
         TriggeredAbilityModifier,
     },
-    controller::ControllerRestriction,
     cost::{CastingCost, CostReducer, Ward},
     effects::{
         effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield},
@@ -50,7 +49,7 @@ use crate::{
         Controller, Owner,
     },
     stack::{self, ActiveTarget, Settled, Stack, Targets},
-    targets::{self, Cmc, Comparison, Dynamic, Restriction, Restrictions, SpellTarget},
+    targets::{self, Cmc, Comparison, Dynamic, Restriction, Restrictions},
     triggers::trigger_source,
     types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
     Cards,
@@ -611,19 +610,34 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
-                        dynamic, modifier, db, &types, &subtypes,
+                        db,
+                        dynamic,
+                        modifier,
+                        source,
+                        self.controller(db),
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
                     ) as i32,
                 });
                 let toughness = base_toughness.as_ref().map(|base| match base {
                     BaseToughnessType::Static(value) => *value,
                     BaseToughnessType::Dynamic(dynamic) => {
                         self.dynamic_power_toughness_given_types(
-                            dynamic, modifier, db, &types, &subtypes,
+                            db,
+                            dynamic,
+                            modifier,
+                            source,
+                            self.controller(db),
+                            &types,
+                            &subtypes,
+                            &keywords,
+                            &colors,
                         ) as i32
                     }
                 });
@@ -631,7 +645,6 @@ impl CardId {
                     db,
                     source,
                     self.controller(db),
-                    controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
@@ -678,19 +691,34 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
-                        dynamic, modifier, db, &types, &subtypes,
+                        db,
+                        dynamic,
+                        modifier,
+                        source,
+                        self.controller(db),
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
                     ) as i32,
                 });
                 let toughness = base_toughness.as_ref().map(|base| match base {
                     BaseToughnessType::Static(value) => *value,
                     BaseToughnessType::Dynamic(dynamic) => {
                         self.dynamic_power_toughness_given_types(
-                            dynamic, modifier, db, &types, &subtypes,
+                            db,
+                            dynamic,
+                            modifier,
+                            source,
+                            self.controller(db),
+                            &types,
+                            &subtypes,
+                            &keywords,
+                            &colors,
                         ) as i32
                     }
                 });
@@ -698,7 +726,6 @@ impl CardId {
                     db,
                     source,
                     self.controller(db),
-                    controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
@@ -729,19 +756,34 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
-                        dynamic, modifier, db, &types, &subtypes,
+                        db,
+                        dynamic,
+                        modifier,
+                        source,
+                        self.controller(db),
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
                     ) as i32,
                 });
                 let toughness = base_toughness.as_ref().map(|base| match base {
                     BaseToughnessType::Static(value) => *value,
                     BaseToughnessType::Dynamic(dynamic) => {
                         self.dynamic_power_toughness_given_types(
-                            dynamic, modifier, db, &types, &subtypes,
+                            db,
+                            dynamic,
+                            modifier,
+                            source,
+                            self.controller(db),
+                            &types,
+                            &subtypes,
+                            &keywords,
+                            &colors,
                         ) as i32
                     }
                 });
@@ -749,7 +791,6 @@ impl CardId {
                     db,
                     source,
                     self.controller(db),
-                    controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
@@ -812,12 +853,19 @@ impl CardId {
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
-                let controller_restriction = modifier.controller_restriction(db);
                 let restrictions = modifier.restrictions(db);
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
-                        dynamic, modifier, db, &types, &subtypes,
+                        db,
+                        dynamic,
+                        modifier,
+                        source,
+                        self.controller(db),
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
                     ) as i32,
                 });
                 let toughness = base_toughness
@@ -826,7 +874,15 @@ impl CardId {
                         BaseToughnessType::Static(value) => *value,
                         BaseToughnessType::Dynamic(dynamic) => self
                             .dynamic_power_toughness_given_types(
-                                dynamic, modifier, db, &types, &subtypes,
+                                db,
+                                dynamic,
+                                modifier,
+                                source,
+                                self.controller(db),
+                                &types,
+                                &subtypes,
+                                &keywords,
+                                &colors,
                             ) as i32,
                     })
                     .map(|t| t + add_toughness);
@@ -834,7 +890,6 @@ impl CardId {
                     db,
                     source,
                     self.controller(db),
-                    controller_restriction,
                     &restrictions,
                     &types,
                     &subtypes,
@@ -859,11 +914,20 @@ impl CardId {
             add_toughness += modifier.add_toughness(db).unwrap_or_default();
 
             if let Some(dynamic) = modifier.dynamic_power(db) {
-                let to_add = self
-                    .dynamic_power_toughness_given_types(&dynamic, modifier, db, &types, &subtypes);
+                let to_add = self.dynamic_power_toughness_given_types(
+                    db,
+                    &dynamic,
+                    modifier,
+                    source,
+                    self.controller(db),
+                    &types,
+                    &subtypes,
+                    &keywords,
+                    &colors,
+                ) as i32;
 
-                add_power += to_add as i32;
-                add_toughness += to_add as i32;
+                add_power += to_add;
+                add_toughness += to_add;
             }
         }
 
@@ -899,59 +963,43 @@ impl CardId {
             .insert(ModifiedActivatedAbilities(activated_abilities));
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn dynamic_power_toughness_given_types(
         self,
+        db: &mut Database,
         dynamic: &DynamicPowerToughness,
         modifier: ModifierId,
-        db: &mut Database,
-        types: &IndexSet<Type>,
-        subtypes: &IndexSet<Subtype>,
+        source: CardId,
+        self_controller: Controller,
+        self_types: &IndexSet<Type>,
+        self_subtypes: &IndexSet<Subtype>,
+        self_keywords: &::counter::Counter<Keyword>,
+        self_colors: &HashSet<Color>,
     ) -> usize {
         match dynamic {
             DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
                 let source = modifier.source(db);
                 CounterId::counters_on(db, source, *counter)
             }
-            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => in_play::cards::<
-                OnBattlefield,
-            >(db)
-            .into_iter()
-            .filter(|card| {
-                match matching.controller {
-                    ControllerRestriction::Any => {}
-                    ControllerRestriction::You => {
-                        if card.controller(db) != self.controller(db) {
-                            return false;
-                        }
-                    }
-                    ControllerRestriction::Opponent => {
-                        if card.controller(db) == self.controller(db) {
-                            return false;
-                        }
-                    }
-                }
-
-                if *card == self {
-                    if !matching.types.is_empty() && matching.types.is_disjoint(types) {
-                        return false;
-                    }
-
-                    if !matching.subtypes.is_empty() && matching.subtypes.is_disjoint(subtypes) {
-                        return false;
-                    }
-                } else {
-                    if !card.types_intersect(db, &matching.types) {
-                        return false;
-                    }
-
-                    if !card.subtypes_intersect(db, &matching.subtypes) {
-                        return false;
-                    }
-                }
-
-                true
-            })
-            .count(),
+            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => {
+                in_play::cards::<OnBattlefield>(db)
+                    .into_iter()
+                    .filter(|card| {
+                        card.passes_restrictions_given_attributes(
+                            db,
+                            source,
+                            self_controller,
+                            &matching.restrictions,
+                            self_types,
+                            self_subtypes,
+                            self_keywords,
+                            self_colors,
+                            None,
+                            None,
+                        )
+                    })
+                    .count()
+            }
         }
     }
 
@@ -1069,7 +1117,6 @@ impl CardId {
         self,
         db: &mut Database,
         source: CardId,
-        controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
     ) -> bool {
         let power = self.power(db);
@@ -1078,7 +1125,6 @@ impl CardId {
             db,
             source,
             self.controller(db),
-            controller_restriction,
             restrictions,
             &self.types(db),
             &self.subtypes(db),
@@ -1095,7 +1141,6 @@ impl CardId {
         db: &mut Database,
         source: CardId,
         self_controller: Controller,
-        controller_restriction: ControllerRestriction,
         restrictions: &[Restriction],
         self_types: &IndexSet<Type>,
         self_subtypes: &IndexSet<Subtype>,
@@ -1104,20 +1149,6 @@ impl CardId {
         self_power: Option<i32>,
         self_toughness: Option<i32>,
     ) -> bool {
-        match controller_restriction {
-            ControllerRestriction::Any => {}
-            ControllerRestriction::You => {
-                if source.controller(db) != self_controller {
-                    return false;
-                }
-            }
-            ControllerRestriction::Opponent => {
-                if source.controller(db) == self_controller {
-                    return false;
-                }
-            }
-        }
-
         for restriction in restrictions.iter() {
             match restriction {
                 Restriction::NotSelf => {
@@ -1309,6 +1340,18 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::Controller(controller_restriction) => match controller_restriction {
+                    targets::ControllerRestriction::Self_ => {
+                        if source.controller(db) != self_controller {
+                            return false;
+                        }
+                    }
+                    targets::ControllerRestriction::Opponent => {
+                        if source.controller(db) == self_controller {
+                            return false;
+                        }
+                    }
+                },
             }
         }
 
@@ -1452,6 +1495,7 @@ impl CardId {
             .unwrap_or_default()
     }
 
+    #[allow(unused)]
     pub(crate) fn subtypes_intersect(self, db: &Database, types: &IndexSet<Subtype>) -> bool {
         types.is_empty() || !self.subtypes(db).is_disjoint(types)
     }
@@ -1736,12 +1780,7 @@ impl CardId {
             let controller = self.controller(db);
             for card in in_play::cards::<OnBattlefield>(db) {
                 let card_restrictions = self.restrictions(db);
-                if !card.passes_restrictions(
-                    db,
-                    self,
-                    ControllerRestriction::Any,
-                    &card_restrictions,
-                ) {
+                if !card.passes_restrictions(db, self, &card_restrictions) {
                     continue;
                 }
 
@@ -1760,61 +1799,25 @@ impl CardId {
     pub(crate) fn can_be_countered(
         self,
         db: &mut Database,
-        caster: Controller,
-        target: &SpellTarget,
+        source: CardId,
+        restrictions: &[Restriction],
     ) -> bool {
         if db.get::<CannotBeCountered>(self.0).is_some() {
             return false;
         }
 
-        let SpellTarget {
-            controller,
-            types,
-            subtypes,
-        } = target;
-
-        match controller {
-            ControllerRestriction::You => {
-                if caster != self.controller(db) {
-                    return false;
-                }
-            }
-            ControllerRestriction::Opponent => {
-                if caster == self.controller(db) {
-                    return false;
-                }
-            }
-            ControllerRestriction::Any => {}
-        };
-
-        if !types.is_empty() && !self.types_intersect(db, types) {
-            return false;
-        }
-
-        if !self.subtypes_intersect(db, subtypes) {
+        if !self.passes_restrictions(db, source, restrictions) {
             return false;
         }
 
         let colors = self.colors(db);
-        for (ability, ability_controller) in Battlefield::static_abilities(db) {
+        for (ability, _) in Battlefield::static_abilities(db) {
             match &ability {
-                StaticAbility::GreenCannotBeCountered { controller } => {
-                    if colors.contains(&Color::Green) {
-                        match controller {
-                            ControllerRestriction::You => {
-                                if ability_controller == self.controller(db) {
-                                    return false;
-                                }
-                            }
-                            ControllerRestriction::Opponent => {
-                                if ability_controller != self.controller(db) {
-                                    return false;
-                                }
-                            }
-                            ControllerRestriction::Any => {
-                                return false;
-                            }
-                        }
+                StaticAbility::GreenCannotBeCountered { restrictions } => {
+                    if colors.contains(&Color::Green)
+                        && self.passes_restrictions(db, source, restrictions)
+                    {
+                        return false;
                     }
                 }
                 _ => {}
@@ -1851,12 +1854,7 @@ impl CardId {
         let mut pending = PendingResults::default();
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::Tapped>(db) {
             let restrictions = trigger.restrictions(db);
-            if self.passes_restrictions(
-                db,
-                trigger.listener(db),
-                trigger.controller_restriction(db),
-                &restrictions,
-            ) {
+            if self.passes_restrictions(db, trigger.listener(db), &restrictions) {
                 pending.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }

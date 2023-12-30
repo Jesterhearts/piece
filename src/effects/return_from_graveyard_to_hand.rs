@@ -4,17 +4,15 @@ use crate::{
     battlefield::{
         choose_targets::ChooseTargets, compute_graveyard_targets, ActionResult, TargetSource,
     },
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct ReturnFromGraveyardToHand {
     pub(crate) count: usize,
-    pub(crate) controller: ControllerRestriction,
     pub(crate) restrictions: Vec<Restriction>,
 }
 
@@ -24,7 +22,6 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToHand> for ReturnFromGravey
     fn try_from(value: &protogen::effects::ReturnFromGraveyardToHand) -> Result<Self, Self::Error> {
         Ok(Self {
             count: usize::try_from(value.count)?,
-            controller: value.controller.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()
@@ -50,7 +47,7 @@ impl EffectBehaviors for ReturnFromGraveyardToHand {
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        compute_graveyard_targets(db, self.controller, source, &self.restrictions)
+        compute_graveyard_targets(db, source, &self.restrictions)
             .into_iter()
             .map(|card| ActiveTarget::Graveyard { id: card })
             .collect_vec()

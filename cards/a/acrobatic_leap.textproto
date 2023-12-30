@@ -13,10 +13,6 @@ effects {
       add_toughness: 3
       add_keywords: "Flying"
     }
-    controller {
-      any {
-      }
-    }
     duration {
       until_end_of_turn {
       }

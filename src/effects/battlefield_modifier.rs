@@ -2,7 +2,6 @@ use anyhow::anyhow;
 
 use crate::{
     battlefield::{ActionResult, PendingResults},
-    controller::ControllerRestriction,
     effects::{EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::{CardId, Database, ModifierId},
     player::Controller,
@@ -14,7 +13,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub(crate) struct BattlefieldModifier {
     pub(crate) modifier: ModifyBattlefield,
-    pub(crate) controller: ControllerRestriction,
     pub(crate) duration: EffectDuration,
     pub(crate) restrictions: Vec<Restriction>,
 }
@@ -25,12 +23,6 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
     fn try_from(value: &protogen::effects::BattlefieldModifier) -> Result<Self, Self::Error> {
         Ok(Self {
             modifier: value.modifier.get_or_default().try_into()?,
-            controller: value
-                .controller
-                .controller
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected battlefield modifier to have a controller set"))?
-                .try_into()?,
             duration: value
                 .duration
                 .duration

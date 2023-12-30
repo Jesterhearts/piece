@@ -16,13 +16,15 @@ cost {
 oracle_text: "Counter target artifact or enchantment spell."
 effects {
   counter_spell {
-    valid_target {
-      types {
-        artifact {
+    restrictions {
+      of_type {
+        types {
+          artifact {
+          }
         }
-      }
-      types {
-        enchantment {
+        types {
+          enchantment {
+          }
         }
       }
     }

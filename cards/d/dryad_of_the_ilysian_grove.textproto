@@ -52,12 +52,14 @@ static_abilities {
       }
       entire_battlefield: true
     }
-    controller {
-      you {
-      }
-    }
     duration {
       until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {

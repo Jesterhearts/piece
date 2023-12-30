@@ -2,10 +2,9 @@ use indexmap::IndexSet;
 
 use crate::{
     battlefield::ActionResult,
-    controller::ControllerRestriction,
     effects::{BattlefieldModifier, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
-    targets::Restriction,
+    targets::{ControllerRestriction, Restriction},
     types::Type,
 };
 
@@ -38,9 +37,9 @@ impl EffectBehaviors for BattleCry {
                         entire_battlefield: true,
                         ..Default::default()
                     },
-                    controller: ControllerRestriction::You,
                     duration: EffectDuration::UntilEndOfTurn,
                     restrictions: vec![
+                        Restriction::Controller(ControllerRestriction::Self_),
                         Restriction::Attacking,
                         Restriction::NotSelf,
                         Restriction::OfType {

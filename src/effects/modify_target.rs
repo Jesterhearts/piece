@@ -3,7 +3,6 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, PendingResults, TargetSource},
-    controller::ControllerRestriction,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
     in_play::{self, target_from_location, CardId, Database, ModifierId},
     player::Controller,
@@ -41,13 +40,8 @@ impl EffectBehaviors for ModifyTarget {
         let mut targets = vec![];
         for card in in_play::all_cards(db) {
             if card.can_be_targeted(db, controller)
-                && card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &source.restrictions(db),
-                )
-                && card.passes_restrictions(db, source, self.controller, &self.restrictions)
+                && card.passes_restrictions(db, source, &source.restrictions(db))
+                && card.passes_restrictions(db, source, &self.restrictions)
             {
                 let target = target_from_location(db, card);
                 if !already_chosen.contains(&target) {

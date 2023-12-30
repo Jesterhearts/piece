@@ -1,6 +1,5 @@
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{self, OnBattlefield},
     protogen,
@@ -10,9 +9,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct ExileTarget {
-    restrictions: Vec<Restriction>,
     duration: EffectDuration,
-    controller: ControllerRestriction,
+    restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
@@ -20,13 +18,12 @@ impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
 
     fn try_from(value: &protogen::effects::ExileTarget) -> Result<Self, Self::Error> {
         Ok(Self {
+            duration: value.duration.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()
                 .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            duration: value.duration.get_or_default().try_into()?,
-            controller: value.controller.get_or_default().try_into()?,
         })
     }
 }
@@ -49,13 +46,9 @@ impl EffectBehaviors for ExileTarget {
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in in_play::all_cards(db) {
-            if card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::Any,
-                &source.restrictions(db),
-            ) && card.is_in_location::<OnBattlefield>(db)
-                && card.passes_restrictions(db, source, self.controller, &self.restrictions)
+            if card.passes_restrictions(db, source, &source.restrictions(db))
+                && card.is_in_location::<OnBattlefield>(db)
+                && card.passes_restrictions(db, source, &self.restrictions)
             {
                 let target = ActiveTarget::Battlefield { id: card };
                 if already_chosen.contains(&target) {

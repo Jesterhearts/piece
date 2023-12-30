@@ -17,8 +17,10 @@ cost {
 etb_abilities {
   deal_damage {
     quantity: 5
-    controller {
-      opponent {
+    restrictions {
+      controller {
+        opponent {
+        }
       }
     }
     restrictions {
@@ -158,12 +160,14 @@ back_face {
             }
           }
         }
-        controller {
-          you {
-          }
-        }
         duration {
           until_end_of_turn {
+          }
+        }
+        restrictions {
+          controller {
+            self {
+            }
           }
         }
       }
@@ -203,12 +207,14 @@ back_face {
             }
           }
         }
-        controller {
-          you {
-          }
-        }
         duration {
           until_end_of_turn {
+          }
+        }
+        restrictions {
+          controller {
+            self {
+            }
           }
         }
       }

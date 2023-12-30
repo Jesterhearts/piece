@@ -22,8 +22,10 @@ oracle_text: "Return target artifact or non-aura enchantment from your graveyard
 effects {
   return_from_graveyard_to_battlefield {
     count: 1
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
   }
@@ -54,10 +56,6 @@ effects {
         }
       }
       add_keywords: "Flying"
-    }
-    controller {
-      any {
-      }
     }
     duration {
       until_target_leaves_battlefield {

@@ -5,7 +5,6 @@ use indexmap::IndexSet;
 
 use crate::{
     battlefield::{Battlefield, PendingResults},
-    controller::ControllerRestriction,
     in_play::{
         set_current_turn, AttackingBannedThisTurn, CardId, Database, DeleteAbility, LifeGained,
         TimesDescended, TriggerId,
@@ -111,18 +110,12 @@ impl Turn {
                 for trigger in
                     TriggerId::active_triggers_of_source::<trigger_source::PreCombatMainPhase>(db)
                 {
-                    match trigger.controller_restriction(db) {
-                        ControllerRestriction::Any => {}
-                        ControllerRestriction::You => {
-                            if trigger.listener(db).controller(db) != self.active_player() {
-                                continue;
-                            }
-                        }
-                        ControllerRestriction::Opponent => {
-                            if trigger.listener(db).controller(db) == self.active_player() {
-                                continue;
-                            }
-                        }
+                    if !Owner::from(trigger.listener(db).controller(db)).passes_restrictions(
+                        db,
+                        self.active_player().into(),
+                        &trigger.restrictions(db),
+                    ) {
+                        continue;
                     }
 
                     results.extend(Stack::move_trigger_to_stack(db, trigger));
@@ -139,18 +132,12 @@ impl Turn {
                 for trigger in
                     TriggerId::active_triggers_of_source::<trigger_source::StartOfCombat>(db)
                 {
-                    match trigger.controller_restriction(db) {
-                        ControllerRestriction::Any => {}
-                        ControllerRestriction::You => {
-                            if trigger.listener(db).controller(db) != self.active_player() {
-                                continue;
-                            }
-                        }
-                        ControllerRestriction::Opponent => {
-                            if trigger.listener(db).controller(db) == self.active_player() {
-                                continue;
-                            }
-                        }
+                    if !Owner::from(trigger.listener(db).controller(db)).passes_restrictions(
+                        db,
+                        self.active_player().into(),
+                        &trigger.restrictions(db),
+                    ) {
+                        continue;
                     }
 
                     results.extend(Stack::move_trigger_to_stack(db, trigger));
@@ -213,24 +200,17 @@ impl Turn {
                 let mut results = PendingResults::default();
 
                 for trigger in TriggerId::active_triggers_of_source::<trigger_source::EndStep>(db) {
-                    match trigger.controller_restriction(db) {
-                        ControllerRestriction::Any => {}
-                        ControllerRestriction::You => {
-                            if trigger.listener(db).controller(db) != self.active_player() {
-                                continue;
-                            }
-                        }
-                        ControllerRestriction::Opponent => {
-                            if trigger.listener(db).controller(db) == self.active_player() {
-                                continue;
-                            }
-                        }
+                    if !Owner::from(trigger.listener(db).controller(db)).passes_restrictions(
+                        db,
+                        self.active_player().into(),
+                        &trigger.restrictions(db),
+                    ) {
+                        continue;
                     }
 
                     if !trigger.listener(db).passes_restrictions(
                         db,
                         trigger.listener(db),
-                        trigger.controller_restriction(db),
                         &trigger.restrictions(db),
                     ) {
                         continue;

@@ -48,16 +48,22 @@ etb_abilities {
       }
       dynamic_power_toughness {
         number_of_permanents_matching {
-          controller {
-            you {
+          restrictions {
+            controller {
+              self {
+              }
             }
           }
-          types {
-            artifact {
-            }
-          }
-          types {
-            creature {
+          restrictions {
+            of_type {
+              types {
+                artifact {
+                }
+              }
+              types {
+                creature {
+                }
+              }
             }
           }
         }
@@ -76,8 +82,10 @@ triggered_abilities {
       anywhere {
       }
     }
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
   }
@@ -197,8 +205,10 @@ back_face {
         anywhere {
         }
       }
-      controller {
-        you {
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {
@@ -240,16 +250,22 @@ back_face {
           }
           dynamic_power_toughness {
             number_of_permanents_matching {
-              controller {
-                you {
+              restrictions {
+                controller {
+                  self {
+                  }
                 }
               }
-              types {
-                artifact {
-                }
-              }
-              types {
-                creature {
+              restrictions {
+                of_type {
+                  types {
+                    artifact {
+                    }
+                  }
+                  types {
+                    creature {
+                    }
+                  }
                 }
               }
             }

@@ -31,12 +31,14 @@ activated_abilities {
         add_power: 1
         add_toughness: 1
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
     }

@@ -21,8 +21,10 @@ cannot_be_countered: true
 oracle_text: "This spell can\'t be countered.\nGreen spells you control can\'t be countered"
 static_abilities {
   green_cannot_be_countered {
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
   }
@@ -54,12 +56,14 @@ activated_abilities {
         }
         entire_battlefield: true
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {

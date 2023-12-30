@@ -51,12 +51,14 @@ activated_abilities {
       modifier {
         add_keywords: "Indestructible"
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {

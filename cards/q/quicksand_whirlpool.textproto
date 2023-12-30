@@ -26,6 +26,10 @@ cost_reducer {
 oracle_text: "This spell costs {3} less to cast if it targets a tapped creature\nExile target creature."
 effects {
   exile_target {
+    duration {
+      permanently {
+      }
+    }
     restrictions {
       of_type {
         types {
@@ -36,14 +40,6 @@ effects {
     }
     restrictions {
       on_battlefield {
-      }
-    }
-    controller {
-      any {
-      }
-    }
-    duration {
-      permanently {
       }
     }
   }

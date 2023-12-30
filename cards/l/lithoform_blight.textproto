@@ -43,10 +43,6 @@ enchant {
         }
       }
     }
-    controller {
-      any {
-      }
-    }
     duration {
       until_source_leaves_battlefield {
       }
@@ -66,10 +62,6 @@ enchant {
             }
           }
         }
-      }
-    }
-    controller {
-      any {
       }
     }
     duration {
@@ -122,10 +114,6 @@ enchant {
             }
           }
         }
-      }
-    }
-    controller {
-      any {
       }
     }
     duration {

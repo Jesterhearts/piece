@@ -12,7 +12,6 @@ use itertools::Itertools;
 
 use crate::{
     card::{Color, Keyword},
-    controller::ControllerRestriction,
     player::mana_pool::ManaSource,
     protogen,
     types::{Subtype, Type},
@@ -105,39 +104,7 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub(crate) struct SpellTarget {
-    pub(crate) controller: ControllerRestriction,
-    pub(crate) types: IndexSet<Type>,
-    pub(crate) subtypes: IndexSet<Subtype>,
-}
-
-impl TryFrom<&protogen::targets::SpellTarget> for SpellTarget {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::targets::SpellTarget) -> Result<Self, Self::Error> {
-        Ok(Self {
-            controller: value
-                .controller
-                .controller
-                .as_ref()
-                .map(ControllerRestriction::from)
-                .unwrap_or_default(),
-            types: value
-                .types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            subtypes: value
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Component, Deref, DerefMut)]
 pub(crate) struct Restrictions(pub(crate) Vec<Restriction>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,12 +182,40 @@ impl TryFrom<&protogen::targets::restriction::cmc::Cmc> for Cmc {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, strum::AsRefStr)]
+pub enum ControllerRestriction {
+    Self_,
+    Opponent,
+}
+
+impl TryFrom<&protogen::targets::restriction::Controller> for ControllerRestriction {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::targets::restriction::Controller) -> Result<Self, Self::Error> {
+        value
+            .controller
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected controller to have a controller set."))
+            .map(Self::from)
+    }
+}
+
+impl From<&protogen::targets::restriction::controller::Controller> for ControllerRestriction {
+    fn from(value: &protogen::targets::restriction::controller::Controller) -> Self {
+        match value {
+            protogen::targets::restriction::controller::Controller::Self_(_) => Self::Self_,
+            protogen::targets::restriction::controller::Controller::Opponent(_) => Self::Opponent,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum Restriction {
     Attacking,
     AttackingOrBlocking,
     CastFromHand,
     Cmc(Cmc),
+    Controller(ControllerRestriction),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
     DescendedThisTurn,
@@ -259,6 +254,7 @@ impl Restriction {
             Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),
             Restriction::CastFromHand => "cast from your hand".to_string(),
             Restriction::Cmc(cmc) => format!("cmc {}", cmc),
+            Restriction::Controller(controller) => format!("{} controls", controller.as_ref()),
             Restriction::ControllerControlsBlackOrGreen => {
                 "controller controls black or green".to_string()
             }
@@ -346,6 +342,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             }
             protogen::targets::restriction::Restriction::CastFromHand(_) => Ok(Self::CastFromHand),
             protogen::targets::restriction::Restriction::Cmc(cmc) => Ok(Self::Cmc(cmc.try_into()?)),
+            protogen::targets::restriction::Restriction::Controller(controller) => {
+                Ok(Self::Controller(controller.try_into()?))
+            }
             protogen::targets::restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
                 Ok(Self::ControllerControlsBlackOrGreen)
             }

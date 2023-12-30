@@ -4,17 +4,17 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     player::AllPlayers,
     protogen,
     stack::ActiveTarget,
+    targets::Restriction,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct Mill {
     count: usize,
-    target: ControllerRestriction,
+    restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::Mill> for Mill {
@@ -23,7 +23,11 @@ impl TryFrom<&protogen::effects::Mill> for Mill {
     fn try_from(value: &protogen::effects::Mill) -> Result<Self, Self::Error> {
         Ok(Self {
             count: usize::try_from(value.count)?,
-            target: value.target.get_or_default().try_into()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -44,18 +48,11 @@ impl EffectBehaviors for Mill {
         controller: crate::player::Controller,
         _already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
-        match self.target {
-            ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
-            ControllerRestriction::You => HashSet::from([controller.into()]),
-            ControllerRestriction::Opponent => {
-                let mut all = AllPlayers::all_players_in_db(db);
-                all.remove(&controller.into());
-                all
-            }
-        }
-        .into_iter()
-        .map(|player| ActiveTarget::Player { id: player })
-        .collect_vec()
+        AllPlayers::all_players_in_db(db)
+            .into_iter()
+            .filter(|player| player.passes_restrictions(db, controller, &self.restrictions))
+            .map(|player| ActiveTarget::Player { id: player })
+            .collect_vec()
     }
 
     fn push_pending_behavior(

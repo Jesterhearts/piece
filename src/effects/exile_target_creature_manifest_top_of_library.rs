@@ -2,7 +2,6 @@ use indexmap::IndexSet;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{self, OnBattlefield},
     stack::ActiveTarget,
@@ -30,12 +29,8 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in in_play::all_cards(db) {
-            if card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::Any,
-                &source.restrictions(db),
-            ) && card.is_in_location::<OnBattlefield>(db)
+            if card.passes_restrictions(db, source, &source.restrictions(db))
+                && card.is_in_location::<OnBattlefield>(db)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
             {
                 let target = ActiveTarget::Battlefield { id: card };

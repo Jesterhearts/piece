@@ -3,12 +3,11 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::{self, ModifierId, OnBattlefield},
     protogen,
     stack::ActiveTarget,
-    targets::Restriction,
+    targets::{ControllerRestriction, Restriction},
     types::Type,
 };
 
@@ -52,13 +51,8 @@ impl EffectBehaviors for Equip {
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
-            if card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::You,
-                &source.restrictions(db),
-            ) && card.is_in_location::<OnBattlefield>(db)
+        for card in in_play::cards::<OnBattlefield>(db) {
+            if card.passes_restrictions(db, source, &source.restrictions(db))
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
             {
                 let target = ActiveTarget::Battlefield { id: card };
@@ -109,12 +103,14 @@ impl EffectBehaviors for Equip {
                 source,
                 &BattlefieldModifier {
                     modifier: modifier.clone(),
-                    controller: ControllerRestriction::You,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
-                    restrictions: vec![Restriction::OfType {
-                        types: IndexSet::from([Type::Creature]),
-                        subtypes: Default::default(),
-                    }],
+                    restrictions: vec![
+                        Restriction::Controller(ControllerRestriction::Self_),
+                        Restriction::OfType {
+                            types: IndexSet::from([Type::Creature]),
+                            subtypes: Default::default(),
+                        },
+                    ],
                 },
             );
 

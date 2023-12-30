@@ -6,7 +6,6 @@ use tracing::Level;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, OnBattlefield},
     stack::ActiveTarget,
@@ -34,12 +33,8 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for creature in in_play::all_cards(db).into_iter().filter(|card| {
-            card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::Any,
-                &source.restrictions(db),
-            ) && card.is_in_location::<OnBattlefield>(db)
+            card.passes_restrictions(db, source, &source.restrictions(db))
+                && card.is_in_location::<OnBattlefield>(db)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
         }) {
             let target = ActiveTarget::Battlefield { id: creature };

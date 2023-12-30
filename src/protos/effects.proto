@@ -3,7 +3,6 @@ syntax = "proto3";
 package effects;
 
 import "color.proto";
-import "controller.proto";
 import "cost.proto";
 import "counters.proto";
 import "mana.proto";
@@ -21,9 +20,8 @@ message ActivatedAbility {
 
 message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
-  controller.Controller controller = 2;
-  Duration duration = 3;
-  repeated targets.Restriction restrictions = 4;
+  Duration duration = 2;
+  repeated targets.Restriction restrictions = 3;
 }
 
 message CantAttackThisTurn {
@@ -43,7 +41,7 @@ message ControllerLosesLife {
 message CopyOfAnyCreatureNonTargeting {}
 
 message CounterSpell {
-  targets.SpellTarget valid_target = 1;
+  repeated targets.Restriction restrictions = 1;
 }
 
 message CreateToken {
@@ -76,8 +74,7 @@ message Cycling {
 
 message DealDamage {
   int32 quantity = 1;
-  optional controller.Controller controller = 2;
-  repeated targets.Restriction restrictions = 3;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message Destination {
@@ -127,9 +124,7 @@ message DynamicPowerToughness {
     counters.Counter counter = 1;
   }
   message NumberOfPermanentsMatching {
-    controller.Controller controller = 1;
-    repeated types.Type types = 2;
-    repeated types.Subtype subtypes = 3;
+    repeated targets.Restriction restrictions = 1;
   }
 }
 
@@ -138,9 +133,8 @@ message Equip {
 }
 
 message ExileTarget {
-  repeated targets.Restriction restrictions = 1;
-  controller.Controller controller = 2;
-  Duration duration = 3;
+  Duration duration = 1;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message ExileTargetCreatureManifestTopOfLibrary {}
@@ -169,23 +163,21 @@ message GainCounter {
     message X {}
     message LeftBattlefieldThisTurn {
       repeated targets.Restriction restrictions = 1;
-      controller.Controller controller = 2;
     }
 
     oneof dynamic {
-      LeftBattlefieldThisTurn left_battlefield_this_turn = 3;
-      X x = 4;
+      LeftBattlefieldThisTurn left_battlefield_this_turn = 2;
+      X x = 3;
     }
   }
 
   oneof count {
-    Single single = 5;
-    Dynamic dynamic = 6;
+    Single single = 4;
+    Dynamic dynamic = 5;
   }
 
-  counters.Counter counter = 7;
-  repeated targets.Restriction restrictions = 8;
-  controller.Controller controller = 9;
+  counters.Counter counter = 6;
+  repeated targets.Restriction restrictions = 7;
 }
 
 message GainLife {
@@ -217,7 +209,7 @@ message GainManaAbility {
 
 message Mill {
   int32 count = 1;
-  controller.Controller target = 2;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message ModifyBattlefield {
@@ -253,29 +245,25 @@ message PayCostThen {
 
 message ReturnFromGraveyardToBattlefield {
   int32 count = 1;
-  controller.Controller controller = 2;
-  repeated targets.Restriction restrictions = 3;
-  optional cost.XIs x_is = 4;
-  bool enters_tapped = 5;
+  repeated targets.Restriction restrictions = 2;
+  optional cost.XIs x_is = 3;
+  bool enters_tapped = 4;
 }
 
 message ReturnFromGraveyardToHand {
   int32 count = 1;
-  controller.Controller controller = 2;
-  repeated targets.Restriction restrictions = 3;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message ReturnFromGraveyardToLibrary {
   int32 count = 1;
-  controller.Controller controller = 2;
-  repeated targets.Restriction restrictions = 3;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message ReturnSelfToHand {}
 
 message ReturnTargetToHand {
-  controller.Controller controller = 1;
-  repeated targets.Restriction restrictions = 2;
+  repeated targets.Restriction restrictions = 1;
 }
 
 message RevealEachTopOfLibrary {
@@ -297,11 +285,10 @@ message Scry {
 message StaticAbility {
   message CantCastIfAttacked {}
   message ForceEtbTapped {
-    controller.Controller controller = 1;
-    repeated types.Type types = 2;
+    repeated targets.Restriction restrictions = 1;
   }
   message GreenCannotBeCountered {
-    controller.Controller controller = 1;
+    repeated targets.Restriction restrictions = 1;
   }
   message PreventAttacks {}
   message PreventBlocks {}
@@ -420,7 +407,6 @@ message ReplacementEffect {
     TokenCreation token_creation = 3;
   }
 
-  controller.Controller controller = 4;
-  repeated targets.Restriction restrictions = 5;
-  repeated Effect effects = 6;
+  repeated targets.Restriction restrictions = 4;
+  repeated Effect effects = 5;
 }

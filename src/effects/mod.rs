@@ -57,7 +57,6 @@ use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
     battlefield::PendingResults,
     card::{Color, Keyword},
-    controller::ControllerRestriction,
     effects::{
         cant_attack_this_turn::CantAttackThisTurn,
         cascade::Cascade,
@@ -191,9 +190,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
 
 #[derive(Debug, Clone)]
 pub struct NumberOfPermanentsMatching {
-    pub(crate) controller: ControllerRestriction,
-    pub(crate) types: IndexSet<Type>,
-    pub(crate) subtypes: IndexSet<Subtype>,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatching>
@@ -205,17 +202,10 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatc
         value: &protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatching,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            controller: value.controller.get_or_default().try_into()?,
-            types: value
-                .types
+            restrictions: value
+                .restrictions
                 .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
-
-            subtypes: value
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
+                .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
         })
     }
@@ -225,31 +215,7 @@ impl NumberOfPermanentsMatching {
     pub(crate) fn matching(&self, db: &mut Database, source: CardId) -> usize {
         in_play::cards::<OnBattlefield>(db)
             .into_iter()
-            .filter(|card| {
-                match self.controller {
-                    ControllerRestriction::Any => {}
-                    ControllerRestriction::You => {
-                        if card.controller(db) != source.controller(db) {
-                            return false;
-                        }
-                    }
-                    ControllerRestriction::Opponent => {
-                        if card.controller(db) == source.controller(db) {
-                            return false;
-                        }
-                    }
-                }
-
-                if !card.types_intersect(db, &self.types) {
-                    return false;
-                }
-
-                if !card.subtypes_intersect(db, &self.subtypes) {
-                    return false;
-                }
-
-                true
-            })
+            .filter(|card| card.passes_restrictions(db, source, &self.restrictions))
             .count()
     }
 }
@@ -822,7 +788,6 @@ pub(crate) struct ReplacementEffects(pub(crate) Vec<ReplacementEffectId>);
 #[derive(Debug, Clone)]
 pub(crate) struct ReplacementEffect {
     pub(crate) replacing: Replacing,
-    pub(crate) controller: ControllerRestriction,
     pub(crate) restrictions: Vec<Restriction>,
     pub(crate) effects: Vec<AnyEffect>,
 }
@@ -839,7 +804,6 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
                     anyhow!("Expected replacement effect to have a replacement specified")
                 })
                 .map(Replacing::from)?,
-            controller: value.controller.get_or_default().try_into()?,
             restrictions: value
                 .restrictions
                 .iter()

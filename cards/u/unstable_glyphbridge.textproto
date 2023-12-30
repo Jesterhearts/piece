@@ -147,8 +147,10 @@ back_face {
         anywhere {
         }
       }
-      controller {
-        opponent {
+      restrictions {
+        controller {
+          opponent {
+          }
         }
       }
       restrictions {

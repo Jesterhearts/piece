@@ -5,7 +5,6 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{ActionResult, PendingResult, PendingResults},
-    controller::ControllerRestriction,
     cost::ReduceWhen,
     effects::EffectDuration,
     in_play::{target_from_location, CardId, Database, ExileReason, OnBattlefield},
@@ -353,12 +352,7 @@ impl PayCost {
                     .into_iter()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
-                            && target.passes_restrictions(
-                                db,
-                                sac.source,
-                                ControllerRestriction::You,
-                                &sac.restrictions,
-                            )
+                            && target.passes_restrictions(db, sac.source, &sac.restrictions)
                     })
                     .collect_vec();
                 if valid_targets != sac.valid_targets {
@@ -376,12 +370,7 @@ impl PayCost {
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
                             && !target.tapped(db)
-                            && target.passes_restrictions(
-                                db,
-                                tap.source,
-                                ControllerRestriction::You,
-                                &tap.restrictions,
-                            )
+                            && target.passes_restrictions(db, tap.source, &tap.restrictions)
                     })
                     .collect_vec();
                 if valid_targets != tap.valid_targets {
@@ -399,12 +388,7 @@ impl PayCost {
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
                             && !target.tapped(db)
-                            && target.passes_restrictions(
-                                db,
-                                tap.source,
-                                ControllerRestriction::You,
-                                &tap.restrictions,
-                            )
+                            && target.passes_restrictions(db, tap.source, &tap.restrictions)
                     })
                     .collect_vec();
                 if valid_targets != tap.valid_targets {
@@ -478,12 +462,7 @@ impl PayCost {
                     .get_cards_in::<OnBattlefield>(db)
                     .into_iter()
                     .filter(|target| {
-                        target.passes_restrictions(
-                            db,
-                            exile.source,
-                            ControllerRestriction::You,
-                            &exile.restrictions,
-                        )
+                        target.passes_restrictions(db, exile.source, &exile.restrictions)
                     })
                     .collect_vec();
 
@@ -500,12 +479,7 @@ impl PayCost {
                     .get_cards(db)
                     .into_iter()
                     .filter(|target| {
-                        target.passes_restrictions(
-                            db,
-                            exile.source,
-                            ControllerRestriction::You,
-                            &exile.restrictions,
-                        )
+                        target.passes_restrictions(db, exile.source, &exile.restrictions)
                     })
                     .collect_vec();
 

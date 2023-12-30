@@ -29,8 +29,10 @@ cost {
 etb_abilities {
   return_from_graveyard_to_battlefield {
     count: 1
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {
@@ -58,8 +60,10 @@ triggered_abilities {
       battlefield {
       }
     }
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {

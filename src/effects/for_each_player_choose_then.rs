@@ -4,7 +4,6 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::choose_for_each_player::ChooseForEachPlayer,
-    controller::ControllerRestriction,
     effects::{AnyEffect, Effect, EffectBehaviors},
     in_play::{all_cards, target_from_location, Database},
     player::AllPlayers,
@@ -61,17 +60,9 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         all_cards(db)
             .into_iter()
             .filter_map(|card| {
-                if card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &source.restrictions(db),
-                ) && card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &self.restrictions,
-                ) && !already_chosen.contains(&card.controller(db))
+                if card.passes_restrictions(db, source, &source.restrictions(db))
+                    && card.passes_restrictions(db, source, &self.restrictions)
+                    && !already_chosen.contains(&card.controller(db))
                 {
                     Some(target_from_location(db, card))
                 } else {

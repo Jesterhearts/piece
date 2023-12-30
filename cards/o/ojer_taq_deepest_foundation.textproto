@@ -36,8 +36,10 @@ triggered_abilities {
       battlefield {
       }
     }
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {
@@ -54,8 +56,10 @@ triggered_abilities {
 replacement_effects {
   token_creation {
   }
-  controller {
-    you {
+  restrictions {
+    controller {
+      self {
+      }
     }
   }
   restrictions {

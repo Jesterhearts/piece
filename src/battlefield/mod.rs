@@ -19,7 +19,6 @@ use crate::{
         },
     },
     card::Color,
-    controller::ControllerRestriction,
     cost::{AdditionalCost, PayLife},
     effects::{
         battle_cry::BattleCry,
@@ -42,7 +41,7 @@ use crate::{
         AllPlayers, Controller, Owner,
     },
     stack::{ActiveTarget, Entry, Stack, StackEntry},
-    targets::Restriction,
+    targets::{ControllerRestriction, Restriction},
     triggers::{self, trigger_source, Trigger, TriggerSource},
     turns::Turn,
     types::Type,
@@ -341,13 +340,7 @@ impl Battlefield {
         for replacement in ReplacementEffectId::watching::<replacing::Etb>(db) {
             let source = replacement.source(db);
             let restrictions = replacement.restrictions(db);
-            let controller_restriction = replacement.controller_restriction(db);
-            if !source_card_id.passes_restrictions(
-                db,
-                source,
-                controller_restriction,
-                &restrictions,
-            ) {
+            if !source_card_id.passes_restrictions(db, source, &restrictions) {
                 continue;
             }
 
@@ -606,13 +599,12 @@ impl Battlefield {
         results
     }
 
-    pub(crate) fn static_abilities(db: &mut Database) -> Vec<(StaticAbility, Controller)> {
-        let mut result: Vec<(StaticAbility, Controller)> = Default::default();
+    pub(crate) fn static_abilities(db: &mut Database) -> Vec<(StaticAbility, CardId)> {
+        let mut result: Vec<(StaticAbility, CardId)> = Default::default();
 
         for card in cards::<OnBattlefield>(db) {
-            let controller = card.controller(db);
             for ability in card.static_abilities(db) {
-                result.push((ability, controller));
+                result.push((ability, card));
             }
         }
 
@@ -860,16 +852,11 @@ impl Battlefield {
                                 CounterId::add_counters(db, *target, *counter, x);
                             }
                         }
-                        DynamicCounter::LeftBattlefieldThisTurn {
-                            controller,
-                            restrictions,
-                        } => {
+                        DynamicCounter::LeftBattlefieldThisTurn { restrictions } => {
                             let cards = CardId::left_battlefield_this_turn(db, turn.turn_count);
                             let x = cards
                                 .into_iter()
-                                .filter(|card| {
-                                    card.passes_restrictions(db, *source, *controller, restrictions)
-                                })
+                                .filter(|card| card.passes_restrictions(db, *source, restrictions))
                                 .count();
                             if x > 0 {
                                 CounterId::add_counters(db, *target, *counter, x);
@@ -933,12 +920,8 @@ impl Battlefield {
                 card.apply_modifiers_layered(db);
 
                 for trigger in TriggerId::active_triggers_of_source::<trigger_source::Cast>(db) {
-                    if card.passes_restrictions(
-                        db,
-                        trigger.listener(db),
-                        trigger.controller_restriction(db),
-                        &trigger.restrictions(db),
-                    ) {
+                    if card.passes_restrictions(db, trigger.listener(db), &trigger.restrictions(db))
+                    {
                         results.extend(Stack::move_trigger_to_stack(db, trigger));
                     }
                 }
@@ -951,8 +934,9 @@ impl Battlefield {
                             trigger: Trigger {
                                 trigger: TriggerSource::Cast,
                                 from: triggers::Location::Hand,
-                                controller: ControllerRestriction::You,
-                                restrictions: Default::default(),
+                                restrictions: vec![Restriction::Controller(
+                                    ControllerRestriction::Self_,
+                                )],
                             },
                             effects: vec![AnyEffect {
                                 effect: Effect(&Cascade),
@@ -996,12 +980,7 @@ impl Battlefield {
                 let revealed = revealed
                     .into_iter()
                     .filter(|card| {
-                        card.passes_restrictions(
-                            db,
-                            *source,
-                            ControllerRestriction::Any,
-                            &reveal.for_each.restrictions,
-                        )
+                        card.passes_restrictions(db, *source, &reveal.for_each.restrictions)
                     })
                     .collect_vec();
 
@@ -1200,7 +1179,6 @@ impl Battlefield {
                         if attacker.passes_restrictions(
                             db,
                             trigger.listener(db),
-                            trigger.controller_restriction(db),
                             &trigger.restrictions(db),
                         ) {
                             results.extend(Stack::move_trigger_to_stack(db, trigger));
@@ -1214,8 +1192,9 @@ impl Battlefield {
                                 trigger: Trigger {
                                     trigger: TriggerSource::Attacks,
                                     from: triggers::Location::Anywhere,
-                                    controller: ControllerRestriction::You,
-                                    restrictions: vec![],
+                                    restrictions: vec![Restriction::Controller(
+                                        ControllerRestriction::Self_,
+                                    )],
                                 },
                                 effects: vec![AnyEffect {
                                     effect: Effect(&BattleCry),
@@ -1251,12 +1230,8 @@ impl Battlefield {
                 let cards = in_play::cards::<OnBattlefield>(db)
                     .into_iter()
                     .filter(|card| {
-                        card.passes_restrictions(
-                            db,
-                            *source,
-                            ControllerRestriction::Any,
-                            restrictions,
-                        ) && !card.indestructible(db)
+                        card.passes_restrictions(db, *source, restrictions)
+                            && !card.indestructible(db)
                     })
                     .collect_vec();
 
@@ -1364,12 +1339,7 @@ impl Battlefield {
                 triggers::Location::Anywhere | triggers::Location::Battlefield
             ) {
                 let restrictions = trigger.restrictions(db);
-                if target.passes_restrictions(
-                    db,
-                    trigger.listener(db),
-                    trigger.controller_restriction(db),
-                    &restrictions,
-                ) {
+                if target.passes_restrictions(db, trigger.listener(db), &restrictions) {
                     pending.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
             }
@@ -1395,12 +1365,7 @@ impl Battlefield {
                 triggers::Location::Anywhere | triggers::Location::Library
             ) {
                 let restrictions = trigger.restrictions(db);
-                if target.passes_restrictions(
-                    db,
-                    trigger.listener(db),
-                    trigger.controller_restriction(db),
-                    &restrictions,
-                ) {
+                if target.passes_restrictions(db, trigger.listener(db), &restrictions) {
                     pending.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
             }
@@ -1440,12 +1405,7 @@ impl Battlefield {
         {
             if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
                 let restrictions = trigger.restrictions(db);
-                if target.passes_restrictions(
-                    db,
-                    trigger.listener(db),
-                    trigger.controller_restriction(db),
-                    &restrictions,
-                ) {
+                if target.passes_restrictions(db, trigger.listener(db), &restrictions) {
                     pending.extend(Stack::move_trigger_to_stack(db, trigger));
                 }
             }
@@ -1476,12 +1436,7 @@ impl Battlefield {
                     triggers::Location::Anywhere | triggers::Location::Battlefield
                 ) {
                     let restrictions = trigger.restrictions(db);
-                    if source.passes_restrictions(
-                        db,
-                        trigger.listener(db),
-                        trigger.controller_restriction(db),
-                        &restrictions,
-                    ) {
+                    if source.passes_restrictions(db, trigger.listener(db), &restrictions) {
                         results.extend(Stack::move_trigger_to_stack(db, trigger));
                     }
                 }
@@ -1506,14 +1461,9 @@ pub(crate) fn create_token_copy_with_replacements(
     if replacements.len() > 0 {
         while let Some(replacement) = replacements.next() {
             let replacement_source = replacement.source(db);
-            let controller_restriction = replacement.controller_restriction(db);
             let restrictions = replacement.restrictions(db);
-            if !source.passes_restrictions(
-                db,
-                replacement_source,
-                controller_restriction,
-                &source.restrictions(db),
-            ) || !copying.passes_restrictions(db, source, controller_restriction, &restrictions)
+            if !source.passes_restrictions(db, replacement_source, &source.restrictions(db))
+                || !copying.passes_restrictions(db, source, &restrictions)
             {
                 continue;
             }
@@ -1539,7 +1489,6 @@ pub(crate) fn create_token_copy_with_replacements(
                 token,
                 &BattlefieldModifier {
                     modifier: modifier.clone(),
-                    controller: ControllerRestriction::Any,
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
                     restrictions: vec![],
                 },
@@ -1559,7 +1508,7 @@ pub(crate) fn compute_deck_targets(
     let mut results = vec![];
 
     for card in player.get_cards_in::<InLibrary>(db) {
-        if !card.passes_restrictions(db, card, ControllerRestriction::You, restrictions) {
+        if !card.passes_restrictions(db, card, restrictions) {
             continue;
         }
 
@@ -1571,32 +1520,20 @@ pub(crate) fn compute_deck_targets(
 
 pub(crate) fn compute_graveyard_targets(
     db: &mut Database,
-    controller: ControllerRestriction,
     source_card: CardId,
     restrictions: &[Restriction],
 ) -> Vec<CardId> {
-    let targets = match controller {
-        ControllerRestriction::Any => AllPlayers::all_players_in_db(db),
-        ControllerRestriction::You => HashSet::from([source_card.controller(db).into()]),
-        ControllerRestriction::Opponent => {
-            let mut all = AllPlayers::all_players_in_db(db);
-            all.remove(&source_card.controller(db).into());
-            all
-        }
-    };
     let mut target_cards = vec![];
 
-    for target in targets.into_iter() {
-        let cards_in_graveyard = target.get_cards::<InGraveyard>(db);
-        for card in cards_in_graveyard {
-            if !card.passes_restrictions(db, source_card, controller, &source_card.restrictions(db))
-                || !card.passes_restrictions(db, source_card, controller, restrictions)
-            {
-                continue;
-            }
-
-            target_cards.push(card);
+    let cards_in_graveyard = in_play::cards::<InGraveyard>(db);
+    for card in cards_in_graveyard {
+        if !card.passes_restrictions(db, source_card, &source_card.restrictions(db))
+            || !card.passes_restrictions(db, source_card, restrictions)
+        {
+            continue;
         }
+
+        target_cards.push(card);
     }
 
     target_cards
@@ -1614,12 +1551,7 @@ fn complete_add_from_library(
             triggers::Location::Anywhere | triggers::Location::Library
         ) {
             let restrictions = trigger.restrictions(db);
-            if source_card_id.passes_restrictions(
-                db,
-                trigger.listener(db),
-                trigger.controller_restriction(db),
-                &restrictions,
-            ) {
+            if source_card_id.passes_restrictions(db, trigger.listener(db), &restrictions) {
                 results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
@@ -1639,12 +1571,7 @@ fn complete_add_from_exile(
     {
         if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
             let restrictions = trigger.restrictions(db);
-            if source_card_id.passes_restrictions(
-                db,
-                trigger.listener(db),
-                trigger.controller_restriction(db),
-                &restrictions,
-            ) {
+            if source_card_id.passes_restrictions(db, trigger.listener(db), &restrictions) {
                 results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
@@ -1664,12 +1591,7 @@ fn complete_add_from_graveyard(
     {
         if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
             let restrictions = trigger.restrictions(db);
-            if source_card_id.passes_restrictions(
-                db,
-                trigger.listener(db),
-                trigger.controller_restriction(db),
-                &restrictions,
-            ) {
+            if source_card_id.passes_restrictions(db, trigger.listener(db), &restrictions) {
                 results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
@@ -1689,12 +1611,7 @@ fn complete_add_from_stack_or_hand(
     {
         if matches!(trigger.location_from(db), triggers::Location::Anywhere) {
             let restrictions = trigger.restrictions(db);
-            if source_card_id.passes_restrictions(
-                db,
-                trigger.listener(db),
-                trigger.controller_restriction(db),
-                &restrictions,
-            ) {
+            if source_card_id.passes_restrictions(db, trigger.listener(db), &restrictions) {
                 results.extend(Stack::move_trigger_to_stack(db, trigger));
             }
         }
@@ -1732,32 +1649,14 @@ fn move_card_to_battlefield(
         ));
     }
 
-    let must_enter_tapped =
-        Battlefield::static_abilities(db)
-            .iter()
-            .any(|(ability, controller)| match ability {
-                StaticAbility::ForceEtbTapped(ForceEtbTapped {
-                    controller: controller_restriction,
-                    types,
-                }) => {
-                    match controller_restriction {
-                        ControllerRestriction::Any => {}
-                        ControllerRestriction::You => {
-                            if *controller != source_card_id.controller(db) {
-                                return false;
-                            }
-                        }
-                        ControllerRestriction::Opponent => {
-                            if *controller == source_card_id.controller(db) {
-                                return false;
-                            }
-                        }
-                    }
-
-                    source_card_id.types_intersect(db, types)
-                }
-                _ => false,
-            });
+    let must_enter_tapped = Battlefield::static_abilities(db)
+        .iter()
+        .any(|(ability, card)| match ability {
+            StaticAbility::ForceEtbTapped(ForceEtbTapped { restrictions }) => {
+                source_card_id.passes_restrictions(db, *card, restrictions)
+            }
+            _ => false,
+        });
 
     if must_enter_tapped || source_card_id.etb_tapped(db) || enters_tapped {
         results.extend(source_card_id.tap(db));

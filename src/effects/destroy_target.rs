@@ -2,14 +2,13 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location, OnBattlefield},
     protogen,
     targets::Restriction,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct DestroyTarget {
     pub(crate) restrictions: Vec<Restriction>,
 }
@@ -45,20 +44,10 @@ impl EffectBehaviors for DestroyTarget {
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
-            if card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::Any,
-                &source.restrictions(db),
-            ) && card.is_in_location::<OnBattlefield>(db)
+        for card in in_play::cards::<OnBattlefield>(db) {
+            if card.passes_restrictions(db, source, &source.restrictions(db))
                 && card.can_be_targeted(db, controller)
-                && card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &self.restrictions,
-                )
+                && card.passes_restrictions(db, source, &self.restrictions)
                 && !card.indestructible(db)
             {
                 let target = target_from_location(db, card);

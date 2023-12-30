@@ -49,12 +49,14 @@ activated_abilities {
         add_toughness: 2
         add_keywords: "Lifelink"
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {
@@ -74,10 +76,6 @@ triggered_abilities {
     }
     from {
       anywhere {
-      }
-    }
-    controller {
-      any {
       }
     }
     restrictions {

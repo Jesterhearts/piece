@@ -2,7 +2,6 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location, OnBattlefield},
     stack::ActiveTarget,
@@ -30,14 +29,7 @@ impl EffectBehaviors for UntapTarget {
         let mut targets = vec![];
         for card in in_play::cards::<OnBattlefield>(db)
             .into_iter()
-            .filter(|card| {
-                card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &source.restrictions(db),
-                )
-            })
+            .filter(|card| card.passes_restrictions(db, source, &source.restrictions(db)))
             .collect_vec()
         {
             let target = target_from_location(db, card);

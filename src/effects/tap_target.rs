@@ -48,17 +48,8 @@ impl EffectBehaviors for TapTarget {
         in_play::cards::<OnBattlefield>(db)
             .into_iter()
             .filter(|card| {
-                card.passes_restrictions(
-                    db,
-                    source,
-                    crate::controller::ControllerRestriction::Any,
-                    &self.restrictions,
-                ) && card.passes_restrictions(
-                    db,
-                    source,
-                    crate::controller::ControllerRestriction::Any,
-                    &source.restrictions(db),
-                )
+                card.passes_restrictions(db, source, &self.restrictions)
+                    && card.passes_restrictions(db, source, &source.restrictions(db))
             })
             .map(|card| crate::stack::ActiveTarget::Battlefield { id: card })
             .filter(|target| !already_chosen.contains(target))

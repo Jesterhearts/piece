@@ -24,8 +24,10 @@ triggered_abilities {
       anywhere {
       }
     }
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
   }
@@ -35,12 +37,14 @@ triggered_abilities {
         add_power: 2
         add_keywords: "Vigilance"
       }
-      controller {
-        you {
-        }
-      }
       duration {
         until_end_of_turn {
+        }
+      }
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {

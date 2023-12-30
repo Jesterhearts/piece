@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package triggers;
 
-import "controller.proto";
 import "targets.proto";
 import "types.proto";
 
@@ -45,6 +44,5 @@ message TriggerSource {
 message Trigger {
   TriggerSource source = 1;
   Location from = 2;
-  controller.Controller controller = 3;
   repeated targets.Restriction restrictions = 4;
 }

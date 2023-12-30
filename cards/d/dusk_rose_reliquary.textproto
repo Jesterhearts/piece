@@ -35,6 +35,10 @@ ward {
 }
 etb_abilities {
   exile_target {
+    duration {
+      until_source_leaves_battlefield {
+      }
+    }
     restrictions {
       of_type {
         types {
@@ -47,12 +51,10 @@ etb_abilities {
         }
       }
     }
-    controller {
-      opponent {
-      }
-    }
-    duration {
-      until_source_leaves_battlefield {
+    restrictions {
+      controller {
+        opponent {
+        }
       }
     }
   }

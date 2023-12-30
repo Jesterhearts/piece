@@ -20,8 +20,10 @@ etb_abilities {
     modes {
       effects {
         return_from_graveyard_to_hand {
-          controller {
-            you {
+          restrictions {
+            controller {
+              self {
+              }
             }
           }
           restrictions {

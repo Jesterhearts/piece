@@ -26,8 +26,10 @@ oracle_text: "If you would draw a card while you have no cards in hand, instead 
 replacement_effects {
   draw {
   }
-  controller {
-    you {
+  restrictions {
+    controller {
+      self {
+      }
     }
   }
   restrictions {

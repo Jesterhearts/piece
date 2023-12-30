@@ -26,10 +26,6 @@ enchant {
       add_power: 3
       add_toughness: 1
     }
-    controller {
-      any {
-      }
-    }
     duration {
       until_source_leaves_battlefield {
       }
@@ -40,10 +36,6 @@ enchant {
       add_colors {
         black {
         }
-      }
-    }
-    controller {
-      any {
       }
     }
     duration {

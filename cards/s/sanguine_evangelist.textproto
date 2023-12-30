@@ -54,8 +54,10 @@ triggered_abilities {
       battlefield {
       }
     }
-    controller {
-      you {
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {

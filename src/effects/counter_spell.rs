@@ -7,12 +7,12 @@ use crate::{
     in_play::{CardId, InStack},
     protogen,
     stack::{ActiveTarget, Stack},
-    targets::SpellTarget,
+    targets::Restriction,
 };
 
 #[derive(Debug, Clone)]
 pub(crate) struct CounterSpell {
-    pub(crate) target: SpellTarget,
+    pub(crate) restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::CounterSpell> for CounterSpell {
@@ -20,7 +20,11 @@ impl TryFrom<&protogen::effects::CounterSpell> for CounterSpell {
 
     fn try_from(value: &protogen::effects::CounterSpell) -> Result<Self, Self::Error> {
         Ok(Self {
-            target: value.valid_target.get_or_default().try_into()?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -37,8 +41,8 @@ impl EffectBehaviors for CounterSpell {
     fn valid_targets(
         &self,
         db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
-        controller: crate::player::Controller,
+        source: crate::in_play::CardId,
+        _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let cards_in_stack = db
@@ -50,7 +54,7 @@ impl EffectBehaviors for CounterSpell {
 
         let mut targets = vec![];
         for (card, stack_id) in cards_in_stack.into_iter() {
-            if card.can_be_countered(db, controller, &self.target) {
+            if card.can_be_countered(db, source, &self.restrictions) {
                 targets.push(ActiveTarget::Stack { id: stack_id });
             }
         }

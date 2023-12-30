@@ -34,12 +34,14 @@ static_abilities {
       add_toughness: 2
       entire_battlefield: true
     }
-    controller {
-      you {
-      }
-    }
     duration {
       until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {
@@ -55,12 +57,14 @@ static_abilities {
       add_toughness: -2
       entire_battlefield: true
     }
-    controller {
-      opponent {
-      }
-    }
     duration {
       until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      controller {
+        opponent {
+        }
       }
     }
     restrictions {

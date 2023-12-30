@@ -95,8 +95,10 @@ back_face {
         battlefield {
         }
       }
-      controller {
-        you {
+      restrictions {
+        controller {
+          self {
+          }
         }
       }
       restrictions {
@@ -109,12 +111,14 @@ back_face {
         modifier {
           add_keywords: "Flying"
         }
-        controller {
-          you {
-          }
-        }
         duration {
           until_end_of_turn {
+          }
+        }
+        restrictions {
+          controller {
+            self {
+            }
           }
         }
         restrictions {

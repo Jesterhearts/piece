@@ -2,7 +2,6 @@ use indexmap::IndexSet;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
-    controller::ControllerRestriction,
     effects::{Effect, EffectBehaviors},
     in_play::{self, OnBattlefield},
     player::AllPlayers,
@@ -50,21 +49,11 @@ impl EffectBehaviors for DealDamage {
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
-            if card.passes_restrictions(
-                db,
-                source,
-                ControllerRestriction::Any,
-                &source.restrictions(db),
-            ) && card.is_in_location::<OnBattlefield>(db)
+        for card in in_play::cards::<OnBattlefield>(db) {
+            if card.passes_restrictions(db, source, &source.restrictions(db))
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
                 && card.can_be_targeted(db, controller)
-                && card.passes_restrictions(
-                    db,
-                    source,
-                    ControllerRestriction::Any,
-                    &self.restrictions,
-                )
+                && card.passes_restrictions(db, source, &self.restrictions)
             {
                 let target = ActiveTarget::Battlefield { id: card };
                 if !already_chosen.contains(&target) {

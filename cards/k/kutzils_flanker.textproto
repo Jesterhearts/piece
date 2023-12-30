@@ -37,8 +37,10 @@ etb_abilities {
                   }
                 }
               }
-              controller {
-                you {
+              restrictions {
+                controller {
+                  self {
+                  }
                 }
               }
             }

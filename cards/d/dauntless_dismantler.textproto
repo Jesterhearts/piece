@@ -25,12 +25,18 @@ cost {
 oracle_text: "Artifacts your opponents control enter the battlefield tapped."
 static_abilities {
   force_etb_tapped {
-    controller {
-      opponent {
+    restrictions {
+      controller {
+        opponent {
+        }
       }
     }
-    types {
-      artifact {
+    restrictions {
+      of_type {
+        types {
+          artifact {
+          }
+        }
       }
     }
   }

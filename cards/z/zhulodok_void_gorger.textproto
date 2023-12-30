@@ -28,12 +28,14 @@ static_abilities {
       global: true
       add_keywords: "Cascade, Cascade"
     }
-    controller {
-      you {
-      }
-    }
     duration {
       until_source_leaves_battlefield {
+      }
+    }
+    restrictions {
+      controller {
+        self {
+        }
       }
     }
     restrictions {
