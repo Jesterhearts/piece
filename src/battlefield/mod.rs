@@ -440,7 +440,11 @@ impl Battlefield {
                 card_id.marked_damage(db)
             );
 
-            if toughness.is_some() && (toughness.unwrap() - card_id.marked_damage(db)) <= 0 {
+            if toughness.is_some()
+                && (toughness.unwrap() <= 0
+                    || ((toughness.unwrap() - card_id.marked_damage(db)) <= 0
+                        && !card_id.indestructible(db)))
+            {
                 result.push_settled(ActionResult::PermanentToGraveyard(card_id));
             }
 
@@ -1252,7 +1256,7 @@ impl Battlefield {
                             *source,
                             ControllerRestriction::Any,
                             restrictions,
-                        )
+                        ) && !card.indestructible(db)
                     })
                     .collect_vec();
 

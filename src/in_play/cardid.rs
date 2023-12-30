@@ -1928,6 +1928,10 @@ impl CardId {
         self.keywords(db).contains_key(&Keyword::Flying)
     }
 
+    pub(crate) fn indestructible(self, db: &Database) -> bool {
+        self.keywords(db).contains_key(&Keyword::Indestructible)
+    }
+
     pub(crate) fn vigilance(self, db: &Database) -> bool {
         self.keywords(db).contains_key(&Keyword::Vigilance)
     }

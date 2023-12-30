@@ -59,6 +59,7 @@ impl EffectBehaviors for DestroyTarget {
                     ControllerRestriction::Any,
                     &self.restrictions,
                 )
+                && !card.indestructible(db)
             {
                 let target = target_from_location(db, card);
                 if !already_chosen.contains(&target) {
