@@ -51,6 +51,7 @@ message Subtype {
   message Golem {}
   message Human {}
   message Island {}
+  message Knight {}
   message Mountain {}
   message Nymph {}
   message Plains {}
@@ -91,21 +92,22 @@ message Subtype {
     Golem golem = 20;
     Human human = 21;
     Island island = 22;
-    Mountain mountain = 23;
-    Nymph nymph = 24;
-    Plains plains = 25;
-    Praetor praetor = 26;
-    Scout scout = 27;
-    Shade shade = 28;
-    Shaman shaman = 29;
-    Shapeshifter shapeshifter = 30;
-    Soldier soldier = 31;
-    Spirit spirit = 32;
-    Swamp swamp = 33;
-    Vampire vampire = 34;
-    Vehicle vehicle = 35;
-    Warrior warrior = 36;
-    Wizard wizard = 37;
-    Zombie zombie = 38;
+    Knight knight = 23;
+    Mountain mountain = 24;
+    Nymph nymph = 25;
+    Plains plains = 26;
+    Praetor praetor = 27;
+    Scout scout = 28;
+    Shade shade = 29;
+    Shaman shaman = 30;
+    Shapeshifter shapeshifter = 31;
+    Soldier soldier = 32;
+    Spirit spirit = 33;
+    Swamp swamp = 34;
+    Vampire vampire = 35;
+    Vehicle vehicle = 36;
+    Warrior warrior = 37;
+    Wizard wizard = 38;
+    Zombie zombie = 39;
   }
 }

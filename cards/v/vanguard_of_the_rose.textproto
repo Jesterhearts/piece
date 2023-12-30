@@ -1,0 +1,75 @@
+name: "Vanguard of the Rose"
+types {
+  creature {
+  }
+}
+subtypes {
+  vampire {
+  }
+}
+subtypes {
+  knight {
+  }
+}
+cost {
+  mana_costs {
+    generic {
+      count: 1
+    }
+  }
+  mana_costs {
+    white {
+    }
+  }
+}
+activated_abilities {
+  cost {
+    mana_costs {
+      generic {
+        count: 1
+      }
+    }
+    additional_costs {
+      sacrifice_permanent {
+        restrictions {
+          of_type {
+            types {
+              artifact {
+              }
+            }
+            types {
+              creature {
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  effects {
+    battlefield_modifier {
+      modifier {
+        add_keywords: "Indestructible"
+      }
+      controller {
+        you {
+        }
+      }
+      duration {
+        until_end_of_turn {
+        }
+      }
+      restrictions {
+        self {
+        }
+      }
+    }
+  }
+  effects {
+    tap_this {
+    }
+  }
+  apply_to_self: true
+}
+power: 3
+toughness: 1

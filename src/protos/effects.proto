@@ -325,6 +325,8 @@ message TapTarget {
   repeated targets.Restriction restrictions = 1;
 }
 
+message TapThis {}
+
 message TargetToTopOfLibrary {
   repeated targets.Restriction restrictions = 1;
 }
@@ -387,15 +389,16 @@ message Effect {
     RevealEachTopOfLibrary reveal_each_top_of_library = 37;
     Scry scry = 38;
     TapTarget tap_target = 39;
-    TargetToTopOfLibrary target_to_top_of_library = 40;
-    Transform transform = 41;
-    TutorLibrary tutor_library = 42;
-    UntapThis untap_this = 43;
-    UntapTarget untap_target = 44;
+    TapThis tap_this = 40;
+    TargetToTopOfLibrary target_to_top_of_library = 41;
+    Transform transform = 42;
+    TutorLibrary tutor_library = 43;
+    UntapThis untap_this = 44;
+    UntapTarget untap_target = 45;
   }
 
-  optional Effect threshold = 45;
-  string oracle_text = 46;
+  optional Effect threshold = 46;
+  string oracle_text = 47;
 }
 
 message Mode {

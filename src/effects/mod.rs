@@ -1,6 +1,6 @@
 pub(crate) mod battle_cry;
 pub(crate) mod battlefield_modifier;
-mod cant_attack_this_turn;
+pub(crate) mod cant_attack_this_turn;
 pub(crate) mod cascade;
 pub(crate) mod controller_draws_cards;
 pub(crate) mod controller_loses_life;
@@ -35,6 +35,7 @@ pub(crate) mod reveal_each_top_of_library;
 pub(crate) mod scry;
 pub(crate) mod self_explores;
 pub(crate) mod tap_target;
+pub(crate) mod tap_this;
 pub(crate) mod target_controller_gains_tokens;
 pub(crate) mod target_creature_explores;
 pub(crate) mod target_gains_counters;
@@ -93,6 +94,7 @@ use crate::{
         scry::Scry,
         self_explores::SelfExplores,
         tap_target::TapTarget,
+        tap_this::TapThis,
         target_controller_gains_tokens::TargetControllerGainsTokens,
         target_creature_explores::TargetCreatureExplores,
         target_gains_counters::{Counter, TargetGainsCounters},
@@ -632,6 +634,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::TapTarget(value) => {
                 Ok(Self(Box::leak(Box::new(TapTarget::try_from(value)?))))
             }
+            protogen::effects::effect::Effect::TapThis(_) => Ok(Self(&TapThis)),
             protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => Ok(Self(
                 Box::leak(Box::new(TargetControllerGainsTokens::try_from(value)?)),
             )),
