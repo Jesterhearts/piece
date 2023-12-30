@@ -15,7 +15,7 @@ There is a tool for formatting protos which can be invoked with `cargo run --bin
 - When adding restrictions, individual restrictions are AND'd together. So
   ```textproto
   restrictions {
-    of_type { types{ artifact {} } }
+    of_type { types { artifact {} } }
   }
   restrictions {
     of_type { types { creature {} } }
