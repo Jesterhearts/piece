@@ -22,13 +22,11 @@ pub(crate) enum Type {
     Legendary,
     World,
     Tribal,
-    Adventure,
     Instant,
     Sorcery,
     Creature,
     Artifact,
     Enchantment,
-    Siege,
     Battle,
     Snow,
     Land,
@@ -66,8 +64,6 @@ impl From<&protogen::types::type_::Ty> for Type {
             protogen::types::type_::Ty::Stickers(_) => Self::Stickers,
             protogen::types::type_::Ty::Tribal(_) => Self::Tribal,
             protogen::types::type_::Ty::World(_) => Self::World,
-            protogen::types::type_::Ty::Adventure(_) => Self::Adventure,
-            protogen::types::type_::Ty::Siege(_) => Self::Siege,
         }
     }
 }
@@ -89,6 +85,7 @@ pub(crate) struct RemoveAllSubtypes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::AsRefStr)]
 pub(crate) enum Subtype {
+    Adventure,
     Advisor,
     Aetherborn,
     Ajani,
@@ -383,6 +380,7 @@ pub(crate) enum Subtype {
     Shark,
     Sheep,
     Shrine,
+    Siege,
     Siren,
     Sivitri,
     Skeleton,
@@ -483,6 +481,7 @@ impl TryFrom<&protogen::types::Subtype> for Subtype {
 impl From<&protogen::types::subtype::Subtype> for Subtype {
     fn from(value: &protogen::types::subtype::Subtype) -> Self {
         match value {
+            protogen::types::subtype::Subtype::Adventure(_) => Self::Adventure,
             protogen::types::subtype::Subtype::Advisor(_) => Self::Advisor,
             protogen::types::subtype::Subtype::Aetherborn(_) => Self::Aetherborn,
             protogen::types::subtype::Subtype::Ajani(_) => Self::Ajani,
@@ -777,6 +776,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Shark(_) => Self::Shark,
             protogen::types::subtype::Subtype::Sheep(_) => Self::Sheep,
             protogen::types::subtype::Subtype::Shrine(_) => Self::Shrine,
+            protogen::types::subtype::Subtype::Siege(_) => Self::Siege,
             protogen::types::subtype::Subtype::Siren(_) => Self::Siren,
             protogen::types::subtype::Subtype::Sivitri(_) => Self::Sivitri,
             protogen::types::subtype::Subtype::Skeleton(_) => Self::Skeleton,
