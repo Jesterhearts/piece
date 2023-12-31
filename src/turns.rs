@@ -6,8 +6,8 @@ use indexmap::IndexSet;
 use crate::{
     battlefield::{Battlefield, PendingResults},
     in_play::{
-        set_current_turn, AttackingBannedThisTurn, CardId, Database, DeleteAbility, LifeGained,
-        TimesDescended, TriggerId,
+        set_current_turn, AttackingBannedThisTurn, CardId, Database, DeleteAbility, InHand,
+        LifeGained, TimesDescended, TriggerId,
     },
     player::{AllPlayers, Owner},
     stack::Stack,
@@ -229,7 +229,14 @@ impl Turn {
                 }
                 self.phase = Phase::Cleanup;
 
-                Battlefield::end_turn(db)
+                let mut pending = Battlefield::end_turn(db);
+                let hand_size = all_players[self.active_player()].hand_size;
+                let in_hand = self.active_player().get_cards::<InHand>(db);
+                if in_hand.len() > hand_size {
+                    let discard = in_hand.len() - hand_size;
+                    pending.push_choose_discard(in_hand, discard);
+                }
+                pending
             }
             Phase::Cleanup => {
                 for player in all_players.all_players() {

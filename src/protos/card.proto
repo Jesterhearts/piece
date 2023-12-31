@@ -29,7 +29,7 @@ message Card {
 
   repeated effects.Effect effects = 11;
   repeated effects.Mode modes = 12;
-  bool target_individually = 13;
+  bool apply_individually = 13;
 
   repeated effects.Effect etb_abilities = 14;
   repeated effects.StaticAbility static_abilities = 15;

@@ -296,6 +296,7 @@ impl AllPlayers {
                 hexproof: false,
                 life_total,
                 lands_played: 0,
+                hand_size: 7,
                 mana_pool: Default::default(),
                 deck: Deck::empty(),
                 lost: false,
@@ -323,6 +324,7 @@ pub struct Player {
     #[allow(unused)]
     pub(crate) hexproof: bool,
     pub(crate) lands_played: usize,
+    pub(crate) hand_size: usize,
     pub mana_pool: ManaPool,
 
     pub life_total: i32,

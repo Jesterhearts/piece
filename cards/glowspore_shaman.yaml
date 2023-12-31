@@ -8,7 +8,7 @@ cost:
   mana_costs:
     - cost: !Black {}
     - cost: !Green {}
-target_individually: true
+apply_individually: true
 etb_abilities:
   - oracle_text: When Glowspore Shaman enters the battlefield, mill three cards.
     effect: !Mill

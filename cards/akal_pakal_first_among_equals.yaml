@@ -7,10 +7,6 @@ cost:
 types:
   - type_: !Legendary {}
   - type_: !Creature {}
-oracle_text:
-  At the beginning of each player's end step, if an artifact entered the
-  battlefield under your control this turn, look at the top two cards of your
-  library. Put one of them into your hand and the other into your graveyard.
 power: 1
 toughness: 5
 triggered_abilities:
@@ -38,3 +34,6 @@ triggered_abilities:
             - destination:
                 destination: !Graveyard {}
               count: 1
+    oracle_text: At the beginning of each player's end step, if an artifact entered
+      the battlefield under your control this turn, look at the top two cards of your
+      library. Put one of them into your hand and the other into your graveyard.

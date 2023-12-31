@@ -2,6 +2,7 @@ pub(crate) mod battle_cry;
 pub(crate) mod battlefield_modifier;
 pub(crate) mod cant_attack_this_turn;
 pub(crate) mod cascade;
+pub(crate) mod controller_discards;
 pub(crate) mod controller_draws_cards;
 pub(crate) mod controller_loses_life;
 pub(crate) mod copy_of_any_creature_non_targeting;
@@ -61,6 +62,7 @@ use crate::{
     effects::{
         cant_attack_this_turn::CantAttackThisTurn,
         cascade::Cascade,
+        controller_discards::ControllerDiscards,
         controller_draws_cards::ControllerDrawsCards,
         controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
@@ -509,6 +511,11 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Box::new(CantAttackThisTurn::try_from(value)?),
             ))),
             protogen::effects::effect::Effect::Cascade(_) => Ok(Self(&Cascade)),
+            protogen::effects::effect::Effect::ControllerDiscards(value) => {
+                Ok(Self(Box::leak(Box::new(ControllerDiscards {
+                    count: usize::try_from(value.count)?,
+                }))))
+            }
             protogen::effects::effect::Effect::ControllerDrawCards(value) => {
                 Ok(Self(Box::leak(Box::new(ControllerDrawsCards {
                     count: usize::try_from(value.count)?,

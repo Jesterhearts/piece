@@ -13,7 +13,7 @@ use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
     battlefield::{
         choose_targets::ChooseTargets,
-        examine_top_cards::ExamineTopCards,
+        examine_top_cards::ExamineCards,
         pay_costs::{
             ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
             SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
@@ -133,6 +133,10 @@ pub(crate) enum ActionResult {
     DestroyEach(CardId, Vec<Restriction>),
     DestroyTarget(ActiveTarget),
     Discard(CardId),
+    DiscardCards {
+        target: Controller,
+        count: usize,
+    },
     Discover {
         source: CardId,
         count: usize,
@@ -655,6 +659,11 @@ impl Battlefield {
                 assert!(card.is_in_location::<InHand>(db));
                 card.move_to_graveyard(db);
                 PendingResults::default()
+            }
+            ActionResult::DiscardCards { target, count } => {
+                let mut pending = PendingResults::default();
+                pending.push_choose_discard(target.get_cards_in::<InHand>(db), *count);
+                pending
             }
             ActionResult::TapPermanent(card_id) => card_id.tap(db),
             ActionResult::PermanentToGraveyard(card_id) => {
@@ -1193,7 +1202,11 @@ impl Battlefield {
                 }
 
                 let mut results = PendingResults::default();
-                results.push_examine_top_cards(ExamineTopCards::new(cards, destinations.clone()));
+                results.push_examine_top_cards(ExamineCards::new(
+                    examine_top_cards::Location::Library,
+                    cards,
+                    destinations.clone(),
+                ));
 
                 results
             }

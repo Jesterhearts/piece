@@ -30,6 +30,10 @@ message CantAttackThisTurn {
 
 message Cascade {}
 
+message ControllerDiscards {
+  int32 count = 1;
+}
+
 message ControllerDrawCards {
   int32 count = 1;
 }
@@ -359,53 +363,54 @@ message Effect {
     BattlefieldModifier modify_target = 2;
     CantAttackThisTurn cant_attack_this_turn = 3;
     Cascade cascade = 4;
-    ControllerDrawCards controller_draw_cards = 5;
-    ControllerLosesLife controller_loses_life = 6;
-    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 7;
-    CounterSpell counter_spell = 8;
-    CreateToken create_token = 9;
-    CreateToken target_controller_gains_tokens = 10;
-    CreateTokenCopy create_token_copy = 11;
-    Cycling cycling = 12;
-    DealDamage deal_damage = 13;
-    DestroyEach destroy_each = 14;
-    DestroyTarget destroy_target = 15;
-    Discover discover = 16;
-    Equip equip = 17;
-    ExamineTopCards examine_top_cards = 18;
-    ExileTarget exile_target = 19;
+    ControllerDiscards controller_discards = 5;
+    ControllerDrawCards controller_draw_cards = 6;
+    ControllerLosesLife controller_loses_life = 7;
+    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 8;
+    CounterSpell counter_spell = 9;
+    CreateToken create_token = 10;
+    CreateToken target_controller_gains_tokens = 11;
+    CreateTokenCopy create_token_copy = 12;
+    Cycling cycling = 13;
+    DealDamage deal_damage = 14;
+    DestroyEach destroy_each = 15;
+    DestroyTarget destroy_target = 16;
+    Discover discover = 17;
+    Equip equip = 18;
+    ExamineTopCards examine_top_cards = 19;
+    ExileTarget exile_target = 20;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 20;
-    ExileTargetGraveyard exile_target_graveyard = 21;
-    Explore self_explores = 22;
-    Explore target_explores = 23;
-    ForEachManaOfSource for_each_mana_of_source = 24;
-    ForEachPlayerChooseThen for_each_player_choose_then = 25;
-    GainCounter target_gains_counters = 26;
-    GainLife gain_life = 27;
-    Mill mill = 28;
-    Modes modal = 29;
-    MultiplyTokens multiply_tokens = 30;
-    PayCostThen pay_cost_then = 31;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 32;
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 33;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 34;
-    ReturnSelfToHand return_self_to_hand = 35;
-    ReturnTargetToHand return_target_to_hand = 36;
-    ReturnTransformed return_transformed = 37;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 38;
-    Scry scry = 39;
-    TapTarget tap_target = 40;
-    TapThis tap_this = 41;
-    TargetToTopOfLibrary target_to_top_of_library = 42;
-    Transform transform = 43;
-    TutorLibrary tutor_library = 44;
-    UntapThis untap_this = 45;
-    UntapTarget untap_target = 46;
+        exile_target_creature_manifest_top_of_library = 21;
+    ExileTargetGraveyard exile_target_graveyard = 22;
+    Explore self_explores = 23;
+    Explore target_explores = 24;
+    ForEachManaOfSource for_each_mana_of_source = 25;
+    ForEachPlayerChooseThen for_each_player_choose_then = 26;
+    GainCounter target_gains_counters = 27;
+    GainLife gain_life = 28;
+    Mill mill = 29;
+    Modes modal = 30;
+    MultiplyTokens multiply_tokens = 31;
+    PayCostThen pay_cost_then = 32;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 33;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 34;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 35;
+    ReturnSelfToHand return_self_to_hand = 36;
+    ReturnTargetToHand return_target_to_hand = 37;
+    ReturnTransformed return_transformed = 38;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 39;
+    Scry scry = 40;
+    TapTarget tap_target = 41;
+    TapThis tap_this = 42;
+    TargetToTopOfLibrary target_to_top_of_library = 43;
+    Transform transform = 44;
+    TutorLibrary tutor_library = 45;
+    UntapThis untap_this = 46;
+    UntapTarget untap_target = 47;
   }
 
-  optional Effect threshold = 47;
-  string oracle_text = 48;
+  optional Effect threshold = 48;
+  string oracle_text = 49;
 }
 
 message Mode {

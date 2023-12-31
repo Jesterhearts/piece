@@ -219,7 +219,7 @@ impl Keyword {
 pub(crate) struct PaidX(pub(crate) usize);
 
 #[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct TargetIndividually;
+pub(crate) struct ApplyIndividually;
 
 #[derive(Debug, Clone, Copy, Component)]
 pub(crate) struct Revealed;
@@ -380,7 +380,7 @@ pub struct Card {
     pub(crate) modes: Vec<Mode>,
 
     pub(crate) etb_abilities: Vec<AnyEffect>,
-    pub(crate) target_individually: bool,
+    pub(crate) apply_individually: bool,
 
     pub(crate) ward: Option<Ward>,
 
@@ -454,7 +454,7 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            target_individually: value.target_individually,
+            apply_individually: value.apply_individually,
             ward: value
                 .ward
                 .as_ref()

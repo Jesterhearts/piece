@@ -22,7 +22,7 @@ use crate::{
     battlefield::{
         choose_for_each_player::ChooseForEachPlayer,
         choosing_cast::ChoosingCast,
-        examine_top_cards::ExamineTopCards,
+        examine_top_cards::ExamineCards,
         organizing_stack::OrganizingStack,
         pay_costs::PayCost,
         pending_results::{
@@ -135,7 +135,7 @@ pub(crate) enum Pending {
     ChooseCast(ChoosingCast),
     DeclaringAttackers(DeclaringAttackers),
     LibraryOrGraveyard(LibraryOrGraveyard),
-    ExaminingTopCards(ExamineTopCards),
+    ExamineCards(ExamineCards),
     OrganizingStack(OrganizingStack),
     PayCosts(PayCost),
 }
@@ -222,7 +222,8 @@ impl PendingResults {
 
     pub(crate) fn push_choose_scry(&mut self, cards: Vec<CardId>) {
         self.pending
-            .push_back(Pending::ExaminingTopCards(ExamineTopCards::new(
+            .push_back(Pending::ExamineCards(ExamineCards::new(
+                examine_top_cards::Location::Library,
                 cards,
                 IndexMap::from([
                     (Destination::BottomOfLibrary, usize::MAX),
@@ -231,9 +232,17 @@ impl PendingResults {
             )));
     }
 
-    pub(crate) fn push_examine_top_cards(&mut self, examining: ExamineTopCards) {
+    pub(crate) fn push_choose_discard(&mut self, cards: Vec<CardId>, count: usize) {
         self.pending
-            .push_back(Pending::ExaminingTopCards(examining));
+            .push_back(Pending::ExamineCards(ExamineCards::new(
+                examine_top_cards::Location::Hand,
+                cards,
+                IndexMap::from([(Destination::Graveyard, count)]),
+            )));
+    }
+
+    pub(crate) fn push_examine_top_cards(&mut self, examining: ExamineCards) {
+        self.pending.push_back(Pending::ExamineCards(examining));
     }
 
     pub(crate) fn push_choose_cast(&mut self, card: CardId, paying_costs: bool, discovering: bool) {

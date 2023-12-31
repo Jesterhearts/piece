@@ -21,11 +21,11 @@ use crate::{
     },
     battlefield::{Battlefield, PendingResults},
     card::{
-        keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, BackFace,
-        BasePower, BasePowerType, BaseToughness, BaseToughnessType, CannotBeCountered, Card, Color,
-        Colors, EtbAbilityModifier, EtbTapped, FrontFace, Keyword, Keywords, MarkedDamage,
-        ModifiedBasePower, ModifiedBaseToughness, ModifiedColors, ModifiedKeywords, ModifyKeywords,
-        Name, OracleText, PaidX, Revealed, StaticAbilityModifier, TargetIndividually,
+        keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, ApplyIndividually,
+        BackFace, BasePower, BasePowerType, BaseToughness, BaseToughnessType, CannotBeCountered,
+        Card, Color, Colors, EtbAbilityModifier, EtbTapped, FrontFace, Keyword, Keywords,
+        MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors, ModifiedKeywords,
+        ModifyKeywords, Name, OracleText, PaidX, Revealed, StaticAbilityModifier,
         TriggeredAbilityModifier,
     },
     cost::{CastingCost, CostReducer, Ward},
@@ -1646,8 +1646,8 @@ impl CardId {
             entity.insert(ward.clone());
         }
 
-        if card.target_individually {
-            entity.insert(TargetIndividually);
+        if card.apply_individually {
+            entity.insert(ApplyIndividually);
         }
 
         if card.etb_tapped {
@@ -2124,8 +2124,8 @@ impl CardId {
             .collect_vec()
     }
 
-    pub(crate) fn target_individually(self, db: &Database) -> bool {
-        db.get::<TargetIndividually>(self.0).is_some()
+    pub(crate) fn apply_individually(self, db: &Database) -> bool {
+        db.get::<ApplyIndividually>(self.0).is_some()
     }
 
     pub(crate) fn set_x(self, db: &mut Database, x_is: usize) {

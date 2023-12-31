@@ -9,16 +9,28 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct ExamineTopCards {
+pub(crate) enum Location {
+    Hand,
+    Library,
+}
+
+#[derive(Debug)]
+pub(crate) struct ExamineCards {
+    location: Location,
     cards: Vec<CardId>,
     cards_to_location: IndexMap<Destination, Vec<CardId>>,
     destinations: IndexMap<Destination, usize>,
     placing: usize,
 }
 
-impl ExamineTopCards {
-    pub(crate) fn new(cards: Vec<CardId>, destinations: IndexMap<Destination, usize>) -> Self {
+impl ExamineCards {
+    pub(crate) fn new(
+        location: Location,
+        cards: Vec<CardId>,
+        destinations: IndexMap<Destination, usize>,
+    ) -> Self {
         Self {
+            location,
             cards,
             cards_to_location: Default::default(),
             destinations,
@@ -63,7 +75,7 @@ impl ExamineTopCards {
     }
 }
 
-impl PendingResult for ExamineTopCards {
+impl PendingResult for ExamineCards {
     fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
         true
     }
@@ -104,31 +116,67 @@ impl PendingResult for ExamineTopCards {
                 match destination {
                     Destination::Hand => {
                         for card in cards {
-                            results.push_settled(ActionResult::MoveToHandFromLibrary(card));
+                            match self.location {
+                                Location::Hand => {
+                                    unreachable!()
+                                }
+                                Location::Library => {
+                                    results.push_settled(ActionResult::MoveToHandFromLibrary(card));
+                                }
+                            }
                         }
                     }
                     Destination::TopOfLibrary => {
                         for card in cards {
-                            results.push_settled(ActionResult::MoveFromLibraryToTopOfLibrary(card));
+                            match self.location {
+                                Location::Hand => todo!(),
+                                Location::Library => {
+                                    results.push_settled(
+                                        ActionResult::MoveFromLibraryToTopOfLibrary(card),
+                                    );
+                                }
+                            }
                         }
                     }
                     Destination::BottomOfLibrary => {
                         for card in cards {
-                            results
-                                .push_settled(ActionResult::MoveFromLibraryToBottomOfLibrary(card));
+                            match self.location {
+                                Location::Hand => todo!(),
+                                Location::Library => {
+                                    results.push_settled(
+                                        ActionResult::MoveFromLibraryToBottomOfLibrary(card),
+                                    );
+                                }
+                            }
                         }
                     }
                     Destination::Graveyard => {
                         for card in cards {
-                            results.push_settled(ActionResult::MoveFromLibraryToGraveyard(card));
+                            match self.location {
+                                Location::Hand => {
+                                    results.push_settled(ActionResult::Discard(card));
+                                }
+                                Location::Library => {
+                                    results.push_settled(ActionResult::MoveFromLibraryToGraveyard(
+                                        card,
+                                    ));
+                                }
+                            }
                         }
                     }
                     Destination::Battlefield { enters_tapped } => {
                         for card in cards {
-                            results.push_settled(ActionResult::AddToBattlefieldFromLibrary {
-                                card,
-                                enters_tapped,
-                            });
+                            match self.location {
+                                Location::Hand => todo!(),
+                                Location::Library => {
+                                    results.push_settled(
+                                        ActionResult::AddToBattlefieldFromLibrary {
+                                            card,
+                                            enters_tapped,
+                                        },
+                                    );
+                                }
+                            }
                         }
                     }
                 }
