@@ -14,7 +14,7 @@ Cards are written in `yaml` format. You can see examples in the [cards directory
   - restriction: !OfType
       types:
       - type_: !Artifact {}
-  - restrictions: !OfType
+  - restriction: !OfType
       types:
       - type_: !Creature {}
   ```
