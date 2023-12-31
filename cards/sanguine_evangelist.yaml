@@ -10,7 +10,8 @@ cost:
         count: 2
     - cost: !White {}
 etb_abilities:
-  - oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying.
+  - oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a
+      1/1 black Bat creature token with flying.
     effect: !CreateToken
       token: !Creature
         name: Bat
@@ -44,7 +45,8 @@ triggered_abilities:
               - color: !Black {}
             power: 1
             toughness: 1
-    oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying.
+    oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a
+      1/1 black Bat creature token with flying.
 power: 2
 toughness: 1
 keywords: BattleCry

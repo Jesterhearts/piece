@@ -18,7 +18,7 @@ fn plains() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Plains");
@@ -55,7 +55,7 @@ fn island() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
 
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Island");
@@ -90,7 +90,7 @@ fn swamp() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Swamp");
@@ -126,7 +126,7 @@ fn mountain() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Mountain");
@@ -161,7 +161,7 @@ fn forest() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Forest");

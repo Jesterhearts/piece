@@ -22,7 +22,8 @@ triggered_abilities:
         - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
-    oracle_text: When Ojer Taq dies, return it to the battlefield tapped and transformed under its owner's control.
+    oracle_text: When Ojer Taq dies, return it to the battlefield tapped and transformed
+      under its owner's control.
 replacement_effects:
   - restrictions:
       - restriction: !Controller
@@ -53,7 +54,8 @@ back_face:
               x_is: 3
       effects:
         - effect: !Transform {}
-      oracle_text: Transform Temple of Civilization. Activate only if you attacked with three or more creatures this turn and only as sorcery.
+      oracle_text: Transform Temple of Civilization. Activate only if you attacked
+        with three or more creatures this turn and only as sorcery.
       sorcery_speed: true
   mana_abilities:
     - cost:

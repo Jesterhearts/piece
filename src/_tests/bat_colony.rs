@@ -19,7 +19,7 @@ fn spawns_bats() -> anyhow::Result<()> {
 
     let player = all_players.new_player(String::default(), 20);
 
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let cave1 = CardId::upload(&mut db, &cards, player, "Hidden Courtyard");

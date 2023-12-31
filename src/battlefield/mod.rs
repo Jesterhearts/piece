@@ -4,7 +4,7 @@ use std::{collections::HashSet, vec::IntoIter};
 
 use bevy_ecs::{entity::Entity, query::With};
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
 use tracing::Level;
@@ -13,6 +13,7 @@ use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
     battlefield::{
         choose_targets::ChooseTargets,
+        examine_top_cards::ExamineTopCards,
         pay_costs::{
             ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
             SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
@@ -27,7 +28,8 @@ use crate::{
         replacing,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{Counter, DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Effect, EffectDuration, ModifyBattlefield, Token,
+        AnyEffect, BattlefieldModifier, Destination, Effect, EffectDuration, ModifyBattlefield,
+        Token,
     },
     in_play::{
         self, add_just_cast, all_cards, ban_attacking_this_turn, cards, clear_just_cast,
@@ -140,6 +142,11 @@ pub(crate) enum ActionResult {
         target: Controller,
         count: usize,
     },
+    ExamineTopCards {
+        destinations: IndexMap<Destination, usize>,
+        count: usize,
+        controller: Controller,
+    },
     ExileGraveyard {
         target: ActiveTarget,
         source: CardId,
@@ -182,6 +189,8 @@ pub(crate) enum ActionResult {
         targets: Vec<ActiveTarget>,
         modifier: ModifierId,
     },
+    MoveFromLibraryToBottomOfLibrary(CardId),
+    MoveFromLibraryToGraveyard(CardId),
     MoveFromLibraryToTopOfLibrary(CardId),
     MoveToHandFromLibrary(CardId),
     PermanentToGraveyard(CardId),
@@ -190,6 +199,9 @@ pub(crate) enum ActionResult {
         target: ActiveTarget,
     },
     ReturnFromGraveyardToBattlefield {
+        targets: Vec<ActiveTarget>,
+    },
+    ReturnFromGraveyardToHand {
         targets: Vec<ActiveTarget>,
     },
     ReturnFromGraveyardToLibrary {
@@ -214,14 +226,11 @@ pub(crate) enum ActionResult {
     },
     StackToGraveyard(CardId),
     TapPermanent(CardId),
-    Untap(CardId),
-    UpdateStackEntries(Vec<StackEntry>),
     Transform {
         target: crate::in_play::CardId,
     },
-    ReturnFromGraveyardToHand {
-        targets: Vec<ActiveTarget>,
-    },
+    Untap(CardId),
+    UpdateStackEntries(Vec<StackEntry>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -1053,6 +1062,13 @@ impl Battlefield {
                 all_players[owner].deck.place_on_top(db, *card);
                 PendingResults::default()
             }
+            ActionResult::MoveFromLibraryToBottomOfLibrary(card) => {
+                let owner = card.owner(db);
+                all_players[owner].deck.remove(*card);
+                all_players[owner].deck.place_on_bottom(db, *card);
+                PendingResults::default()
+            }
+            ActionResult::MoveFromLibraryToGraveyard(card) => Self::library_to_graveyard(db, *card),
             ActionResult::SpendMana {
                 card,
                 mana,
@@ -1158,7 +1174,26 @@ impl Battlefield {
                 }
 
                 let mut results = PendingResults::default();
-                results.push_choose_scry(source.controller(db), cards);
+                results.push_choose_scry(cards);
+
+                results
+            }
+            ActionResult::ExamineTopCards {
+                destinations,
+                count,
+                controller,
+            } => {
+                let mut cards = vec![];
+                for _ in 0..*count {
+                    if let Some(card) = all_players[*controller].deck.draw() {
+                        cards.push(card);
+                    } else {
+                        break;
+                    }
+                }
+
+                let mut results = PendingResults::default();
+                results.push_examine_top_cards(ExamineTopCards::new(cards, destinations.clone()));
 
                 results
             }

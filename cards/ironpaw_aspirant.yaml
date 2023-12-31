@@ -10,7 +10,8 @@ cost:
         count: 1
     - cost: !White {}
 etb_abilities:
-  - oracle_text: When Ironpaw Aspirant enters the battlefield, put a +1/+1 counter on target creature.
+  - oracle_text: When Ironpaw Aspirant enters the battlefield, put a +1/+1 counter
+      on target creature.
     effect: !TargetGainsCounters
       counter:
         type_: !P1p1 {}

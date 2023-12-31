@@ -21,7 +21,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
@@ -76,7 +76,7 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
@@ -110,7 +110,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
@@ -149,7 +149,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let player = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");

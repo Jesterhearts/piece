@@ -14,6 +14,7 @@ pub(crate) mod destroy_each;
 pub(crate) mod destroy_target;
 pub(crate) mod discover;
 pub(crate) mod equip;
+pub(crate) mod examine_top_cards;
 pub(crate) mod exile_target;
 pub(crate) mod exile_target_creature_manifest_top_of_library;
 pub(crate) mod exile_target_graveyard;
@@ -72,6 +73,7 @@ use crate::{
         destroy_target::DestroyTarget,
         discover::Discover,
         equip::Equip,
+        examine_top_cards::ExamineTopCards,
         exile_target::ExileTarget,
         exile_target_creature_manifest_top_of_library::ExileTargetCreatureManifestTopOfLibrary,
         exile_target_graveyard::ExileTargetGraveyard,
@@ -118,10 +120,12 @@ pub(crate) struct Effect(pub(crate) &'static (dyn EffectBehaviors + Send + Sync)
 
 pub(crate) use battlefield_modifier::BattlefieldModifier;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub(crate) enum Destination {
     Hand,
     TopOfLibrary,
+    BottomOfLibrary,
+    Graveyard,
     Battlefield { enters_tapped: bool },
 }
 
@@ -147,6 +151,10 @@ impl From<&protogen::effects::destination::Destination> for Destination {
                     enters_tapped: battlefield.enters_tapped,
                 }
             }
+            protogen::effects::destination::Destination::BottomOfLibrary(_) => {
+                Self::BottomOfLibrary
+            }
+            protogen::effects::destination::Destination::Graveyard(_) => Self::Graveyard,
         }
     }
 }
@@ -540,6 +548,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::Equip(value) => {
                 Ok(Self(Box::leak(Box::new(Equip::try_from(value)?))))
+            }
+            protogen::effects::effect::Effect::ExamineTopCards(value) => {
+                Ok(Self(Box::leak(Box::new(ExamineTopCards::try_from(value)?))))
             }
             protogen::effects::effect::Effect::ExileTarget(value) => {
                 Ok(Self(Box::leak(Box::new(ExileTarget::try_from(value)?))))

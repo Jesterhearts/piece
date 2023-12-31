@@ -39,6 +39,7 @@ use piece::{
     UiState,
 };
 use tracing::Level;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tui_textarea::{Input, Key, TextArea};
 
 #[allow(clippy::large_enum_variant)]
@@ -62,6 +63,7 @@ fn main() -> anyhow::Result<()> {
         .with_line_number(true)
         .with_file(true)
         .with_target(false)
+        .with_span_events(FmtSpan::ENTER)
         .with_writer(non_blocking)
         .init();
 
@@ -76,7 +78,7 @@ fn main() -> anyhow::Result<()> {
 
     let ai = AI::new(player2);
 
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player1, "Forest");

@@ -18,7 +18,7 @@ fn etb() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
     let nonland = CardId::upload(&mut db, &cards, player, "Annul");

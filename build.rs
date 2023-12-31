@@ -11,7 +11,7 @@ fn main() {
 
     impl CustomizeCallback for GenSerde {
         fn message(&self, _message: &MessageDescriptor) -> Customize {
-            Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize)]")
+            Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize)]\n#[serde(deny_unknown_fields)]")
         }
 
         fn oneof(&self, _oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
@@ -27,7 +27,8 @@ fn main() {
                 Customize::default().before(
                     "#[serde(serialize_with = \"crate::serialize_message\", deserialize_with = \"crate::deserialize_message\", default, skip_serializing_if=\"::protobuf::MessageField::is_none\")]")
             } else {
-                Customize::default().before("#[serde(default, skip_serializing_if=\"crate::is_default_value\")]")
+                Customize::default()
+                    .before("#[serde(default, skip_serializing_if=\"crate::is_default_value\")]")
             }
         }
 

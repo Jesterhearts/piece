@@ -18,7 +18,7 @@ fn equipment_works() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let equipment = CardId::upload(&mut db, &cards, player, "+2 Mace");
@@ -67,7 +67,7 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let equipment = CardId::upload(&mut db, &cards, player, "+2 Mace");

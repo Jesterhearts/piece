@@ -6,7 +6,8 @@ cost:
     - cost: !Generic
         count: 1
     - cost: !Red {}
-oracle_text: 'Create a 1/1 red Dinosaur creature token with haste and a 1/1 white Human Soldier creature token. '
+oracle_text: 'Create a 1/1 red Dinosaur creature token with haste and a 1/1 white
+  Human Soldier creature token. '
 effects:
   - effect: !CreateToken
       token: !Creature

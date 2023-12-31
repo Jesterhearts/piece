@@ -8,7 +8,8 @@ cost:
     - cost: !Generic
         count: 2
     - cost: !White {}
-oracle_text: Equipped creature gets +1/+1 for each charge counter on Mace of the Valiant and has vigilance.
+oracle_text: Equipped creature gets +1/+1 for each charge counter on Mace of the Valiant
+  and has vigilance.
 activated_abilities:
   - cost:
       mana_costs:
@@ -41,4 +42,5 @@ triggered_abilities:
           restrictions:
             - restriction: !Self_ {}
           count: !Single {}
-    oracle_text: Whenever a creature enters the battlefield under your control, put a charge counter on Mace of the Valiant.
+    oracle_text: Whenever a creature enters the battlefield under your control, put
+      a charge counter on Mace of the Valiant.

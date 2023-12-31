@@ -7,7 +7,8 @@ cost:
         count: 2
     - cost: !Blue {}
 effects:
-  - oracle_text: Until end of turn, target artifact or creature becomes a 4/4 Angel artifact creature and gains flying.
+  - oracle_text: Until end of turn, target artifact or creature becomes a 4/4 Angel
+      artifact creature and gains flying.
     effect: !ModifyTarget
       modifier:
         base_power: 4

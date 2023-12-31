@@ -9,7 +9,9 @@ cost:
     - cost: !Generic
         count: 2
     - cost: !White {}
-oracle_text: When Recruiter of the Guard enters the battlefield, you may search your library for a creature card with toughness 2 or less, reveal it, put it into your hand, then shuffle your library.
+oracle_text: When Recruiter of the Guard enters the battlefield, you may search your
+  library for a creature card with toughness 2 or less, reveal it, put it into your
+  hand, then shuffle your library.
 etb_abilities:
   - effect: !TutorLibrary
       restrictions:

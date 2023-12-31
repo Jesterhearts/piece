@@ -7,7 +7,8 @@ cost:
         count: 2
     - cost: !White {}
 etb_abilities:
-  - oracle_text: When Tinker's Tote enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens.
+  - oracle_text: When Tinker's Tote enters the battlefield, create two 1/1 colorless
+      Gnome artifact creature tokens.
     effect: !CreateToken
       token: !Creature
         name: Gnome

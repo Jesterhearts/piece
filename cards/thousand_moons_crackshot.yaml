@@ -32,6 +32,7 @@ triggered_abilities:
                   - restriction: !OfType
                       types:
                         - type_: !Creature {}
-    oracle_text: Whenever Thousand Moons Crackshot attacks, you may pay {2}{W}. When you do, tap target creature.
+    oracle_text: Whenever Thousand Moons Crackshot attacks, you may pay {2}{W}. When
+      you do, tap target creature.
 power: 2
 toughness: 2

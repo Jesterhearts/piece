@@ -43,8 +43,9 @@ pub struct Turn {
 }
 
 impl Turn {
-    pub fn new(all_players: &AllPlayers) -> Self {
+    pub fn new(db: &mut Database, all_players: &AllPlayers) -> Self {
         let turn_order = all_players.all_players();
+        set_current_turn(db, *turn_order.first().unwrap(), 0);
 
         Self {
             turn_count: 0,
@@ -71,6 +72,7 @@ impl Turn {
         self.passed = (self.passed + 1) % self.turn_order.len();
     }
 
+    #[instrument(skip(db, all_players))]
     pub fn step(&mut self, db: &mut Database, all_players: &mut AllPlayers) -> PendingResults {
         if self.passed != 0 {
             return PendingResults::default();

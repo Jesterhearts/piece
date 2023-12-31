@@ -9,7 +9,8 @@ cost:
     - cost: !Generic
         count: 1
     - cost: !Black {}
-oracle_text: If you would draw a card while you have no cards in hand, instead you draw two cards and you lose 1 life.
+oracle_text: If you would draw a card while you have no cards in hand, instead you
+  draw two cards and you lose 1 life.
 replacement_effects:
   - restrictions:
       - restriction: !Controller

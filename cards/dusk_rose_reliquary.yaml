@@ -17,7 +17,8 @@ ward:
     - cost: !Generic
         count: 2
 etb_abilities:
-  - oracle_text: When Dusk Rose Reliquar enters the battlefield, exile target artifact or creature an opponent controls until Dusk Rose Reliquary leaves the battlefield.
+  - oracle_text: When Dusk Rose Reliquar enters the battlefield, exile target artifact
+      or creature an opponent controls until Dusk Rose Reliquary leaves the battlefield.
     effect: !ExileTarget
       duration:
         duration: !UntilSourceLeavesBattlefield {}

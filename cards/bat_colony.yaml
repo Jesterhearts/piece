@@ -7,7 +7,8 @@ cost:
         count: 2
     - cost: !White {}
 etb_abilities:
-  - oracle_text: When Bat Colony enters the battlefield, create a 1/1 black Bat creature token with flying for each mana from a Cave spent to cast it.
+  - oracle_text: When Bat Colony enters the battlefield, create a 1/1 black Bat creature
+      token with flying for each mana from a Cave spent to cast it.
     effect: !ForEachManaOfSource
       source:
         source: !Cave {}
@@ -43,4 +44,5 @@ triggered_abilities:
                   - type_: !Creature {}
             - restriction: !OnBattlefield {}
           count: !Single {}
-    oracle_text: Whenever a Cave enters the battlefield under your control, put a +1/+1 counter on target creature you control.
+    oracle_text: Whenever a Cave enters the battlefield under your control, put a
+      +1/+1 counter on target creature you control.

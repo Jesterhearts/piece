@@ -762,7 +762,7 @@ mod tests {
         let mut db = Database::default();
         let mut all_players = AllPlayers::default();
         let player = all_players.new_player("Player".to_string(), 20);
-        let turn = Turn::new(&all_players);
+        let turn = Turn::new(&mut db, &all_players);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
         card1.move_to_stack(&mut db, Default::default(), None, vec![]);

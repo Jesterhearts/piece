@@ -15,7 +15,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
@@ -34,7 +34,7 @@ fn tutors() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let forest = CardId::upload(&mut db, &cards, player, "Forest");

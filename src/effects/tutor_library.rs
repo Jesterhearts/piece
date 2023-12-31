@@ -119,6 +119,15 @@ impl EffectBehaviors for TutorLibrary {
                     });
                 }
             }
+            Destination::BottomOfLibrary => unreachable!(),
+            Destination::Graveyard => {
+                for target in targets {
+                    let ActiveTarget::Library { id } = target else {
+                        unreachable!()
+                    };
+                    results.push_settled(ActionResult::MoveFromLibraryToGraveyard(id));
+                }
+            }
         }
 
         results.push_settled(ActionResult::Shuffle(controller.into()));

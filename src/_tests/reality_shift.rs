@@ -21,7 +21,7 @@ fn resolves_shift() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let bear1 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");

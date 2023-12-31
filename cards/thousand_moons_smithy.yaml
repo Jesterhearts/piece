@@ -9,7 +9,9 @@ cost:
     - cost: !White {}
     - cost: !White {}
 etb_abilities:
-  - oracle_text: When Thousand Moons Smithy enters the battlefield, create a white Gnome Soldier artifact creature token with "This creature's power and toughness are each equal to the number of artifacts and/or creatures you control."
+  - oracle_text: When Thousand Moons Smithy enters the battlefield, create a white
+      Gnome Soldier artifact creature token with "This creature's power and toughness
+      are each equal to the number of artifacts and/or creatures you control."
     effect: !CreateToken
       token: !Creature
         name: Gnome Soldier
@@ -116,7 +118,10 @@ back_face:
                         types:
                           - type_: !Artifact {}
                           - type_: !Creature {}
-      oracle_text: Whenever you cast an artifact or creature spell using mana from Barracks of the Thousand, create a white Gnome Soldier artifact creature token with "This creature's power and toughness are each equal to the number of artifacts and/or creatures you control."
+      oracle_text: Whenever you cast an artifact or creature spell using mana from
+        Barracks of the Thousand, create a white Gnome Soldier artifact creature token
+        with "This creature's power and toughness are each equal to the number of
+        artifacts and/or creatures you control."
   mana_abilities:
     - cost:
         tap: true

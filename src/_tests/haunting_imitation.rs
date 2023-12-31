@@ -17,12 +17,11 @@ use crate::{
 #[test]
 fn reveals_clones() -> anyhow::Result<()> {
     let cards = load_cards()?;
+    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&all_players);
-
-    let mut db = Database::default();
+    let turn = Turn::new(&mut db, &all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let targets = haunting.valid_targets(&mut db, &HashSet::default());
@@ -62,12 +61,11 @@ fn reveals_clones() -> anyhow::Result<()> {
 #[test]
 fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let cards = load_cards()?;
+    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&all_players);
-
-    let mut db = Database::default();
+    let turn = Turn::new(&mut db, &all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);

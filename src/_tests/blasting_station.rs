@@ -16,7 +16,7 @@ fn untaps() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Blasting Station");

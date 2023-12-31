@@ -30,7 +30,8 @@ activated_abilities:
                   - type_: !Artifact {}
           x_is:
             x_is: !Cmc {}
-    oracle_text: Return target artifact card with mana value X or less from yuour graveyard to the battlefield. Activate only as sorcery.
+    oracle_text: Return target artifact card with mana value X or less from yuour
+      graveyard to the battlefield. Activate only as sorcery.
     sorcery_speed: true
 mana_abilities:
   - cost:

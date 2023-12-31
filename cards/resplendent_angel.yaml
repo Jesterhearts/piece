@@ -53,7 +53,8 @@ triggered_abilities:
             power: 4
             toughness: 4
             keywords: Flying, Vigilance
-    oracle_text: At the beginning of each end step, if you gained 5 or more life this turn, create a 4/4 white Angel creature token with flying and vigilance.
+    oracle_text: At the beginning of each end step, if you gained 5 or more life this
+      turn, create a 4/4 white Angel creature token with flying and vigilance.
 power: 3
 toughness: 3
 keywords: Flying

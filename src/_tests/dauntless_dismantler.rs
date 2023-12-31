@@ -17,7 +17,7 @@ fn opponent_artifact_etb_tappd() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player(String::default(), 20);
     let player2 = all_players.new_player(String::default(), 20);
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
@@ -44,7 +44,7 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     all_players[player1].infinite_mana();
     let player2 = all_players.new_player(String::default(), 20);
 
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");

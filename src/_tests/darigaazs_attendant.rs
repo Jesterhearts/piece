@@ -28,7 +28,7 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
         .entry(ManaRestriction::None)
         .or_default() = 1;
 
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let attendant = CardId::upload(&mut db, &cards, player, "Darigaaz's Attendant");

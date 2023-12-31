@@ -38,11 +38,11 @@ use crate::{
     in_play::{
         self, cast_from, current_turn, descend, exile_reason, just_cast, life_gained_this_turn,
         times_descended_this_turn, AbilityId, Active, Attacking, AuraId, CastFrom, Chosen,
-        CounterId, Database, EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile,
-        InGraveyard, InHand, InLibrary, InStack, IsToken, LeftBattlefieldTurn, Manifested,
-        ModifierId, ModifierSeq, Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped,
-        Transformed, TriggerId, UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ,
-        NEXT_STACK_SEQ,
+        CounterId, CurrentTurn, Database, EnteredBattlefieldTurn, EntireBattlefield, ExileReason,
+        ExiledWith, FaceDown, Global, InExile, InGraveyard, InHand, InLibrary, InStack, IsToken,
+        LeftBattlefieldTurn, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying,
+        OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
+        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     player::{
         mana_pool::{ManaSource, SourcedMana},
@@ -143,6 +143,21 @@ impl CardId {
         }
     }
 
+    pub(crate) fn entered_battlefield_this_turn(db: &mut Database) -> Vec<CardId> {
+        let current_turn = db.resource::<CurrentTurn>().turn;
+
+        db.query::<(Entity, &EnteredBattlefieldTurn)>()
+            .iter(db)
+            .filter_map(|(e, turn)| {
+                if turn.0 == current_turn {
+                    Some(Self(e))
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
+    }
+
     pub(crate) fn left_battlefield(self, db: &mut Database, turn_count: usize) {
         db.entity_mut(self.0)
             .insert(LeftBattlefieldTurn(turn_count));
@@ -188,6 +203,7 @@ impl CardId {
                 .remove::<exile_reason::Cascade>()
                 .remove::<effect_duration::UntilEndOfTurn>()
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+                .remove::<EnteredBattlefieldTurn>()
                 .insert(InHand(NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed)));
         }
     }
@@ -230,6 +246,7 @@ impl CardId {
                 .remove::<exile_reason::Cascade>()
                 .remove::<effect_duration::UntilEndOfTurn>()
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+                .remove::<EnteredBattlefieldTurn>()
                 .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
                 .insert(Targets(targets));
 
@@ -256,6 +273,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_battlefield(self, db: &mut Database) {
+        let current_turn = db.resource::<CurrentTurn>().turn;
+
         db.cards
             .entity_mut(self.0)
             .remove::<InLibrary>()
@@ -270,6 +289,7 @@ impl CardId {
             .remove::<effect_duration::UntilEndOfTurn>()
             .remove::<effect_duration::UntilSourceLeavesBattlefield>()
             .remove::<LeftBattlefieldTurn>()
+            .insert(EnteredBattlefieldTurn(current_turn))
             .insert(OnBattlefield(
                 NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
             ));
@@ -307,6 +327,7 @@ impl CardId {
                 .remove::<exile_reason::Cascade>()
                 .remove::<effect_duration::UntilEndOfTurn>()
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+                .remove::<EnteredBattlefieldTurn>()
                 .insert(InGraveyard(
                     NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
                 ));
@@ -341,6 +362,7 @@ impl CardId {
                 .remove::<exile_reason::Cascade>()
                 .remove::<effect_duration::UntilEndOfTurn>()
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+                .remove::<EnteredBattlefieldTurn>()
                 .insert(InLibrary);
             true
         }
@@ -380,6 +402,7 @@ impl CardId {
                 .remove::<exile_reason::Cascade>()
                 .remove::<effect_duration::UntilEndOfTurn>()
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+                .remove::<EnteredBattlefieldTurn>()
                 .insert(InExile)
                 .insert(ExiledWith(source));
 
@@ -433,7 +456,8 @@ impl CardId {
             .remove::<cast_from::Exile>()
             .remove::<exile_reason::Cascade>()
             .remove::<effect_duration::UntilEndOfTurn>()
-            .remove::<effect_duration::UntilSourceLeavesBattlefield>();
+            .remove::<effect_duration::UntilSourceLeavesBattlefield>()
+            .remove::<EnteredBattlefieldTurn>();
     }
 
     pub(crate) fn cleanup_tokens_in_limbo(db: &mut Database) {
@@ -1369,6 +1393,18 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::EnteredTheBattlefieldThisTurn {
+                    count,
+                    restrictions,
+                } => {
+                    let entered_this_turn = CardId::entered_battlefield_this_turn(db)
+                        .into_iter()
+                        .filter(|card| card.passes_restrictions(db, source, restrictions))
+                        .count();
+                    if entered_this_turn < *count {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1929,21 +1965,39 @@ impl CardId {
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Keywords>(self.0).map(|t| t.0.clone()))
             .unwrap_or_default();
-        let add = self.static_abilities(db).into_iter().filter_map(|sa| {
-            if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
-                keywords,
-                restrictions,
-            }) = sa
-            {
-                if self.passes_restrictions(db, self, &restrictions) {
-                    Some(keywords)
+        let add = self
+            .static_abilities(db)
+            .into_iter()
+            .filter_map(|sa| {
+                if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
+                    keywords,
+                    restrictions,
+                }) = sa
+                {
+                    let power = self.power(db);
+                    let toughness = self.toughness(db);
+                    if self.passes_restrictions_given_attributes(
+                        db,
+                        self,
+                        self.controller(db),
+                        &restrictions,
+                        &self.types(db),
+                        &self.subtypes(db),
+                        &base_keywords,
+                        &self.colors(db),
+                        power,
+                        toughness,
+                    ) {
+                        Some(keywords)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        });
+            })
+            .collect_vec();
+
         for add in add {
             base_keywords.extend(add);
         }

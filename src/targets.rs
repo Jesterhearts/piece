@@ -221,6 +221,10 @@ pub(crate) enum Restriction {
     ControllerHandEmpty,
     DescendedThisTurn,
     DuringControllersTurn,
+    EnteredTheBattlefieldThisTurn {
+        count: usize,
+        restrictions: Vec<Restriction>,
+    },
     InGraveyard,
     InLocation {
         locations: Vec<Location>,
@@ -266,6 +270,14 @@ impl Restriction {
             Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
             Restriction::DescendedThisTurn => "descended this turn".to_string(),
             Restriction::DuringControllersTurn => "during controller's turn".to_string(),
+            Restriction::EnteredTheBattlefieldThisTurn {
+                count,
+                restrictions,
+            } => format!(
+                "{} {} entered the battlefield this turn",
+                count,
+                restrictions.iter().map(|r| r.text()).join(", ")
+            ),
             Restriction::InGraveyard => "in a graveyard".to_string(),
             Restriction::InLocation { locations } => {
                 format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
@@ -367,6 +379,16 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             }
             protogen::targets::restriction::Restriction::DuringControllersTurn(_) => {
                 Ok(Self::DuringControllersTurn)
+            }
+            protogen::targets::restriction::Restriction::EnteredBattlefieldThisTurn(value) => {
+                Ok(Self::EnteredTheBattlefieldThisTurn {
+                    count: usize::try_from(value.count)?,
+                    restrictions: value
+                        .restrictions
+                        .iter()
+                        .map(Restriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                })
             }
             protogen::targets::restriction::Restriction::InGraveyard(_) => Ok(Self::InGraveyard),
             protogen::targets::restriction::Restriction::JustCast(_) => Ok(Self::JustCast),

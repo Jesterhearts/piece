@@ -21,7 +21,7 @@ fn x_is_zero() -> anyhow::Result<()> {
 
     let player = all_players.new_player("player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
     let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
@@ -76,7 +76,7 @@ fn x_is_two() -> anyhow::Result<()> {
 
     let player = all_players.new_player("player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
     let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");

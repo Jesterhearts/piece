@@ -18,7 +18,7 @@ fn metamorphosis() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, mantle, None);
@@ -59,7 +59,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);

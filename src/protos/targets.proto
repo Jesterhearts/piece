@@ -86,6 +86,10 @@ message Restriction {
   message ControllerHandEmpty {}
   message DescendedThisTurn {}
   message DuringControllersTurn {}
+  message EnteredBattlefieldThisTurn {
+    int32 count = 1;
+    repeated Restriction restrictions = 2;
+  }
   message InGraveyard {}
   message JustCast {}
   message LifeGainedThisTurn {
@@ -138,23 +142,24 @@ message Restriction {
     ControllerHandEmpty controller_hand_empty = 8;
     DescendedThisTurn descended_this_turn = 9;
     DuringControllersTurn during_controllers_turn = 10;
-    InGraveyard in_graveyard = 11;
-    JustCast just_cast = 12;
-    LifeGainedThisTurn life_gained_this_turn = 13;
-    Locations location = 14;
-    ManaSpentFromSource mana_spent_from_source = 15;
-    NotChosen not_chosen = 16;
-    NotKeywords not_keywords = 17;
-    NotOfType not_of_type = 18;
-    NotSelf not_self = 19;
-    NumberOfCountersOnThis number_of_counters_on_this = 20;
-    OfColor of_color = 21;
-    OfType of_type = 22;
-    OnBattlefield on_battlefield = 23;
-    Power power = 24;
-    Self self = 25;
-    SourceCast source_cast = 26;
-    Tapped tapped = 27;
-    Toughness toughness = 28;
+    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 11;
+    InGraveyard in_graveyard = 12;
+    JustCast just_cast = 13;
+    LifeGainedThisTurn life_gained_this_turn = 14;
+    Locations location = 15;
+    ManaSpentFromSource mana_spent_from_source = 16;
+    NotChosen not_chosen = 17;
+    NotKeywords not_keywords = 18;
+    NotOfType not_of_type = 19;
+    NotSelf not_self = 20;
+    NumberOfCountersOnThis number_of_counters_on_this = 21;
+    OfColor of_color = 22;
+    OfType of_type = 23;
+    OnBattlefield on_battlefield = 24;
+    Power power = 25;
+    Self self = 26;
+    SourceCast source_cast = 27;
+    Tapped tapped = 28;
+    Toughness toughness = 29;
   }
 }

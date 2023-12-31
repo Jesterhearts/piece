@@ -1,9 +1,9 @@
 pub(crate) mod choose_for_each_player;
 pub(crate) mod choose_modes;
-pub(crate) mod choose_scry;
 pub(crate) mod choose_targets;
 pub(crate) mod choosing_cast;
 pub(crate) mod declaring_attackers;
+pub(crate) mod examine_top_cards;
 pub(crate) mod library_or_graveyard;
 pub(crate) mod organizing_stack;
 pub(crate) mod pay_costs;
@@ -14,15 +14,15 @@ use std::{
 };
 
 use enum_dispatch::enum_dispatch;
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
     abilities::GainMana,
     battlefield::{
         choose_for_each_player::ChooseForEachPlayer,
-        choose_scry::ChoosingScry,
         choosing_cast::ChoosingCast,
+        examine_top_cards::ExamineTopCards,
         organizing_stack::OrganizingStack,
         pay_costs::PayCost,
         pending_results::{
@@ -31,7 +31,7 @@ use crate::{
         },
         ActionResult, Battlefield,
     },
-    effects::Effect,
+    effects::{Destination, Effect},
     in_play::{AbilityId, AuraId, CardId, CastFrom, Database, OnBattlefield},
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, StackEntry},
@@ -135,7 +135,7 @@ pub(crate) enum Pending {
     ChooseCast(ChoosingCast),
     DeclaringAttackers(DeclaringAttackers),
     LibraryOrGraveyard(LibraryOrGraveyard),
-    ChoosingScry(ChoosingScry),
+    ExaminingTopCards(ExamineTopCards),
     OrganizingStack(OrganizingStack),
     PayCosts(PayCost),
 }
@@ -220,9 +220,20 @@ impl PendingResults {
         self.add_to_stack = None;
     }
 
-    pub(crate) fn push_choose_scry(&mut self, controller: Controller, cards: Vec<CardId>) {
+    pub(crate) fn push_choose_scry(&mut self, cards: Vec<CardId>) {
         self.pending
-            .push_back(Pending::ChoosingScry(ChoosingScry::new(cards, controller)));
+            .push_back(Pending::ExaminingTopCards(ExamineTopCards::new(
+                cards,
+                IndexMap::from([
+                    (Destination::BottomOfLibrary, usize::MAX),
+                    (Destination::TopOfLibrary, usize::MAX),
+                ]),
+            )));
+    }
+
+    pub(crate) fn push_examine_top_cards(&mut self, examining: ExamineTopCards) {
+        self.pending
+            .push_back(Pending::ExaminingTopCards(examining));
     }
 
     pub(crate) fn push_choose_cast(&mut self, card: CardId, paying_costs: bool, discovering: bool) {

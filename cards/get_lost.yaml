@@ -6,7 +6,8 @@ cost:
     - cost: !Generic
         count: 1
     - cost: !White {}
-oracle_text: Destroy target creature, enchantment, or planeswalker. Its controller creates two map tokens.
+oracle_text: Destroy target creature, enchantment, or planeswalker. Its controller
+  creates two map tokens.
 effects:
   - effect: !DestroyTarget
       restrictions:

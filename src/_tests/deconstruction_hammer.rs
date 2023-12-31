@@ -19,7 +19,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
     all_players[player1].infinite_mana();
     let player2 = all_players.new_player(String::default(), 20);
 
-    let mut turn = Turn::new(&all_players);
+    let mut turn = Turn::new(&mut db, &all_players);
     turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");

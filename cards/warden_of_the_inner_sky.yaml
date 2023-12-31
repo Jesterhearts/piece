@@ -7,7 +7,8 @@ subtypes:
 cost:
   mana_costs:
     - cost: !White {}
-oracle_text: As long as Warden of the Inner Sky has three or more counters on it, it has flying and vigilance.
+oracle_text: As long as Warden of the Inner Sky has three or more counters on it,
+  it has flying and vigilance.
 static_abilities:
   - ability: !AddKeywordsIf
       keywords: Flying, Vigilance
@@ -48,5 +49,6 @@ activated_abilities:
           count: !Single {}
       - effect: !Scry
           count: 1
-    oracle_text: Put a +1/+1 counter on Warden of the Inner Sky. Scry 1. Activate only as sorcery.
+    oracle_text: Put a +1/+1 counter on Warden of the Inner Sky. Scry 1. Activate
+      only as sorcery.
     sorcery_speed: true

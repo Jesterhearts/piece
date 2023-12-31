@@ -29,4 +29,5 @@ triggered_abilities:
                 types:
                   - type_: !Creature {}
             - restriction: !OnBattlefield {}
-    oracle_text: At the beginning of combat on your turn, target creature you control gets +2/+0 and gains vigilance until end of turn.
+    oracle_text: At the beginning of combat on your turn, target creature you control
+      gets +2/+0 and gains vigilance until end of turn.

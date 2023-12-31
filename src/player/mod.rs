@@ -184,6 +184,18 @@ impl Owner {
                     // TODO: Poison counters
                     return false;
                 }
+                Restriction::EnteredTheBattlefieldThisTurn {
+                    count,
+                    restrictions,
+                } => {
+                    let entered_this_turn = CardId::entered_battlefield_this_turn(db)
+                        .into_iter()
+                        .filter(|card| card.passes_restrictions(db, *card, restrictions))
+                        .count();
+                    if entered_this_turn < *count {
+                        return false;
+                    }
+                }
             }
         }
 

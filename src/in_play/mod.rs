@@ -54,6 +54,9 @@ static UNIQUE_ID: AtomicUsize = AtomicUsize::new(1);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
 pub(crate) struct LeftBattlefieldTurn(pub(crate) usize);
 
+#[derive(Debug, Component)]
+pub(crate) struct EnteredBattlefieldTurn(pub(crate) usize);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
 pub(crate) struct UniqueId(usize);
 
@@ -251,7 +254,7 @@ pub(crate) struct CurrentTurn {
 }
 
 pub(crate) fn current_turn(db: &Database) -> CurrentTurn {
-    *db.get_resource::<CurrentTurn>().unwrap()
+    *db.resource::<CurrentTurn>()
 }
 
 pub(crate) fn set_current_turn(db: &mut Database, player: Owner, turn_count: usize) {

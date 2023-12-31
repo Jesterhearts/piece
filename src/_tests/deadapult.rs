@@ -18,7 +18,7 @@ fn ability() -> anyhow::Result<()> {
     let player = all_players.new_player("name".to_string(), 20);
     all_players[player].infinite_mana();
 
-    let turn = Turn::new(&all_players);
+    let turn = Turn::new(&mut db, &all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Deadapult");
     card.move_to_battlefield(&mut db);
