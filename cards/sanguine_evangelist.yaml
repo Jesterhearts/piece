@@ -1,50 +1,50 @@
 name: Sanguine Evangelist
 types:
-- type_: !Creature {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Vampire {}
-- subtype: !Cleric {}
+  - subtype: !Vampire {}
+  - subtype: !Cleric {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 2
-  - cost: !White {}
+    - cost: !Generic
+        count: 2
+    - cost: !White {}
 etb_abilities:
-- oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying.
-  effect: !CreateToken
-    token: !Creature
-      name: Bat
-      types:
-      - type_: !Creature {}
-      subtypes:
-      - subtype: !Bat {}
-      colors:
-      - color: !Black {}
-      power: 1
-      toughness: 1
-triggered_abilities:
-- trigger:
-    source:
-      trigger: !PutIntoGraveyard {}
-    from:
-      location: !Battlefield {}
-    restrictions:
-    - restriction: !Controller
-        controller: !Self_ {}
-    - restriction: !Self_ {}
-  effects:
-  - effect: !CreateToken
+  - oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying.
+    effect: !CreateToken
       token: !Creature
         name: Bat
         types:
-        - type_: !Creature {}
+          - type_: !Creature {}
         subtypes:
-        - subtype: !Bat {}
+          - subtype: !Bat {}
         colors:
-        - color: !Black {}
+          - color: !Black {}
         power: 1
         toughness: 1
-  oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying.
+triggered_abilities:
+  - trigger:
+      source:
+        trigger: !PutIntoGraveyard {}
+      from:
+        location: !Battlefield {}
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !Self_ {}
+    effects:
+      - effect: !CreateToken
+          token: !Creature
+            name: Bat
+            types:
+              - type_: !Creature {}
+            subtypes:
+              - subtype: !Bat {}
+            colors:
+              - color: !Black {}
+            power: 1
+            toughness: 1
+    oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1 black Bat creature token with flying.
 power: 2
 toughness: 1
 keywords: BattleCry

@@ -1,19 +1,19 @@
 name: Acrobatic Leap
 cost:
   mana_costs:
-  - cost: !White {}
+    - cost: !White {}
 oracle_text: Target creatures gets +1/+3 and gains flying until end of turn.
 effects:
-- effect: !ModifyTarget
-    modifier:
-      add_power: 1
-      add_toughness: 3
-      add_keywords: Flying
-    duration:
-      duration: !UntilEndOfTurn {}
-- effect: !UntapTarget {}
+  - effect: !ModifyTarget
+      modifier:
+        add_power: 1
+        add_toughness: 3
+        add_keywords: Flying
+      duration:
+        duration: !UntilEndOfTurn {}
+  - effect: !UntapTarget {}
 restrictions:
-- restriction: !OfType
-    types:
-    - type_: !Creature {}
-- restriction: !OnBattlefield {}
+  - restriction: !OfType
+      types:
+        - type_: !Creature {}
+  - restriction: !OnBattlefield {}

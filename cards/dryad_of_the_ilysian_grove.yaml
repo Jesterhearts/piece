@@ -1,38 +1,38 @@
 name: Dryad of the Ilysian Grove
 types:
-- type_: !Enchantment {}
-- type_: !Creature {}
+  - type_: !Enchantment {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Nymph {}
-- subtype: !Dryad {}
+  - subtype: !Nymph {}
+  - subtype: !Dryad {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 2
-  - cost: !Green {}
+    - cost: !Generic
+        count: 2
+    - cost: !Green {}
 oracle_text: |-
   You may play an additional land on each of your turns.
   Lands you control are every basic land type in addition to their other types.
 static_abilities:
-- ability: !BattlefieldModifier
-    modifier:
-      add_subtypes:
-      - subtype: !Plains {}
-      - subtype: !Island {}
-      - subtype: !Swamp {}
-      - subtype: !Mountain {}
-      - subtype: !Forest {}
-      entire_battlefield: true
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-    restrictions:
-    - restriction: !Controller
-        controller: !Self_ {}
-    - restriction: !OfType
-        types:
-        - type_: !Land {}
-        - type_: !BasicLand {}
-- ability: !ExtraLandsPerTurn
-    count: 1
+  - ability: !BattlefieldModifier
+      modifier:
+        add_subtypes:
+          - subtype: !Plains {}
+          - subtype: !Island {}
+          - subtype: !Swamp {}
+          - subtype: !Mountain {}
+          - subtype: !Forest {}
+        entire_battlefield: true
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types:
+              - type_: !Land {}
+              - type_: !BasicLand {}
+  - ability: !ExtraLandsPerTurn
+      count: 1
 power: 2
 toughness: 4

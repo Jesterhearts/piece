@@ -1,31 +1,31 @@
 name: Sinister Strength
 types:
-- type_: !Enchantment {}
+  - type_: !Enchantment {}
 subtypes:
-- subtype: !Aura {}
+  - subtype: !Aura {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !Black {}
+    - cost: !Generic
+        count: 1
+    - cost: !Black {}
 oracle_text: |-
   Enchant creature
   Enchanted creature gets +3/+1 and is black.
 enchant:
   modifiers:
-  - modifier:
-      remove_all_colors: true
-      add_power: 3
-      add_toughness: 1
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-  - modifier:
-      add_colors:
-      - color: !Black {}
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        remove_all_colors: true
+        add_power: 3
+        add_toughness: 1
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        add_colors:
+          - color: !Black {}
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
 restrictions:
-- restriction: !OfType
-    types:
-    - type_: !Creature {}
-- restriction: !OnBattlefield {}
+  - restriction: !OfType
+      types:
+        - type_: !Creature {}
+  - restriction: !OnBattlefield {}

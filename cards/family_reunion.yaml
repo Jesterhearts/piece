@@ -1,38 +1,38 @@
 name: Family Reunion
 types:
-- type_: !Instant {}
+  - type_: !Instant {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !White {}
+    - cost: !Generic
+        count: 1
+    - cost: !White {}
 modes:
-- effects:
-  - oracle_text: Creatures you control get +1/+1 until end of turn.
-    effect: !BattlefieldModifier
-      modifier:
-        add_power: 1
-        add_toughness: 1
-        entire_battlefield: true
-      duration:
-        duration: !UntilEndOfTurn {}
-      restrictions:
-      - restriction: !Controller
-          controller: !Self_ {}
-      - restriction: !OfType
-          types:
-          - type_: !Creature {}
-- effects:
-  - oracle_text: Creatures you control gain hexproof until end of turn.
-    effect: !BattlefieldModifier
-      modifier:
-        entire_battlefield: true
-        add_keywords: Hexproof
-      duration:
-        duration: !UntilEndOfTurn {}
-      restrictions:
-      - restriction: !Controller
-          controller: !Self_ {}
-      - restriction: !OfType
-          types:
-          - type_: !Creature {}
+  - effects:
+      - oracle_text: Creatures you control get +1/+1 until end of turn.
+        effect: !BattlefieldModifier
+          modifier:
+            add_power: 1
+            add_toughness: 1
+            entire_battlefield: true
+          duration:
+            duration: !UntilEndOfTurn {}
+          restrictions:
+            - restriction: !Controller
+                controller: !Self_ {}
+            - restriction: !OfType
+                types:
+                  - type_: !Creature {}
+  - effects:
+      - oracle_text: Creatures you control gain hexproof until end of turn.
+        effect: !BattlefieldModifier
+          modifier:
+            entire_battlefield: true
+            add_keywords: Hexproof
+          duration:
+            duration: !UntilEndOfTurn {}
+          restrictions:
+            - restriction: !Controller
+                controller: !Self_ {}
+            - restriction: !OfType
+                types:
+                  - type_: !Creature {}

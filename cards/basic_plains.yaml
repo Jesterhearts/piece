@@ -1,5 +1,5 @@
 name: Plains
 types:
-- type_: !BasicLand {}
+  - type_: !BasicLand {}
 subtypes:
-- subtype: !Plains {}
+  - subtype: !Plains {}

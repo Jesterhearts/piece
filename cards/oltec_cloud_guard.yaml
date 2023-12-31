@@ -1,25 +1,25 @@
 name: Oltec Cloud Guard
 types:
-- type_: !Creature {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Human {}
-- subtype: !Soldier {}
+  - subtype: !Human {}
+  - subtype: !Soldier {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 3
-  - cost: !White {}
+    - cost: !Generic
+        count: 3
+    - cost: !White {}
 etb_abilities:
-- effect: !CreateToken
-    token: !Creature
-      name: Gnome
-      types:
-      - type_: !Creature {}
-      - type_: !Artifact {}
-      subtypes:
-      - subtype: !Gnome {}
-      power: 1
-      toughness: 1
+  - effect: !CreateToken
+      token: !Creature
+        name: Gnome
+        types:
+          - type_: !Creature {}
+          - type_: !Artifact {}
+        subtypes:
+          - subtype: !Gnome {}
+        power: 1
+        toughness: 1
 power: 3
 toughness: 2
 keywords: Flying

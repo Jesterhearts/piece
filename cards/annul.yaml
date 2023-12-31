@@ -1,15 +1,15 @@
 name: Annul
 types:
-- type_: !Instant {}
+  - type_: !Instant {}
 cost:
   mana_costs:
-  - cost: !Blue {}
-  - cost: !Blue {}
+    - cost: !Blue {}
+    - cost: !Blue {}
 oracle_text: Counter target artifact or enchantment spell.
 effects:
-- effect: !CounterSpell
-    restrictions:
-    - restriction: !OfType
-        types:
-        - type_: !Artifact {}
-        - type_: !Enchantment {}
+  - effect: !CounterSpell
+      restrictions:
+        - restriction: !OfType
+            types:
+              - type_: !Artifact {}
+              - type_: !Enchantment {}

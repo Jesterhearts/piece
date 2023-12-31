@@ -1,43 +1,43 @@
 name: Fabrication Foundry
 types:
-- type_: !Artifact {}
+  - type_: !Artifact {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !White {}
-activated_abilities:
-- cost:
-    mana_costs:
     - cost: !Generic
-        count: 2
+        count: 1
     - cost: !White {}
-    tap: true
-    additional_costs:
-    - cost: !ExileCardsCmcX
-        restrictions:
-        - restriction: !OfType
-            types:
-            - type_: !Artifact {}
-  effects:
-  - effect: !ReturnFromGraveyardToBattlefield
-      count: 1
-      restrictions:
-      - restriction: !Controller
-          controller: !Self_ {}
-      - restriction: !OfType
-          types:
-          - type_: !Artifact {}
-      x_is:
-        x_is: !Cmc {}
-  oracle_text: Return target artifact card with mana value X or less from yuour graveyard to the battlefield. Activate only as sorcery.
-  sorcery_speed: true
+activated_abilities:
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 2
+        - cost: !White {}
+      tap: true
+      additional_costs:
+        - cost: !ExileCardsCmcX
+            restrictions:
+              - restriction: !OfType
+                  types:
+                    - type_: !Artifact {}
+    effects:
+      - effect: !ReturnFromGraveyardToBattlefield
+          count: 1
+          restrictions:
+            - restriction: !Controller
+                controller: !Self_ {}
+            - restriction: !OfType
+                types:
+                  - type_: !Artifact {}
+          x_is:
+            x_is: !Cmc {}
+    oracle_text: Return target artifact card with mana value X or less from yuour graveyard to the battlefield. Activate only as sorcery.
+    sorcery_speed: true
 mana_abilities:
-- cost:
-    tap: true
-  gain_mana:
-    gain: !Specific
-      gains:
-      - mana: !White {}
-  mana_restriction:
-    restriction: !ArtifactSpellOrAbility {}
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gains:
+          - mana: !White {}
+    mana_restriction:
+      restriction: !ArtifactSpellOrAbility {}

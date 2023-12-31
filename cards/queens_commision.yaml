@@ -1,27 +1,27 @@
 name: Queen's Commission
 types:
-- type_: !Sorcery {}
+  - type_: !Sorcery {}
 oracle_text: Create two 1/1 white Vampire creature tokens with lifelink.
 effects:
-- effect: !CreateToken
-    token: !Creature
-      name: Vampire
-      types:
-      - type_: !Creature {}
-      subtypes:
-      - subtype: !Vampire {}
-      colors:
-      - color: !White {}
-      power: 1
-      toughness: 1
-- effect: !CreateToken
-    token: !Creature
-      name: Vampire
-      types:
-      - type_: !Creature {}
-      subtypes:
-      - subtype: !Vampire {}
-      colors:
-      - color: !White {}
-      power: 1
-      toughness: 1
+  - effect: !CreateToken
+      token: !Creature
+        name: Vampire
+        types:
+          - type_: !Creature {}
+        subtypes:
+          - subtype: !Vampire {}
+        colors:
+          - color: !White {}
+        power: 1
+        toughness: 1
+  - effect: !CreateToken
+      token: !Creature
+        name: Vampire
+        types:
+          - type_: !Creature {}
+        subtypes:
+          - subtype: !Vampire {}
+        colors:
+          - color: !White {}
+        power: 1
+        toughness: 1

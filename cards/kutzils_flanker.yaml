@@ -1,47 +1,47 @@
 name: Kutzil's Flanker
 types:
-- type_: !Creature {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Cat {}
-- subtype: !Warrior {}
+  - subtype: !Cat {}
+  - subtype: !Warrior {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 2
-  - cost: !White {}
+    - cost: !Generic
+        count: 2
+    - cost: !White {}
 etb_abilities:
-- oracle_text: |-
-    When Kutzil's Flanker enters the battlefield choose one -
-    - Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
-    - You gain 2 life and scry 2.
-    - Exile target player's graveyard.
-  effect: !Modal
-    modes:
-    - effects:
-      - oracle_text: Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
-        effect: !TargetGainsCounters
-          counter:
-            type_: !P1p1 {}
-          restrictions:
-          - restriction: !Self_ {}
-          count: !Dynamic
-            dynamic: !LeftBattlefieldThisTurn
-              restrictions:
-              - restriction: !OfType
-                  types:
-                  - type_: !Creature {}
-              - restriction: !Controller
-                  controller: !Self_ {}
-    - effects:
-      - oracle_text: You gain 2 life
-        effect: !GainLife
-          count: 2
-      - oracle_text: You scry 2
-        effect: !Scry
-          count: 2
-    - effects:
-      - oracle_text: Exile target player's graveyard.
-        effect: !ExileTargetGraveyard {}
+  - oracle_text: |-
+      When Kutzil's Flanker enters the battlefield choose one -
+      - Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
+      - You gain 2 life and scry 2.
+      - Exile target player's graveyard.
+    effect: !Modal
+      modes:
+        - effects:
+            - oracle_text: Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
+              effect: !TargetGainsCounters
+                counter:
+                  type_: !P1p1 {}
+                restrictions:
+                  - restriction: !Self_ {}
+                count: !Dynamic
+                  dynamic: !LeftBattlefieldThisTurn
+                    restrictions:
+                      - restriction: !OfType
+                          types:
+                            - type_: !Creature {}
+                      - restriction: !Controller
+                          controller: !Self_ {}
+        - effects:
+            - oracle_text: You gain 2 life
+              effect: !GainLife
+                count: 2
+            - oracle_text: You scry 2
+              effect: !Scry
+                count: 2
+        - effects:
+            - oracle_text: Exile target player's graveyard.
+              effect: !ExileTargetGraveyard {}
 power: 3
 toughness: 1
 keywords: Flash

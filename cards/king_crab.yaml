@@ -1,24 +1,24 @@
 name: King Crab
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 4
-  - cost: !Blue {}
-  - cost: !Blue {}
-activated_abilities:
-- cost:
-    mana_costs:
     - cost: !Generic
-        count: 1
+        count: 4
     - cost: !Blue {}
-    tap: true
-  effects:
-  - effect: !TargetToTopOfLibrary
-      restrictions:
-      - restriction: !OfType
-          types:
-          - type_: !Creature {}
-      - restriction: !OfColor
-          colors:
-          - color: !Green {}
-  oracle_text: Put target green creature on top of its owner's library
+    - cost: !Blue {}
+activated_abilities:
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 1
+        - cost: !Blue {}
+      tap: true
+    effects:
+      - effect: !TargetToTopOfLibrary
+          restrictions:
+            - restriction: !OfType
+                types:
+                  - type_: !Creature {}
+            - restriction: !OfColor
+                colors:
+                  - color: !Green {}
+    oracle_text: Put target green creature on top of its owner's library

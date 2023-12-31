@@ -1,23 +1,23 @@
 name: Envoy of Okinec Ahau
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 2
-  - cost: !White {}
-activated_abilities:
-- cost:
-    mana_costs:
     - cost: !Generic
-        count: 4
+        count: 2
     - cost: !White {}
-  effects:
-  - effect: !CreateToken
-      token: !Creature
-        name: Gnome
-        types:
-        - type_: !Artifact {}
-        - type_: !Creature {}
-        subtypes:
-        - subtype: !Gnome {}
-        power: 1
-        toughness: 1
+activated_abilities:
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 4
+        - cost: !White {}
+    effects:
+      - effect: !CreateToken
+          token: !Creature
+            name: Gnome
+            types:
+              - type_: !Artifact {}
+              - type_: !Creature {}
+            subtypes:
+              - subtype: !Gnome {}
+            power: 1
+            toughness: 1

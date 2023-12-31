@@ -1,71 +1,71 @@
 name: Oteclan Landmark
 cost:
   mana_costs:
-  - cost: !White {}
-etb_abilities:
-- oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
-  effect: !Scry
-    count: 2
-activated_abilities:
-- cost:
-    mana_costs:
-    - cost: !Generic
-        count: 2
     - cost: !White {}
-    additional_costs:
-    - cost: !ExileCard
-        restrictions:
-        - restriction: !OfType
-            types:
-            - type_: !Artifact {}
-        - restriction: !Location
-            locations:
-            - location: !OnBattlefield {}
-            - location: !InGraveyard {}
-        - restriction: !NotSelf {}
-    - cost: !ExileCard
-        restrictions:
-        - restriction: !Self_ {}
-  effects:
-  - effect: !ReturnTransformed {}
-  oracle_text: Return to the battlefield transformed under its owners control.
-  sorcery_speed: true
-  craft: true
+etb_abilities:
+  - oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
+    effect: !Scry
+      count: 2
+activated_abilities:
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 2
+        - cost: !White {}
+      additional_costs:
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !OfType
+                  types:
+                    - type_: !Artifact {}
+              - restriction: !Location
+                  locations:
+                    - location: !OnBattlefield {}
+                    - location: !InGraveyard {}
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Return to the battlefield transformed under its owners control.
+    sorcery_speed: true
+    craft: true
 back_face:
   name: Oteclan Levitator
   types:
-  - type_: !Artifact {}
-  - type_: !Creature {}
+    - type_: !Artifact {}
+    - type_: !Creature {}
   subtypes:
-  - subtype: !Golem {}
+    - subtype: !Golem {}
   colors:
-  - color: !White {}
+    - color: !White {}
   triggered_abilities:
-  - trigger:
-      source:
-        trigger: !Attacks {}
-      from:
-        location: !Battlefield {}
-      restrictions:
-      - restriction: !Controller
-          controller: !Self_ {}
-      - restriction: !Self_ {}
-    effects:
-    - effect: !ModifyTarget
-        modifier:
-          add_keywords: Flying
-        duration:
-          duration: !UntilEndOfTurn {}
+    - trigger:
+        source:
+          trigger: !Attacks {}
+        from:
+          location: !Battlefield {}
         restrictions:
-        - restriction: !Controller
-            controller: !Self_ {}
-        - restriction: !Attacking {}
-        - restriction: !OfType
-            types:
-            - type_: !Creature {}
-        - restriction: !NotKeywords
-            keywords: Flying
-    oracle_text: Whenever Oteclan Levitator attacks, target attacking creature without flying gains flying until end of turn.
+          - restriction: !Controller
+              controller: !Self_ {}
+          - restriction: !Self_ {}
+      effects:
+        - effect: !ModifyTarget
+            modifier:
+              add_keywords: Flying
+            duration:
+              duration: !UntilEndOfTurn {}
+            restrictions:
+              - restriction: !Controller
+                  controller: !Self_ {}
+              - restriction: !Attacking {}
+              - restriction: !OfType
+                  types:
+                    - type_: !Creature {}
+              - restriction: !NotKeywords
+                  keywords: Flying
+      oracle_text: Whenever Oteclan Levitator attacks, target attacking creature without flying gains flying until end of turn.
   power: 1
   toughness: 4
   keywords: Flying

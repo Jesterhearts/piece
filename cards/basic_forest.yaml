@@ -1,5 +1,5 @@
 name: Forest
 types:
-- type_: !BasicLand {}
+  - type_: !BasicLand {}
 subtypes:
-- subtype: !Forest {}
+  - subtype: !Forest {}

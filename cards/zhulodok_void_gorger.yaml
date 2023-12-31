@@ -1,31 +1,31 @@
 name: Zhulodok, Void Gorger
 types:
-- type_: !Legendary {}
-- type_: !Creature {}
+  - type_: !Legendary {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Eldrazi {}
+  - subtype: !Eldrazi {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 5
-  - cost: !Colorless {}
+    - cost: !Generic
+        count: 5
+    - cost: !Colorless {}
 static_abilities:
-- ability: !BattlefieldModifier
-    modifier:
-      global: true
-      add_keywords: Cascade, Cascade
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-    restrictions:
-    - restriction: !Controller
-        controller: !Self_ {}
-    - restriction: !OfColor
-        colors:
-        - color: !Colorless {}
-    - restriction: !Cmc
-        cmc: !Comparison
-          value: !GreaterThanOrEqual
-            value: 7
-    - restriction: !CastFromHand {}
+  - ability: !BattlefieldModifier
+      modifier:
+        global: true
+        add_keywords: Cascade, Cascade
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfColor
+            colors:
+              - color: !Colorless {}
+        - restriction: !Cmc
+            cmc: !Comparison
+              value: !GreaterThanOrEqual
+                value: 7
+        - restriction: !CastFromHand {}
 power: 7
 toughness: 4

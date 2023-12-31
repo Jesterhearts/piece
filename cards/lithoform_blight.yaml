@@ -1,66 +1,66 @@
 name: Lithoform Blight
 types:
-- type_: !Enchantment {}
+  - type_: !Enchantment {}
 subtypes:
-- subtype: !Aura {}
+  - subtype: !Aura {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !Black {}
+    - cost: !Generic
+        count: 1
+    - cost: !Black {}
 oracle_text: |-
   Enchant land
   When Lithoform Blight enters the battlefield, draw a card.
   Enchanted land loses all land types and abilities and has "{T}: Add {C}" and "{T}, Pay 1 life: Add one mana of any color."
 enchant:
   modifiers:
-  - modifier:
-      remove_subtypes:
-      - subtype: !Plains {}
-      - subtype: !Island {}
-      - subtype: !Swamp {}
-      - subtype: !Mountain {}
-      - subtype: !Forest {}
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-  - modifier:
-      mana_ability:
-        cost:
-          tap: true
-        gain_mana:
-          gain: !Specific
-            gains:
-            - mana: !Colorless {}
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-  - modifier:
-      mana_ability:
-        cost:
-          tap: true
-          additional_costs:
-          - cost: !PayLife
-              count: 1
-        gain_mana:
-          gain: !Choice
-            choices:
-            - gains:
-              - mana: !White {}
-            - gains:
-              - mana: !Blue {}
-            - gains:
-              - mana: !Black {}
-            - gains:
-              - mana: !Red {}
-            - gains:
-              - mana: !Green {}
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        remove_subtypes:
+          - subtype: !Plains {}
+          - subtype: !Island {}
+          - subtype: !Swamp {}
+          - subtype: !Mountain {}
+          - subtype: !Forest {}
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Specific
+              gains:
+                - mana: !Colorless {}
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        mana_ability:
+          cost:
+            tap: true
+            additional_costs:
+              - cost: !PayLife
+                  count: 1
+          gain_mana:
+            gain: !Choice
+              choices:
+                - gains:
+                    - mana: !White {}
+                - gains:
+                    - mana: !Blue {}
+                - gains:
+                    - mana: !Black {}
+                - gains:
+                    - mana: !Red {}
+                - gains:
+                    - mana: !Green {}
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
 etb_abilities:
-- effect: !ControllerDrawCards
-    count: 1
+  - effect: !ControllerDrawCards
+      count: 1
 restrictions:
-- restriction: !OfType
-    types:
-    - type_: !Land {}
-    - type_: !BasicLand {}
-- restriction: !OnBattlefield {}
+  - restriction: !OfType
+      types:
+        - type_: !Land {}
+        - type_: !BasicLand {}
+  - restriction: !OnBattlefield {}

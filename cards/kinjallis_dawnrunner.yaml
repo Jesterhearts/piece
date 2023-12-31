@@ -1,16 +1,16 @@
 name: Kinjalli's Dawnrunner
 types:
-- type_: !Creature {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Human {}
-- subtype: !Scout {}
+  - subtype: !Human {}
+  - subtype: !Scout {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 3
-  - cost: !White {}
+    - cost: !Generic
+        count: 3
+    - cost: !White {}
 etb_abilities:
-- effect: !SelfExplores {}
+  - effect: !SelfExplores {}
 power: 1
 toughness: 1
 keywords: DoubleStrike

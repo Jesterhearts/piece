@@ -1,32 +1,32 @@
 name: Abzan Banner
 types:
-- type_: !Artifact {}
+  - type_: !Artifact {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 3
+    - cost: !Generic
+        count: 3
 activated_abilities:
-- cost:
-    mana_costs:
-    - cost: !White {}
-    - cost: !Black {}
-    - cost: !Green {}
-    tap: true
-    additional_costs:
-    - cost: !SacrificeSource {}
-  effects:
-  - effect: !ControllerDrawCards
-      count: 1
-  oracle_text: Draw a card.
+  - cost:
+      mana_costs:
+        - cost: !White {}
+        - cost: !Black {}
+        - cost: !Green {}
+      tap: true
+      additional_costs:
+        - cost: !SacrificeSource {}
+    effects:
+      - effect: !ControllerDrawCards
+          count: 1
+    oracle_text: Draw a card.
 mana_abilities:
-- cost:
-    tap: true
-  gain_mana:
-    gain: !Choice
-      choices:
-      - gains:
-        - mana: !White {}
-      - gains:
-        - mana: !Black {}
-      - gains:
-        - mana: !Green {}
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Choice
+        choices:
+          - gains:
+              - mana: !White {}
+          - gains:
+              - mana: !Black {}
+          - gains:
+              - mana: !Green {}

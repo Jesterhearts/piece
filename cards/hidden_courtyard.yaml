@@ -1,29 +1,29 @@
 name: Hidden Courtyard
 types:
-- type_: !Land {}
+  - type_: !Land {}
 subtypes:
-- subtype: !Cave {}
+  - subtype: !Cave {}
 activated_abilities:
-- cost:
-    mana_costs:
-    - cost: !Generic
-        count: 4
-    - cost: !White {}
-    tap: true
-    additional_costs:
-    - cost: !SacrificeSource {}
-  effects:
-  - effect: !Discover
-      count: 4
-  oracle_text: Discover 4. Activate only as Sorcery.
-  sorcery_speed: true
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 4
+        - cost: !White {}
+      tap: true
+      additional_costs:
+        - cost: !SacrificeSource {}
+    effects:
+      - effect: !Discover
+          count: 4
+    oracle_text: Discover 4. Activate only as Sorcery.
+    sorcery_speed: true
 mana_abilities:
-- cost:
-    tap: true
-  gain_mana:
-    gain: !Specific
-      gains:
-      - mana: !White {}
-  mana_source:
-    source: !Cave {}
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gains:
+          - mana: !White {}
+    mana_source:
+      source: !Cave {}
 etb_tapped: true

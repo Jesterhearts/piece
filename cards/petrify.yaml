@@ -1,24 +1,24 @@
 name: Petrify
 types:
-- type_: !Enchantment {}
+  - type_: !Enchantment {}
 subtypes:
-- subtype: !Aura {}
+  - subtype: !Aura {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !White {}
+    - cost: !Generic
+        count: 1
+    - cost: !White {}
 enchant:
   modifiers:
-  - modifier:
-      add_static_abilities:
-      - ability: !PreventAttacks {}
-      - ability: !PreventBlocks {}
-      - ability: !PreventAbilityActivation {}
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        add_static_abilities:
+          - ability: !PreventAttacks {}
+          - ability: !PreventBlocks {}
+          - ability: !PreventAbilityActivation {}
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
 restrictions:
-- restriction: !OfType
-    types:
-    - type_: !Creature {}
-    - type_: !Artifact {}
+  - restriction: !OfType
+      types:
+        - type_: !Creature {}
+        - type_: !Artifact {}

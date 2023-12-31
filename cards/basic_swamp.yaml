@@ -1,5 +1,5 @@
 name: Swamp
 types:
-- type_: !BasicLand {}
+  - type_: !BasicLand {}
 subtypes:
-- subtype: !Swamp {}
+  - subtype: !Swamp {}

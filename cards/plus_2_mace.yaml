@@ -1,22 +1,22 @@
 name: +2 Mace
 types:
-- type_: !Artifact {}
+  - type_: !Artifact {}
 subtypes:
-- subtype: !Equipment {}
+  - subtype: !Equipment {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !White {}
+    - cost: !Generic
+        count: 1
+    - cost: !White {}
 oracle_text: Equipped creature gets +2/+2
 activated_abilities:
-- cost:
-    mana_costs:
-    - cost: !Generic
-        count: 3
-  effects:
-  - effect: !Equip
-      modifiers:
-      - add_power: 2
-        add_toughness: 2
-  oracle_text: Equip
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 3
+    effects:
+      - effect: !Equip
+          modifiers:
+            - add_power: 2
+              add_toughness: 2
+    oracle_text: Equip

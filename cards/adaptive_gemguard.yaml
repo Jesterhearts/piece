@@ -1,39 +1,39 @@
 name: Adaptive Gemguard
 types:
-- type_: !Artifact {}
-- type_: !Creature {}
+  - type_: !Artifact {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Gnome {}
+  - subtype: !Gnome {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 3
-  - cost: !White {}
+    - cost: !Generic
+        count: 3
+    - cost: !White {}
 activated_abilities:
-- cost:
-    additional_costs:
-    - cost: !TapPermanent
-        restrictions:
-        - restriction: !OfType
-            types:
-            - type_: !Artifact {}
-            - type_: !Creature {}
-    - cost: !TapPermanent
-        restrictions:
-        - restriction: !OfType
-            types:
-            - type_: !Artifact {}
-            - type_: !Creature {}
-  effects:
-  - effect: !TargetGainsCounters
-      counter:
-        type_: !P1p1 {}
-      restrictions:
-      - restriction: !Self_ {}
-      count: !Single {}
-  oracle_text: |-
-    Put a +1/+1 counter on Adpative Gemguard.
-    Activate only as sourcery.
-  sorcery_speed: true
+  - cost:
+      additional_costs:
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types:
+                    - type_: !Artifact {}
+                    - type_: !Creature {}
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types:
+                    - type_: !Artifact {}
+                    - type_: !Creature {}
+    effects:
+      - effect: !TargetGainsCounters
+          counter:
+            type_: !P1p1 {}
+          restrictions:
+            - restriction: !Self_ {}
+          count: !Single {}
+    oracle_text: |-
+      Put a +1/+1 counter on Adpative Gemguard.
+      Activate only as sourcery.
+    sorcery_speed: true
 power: 3
 toughness: 3

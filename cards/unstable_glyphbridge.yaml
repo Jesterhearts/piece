@@ -1,80 +1,80 @@
 name: Unstable Glyphbridge
 types:
-- type_: !Artifact {}
+  - type_: !Artifact {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 3
-  - cost: !White {}
-  - cost: !White {}
-etb_abilities:
-- effect: !ForEachPlayerChooseThen
-    restrictions:
-    - restriction: !SourceCast {}
-    - restriction: !OfType
-        types:
-        - type_: !Creature {}
-    - restriction: !OnBattlefield {}
-    - restriction: !Power
-        comparison:
-          value: !LessThanOrEqual
-            value: 2
-    effects:
-    - effect: !DestroyEach
-        restrictions:
-        - restriction: !NotChosen {}
-activated_abilities:
-- cost:
-    mana_costs:
     - cost: !Generic
         count: 3
     - cost: !White {}
     - cost: !White {}
-    additional_costs:
-    - cost: !ExileCard
-        restrictions:
-        - restriction: !NotSelf {}
+etb_abilities:
+  - effect: !ForEachPlayerChooseThen
+      restrictions:
+        - restriction: !SourceCast {}
         - restriction: !OfType
             types:
-            - type_: !Artifact {}
-        - restriction: !Location
-            locations:
-            - location: !OnBattlefield {}
-            - location: !InGraveyard {}
-    - cost: !ExileCard
-        restrictions:
-        - restriction: !Self_ {}
-  effects:
-  - effect: !ReturnTransformed {}
-  oracle_text: Return to the battlefield transformed under its owners control.
-  sorcery_speed: true
-  craft: true
+              - type_: !Creature {}
+        - restriction: !OnBattlefield {}
+        - restriction: !Power
+            comparison:
+              value: !LessThanOrEqual
+                value: 2
+      effects:
+        - effect: !DestroyEach
+            restrictions:
+              - restriction: !NotChosen {}
+activated_abilities:
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 3
+        - cost: !White {}
+        - cost: !White {}
+      additional_costs:
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !NotSelf {}
+              - restriction: !OfType
+                  types:
+                    - type_: !Artifact {}
+              - restriction: !Location
+                  locations:
+                    - location: !OnBattlefield {}
+                    - location: !InGraveyard {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Return to the battlefield transformed under its owners control.
+    sorcery_speed: true
+    craft: true
 back_face:
   name: Sandswirl Wanderglyph
   types:
-  - type_: !Artifact {}
-  - type_: !Creature {}
+    - type_: !Artifact {}
+    - type_: !Creature {}
   subtypes:
-  - subtype: !Golem {}
+    - subtype: !Golem {}
   colors:
-  - color: !White {}
+    - color: !White {}
   static_abilities:
-  - ability: !CantCastIfAttacked {}
+    - ability: !CantCastIfAttacked {}
   triggered_abilities:
-  - trigger:
-      source:
-        trigger: !Cast {}
-      from:
-        location: !Anywhere {}
-      restrictions:
-      - restriction: !Controller
-          controller: !Opponent {}
-      - restriction: !DuringControllersTurn {}
-    effects:
-    - effect: !CantAttackThisTurn
+    - trigger:
+        source:
+          trigger: !Cast {}
+        from:
+          location: !Anywhere {}
         restrictions:
-        - restriction: !JustCast {}
-        - restriction: !NotSelf {}
+          - restriction: !Controller
+              controller: !Opponent {}
+          - restriction: !DuringControllersTurn {}
+      effects:
+        - effect: !CantAttackThisTurn
+            restrictions:
+              - restriction: !JustCast {}
+              - restriction: !NotSelf {}
   power: 5
   toughness: 3
   keywords: Flying

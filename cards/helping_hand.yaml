@@ -1,19 +1,19 @@
 name: Helping Hand
 types:
-- type_: !Sorcery {}
+  - type_: !Sorcery {}
 cost:
   mana_costs:
-  - cost: !White {}
+    - cost: !White {}
 effects:
-- effect: !ReturnFromGraveyardToBattlefield
-    restrictions:
-    - restriction: !Controller
-        controller: !Self_ {}
+  - effect: !ReturnFromGraveyardToBattlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
 restrictions:
-- restriction: !OfType
-    types:
-    - type_: !Creature {}
-- restriction: !Cmc
-    cmc: !Comparison
-      value: !LessThanOrEqual
-        value: 3
+  - restriction: !OfType
+      types:
+        - type_: !Creature {}
+  - restriction: !Cmc
+      cmc: !Comparison
+        value: !LessThanOrEqual
+          value: 3

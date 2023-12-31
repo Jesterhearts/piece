@@ -1,92 +1,92 @@
 name: Clay-Fired Bricks
 types:
-- type_: !Artifact {}
+  - type_: !Artifact {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !White {}
-etb_abilities:
-- oracle_text: When Clay-Fired bricks enters the battlefield, search your library for a basic plains card reveal it, put it into your hand, then shuffle
-  effect: !TutorLibrary
-    restrictions:
-    - restriction: !OfType
-        types:
-        - type_: !BasicLand {}
-        subtypes:
-        - subtype: !Plains {}
-    destination:
-      destination: !Hand {}
-    reveal: true
-- oracle_text: You gain 2 life.
-  effect: !GainLife
-    count: 2
-activated_abilities:
-- cost:
-    mana_costs:
     - cost: !Generic
-        count: 5
+        count: 1
     - cost: !White {}
-    - cost: !White {}
-    additional_costs:
-    - cost: !ExileCard
-        restrictions:
+etb_abilities:
+  - oracle_text: When Clay-Fired bricks enters the battlefield, search your library for a basic plains card reveal it, put it into your hand, then shuffle
+    effect: !TutorLibrary
+      restrictions:
         - restriction: !OfType
             types:
-            - type_: !Artifact {}
-        - restriction: !Location
-            locations:
-            - location: !OnBattlefield {}
-            - location: !InGraveyard {}
-        - restriction: !NotSelf {}
-    - cost: !ExileCard
-        restrictions:
-        - restriction: !Self_ {}
-  effects:
-  - effect: !ReturnTransformed {}
-  oracle_text: Return to the battlefield transformed under its owners control.
-  sorcery_speed: true
-  craft: true
+              - type_: !BasicLand {}
+            subtypes:
+              - subtype: !Plains {}
+      destination:
+        destination: !Hand {}
+      reveal: true
+  - oracle_text: You gain 2 life.
+    effect: !GainLife
+      count: 2
+activated_abilities:
+  - cost:
+      mana_costs:
+        - cost: !Generic
+            count: 5
+        - cost: !White {}
+        - cost: !White {}
+      additional_costs:
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !OfType
+                  types:
+                    - type_: !Artifact {}
+              - restriction: !Location
+                  locations:
+                    - location: !OnBattlefield {}
+                    - location: !InGraveyard {}
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Return to the battlefield transformed under its owners control.
+    sorcery_speed: true
+    craft: true
 back_face:
   name: Cosmium Kiln
   types:
-  - type_: !Artifact {}
+    - type_: !Artifact {}
   colors:
-  - color: !White {}
+    - color: !White {}
   oracle_text: Creatures you control get +1/+1
   etb_abilities:
-  - effect: !CreateToken
-      token: !Creature
-        name: Gnome
-        types:
-        - type_: !Artifact {}
-        - type_: !Creature {}
-        subtypes:
-        - subtype: !Gnome {}
-        power: 1
-        toughness: 1
-  - oracle_text: When Cosmium Kiln enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens.
-    effect: !CreateToken
-      token: !Creature
-        name: Gnome
-        types:
-        - type_: !Artifact {}
-        - type_: !Creature {}
-        subtypes:
-        - subtype: !Gnome {}
-        power: 1
-        toughness: 1
-  static_abilities:
-  - ability: !BattlefieldModifier
-      modifier:
-        add_power: 1
-        add_toughness: 1
-        entire_battlefield: true
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
-      restrictions:
-      - restriction: !Controller
-          controller: !Self_ {}
-      - restriction: !OfType
+    - effect: !CreateToken
+        token: !Creature
+          name: Gnome
           types:
-          - type_: !Creature {}
+            - type_: !Artifact {}
+            - type_: !Creature {}
+          subtypes:
+            - subtype: !Gnome {}
+          power: 1
+          toughness: 1
+    - oracle_text: When Cosmium Kiln enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens.
+      effect: !CreateToken
+        token: !Creature
+          name: Gnome
+          types:
+            - type_: !Artifact {}
+            - type_: !Creature {}
+          subtypes:
+            - subtype: !Gnome {}
+          power: 1
+          toughness: 1
+  static_abilities:
+    - ability: !BattlefieldModifier
+        modifier:
+          add_power: 1
+          add_toughness: 1
+          entire_battlefield: true
+        duration:
+          duration: !UntilSourceLeavesBattlefield {}
+        restrictions:
+          - restriction: !Controller
+              controller: !Self_ {}
+          - restriction: !OfType
+              types:
+                - type_: !Creature {}

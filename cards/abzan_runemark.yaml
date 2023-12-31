@@ -1,32 +1,32 @@
 name: Abzan Runemark
 types:
-- type_: !Enchantment {}
+  - type_: !Enchantment {}
 subtypes:
-- subtype: !Aura {}
+  - subtype: !Aura {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 2
-  - cost: !White {}
+    - cost: !Generic
+        count: 2
+    - cost: !White {}
 oracle_text: |-
   Enchant creature
   Enchanted creature gets +2/+2
   Enchanted creature has vigilance as long as you control a black or green permanent.
 enchant:
   modifiers:
-  - modifier:
-      add_power: 2
-      add_toughness: 2
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-  - modifier:
-      add_keywords: Vigilance
-    duration:
-      duration: !UntilSourceLeavesBattlefield {}
-    restrictions:
-    - restriction: !ControllerControlsBlackOrGreen {}
+    - modifier:
+        add_power: 2
+        add_toughness: 2
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+    - modifier:
+        add_keywords: Vigilance
+      duration:
+        duration: !UntilSourceLeavesBattlefield {}
+      restrictions:
+        - restriction: !ControllerControlsBlackOrGreen {}
 restrictions:
-- restriction: !OfType
-    types:
-    - type_: !Creature {}
-- restriction: !OnBattlefield {}
+  - restriction: !OfType
+      types:
+        - type_: !Creature {}
+  - restriction: !OnBattlefield {}

@@ -1,27 +1,27 @@
 name: Attentive Sunscribe
 types:
-- type_: !Artifact {}
-- type_: !Creature {}
+  - type_: !Artifact {}
+  - type_: !Creature {}
 subtypes:
-- subtype: !Gnome {}
+  - subtype: !Gnome {}
 cost:
   mana_costs:
-  - cost: !Generic
-      count: 1
-  - cost: !White {}
+    - cost: !Generic
+        count: 1
+    - cost: !White {}
 triggered_abilities:
-- trigger:
-    source:
-      trigger: !Tapped {}
-    from:
-      location: !Anywhere {}
-    restrictions:
-    - restriction: !Controller
-        controller: !Self_ {}
-    - restriction: !Self_ {}
-  effects:
-  - effect: !Scry
-      count: 1
-  oracle_text: Whenever Attentive Sunscribe becomes tapped, scry 1.
+  - trigger:
+      source:
+        trigger: !Tapped {}
+      from:
+        location: !Anywhere {}
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !Self_ {}
+    effects:
+      - effect: !Scry
+          count: 1
+    oracle_text: Whenever Attentive Sunscribe becomes tapped, scry 1.
 power: 2
 toughness: 2
