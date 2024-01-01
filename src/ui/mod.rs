@@ -17,6 +17,20 @@ pub struct Card<'db> {
 
 impl Widget for Card<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        if self.card.tapped(self.db) {
+            ui.set_enabled(false);
+        }
+
+        let types = self.card.types(self.db);
+        let subtypes = self.card.subtypes(self.db);
+
+        let typeline = std::iter::once(types.iter().map(|ty| ty.as_ref()).join(" "))
+            .chain(
+                std::iter::once(subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+                    .filter(|s| !s.is_empty()),
+            )
+            .join(" - ");
+
         let source = self
             .card
             .cloning(self.db)
@@ -94,6 +108,16 @@ impl Widget for Card<'_> {
                     ScrollArea::vertical().id_source(self.title).show(ui, |ui| {
                         sense = sense.union(ui.add(Label::new(paragraph).sense(Sense::click())));
                     });
+
+                    ui.separator();
+                    sense = sense.union(ui.add(Label::new(typeline).sense(Sense::click())));
+
+                    if let Some(pt) = self.card.pt_text(self.db) {
+                        ui.with_layout(Layout::right_to_left(egui::Align::Min), |ui| {
+                            sense = sense.union(ui.add(Label::new(pt).sense(Sense::click())));
+                        });
+                    }
+
                     sense
                 })
                 .inner
