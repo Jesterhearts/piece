@@ -77,7 +77,7 @@ impl Widget for Card<'_> {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.expand_to_include_rect(ui.max_rect());
                 ui.vertical(|ui| {
@@ -113,7 +113,7 @@ impl Widget for ManaDisplay {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.expand_to_include_rect(ui.max_rect());
                 ScrollArea::vertical()
@@ -141,7 +141,7 @@ impl Widget for Stack<'_> {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
                     ui.heading("Stack");
@@ -176,7 +176,7 @@ impl Widget for Exile<'_> {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
                     ui.heading("Exile");
@@ -211,7 +211,7 @@ impl Widget for Graveyard<'_> {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
                     ui.heading("Graveyard");
@@ -248,7 +248,7 @@ impl Widget for Hand<'_, '_> {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.expand_to_include_rect(ui.max_rect());
                 ui.horizontal(|ui| {
@@ -358,7 +358,7 @@ impl Widget for Actions<'_, '_, '_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let abilities = if let Some(card) = self.card {
             if card.is_in_location::<InHand>(self.db) && self.turn.can_cast(self.db, card) {
-                [(0, "Play".to_string())]
+                [(0, format!("Play {}", card.name(self.db)))]
                     .into_iter()
                     .chain(
                         card.activated_abilities(self.db)
@@ -403,7 +403,7 @@ impl Widget for Actions<'_, '_, '_, '_> {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
             .inner_margin(5.0)
-            .outer_margin(1.0)
+            .outer_margin(2.0)
             .show(ui, |ui| {
                 ui.expand_to_include_rect(ui.max_rect());
 

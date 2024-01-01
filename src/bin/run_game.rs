@@ -399,13 +399,13 @@ async fn main() -> anyhow::Result<()> {
                     ui.separator();
                     ui.label(format!(
                         "{} ({})",
-                        all_players[player2].name, all_players[player2].life_total
+                        all_players[player1].name, all_players[player1].life_total
                     ));
 
                     ui.separator();
                     ui.label(format!(
                         "{} ({})",
-                        all_players[player1].name, all_players[player1].life_total
+                        all_players[player2].name, all_players[player2].life_total
                     ));
                 })
             });
@@ -734,23 +734,29 @@ async fn main() -> anyhow::Result<()> {
                         &mut organizing_stack,
                     );
                 } else {
-                    egui::Window::new(resolving.description(&db)).show(ctx, |ui| {
-                        ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                            if resolving.choices_optional(&db, &all_players)
-                                && ui.button("None").clicked()
-                            {
-                                choice = Some(None);
-                            }
+                    let mut open = true;
 
-                            for (idx, option) in resolving.options(&mut db, &all_players) {
-                                if ui.button(option).clicked() {
-                                    choice = Some(Some(idx));
+                    egui::Window::new(resolving.description(&db))
+                        .open(&mut open)
+                        .show(ctx, |ui| {
+                            ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                                if resolving.choices_optional(&db, &all_players)
+                                    && ui.button("None").clicked()
+                                {
+                                    choice = Some(None);
                                 }
-                            }
-                        })
-                    });
 
-                    if let Some(choice) = choice {
+                                for (idx, option) in resolving.options(&mut db, &all_players) {
+                                    if ui.button(option).clicked() {
+                                        choice = Some(Some(idx));
+                                    }
+                                }
+                            })
+                        });
+
+                    if !open && resolving.can_cancel() {
+                        to_resolve = None;
+                    } else if let Some(choice) = choice {
                         loop {
                             match resolving.resolve(&mut db, &mut all_players, &turn, choice) {
                                 ResolutionResult::Complete => {
@@ -832,24 +838,24 @@ async fn main() -> anyhow::Result<()> {
                 egui::Window::new("Add card to hand").show(ctx, |ui| {
                     let adding = adding_card.as_mut().unwrap();
                     let is_valid = cards.contains_key(adding);
-                    if ui
-                        .add(
-                            TextEdit::singleline(adding)
-                                .hint_text("Card name")
-                                .text_color(if is_valid {
-                                    Color32::GREEN
-                                } else {
-                                    Color32::RED
-                                }),
-                        )
-                        .lost_focus()
-                    {
+                    let edit = ui.add(
+                        TextEdit::singleline(adding)
+                            .hint_text("Card name")
+                            .text_color(if is_valid {
+                                Color32::GREEN
+                            } else {
+                                Color32::RED
+                            }),
+                    );
+
+                    if edit.lost_focus() {
                         if is_valid {
                             let card = CardId::upload(&mut db, &cards, player1, adding);
                             card.move_to_hand(&mut db);
                         }
                         adding_card = None;
                     }
+                    edit.request_focus();
                 });
             }
         });
