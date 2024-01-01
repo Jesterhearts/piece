@@ -37,6 +37,7 @@ pub(crate) use replacementid::ReplacementEffectId;
 pub(crate) use triggerid::TriggerId;
 
 use crate::{
+    log::Log,
     newtype_enum::newtype_enum,
     player::{Controller, Owner},
 };
@@ -258,6 +259,7 @@ pub(crate) fn current_turn(db: &Database) -> CurrentTurn {
 }
 
 pub(crate) fn set_current_turn(db: &mut Database, player: Owner, turn_count: usize) {
+    Log::new_turn(db, player);
     db.insert_resource(CurrentTurn {
         player,
         turn: turn_count,
@@ -288,13 +290,11 @@ pub(crate) struct LifeGained {
 }
 
 pub(crate) fn update_life_gained_this_turn(db: &mut Database, player: Owner, amount: usize) {
-    if let Some(mut number) = db.get_resource_mut::<LifeGained>() {
-        *number.counts.entry(player).or_default() += amount
-    } else {
-        db.insert_resource(LifeGained {
-            counts: HashMap::from([(player, amount)]),
-        })
-    }
+    let mut number = db.get_resource_or_insert_with::<LifeGained>(|| LifeGained {
+        counts: HashMap::from([(player, amount)]),
+    });
+
+    *number.counts.entry(player).or_default() += amount
 }
 
 pub(crate) fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
@@ -317,11 +317,10 @@ pub(crate) fn just_cast(db: &mut Database, controller: Controller) -> bool {
 }
 
 pub(crate) fn add_just_cast(db: &mut Database, controller: Controller) {
-    if let Some(mut just_cast) = db.get_resource_mut::<JustCast>() {
-        just_cast.insert(controller);
-    } else {
-        db.insert_resource(JustCast(HashSet::from([controller])));
-    }
+    let mut just_cast =
+        db.get_resource_or_insert_with::<JustCast>(|| JustCast(HashSet::from([controller])));
+
+    just_cast.insert(controller);
 }
 
 pub(crate) fn clear_just_cast(db: &mut Database) {
@@ -400,6 +399,7 @@ impl Default for Database {
     fn default() -> Self {
         let mut cards = CardDb::default();
         cards.insert_resource(Events::<DeleteAbility>::default());
+        cards.insert_resource(Log::default());
 
         Self {
             cards,

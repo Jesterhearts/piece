@@ -14,8 +14,8 @@ use crate::{
 
 newtype_enum! {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-#[derive(strum::EnumIter, strum::AsRefStr)]
-pub(crate) enum Counter {
+#[derive(strum::EnumIter, strum::AsRefStr, Hash)]
+pub enum Counter {
     Any,
     Charge,
     P1P1,

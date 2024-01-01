@@ -135,8 +135,8 @@ impl PendingResult for ChooseTargets {
             .collect_vec()
     }
 
-    fn description(&self, _db: &Database) -> String {
-        "targets".to_string()
+    fn description(&self, db: &Database) -> String {
+        format!("targets for {}", self.card.name(db))
     }
 
     fn is_empty(&self) -> bool {

@@ -88,7 +88,6 @@ impl AbilityId {
     }
 
     pub(crate) fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
-        // TODO: These leak
         INIT_LAND_ABILITIES.with(|init| {
             init.get_or_init(|| {
                 let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
@@ -341,7 +340,7 @@ impl AbilityId {
             })
     }
 
-    pub(crate) fn text(self, db: &mut Database) -> String {
+    pub fn text(self, db: &mut Database) -> String {
         match self.ability(db) {
             Ability::Activated(activated) => {
                 format!(

@@ -44,6 +44,7 @@ use crate::{
         OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
         NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
+    log::{LeaveReason, Log},
     player::{
         mana_pool::{ManaSource, SourcedMana},
         Controller, Owner,
@@ -177,6 +178,10 @@ impl CardId {
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
+        if self.is_in_location::<OnBattlefield>(db) {
+            Log::left_battlefield(db, LeaveReason::ReturnedToHand, self);
+        }
+
         if self.is_token(db) {
             self.move_to_limbo(db);
         } else {
@@ -205,6 +210,8 @@ impl CardId {
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .remove::<EnteredBattlefieldTurn>()
                 .insert(InHand(NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed)));
+
+            self.apply_modifiers_layered(db);
         }
     }
 
@@ -294,11 +301,16 @@ impl CardId {
                 NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
             ));
 
+        self.apply_modifiers_layered(db);
         TriggerId::activate_all_for_card(db, self);
         ReplacementEffectId::activate_all_for_card(db, self);
     }
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
+        if self.is_in_location::<OnBattlefield>(db) {
+            Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
+        }
+
         if self.is_token(db) {
             self.move_to_limbo(db);
         } else {
@@ -331,10 +343,15 @@ impl CardId {
                 .insert(InGraveyard(
                     NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
                 ));
+            self.apply_modifiers_layered(db);
         }
     }
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
+        if self.is_in_location::<OnBattlefield>(db) {
+            Log::left_battlefield(db, LeaveReason::ReturnedToLibrary, self);
+        }
+
         if self.is_token(db) {
             self.move_to_limbo(db);
             false
@@ -364,6 +381,7 @@ impl CardId {
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .remove::<EnteredBattlefieldTurn>()
                 .insert(InLibrary);
+            self.apply_modifiers_layered(db);
             true
         }
     }
@@ -375,6 +393,10 @@ impl CardId {
         reason: Option<ExileReason>,
         duration: EffectDuration,
     ) {
+        if self.is_in_location::<OnBattlefield>(db) {
+            Log::left_battlefield(db, LeaveReason::Exiled, self);
+        }
+
         if self.is_token(db) {
             self.move_to_limbo(db);
         } else {
@@ -429,6 +451,7 @@ impl CardId {
                     }
                 }
             }
+            self.apply_modifiers_layered(db);
         }
     }
 
@@ -2057,12 +2080,19 @@ impl CardId {
         }
     }
 
-    pub fn modified_by(&self, db: &mut Database) -> Vec<String> {
+    pub fn modified_by_text(&self, db: &mut Database) -> Vec<String> {
+        self.modified_by(db)
+            .into_iter()
+            .map(|card| card.name(db))
+            .collect_vec()
+    }
+
+    pub fn modified_by(&self, db: &mut Database) -> Vec<CardId> {
         let mut results = vec![];
 
         let modifiers = self.modifiers(db);
         for modifier in modifiers {
-            results.push(modifier.source(db).name(db));
+            results.push(modifier.source(db));
         }
 
         results

@@ -23,6 +23,7 @@ use crate::{
     in_play::{
         cast_from, AbilityId, CardId, CastFrom, Database, InStack, TriggerId, TriggerInStack,
     },
+    log::Log,
     player::{mana_pool::SpendReason, AllPlayers, Owner},
 };
 
@@ -31,6 +32,13 @@ pub(crate) struct Settled;
 
 #[derive(Debug, PartialEq, Eq, Clone, Component)]
 pub(crate) struct Targets(pub(crate) Vec<Vec<ActiveTarget>>);
+
+#[derive(Debug)]
+enum ResolutionType {
+    Card(CardId),
+    Ability(AbilityId),
+    Trigger(TriggerId),
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub(crate) enum ActiveTarget {
@@ -458,7 +466,7 @@ impl Stack {
         };
 
         Self::settle(db);
-        let (apply_to_self, effects, controller, resolving_card, source) = match next.ty {
+        let (apply_to_self, effects, controller, resolving_card, source, ty) = match next.ty {
             Entry::Card(card) => {
                 let effects = if let Some(modes) = card.modes(db) {
                     debug!("Modes: {:?}", modes);
@@ -472,7 +480,14 @@ impl Stack {
                     card.effects(db)
                 };
 
-                (false, effects, card.controller(db), Some(card), card)
+                (
+                    false,
+                    effects,
+                    card.controller(db),
+                    Some(card),
+                    card,
+                    ResolutionType::Card(card),
+                )
             }
             Entry::Ability { source, .. } => (
                 source.apply_to_self(db),
@@ -480,6 +495,7 @@ impl Stack {
                 source.controller(db),
                 None,
                 source.source(db),
+                ResolutionType::Ability(source),
             ),
             Entry::Trigger {
                 source,
@@ -491,6 +507,7 @@ impl Stack {
                 card_source.controller(db),
                 None,
                 card_source,
+                ResolutionType::Trigger(source),
             ),
         };
 
@@ -554,6 +571,12 @@ impl Stack {
             } else {
                 results.push_settled(ActionResult::StackToGraveyard(resolving_card));
             }
+        }
+
+        match ty {
+            ResolutionType::Card(card) => Log::spell_resolved(db, card),
+            ResolutionType::Ability(ability) => Log::ability_resolved(db, ability),
+            ResolutionType::Trigger(trigger) => Log::trigger_resolved(db, trigger),
         }
 
         results

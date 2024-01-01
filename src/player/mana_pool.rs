@@ -104,6 +104,16 @@ impl Default for ManaPool {
 impl ManaPool {
     pub(crate) fn drain(&mut self) {
         self.sourced.clear();
+        for mana in Mana::iter() {
+            *self
+                .sourced
+                .entry(mana)
+                .or_default()
+                .entry(ManaSource::Any)
+                .or_default()
+                .entry(ManaRestriction::None)
+                .or_default() = 0;
+        }
     }
 
     pub(crate) fn apply(&mut self, mana: Mana, source: ManaSource, restriction: ManaRestriction) {

@@ -393,6 +393,10 @@ pub(crate) trait EffectBehaviors: Debug {
         false
     }
 
+    fn is_equip(&'static self) -> bool {
+        false
+    }
+
     fn cycling(&'static self) -> bool {
         false
     }

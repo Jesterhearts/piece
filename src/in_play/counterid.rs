@@ -1,6 +1,7 @@
 use bevy_ecs::{component::Component, entity::Entity, query::With};
 use derive_more::{Deref, DerefMut};
 
+use indexmap::IndexMap;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -148,6 +149,20 @@ impl CounterId {
             }
         }
 
+        results
+    }
+
+    pub(crate) fn all_counters_on(db: &mut Database, card: CardId) -> IndexMap<Counter, usize> {
+        let mut results = IndexMap::default();
+
+        for counter in Counter::iter() {
+            if let Counter::Any = counter {
+                continue;
+            }
+
+            let amount = Self::counters_on(db, card, counter);
+            results.insert(counter, amount);
+        }
         results
     }
 }

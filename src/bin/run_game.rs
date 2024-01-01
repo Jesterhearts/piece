@@ -1,54 +1,27 @@
 #[macro_use]
 extern crate tracing;
 
-use std::{fs::OpenOptions, io::stdout};
+use std::fs::OpenOptions;
 
-use crossterm::{
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, KeyCode, KeyEventKind, MouseButton,
-        MouseEventKind,
-    },
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-
+use egui::{Color32, Layout, TextEdit};
 use itertools::Itertools;
-use ratatui::{
-    layout::{Constraint, Direction, Layout},
-    prelude::{CrosstermBackend, Terminal},
-    style::Stylize,
-    text::Span,
-    widgets::{block::Title, Block, Borders, Paragraph},
-};
-
+use macroquad::window::next_frame;
 use piece::{
     ai::AI,
-    battlefield::{self, Battlefield, PendingResults, ResolutionResult},
+    battlefield::{Battlefield, PendingResults, ResolutionResult},
     deck::DeckDefinition,
     in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
     player::AllPlayers,
     stack::Stack,
     turns::Turn,
-    ui::{
-        self,
-        horizontal_list::{HorizontalList, HorizontalListState},
-        list::{List, ListState},
-        CardSelectionState,
-    },
-    UiState,
+    ui::{self, ManaDisplay},
 };
-use tracing::Level;
+use taffy::prelude::*;
 use tracing_subscriber::fmt::format::FmtSpan;
-use tui_textarea::{Input, Key, TextArea};
 
-#[allow(clippy::large_enum_variant)]
-enum UiAction {
-    CleanupStack,
-    UpdatePushPreviousState(UiState),
-}
-
-fn main() -> anyhow::Result<()> {
+#[macroquad::main("Piece MTG")]
+async fn main() -> anyhow::Result<()> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -151,50 +124,182 @@ fn main() -> anyhow::Result<()> {
     }
     all_players[player1].deck = def.build_deck(&mut db, &cards, player1);
 
-    stdout()
-        .execute(EnterAlternateScreen)?
-        .execute(EnableMouseCapture)?;
-    enable_raw_mode()?;
+    let mut tree = Taffy::default();
 
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    terminal.clear()?;
+    let player2_mana = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
 
-    let mut previous_state = vec![];
-    let mut state = UiState::Battlefield {
-        phase_options_selection_state: HorizontalListState::default(),
-        phase_options_list_page: 0,
-        selected_state: CardSelectionState::default(),
-        action_selection_state: HorizontalListState::default(),
-        action_list_page: 0,
-        hand_selection_state: HorizontalListState::default(),
-        hand_list_page: 0,
-        stack_view_state: ListState::default(),
-        stack_list_offset: 0,
-        player1_mana_list_offset: 0,
-        player2_mana_list_offset: 0,
-        player1_graveyard_selection_state: ListState::default(),
-        player1_graveyard_list_offset: 0,
-        player1_exile_selection_state: ListState::default(),
-        player1_exile_list_offset: 0,
-        player2_graveyard_list_offset: 0,
-        player2_exile_list_offset: 0,
-    };
+    let stack = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
 
-    let mut textarea = TextArea::default();
-    let mut displaying_textarea = false;
+    let player1_mana = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
 
-    let mut last_down = None;
-    let mut last_click = None;
-    let mut last_rclick = false;
-    let mut last_hover = None;
-    let mut key_selected = None;
-    let mut last_entry_clicked = None;
-    let mut choice = None;
-    let mut selected_card = None;
-    let mut scroll_left_up = false;
-    let mut scroll_right_down = false;
+    let lhs_column = tree.new_with_children(
+        Style {
+            display: Display::Grid,
+            size: Size::percent(1.0),
+            grid_column: Line::from_span(1),
+            grid_row: Line::from_span(1),
+            grid_template_rows: vec![
+                TrackSizingFunction::from_percent(0.20),
+                TrackSizingFunction::from_percent(0.50),
+                TrackSizingFunction::from_percent(0.30),
+            ],
+            grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
+            ..Default::default()
+        },
+        &[player2_mana, stack, player1_mana],
+    )?;
 
-    let mut next_action = None;
+    let player2_battlefield = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let player1_battlefield = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let player1_options = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let player1_hand = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let center_column = tree.new_with_children(
+        Style {
+            display: Display::Grid,
+            size: Size::percent(1.0),
+            grid_column: Line::from_span(1),
+            grid_row: Line::from_span(1),
+            grid_template_rows: vec![
+                TrackSizingFunction::from_percent(0.40),
+                TrackSizingFunction::from_percent(0.50),
+                TrackSizingFunction::from_percent(0.05),
+                TrackSizingFunction::from_percent(0.05),
+            ],
+            grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
+            ..Default::default()
+        },
+        &[
+            player2_battlefield,
+            player1_battlefield,
+            player1_options,
+            player1_hand,
+        ],
+    )?;
+
+    let player2_exile = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let player2_graveyard = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let player1_graveyard = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let player1_exile = tree.new_leaf(Style {
+        display: Display::Grid,
+        size: Size::percent(1.0),
+        grid_column: Line::from_span(1),
+        grid_row: Line::from_span(1),
+        ..Default::default()
+    })?;
+
+    let rhs_column = tree.new_with_children(
+        Style {
+            display: Display::Grid,
+            size: Size::percent(1.0),
+            grid_column: Line::from_span(1),
+            grid_row: Line::from_span(1),
+            grid_template_rows: vec![
+                TrackSizingFunction::from_percent(0.15),
+                TrackSizingFunction::from_percent(0.25),
+                TrackSizingFunction::from_percent(0.40),
+                TrackSizingFunction::from_percent(0.20),
+            ],
+            grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
+            ..Default::default()
+        },
+        &[
+            player2_exile,
+            player2_graveyard,
+            player1_graveyard,
+            player1_exile,
+        ],
+    )?;
+
+    let root = tree.new_with_children(
+        Style {
+            display: Display::Grid,
+            size: Size::percent(1.0),
+            grid_template_rows: vec![TrackSizingFunction::from_percent(1.0)],
+            grid_template_columns: vec![
+                TrackSizingFunction::from_percent(0.15),
+                TrackSizingFunction::from_percent(0.70),
+                TrackSizingFunction::from_percent(0.15),
+            ],
+            ..Default::default()
+        },
+        &[lhs_column, center_column, rhs_column],
+    )?;
+
+    let mut adding_card = None;
+    let mut to_resolve = None;
+    let mut organizing_stack = false;
+
+    let mut left_clicked = None;
+    let mut right_clicked = None;
+    let mut selected_card: Option<CardId> = None;
+    let mut inspecting_card = None;
 
     loop {
         if turn.priority_player() == player2 {
@@ -213,943 +318,270 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
-            maybe_organize_stack(&mut db, &turn, pending, &mut state);
+            maybe_organize_stack(
+                &mut db,
+                &turn,
+                pending,
+                &mut to_resolve,
+                &mut organizing_stack,
+            );
         }
 
-        if event::poll(std::time::Duration::from_millis(16))? {
-            let event = event::read()?;
+        egui_macroquad::ui(|ctx| {
+            egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
+                ui.set_enabled(to_resolve.is_none());
+                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                    if ui.button("Pass").clicked() {
+                        debug!("Passing priority");
+                        assert_eq!(turn.priority_player(), player1);
+                        turn.pass_priority();
 
-            if displaying_textarea {
-                match event.into() {
-                    Input {
-                        key: Key::Enter, ..
-                    } => {
-                        let text = &textarea.lines()[0];
-                        if cards.contains_key(text) {
-                            displaying_textarea = false;
-                            let card = CardId::upload(&mut db, &cards, player1, text);
-                            card.move_to_hand(&mut db);
-                            textarea = TextArea::default();
-                        }
-                    }
-                    Input { key: Key::Esc, .. } => {
-                        displaying_textarea = false;
-                    }
-                    input => {
-                        textarea.input(input);
-                    }
-                }
-                continue;
-            }
-
-            if let event::Event::Mouse(mouse) = event {
-                if let MouseEventKind::Down(_) = mouse.kind {
-                    last_down = Some((mouse.row, mouse.column));
-                } else if let MouseEventKind::Up(MouseButton::Left) = mouse.kind {
-                    if last_down == Some((mouse.row, mouse.column)) {
-                        last_click = Some((mouse.row, mouse.column));
-                    }
-                    last_down = None;
-                } else if let MouseEventKind::Up(MouseButton::Right) = mouse.kind {
-                    if last_down == Some((mouse.row, mouse.column)) {
-                        last_rclick = true;
-                    }
-                    last_down = None;
-                } else if let MouseEventKind::Moved = mouse.kind {
-                    last_hover = Some((mouse.row, mouse.column));
-                } else if let MouseEventKind::ScrollUp | MouseEventKind::ScrollLeft = mouse.kind {
-                    scroll_left_up = true;
-                } else if let MouseEventKind::ScrollDown | MouseEventKind::ScrollRight = mouse.kind
-                {
-                    scroll_right_down = true;
-                }
-            } else if let event::Event::Key(key) = event {
-                if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
-                    break;
-                }
-                if key.kind == KeyEventKind::Release {
-                    match key.code {
-                        KeyCode::Char('1') => {
-                            key_selected = Some(0);
-                        }
-                        KeyCode::Char('2') => {
-                            key_selected = Some(1);
-                        }
-                        KeyCode::Char('3') => {
-                            key_selected = Some(2);
-                        }
-                        KeyCode::Char('4') => {
-                            key_selected = Some(3);
-                        }
-                        KeyCode::Char('5') => {
-                            key_selected = Some(4);
-                        }
-                        KeyCode::Char('6') => {
-                            key_selected = Some(5);
-                        }
-                        KeyCode::Char('7') => {
-                            key_selected = Some(6);
-                        }
-                        KeyCode::Char('8') => {
-                            key_selected = Some(7);
-                        }
-                        KeyCode::Char('9') => {
-                            key_selected = Some(8);
-                        }
-                        KeyCode::Up => {
-                            if let UiState::SelectingOptions {
-                                selection_list_state:
-                                    ListState {
-                                        selected_index: Some(selected),
-                                        ..
-                                    },
-                                ..
-                            } = &mut state
-                            {
-                                *selected = selected.saturating_sub(1);
-                            }
-                        }
-                        KeyCode::Down => {
-                            if let UiState::SelectingOptions {
-                                selection_list_state:
-                                    ListState {
-                                        selected_index: Some(selected),
-                                        ..
-                                    },
-                                ..
-                            } = &mut state
-                            {
-                                *selected += 1;
-                            }
-                        }
-                        KeyCode::Enter => {
-                            if !matches!(state, UiState::SelectingOptions { .. })
-                                && !Stack::is_empty(&mut db)
-                            {
-                                cleanup_stack(&mut db, &mut all_players, &turn, &mut state);
-                            } else if matches!(
-                                state,
-                                UiState::ExaminingCard(_) | UiState::BattlefieldPreview { .. }
-                            ) {
-                                state = previous_state.pop().unwrap_or(UiState::Battlefield {
-                                    phase_options_selection_state: HorizontalListState::default(),
-                                    phase_options_list_page: 0,
-                                    selected_state: CardSelectionState::default(),
-                                    action_selection_state: HorizontalListState::default(),
-                                    action_list_page: 0,
-                                    hand_selection_state: HorizontalListState::default(),
-                                    hand_list_page: 0,
-                                    stack_view_state: ListState::default(),
-                                    stack_list_offset: 0,
-                                    player1_mana_list_offset: 0,
-                                    player2_mana_list_offset: 0,
-                                    player1_graveyard_selection_state: ListState::default(),
-                                    player1_exile_selection_state: ListState::default(),
-                                    player1_exile_list_offset: 0,
-                                    player1_graveyard_list_offset: 0,
-                                    player2_graveyard_list_offset: 0,
-                                    player2_exile_list_offset: 0,
-                                });
-                            } else if let UiState::SelectingOptions {
-                                selection_list_state:
-                                    ListState {
-                                        selected_value: selected,
-                                        ..
-                                    },
-                                ..
-                            } = state
-                            {
-                                debug!("Selected {:?}", selected);
-                                choice = selected;
-                            }
-                        }
-                        KeyCode::Tab => {
-                            if matches!(state, UiState::SelectingOptions { .. }) {
-                                previous_state.push(state);
-                                state = UiState::BattlefieldPreview {
-                                    phase_options_selection_state: HorizontalListState::default(),
-                                    phase_options_list_page: 0,
-                                    selected_state: CardSelectionState::default(),
-                                    action_selection_state: HorizontalListState::default(),
-                                    action_list_page: 0,
-                                    hand_selection_state: HorizontalListState::default(),
-                                    hand_list_page: 0,
-                                    stack_view_state: ListState::default(),
-                                    stack_list_offset: 0,
-                                    player1_mana_list_offset: 0,
-                                    player2_mana_list_offset: 0,
-                                    player1_graveyard_selection_state: ListState::default(),
-                                    player1_graveyard_list_offset: 0,
-                                    player1_exile_selection_state: ListState::default(),
-                                    player1_exile_list_offset: 0,
-                                    player2_graveyard_list_offset: 0,
-                                    player2_exile_list_offset: 0,
-                                };
-                            } else {
-                                state = previous_state.pop().unwrap_or(UiState::Battlefield {
-                                    phase_options_selection_state: HorizontalListState::default(),
-                                    phase_options_list_page: 0,
-                                    selected_state: CardSelectionState::default(),
-                                    action_selection_state: HorizontalListState::default(),
-                                    action_list_page: 0,
-                                    hand_selection_state: HorizontalListState::default(),
-                                    hand_list_page: 0,
-                                    stack_view_state: ListState::default(),
-                                    stack_list_offset: 0,
-                                    player1_mana_list_offset: 0,
-                                    player2_mana_list_offset: 0,
-                                    player1_graveyard_selection_state: ListState::default(),
-                                    player1_graveyard_list_offset: 0,
-                                    player1_exile_selection_state: ListState::default(),
-                                    player1_exile_list_offset: 0,
-                                    player2_graveyard_list_offset: 0,
-                                    player2_exile_list_offset: 0,
-                                });
-                            }
-                        }
-                        KeyCode::Esc => {
-                            if let UiState::SelectingOptions { to_resolve, .. } = &mut state {
-                                if to_resolve.can_cancel() {
-                                    state = previous_state.pop().unwrap_or(UiState::Battlefield {
-                                        phase_options_selection_state: HorizontalListState::default(
-                                        ),
-                                        phase_options_list_page: 0,
-                                        selected_state: CardSelectionState::default(),
-                                        action_selection_state: HorizontalListState::default(),
-                                        action_list_page: 0,
-                                        hand_selection_state: HorizontalListState::default(),
-                                        hand_list_page: 0,
-                                        stack_view_state: ListState::default(),
-                                        stack_list_offset: 0,
-                                        player1_mana_list_offset: 0,
-                                        player2_mana_list_offset: 0,
-                                        player1_graveyard_selection_state: ListState::default(),
-                                        player1_graveyard_list_offset: 0,
-                                        player1_exile_selection_state: ListState::default(),
-                                        player1_exile_list_offset: 0,
-                                        player2_graveyard_list_offset: 0,
-                                        player2_exile_list_offset: 0,
-                                    });
+                        if turn.passed_full_round() {
+                            let mut pending = turn.step(&mut db, &mut all_players);
+                            while pending.only_immediate_results(&db, &all_players) {
+                                let result =
+                                    pending.resolve(&mut db, &mut all_players, &turn, None);
+                                if result == ResolutionResult::Complete {
+                                    break;
                                 }
-                            } else {
-                                state = previous_state.pop().unwrap_or(UiState::Battlefield {
-                                    phase_options_selection_state: HorizontalListState::default(),
-                                    phase_options_list_page: 0,
-                                    selected_state: CardSelectionState::default(),
-                                    action_selection_state: HorizontalListState::default(),
-                                    action_list_page: 0,
-                                    hand_selection_state: HorizontalListState::default(),
-                                    hand_list_page: 0,
-                                    stack_view_state: ListState::default(),
-                                    stack_list_offset: 0,
-                                    player1_mana_list_offset: 0,
-                                    player2_mana_list_offset: 0,
-                                    player1_graveyard_selection_state: ListState::default(),
-                                    player1_graveyard_list_offset: 0,
-                                    player1_exile_selection_state: ListState::default(),
-                                    player1_exile_list_offset: 0,
-                                    player2_graveyard_list_offset: 0,
-                                    player2_exile_list_offset: 0,
-                                });
                             }
+
+                            maybe_organize_stack(
+                                &mut db,
+                                &turn,
+                                pending,
+                                &mut to_resolve,
+                                &mut organizing_stack,
+                            );
                         }
-                        _ => {}
                     }
-                }
-            }
-        }
 
-        terminal.draw(|frame| {
-            let mut area = frame.size();
-            let in_preview = matches!(state, UiState::BattlefieldPreview { .. });
-
-            match &mut state {
-                UiState::Battlefield {
-                    phase_options_list_page,
-                    phase_options_selection_state,
-                    selected_state,
-                    action_selection_state,
-                    action_list_page,
-                    hand_selection_state,
-                    hand_list_page,
-                    stack_view_state,
-                    stack_list_offset,
-                    player1_mana_list_offset,
-                    player2_mana_list_offset,
-                    player1_graveyard_selection_state,
-                    player1_graveyard_list_offset,
-                    player1_exile_selection_state,
-                    player1_exile_list_offset,
-                    player2_graveyard_list_offset,
-                    player2_exile_list_offset,
-                }
-                | UiState::BattlefieldPreview {
-                    phase_options_list_page,
-                    phase_options_selection_state,
-                    selected_state,
-                    action_selection_state,
-                    action_list_page,
-                    hand_selection_state,
-                    hand_list_page,
-                    stack_view_state,
-                    stack_list_offset,
-                    player1_mana_list_offset,
-                    player2_mana_list_offset,
-                    player1_graveyard_selection_state,
-                    player1_graveyard_list_offset,
-                    player1_exile_selection_state,
-                    player1_exile_list_offset,
-                    player2_graveyard_list_offset,
-                    player2_exile_list_offset,
-                } => {
-                    if in_preview {
-                        let block = Block::default()
-                            .title(Title::from(" PREVIEW "))
-                            .italic()
-                            .borders(Borders::all());
-                        area = block.inner(area);
-                        frame.render_widget(block, area);
-                    } else {
-                        let phase_options_rest = Layout::default()
-                            .direction(Direction::Vertical)
-                            .constraints([Constraint::Length(1), Constraint::Min(1)])
-                            .split(area);
-
-                        let phase_options_display = Layout::default()
-                            .direction(Direction::Horizontal)
-                            .constraints([Constraint::Min(1), Constraint::Length(30)])
-                            .split(phase_options_rest[0]);
-
-                        frame.render_stateful_widget(
-                            HorizontalList::new(
-                                [
-                                    "Pass",
-                                    "(Debug) Untap all",
-                                    "(Debug) Draw",
-                                    "(Debug) infinite mana",
-                                    "(Debug) Add card to hand",
-                                ]
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, s)| (idx, Span::from(s)))
-                                .collect_vec(),
-                                last_hover,
-                                last_click,
-                            )
-                            .page(*phase_options_list_page),
-                            phase_options_display[0],
-                            phase_options_selection_state,
-                        );
-
-                        if phase_options_selection_state.has_overflow
-                            && phase_options_selection_state.right_clicked
-                        {
-                            *phase_options_list_page += 1
-                        } else if phase_options_selection_state.left_clicked {
-                            *phase_options_list_page = phase_options_list_page.saturating_sub(1);
+                    if ui.button("(Debug) Untap all").clicked() {
+                        for card in in_play::cards::<OnBattlefield>(&mut db) {
+                            card.untap(&mut db);
                         }
+                    }
 
-                        if let Some(hovered) = phase_options_selection_state.hovered {
-                            if last_click.is_some() {
-                                last_entry_clicked = Some(hovered);
+                    if ui.button("(Debug) Infinite mana").clicked() {
+                        all_players[player1].infinite_mana();
+                    }
+
+                    if ui.button("(Debug) Draw").clicked() {
+                        let mut pending = all_players[player1].draw(&mut db, 1);
+                        while pending.only_immediate_results(&db, &all_players) {
+                            let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                            if result == ResolutionResult::Complete {
+                                break;
                             }
                         }
 
-                        frame.render_widget(
-                            Paragraph::new(format!(
-                                " {} {} ",
-                                all_players[turn.active_player()].name,
-                                turn.phase.as_ref()
-                            )),
-                            phase_options_display[1],
+                        maybe_organize_stack(
+                            &mut db,
+                            &turn,
+                            pending,
+                            &mut to_resolve,
+                            &mut organizing_stack,
                         );
-
-                        area = phase_options_rest[1];
                     }
 
-                    let stack_battlefield_graveyard = Layout::default()
-                        .direction(Direction::Horizontal)
-                        .constraints([
-                            Constraint::Percentage(12),
-                            Constraint::Percentage(76),
-                            Constraint::Percentage(12),
-                        ])
-                        .split(area);
+                    if ui.button("(Debug) Add Card to Hand").clicked() {
+                        adding_card = Some(String::default());
+                    }
+                });
 
-                    let stack_and_mana = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Length(10),
-                            Constraint::Min(1),
-                            Constraint::Length(10),
-                        ])
-                        .split(stack_battlefield_graveyard[0]);
+                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                    ui.label(format!(
+                        "{} {}",
+                        all_players[turn.active_player()].name,
+                        turn.phase.as_ref()
+                    ));
 
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Mana ".to_string(),
-                            items: all_players[player2]
-                                .mana_pool
-                                .pools_display()
-                                .into_iter()
-                                .enumerate()
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                            offset: *player2_mana_list_offset,
-                        },
-                        stack_and_mana[0],
-                        &mut state,
+                    ui.separator();
+                    ui.label(format!(
+                        "{} ({})",
+                        all_players[player2].name, all_players[player2].life_total
+                    ));
+
+                    ui.separator();
+                    ui.label(format!(
+                        "{} ({})",
+                        all_players[player1].name, all_players[player1].life_total
+                    ));
+                })
+            });
+
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.set_enabled(to_resolve.is_none());
+                let size = ui.max_rect();
+                tree.compute_layout(
+                    root,
+                    Size {
+                        width: AvailableSpace::from_points(size.width()),
+                        height: AvailableSpace::from_points(size.height()),
+                    },
+                )
+                .unwrap();
+
+                let row_offset = ui.next_widget_position().y;
+
+                let pos = tree.layout(player2_mana).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ManaDisplay {
+                        player: player2,
+                        items: all_players[player2].mana_pool.pools_display(),
+                    },
+                );
+
+                let pos = tree.layout(stack).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Stack {
+                        items: Stack::entries(&mut db)
+                            .into_iter()
+                            .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
+                            .collect_vec(),
+                        left_clicked: &mut left_clicked,
+                    },
+                );
+
+                if left_clicked.take().is_some() {
+                    cleanup_stack(
+                        &mut db,
+                        &mut all_players,
+                        &turn,
+                        &mut to_resolve,
+                        &mut organizing_stack,
                     );
-
-                    if state.selected_up {
-                        *player2_mana_list_offset = player2_mana_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player2_mana_list_offset += 1;
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Stack (Enter) ".to_string(),
-                            items: Stack::entries(&mut db)
-                                .into_iter()
-                                .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                            offset: *stack_list_offset,
-                        },
-                        stack_and_mana[1],
-                        stack_view_state,
-                    );
-
-                    if stack_view_state.selected_up {
-                        *stack_list_offset = stack_list_offset.saturating_sub(1);
-                    } else if stack_view_state.selected_down {
-                        *stack_list_offset += 1;
-                    }
-
-                    if stack_view_state.hovered_value.is_some() {
-                        if scroll_right_down {
-                            *stack_list_offset += 1;
-                        } else if scroll_left_up {
-                            *stack_list_offset = stack_list_offset.saturating_sub(1)
-                        } else if last_click.is_some() && !Stack::is_empty(&mut db) {
-                            next_action = Some(UiAction::CleanupStack)
-                        }
-                    }
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Mana ".to_string(),
-                            items: all_players[player1]
-                                .mana_pool
-                                .pools_display()
-                                .into_iter()
-                                .enumerate()
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                            offset: *player1_mana_list_offset,
-                        },
-                        stack_and_mana[2],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player1_mana_list_offset = player1_mana_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player1_mana_list_offset += 1;
-                    }
-
-                    if state.hovered_value.is_some() {
-                        if scroll_right_down {
-                            *player1_mana_list_offset += 1;
-                        } else if scroll_left_up {
-                            *player1_mana_list_offset = player1_mana_list_offset.saturating_sub(1);
-                        }
-                    }
-
-                    let battlefield_layout = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Percentage(40),
-                            Constraint::Min(1),
-                            Constraint::Length(4),
-                            Constraint::Length(2),
-                        ])
-                        .split(stack_battlefield_graveyard[1]);
-
-                    let mut state = CardSelectionState::default();
-                    frame.render_stateful_widget(
-                        ui::Battlefield {
-                            db: &mut db,
-                            owner: player2,
-                            player_name: format!(
-                                " {} ({}) ",
-                                all_players[player2].name, all_players[player2].life_total
-                            ),
-                            last_hover,
-                            last_click,
-                        },
-                        battlefield_layout[0],
-                        &mut state,
-                    );
-                    if let Some(hovered) = state.hovered {
-                        if last_rclick {
-                            next_action = Some(UiAction::UpdatePushPreviousState(
-                                UiState::ExaminingCard(hovered),
-                            ));
-                        }
-                    }
-
-                    if displaying_textarea {
-                        let layout = Layout::default()
-                            .direction(Direction::Vertical)
-                            .constraints([Constraint::Length(3), Constraint::Min(1)])
-                            .split(battlefield_layout[0]);
-
-                        if cards.contains_key(&textarea.lines()[0]) {
-                            textarea.set_block(Block::default().borders(Borders::ALL).green())
-                        } else {
-                            textarea.set_block(Block::default().borders(Borders::ALL).red())
-                        }
-
-                        frame.render_widget(textarea.widget(), layout[0]);
-                    }
-
-                    frame.render_stateful_widget(
-                        ui::Battlefield {
-                            db: &mut db,
-                            owner: player1,
-                            player_name: format!(
-                                " {} ({}) ",
-                                all_players[player1].name, all_players[player1].life_total
-                            ),
-                            last_hover,
-                            last_click,
-                        },
-                        battlefield_layout[1],
-                        selected_state,
-                    );
-
-                    if let Some(hovered) = selected_state.hovered {
-                        if last_rclick {
-                            next_action = Some(UiAction::UpdatePushPreviousState(
-                                UiState::ExaminingCard(hovered),
-                            ));
-                        }
-                    }
-
-                    frame.render_stateful_widget(
-                        ui::SelectedAbilities {
-                            db: &mut db,
-                            all_players: &all_players,
-                            turn: &turn,
-                            player: player1,
-                            card: selected_state.selected.or(selected_card),
-                            page: *action_list_page,
-                            last_hover,
-                            last_click,
-                        },
-                        battlefield_layout[2],
-                        action_selection_state,
-                    );
-
-                    if action_selection_state.has_overflow && action_selection_state.right_clicked {
-                        *action_list_page += 1
-                    } else if action_selection_state.left_clicked {
-                        *action_list_page = action_list_page.saturating_sub(1);
-                    }
-
-                    if let Some(hovered) = action_selection_state.hovered {
-                        if scroll_left_up {
-                            *action_list_page = action_list_page.saturating_sub(1);
-                        } else if scroll_right_down {
-                            *action_list_page += 1;
-                        } else if last_click.is_some() {
-                            last_entry_clicked = Some(hovered);
-                        }
-                    }
-
-                    frame.render_stateful_widget(
-                        HorizontalList::new(
-                            player1
-                                .get_cards::<InHand>(&mut db)
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, card)| (idx, Span::from(card.name(&db))))
-                                .collect_vec(),
-                            last_hover,
-                            last_click,
-                        )
-                        .page(*hand_list_page)
-                        .block(
-                            Block::default()
-                                .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                                .title(" Hand ".to_string()),
-                        ),
-                        battlefield_layout[3],
-                        hand_selection_state,
-                    );
-
-                    if hand_selection_state.has_overflow && hand_selection_state.right_clicked {
-                        *hand_list_page += 1
-                    } else if hand_selection_state.left_clicked {
-                        *hand_list_page = hand_list_page.saturating_sub(1);
-                    }
-
-                    if let Some(hovered) = hand_selection_state.hovered {
-                        if scroll_left_up {
-                            *hand_list_page = hand_list_page.saturating_sub(1);
-                        } else if scroll_right_down {
-                            *hand_list_page += 1;
-                        } else if last_rclick {
-                            next_action =
-                                Some(UiAction::UpdatePushPreviousState(UiState::ExaminingCard(
-                                    player1.get_cards::<InHand>(&mut db)[hovered],
-                                )));
-                        } else if last_click.is_some() {
-                            last_entry_clicked = Some(hovered);
-                            selected_card = Some(player1.get_cards::<InHand>(&mut db)[hovered]);
-                        }
-                    }
-
-                    let exile_and_graveyards = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Percentage(10),
-                            Constraint::Percentage(30),
-                            Constraint::Percentage(40),
-                            Constraint::Percentage(20),
-                        ])
-                        .split(stack_battlefield_graveyard[2]);
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Exile ".to_string(),
-                            items: player2
-                                .get_cards::<InExile>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player2_exile_list_offset,
-                        },
-                        exile_and_graveyards[0],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player2_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player2_exile_list_offset += 1;
-                    }
-
-                    if state.selected_value.is_some() {
-                        if scroll_left_up {
-                            *player2_exile_list_offset =
-                                player2_exile_list_offset.saturating_sub(1);
-                        } else if scroll_right_down {
-                            *player2_exile_list_offset += 1;
-                        }
-                    }
-
-                    let mut state = ListState::default();
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Graveyard ".to_string(),
-                            items: player2
-                                .get_cards::<InGraveyard>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player2_graveyard_list_offset,
-                        },
-                        exile_and_graveyards[1],
-                        &mut state,
-                    );
-
-                    if state.selected_up {
-                        *player2_graveyard_list_offset =
-                            player2_graveyard_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player2_graveyard_list_offset += 1;
-                    }
-
-                    if state.selected_value.is_some() {
-                        if scroll_left_up {
-                            *player2_graveyard_list_offset =
-                                player2_graveyard_list_offset.saturating_sub(1);
-                        } else if scroll_right_down {
-                            *player2_graveyard_list_offset += 1;
-                        }
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Graveyard ".to_string(),
-                            items: player1
-                                .get_cards::<InGraveyard>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player1_graveyard_list_offset,
-                        },
-                        exile_and_graveyards[2],
-                        player1_graveyard_selection_state,
-                    );
-
-                    if player1_graveyard_selection_state.selected_up {
-                        *player1_graveyard_list_offset =
-                            player1_graveyard_list_offset.saturating_sub(1);
-                    } else if player1_graveyard_selection_state.selected_down {
-                        *player1_graveyard_list_offset += 1;
-                    }
-
-                    if let Some(hovered) = player1_graveyard_selection_state.hovered_value {
-                        if scroll_left_up {
-                            *player1_graveyard_list_offset =
-                                player1_graveyard_list_offset.saturating_sub(1);
-                        } else if scroll_right_down {
-                            *player1_graveyard_list_offset += 1;
-                        } else if last_rclick {
-                            let card = player1.get_cards::<InGraveyard>(&mut db)[hovered];
-                            next_action = Some(UiAction::UpdatePushPreviousState(
-                                UiState::ExaminingCard(card),
-                            ))
-                        } else if last_click.is_some() {
-                            let card = player1.get_cards::<InGraveyard>(&mut db)[hovered];
-                            selected_card = Some(card);
-                        }
-                    }
-
-                    frame.render_stateful_widget(
-                        List {
-                            title: " Exile ".to_string(),
-                            items: player1
-                                .get_cards::<InExile>(&mut db)
-                                .into_iter()
-                                .map(|card| format!("({}) {}", card.id(&db), card.name(&db)))
-                                .enumerate()
-                                .collect_vec(),
-                            last_click,
-                            last_hover,
-                            offset: *player1_exile_list_offset,
-                        },
-                        exile_and_graveyards[3],
-                        player1_exile_selection_state,
-                    );
-
-                    if state.selected_up {
-                        *player1_exile_list_offset = player2_exile_list_offset.saturating_sub(1);
-                    } else if state.selected_down {
-                        *player1_exile_list_offset += 1;
-                    }
-
-                    if let Some(hovered) = player1_exile_selection_state.hovered_value {
-                        if scroll_left_up {
-                            *player1_exile_list_offset =
-                                player1_exile_list_offset.saturating_sub(1);
-                        } else if scroll_right_down {
-                            *player1_exile_list_offset += 1;
-                        } else if last_rclick {
-                            let card = player1.get_cards::<InExile>(&mut db)[hovered];
-                            next_action = Some(UiAction::UpdatePushPreviousState(
-                                UiState::ExaminingCard(card),
-                            ));
-                        }
-                    }
                 }
-                UiState::SelectingOptions {
-                    selection_list_offset,
-                    selection_list_state,
-                    to_resolve,
-                    ..
-                } => {
-                    if selection_list_state.selected_index.is_none() {
-                        selection_list_state.selected_index = Some(0);
-                    }
-                    let mut options = to_resolve.options(&mut db, &all_players);
-                    if to_resolve.choices_optional(&db, &all_players) {
-                        for option in options.iter_mut() {
-                            option.0 += 1
-                        }
-                        options.insert(0, (0, "None".to_string()));
-                    }
 
-                    if selection_list_state.selected_index.unwrap_or_default() >= options.len() {
-                        selection_list_state.selected_index = Some(options.len().saturating_sub(1));
-                    }
+                let pos = tree.layout(player1_mana).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ManaDisplay {
+                        player: player1,
+                        items: all_players[player1].mana_pool.pools_display(),
+                    },
+                );
 
-                    frame.render_stateful_widget(
-                        List {
-                            title: format!(
-                                " Select an option for {} ",
-                                to_resolve.description(&db)
-                            ),
-                            items: options,
-                            last_click,
-                            last_hover,
-                            offset: *selection_list_offset,
-                        },
-                        area,
-                        selection_list_state,
-                    );
+                let mut col_offset = tree.layout(lhs_column).unwrap().size.width;
 
-                    if selection_list_state.selected_up {
-                        *selection_list_offset = selection_list_offset.saturating_sub(1);
-                    } else if selection_list_state.selected_down {
-                        *selection_list_offset += 1;
-                    }
+                let cards = player2
+                    .get_cards::<OnBattlefield>(&mut db)
+                    .into_iter()
+                    .enumerate()
+                    .collect_vec();
+                let pos = tree.layout(player2_battlefield).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Battlefield {
+                        db: &mut db,
+                        player: player2,
+                        cards,
+                        left_clicked: &mut None,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
 
-                    if let Some(hovered) = selection_list_state.hovered_value {
-                        if last_click.is_some() {
-                            choice = Some(hovered);
-                        }
-                    }
+                if let Some(clicked) = right_clicked.take() {
+                    inspecting_card = Some(player2.get_cards::<OnBattlefield>(&mut db)[clicked]);
                 }
-                UiState::ExaminingCard(card) => {
-                    let cost = card.cost(&db);
 
-                    let title = if cost.mana_cost.is_empty() {
-                        card.name(&db)
+                let cards = player1
+                    .get_cards::<OnBattlefield>(&mut db)
+                    .into_iter()
+                    .enumerate()
+                    .collect_vec();
+                let pos = tree.layout(player1_battlefield).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Battlefield {
+                        db: &mut db,
+                        player: player1,
+                        cards,
+                        left_clicked: &mut left_clicked,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
+
+                if let Some(clicked) = left_clicked.take() {
+                    selected_card = Some(player1.get_cards::<OnBattlefield>(&mut db)[clicked]);
+                } else if let Some(clicked) = right_clicked.take() {
+                    inspecting_card = Some(player1.get_cards::<OnBattlefield>(&mut db)[clicked]);
+                }
+
+                let pos = tree.layout(player1_options).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Actions {
+                        db: &mut db,
+                        all_players: &all_players,
+                        turn: &turn,
+                        player: player1,
+                        card: selected_card,
+                        left_clicked: &mut left_clicked,
+                    },
+                );
+
+                if let Some(clicked) = left_clicked.take() {
+                    let card = selected_card.unwrap();
+                    let mut selected_ability = None;
+                    if card.is_in_location::<InHand>(&db)
+                        && clicked == 0
+                        && turn.can_cast(&mut db, card)
+                    {
+                        let mut pending = all_players[player1].play_card(&mut db, card);
+                        while pending.only_immediate_results(&db, &all_players) {
+                            let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                            if result == ResolutionResult::Complete {
+                                break;
+                            }
+                        }
+
+                        maybe_organize_stack(
+                            &mut db,
+                            &turn,
+                            pending,
+                            &mut to_resolve,
+                            &mut organizing_stack,
+                        );
+                    } else if card.is_in_location::<InHand>(&db) && turn.can_cast(&mut db, card) {
+                        selected_ability = Some(clicked - 1);
                     } else {
-                        format!("{} - {}", card.name(&db), cost.text())
-                    };
-                    let pt = card.pt_text(&mut db);
-                    frame.render_stateful_widget(
-                        ui::Card {
-                            db: &mut db,
-                            card: *card,
-                            title,
-                            pt,
-                            highlight: false,
-                            last_hover: None,
-                            last_click: None,
-                        },
-                        area,
-                        &mut CardSelectionState::default(),
-                    );
-                }
-            }
-        })?;
+                        selected_ability = Some(clicked);
+                    }
 
-        if let Some(action) = next_action {
-            match action {
-                UiAction::CleanupStack => {
-                    cleanup_stack(&mut db, &mut all_players, &turn, &mut state);
-                }
-                UiAction::UpdatePushPreviousState(new_state) => {
-                    previous_state.push(state);
-                    state = new_state
-                }
-            }
-        }
-
-        match &mut state {
-            UiState::Battlefield {
-                phase_options_selection_state:
-                    HorizontalListState {
-                        start_index: phases_start_index,
-                        ..
-                    },
-                action_selection_state:
-                    HorizontalListState {
-                        start_index: actions_start_index,
-                        hovered: actions_hovered,
-                        ..
-                    },
-                hand_selection_state:
-                    HorizontalListState {
-                        hovered: hand_hovered,
-                        start_index: hand_start_index,
-                        ..
-                    },
-                selected_state,
-                ..
-            } => {
-                if actions_hovered.is_some() {
-                    if let Some(card) = selected_state.selected.or(selected_card) {
+                    if let Some(selected) = selected_ability {
                         let abilities = card.activated_abilities(&db);
 
-                        if let Some(mut selected) = key_selected
-                            .map(|offset| *actions_start_index + offset)
-                            .or(last_entry_clicked)
-                        {
-                            event!(
-                                Level::DEBUG,
-                                ?key_selected,
-                                ?last_entry_clicked,
-                                "{}",
-                                card.name(&db),
+                        if selected < abilities.len() {
+                            let mut pending = Battlefield::activate_ability(
+                                &mut db,
+                                &mut all_players,
+                                &turn,
+                                player1,
+                                card,
+                                selected,
                             );
 
-                            debug!("Selected {}", selected);
-                            if !card.is_in_location::<InHand>(&db) || selected > 0 {
-                                if card.is_in_location::<InHand>(&db) {
-                                    selected -= 1;
-                                }
-                                if selected < abilities.len() {
-                                    let mut pending = Battlefield::activate_ability(
-                                        &mut db,
-                                        &mut all_players,
-                                        &turn,
-                                        player1,
-                                        card,
-                                        selected,
-                                    );
-
-                                    while pending.only_immediate_results(&db, &all_players) {
-                                        let result =
-                                            pending.resolve(&mut db, &mut all_players, &turn, None);
-                                        if result == ResolutionResult::Complete {
-                                            break;
-                                        }
-                                    }
-
-                                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                                }
-                            } else if turn.can_cast(&mut db, card) {
-                                let mut pending = all_players[player1].play_card(&mut db, card);
-                                while pending.only_immediate_results(&db, &all_players) {
-                                    let result =
-                                        pending.resolve(&mut db, &mut all_players, &turn, None);
-                                    if result == ResolutionResult::Complete {
-                                        break;
-                                    }
-                                }
-
-                                maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                            }
-                        }
-                    }
-                } else if hand_hovered.is_some() {
-                    if let Some(selected) = key_selected
-                        .map(|offset| *hand_start_index + offset)
-                        .or(last_entry_clicked)
-                    {
-                        let card = player1.get_cards::<InHand>(&mut db)[selected];
-                        let has_hand_ability =
-                            card.activated_abilities(&db).into_iter().any(|ability| {
-                                debug!("effects {:?}", ability.effects(&db));
-                                ability.can_be_activated(&mut db, &all_players, &turn, player1)
-                            });
-
-                        if !has_hand_ability && turn.can_cast(&mut db, card) {
-                            let mut pending = all_players[player1].play_card(&mut db, card);
                             while pending.only_immediate_results(&db, &all_players) {
                                 let result =
                                     pending.resolve(&mut db, &mut all_players, &turn, None);
@@ -1158,66 +590,134 @@ fn main() -> anyhow::Result<()> {
                                 }
                             }
 
-                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                            maybe_organize_stack(
+                                &mut db,
+                                &turn,
+                                pending,
+                                &mut to_resolve,
+                                &mut organizing_stack,
+                            );
                         }
-                    }
-                } else if let Some(index) = key_selected
-                    .map(|offset| *phases_start_index + offset)
-                    .or(last_entry_clicked)
-                {
-                    match index {
-                        0 => {
-                            debug!("Passing priority");
-                            assert_eq!(turn.priority_player(), player1);
-                            turn.pass_priority();
-
-                            if turn.passed_full_round() {
-                                let mut pending = turn.step(&mut db, &mut all_players);
-                                while pending.only_immediate_results(&db, &all_players) {
-                                    let result =
-                                        pending.resolve(&mut db, &mut all_players, &turn, None);
-                                    if result == ResolutionResult::Complete {
-                                        break;
-                                    }
-                                }
-
-                                maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                            }
-                        }
-                        1 => {
-                            for card in in_play::cards::<OnBattlefield>(&mut db) {
-                                card.untap(&mut db);
-                            }
-                        }
-                        2 => {
-                            let mut pending = all_players[player1].draw(&mut db, 1);
-                            while pending.only_immediate_results(&db, &all_players) {
-                                let result =
-                                    pending.resolve(&mut db, &mut all_players, &turn, None);
-                                if result == ResolutionResult::Complete {
-                                    break;
-                                }
-                            }
-
-                            maybe_organize_stack(&mut db, &turn, pending, &mut state);
-                        }
-                        3 => {
-                            all_players[player1].infinite_mana();
-                        }
-                        4 => {
-                            displaying_textarea = true;
-                        }
-                        _ => {}
                     }
                 }
-            }
-            UiState::SelectingOptions {
-                to_resolve,
-                organizing_stack,
-                ..
-            } => {
-                if to_resolve.priority(&db, &all_players, &turn) == player2 {
-                    let mut pending = ai.priority(&mut db, &mut all_players, &mut turn, to_resolve);
+
+                let cards = player1.get_cards::<InHand>(&mut db);
+                let pos = tree.layout(player1_hand).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Hand {
+                        db: &mut db,
+                        owner: player1,
+                        cards,
+                        left_clicked: &mut left_clicked,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
+
+                if let Some(clicked) = left_clicked.take() {
+                    selected_card = Some(player1.get_cards::<InHand>(&mut db)[clicked]);
+                } else if let Some(clicked) = right_clicked.take() {
+                    inspecting_card = Some(player1.get_cards::<InHand>(&mut db)[clicked]);
+                }
+
+                col_offset += tree.layout(center_column).unwrap().size.width;
+
+                let cards = player2
+                    .get_cards::<InExile>(&mut db)
+                    .into_iter()
+                    .map(|card| card.name(&db))
+                    .collect_vec();
+                let pos = tree.layout(player2_exile).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Exile {
+                        player: player2,
+                        cards,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
+
+                if let Some(clicked) = right_clicked {
+                    inspecting_card = Some(player2.get_cards::<InExile>(&mut db)[clicked]);
+                }
+
+                let cards = player2
+                    .get_cards::<InGraveyard>(&mut db)
+                    .into_iter()
+                    .map(|card| card.name(&db))
+                    .collect_vec();
+                let pos = tree.layout(player2_graveyard).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Graveyard {
+                        player: player2,
+                        cards,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
+
+                if let Some(clicked) = right_clicked {
+                    inspecting_card = Some(player2.get_cards::<InGraveyard>(&mut db)[clicked]);
+                }
+
+                let cards = player1
+                    .get_cards::<InGraveyard>(&mut db)
+                    .into_iter()
+                    .map(|card| card.name(&db))
+                    .collect_vec();
+                let pos = tree.layout(player1_graveyard).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Graveyard {
+                        player: player1,
+                        cards,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
+
+                if let Some(clicked) = right_clicked {
+                    inspecting_card = Some(player1.get_cards::<InGraveyard>(&mut db)[clicked]);
+                }
+
+                let cards = player1
+                    .get_cards::<InExile>(&mut db)
+                    .into_iter()
+                    .map(|card| card.name(&db))
+                    .collect_vec();
+                let pos = tree.layout(player1_exile).unwrap();
+                ui.put(
+                    egui::Rect::from_min_size(
+                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                        egui::vec2(pos.size.width, pos.size.height),
+                    ),
+                    ui::Exile {
+                        player: player1,
+                        cards,
+                        right_clicked: &mut right_clicked,
+                    },
+                );
+
+                if let Some(clicked) = right_clicked {
+                    inspecting_card = Some(player1.get_cards::<InExile>(&mut db)[clicked]);
+                }
+            });
+
+            let mut choice: Option<Option<usize>> = None;
+            if let Some(resolving) = to_resolve.as_mut() {
+                if resolving.priority(&db, &all_players, &turn) == player2 {
+                    let mut pending = ai.priority(&mut db, &mut all_players, &mut turn, resolving);
 
                     while pending.only_immediate_results(&db, &all_players) {
                         let result = pending.resolve(&mut db, &mut all_players, &turn, None);
@@ -1226,22 +726,34 @@ fn main() -> anyhow::Result<()> {
                         }
                     }
 
-                    maybe_organize_stack(&mut db, &turn, pending, &mut state);
+                    maybe_organize_stack(
+                        &mut db,
+                        &turn,
+                        pending,
+                        &mut to_resolve,
+                        &mut organizing_stack,
+                    );
                 } else {
-                    let mut real_choice = choice;
-                    #[allow(clippy::unnecessary_unwrap)] // I would if I could
-                    if to_resolve.choices_optional(&db, &all_players) && choice.is_some() {
-                        if choice == Some(0) {
-                            real_choice = None
-                        } else {
-                            real_choice = Some(choice.unwrap() - 1);
-                        }
-                    }
-                    if choice.is_some() {
-                        loop {
-                            match to_resolve.resolve(&mut db, &mut all_players, &turn, real_choice)
+                    egui::Window::new(resolving.description(&db)).show(ctx, |ui| {
+                        ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                            if resolving.choices_optional(&db, &all_players)
+                                && ui.button("None").clicked()
                             {
-                                battlefield::ResolutionResult::Complete => {
+                                choice = Some(None);
+                            }
+
+                            for (idx, option) in resolving.options(&mut db, &all_players) {
+                                if ui.button(option).clicked() {
+                                    choice = Some(Some(idx));
+                                }
+                            }
+                        })
+                    });
+
+                    if let Some(choice) = choice {
+                        loop {
+                            match resolving.resolve(&mut db, &mut all_players, &turn, choice) {
+                                ResolutionResult::Complete => {
                                     let mut pending = Battlefield::check_sba(&mut db);
                                     while pending.only_immediate_results(&db, &all_players) {
                                         let result =
@@ -1256,9 +768,9 @@ fn main() -> anyhow::Result<()> {
                                             .into_iter()
                                             .map(|(_, entry)| entry)
                                             .collect_vec();
-                                        if !*organizing_stack && entries.len() > 1 {
-                                            to_resolve.set_organize_stack(&db, entries, &turn);
-                                            *organizing_stack = true;
+                                        if !organizing_stack && entries.len() > 1 {
+                                            resolving.set_organize_stack(&db, entries, &turn);
+                                            organizing_stack = true;
                                         } else {
                                             debug!("Stepping priority");
                                             turn.step_priority();
@@ -1271,45 +783,22 @@ fn main() -> anyhow::Result<()> {
                                                 &mut PendingResults::default(),
                                             );
                                             maybe_organize_stack(
-                                                &mut db, &turn, pending, &mut state,
-                                            );
-
-                                            state = previous_state.pop().unwrap_or(
-                                                UiState::Battlefield {
-                                                    phase_options_selection_state:
-                                                        HorizontalListState::default(),
-                                                    phase_options_list_page: 0,
-                                                    selected_state: CardSelectionState::default(),
-                                                    action_selection_state:
-                                                        HorizontalListState::default(),
-                                                    action_list_page: 0,
-                                                    hand_selection_state:
-                                                        HorizontalListState::default(),
-                                                    hand_list_page: 0,
-                                                    stack_view_state: ListState::default(),
-                                                    stack_list_offset: 0,
-                                                    player1_mana_list_offset: 0,
-                                                    player2_mana_list_offset: 0,
-                                                    player1_graveyard_selection_state:
-                                                        ListState::default(),
-                                                    player1_graveyard_list_offset: 0,
-                                                    player1_exile_selection_state:
-                                                        ListState::default(),
-                                                    player1_exile_list_offset: 0,
-                                                    player2_graveyard_list_offset: 0,
-                                                    player2_exile_list_offset: 0,
-                                                },
+                                                &mut db,
+                                                &turn,
+                                                pending,
+                                                &mut to_resolve,
+                                                &mut organizing_stack,
                                             );
                                         }
                                     } else {
-                                        *to_resolve = Box::new(pending);
+                                        to_resolve = Some(pending);
                                     }
 
                                     break;
                                 }
                                 ResolutionResult::TryAgain => {
-                                    debug!("Trying again for {:#?}", to_resolve);
-                                    if !to_resolve.only_immediate_results(&db, &all_players) {
+                                    debug!("Trying again for {:#?}", resolving);
+                                    if !resolving.only_immediate_results(&db, &all_players) {
                                         break;
                                     }
                                 }
@@ -1317,38 +806,66 @@ fn main() -> anyhow::Result<()> {
                                     break;
                                 }
                             }
-                            real_choice = None;
                         }
                     }
                 }
             }
-            UiState::ExaminingCard(_) => {}
-            UiState::BattlefieldPreview { .. } => {}
-        }
 
-        last_click = None;
-        last_rclick = false;
-        key_selected = None;
-        last_entry_clicked = None;
-        choice = None;
-        scroll_left_up = false;
-        scroll_right_down = false;
-        next_action = None;
+            if let Some(inspecting) = inspecting_card {
+                let mut open = true;
+                egui::Window::new(inspecting.name(&db))
+                    .open(&mut open)
+                    .show(ctx, |ui| {
+                        ui.add(ui::Card {
+                            db: &mut db,
+                            card: inspecting,
+                            title: None,
+                        });
+                    });
+
+                if !open {
+                    inspecting_card = None;
+                }
+            }
+
+            if adding_card.is_some() {
+                egui::Window::new("Add card to hand").show(ctx, |ui| {
+                    let adding = adding_card.as_mut().unwrap();
+                    let is_valid = cards.contains_key(adding);
+                    if ui
+                        .add(
+                            TextEdit::singleline(adding)
+                                .hint_text("Card name")
+                                .text_color(if is_valid {
+                                    Color32::GREEN
+                                } else {
+                                    Color32::RED
+                                }),
+                        )
+                        .lost_focus()
+                    {
+                        if is_valid {
+                            let card = CardId::upload(&mut db, &cards, player1, adding);
+                            card.move_to_hand(&mut db);
+                        }
+                        adding_card = None;
+                    }
+                });
+            }
+        });
+
+        egui_macroquad::draw();
+
+        next_frame().await
     }
-
-    stdout()
-        .execute(DisableMouseCapture)?
-        .execute(LeaveAlternateScreen)?;
-    disable_raw_mode()?;
-
-    Ok(())
 }
 
 fn cleanup_stack(
     db: &mut Database,
     all_players: &mut AllPlayers,
     turn: &Turn,
-    state: &mut UiState,
+    to_resolve: &mut Option<PendingResults>,
+    organizing_stack: &mut bool,
 ) {
     let mut pending = Stack::resolve_1(db);
     while pending.only_immediate_results(db, all_players) {
@@ -1368,22 +885,19 @@ fn cleanup_stack(
         }
     }
 
-    maybe_organize_stack(db, turn, pending, state);
+    maybe_organize_stack(db, turn, pending, to_resolve, organizing_stack);
 }
 
 fn maybe_organize_stack(
     db: &mut Database,
     turn: &Turn,
     mut pending: PendingResults,
-    state: &mut UiState,
+    to_resolve: &mut Option<PendingResults>,
+    organizing_stack: &mut bool,
 ) {
     if !pending.is_empty() {
-        *state = UiState::SelectingOptions {
-            to_resolve: Box::new(pending),
-            selection_list_state: ListState::default(),
-            organizing_stack: false,
-            selection_list_offset: 0,
-        };
+        *to_resolve = Some(pending);
+        *organizing_stack = false;
     } else {
         let entries = Stack::entries_unsettled(db)
             .into_iter()
@@ -1392,32 +906,10 @@ fn maybe_organize_stack(
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
             pending.set_organize_stack(db, entries, turn);
-            *state = UiState::SelectingOptions {
-                to_resolve: Box::new(pending),
-                selection_list_state: ListState::default(),
-                organizing_stack: true,
-                selection_list_offset: 0,
-            };
+            *to_resolve = Some(pending);
+            *organizing_stack = true;
         } else {
-            *state = UiState::Battlefield {
-                phase_options_selection_state: HorizontalListState::default(),
-                phase_options_list_page: 0,
-                selected_state: CardSelectionState::default(),
-                action_selection_state: HorizontalListState::default(),
-                action_list_page: 0,
-                hand_selection_state: HorizontalListState::default(),
-                hand_list_page: 0,
-                stack_view_state: ListState::default(),
-                stack_list_offset: 0,
-                player1_mana_list_offset: 0,
-                player2_mana_list_offset: 0,
-                player1_graveyard_selection_state: ListState::default(),
-                player1_graveyard_list_offset: 0,
-                player1_exile_selection_state: ListState::default(),
-                player1_exile_list_offset: 0,
-                player2_graveyard_list_offset: 0,
-                player2_exile_list_offset: 0,
-            };
+            *to_resolve = None;
         }
     }
 }

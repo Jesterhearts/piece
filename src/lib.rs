@@ -10,12 +10,7 @@ use anyhow::{anyhow, Context};
 use include_dir::{include_dir, Dir, File};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{
-    battlefield::{Battlefield, PendingResults},
-    card::Card,
-    in_play::CardId,
-    ui::{horizontal_list::HorizontalListState, list::ListState, CardSelectionState},
-};
+use crate::{battlefield::Battlefield, card::Card};
 
 #[cfg(test)]
 mod _tests;
@@ -28,6 +23,7 @@ pub mod cost;
 pub mod deck;
 pub mod effects;
 pub mod in_play;
+pub mod log;
 pub mod mana;
 pub mod newtype_enum;
 pub mod player;
@@ -103,55 +99,6 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     );
 
     Ok(cards)
-}
-
-#[derive(Debug)]
-pub enum UiState {
-    Battlefield {
-        phase_options_selection_state: HorizontalListState,
-        phase_options_list_page: u16,
-        selected_state: CardSelectionState,
-        action_selection_state: HorizontalListState,
-        action_list_page: u16,
-        hand_selection_state: HorizontalListState,
-        hand_list_page: u16,
-        stack_view_state: ListState,
-        stack_list_offset: usize,
-        player1_mana_list_offset: usize,
-        player2_mana_list_offset: usize,
-        player1_graveyard_selection_state: ListState,
-        player1_graveyard_list_offset: usize,
-        player1_exile_selection_state: ListState,
-        player1_exile_list_offset: usize,
-        player2_graveyard_list_offset: usize,
-        player2_exile_list_offset: usize,
-    },
-    BattlefieldPreview {
-        phase_options_selection_state: HorizontalListState,
-        phase_options_list_page: u16,
-        selected_state: CardSelectionState,
-        action_selection_state: HorizontalListState,
-        action_list_page: u16,
-        hand_selection_state: HorizontalListState,
-        hand_list_page: u16,
-        stack_view_state: ListState,
-        stack_list_offset: usize,
-        player1_mana_list_offset: usize,
-        player2_mana_list_offset: usize,
-        player1_graveyard_selection_state: ListState,
-        player1_graveyard_list_offset: usize,
-        player1_exile_selection_state: ListState,
-        player1_exile_list_offset: usize,
-        player2_graveyard_list_offset: usize,
-        player2_exile_list_offset: usize,
-    },
-    SelectingOptions {
-        to_resolve: Box<PendingResults>,
-        organizing_stack: bool,
-        selection_list_state: ListState,
-        selection_list_offset: usize,
-    },
-    ExaminingCard(CardId),
 }
 
 pub fn is_default_value<T: Default + PartialEq>(t: &T) -> bool {

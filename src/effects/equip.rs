@@ -43,6 +43,10 @@ impl EffectBehaviors for Equip {
         true
     }
 
+    fn is_equip(&'static self) -> bool {
+        true
+    }
+
     fn valid_targets(
         &self,
         db: &mut in_play::Database,
