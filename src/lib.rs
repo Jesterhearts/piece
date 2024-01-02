@@ -3,12 +3,11 @@
 #[macro_use]
 extern crate tracing;
 
-use std::collections::HashMap;
-
 use anyhow::{anyhow, Context};
 
 use ariadne::{Label, Report, ReportKind, Source};
 use include_dir::{include_dir, Dir, File};
+use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::card::Card;
@@ -40,7 +39,7 @@ pub static FONT_DATA: &[u8] = include_bytes!("../fonts/mana.ttf");
 
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
-pub type Cards = HashMap<String, Card>;
+pub type Cards = IndexMap<String, Card>;
 
 pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<'static>)>> {
     fn dir_to_files(dir: &'static Dir) -> Vec<&'static File<'static>> {
@@ -108,12 +107,17 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     let mut cards = Cards::default();
     let protos = load_protos()?;
     for (card, card_file) in protos {
-        cards.insert(
-            card.name.clone(),
-            (&card)
-                .try_into()
-                .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
-        );
+        if cards
+            .insert(
+                card.name.clone(),
+                (&card)
+                    .try_into()
+                    .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
+            )
+            .is_some()
+        {
+            warn!("Overwriting card {}", card.name);
+        };
     }
 
     debug!(

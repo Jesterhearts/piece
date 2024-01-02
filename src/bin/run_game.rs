@@ -1,14 +1,15 @@
 #[macro_use]
 extern crate tracing;
 
-use std::fs::OpenOptions;
+use std::{borrow::Cow, fs::OpenOptions};
 
-use egui::{Color32, Layout, TextEdit};
+use egui::{Color32, Label, Layout, Sense, TextEdit};
 use itertools::Itertools;
 use macroquad::window::next_frame;
 use piece::{
     ai::AI,
     battlefield::{Battlefield, PendingResults, ResolutionResult},
+    card::Card,
     deck::DeckDefinition,
     in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
@@ -18,6 +19,7 @@ use piece::{
     ui::{self, ManaDisplay},
     FONT_DATA,
 };
+use probly_search::{score::bm25, Index};
 use taffy::prelude::*;
 use tracing_subscriber::fmt::format::FmtSpan;
 
@@ -43,6 +45,28 @@ async fn main() -> anyhow::Result<()> {
 
     let cards = load_cards()?;
     let mut db = Database::default();
+
+    let mut index = Index::<usize>::new(5);
+    for (idx, card) in cards.values().enumerate() {
+        index.add_document(
+            &[
+                |card: &Card| vec![card.name.as_str()],
+                |card: &Card| vec![card.cost.cost_string.as_str()],
+                |card: &Card| card.keywords.keys().map(|k| k.as_ref()).collect_vec(),
+                |card: &Card| card.types.iter().map(|t| t.as_ref()).collect_vec(),
+                |card: &Card| card.subtypes.iter().map(|t| t.as_ref()).collect_vec(),
+            ],
+            |title| {
+                title
+                    .split(' ')
+                    .map(str::to_lowercase)
+                    .map(Cow::from)
+                    .collect_vec()
+            },
+            idx,
+            card,
+        );
+    }
 
     let mut all_players = AllPlayers::default();
 
@@ -874,28 +898,81 @@ async fn main() -> anyhow::Result<()> {
             }
 
             if adding_card.is_some() {
-                egui::Window::new("Add card to hand").show(ctx, |ui| {
-                    let adding = adding_card.as_mut().unwrap();
-                    let is_valid = cards.contains_key(adding);
-                    let edit = ui.add(
-                        TextEdit::singleline(adding)
-                            .hint_text("Card name")
-                            .text_color(if is_valid {
-                                Color32::GREEN
-                            } else {
-                                Color32::RED
-                            }),
-                    );
+                let mut open = true;
 
-                    if edit.lost_focus() {
-                        if is_valid {
+                egui::Window::new("Add card to hand")
+                    .open(&mut open)
+                    .show(ctx, |ui| {
+                        let adding = adding_card.as_mut().unwrap();
+
+                        let is_valid = cards.contains_key(adding);
+                        let edit = ui.add(
+                            TextEdit::singleline(adding)
+                                .hint_text("Card name")
+                                .text_color(if is_valid {
+                                    Color32::GREEN
+                                } else {
+                                    Color32::RED
+                                }),
+                        );
+
+                        let search = index.query(
+                            adding,
+                            &mut bm25::new(),
+                            |title| {
+                                title
+                                    .split(' ')
+                                    .map(str::to_lowercase)
+                                    .map(Cow::from)
+                                    .collect_vec()
+                            },
+                            &[1., 1., 0.25, 0.5, 0.5],
+                        );
+                        let top = search.get(0).map(|result| result.key);
+
+                        let mut clicked = None;
+                        for result in search
+                            .into_iter()
+                            .take(10)
+                            .map(|result| result.key)
+                            .sorted()
+                        {
+                            if ui
+                                .add(
+                                    Label::new(format!(
+                                        "•\t{}",
+                                        cards.get_index(result).unwrap().0
+                                    ))
+                                    .sense(Sense::click()),
+                                )
+                                .clicked()
+                            {
+                                clicked = Some(result);
+                            }
+                        }
+
+                        if clicked.is_some()
+                            || (ui.input(|input| input.key_released(egui::Key::Enter))
+                                && (is_valid || top.is_some()))
+                        {
+                            let adding = if is_valid {
+                                &*adding
+                            } else if let Some(clicked) = clicked {
+                                cards.get_index(clicked).unwrap().0
+                            } else {
+                                cards.get_index(top.unwrap()).unwrap().0
+                            };
+
                             let card = CardId::upload(&mut db, &cards, player1, adding);
                             card.move_to_hand(&mut db);
+                            adding_card = None;
                         }
-                        adding_card = None;
-                    }
-                    edit.request_focus();
-                });
+                        edit.request_focus();
+                    });
+
+                if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
+                    adding_card = None;
+                }
             }
         });
 

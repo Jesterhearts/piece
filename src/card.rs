@@ -39,7 +39,7 @@ newtype_enum!{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, bevy_ecs::component::Component)]
 #[derive(strum::EnumIter, strum::EnumString, strum::AsRefStr)]
 #[strum(ascii_case_insensitive)]
-pub(crate)enum Keyword {
+pub enum Keyword {
     Absorb,
     Affinity,
     Afflict,
@@ -362,11 +362,11 @@ pub(crate) enum ModifyKeywords {
 
 #[derive(Debug, Clone, Default, Component)]
 pub struct Card {
-    pub(crate) name: String,
-    pub(crate) types: IndexSet<Type>,
-    pub(crate) subtypes: IndexSet<Subtype>,
+    pub name: String,
+    pub types: IndexSet<Type>,
+    pub subtypes: IndexSet<Subtype>,
 
-    pub(crate) cost: CastingCost,
+    pub cost: CastingCost,
     pub(crate) reducer: Option<CostReducer>,
     pub(crate) cannot_be_countered: bool,
 
@@ -400,7 +400,7 @@ pub struct Card {
 
     pub(crate) etb_tapped: bool,
 
-    pub(crate) keywords: Counter<Keyword>,
+    pub keywords: Counter<Keyword>,
 
     pub(crate) restrictions: Vec<Restriction>,
 

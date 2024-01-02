@@ -15,7 +15,8 @@ use crate::{
 
 #[derive(Debug, Clone, Default, Component)]
 pub struct CastingCost {
-    pub mana_cost: Vec<ManaCost>,
+    pub cost_string: String,
+    pub(crate) mana_cost: Vec<ManaCost>,
     pub(crate) additional_cost: Vec<AdditionalCost>,
 }
 
@@ -50,6 +51,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
         Ok(Self {
+            cost_string: value.mana_cost.clone(),
             mana_cost: parse_mana_cost(&value.mana_cost)?,
             additional_cost: value
                 .additional_costs

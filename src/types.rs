@@ -21,7 +21,7 @@ pub(crate) struct RemoveTypes(pub(crate) IndexSet<Type>);
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, strum::AsRefStr, strum::EnumString,
 )]
-pub(crate) enum Type {
+pub enum Type {
     Legendary,
     World,
     Tribal,
@@ -89,7 +89,7 @@ pub(crate) struct RemoveAllSubtypes;
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::AsRefStr, strum::EnumString,
 )]
-pub(crate) enum Subtype {
+pub enum Subtype {
     Adventure,
     Advisor,
     Aetherborn,
