@@ -1,9 +1,5 @@
 name: Recruiter of the Guard
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Human {}
-  - subtype: !Soldier {}
+typeline: Creature - Human Soldier
 cost:
   mana_costs:
     - cost: !Generic

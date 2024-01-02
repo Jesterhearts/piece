@@ -1,9 +1,5 @@
 name: Sanguine Evangelist
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Vampire {}
-  - subtype: !Cleric {}
+typeline: Creature - Vampire Cleric
 cost:
   mana_costs:
     - cost: !Generic

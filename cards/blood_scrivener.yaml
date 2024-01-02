@@ -1,9 +1,5 @@
 name: Blood Scrivener
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Zombie {}
-  - subtype: !Wizard {}
+typeline: Creature - Zombie Wizard
 cost:
   mana_costs:
     - cost: !Generic

@@ -1,8 +1,5 @@
 name: Miner's Guidewing
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Bird {}
+typeline: Creature - Bird
 cost:
   mana_costs:
     - cost: !White {}

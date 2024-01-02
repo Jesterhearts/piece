@@ -1,8 +1,5 @@
 name: Alpine Grizzly
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Bear {}
+typeline: Creature - Bear
 cost:
   mana_costs:
     - cost: !Generic

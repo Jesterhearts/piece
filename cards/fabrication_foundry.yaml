@@ -1,6 +1,5 @@
 name: Fabrication Foundry
-types:
-  - type_: !Artifact {}
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !Generic

@@ -1,9 +1,8 @@
 name: Acrobatic Leap
+typeline: Instant
 cost:
   mana_costs:
     - cost: !White {}
-types:
-  - type_: !Instant {}
 oracle_text: Target creatures gets +1/+3 and gains flying until end of turn.
 effects:
   - effect: !ModifyTarget

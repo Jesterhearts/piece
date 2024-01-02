@@ -19,7 +19,7 @@ use crate::{
     newtype_enum::newtype_enum,
     protogen,
     targets::Restriction,
-    types::{Subtype, Type},
+    types::{parse_types, Subtype, Type},
 };
 
 #[derive(Debug, Clone, Component)]
@@ -411,25 +411,12 @@ impl TryFrom<&protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
+        let (types, subtypes) = parse_types(&value.typeline)?;
+
         Ok(Self {
             name: value.name.clone(),
-            types: value
-                .types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()
-                .and_then(|types: IndexSet<_>| {
-                    if types.is_empty() {
-                        Err(anyhow!("Expected card to have types set"))
-                    } else {
-                        Ok(types)
-                    }
-                })?,
-            subtypes: value
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            types,
+            subtypes,
             cost: value.cost.get_or_default().try_into()?,
             reducer: value
                 .cost_reducer

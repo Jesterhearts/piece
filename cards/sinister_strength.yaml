@@ -1,8 +1,5 @@
 name: Sinister Strength
-types:
-  - type_: !Enchantment {}
-subtypes:
-  - subtype: !Aura {}
+typeline: Enchantment - Aura
 cost:
   mana_costs:
     - cost: !Generic

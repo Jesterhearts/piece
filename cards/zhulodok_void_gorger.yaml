@@ -1,9 +1,5 @@
 name: Zhulodok, Void Gorger
-types:
-  - type_: !Legendary {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Eldrazi {}
+typeline: Legendary Creature - Eldrazi
 cost:
   mana_costs:
     - cost: !Generic

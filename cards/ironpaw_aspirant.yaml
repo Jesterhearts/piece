@@ -1,9 +1,5 @@
 name: Ironpaw Aspirant
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Cat {}
-  - subtype: !Warrior {}
+typeline: Creature - Cat Warrior
 cost:
   mana_costs:
     - cost: !Generic

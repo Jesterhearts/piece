@@ -1,6 +1,5 @@
 name: Abuelo's Awakening
-types:
-  - type_: !Sorcery {}
+typeline: Sorcery
 cost:
   mana_costs:
     - cost: !X {}

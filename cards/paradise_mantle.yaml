@@ -1,8 +1,5 @@
 name: Paradise Mantle
-types:
-  - type_: !Artifact {}
-subtypes:
-  - subtype: !Equipment {}
+typeline: Artifact - Equipment
 cost:
   mana_costs:
     - cost: !Generic {}

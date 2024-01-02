@@ -1,10 +1,5 @@
 name: Oltec Archaeologists
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Human {}
-  - subtype: !Artificer {}
-  - subtype: !Scout {}
+typeline: Creature - Human Artificer Scout
 etb_abilities:
   - effect: !Modal
       modes:

@@ -1,9 +1,5 @@
 name: Kinjalli's Dawnrunner
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Human {}
-  - subtype: !Scout {}
+typeline: Creature - Human Scout
 cost:
   mana_costs:
     - cost: !Generic

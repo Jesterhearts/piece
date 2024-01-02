@@ -1,9 +1,5 @@
 name: Hexplate Golem
-types:
-  - type_: !Artifact {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Golem {}
+typeline: Artifact Creature - Golem
 cost:
   mana_costs:
     - cost: !Generic

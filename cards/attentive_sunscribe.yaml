@@ -1,9 +1,5 @@
 name: Attentive Sunscribe
-types:
-  - type_: !Artifact {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Gnome {}
+typeline: Artifact Creature - Gnome
 cost:
   mana_costs:
     - cost: !Generic

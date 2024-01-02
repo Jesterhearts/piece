@@ -1,8 +1,5 @@
 name: Resplendent Angel
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Angel {}
+typeline: Creature - Angel
 cost:
   mana_costs:
     - cost: !Generic

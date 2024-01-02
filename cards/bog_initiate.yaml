@@ -1,9 +1,5 @@
 name: Bog Initiate
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Human {}
-  - subtype: !Wizard {}
+typeline: Creature - Human Wizard
 cost:
   mana_costs:
     - cost: !Generic

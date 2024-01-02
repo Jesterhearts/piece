@@ -1,6 +1,5 @@
 name: Forbidden Friendship
-types:
-  - type_: !Sorcery {}
+typeline: Sorcery
 cost:
   mana_costs:
     - cost: !Generic

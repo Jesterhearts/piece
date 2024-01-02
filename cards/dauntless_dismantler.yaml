@@ -1,9 +1,5 @@
 name: Dauntless Dismantler
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Human {}
-  - subtype: !Artificer {}
+typeline: Creature - Human Artificer
 cost:
   mana_costs:
     - cost: !Generic

@@ -1,8 +1,5 @@
 name: Soaring Sandwing
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Dinosaur {}
+typeline: Creature - Dinosaur
 cost:
   mana_costs:
     - cost: !Generic

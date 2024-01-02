@@ -1,8 +1,5 @@
 name: Mischievous Pup
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Dog {}
+typeline: Creature - Dog
 etb_abilities:
   - effect: !ReturnTargetToHand
       restrictions:

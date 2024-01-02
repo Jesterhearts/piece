@@ -1,6 +1,5 @@
 name: Deadapult
-types:
-  - type_: !Enchantment {}
+typeline: Enchantment
 oracle_text: '{R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.'
 activated_abilities:
   - cost:

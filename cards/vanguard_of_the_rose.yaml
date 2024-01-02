@@ -1,9 +1,5 @@
 name: Vanguard of the Rose
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Vampire {}
-  - subtype: !Knight {}
+typeline: Creature - Vampire Knight
 cost:
   mana_costs:
     - cost: !Generic

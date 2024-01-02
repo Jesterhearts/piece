@@ -1,6 +1,5 @@
 name: Family Reunion
-types:
-  - type_: !Instant {}
+typeline: Instant
 cost:
   mana_costs:
     - cost: !Generic

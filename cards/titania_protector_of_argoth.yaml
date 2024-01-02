@@ -1,9 +1,5 @@
 name: Titania, Protector of Argoth
-types:
-  - type_: !Legendary {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Elemental {}
+typeline: Legendary Creature - Elemental
 cost:
   mana_costs:
     - cost: !Generic

@@ -1,6 +1,5 @@
 name: Spring-Loaded Sawblades
-types:
-  - type_: !Artifact {}
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !Generic
@@ -48,10 +47,7 @@ activated_abilities:
 keywords: Flash
 back_face:
   name: Bladewheel Chariot
-  types:
-    - type_: !Artifact {}
-  subtypes:
-    - subtype: !Vehicle {}
+  typeline: Artifact - Vehicle
   colors:
     - color: !White {}
   activated_abilities:

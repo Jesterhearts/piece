@@ -1,6 +1,5 @@
 name: Clay-Fired Bricks
-types:
-  - type_: !Artifact {}
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !Generic
@@ -50,8 +49,7 @@ activated_abilities:
     craft: true
 back_face:
   name: Cosmium Kiln
-  types:
-    - type_: !Artifact {}
+  typeline: Artifact
   colors:
     - color: !White {}
   oracle_text: Creatures you control get +1/+1

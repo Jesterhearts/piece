@@ -1,9 +1,5 @@
 name: Ojer Taq, Deepest Foundation
-types:
-  - type_: !Legendary {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !God {}
+typeline: Legendary Creature - God
 cost:
   mana_costs:
     - cost: !Generic
@@ -40,8 +36,7 @@ toughness: 6
 keywords: Vigilance
 back_face:
   name: Temple of Civilization
-  types:
-    - type_: !Land {}
+  typeline: Land
   activated_abilities:
     - cost:
         mana_costs:

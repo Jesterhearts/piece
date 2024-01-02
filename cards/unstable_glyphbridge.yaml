@@ -1,6 +1,5 @@
 name: Unstable Glyphbridge
-types:
-  - type_: !Artifact {}
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !Generic
@@ -51,11 +50,7 @@ activated_abilities:
     craft: true
 back_face:
   name: Sandswirl Wanderglyph
-  types:
-    - type_: !Artifact {}
-    - type_: !Creature {}
-  subtypes:
-    - subtype: !Golem {}
+  typeline: Artifact Creature - Golem
   colors:
     - color: !White {}
   static_abilities:

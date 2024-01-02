@@ -1,9 +1,8 @@
 name: Oteclan Landmark
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !White {}
-types:
-  - type_: !Artifact {}
 etb_abilities:
   - oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
     effect: !Scry
@@ -35,11 +34,7 @@ activated_abilities:
     craft: true
 back_face:
   name: Oteclan Levitator
-  types:
-    - type_: !Artifact {}
-    - type_: !Creature {}
-  subtypes:
-    - subtype: !Golem {}
+  typeline: Artifact Creature - Golem
   colors:
     - color: !White {}
   triggered_abilities:

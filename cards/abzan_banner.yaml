@@ -1,6 +1,5 @@
 name: Abzan Banner
-types:
-  - type_: !Artifact {}
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !Generic

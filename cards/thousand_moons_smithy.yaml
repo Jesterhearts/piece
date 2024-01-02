@@ -1,7 +1,5 @@
 name: Thousand Moons Smithy
-types:
-  - type_: !Legendary {}
-  - type_: !Artifact {}
+typeline: Legendary Artifact
 cost:
   mana_costs:
     - cost: !Generic
@@ -80,10 +78,7 @@ triggered_abilities:
     oracle_text: Transform Thousand Moons Smithy
 back_face:
   name: Barracks of the Thousand
-  types:
-    - type_: !Legendary {}
-    - type_: !Artifact {}
-    - type_: !Land {}
+  typeline: Legendary Artifact Land
   triggered_abilities:
     - trigger:
         source:

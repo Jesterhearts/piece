@@ -1,8 +1,5 @@
 name: Clone
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Shapeshifter {}
+typeline: Creature - Shapeshifter
 cost:
   mana_costs:
     - cost: !Generic

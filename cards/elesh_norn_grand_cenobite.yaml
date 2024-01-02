@@ -1,9 +1,5 @@
 name: Elesh Norn, Grand Cenobite
-types:
-  - type_: !Legendary {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Praetor {}
+typeline: Legendary Creature - Praetor
 cost:
   mana_costs:
     - cost: !Generic

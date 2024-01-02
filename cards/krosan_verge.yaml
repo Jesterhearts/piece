@@ -1,6 +1,5 @@
 name: Krosan Verge
-types:
-  - type_: !Land {}
+typeline: Land
 apply_individually: true
 activated_abilities:
   - cost:

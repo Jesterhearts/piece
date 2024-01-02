@@ -11,41 +11,40 @@ import "types.proto";
 
 message Card {
   string name = 1;
-  repeated types.Type types = 2;
-  repeated types.Subtype subtypes = 3;
+  string typeline = 2;
 
-  cost.CastingCost cost = 4;
-  optional cost.CostReducer cost_reducer = 5;
+  cost.CastingCost cost = 3;
+  optional cost.CostReducer cost_reducer = 4;
 
-  bool cannot_be_countered = 6;
+  bool cannot_be_countered = 5;
 
-  repeated color.Color colors = 7;
+  repeated color.Color colors = 6;
 
-  string oracle_text = 8;
+  string oracle_text = 7;
 
-  optional abilities.Enchant enchant = 9;
+  optional abilities.Enchant enchant = 8;
 
-  optional cost.Ward ward = 10;
+  optional cost.Ward ward = 9;
 
-  repeated effects.Effect effects = 11;
-  repeated effects.Mode modes = 12;
-  bool apply_individually = 13;
+  repeated effects.Effect effects = 10;
+  repeated effects.Mode modes = 11;
+  bool apply_individually = 12;
 
-  repeated effects.Effect etb_abilities = 14;
-  repeated effects.StaticAbility static_abilities = 15;
-  repeated effects.ActivatedAbility activated_abilities = 16;
-  repeated abilities.TriggeredAbility triggered_abilities = 17;
-  repeated effects.GainManaAbility mana_abilities = 18;
-  repeated effects.ReplacementEffect replacement_effects = 19;
+  repeated effects.Effect etb_abilities = 13;
+  repeated effects.StaticAbility static_abilities = 14;
+  repeated effects.ActivatedAbility activated_abilities = 15;
+  repeated abilities.TriggeredAbility triggered_abilities = 16;
+  repeated effects.GainManaAbility mana_abilities = 17;
+  repeated effects.ReplacementEffect replacement_effects = 18;
 
-  optional effects.DynamicPowerToughness dynamic_power_toughness = 20;
-  optional int32 power = 21;
-  optional int32 toughness = 22;
-  bool etb_tapped = 23;
+  optional effects.DynamicPowerToughness dynamic_power_toughness = 19;
+  optional int32 power = 20;
+  optional int32 toughness = 21;
+  bool etb_tapped = 22;
 
-  string keywords = 24;
+  string keywords = 23;
 
-  repeated targets.Restriction restrictions = 25;
+  repeated targets.Restriction restrictions = 24;
 
-  optional Card back_face = 26;
+  optional Card back_face = 25;
 }

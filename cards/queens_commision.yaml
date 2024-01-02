@@ -1,6 +1,5 @@
 name: Queen's Commission
-types:
-  - type_: !Sorcery {}
+typeline: Sorcery
 oracle_text: Create two 1/1 white Vampire creature tokens with lifelink.
 effects:
   - effect: !CreateToken

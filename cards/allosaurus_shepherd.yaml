@@ -1,9 +1,5 @@
 name: Allosaurus Shepherd
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Elf {}
-  - subtype: !Shaman {}
+typeline: Creature - Elf Shaman
 cost:
   mana_costs:
     - cost: !Green {}

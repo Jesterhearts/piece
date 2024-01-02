@@ -1,10 +1,5 @@
 name: Dryad of the Ilysian Grove
-types:
-  - type_: !Enchantment {}
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Nymph {}
-  - subtype: !Dryad {}
+typeline: Enchantment Creature - Nymph Dryad
 cost:
   mana_costs:
     - cost: !Generic

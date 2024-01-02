@@ -1,9 +1,5 @@
 name: Malamet War Scribe
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Cat {}
-  - subtype: !Warrior {}
+typeline: Creature - Cat Warrior
 etb_abilities:
   - oracle_text: When Malamet War Scribe enters the battlefield, creatures you control
       get +2/+1 until end of turn.

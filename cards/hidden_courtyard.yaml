@@ -1,8 +1,5 @@
 name: Hidden Courtyard
-types:
-  - type_: !Land {}
-subtypes:
-  - subtype: !Cave {}
+typeline: Land - Cave
 activated_abilities:
   - cost:
       mana_costs:

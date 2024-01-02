@@ -1,6 +1,5 @@
 name: Haunting Imitation
-types:
-  - type_: !Sorcery {}
+typeline: Sorcery
 cost:
   mana_costs:
     - cost: !Generic

@@ -1,6 +1,5 @@
 name: Helping Hand
-types:
-  - type_: !Sorcery {}
+typeline: Sorcery
 cost:
   mana_costs:
     - cost: !White {}

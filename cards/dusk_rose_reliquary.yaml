@@ -1,6 +1,5 @@
 name: Dusk Rose Reliquary
-types:
-  - type_: !Artifact {}
+typeline: Artifact
 cost:
   mana_costs:
     - cost: !White {}

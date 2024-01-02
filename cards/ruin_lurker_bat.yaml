@@ -1,8 +1,5 @@
 name: Ruin-Lurker Bat
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Bat {}
+typeline: Creature - Bat
 cost:
   mana_costs:
     - cost: !White {}

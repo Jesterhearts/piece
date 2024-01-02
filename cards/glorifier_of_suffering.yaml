@@ -1,9 +1,5 @@
 name: Glorifier of Suffering
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Vampire {}
-  - subtype: !Soldier {}
+typeline: Creature - Vampire Soldier
 cost:
   mana_costs:
     - cost: !Generic

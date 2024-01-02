@@ -1,8 +1,5 @@
 name: Hoar Shade
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Shade {}
+typeline: Creature - Shade
 cost:
   mana_costs:
     - cost: !Generic

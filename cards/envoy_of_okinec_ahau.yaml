@@ -1,14 +1,10 @@
 name: Envoy of Okinec Ahau
+typeline: Creature - Cat Advisor
 cost:
   mana_costs:
     - cost: !Generic
         count: 2
     - cost: !White {}
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Cat {}
-  - subtype: !Advisor {}
 activated_abilities:
   - cost:
       mana_costs:

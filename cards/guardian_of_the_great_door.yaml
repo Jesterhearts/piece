@@ -1,8 +1,5 @@
 name: Guardian of the Great Door
-types:
-  - type_: !Creature {}
-subtypes:
-  - subtype: !Angel {}
+typeline: Creature - Angel
 cost:
   mana_costs:
     - cost: !White {}

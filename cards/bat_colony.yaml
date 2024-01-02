@@ -1,6 +1,5 @@
 name: Bat Colony
-types:
-  - type_: !Enchantment {}
+typeline: Enchantment
 cost:
   mana_costs:
     - cost: !Generic
