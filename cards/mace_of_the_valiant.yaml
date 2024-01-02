@@ -1,17 +1,12 @@
 name: Mace of the Valiant
 typeline: Artifact - Equipment
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 2
-    - cost: !White {}
+  mana_costs: '{2}{W}'
 oracle_text: Equipped creature gets +1/+1 for each charge counter on Mace of the Valiant
   and has vigilance.
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 3
+      mana_costs: '{3}'
     effects:
       - effect: !Equip
           modifiers:

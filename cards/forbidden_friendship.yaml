@@ -1,10 +1,7 @@
 name: Forbidden Friendship
 typeline: Sorcery
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 1
-    - cost: !Red {}
+  mana_costs: '{1}{R}'
 oracle_text: 'Create a 1/1 red Dinosaur creature token with haste and a 1/1 white
   Human Soldier creature token. '
 effects:

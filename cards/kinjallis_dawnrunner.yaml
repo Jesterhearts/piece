@@ -1,10 +1,7 @@
 name: Kinjalli's Dawnrunner
 typeline: Creature - Human Scout
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 3
-    - cost: !White {}
+  mana_costs: '{3}{W}'
 etb_abilities:
   - effect: !SelfExplores {}
 power: 1

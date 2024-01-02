@@ -861,7 +861,29 @@ impl PayCost {
 
 impl PendingResult for PayCost {
     fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
-        true
+        match self {
+            PayCost::SacrificePermanent(_) => true,
+            PayCost::TapPermanent(_) => true,
+            PayCost::TapPermanentsPowerXOrMore(_) => true,
+            PayCost::ExilePermanentsCmcX(_) => true,
+            PayCost::ExileCards(ExileCards { .. }) => true,
+            PayCost::ExileCardsSharingType(_) => true,
+            PayCost::SpendMana(spend) => {
+                if let Some(ManaCost::TwoX) = spend.first_unpaid_x_always_unpaid() {
+                    spend
+                        .paid
+                        .get(&ManaCost::TwoX)
+                        .iter()
+                        .flat_map(|i| i.values())
+                        .flat_map(|i| i.values())
+                        .sum::<usize>()
+                        % 2
+                        == 0
+                } else {
+                    true
+                }
+            }
+        }
     }
 
     fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {

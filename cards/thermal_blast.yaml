@@ -1,10 +1,7 @@
 name: Thermal Blast
 typeline: Instant
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 4
-    - cost: !Red {}
+  mana_costs: '{4}{R}'
 oracle_text: |-
   Thermal Blast deals 3 damage to target creature.
   Threshold - Thermal Blast deals 5 damage instead if seven or more cards are in your graveyard.

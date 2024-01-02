@@ -1,8 +1,7 @@
 name: Market Gnome
 typeline: Artifact Creature - Gnome
 cost:
-  mana_costs:
-    - cost: !White {}
+  mana_costs: '{W}'
 triggered_abilities:
   - trigger:
       source:

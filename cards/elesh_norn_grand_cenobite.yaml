@@ -1,11 +1,7 @@
 name: Elesh Norn, Grand Cenobite
 typeline: Legendary Creature - Praetor
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 5
-    - cost: !White {}
-    - cost: !White {}
+  mana_costs: '{5}{W}{W}'
 oracle_text: |
   Vigilance
   Other creatures you control get +2/+2

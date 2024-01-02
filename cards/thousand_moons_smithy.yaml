@@ -1,11 +1,7 @@
 name: Thousand Moons Smithy
 typeline: Legendary Artifact
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 2
-    - cost: !White {}
-    - cost: !White {}
+  mana_costs: '{2}{W}{W}'
 etb_abilities:
   - oracle_text: When Thousand Moons Smithy enters the battlefield, create a white
       Gnome Soldier artifact creature token with "This creature's power and toughness

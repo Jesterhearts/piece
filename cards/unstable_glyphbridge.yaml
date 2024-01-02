@@ -1,11 +1,7 @@
 name: Unstable Glyphbridge
 typeline: Artifact
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 3
-    - cost: !White {}
-    - cost: !White {}
+  mana_costs: '{3}{W}{W}'
 etb_abilities:
   - effect: !ForEachPlayerChooseThen
       restrictions:
@@ -24,11 +20,7 @@ etb_abilities:
               - restriction: !NotChosen {}
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 3
-        - cost: !White {}
-        - cost: !White {}
+      mana_costs: '{3}{W}{W}'
       additional_costs:
         - cost: !ExileCard
             restrictions:

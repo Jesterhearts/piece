@@ -1,5 +1,7 @@
 name: Oltec Archaeologists
 typeline: Creature - Human Artificer Scout
+cost:
+  mana_costs: '{4}{W}'
 etb_abilities:
   - effect: !Modal
       modes:

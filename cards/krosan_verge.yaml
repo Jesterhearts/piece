@@ -3,9 +3,7 @@ typeline: Land
 apply_individually: true
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 2
+      mana_costs: '{2}'
       tap: true
       additional_costs:
         - cost: !SacrificeSource {}

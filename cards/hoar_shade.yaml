@@ -1,14 +1,10 @@
 name: Hoar Shade
 typeline: Creature - Shade
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 3
-    - cost: !Black {}
+  mana_costs: '{3}{B}'
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Black {}
+      mana_costs: '{B}'
     effects:
       - effect: !BattlefieldModifier
           modifier:

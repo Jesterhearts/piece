@@ -1,16 +1,10 @@
 name: Fabrication Foundry
 typeline: Artifact
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 1
-    - cost: !White {}
+  mana_costs: '{1}{W}'
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 2
-        - cost: !White {}
+      mana_costs: '{2}{W}'
       tap: true
       additional_costs:
         - cost: !ExileCardsCmcX

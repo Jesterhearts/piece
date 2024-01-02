@@ -1,9 +1,7 @@
 name: Annul
 typeline: Instant
 cost:
-  mana_costs:
-    - cost: !Blue {}
-    - cost: !Blue {}
+  mana_costs: '{U}{U}'
 oracle_text: Counter target artifact or enchantment spell.
 effects:
   - effect: !CounterSpell

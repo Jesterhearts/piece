@@ -869,9 +869,7 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
     }
 }
 
-pub(crate) fn parse_types(
-    typeline: &String,
-) -> anyhow::Result<(IndexSet<Type>, IndexSet<Subtype>)> {
+pub(crate) fn parse_types(typeline: &str) -> anyhow::Result<(IndexSet<Type>, IndexSet<Subtype>)> {
     if typeline.is_empty() {
         return Err(anyhow!("Expected card to have types set"));
     }

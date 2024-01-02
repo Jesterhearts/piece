@@ -789,10 +789,12 @@ async fn main() -> anyhow::Result<()> {
                             })
                         });
 
-                    if (!open || ctx.input(|input| input.key_released(egui::Key::Escape)))
-                        && resolving.can_cancel(&db, &all_players)
-                    {
-                        to_resolve = None;
+                    if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
+                        let can_cancel = resolving.can_cancel(&db, &all_players);
+                        debug!("Can cancel {:?} = {}", resolving, can_cancel);
+                        if can_cancel {
+                            to_resolve = None;
+                        }
                     } else if let Some(choice) = choice {
                         loop {
                             match resolving.resolve(&mut db, &mut all_players, &turn, choice) {

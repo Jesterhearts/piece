@@ -50,11 +50,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: value
-                .mana_costs
-                .iter()
-                .map(ManaCost::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            mana_cost: parse_mana_cost(&value.mana_costs)?,
             additional_cost: value
                 .additional_costs
                 .iter()
@@ -252,11 +248,7 @@ impl TryFrom<&protogen::cost::Ward> for Ward {
 
     fn try_from(value: &protogen::cost::Ward) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: value
-                .mana_costs
-                .iter()
-                .map(ManaCost::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            mana_cost: parse_mana_cost(&value.mana_costs)?,
         })
     }
 }
@@ -330,11 +322,7 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
 
     fn try_from(value: &protogen::cost::AbilityCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: value
-                .mana_costs
-                .iter()
-                .map(ManaCost::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            mana_cost: parse_mana_cost(&value.mana_costs)?,
             tap: value.tap.unwrap_or_default(),
             additional_cost: value
                 .additional_costs
@@ -409,4 +397,44 @@ impl TryFrom<&protogen::cost::CostReducer> for CostReducer {
             reduction: value.reduction.get_or_default().try_into()?,
         })
     }
+}
+
+pub(crate) fn parse_mana_cost(s: &str) -> anyhow::Result<Vec<ManaCost>> {
+    let split = s
+        .split('}')
+        .map(|s| s.trim_start_matches('{'))
+        .filter(|s| !s.is_empty())
+        .collect_vec();
+
+    let mut results = vec![];
+    for symbol in split {
+        let cost;
+        if let Ok(count) = symbol.parse::<usize>() {
+            cost = ManaCost::Generic(count);
+        } else {
+            match symbol {
+                "W" => cost = ManaCost::White,
+                "U" => cost = ManaCost::Blue,
+                "B" => cost = ManaCost::Black,
+                "R" => cost = ManaCost::Red,
+                "G" => cost = ManaCost::Green,
+                "X" => cost = ManaCost::X,
+                "C" => cost = ManaCost::Colorless,
+                s => {
+                    return Err(anyhow!("Invalid mana cost {}", s));
+                }
+            }
+        }
+
+        if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
+            results.pop();
+            results.push(ManaCost::TwoX);
+        } else {
+            results.push(cost);
+        }
+    }
+
+    debug!("Deserialized {} as {:?}", s, results);
+
+    Ok(results)
 }

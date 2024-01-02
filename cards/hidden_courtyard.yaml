@@ -2,10 +2,7 @@ name: Hidden Courtyard
 typeline: Land - Cave
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 4
-        - cost: !White {}
+      mana_costs: '{4}{W}'
       tap: true
       additional_costs:
         - cost: !SacrificeSource {}

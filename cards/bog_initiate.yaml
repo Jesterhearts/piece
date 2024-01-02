@@ -1,16 +1,11 @@
 name: Bog Initiate
 typeline: Creature - Human Wizard
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 1
-    - cost: !Black {}
+  mana_costs: '{1}{B}'
 oracle_text: '{1}: Add {B}'
 mana_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 1
+      mana_costs: '{1}'
     gain_mana:
       gain: !Specific
         gains:

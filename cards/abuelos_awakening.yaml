@@ -1,11 +1,7 @@
 name: Abuelo's Awakening
 typeline: Sorcery
 cost:
-  mana_costs:
-    - cost: !X {}
-    - cost: !Generic
-        count: 3
-    - cost: !White {}
+  mana_costs: '{X}{3}{W}'
 oracle_text: Return target artifact or non-aura enchantment from your graveyard to
   the battlefield with X additional +1/+1 counters on it. It's a 1/1 Spirit creature
   with flying in addition to its other types

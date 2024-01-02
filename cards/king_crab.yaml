@@ -1,17 +1,10 @@
 name: King Crab
 typeline: Creature - Crab
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 4
-    - cost: !Blue {}
-    - cost: !Blue {}
+  mana_costs: '{4}{U}{U}'
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 1
-        - cost: !Blue {}
+      mana_costs: '{1}{U}'
       tap: true
     effects:
       - effect: !TargetToTopOfLibrary

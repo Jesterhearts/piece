@@ -1,10 +1,7 @@
 name: Akal Pakal, First Among Equals
 typeline: Legendary Creature
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 2
-    - cost: !Blue {}
+  mana_costs: '{2}{U}'
 triggered_abilities:
   - trigger:
       source:

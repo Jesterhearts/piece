@@ -1,11 +1,7 @@
 name: Titania, Protector of Argoth
 typeline: Legendary Creature - Elemental
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 3
-    - cost: !Green {}
-    - cost: !Green {}
+  mana_costs: '{3}{G}{G}'
 etb_abilities:
   - oracle_text: When Titania, Protector of Argoth enters the battlefield, return
       target land card from your graveyard to the battlefield.

@@ -1,18 +1,14 @@
 name: Oteclan Landmark
 typeline: Artifact
 cost:
-  mana_costs:
-    - cost: !White {}
+  mana_costs: '{W}'
 etb_abilities:
   - oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
     effect: !Scry
       count: 2
 activated_abilities:
   - cost:
-      mana_costs:
-        - cost: !Generic
-            count: 2
-        - cost: !White {}
+      mana_costs: '{2}{W}'
       additional_costs:
         - cost: !ExileCard
             restrictions:

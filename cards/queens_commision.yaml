@@ -1,6 +1,8 @@
 name: Queen's Commission
 typeline: Sorcery
 oracle_text: Create two 1/1 white Vampire creature tokens with lifelink.
+cost:
+  mana_costs: '{2}{W}'
 effects:
   - effect: !CreateToken
       token: !Creature

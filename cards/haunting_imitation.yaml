@@ -1,10 +1,7 @@
 name: Haunting Imitation
 typeline: Sorcery
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 2
-    - cost: !Blue {}
+  mana_costs: '{2}{U}'
 effects:
   - oracle_text: Each player reveals the top card of their library. For each creature
       card revealed this way, create a token that's a copy of that card, except it's

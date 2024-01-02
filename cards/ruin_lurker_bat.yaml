@@ -1,8 +1,7 @@
 name: Ruin-Lurker Bat
 typeline: Creature - Bat
 cost:
-  mana_costs:
-    - cost: !White {}
+  mana_costs: '{W}'
 triggered_abilities:
   - trigger:
       source:

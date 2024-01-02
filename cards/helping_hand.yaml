@@ -1,8 +1,7 @@
 name: Helping Hand
 typeline: Sorcery
 cost:
-  mana_costs:
-    - cost: !White {}
+  mana_costs: '{W}'
 effects:
   - effect: !ReturnFromGraveyardToBattlefield
       restrictions:

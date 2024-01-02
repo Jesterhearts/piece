@@ -1,11 +1,7 @@
 name: Ojer Taq, Deepest Foundation
 typeline: Legendary Creature - God
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 4
-    - cost: !White {}
-    - cost: !White {}
+  mana_costs: '{4}{W}{W}'
 triggered_abilities:
   - trigger:
       source:
@@ -39,10 +35,7 @@ back_face:
   typeline: Land
   activated_abilities:
     - cost:
-        mana_costs:
-          - cost: !Generic
-              count: 2
-          - cost: !White {}
+        mana_costs: '{2}{W}'
         tap: true
         restrictions:
           - restriction: !AttackedWithXOrMoreCreatures

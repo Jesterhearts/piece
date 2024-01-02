@@ -1,10 +1,7 @@
 name: Glorifier of Suffering
 typeline: Creature - Vampire Soldier
 cost:
-  mana_costs:
-    - cost: !Generic
-        count: 2
-    - cost: !White {}
+  mana_costs: '{2}{W}'
 apply_individually: true
 etb_abilities:
   - oracle_text: When Glorifier of Suffering enters the battlefield, you may sacrifice
