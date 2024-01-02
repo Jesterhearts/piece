@@ -4,6 +4,11 @@ cost:
     - cost: !Generic
         count: 2
     - cost: !White {}
+types:
+  - type_: !Creature {}
+subtypes:
+  - subtype: !Cat {}
+  - subtype: !Advisor {}
 activated_abilities:
   - cost:
       mana_costs:

@@ -507,8 +507,8 @@ impl PendingResults {
         })
     }
 
-    pub fn can_cancel(&self) -> bool {
-        self.is_empty() || !self.applied
+    pub fn can_cancel(&self, db: &Database, all_players: &AllPlayers) -> bool {
+        self.is_empty() || (self.choices_optional(db, all_players) && !self.applied)
     }
 
     pub fn priority(&self, db: &Database, all_players: &AllPlayers, turn: &Turn) -> Owner {

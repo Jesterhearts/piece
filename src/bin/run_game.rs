@@ -790,7 +790,7 @@ async fn main() -> anyhow::Result<()> {
                         });
 
                     if (!open || ctx.input(|input| input.key_released(egui::Key::Escape)))
-                        && resolving.can_cancel()
+                        && resolving.can_cancel(&db, &all_players)
                     {
                         to_resolve = None;
                     } else if let Some(choice) = choice {

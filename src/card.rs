@@ -417,7 +417,14 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .types
                 .iter()
                 .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
+                .collect::<anyhow::Result<_>>()
+                .and_then(|types: IndexSet<_>| {
+                    if types.is_empty() {
+                        Err(anyhow!("Expected card to have types set"))
+                    } else {
+                        Ok(types)
+                    }
+                })?,
             subtypes: value
                 .subtypes
                 .iter()

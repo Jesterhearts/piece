@@ -124,7 +124,7 @@ impl ChooseTargets {
 
 impl PendingResult for ChooseTargets {
     fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
-        self.valid_targets.len() <= 1
+        self.valid_targets.is_empty()
     }
 
     fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {

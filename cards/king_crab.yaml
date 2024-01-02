@@ -5,6 +5,10 @@ cost:
         count: 4
     - cost: !Blue {}
     - cost: !Blue {}
+types:
+  - type_: !Creature {}
+subtypes:
+  - subtype: !Crab {}
 activated_abilities:
   - cost:
       mana_costs:
