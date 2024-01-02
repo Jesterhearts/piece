@@ -1,5 +1,5 @@
 # Piece
-Piece is a rules engine for MTG. It is currently very much a work-in-progress with no AI.
+Piece is an **unofficial** rules engine for MTG. It is currently very much a work-in-progress with no AI.
 
 Future plans:
 - A large number of cards supported.
@@ -26,3 +26,5 @@ Cards are written in `yaml` format. You can see examples in the [cards directory
       - type_: !Creature {}
   ```
   will matching anything that is either an artifact or a creature (or both).
+
+  MTG 
