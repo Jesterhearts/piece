@@ -63,13 +63,12 @@ message CounterSpell {
 message CreateToken {
   message Creature {
     string name = 1;
-    repeated types.Type types = 2;
-    repeated types.Subtype subtypes = 3;
-    repeated color.Color colors = 4;
-    optional DynamicPowerToughness dynamic_power_toughness = 5;
-    int32 power = 6;
-    int32 toughness = 7;
-    string keywords = 8;
+    string typeline = 2;
+    repeated color.Color colors = 3;
+    optional DynamicPowerToughness dynamic_power_toughness = 4;
+    int32 power = 5;
+    int32 toughness = 6;
+    string keywords = 7;
   }
   message Map {}
 
@@ -435,7 +434,7 @@ message Effect {
     UntapTarget untap_target = 49;
   }
 
-  string oracle_text = 51;
+  string oracle_text = 50;
 }
 
 message Mode {

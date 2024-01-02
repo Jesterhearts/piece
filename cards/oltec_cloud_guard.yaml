@@ -9,11 +9,7 @@ etb_abilities:
   - effect: !CreateToken
       token: !Creature
         name: Gnome
-        types:
-          - type_: !Creature {}
-          - type_: !Artifact {}
-        subtypes:
-          - subtype: !Gnome {}
+        typeline: Artifact Creature - Gnome
         power: 1
         toughness: 1
 power: 3

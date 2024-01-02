@@ -57,11 +57,7 @@ back_face:
     - effect: !CreateToken
         token: !Creature
           name: Gnome
-          types:
-            - type_: !Artifact {}
-            - type_: !Creature {}
-          subtypes:
-            - subtype: !Gnome {}
+          typeline: Artifact Creature - Gnome
           power: 1
           toughness: 1
     - oracle_text: When Cosmium Kiln enters the battlefield, create two 1/1 colorless
@@ -69,11 +65,7 @@ back_face:
       effect: !CreateToken
         token: !Creature
           name: Gnome
-          types:
-            - type_: !Artifact {}
-            - type_: !Creature {}
-          subtypes:
-            - subtype: !Gnome {}
+          typeline: Artifact Creature - Gnome
           power: 1
           toughness: 1
   static_abilities:

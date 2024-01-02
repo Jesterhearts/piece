@@ -41,10 +41,7 @@ triggered_abilities:
       - effect: !CreateToken
           token: !Creature
             name: Angel
-            types:
-              - type_: !Creature {}
-            subtypes:
-              - subtype: !Angel {}
+            typeline: Creature - Angel
             colors:
               - color: !White {}
             power: 4

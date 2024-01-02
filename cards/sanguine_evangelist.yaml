@@ -11,10 +11,7 @@ etb_abilities:
     effect: !CreateToken
       token: !Creature
         name: Bat
-        types:
-          - type_: !Creature {}
-        subtypes:
-          - subtype: !Bat {}
+        typeline: Creature - Bat
         colors:
           - color: !Black {}
         power: 1
@@ -33,10 +30,7 @@ triggered_abilities:
       - effect: !CreateToken
           token: !Creature
             name: Bat
-            types:
-              - type_: !Creature {}
-            subtypes:
-              - subtype: !Bat {}
+            typeline: Creature - Bat
             colors:
               - color: !Black {}
             power: 1

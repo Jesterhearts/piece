@@ -13,12 +13,7 @@ etb_abilities:
     effect: !CreateToken
       token: !Creature
         name: Gnome Soldier
-        types:
-          - type_: !Artifact {}
-          - type_: !Creature {}
-        subtypes:
-          - subtype: !Gnome {}
-          - subtype: !Soldier {}
+        typeline: Artifact Creature - Gnome Soldier
         colors:
           - color: !White {}
         dynamic_power_toughness:
@@ -96,12 +91,7 @@ back_face:
         - effect: !CreateToken
             token: !Creature
               name: Gnome Soldier
-              types:
-                - type_: !Artifact {}
-                - type_: !Creature {}
-              subtypes:
-                - subtype: !Gnome {}
-                - subtype: !Soldier {}
+              typeline: Artifact Creature - Gnome Soldier
               colors:
                 - color: !White {}
               dynamic_power_toughness:

@@ -15,10 +15,6 @@ activated_abilities:
       - effect: !CreateToken
           token: !Creature
             name: Gnome
-            types:
-              - type_: !Artifact {}
-              - type_: !Creature {}
-            subtypes:
-              - subtype: !Gnome {}
+            typeline: Artifact Creature - Gnome
             power: 1
             toughness: 1

@@ -5,10 +5,7 @@ effects:
   - effect: !CreateToken
       token: !Creature
         name: Vampire
-        types:
-          - type_: !Creature {}
-        subtypes:
-          - subtype: !Vampire {}
+        typeline: Creature - Vampire
         colors:
           - color: !White {}
         power: 1
@@ -16,10 +13,7 @@ effects:
   - effect: !CreateToken
       token: !Creature
         name: Vampire
-        types:
-          - type_: !Creature {}
-        subtypes:
-          - subtype: !Vampire {}
+        typeline: Creature - Vampire
         colors:
           - color: !White {}
         power: 1

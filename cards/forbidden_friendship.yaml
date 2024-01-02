@@ -11,8 +11,7 @@ effects:
   - effect: !CreateToken
       token: !Creature
         name: Dinosaur
-        subtypes:
-          - subtype: !Dinosaur {}
+        typeline: Creature - Dinosaur
         colors:
           - color: !Red {}
         power: 1
@@ -21,9 +20,7 @@ effects:
   - effect: !CreateToken
       token: !Creature
         name: Human Soldier
-        subtypes:
-          - subtype: !Human {}
-          - subtype: !Soldier {}
+        typeline: Creature - Human Soldier
         colors:
           - color: !White {}
         power: 1

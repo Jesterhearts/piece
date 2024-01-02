@@ -117,7 +117,7 @@ use crate::{
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
-    types::{Subtype, Type},
+    types::{parse_types, Subtype, Type},
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -689,19 +689,11 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::effects::create_token::Creature) -> Result<Self, Self::Error> {
+        let (types, subtypes) = parse_types(&value.typeline)?;
         Ok(Self {
             name: value.name.clone(),
-            types: value
-                .types
-                .iter()
-                .map(Type::try_from)
-                .chain(std::iter::once(Ok(Type::Creature)))
-                .collect::<anyhow::Result<_>>()?,
-            subtypes: value
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            types,
+            subtypes,
             colors: value
                 .colors
                 .iter()

@@ -35,8 +35,7 @@ triggered_abilities:
       - effect: !CreateToken
           token: !Creature
             name: Elemental
-            subtypes:
-              - subtype: !Elemental {}
+            typeline: Creature - Elemental
             colors:
               - color: !Green {}
             power: 5
