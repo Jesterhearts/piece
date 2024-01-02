@@ -44,7 +44,7 @@ use crate::{
         OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
         NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
-    log::{LeaveReason, Log},
+    log::{LeaveReason, Log, LogId},
     player::{
         mana_pool::{ManaSource, SourcedMana},
         Controller, Owner,
@@ -179,7 +179,7 @@ impl CardId {
 
     pub fn move_to_hand(self, db: &mut Database) {
         if self.is_in_location::<OnBattlefield>(db) {
-            Log::left_battlefield(db, LeaveReason::ReturnedToHand, self);
+            Log::left_battlefield(db, LogId::current(), LeaveReason::ReturnedToHand, self);
         }
 
         if self.is_token(db) {
@@ -308,7 +308,7 @@ impl CardId {
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
         if self.is_in_location::<OnBattlefield>(db) {
-            Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
+            Log::left_battlefield(db, LogId::current(), LeaveReason::PutIntoGraveyard, self);
         }
 
         if self.is_token(db) {
@@ -349,7 +349,7 @@ impl CardId {
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
         if self.is_in_location::<OnBattlefield>(db) {
-            Log::left_battlefield(db, LeaveReason::ReturnedToLibrary, self);
+            Log::left_battlefield(db, LogId::current(), LeaveReason::ReturnedToLibrary, self);
         }
 
         if self.is_token(db) {
@@ -394,7 +394,7 @@ impl CardId {
         duration: EffectDuration,
     ) {
         if self.is_in_location::<OnBattlefield>(db) {
-            Log::left_battlefield(db, LeaveReason::Exiled, self);
+            Log::left_battlefield(db, LogId::current(), LeaveReason::Exiled, self);
         }
 
         if self.is_token(db) {

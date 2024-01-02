@@ -23,7 +23,7 @@ use crate::{
     in_play::{
         cast_from, AbilityId, CardId, CastFrom, Database, InStack, TriggerId, TriggerInStack,
     },
-    log::Log,
+    log::{Log, LogId},
     player::{mana_pool::SpendReason, AllPlayers, Owner},
 };
 
@@ -573,10 +573,11 @@ impl Stack {
             }
         }
 
+        let id = LogId::new();
         match ty {
-            ResolutionType::Card(card) => Log::spell_resolved(db, card),
-            ResolutionType::Ability(ability) => Log::ability_resolved(db, ability),
-            ResolutionType::Trigger(trigger) => Log::trigger_resolved(db, trigger),
+            ResolutionType::Card(card) => Log::spell_resolved(db, id, card),
+            ResolutionType::Ability(ability) => Log::ability_resolved(db, id, ability),
+            ResolutionType::Trigger(trigger) => Log::trigger_resolved(db, id, trigger),
         }
 
         results

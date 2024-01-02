@@ -1,3 +1,4 @@
+pub(crate) mod apply_then_if_was;
 pub(crate) mod battle_cry;
 pub(crate) mod battlefield_modifier;
 pub(crate) mod cant_attack_this_turn;
@@ -60,6 +61,7 @@ use crate::{
     battlefield::PendingResults,
     card::{Color, Keyword},
     effects::{
+        apply_then_if_was::ApplyThenIfWas,
         cant_attack_this_turn::CantAttackThisTurn,
         cascade::Cascade,
         controller_discards::ControllerDiscards,
@@ -505,6 +507,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
 
     fn try_from(value: &protogen::effects::effect::Effect) -> Result<Self, Self::Error> {
         match value {
+            protogen::effects::effect::Effect::ApplyThenIfWas(value) => {
+                Ok(Self(Box::leak(Box::new(ApplyThenIfWas::try_from(value)?))))
+            }
             protogen::effects::effect::Effect::BattlefieldModifier(value) => Ok(Self(Box::leak(
                 Box::new(BattlefieldModifier::try_from(value)?),
             ))),

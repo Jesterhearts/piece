@@ -182,7 +182,7 @@ pub struct PendingResults {
     chosen_targets: Vec<Vec<ActiveTarget>>,
     all_chosen_targets: HashSet<ActiveTarget>,
 
-    settled_effects: VecDeque<ActionResult>,
+    settled_effects: Vec<ActionResult>,
 
     apply_in_stages: bool,
     gain_mana: Option<AbilityId>,
@@ -258,7 +258,7 @@ impl PendingResults {
     }
 
     pub(crate) fn push_settled(&mut self, action: ActionResult) {
-        self.settled_effects.push_back(action);
+        self.settled_effects.push(action);
     }
 
     pub(crate) fn push_invalid_target(&mut self, target: ActiveTarget) {
@@ -393,7 +393,7 @@ impl PendingResults {
             if let Some(source) = self.add_to_stack.take() {
                 match source {
                     Source::Card(card) => {
-                        self.settled_effects.push_back(ActionResult::CastCard {
+                        self.settled_effects.push(ActionResult::CastCard {
                             card,
                             targets: self.chosen_targets.clone(),
                             from: self.cast_from.unwrap(),
@@ -403,13 +403,12 @@ impl PendingResults {
                     }
                     Source::Ability(ability) => {
                         let source = ability.source(db);
-                        self.settled_effects
-                            .push_back(ActionResult::AddAbilityToStack {
-                                source,
-                                ability,
-                                targets: self.chosen_targets.clone(),
-                                x_is: self.x_is,
-                            });
+                        self.settled_effects.push(ActionResult::AddAbilityToStack {
+                            source,
+                            ability,
+                            targets: self.chosen_targets.clone(),
+                            x_is: self.x_is,
+                        });
                     }
                     Source::Effect(_, _) => unreachable!(),
                 }
@@ -420,7 +419,7 @@ impl PendingResults {
                 if let Some(mana) = id.gain_mana_ability(db) {
                     match mana.gain {
                         GainMana::Specific { gains } => {
-                            self.settled_effects.push_back(ActionResult::GainMana {
+                            self.settled_effects.push(ActionResult::GainMana {
                                 gain: gains,
                                 target,
                                 source,
@@ -429,7 +428,7 @@ impl PendingResults {
                         }
                         GainMana::Choice { choices } => {
                             let option = self.chosen_modes.pop().unwrap();
-                            self.settled_effects.push_back(ActionResult::GainMana {
+                            self.settled_effects.push(ActionResult::GainMana {
                                 gain: choices[option].clone(),
                                 target,
                                 source,
@@ -442,12 +441,8 @@ impl PendingResults {
 
             if !self.settled_effects.is_empty() {
                 self.applied = true;
-                let results = Battlefield::apply_action_results(
-                    db,
-                    all_players,
-                    turn,
-                    self.settled_effects.make_contiguous(),
-                );
+                let results =
+                    Battlefield::apply_action_results(db, all_players, turn, &self.settled_effects);
                 self.settled_effects.clear();
                 self.extend(results);
             }
@@ -461,12 +456,8 @@ impl PendingResults {
 
         if self.apply_in_stages && !self.settled_effects.is_empty() {
             self.applied = true;
-            let results = Battlefield::apply_action_results(
-                db,
-                all_players,
-                turn,
-                self.settled_effects.make_contiguous(),
-            );
+            let results =
+                Battlefield::apply_action_results(db, all_players, turn, &self.settled_effects);
             self.settled_effects.clear();
             self.extend(results);
 

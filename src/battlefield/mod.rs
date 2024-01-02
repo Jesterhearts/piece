@@ -37,6 +37,7 @@ use crate::{
         Database, ExileReason, InExile, InGraveyard, InHand, InLibrary, InStack, ModifierId,
         NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
     },
+    log::Log,
     mana::{Mana, ManaRestriction},
     player::{
         mana_pool::{ManaSource, SpendReason},
@@ -180,6 +181,12 @@ pub(crate) enum ActionResult {
         restriction: ManaRestriction,
     },
     HandFromBattlefield(CardId),
+    IfWasThen {
+        if_was: Vec<Restriction>,
+        then: Vec<Effect>,
+        source: CardId,
+        controller: Controller,
+    },
     LoseLife {
         target: Controller,
         count: usize,
@@ -1360,6 +1367,25 @@ impl Battlefield {
             ActionResult::BanAttacking(player) => {
                 ban_attacking_this_turn(db, *player);
                 PendingResults::default()
+            }
+            ActionResult::IfWasThen {
+                if_was,
+                then,
+                source,
+                controller,
+            } => {
+                let mut results = PendingResults::default();
+                let entries = Log::current_session(db);
+                if entries
+                    .iter()
+                    .any(|entry| entry.1.left_battlefield_passes_restrictions(if_was))
+                {
+                    for effect in then.iter() {
+                        effect.push_pending_behavior(db, *source, *controller, &mut results);
+                    }
+                }
+
+                results
             }
         }
     }

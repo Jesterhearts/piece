@@ -346,9 +346,12 @@ async fn main() -> anyhow::Result<()> {
 
         egui_macroquad::ui(|ctx| {
             egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
-                ui.set_enabled(to_resolve.is_none());
+                ui.set_enabled(to_resolve.is_none() && adding_card.is_none());
                 ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
-                    if ui.button("Pass").clicked() {
+                    if ui.button("Pass").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num1)))
+                    {
                         debug!("Passing priority");
                         assert_eq!(turn.priority_player(), player1);
                         turn.pass_priority();
@@ -373,17 +376,26 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
 
-                    if ui.button("(Debug) Untap all").clicked() {
+                    if ui.button("(Debug) Untap all").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num2)))
+                    {
                         for card in in_play::cards::<OnBattlefield>(&mut db) {
                             card.untap(&mut db);
                         }
                     }
 
-                    if ui.button("(Debug) Infinite mana").clicked() {
+                    if ui.button("(Debug) Infinite mana").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num3)))
+                    {
                         all_players[player1].infinite_mana();
                     }
 
-                    if ui.button("(Debug) Draw").clicked() {
+                    if ui.button("(Debug) Draw").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num4)))
+                    {
                         let mut pending = all_players[player1].draw(&mut db, 1);
                         while pending.only_immediate_results(&db, &all_players) {
                             let result = pending.resolve(&mut db, &mut all_players, &turn, None);
@@ -401,7 +413,10 @@ async fn main() -> anyhow::Result<()> {
                         );
                     }
 
-                    if ui.button("(Debug) Add Card to Hand").clicked() {
+                    if ui.button("(Debug) Add Card to Hand").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num5)))
+                    {
                         adding_card = Some(String::default());
                     }
                 });
@@ -429,6 +444,7 @@ async fn main() -> anyhow::Result<()> {
 
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.set_enabled(to_resolve.is_none());
+
                 let size = ui.max_rect();
                 tree.compute_layout(
                     root,
@@ -468,7 +484,9 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                if left_clicked.take().is_some() {
+                if left_clicked.take().is_some()
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Enter)))
+                {
                     cleanup_stack(
                         &mut db,
                         &mut all_players,
@@ -771,7 +789,9 @@ async fn main() -> anyhow::Result<()> {
                             })
                         });
 
-                    if !open && resolving.can_cancel() {
+                    if (!open || ctx.input(|input| input.key_released(egui::Key::Escape)))
+                        && resolving.can_cancel()
+                    {
                         to_resolve = None;
                     } else if let Some(choice) = choice {
                         loop {
@@ -846,7 +866,7 @@ async fn main() -> anyhow::Result<()> {
                         });
                     });
 
-                if !open {
+                if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
                     inspecting_card = None;
                 }
             }
