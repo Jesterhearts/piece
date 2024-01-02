@@ -1,7 +1,7 @@
 name: Might of the Ancestors
 typeline: Enchantment
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 triggered_abilities:
   - trigger:
       source:

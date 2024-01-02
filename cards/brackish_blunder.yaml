@@ -1,7 +1,7 @@
 name: Brackish Blunder
 typeline: Instant
 cost:
-  mana_costs: '{1}{U}'
+  mana_cost: '{1}{U}'
 oracle_text: Return target creature to its owner's hand. If it was tapped, create
   a map token.
 effects:

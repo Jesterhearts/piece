@@ -1,7 +1,7 @@
 name: Quicksand Whirlpool
 typeline: Instant
 cost:
-  mana_costs: '{5}{W}'
+  mana_cost: '{5}{W}'
 cost_reducer:
   reduction:
     cost: !Generic

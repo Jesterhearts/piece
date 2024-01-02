@@ -1,7 +1,7 @@
 name: Petrify
 typeline: Enchantment - Aura
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 enchant:
   modifiers:
     - modifier:

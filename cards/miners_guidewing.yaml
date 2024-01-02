@@ -1,7 +1,7 @@
 name: Miner's Guidewing
 typeline: Creature - Bird
 cost:
-  mana_costs: '{W}'
+  mana_cost: '{W}'
 triggered_abilities:
   - trigger:
       source:

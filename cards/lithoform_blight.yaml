@@ -1,7 +1,7 @@
 name: Lithoform Blight
 typeline: Enchantment - Aura
 cost:
-  mana_costs: '{1}{B}'
+  mana_cost: '{1}{B}'
 oracle_text: |-
   Enchant land
   When Lithoform Blight enters the battlefield, draw a card.

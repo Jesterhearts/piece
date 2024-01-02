@@ -1,7 +1,7 @@
 name: Clay-Fired Bricks
 typeline: Artifact
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 etb_abilities:
   - oracle_text: When Clay-Fired bricks enters the battlefield, search your library
       for a basic plains card reveal it, put it into your hand, then shuffle
@@ -20,7 +20,7 @@ etb_abilities:
       count: 2
 activated_abilities:
   - cost:
-      mana_costs: '{5}{W}{W}'
+      mana_cost: '{5}{W}{W}'
       additional_costs:
         - cost: !ExileCard
             restrictions:

@@ -1,7 +1,7 @@
 name: Bat Colony
 typeline: Enchantment
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 etb_abilities:
   - oracle_text: When Bat Colony enters the battlefield, create a 1/1 black Bat creature
       token with flying for each mana from a Cave spent to cast it.

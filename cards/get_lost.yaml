@@ -1,7 +1,7 @@
 name: Get Lost
 typeline: Instant
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 oracle_text: Destroy target creature, enchantment, or planeswalker. Its controller
   creates two map tokens.
 effects:

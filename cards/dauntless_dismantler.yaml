@@ -1,7 +1,7 @@
 name: Dauntless Dismantler
 typeline: Creature - Human Artificer
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 oracle_text: Artifacts your opponents control enter the battlefield tapped.
 static_abilities:
   - ability: !ForceEtbTapped
@@ -13,7 +13,7 @@ static_abilities:
               - type_: !Artifact {}
 activated_abilities:
   - cost:
-      mana_costs: '{X}{X}{W}'
+      mana_cost: '{X}{X}{W}'
       additional_costs:
         - cost: !SacrificeSource {}
     effects:

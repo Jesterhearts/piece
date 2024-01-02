@@ -1,10 +1,10 @@
 name: Envoy of Okinec Ahau
 typeline: Creature - Cat Advisor
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 activated_abilities:
   - cost:
-      mana_costs: '{4}{W}'
+      mana_cost: '{4}{W}'
     effects:
       - effect: !CreateToken
           token: !Creature

@@ -3,7 +3,7 @@ typeline: Enchantment
 oracle_text: '{R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.'
 activated_abilities:
   - cost:
-      mana_costs: '{R}'
+      mana_cost: '{R}'
       additional_costs:
         - cost: !SacrificePermanent
             restrictions:

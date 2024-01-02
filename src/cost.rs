@@ -50,7 +50,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: parse_mana_cost(&value.mana_costs)?,
+            mana_cost: parse_mana_cost(&value.mana_cost)?,
             additional_cost: value
                 .additional_costs
                 .iter()
@@ -248,7 +248,7 @@ impl TryFrom<&protogen::cost::Ward> for Ward {
 
     fn try_from(value: &protogen::cost::Ward) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: parse_mana_cost(&value.mana_costs)?,
+            mana_cost: parse_mana_cost(&value.mana_cost)?,
         })
     }
 }
@@ -322,7 +322,7 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
 
     fn try_from(value: &protogen::cost::AbilityCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: parse_mana_cost(&value.mana_costs)?,
+            mana_cost: parse_mana_cost(&value.mana_cost)?,
             tap: value.tap.unwrap_or_default(),
             additional_cost: value
                 .additional_costs

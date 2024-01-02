@@ -1,6 +1,6 @@
 name: Alpine Grizzly
 typeline: Creature - Bear
 cost:
-  mana_costs: '{2}{G}'
+  mana_cost: '{2}{G}'
 power: 4
 toughness: 2

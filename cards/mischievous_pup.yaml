@@ -1,7 +1,7 @@
 name: Mischievous Pup
 typeline: Creature - Dog
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 etb_abilities:
   - effect: !ReturnTargetToHand
       restrictions:

@@ -1,7 +1,7 @@
 name: Allosaurus Shepherd
 typeline: Creature - Elf Shaman
 cost:
-  mana_costs: '{G}'
+  mana_cost: '{G}'
 cannot_be_countered: true
 oracle_text: |-
   This spell can't be countered.
@@ -13,7 +13,7 @@ static_abilities:
             controller: !Self_ {}
 activated_abilities:
   - cost:
-      mana_costs: '{4}{G}{G}'
+      mana_cost: '{4}{G}{G}'
     effects:
       - effect: !BattlefieldModifier
           modifier:

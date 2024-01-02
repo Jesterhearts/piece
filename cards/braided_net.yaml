@@ -1,7 +1,7 @@
 name: Braided Net
 typeline: Artifact
 cost:
-  mana_costs: '{2}{U}'
+  mana_cost: '{2}{U}'
 etb_abilities:
   - oracle_text: Braided Net enters the battlefield with three net counters on it.
     effect: !TargetGainsCounters

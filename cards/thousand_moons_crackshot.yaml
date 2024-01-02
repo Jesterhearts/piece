@@ -1,7 +1,7 @@
 name: Thousand Moons Crackshot
 typeline: Creature - Human Soldier
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 triggered_abilities:
   - trigger:
       source:
@@ -15,7 +15,7 @@ triggered_abilities:
     effects:
       - effect: !PayCostThen
           cost:
-            mana_costs: '{2}{W}'
+            mana_cost: '{2}{W}'
           effects:
             - effect: !TapTarget
                 restrictions:

@@ -1,7 +1,7 @@
 name: Family Reunion
 typeline: Instant
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 modes:
   - effects:
       - oracle_text: Creatures you control get +1/+1 until end of turn.

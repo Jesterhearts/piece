@@ -2,7 +2,7 @@ name: Hidden Courtyard
 typeline: Land - Cave
 activated_abilities:
   - cost:
-      mana_costs: '{4}{W}'
+      mana_cost: '{4}{W}'
       tap: true
       additional_costs:
         - cost: !SacrificeSource {}

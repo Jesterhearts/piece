@@ -1,7 +1,7 @@
 name: Spring-Loaded Sawblades
 typeline: Artifact
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 etb_abilities:
   - oracle_text: When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage
       to target tapped creature an opponent controls.
@@ -17,7 +17,7 @@ etb_abilities:
         - restriction: !OnBattlefield {}
 activated_abilities:
   - cost:
-      mana_costs: '{3}{W}'
+      mana_cost: '{3}{W}'
       additional_costs:
         - cost: !ExileCard
             restrictions:

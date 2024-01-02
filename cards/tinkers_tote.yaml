@@ -1,7 +1,7 @@
 name: Tinker's Tote
 typeline: Artifact
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 etb_abilities:
   - oracle_text: When Tinker's Tote enters the battlefield, create two 1/1 colorless
       Gnome artifact creature tokens.
@@ -13,7 +13,7 @@ etb_abilities:
         toughness: 1
 activated_abilities:
   - cost:
-      mana_costs: '{W}'
+      mana_cost: '{W}'
       additional_costs:
         - cost: !SacrificeSource {}
     effects:

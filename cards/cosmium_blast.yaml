@@ -1,7 +1,7 @@
 name: Cosmium Blast
 typeline: Instant
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 oracle_text: Cosmium Blast deals 4 damage to target attacking or blocking creature.
 effects:
   - effect: !DealDamage

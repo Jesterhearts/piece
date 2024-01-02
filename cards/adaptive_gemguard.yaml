@@ -1,7 +1,7 @@
 name: Adaptive Gemguard
 typeline: Artifact Creature - Gnome
 cost:
-  mana_costs: '{3}{W}'
+  mana_cost: '{3}{W}'
 activated_abilities:
   - cost:
       additional_costs:

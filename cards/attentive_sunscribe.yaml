@@ -1,7 +1,7 @@
 name: Attentive Sunscribe
 typeline: Artifact Creature - Gnome
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 triggered_abilities:
   - trigger:
       source:

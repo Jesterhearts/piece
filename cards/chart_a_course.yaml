@@ -1,7 +1,7 @@
 name: Chart a Course
 typeline: Sorcery
 cost:
-  mana_costs: '{1}{U}'
+  mana_cost: '{1}{U}'
 oracle_text: Draw two cards. Then discard a card unless you attacked this turn.
 effects:
   - effect: !ControllerDrawCards

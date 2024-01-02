@@ -1,7 +1,7 @@
 name: Kutzil's Flanker
 typeline: Creature - Cat Warrior
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 etb_abilities:
   - oracle_text: |-
       When Kutzil's Flanker enters the battlefield choose one -

@@ -1,7 +1,7 @@
 name: Ancestral Reminiscence
 typeline: Sorcery
 cost:
-  mana_costs: '{3}{U}'
+  mana_cost: '{3}{U}'
 oracle_text: Draw three cards, then discard a card.
 effects:
   - effect: !ControllerDrawCards

@@ -1,7 +1,7 @@
 name: Abzan Runemark
 typeline: Enchantment - Aura
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 oracle_text: |-
   Enchant creature
   Enchanted creature gets +2/+2

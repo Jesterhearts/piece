@@ -1,7 +1,7 @@
 name: Guardian of the Great Door
 typeline: Creature - Angel
 cost:
-  mana_costs: '{W}{W}'
+  mana_cost: '{W}{W}'
   additional_costs:
     - cost: !TapPermanent
         restrictions:

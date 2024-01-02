@@ -1,10 +1,10 @@
 name: Vanguard of the Rose
 typeline: Creature - Vampire Knight
 cost:
-  mana_costs: '{1}{W}'
+  mana_cost: '{1}{W}'
 activated_abilities:
   - cost:
-      mana_costs: '{1}'
+      mana_cost: '{1}'
       additional_costs:
         - cost: !SacrificePermanent
             restrictions:

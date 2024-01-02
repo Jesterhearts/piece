@@ -1,7 +1,7 @@
 name: Glowspore Shaman
 typeline: Creature - Elf Shaman
 cost:
-  mana_costs: '{B}{G}'
+  mana_cost: '{B}{G}'
 apply_individually: true
 etb_abilities:
   - oracle_text: When Glowspore Shaman enters the battlefield, mill three cards.

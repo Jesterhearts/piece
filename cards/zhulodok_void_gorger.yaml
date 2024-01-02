@@ -1,7 +1,7 @@
 name: Zhulodok, Void Gorger
 typeline: Legendary Creature - Eldrazi
 cost:
-  mana_costs: '{5}{C}'
+  mana_cost: '{5}{C}'
 static_abilities:
   - ability: !BattlefieldModifier
       modifier:

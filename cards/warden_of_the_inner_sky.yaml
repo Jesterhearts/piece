@@ -1,7 +1,7 @@
 name: Warden of the Inner Sky
 typeline: Creature - Human Soldier
 cost:
-  mana_costs: '{W}'
+  mana_cost: '{W}'
 oracle_text: As long as Warden of the Inner Sky has three or more counters on it,
   it has flying and vigilance.
 static_abilities:

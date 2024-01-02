@@ -1,7 +1,7 @@
 name: Clone
 typeline: Creature - Shapeshifter
 cost:
-  mana_costs: '{3}{U}'
+  mana_cost: '{3}{U}'
 oracle_text: You may have Clone enter the battlefield as a copy of any creature on
   the battlefield.
 replacement_effects:

@@ -1,10 +1,10 @@
 name: Resplendent Angel
 typeline: Creature - Angel
 cost:
-  mana_costs: '{1}{W}{W}'
+  mana_cost: '{1}{W}{W}'
 activated_abilities:
   - cost:
-      mana_costs: '{3}{W}{W}{W}'
+      mana_cost: '{3}{W}{W}{W}'
     effects:
       - effect: !BattlefieldModifier
           modifier:

@@ -1,7 +1,7 @@
 name: Thousand Moons Infantry
 typeline: Creature - Human Soldier
 cost:
-  mana_costs: '{2}{W}'
+  mana_cost: '{2}{W}'
 static_abilities:
   - ability: !UntapEachUntapStep {}
 power: 2

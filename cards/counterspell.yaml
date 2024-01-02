@@ -1,7 +1,7 @@
 name: Counterspell
 typeline: Instant
 cost:
-  mana_costs: '{U}{U}'
+  mana_cost: '{U}{U}'
 oracle_text: Counter target spell.
 effects:
   - effect: !CounterSpell {}

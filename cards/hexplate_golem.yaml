@@ -1,6 +1,6 @@
 name: Hexplate Golem
 typeline: Artifact Creature - Golem
 cost:
-  mana_costs: '{7}'
+  mana_cost: '{7}'
 power: 5
 toughness: 7
