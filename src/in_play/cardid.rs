@@ -37,12 +37,12 @@ use crate::{
     },
     in_play::{
         self, cast_from, current_turn, descend, exile_reason, just_cast, life_gained_this_turn,
-        times_descended_this_turn, AbilityId, Active, Attacking, AuraId, CastFrom, Chosen,
-        CounterId, CurrentTurn, Database, EnteredBattlefieldTurn, EntireBattlefield, ExileReason,
-        ExiledWith, FaceDown, Global, InExile, InGraveyard, InHand, InLibrary, InStack, IsToken,
-        LeftBattlefieldTurn, Manifested, ModifierId, ModifierSeq, Modifiers, Modifying,
-        OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId, UniqueId,
-        NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
+        number_of_attackers_this_turn, times_descended_this_turn, AbilityId, Active, Attacking,
+        AuraId, CastFrom, Chosen, CounterId, CurrentTurn, Database, EnteredBattlefieldTurn,
+        EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile, InGraveyard, InHand,
+        InLibrary, InStack, IsToken, LeftBattlefieldTurn, Manifested, ModifierId, ModifierSeq,
+        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId,
+        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     log::{LeaveReason, Log, LogId},
     player::{
@@ -1425,6 +1425,11 @@ impl CardId {
                         .filter(|card| card.passes_restrictions(db, source, restrictions))
                         .count();
                     if entered_this_turn < *count {
+                        return false;
+                    }
+                }
+                Restriction::AttackedThisTurn => {
+                    if number_of_attackers_this_turn(db) < 1 {
                         return false;
                     }
                 }

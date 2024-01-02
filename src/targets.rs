@@ -212,6 +212,7 @@ impl From<&protogen::targets::restriction::controller::Controller> for Controlle
 
 #[derive(Debug, Clone)]
 pub(crate) enum Restriction {
+    AttackedThisTurn,
     Attacking,
     AttackingOrBlocking,
     CastFromHand,
@@ -259,6 +260,7 @@ pub(crate) enum Restriction {
 impl Restriction {
     pub(crate) fn text(&self) -> String {
         match self {
+            Restriction::AttackedThisTurn => "attacked this turn".to_string(),
             Restriction::Attacking => "attacking".to_string(),
             Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),
             Restriction::CastFromHand => "cast from your hand".to_string(),
@@ -359,6 +361,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
 
     fn try_from(value: &protogen::targets::restriction::Restriction) -> Result<Self, Self::Error> {
         match value {
+            protogen::targets::restriction::Restriction::AttackedThisTurn(_) => {
+                Ok(Self::AttackedThisTurn)
+            }
             protogen::targets::restriction::Restriction::Attacking(_) => Ok(Self::Attacking),
             protogen::targets::restriction::Restriction::AttackingOrBlocking(_) => {
                 Ok(Self::AttackingOrBlocking)

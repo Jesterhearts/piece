@@ -1,0 +1,16 @@
+name: Chart a Course
+cost:
+  mana_costs:
+    - cost: !Generic
+        count: 1
+    - cost: !Blue {}
+oracle_text: Draw two cards. Then discard a card unless you attacked this turn.
+types:
+  - type_: !Sorcery {}
+effects:
+  - effect: !ControllerDrawCards
+      count: 2
+  - effect: !ControllerDiscards
+      count: 1
+      unless:
+        - restriction: !AttackedThisTurn {}

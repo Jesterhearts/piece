@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use bevy_ecs::system::Resource;
 use indexmap::IndexMap;
+use tracing::Level;
 
 use crate::{
     effects::target_gains_counters::Counter,
@@ -111,6 +112,7 @@ impl Log {
             ability,
             controller: ability.controller(db),
         };
+        event!(Level::INFO, ?entry);
         db.resource_mut::<Self>().entries.push((id, entry))
     }
 
@@ -119,6 +121,7 @@ impl Log {
             spell,
             controller: spell.controller(db),
         };
+        event!(Level::INFO, ?entry);
         db.resource_mut::<Self>().entries.push((id, entry))
     }
 
@@ -127,13 +130,15 @@ impl Log {
             source: trigger.listener(db),
             controller: trigger.listener(db).controller(db),
         };
+        event!(Level::INFO, ?entry);
         db.resource_mut::<Self>().entries.push((id, entry))
     }
 
     pub(crate) fn new_turn(db: &mut Database, player: Owner) {
         let mut log = db.resource_mut::<Self>();
-        log.entries
-            .push((LogId::new(), LogEntry::NewTurn { player }));
+        let entry = LogEntry::NewTurn { player };
+        event!(Level::INFO, ?entry);
+        log.entries.push((LogId::new(), entry));
         log.last_turn = log.entries.len();
     }
 
@@ -183,6 +188,7 @@ impl Log {
             turn: current_turn(db).turn,
         };
 
+        event!(Level::INFO, ?entry);
         db.resource_mut::<Self>().entries.push((id, entry));
     }
 }

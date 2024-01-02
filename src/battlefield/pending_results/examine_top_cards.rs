@@ -50,8 +50,8 @@ impl ExamineCards {
             self.placing += 1;
             return false;
         } else if choice.is_none() {
-            let (destination, _) = self.destinations.get_index(self.placing).unwrap();
-            for card in self.cards.drain(..) {
+            let (destination, count) = self.destinations.get_index(self.placing).unwrap();
+            for card in self.cards.drain(..).take(*count) {
                 self.cards_to_location
                     .entry(*destination)
                     .or_default()
@@ -71,13 +71,14 @@ impl ExamineCards {
             self.placing += 1;
         }
 
-        self.cards.is_empty()
+        self.cards.is_empty() || self.placing == self.destinations.len()
     }
 }
 
 impl PendingResult for ExamineCards {
     fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
-        true
+        (self.placing < self.destinations.len() - 1)
+            || (*self.destinations.get_index(self.placing).unwrap().1 >= self.cards.len())
     }
 
     fn options(&self, db: &mut Database, _all_players: &AllPlayers) -> Vec<(usize, String)> {

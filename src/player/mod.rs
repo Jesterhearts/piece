@@ -19,8 +19,8 @@ use crate::{
     deck::Deck,
     effects::replacing,
     in_play::{
-        current_turn, just_cast, life_gained_this_turn, times_descended_this_turn, CardId,
-        Database, InHand, ReplacementEffectId,
+        current_turn, just_cast, life_gained_this_turn, number_of_attackers_this_turn,
+        times_descended_this_turn, CardId, Database, InHand, ReplacementEffectId,
     },
     mana::{Mana, ManaCost, ManaRestriction},
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
@@ -193,6 +193,11 @@ impl Owner {
                         .filter(|card| card.passes_restrictions(db, *card, restrictions))
                         .count();
                     if entered_this_turn < *count {
+                        return false;
+                    }
+                }
+                Restriction::AttackedThisTurn => {
+                    if number_of_attackers_this_turn(db) < 1 {
                         return false;
                     }
                 }

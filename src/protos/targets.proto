@@ -64,6 +64,7 @@ message Location {
 }
 
 message Restriction {
+  message AttackedThisTurn {}
   message Attacking {}
   message AttackingOrBlocking {}
   message CastFromHand {}
@@ -133,33 +134,34 @@ message Restriction {
   }
 
   oneof restriction {
-    Attacking attacking = 2;
-    AttackingOrBlocking attacking_or_blocking = 3;
-    CastFromHand cast_from_hand = 4;
-    Cmc cmc = 5;
-    Controller controller = 6;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 7;
-    ControllerHandEmpty controller_hand_empty = 8;
-    DescendedThisTurn descended_this_turn = 9;
-    DuringControllersTurn during_controllers_turn = 10;
-    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 11;
-    InGraveyard in_graveyard = 12;
-    JustCast just_cast = 13;
-    LifeGainedThisTurn life_gained_this_turn = 14;
-    Locations location = 15;
-    ManaSpentFromSource mana_spent_from_source = 16;
-    NotChosen not_chosen = 17;
-    NotKeywords not_keywords = 18;
-    NotOfType not_of_type = 19;
-    NotSelf not_self = 20;
-    NumberOfCountersOnThis number_of_counters_on_this = 21;
-    OfColor of_color = 22;
-    OfType of_type = 23;
-    OnBattlefield on_battlefield = 24;
-    Power power = 25;
-    Self self = 26;
-    SourceCast source_cast = 27;
-    Tapped tapped = 28;
-    Toughness toughness = 29;
+    AttackedThisTurn attacked_this_turn = 2;
+    Attacking attacking = 3;
+    AttackingOrBlocking attacking_or_blocking = 4;
+    CastFromHand cast_from_hand = 5;
+    Cmc cmc = 6;
+    Controller controller = 7;
+    ControllerControlsBlackOrGreen controller_controls_black_or_green = 8;
+    ControllerHandEmpty controller_hand_empty = 9;
+    DescendedThisTurn descended_this_turn = 10;
+    DuringControllersTurn during_controllers_turn = 11;
+    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 12;
+    InGraveyard in_graveyard = 13;
+    JustCast just_cast = 14;
+    LifeGainedThisTurn life_gained_this_turn = 15;
+    Locations location = 16;
+    ManaSpentFromSource mana_spent_from_source = 17;
+    NotChosen not_chosen = 18;
+    NotKeywords not_keywords = 19;
+    NotOfType not_of_type = 20;
+    NotSelf not_self = 21;
+    NumberOfCountersOnThis number_of_counters_on_this = 22;
+    OfColor of_color = 23;
+    OfType of_type = 24;
+    OnBattlefield on_battlefield = 25;
+    Power power = 26;
+    Self self = 27;
+    SourceCast source_cast = 28;
+    Tapped tapped = 29;
+    Toughness toughness = 30;
   }
 }

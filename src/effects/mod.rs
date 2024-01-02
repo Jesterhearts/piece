@@ -522,21 +522,17 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Box::new(CantAttackThisTurn::try_from(value)?),
             ))),
             protogen::effects::effect::Effect::Cascade(_) => Ok(Self(&Cascade)),
-            protogen::effects::effect::Effect::ControllerDiscards(value) => {
-                Ok(Self(Box::leak(Box::new(ControllerDiscards {
-                    count: usize::try_from(value.count)?,
-                }))))
-            }
+            protogen::effects::effect::Effect::ControllerDiscards(value) => Ok(Self(Box::leak(
+                Box::new(ControllerDiscards::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::ControllerDrawCards(value) => {
                 Ok(Self(Box::leak(Box::new(ControllerDrawsCards {
                     count: usize::try_from(value.count)?,
                 }))))
             }
-            protogen::effects::effect::Effect::ControllerLosesLife(value) => {
-                Ok(Self(Box::leak(Box::new(ControllerLosesLife {
-                    count: usize::try_from(value.count)?,
-                }))))
-            }
+            protogen::effects::effect::Effect::ControllerLosesLife(value) => Ok(Self(Box::leak(
+                Box::new(ControllerLosesLife::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(_) => {
                 Ok(Self(&CopyOfAnyCreatureNonTargeting))
             }

@@ -42,6 +42,7 @@ message Cascade {}
 
 message ControllerDiscards {
   int32 count = 1;
+  repeated targets.Restriction unless = 2;
 }
 
 message ControllerDrawCards {
@@ -50,6 +51,7 @@ message ControllerDrawCards {
 
 message ControllerLosesLife {
   int32 count = 1;
+  repeated targets.Restriction unless = 2;
 }
 
 message CopyOfAnyCreatureNonTargeting {}
