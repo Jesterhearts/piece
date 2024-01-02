@@ -201,6 +201,11 @@ impl Owner {
                         return false;
                     }
                 }
+                Restriction::Threshold => {
+                    if Battlefield::number_of_cards_in_graveyard(db, self.into()) < 7 {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -401,7 +406,7 @@ impl Player {
 
                     let controller = replacement.source(db).controller(db);
                     for effect in replacement.effects(db) {
-                        effect.into_effect(db, controller).replace_draw(
+                        effect.effect.replace_draw(
                             self,
                             db,
                             replacements,

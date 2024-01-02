@@ -519,8 +519,10 @@ impl Stack {
             .into_iter()
             .zip((&mut targets).chain(std::iter::repeat(vec![])))
         {
-            let effect = effect.into_effect(db, controller);
-            if targets.len() != effect.needs_targets(db) && effect.needs_targets(db) != 0 {
+            let effect = effect.effect;
+            if targets.len() != effect.needs_targets(db, source)
+                && effect.needs_targets(db, source) != 0
+            {
                 let valid_targets =
                     effect.valid_targets(db, source, controller, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
@@ -531,12 +533,16 @@ impl Stack {
                 continue;
             }
 
-            if effect.wants_targets(db) > 0 {
+            if effect.wants_targets(db, source) > 0 {
                 let valid_targets = effect
                     .valid_targets(db, source, controller, &HashSet::default())
                     .into_iter()
                     .collect::<HashSet<_>>();
                 if !targets.iter().all(|target| valid_targets.contains(target)) {
+                    warn!(
+                        "Did not match targets: {:?} vs valid {:?}",
+                        targets, valid_targets
+                    );
                     if let Some(resolving_card) = resolving_card {
                         let mut results = PendingResults::default();
                         results.push_settled(ActionResult::StackToGraveyard(resolving_card));
@@ -606,7 +612,7 @@ impl Stack {
         let mut targets = vec![];
         let controller = trigger.listener(db).controller(db);
         for effect in trigger.effects(db) {
-            let effect = effect.into_effect(db, controller);
+            let effect = effect.effect;
             targets.push(effect.valid_targets(
                 db,
                 trigger.listener(db),
@@ -672,13 +678,9 @@ fn add_card_to_stack(
 
         let effects = card.effects(db);
         if effects.len() == 1 {
-            let effect = effects
-                .into_iter()
-                .exactly_one()
-                .unwrap()
-                .into_effect(db, controller);
+            let effect = effects.into_iter().exactly_one().unwrap().effect;
             let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
-            if valid_targets.len() < effect.needs_targets(db) {
+            if valid_targets.len() < effect.needs_targets(db, card) {
                 return PendingResults::default();
             }
 
@@ -689,7 +691,7 @@ fn add_card_to_stack(
             ));
         } else {
             for effect in card.effects(db) {
-                let effect = effect.into_effect(db, controller);
+                let effect = effect.effect;
                 let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),

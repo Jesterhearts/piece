@@ -11,7 +11,7 @@ use ariadne::{Label, Report, ReportKind, Source};
 use include_dir::{include_dir, Dir, File};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{battlefield::Battlefield, card::Card};
+use crate::{ card::Card};
 
 #[cfg(test)]
 mod _tests;

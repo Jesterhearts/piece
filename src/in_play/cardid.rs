@@ -1134,21 +1134,20 @@ impl CardId {
             .chain(
                 effects
                     .into_iter()
-                    .map(|effect| effect.into_effect(db, controller).needs_targets(db)),
+                    .map(|effect| effect.effect.needs_targets(db, self)),
             )
             .collect_vec()
     }
 
-    pub(crate) fn wants_targets(&self, db: &mut Database) -> Vec<usize> {
+    pub(crate) fn wants_targets(self, db: &mut Database) -> Vec<usize> {
         let effects = self.effects(db);
-        let controller = self.controller(db);
         let aura_targets = self.aura(db).map(|_| 1);
         std::iter::once(())
             .filter_map(|()| aura_targets)
             .chain(
                 effects
                     .into_iter()
-                    .map(|effect| effect.into_effect(db, controller).wants_targets(db)),
+                    .map(|effect| effect.effect.wants_targets(db, self)),
             )
             .collect_vec()
     }
@@ -1430,6 +1429,11 @@ impl CardId {
                 }
                 Restriction::AttackedThisTurn => {
                     if number_of_attackers_this_turn(db) < 1 {
+                        return false;
+                    }
+                }
+                Restriction::Threshold => {
+                    if Battlefield::number_of_cards_in_graveyard(db, self.controller(db)) < 7 {
                         return false;
                     }
                 }
@@ -1823,7 +1827,7 @@ impl CardId {
 
         let controller = self.controller(db);
         for effect in self.effects(db) {
-            let effect = effect.into_effect(db, controller);
+            let effect = effect.effect;
             targets.push(effect.valid_targets(db, self, controller, already_chosen));
         }
 
@@ -1845,7 +1849,7 @@ impl CardId {
         let controller = self.controller(db);
         if !ability.apply_to_self() {
             for effect in ability.into_effects() {
-                let effect = effect.into_effect(db, controller);
+                let effect = effect.effect;
                 targets.push(effect.valid_targets(db, self, controller, already_chosen));
             }
         } else {

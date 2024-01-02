@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::choose_for_each_player::ChooseForEachPlayer,
-    effects::{AnyEffect, Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors},
     in_play::{all_cards, target_from_location, Database},
     player::AllPlayers,
     protogen,
@@ -14,7 +14,7 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct ForEachPlayerChooseThen {
     restrictions: Vec<Restriction>,
-    effects: Vec<AnyEffect>,
+    effects: Vec<Effect>,
 }
 
 impl TryFrom<&protogen::effects::ForEachPlayerChooseThen> for ForEachPlayerChooseThen {
@@ -30,18 +30,26 @@ impl TryFrom<&protogen::effects::ForEachPlayerChooseThen> for ForEachPlayerChoos
             effects: value
                 .effects
                 .iter()
-                .map(AnyEffect::try_from)
+                .map(Effect::try_from)
                 .collect::<anyhow::Result<_>>()?,
         })
     }
 }
 
 impl EffectBehaviors for ForEachPlayerChooseThen {
-    fn needs_targets(&'static self, db: &mut Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         AllPlayers::all_players_in_db(db).len()
     }
 
-    fn wants_targets(&'static self, db: &mut Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         AllPlayers::all_players_in_db(db).len()
     }
 
@@ -102,9 +110,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         }
 
         for effect in self.effects.iter() {
-            effect
-                .effect(db, controller)
-                .push_pending_behavior(db, source, controller, results);
+            effect.push_pending_behavior(db, source, controller, results);
         }
     }
 }

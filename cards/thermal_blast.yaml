@@ -10,18 +10,17 @@ oracle_text: |-
   Thermal Blast deals 3 damage to target creature.
   Threshold - Thermal Blast deals 5 damage instead if seven or more cards are in your graveyard.
 effects:
-  - threshold:
-      effect: !DealDamage
-        quantity: 5
-        restrictions:
-          - restriction: !OfType
-              types:
-                - type_: !Creature {}
-    effect: !DealDamage
-      quantity: 3
-      restrictions:
-        - restriction: !OfType
-            types:
-              - type_: !Creature {}
+  - effect: !IfThenElse
+      if_:
+        - restriction: !Threshold {}
+      then:
+        effect: !DealDamage
+          quantity: 5
+      else_:
+        effect: !DealDamage
+          quantity: 3
 restrictions:
   - restriction: !OnBattlefield {}
+  - restriction: !OfType
+      types:
+        - type_: !Creature {}

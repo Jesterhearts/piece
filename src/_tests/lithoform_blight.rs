@@ -12,6 +12,17 @@ use crate::{
 
 #[test]
 fn works() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);

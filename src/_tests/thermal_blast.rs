@@ -12,6 +12,17 @@ use crate::{
 
 #[test]
 fn damages_target() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 
@@ -32,6 +43,7 @@ fn damages_target() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
+    dbg!(&results);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
@@ -46,6 +58,17 @@ fn damages_target() -> anyhow::Result<()> {
 
 #[test]
 fn damages_target_threshold() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 
@@ -86,6 +109,17 @@ fn damages_target_threshold() -> anyhow::Result<()> {
 
 #[test]
 fn damages_target_threshold_other_player() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 

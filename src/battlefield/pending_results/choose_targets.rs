@@ -111,13 +111,13 @@ impl ChooseTargets {
     }
 
     pub(crate) fn choices_complete(&self, db: &mut Database) -> bool {
-        self.chosen_targets_count() >= self.target_source.wants_targets(db)
+        self.chosen_targets_count() >= self.target_source.wants_targets(db, self.card)
             || self.chosen_targets_count() >= self.valid_targets.len()
             || (self.can_skip(db) && self.skipping_remainder)
     }
 
     pub(crate) fn can_skip(&self, db: &mut Database) -> bool {
-        self.chosen_targets_count() >= self.target_source.needs_targets(db)
+        self.chosen_targets_count() >= self.target_source.needs_targets(db, self.card)
             || self.chosen_targets_count() >= self.valid_targets.len()
     }
 }

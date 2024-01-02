@@ -111,16 +111,16 @@ pub(crate) enum TargetSource {
 }
 
 impl TargetSource {
-    fn wants_targets(&self, db: &mut Database) -> usize {
+    fn wants_targets(&self, db: &mut Database, source: CardId) -> usize {
         match self {
-            TargetSource::Effect(effect) => effect.wants_targets(db),
+            TargetSource::Effect(effect) => effect.wants_targets(db, source),
             TargetSource::Aura(_) => 1,
         }
     }
 
-    fn needs_targets(&self, db: &mut Database) -> usize {
+    fn needs_targets(&self, db: &mut Database, source: CardId) -> usize {
         match self {
-            TargetSource::Effect(effect) => effect.needs_targets(db),
+            TargetSource::Effect(effect) => effect.needs_targets(db, source),
             TargetSource::Aura(_) => 1,
         }
     }

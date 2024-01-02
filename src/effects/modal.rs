@@ -30,11 +30,19 @@ impl EffectBehaviors for Modal {
         self.modes.clone()
     }
 
-    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 
-    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 
@@ -48,7 +56,7 @@ impl EffectBehaviors for Modal {
         if let Ok(mode) = results.chosen_modes().iter().exactly_one() {
             for effect in self.modes[*mode].effects.iter() {
                 effect
-                    .effect(db, controller)
+                    .effect
                     .push_pending_behavior(db, source, controller, results);
             }
         } else {

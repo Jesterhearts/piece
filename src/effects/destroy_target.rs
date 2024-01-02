@@ -28,11 +28,19 @@ impl TryFrom<&protogen::effects::DestroyTarget> for DestroyTarget {
 }
 
 impl EffectBehaviors for DestroyTarget {
-    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         1
     }
 
-    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         1
     }
 

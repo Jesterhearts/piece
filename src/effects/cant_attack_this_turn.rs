@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct CantAttackThisTurn {
+pub(crate) struct CantAttackThisTurn {
     retrictions: Vec<Restriction>,
 }
 
@@ -25,11 +25,19 @@ impl TryFrom<&protogen::effects::CantAttackThisTurn> for CantAttackThisTurn {
 }
 
 impl EffectBehaviors for CantAttackThisTurn {
-    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 
-    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 

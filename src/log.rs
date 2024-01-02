@@ -181,7 +181,7 @@ impl Log {
                     ability
                         .effects(db)
                         .into_iter()
-                        .any(|effect| effect.into_effect(db, card.controller(db)).is_equip())
+                        .any(|effect| effect.effect.is_equip())
                 })
             }),
             had_counters: CounterId::all_counters_on(db, card),

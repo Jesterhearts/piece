@@ -379,10 +379,9 @@ impl AbilityId {
     }
 
     pub(crate) fn needs_targets(self, db: &mut Database) -> Vec<usize> {
-        let controller = self.original(db).controller(db);
         self.effects(db)
             .into_iter()
-            .map(|effect| effect.needs_targets(db, controller))
+            .map(|effect| effect.effect.needs_targets(db, self.source(db)))
             .collect_vec()
     }
 
@@ -391,7 +390,7 @@ impl AbilityId {
         let controller = self.original(db).controller(db);
         self.effects(db)
             .into_iter()
-            .map(|effect| effect.effect(db, controller).wants_targets(db))
+            .map(|effect| effect.effect.wants_targets(db, self.source(db)))
             .collect_vec()
     }
 
@@ -470,7 +469,7 @@ impl AbilityId {
                     || ability
                         .effects
                         .iter()
-                        .any(|effect| effect.effect(db, controller).is_sorcery_speed());
+                        .any(|effect| effect.effect.is_sorcery_speed());
                 if is_sorcery {
                     if controller != turn.active_player() {
                         return false;

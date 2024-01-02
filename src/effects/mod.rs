@@ -23,6 +23,7 @@ pub(crate) mod exile_target_graveyard;
 pub(crate) mod for_each_player_choose_then;
 pub(crate) mod foreach_mana_of_source;
 pub(crate) mod gain_life;
+pub(crate) mod if_then_else;
 pub(crate) mod mill;
 pub(crate) mod modal;
 pub(crate) mod modify_target;
@@ -84,6 +85,7 @@ use crate::{
         for_each_player_choose_then::ForEachPlayerChooseThen,
         foreach_mana_of_source::ForEachManaOfSource,
         gain_life::GainLife,
+        if_then_else::IfThenElse,
         mill::Mill,
         modal::Modal,
         modify_target::ModifyTarget,
@@ -109,14 +111,13 @@ use crate::{
         untap_target::UntapTarget,
         untap_this::UntapThis,
     },
-    in_play::{self, CardId, Database, OnBattlefield, ReplacementEffectId},
+    in_play::{self, Database, OnBattlefield, ReplacementEffectId},
     newtype_enum::newtype_enum,
     player::{AllPlayers, Controller, Player},
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
     types::{Subtype, Type},
-    Battlefield,
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -203,7 +204,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
 }
 
 #[derive(Debug, Clone)]
-pub struct NumberOfPermanentsMatching {
+pub(crate) struct NumberOfPermanentsMatching {
     pub(crate) restrictions: Vec<Restriction>,
 }
 
@@ -226,7 +227,7 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatc
 }
 
 impl NumberOfPermanentsMatching {
-    pub(crate) fn matching(&self, db: &mut Database, source: CardId) -> usize {
+    pub(crate) fn matching(&self, db: &mut Database, source: crate::in_play::CardId) -> usize {
         in_play::cards::<OnBattlefield>(db)
             .into_iter()
             .filter(|card| card.passes_restrictions(db, source, &self.restrictions))
@@ -405,14 +406,14 @@ pub(crate) trait EffectBehaviors: Debug {
         false
     }
 
-    fn needs_targets(&'static self, db: &mut Database) -> usize;
+    fn needs_targets(&'static self, db: &mut Database, source: crate::in_play::CardId) -> usize;
 
-    fn wants_targets(&'static self, db: &mut Database) -> usize;
+    fn wants_targets(&'static self, db: &mut Database, source: crate::in_play::CardId) -> usize;
 
     fn valid_targets(
         &'static self,
         db: &mut Database,
-        source: CardId,
+        source: crate::in_play::CardId,
         controller: Controller,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
@@ -426,7 +427,7 @@ pub(crate) trait EffectBehaviors: Debug {
     fn push_pending_behavior(
         &'static self,
         db: &mut Database,
-        source: CardId,
+        source: crate::in_play::CardId,
         controller: Controller,
         results: &mut PendingResults,
     );
@@ -434,8 +435,8 @@ pub(crate) trait EffectBehaviors: Debug {
     fn push_behavior_from_top_of_library(
         &'static self,
         db: &Database,
-        source: CardId,
-        target: CardId,
+        source: crate::in_play::CardId,
+        target: crate::in_play::CardId,
         results: &mut PendingResults,
     ) {
         let _ = db;
@@ -450,7 +451,7 @@ pub(crate) trait EffectBehaviors: Debug {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         apply_to_self: bool,
-        source: CardId,
+        source: crate::in_play::CardId,
         controller: Controller,
         results: &mut PendingResults,
     );
@@ -476,9 +477,9 @@ pub(crate) trait EffectBehaviors: Debug {
     fn replace_token_creation(
         &'static self,
         db: &mut Database,
-        source: CardId,
+        source: crate::in_play::CardId,
         replacements: &mut IntoIter<ReplacementEffectId>,
-        token: CardId,
+        token: crate::in_play::CardId,
         modifiers: &[ModifyBattlefield],
         results: &mut PendingResults,
     ) {
@@ -587,6 +588,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::GainLife(value) => {
                 Ok(Self(Box::leak(Box::new(GainLife::try_from(value)?))))
             }
+            protogen::effects::effect::Effect::IfThenElse(value) => {
+                Ok(Self(Box::leak(Box::new(IfThenElse::try_from(value)?))))
+            }
             protogen::effects::effect::Effect::Mill(value) => {
                 Ok(Self(Box::leak(Box::new(Mill::try_from(value)?))))
             }
@@ -651,7 +655,6 @@ pub(crate) struct Effects(pub(crate) Vec<AnyEffect>);
 #[derive(Debug, Clone)]
 pub struct AnyEffect {
     pub(crate) effect: Effect,
-    pub(crate) threshold: Option<Effect>,
     pub(crate) oracle_text: String,
 }
 
@@ -665,43 +668,8 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
                 .and_then(Effect::try_from)?,
-            threshold: value.threshold.as_ref().map_or(Ok(None), |threshold| {
-                threshold
-                    .effect
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
-                    .and_then(Effect::try_from)
-                    .map(Some)
-            })?,
             oracle_text: value.oracle_text.clone(),
         })
-    }
-}
-
-impl AnyEffect {
-    pub(crate) fn effect(&self, db: &mut Database, controller: Controller) -> Effect {
-        if self.threshold.is_some()
-            && Battlefield::number_of_cards_in_graveyard(db, controller) >= 7
-        {
-            self.threshold.as_ref().unwrap().clone()
-        } else {
-            self.effect.clone()
-        }
-    }
-
-    pub(crate) fn into_effect(self, db: &mut Database, controller: Controller) -> Effect {
-        if self.threshold.is_some()
-            && Battlefield::number_of_cards_in_graveyard(db, controller) >= 7
-        {
-            self.threshold.unwrap()
-        } else {
-            self.effect
-        }
-    }
-
-    pub(crate) fn needs_targets(&self, db: &mut Database, controller: Controller) -> usize {
-        let effect = self.effect(db, controller);
-        effect.needs_targets(db)
     }
 }
 

@@ -207,12 +207,10 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
 impl ActivatedAbility {
     pub(crate) fn can_be_played_from_hand(
         &self,
-        db: &mut Database,
-        controller: Controller,
+        _db: &mut Database,
+        _controller: Controller,
     ) -> bool {
-        self.effects
-            .iter()
-            .any(|effect| effect.effect(db, controller).cycling())
+        self.effects.iter().any(|effect| effect.effect.cycling())
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ApplyThenIfWas {
+pub(crate) struct ApplyThenIfWas {
     apply: Vec<Effect>,
     then_if_was: Vec<Restriction>,
     then_apply: Vec<Effect>,
@@ -41,18 +41,26 @@ impl TryFrom<&protogen::effects::ApplyThenIfWas> for ApplyThenIfWas {
 }
 
 impl EffectBehaviors for ApplyThenIfWas {
-    fn needs_targets(&'static self, db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        db: &mut crate::in_play::Database,
+        source: crate::in_play::CardId,
+    ) -> usize {
         self.apply
             .iter()
-            .map(|effect| effect.needs_targets(db))
+            .map(|effect| effect.needs_targets(db, source))
             .max()
             .unwrap()
     }
 
-    fn wants_targets(&'static self, db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        db: &mut crate::in_play::Database,
+        source: crate::in_play::CardId,
+    ) -> usize {
         self.apply
             .iter()
-            .map(|effect| effect.wants_targets(db))
+            .map(|effect| effect.wants_targets(db, source))
             .max()
             .unwrap()
     }

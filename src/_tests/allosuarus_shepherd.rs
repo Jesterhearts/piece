@@ -14,6 +14,17 @@ use crate::{
 
 #[test]
 fn modify_base_p_t_works() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 
@@ -70,6 +81,17 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
 #[test]
 fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 
@@ -104,6 +126,17 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 
 #[test]
 fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 
@@ -142,6 +175,17 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
 #[test]
 fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_ansi(false)
+        .with_line_number(true)
+        .with_file(true)
+        .with_target(false)
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ENTER)
+        .with_writer(std::io::stderr)
+        .try_init();
+
     let cards = load_cards()?;
     let mut db = Database::default();
 

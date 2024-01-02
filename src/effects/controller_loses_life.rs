@@ -31,11 +31,19 @@ impl TryFrom<&protogen::effects::ControllerLosesLife> for ControllerLosesLife {
 }
 
 impl EffectBehaviors for ControllerLosesLife {
-    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 
-    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 

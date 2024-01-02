@@ -275,6 +275,7 @@ impl Battlefield {
             .is_none()
     }
 
+    // TODO this should be a generic method on Owner/Controller
     pub(crate) fn number_of_cards_in_graveyard(db: &mut Database, player: Controller) -> usize {
         let mut query = db.query_filtered::<&Controller, With<InGraveyard>>();
 
@@ -371,7 +372,7 @@ impl Battlefield {
 
             let controller = replacement.source(db).controller(db);
             for effect in replacement.effects(db) {
-                let effect = effect.into_effect(db, controller);
+                let effect = effect.effect;
                 effect.push_pending_behavior(db, source, controller, &mut results);
             }
 
@@ -610,11 +611,11 @@ impl Battlefield {
             let controller = card.controller(db);
 
             for effect in ability.into_effects() {
-                let effect = effect.into_effect(db, controller);
+                let effect = effect.effect;
                 let valid_targets =
                     effect.valid_targets(db, card, controller, results.all_currently_targeted());
 
-                if effect.needs_targets(db) > valid_targets.len() {
+                if effect.needs_targets(db, card) > valid_targets.len() {
                     return PendingResults::default();
                 }
 
@@ -988,7 +989,6 @@ impl Battlefield {
                             },
                             effects: vec![AnyEffect {
                                 effect: Effect(&Cascade),
-                                threshold: None,
                                 oracle_text: Default::default(),
                             }],
                             oracle_text: "Cascade".to_string(),
@@ -1276,7 +1276,6 @@ impl Battlefield {
                                 },
                                 effects: vec![AnyEffect {
                                     effect: Effect(&BattleCry),
-                                    threshold: None,
                                     oracle_text: String::default(),
                                 }],
                                 oracle_text: "Battle cry".to_string(),
@@ -1569,9 +1568,14 @@ pub(crate) fn create_token_copy_with_replacements(
 
             replaced = true;
             for effect in replacement.effects(db) {
-                effect
-                    .into_effect(db, replacement_source.controller(db))
-                    .replace_token_creation(db, source, replacements, copying, modifiers, results);
+                effect.effect.replace_token_creation(
+                    db,
+                    source,
+                    replacements,
+                    copying,
+                    modifiers,
+                    results,
+                );
             }
             break;
         }

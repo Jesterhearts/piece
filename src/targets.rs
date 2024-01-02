@@ -254,6 +254,7 @@ pub(crate) enum Restriction {
     Self_,
     SourceCast,
     Tapped,
+    Threshold,
     Toughness(Comparison),
 }
 
@@ -339,6 +340,7 @@ impl Restriction {
             Restriction::Self_ => "self".to_string(),
             Restriction::SourceCast => "cast".to_string(),
             Restriction::Tapped => "tapped".to_string(),
+            Restriction::Threshold => "threshold".to_string(),
             Restriction::Toughness(toughness) => format!("toughness {}", toughness),
         }
     }
@@ -465,6 +467,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
             protogen::targets::restriction::Restriction::SourceCast(_) => Ok(Self::SourceCast),
             protogen::targets::restriction::Restriction::Tapped(_) => Ok(Self::Tapped),
+            protogen::targets::restriction::Restriction::Threshold(_) => Ok(Self::Threshold),
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),
             ),

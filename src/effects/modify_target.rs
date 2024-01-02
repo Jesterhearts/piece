@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, PendingResults, TargetSource},
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
-    in_play::{self, target_from_location, CardId, Database, ModifierId},
+    in_play::{self, target_from_location, Database, ModifierId},
     player::Controller,
     protogen,
     stack::ActiveTarget,
@@ -22,18 +22,26 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for ModifyTarget {
 }
 
 impl EffectBehaviors for ModifyTarget {
-    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         1
     }
 
-    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         1
     }
 
     fn valid_targets(
         &self,
         db: &mut Database,
-        source: CardId,
+        source: crate::in_play::CardId,
         controller: Controller,
         already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
@@ -56,7 +64,7 @@ impl EffectBehaviors for ModifyTarget {
     fn push_pending_behavior(
         &'static self,
         db: &mut Database,
-        source: CardId,
+        source: crate::in_play::CardId,
         controller: Controller,
         results: &mut PendingResults,
     ) {
@@ -74,7 +82,7 @@ impl EffectBehaviors for ModifyTarget {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         _apply_to_self: bool,
-        source: CardId,
+        source: crate::in_play::CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {

@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use crate::{
     battlefield::{ActionResult, PendingResults},
     effects::{EffectBehaviors, EffectDuration, ModifyBattlefield},
-    in_play::{CardId, Database, ModifierId},
+    in_play::{Database, ModifierId},
     player::Controller,
     protogen,
     stack::ActiveTarget,
@@ -39,18 +39,26 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
 }
 
 impl EffectBehaviors for BattlefieldModifier {
-    fn needs_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn needs_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 
-    fn wants_targets(&'static self, _db: &mut crate::in_play::Database) -> usize {
+    fn wants_targets(
+        &'static self,
+        _db: &mut crate::in_play::Database,
+        _source: crate::in_play::CardId,
+    ) -> usize {
         0
     }
 
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: CardId,
+        source: crate::in_play::CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
@@ -64,7 +72,7 @@ impl EffectBehaviors for BattlefieldModifier {
         db: &mut Database,
         _targets: Vec<ActiveTarget>,
         apply_to_self: bool,
-        source: CardId,
+        source: crate::in_play::CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
