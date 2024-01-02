@@ -16,6 +16,7 @@ use piece::{
     stack::Stack,
     turns::Turn,
     ui::{self, ManaDisplay},
+    FONT_DATA,
 };
 use taffy::prelude::*;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -300,6 +301,22 @@ async fn main() -> anyhow::Result<()> {
     let mut right_clicked = None;
     let mut selected_card: Option<CardId> = None;
     let mut inspecting_card = None;
+
+    egui_macroquad::ui(|ctx| {
+        let mut fonts = egui::FontDefinitions::default();
+        fonts.font_data.insert(
+            "symbols".to_string(),
+            egui::FontData::from_static(FONT_DATA),
+        );
+
+        fonts
+            .families
+            .entry(egui::FontFamily::Proportional)
+            .or_default()
+            .insert(1, "symbols".to_string());
+
+        ctx.set_fonts(fonts)
+    });
 
     loop {
         if turn.priority_player() == player2 {
@@ -643,7 +660,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                if let Some(clicked) = right_clicked {
+                if let Some(clicked) = right_clicked.take() {
                     inspecting_card = Some(player2.get_cards::<InExile>(&mut db)[clicked]);
                 }
 
@@ -665,7 +682,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                if let Some(clicked) = right_clicked {
+                if let Some(clicked) = right_clicked.take() {
                     inspecting_card = Some(player2.get_cards::<InGraveyard>(&mut db)[clicked]);
                 }
 
@@ -687,7 +704,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                if let Some(clicked) = right_clicked {
+                if let Some(clicked) = right_clicked.take() {
                     inspecting_card = Some(player1.get_cards::<InGraveyard>(&mut db)[clicked]);
                 }
 
@@ -709,7 +726,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                if let Some(clicked) = right_clicked {
+                if let Some(clicked) = right_clicked.take() {
                     inspecting_card = Some(player1.get_cards::<InExile>(&mut db)[clicked]);
                 }
             });

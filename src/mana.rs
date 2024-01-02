@@ -35,12 +35,12 @@ pub(crate) enum ManaRestriction {
 impl Mana {
     pub(crate) fn push_mana_symbol(self, result: &mut String) {
         match self {
-            Mana::White => result.push('🔆'),
-            Mana::Blue => result.push('💧'),
-            Mana::Black => result.push('💀'),
-            Mana::Red => result.push('🔺'),
-            Mana::Green => result.push('🌳'),
-            Mana::Colorless => result.push('⟡'),
+            Mana::White => result.push('\u{e600}'),
+            Mana::Blue => result.push('\u{e601}'),
+            Mana::Black => result.push('\u{e602}'),
+            Mana::Red => result.push('\u{e603}'),
+            Mana::Green => result.push('\u{e604}'),
+            Mana::Colorless => result.push('\u{e904}'),
         }
     }
 
@@ -59,15 +59,38 @@ impl Mana {
 impl ManaCost {
     pub(crate) fn push_mana_symbol(self, result: &mut String) {
         match self {
-            ManaCost::White => result.push('🔆'),
-            ManaCost::Blue => result.push('💧'),
-            ManaCost::Black => result.push('💀'),
-            ManaCost::Red => result.push('🔺'),
-            ManaCost::Green => result.push('🌳'),
-            ManaCost::Colorless => result.push('⟡'),
-            ManaCost::Generic(count) => result.push_str(&format!("{}", count)),
-            ManaCost::X => result.push('X'),
-            ManaCost::TwoX => result.push_str("XX"),
+            ManaCost::White => result.push('\u{e600}'),
+            ManaCost::Blue => result.push('\u{e601}'),
+            ManaCost::Black => result.push('\u{e602}'),
+            ManaCost::Red => result.push('\u{e603}'),
+            ManaCost::Green => result.push('\u{e604}'),
+            ManaCost::Colorless => result.push('\u{e904}'),
+            ManaCost::Generic(count) => match count {
+                0 => result.push('\u{e605}'),
+                1 => result.push('\u{e606}'),
+                2 => result.push('\u{e607}'),
+                3 => result.push('\u{e608}'),
+                4 => result.push('\u{e609}'),
+                5 => result.push('\u{e60a}'),
+                6 => result.push('\u{e60b}'),
+                7 => result.push('\u{e60c}'),
+                8 => result.push('\u{e60d}'),
+                9 => result.push('\u{e60e}'),
+                10 => result.push('\u{e60f}'),
+                11 => result.push('\u{e610}'),
+                12 => result.push('\u{e611}'),
+                13 => result.push('\u{e612}'),
+                14 => result.push('\u{e613}'),
+                15 => result.push('\u{e614}'),
+                16 => result.push('\u{e62a}'),
+                17 => result.push('\u{e62b}'),
+                18 => result.push('\u{e62c}'),
+                19 => result.push('\u{e62d}'),
+                20 => result.push('\u{e62e}'),
+                _ => result.push_str(&format!("{}", count)),
+            },
+            ManaCost::X => result.push('\u{e615}'),
+            ManaCost::TwoX => result.push_str("\u{e615}\u{e615}"),
         }
     }
 

@@ -301,11 +301,7 @@ impl AbilityCost {
                 .join(""),
         )
         .filter(|t| !t.is_empty())
-        .chain(
-            std::iter::once(self.tap)
-                .filter(|t| *t)
-                .map(|_| "↩".to_string()),
-        )
+        .chain(self.tap.then(|| "\u{e61a}".to_string()))
         .chain(
             self.additional_cost
                 .iter()

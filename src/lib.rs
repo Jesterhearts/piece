@@ -35,6 +35,8 @@ pub mod turns;
 pub mod types;
 pub mod ui;
 
+pub static FONT_DATA: &[u8] = include_bytes!("../fonts/mana.ttf");
+
 static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
 pub type Cards = HashMap<String, Card>;

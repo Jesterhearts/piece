@@ -117,14 +117,15 @@ impl ManaPool {
     }
 
     pub(crate) fn apply(&mut self, mana: Mana, source: ManaSource, restriction: ManaRestriction) {
-        *self
+        let sourced = self
             .sourced
             .entry(mana)
             .or_default()
             .entry(source)
             .or_default()
             .entry(restriction)
-            .or_default() += 1;
+            .or_default();
+        *sourced = sourced.saturating_add(1);
     }
 
     pub(crate) fn spend(
