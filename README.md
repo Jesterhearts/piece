@@ -8,7 +8,9 @@ Future plans:
 
 # Adding Cards
 Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto
-schema is defined in the [protos directory](src/protos).
+schema is defined in the [protos directory](src/protos). In particular, check out the
+[card](src/protos/card.proto) and the [effect](src/protos/effects.proto) definitions for all of the
+fields available.
 
 ## Validation
 Added cards can be validated by running `cargo run --bin validate`. This will validate that all
