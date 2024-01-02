@@ -4,6 +4,7 @@ use egui::{
 use itertools::Itertools;
 
 use crate::{
+    battlefield::PendingResults,
     in_play::{CardId, CounterId, Database, InHand},
     player::{AllPlayers, Owner},
     turns::Turn,
@@ -23,8 +24,14 @@ impl Widget for Card<'_> {
             ui.style_mut().visuals.widgets.inactive = ui.style().visuals.widgets.noninteractive;
         }
 
-        let types = self.card.types(self.db);
-        let subtypes = self.card.subtypes(self.db);
+        let source = self
+            .card
+            .cloning(self.db)
+            .map(CardId::from)
+            .unwrap_or(self.card);
+
+        let types = source.types(self.db);
+        let subtypes = source.subtypes(self.db);
 
         let typeline = std::iter::once(types.iter().map(|ty| ty.as_ref()).join(" "))
             .chain(
@@ -32,12 +39,6 @@ impl Widget for Card<'_> {
                     .filter(|s| !s.is_empty()),
             )
             .join(" - ");
-
-        let source = self
-            .card
-            .cloning(self.db)
-            .map(CardId::from)
-            .unwrap_or(self.card);
 
         let oracle_text = source.oracle_text(self.db);
         let has_oracle_text = !oracle_text.is_empty();
@@ -371,16 +372,17 @@ impl Widget for Battlefield<'_, '_> {
     }
 }
 
-pub struct Actions<'db, 'ap, 't, 'clicked> {
+pub struct Actions<'db, 'ap, 't, 'p, 'clicked> {
     pub db: &'db mut Database,
     pub all_players: &'ap AllPlayers,
     pub turn: &'t Turn,
     pub player: Owner,
     pub card: Option<CardId>,
+    pub pending: &'p Option<PendingResults>,
     pub left_clicked: &'clicked mut Option<usize>,
 }
 
-impl Widget for Actions<'_, '_, '_, '_> {
+impl Widget for Actions<'_, '_, '_, '_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let abilities = if let Some(card) = self.card {
             if card.is_in_location::<InHand>(self.db) && self.turn.can_cast(self.db, card) {
@@ -396,6 +398,7 @@ impl Widget for Actions<'_, '_, '_, '_> {
                                     self.all_players,
                                     self.turn,
                                     self.player,
+                                    self.pending,
                                 ) {
                                     Some((idx + 1, ability.text(self.db)))
                                 } else {
@@ -414,6 +417,7 @@ impl Widget for Actions<'_, '_, '_, '_> {
                             self.all_players,
                             self.turn,
                             self.player,
+                            self.pending,
                         ) {
                             Some((idx, ability.text(self.db)))
                         } else {

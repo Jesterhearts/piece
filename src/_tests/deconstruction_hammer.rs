@@ -51,7 +51,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
 
     // Equip the bear
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card2, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card2, 0);
     // Pay the costs
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -69,7 +69,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
 
     // Activate the ability on the bear, targeting the banner
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card, 0);
     // Pay the generic mana
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);

@@ -314,6 +314,18 @@ impl PayCost {
         }
     }
 
+    pub(crate) fn source(&self) -> CardId {
+        match self {
+            PayCost::SacrificePermanent(SacrificePermanent { source, .. })
+            | PayCost::TapPermanent(TapPermanent { source, .. })
+            | PayCost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore { source, .. })
+            | PayCost::SpendMana(SpendMana { source, .. })
+            | PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX { source, .. })
+            | PayCost::ExileCards(ExileCards { source, .. })
+            | PayCost::ExileCardsSharingType(ExileCardsSharingType { source, .. }) => *source,
+        }
+    }
+
     fn paid(&self, db: &mut Database) -> bool {
         match self {
             PayCost::SacrificePermanent(sac) => sac.chosen.is_some(),

@@ -40,8 +40,15 @@ fn adds_ability() -> anyhow::Result<()> {
 
     assert_eq!(creature.activated_abilities(&db), []);
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
+    let mut results = Battlefield::activate_ability(
+        &mut db,
+        &mut all_players,
+        &turn,
+        &None,
+        player,
+        equipment,
+        0,
+    );
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);

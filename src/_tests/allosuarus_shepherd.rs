@@ -41,7 +41,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player, card, 0);
 
     // Pay costs
     let result = results.resolve(&mut db, &mut all_players, &turn, None);

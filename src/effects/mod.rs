@@ -8,6 +8,7 @@ pub(crate) mod controller_draws_cards;
 pub(crate) mod controller_loses_life;
 pub(crate) mod copy_of_any_creature_non_targeting;
 pub(crate) mod counter_spell;
+pub(crate) mod counter_spell_unless_pay;
 pub(crate) mod create_token;
 pub(crate) mod create_token_copy;
 pub(crate) mod cycling;
@@ -70,6 +71,7 @@ use crate::{
         controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
         counter_spell::CounterSpell,
+        counter_spell_unless_pay::CounterSpellUnlessPay,
         create_token::CreateToken,
         create_token_copy::CreateTokenCopy,
         cycling::Cycling,
@@ -540,6 +542,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::CounterSpell(value) => {
                 Ok(Self(Box::leak(Box::new(CounterSpell::try_from(value)?))))
             }
+            protogen::effects::effect::Effect::CounterSpellUnlessPay(value) => Ok(Self(Box::leak(
+                Box::new(CounterSpellUnlessPay::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::CreateToken(value) => {
                 Ok(Self(Box::leak(Box::new(CreateToken::try_from(value)?))))
             }

@@ -3,6 +3,7 @@ extern crate tracing;
 
 use std::{borrow::Cow, fs::OpenOptions};
 
+use approx::ulps_eq;
 use egui::{Color32, Label, Layout, Sense, TextEdit};
 use itertools::Itertools;
 use macroquad::window::next_frame;
@@ -46,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut db = Database::default();
 
-    let mut index = Index::<usize>::new(5);
+    let mut index = Index::<usize>::new(6);
     for (idx, card) in cards.values().enumerate() {
         index.add_document(
             &[
@@ -55,10 +56,12 @@ async fn main() -> anyhow::Result<()> {
                 |card: &Card| card.keywords.keys().map(|k| k.as_ref()).collect_vec(),
                 |card: &Card| card.types.iter().map(|t| t.as_ref()).collect_vec(),
                 |card: &Card| card.subtypes.iter().map(|t| t.as_ref()).collect_vec(),
+                |card: &Card| vec![card.full_text.as_str()],
             ],
             |title| {
                 title
-                    .split(' ')
+                    .split('\n')
+                    .flat_map(|s| s.split(' '))
                     .map(str::to_lowercase)
                     .map(Cow::from)
                     .collect_vec()
@@ -467,8 +470,6 @@ async fn main() -> anyhow::Result<()> {
             });
 
             egui::CentralPanel::default().show(ctx, |ui| {
-                ui.set_enabled(to_resolve.is_none());
-
                 let size = ui.max_rect();
                 tree.compute_layout(
                     root,
@@ -508,8 +509,9 @@ async fn main() -> anyhow::Result<()> {
                     },
                 );
 
-                if left_clicked.take().is_some()
-                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Enter)))
+                if to_resolve.is_none()
+                    && (left_clicked.take().is_some()
+                        || ctx.input(|input| input.key_released(egui::Key::Enter)))
                 {
                     cleanup_stack(
                         &mut db,
@@ -596,6 +598,7 @@ async fn main() -> anyhow::Result<()> {
                         turn: &turn,
                         player: player1,
                         card: selected_card,
+                        pending: &to_resolve,
                         left_clicked: &mut left_clicked,
                     },
                 );
@@ -636,6 +639,7 @@ async fn main() -> anyhow::Result<()> {
                                 &mut db,
                                 &mut all_players,
                                 &turn,
+                                &to_resolve,
                                 player1,
                                 card,
                                 selected,
@@ -647,6 +651,10 @@ async fn main() -> anyhow::Result<()> {
                                 if result == ResolutionResult::Complete {
                                     break;
                                 }
+                            }
+
+                            if let Some(to_resolve) = to_resolve.take() {
+                                pending.extend(to_resolve);
                             }
 
                             maybe_organize_stack(
@@ -926,7 +934,7 @@ async fn main() -> anyhow::Result<()> {
                                     .map(Cow::from)
                                     .collect_vec()
                             },
-                            &[1., 1., 0.25, 0.5, 0.5],
+                            &[1., 1., 0.25, 0.5, 0.5, 0.75],
                         );
                         let top = search.get(0).map(|result| result.key);
 
@@ -934,8 +942,14 @@ async fn main() -> anyhow::Result<()> {
                         for result in search
                             .into_iter()
                             .take(10)
+                            .sorted_by(|l, r| {
+                                if ulps_eq!(l.score, r.score) {
+                                    l.key.cmp(&r.key)
+                                } else {
+                                    l.score.partial_cmp(&r.score).unwrap()
+                                }
+                            })
                             .map(|result| result.key)
-                            .sorted()
                         {
                             if ui
                                 .add(

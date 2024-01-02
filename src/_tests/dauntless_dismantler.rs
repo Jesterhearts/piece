@@ -82,7 +82,7 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card, card2]);
 
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card, 0);
     // Pay white
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::PendingChoice);

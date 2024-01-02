@@ -38,8 +38,15 @@ fn equipment_works() -> anyhow::Result<()> {
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
+    let mut results = Battlefield::activate_ability(
+        &mut db,
+        &mut all_players,
+        &turn,
+        &None,
+        player,
+        equipment,
+        0,
+    );
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
@@ -98,8 +105,15 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let _ = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
+    let mut results = Battlefield::activate_ability(
+        &mut db,
+        &mut all_players,
+        &turn,
+        &None,
+        player,
+        equipment,
+        0,
+    );
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
@@ -120,8 +134,15 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.power(&mut db), Some(4));
     assert_eq!(creature2.toughness(&mut db), Some(2));
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, equipment, 0);
+    let mut results = Battlefield::activate_ability(
+        &mut db,
+        &mut all_players,
+        &turn,
+        &None,
+        player,
+        equipment,
+        0,
+    );
     // Pay the generic
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);

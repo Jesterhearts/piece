@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::{
     battlefield::Source,
     effects::{Effect, EffectBehaviors, Mode},
@@ -53,8 +51,8 @@ impl EffectBehaviors for Modal {
         controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
-        if let Ok(mode) = results.chosen_modes().iter().exactly_one() {
-            for effect in self.modes[*mode].effects.iter() {
+        if let Some(mode) = results.chosen_modes().pop() {
+            for effect in self.modes[mode].effects.iter() {
                 effect
                     .effect
                     .push_pending_behavior(db, source, controller, results);

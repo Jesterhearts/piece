@@ -480,6 +480,7 @@ impl Battlefield {
         db: &mut Database,
         all_players: &mut AllPlayers,
         turn: &Turn,
+        pending: &Option<PendingResults>,
         activator: Owner,
         card: CardId,
         index: usize,
@@ -491,7 +492,7 @@ impl Battlefield {
 
         let ability_id = card.activated_abilities(db)[index];
 
-        if !ability_id.can_be_activated(db, all_players, turn, activator) {
+        if !ability_id.can_be_activated(db, all_players, turn, activator, pending) {
             debug!("Can't activate ability (can't meet costs)");
             return PendingResults::default();
         }

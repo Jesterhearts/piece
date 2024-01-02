@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::{
     battlefield::{PendingResult, Source},
     in_play::Database,
@@ -35,8 +37,26 @@ impl PendingResult for ChooseModes {
     ) -> bool {
         if let Some(choice) = choice {
             results.push_chosen_mode(choice);
-            if let Source::Effect(effect, source) = &self.source {
-                effect.push_pending_behavior(db, *source, source.controller(db), results);
+            match &self.source {
+                Source::Card(card) => {
+                    for effect in card.modes(db).unwrap()[choice]
+                        .effects
+                        .iter()
+                        .filter(|effect| effect.effect.wants_targets(db, *card) > 0)
+                        .collect_vec()
+                    {
+                        effect.effect.push_pending_behavior(
+                            db,
+                            *card,
+                            card.controller(db),
+                            results,
+                        );
+                    }
+                }
+                Source::Effect(effect, source) => {
+                    effect.push_pending_behavior(db, *source, source.controller(db), results);
+                }
+                _ => {}
             }
             true
         } else {

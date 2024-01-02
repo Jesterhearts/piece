@@ -77,7 +77,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
 
     // Equip deconstruction hammer
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card5, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -95,7 +95,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
 
     // Activate the ability
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card4, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card4, 0);
     // Pay the genric mana
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -159,7 +159,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
 
     // Equip deconstruction hammer
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card5, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -197,7 +197,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
 
     // Activate the ability
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player1, card4, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card4, 0);
     // Pay the mana
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);

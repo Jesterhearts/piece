@@ -5,6 +5,7 @@ use bevy_ecs::component::Component;
 use counter::Counter;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
+use itertools::Itertools;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -374,6 +375,8 @@ pub struct Card {
 
     pub(crate) oracle_text: String,
 
+    pub full_text: String,
+
     pub(crate) enchant: Option<Enchant>,
 
     pub(crate) effects: Vec<AnyEffect>,
@@ -407,13 +410,28 @@ pub struct Card {
     pub(crate) back_face: Option<Box<Card>>,
 }
 
+impl Card {
+    fn compute_full_text(&mut self) {
+        self.full_text = std::iter::once(self.oracle_text.as_str())
+            .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
+            .chain(
+                self.modes
+                    .iter()
+                    .flat_map(|m| m.effects.iter().map(|e| e.oracle_text.as_str())),
+            )
+            .chain(self.etb_abilities.iter().map(|e| e.oracle_text.as_str()))
+            .filter(|t| !t.is_empty())
+            .join("\n");
+    }
+}
+
 impl TryFrom<&protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
         let (types, subtypes) = parse_types(&value.typeline)?;
 
-        Ok(Self {
+        let mut this = Self {
             name: value.name.clone(),
             types,
             subtypes,
@@ -429,6 +447,7 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .map(Color::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             oracle_text: value.oracle_text.clone(),
+            full_text: Default::default(),
             enchant: value
                 .enchant
                 .as_ref()
@@ -507,7 +526,11 @@ impl TryFrom<&protogen::card::Card> for Card {
             back_face: value.back_face.as_ref().map_or(Ok(None), |back| {
                 Card::try_from(back).map(|card| Some(Box::new(card)))
             })?,
-        })
+        };
+
+        this.compute_full_text();
+
+        Ok(this)
     }
 }
 

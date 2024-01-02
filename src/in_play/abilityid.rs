@@ -14,6 +14,7 @@ use crate::{
         Ability, ActivatedAbility, ApplyToSelf, Craft, GainMana, GainManaAbility, SorcerySpeed,
         StaticAbility,
     },
+    battlefield::PendingResults,
     card::OracleText,
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     effects::{AnyEffect, Effects},
@@ -429,6 +430,7 @@ impl AbilityId {
         all_players: &AllPlayers,
         turn: &Turn,
         activator: Owner,
+        pending: &Option<PendingResults>,
     ) -> bool {
         let source = self.source(db);
         let banned = source
@@ -444,6 +446,10 @@ impl AbilityId {
 
         match self.ability(db) {
             Ability::Activated(ability) => {
+                if pending.is_some() && !pending.as_ref().unwrap().is_empty() {
+                    return false;
+                }
+
                 if source.is_in_location::<InHand>(db)
                     && !ability.can_be_played_from_hand(db, activator.into())
                 {

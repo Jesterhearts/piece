@@ -41,7 +41,7 @@ fn ability() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 0);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player, card, 0);
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose to sacrifice the zombie

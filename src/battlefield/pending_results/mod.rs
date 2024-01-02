@@ -197,18 +197,15 @@ pub struct PendingResults {
 impl PendingResults {
     pub(crate) fn add_gain_mana(&mut self, source: AbilityId) {
         self.gain_mana = Some(source);
-        self.apply_in_stages = false;
     }
 
     pub(crate) fn add_ability_to_stack(&mut self, source: AbilityId) {
         self.add_to_stack = Some(Source::Ability(source));
-        self.apply_in_stages = false;
     }
 
     pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: CastFrom) {
         self.add_to_stack = Some(Source::Card(source));
         self.cast_from(from);
-        self.apply_in_stages = false;
     }
 
     pub(crate) fn cast_from(&mut self, from: CastFrom) {
@@ -253,8 +250,8 @@ impl PendingResults {
         }));
     }
 
-    pub(crate) fn chosen_modes(&self) -> &Vec<usize> {
-        &self.chosen_modes
+    pub(crate) fn chosen_modes(&mut self) -> &mut Vec<usize> {
+        &mut self.chosen_modes
     }
 
     pub(crate) fn push_settled(&mut self, action: ActionResult) {
@@ -393,6 +390,7 @@ impl PendingResults {
             if let Some(source) = self.add_to_stack.take() {
                 match source {
                     Source::Card(card) => {
+                        debug!("Casting card");
                         self.settled_effects.push(ActionResult::CastCard {
                             card,
                             targets: self.chosen_targets.clone(),
@@ -400,6 +398,8 @@ impl PendingResults {
                             x_is: self.x_is,
                             chosen_modes: self.chosen_modes.clone(),
                         });
+
+                        self.chosen_modes.clear();
                     }
                     Source::Ability(ability) => {
                         let source = ability.source(db);
@@ -428,6 +428,7 @@ impl PendingResults {
                         }
                         GainMana::Choice { choices } => {
                             let option = self.chosen_modes.pop().unwrap();
+                            self.chosen_modes.clear();
                             self.settled_effects.push(ActionResult::GainMana {
                                 gain: choices[option].clone(),
                                 target,
@@ -480,7 +481,7 @@ impl PendingResults {
         }
     }
 
-    pub(crate) fn extend(&mut self, results: PendingResults) {
+    pub fn extend(&mut self, results: PendingResults) {
         if results.is_empty() {
             return;
         }
@@ -514,6 +515,7 @@ impl PendingResults {
     pub fn priority(&self, db: &Database, all_players: &AllPlayers, turn: &Turn) -> Owner {
         if let Some(pend) = self.pending.front() {
             match pend {
+                Pending::PayCosts(pay) => pay.source().controller(db).into(),
                 Pending::DeclaringAttackers(declaring) => {
                     let mut all_players = all_players
                         .all_players()

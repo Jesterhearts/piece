@@ -47,8 +47,15 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, attendant, 0);
+    let mut results = Battlefield::activate_ability(
+        &mut db,
+        &mut all_players,
+        &turn,
+        &None,
+        player,
+        attendant,
+        0,
+    );
 
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);

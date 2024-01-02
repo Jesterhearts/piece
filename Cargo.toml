@@ -30,6 +30,7 @@ path = "src/bin/validate.rs"
 
 [dependencies]
 anyhow             = "1.0.75"
+approx             = "0.5.1"
 ariadne            = "0.4.0"
 bevy_ecs           = { version = "0.12.1", default-features = false }
 counter            = "0.5.7"

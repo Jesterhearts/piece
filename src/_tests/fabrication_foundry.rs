@@ -40,7 +40,7 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     exiled.move_to_battlefield(&mut db);
 
     let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, player, card, 1);
+        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player, card, 1);
     // Compute exile targets
     let result = results.resolve(&mut db, &mut all_players, &turn, None);
     assert_eq!(result, ResolutionResult::TryAgain);

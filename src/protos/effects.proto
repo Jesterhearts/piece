@@ -60,6 +60,16 @@ message CounterSpell {
   repeated targets.Restriction restrictions = 1;
 }
 
+message CounterSpellUnlessPay {
+  message Fixed {
+    int32 count = 1;
+  }
+
+  oneof cost {
+    Fixed fixed = 1;
+  }
+}
+
 message CreateToken {
   message Creature {
     string name = 1;
@@ -392,49 +402,50 @@ message Effect {
     ControllerLosesLife controller_loses_life = 8;
     CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 9;
     CounterSpell counter_spell = 10;
-    CreateToken create_token = 11;
-    CreateToken target_controller_gains_tokens = 12;
-    CreateTokenCopy create_token_copy = 13;
-    Cycling cycling = 14;
-    DealDamage deal_damage = 15;
-    DestroyEach destroy_each = 16;
-    DestroyTarget destroy_target = 17;
-    Discover discover = 18;
-    Equip equip = 19;
-    ExamineTopCards examine_top_cards = 20;
-    ExileTarget exile_target = 21;
+    CounterSpellUnlessPay counter_spell_unless_pay = 11;
+    CreateToken create_token = 12;
+    CreateToken target_controller_gains_tokens = 13;
+    CreateTokenCopy create_token_copy = 14;
+    Cycling cycling = 15;
+    DealDamage deal_damage = 16;
+    DestroyEach destroy_each = 17;
+    DestroyTarget destroy_target = 18;
+    Discover discover = 19;
+    Equip equip = 20;
+    ExamineTopCards examine_top_cards = 21;
+    ExileTarget exile_target = 22;
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 22;
-    ExileTargetGraveyard exile_target_graveyard = 23;
-    Explore self_explores = 24;
-    Explore target_explores = 25;
-    ForEachManaOfSource for_each_mana_of_source = 26;
-    ForEachPlayerChooseThen for_each_player_choose_then = 27;
-    GainCounter target_gains_counters = 28;
-    GainLife gain_life = 29;
-    IfThenElse if_then_else = 30;
-    Mill mill = 31;
-    Modes modal = 32;
-    MultiplyTokens multiply_tokens = 33;
-    PayCostThen pay_cost_then = 34;
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 35;
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 36;
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 37;
-    ReturnSelfToHand return_self_to_hand = 38;
-    ReturnTargetToHand return_target_to_hand = 39;
-    ReturnTransformed return_transformed = 40;
-    RevealEachTopOfLibrary reveal_each_top_of_library = 41;
-    Scry scry = 42;
-    TapTarget tap_target = 43;
-    TapThis tap_this = 44;
-    TargetToTopOfLibrary target_to_top_of_library = 45;
-    Transform transform = 46;
-    TutorLibrary tutor_library = 47;
-    UntapThis untap_this = 48;
-    UntapTarget untap_target = 49;
+        exile_target_creature_manifest_top_of_library = 23;
+    ExileTargetGraveyard exile_target_graveyard = 24;
+    Explore self_explores = 25;
+    Explore target_explores = 26;
+    ForEachManaOfSource for_each_mana_of_source = 27;
+    ForEachPlayerChooseThen for_each_player_choose_then = 28;
+    GainCounter target_gains_counters = 29;
+    GainLife gain_life = 30;
+    IfThenElse if_then_else = 31;
+    Mill mill = 32;
+    Modes modal = 33;
+    MultiplyTokens multiply_tokens = 34;
+    PayCostThen pay_cost_then = 35;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 36;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 37;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 38;
+    ReturnSelfToHand return_self_to_hand = 39;
+    ReturnTargetToHand return_target_to_hand = 40;
+    ReturnTransformed return_transformed = 41;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 42;
+    Scry scry = 43;
+    TapTarget tap_target = 44;
+    TapThis tap_this = 45;
+    TargetToTopOfLibrary target_to_top_of_library = 46;
+    Transform transform = 47;
+    TutorLibrary tutor_library = 48;
+    UntapThis untap_this = 49;
+    UntapTarget untap_target = 50;
   }
 
-  string oracle_text = 50;
+  string oracle_text = 51;
 }
 
 message Mode {
