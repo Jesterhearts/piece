@@ -27,6 +27,7 @@ impl CounterId {
                 }
             }
             Counter::Charge => Self::add_counters_of_type::<counter::Charge>(db, card, count),
+            Counter::Net => Self::add_counters_of_type::<counter::Net>(db, card, count),
             Counter::P1P1 => Self::add_counters_of_type::<counter::P1P1>(db, card, count),
             Counter::M1M1 => Self::add_counters_of_type::<counter::M1M1>(db, card, count),
         }
@@ -43,6 +44,7 @@ impl CounterId {
                 }
             }
             Counter::Charge => Self::remove_counters_of_type::<counter::Charge>(db, card, count),
+            Counter::Net => Self::remove_counters_of_type::<counter::Net>(db, card, count),
             Counter::P1P1 => Self::remove_counters_of_type::<counter::P1P1>(db, card, count),
             Counter::M1M1 => Self::remove_counters_of_type::<counter::M1M1>(db, card, count),
         }
@@ -113,6 +115,7 @@ impl CounterId {
                 sum
             }
             Counter::Charge => Self::counters_of_type_on::<counter::Charge>(db, card),
+            Counter::Net => Self::counters_of_type_on::<counter::Net>(db, card),
             Counter::P1P1 => Self::counters_of_type_on::<counter::P1P1>(db, card),
             Counter::M1M1 => Self::counters_of_type_on::<counter::M1M1>(db, card),
         }
@@ -142,6 +145,7 @@ impl CounterId {
             if amount > 0 {
                 results.push(match counter {
                     Counter::Charge => format!("Charge x{}", amount),
+                    Counter::Net => format!("Net x{}", amount),
                     Counter::P1P1 => format!("+1/+1 x{}", amount),
                     Counter::M1M1 => format!("-1/-1 x{}", amount),
                     Counter::Any => format!("{} total counters", amount),

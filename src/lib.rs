@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
 
+use ariadne::{Label, Report, ReportKind, Source};
 use include_dir::{include_dir, Dir, File};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -71,6 +72,27 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
             .ok_or_else(|| anyhow!("Non utf-8 text proto"))?;
         total_lines += contents.lines().count();
         let card: protogen::card::Card = serde_yaml::from_str(contents)
+            .map_err(|e| {
+                let location = e.location().unwrap();
+                Report::build(
+                    ReportKind::Error,
+                    card_file.path().display().to_string(),
+                    location.index(),
+                )
+                .with_label(Label::new((
+                    card_file.path().display().to_string(),
+                    location.index()..location.index() + 1,
+                )))
+                .with_message(e.to_string())
+                .finish()
+                .eprint((
+                    card_file.path().display().to_string(),
+                    Source::from(contents),
+                ))
+                .unwrap();
+
+                anyhow!(e.to_string())
+            })
             .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
 
         results.push((card, card_file));

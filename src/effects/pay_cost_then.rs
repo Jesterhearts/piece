@@ -61,6 +61,7 @@ impl EffectBehaviors for PayCostThen {
                 AdditionalCost::ExileXOrMoreCards { .. } => todo!(),
                 AdditionalCost::ExileSharingCardType { .. } => todo!(),
                 AdditionalCost::TapPermanentsPowerXOrMore { .. } => todo!(),
+                AdditionalCost::RemoveCounter { .. } => todo!(),
                 AdditionalCost::SacrificePermanent(restrictions) => {
                     results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
                         restrictions.clone(),
@@ -110,6 +111,7 @@ impl EffectBehaviors for PayCostThen {
                 AdditionalCost::ExileXOrMoreCards { .. } => todo!(),
                 AdditionalCost::ExileSharingCardType { .. } => todo!(),
                 AdditionalCost::TapPermanentsPowerXOrMore { .. } => todo!(),
+                AdditionalCost::RemoveCounter { .. } => todo!(),
                 AdditionalCost::SacrificePermanent(restrictions) => {
                     results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
                         restrictions.clone(),

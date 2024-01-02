@@ -18,7 +18,9 @@ pub struct Card<'db> {
 impl Widget for Card<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         if self.card.tapped(self.db) {
-            ui.set_enabled(false);
+            ui.style_mut().visuals.widgets.active = ui.style().visuals.widgets.noninteractive;
+            ui.style_mut().visuals.widgets.hovered = ui.style().visuals.widgets.noninteractive;
+            ui.style_mut().visuals.widgets.inactive = ui.style().visuals.widgets.noninteractive;
         }
 
         let types = self.card.types(self.db);

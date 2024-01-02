@@ -5,13 +5,15 @@ package counters;
 message Counter {
   message Any {}
   message Charge {}
+  message Net {}
   message P1P1 {}
   message M1M1 {}
 
   oneof type {
     Any any = 1;
     Charge charge = 2;
-    P1P1 p1p1 = 3;
-    M1M1 m1m1 = 4;
+    Net net = 3;
+    P1P1 p1p1 = 4;
+    M1M1 m1m1 = 5;
   }
 }

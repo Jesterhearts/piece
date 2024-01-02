@@ -6,6 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     card::Color,
+    effects::target_gains_counters::Counter,
     in_play::{CardId, Database},
     mana::ManaCost,
     protogen,
@@ -94,6 +95,10 @@ pub(crate) enum AdditionalCost {
     ExileCardsCmcX(Vec<Restriction>),
     SacrificeSource,
     PayLife(PayLife),
+    RemoveCounter {
+        counter: Counter,
+        count: usize,
+    },
     SacrificePermanent(Vec<Restriction>),
     TapPermanent(Vec<Restriction>),
     TapPermanentsPowerXOrMore {
@@ -141,6 +146,9 @@ impl AdditionalCost {
                     restrictions.iter().map(|r| r.text()).join(", "),
                     x_is
                 )
+            }
+            AdditionalCost::RemoveCounter { counter, count } => {
+                format!("Remove {} counters of type {}", count, counter.as_ref())
             }
         }
     }
@@ -222,6 +230,12 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
                         .iter()
                         .map(Restriction::try_from)
                         .collect::<anyhow::Result<_>>()?,
+                })
+            }
+            protogen::cost::additional_cost::Cost::RemoveCounters(value) => {
+                Ok(Self::RemoveCounter {
+                    counter: value.counter.get_or_default().try_into()?,
+                    count: usize::try_from(value.count)?,
                 })
             }
         }

@@ -170,6 +170,7 @@ pub(crate)enum EffectDuration {
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
     UntilTargetLeavesBattlefield,
+    UntilUntapped,
 }
 }
 
@@ -195,6 +196,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
             protogen::effects::duration::Duration::UntilTargetLeavesBattlefield(_) => {
                 Self::UntilTargetLeavesBattlefield
             }
+            protogen::effects::duration::Duration::UntilUntapped(_) => Self::UntilUntapped,
             protogen::effects::duration::Duration::Permanently(_) => Self::Permanently,
         }
     }

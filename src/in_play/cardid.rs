@@ -30,7 +30,7 @@ use crate::{
     },
     cost::{CastingCost, CostReducer, Ward},
     effects::{
-        effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield},
+        effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilUntapped},
         target_gains_counters::{counter, Counter},
         AnyEffect, DynamicPowerToughness, EffectDuration, Effects, Modes, ReplacementEffects,
         Token,
@@ -436,7 +436,7 @@ impl CardId {
                 EffectDuration::UntilSourceLeavesBattlefield => {
                     entity.insert(effect_duration::UntilSourceLeavesBattlefield);
                 }
-                EffectDuration::UntilTargetLeavesBattlefield => {
+                _ => {
                     unreachable!()
                 }
             }
@@ -1942,6 +1942,24 @@ impl CardId {
 
     pub fn untap(self, db: &mut Database) {
         db.entity_mut(self.0).remove::<Tapped>();
+
+        let mut entities = vec![];
+        for (entity, mut modifying) in db
+            .modifiers
+            .query_filtered::<(Entity, &mut Modifying), With<UntilUntapped>>()
+            .iter_mut(&mut db.modifiers)
+        {
+            modifying.remove(&self);
+            if modifying.is_empty() {
+                entities.push(ModifierId::from(entity));
+            }
+        }
+
+        for entity in entities {
+            entity.deactivate(db);
+        }
+
+        self.apply_modifiers_layered(db);
     }
 
     pub(crate) fn clone_card<Location: Component + std::marker::Copy + std::fmt::Debug>(

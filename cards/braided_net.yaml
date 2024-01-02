@@ -1,0 +1,41 @@
+name: Braided Net
+cost:
+  mana_costs:
+    - cost: !Generic
+        count: 2
+    - cost: !Blue {}
+types:
+  - type_: !Artifact {}
+etb_abilities:
+  - oracle_text: Braided Net enters the battlefield with three net counters on it.
+    effect: !TargetGainsCounters
+      count: !Multiple
+        count: 3
+      counter:
+        type_: !Net {}
+      restrictions:
+        - restriction: !Self_ {}
+activated_abilities:
+  - cost:
+      tap: true
+      additional_costs:
+        - cost: !RemoveCounters
+            counter:
+              type_: !Net {}
+            count: 1
+    effects:
+      - effect: !TapTarget
+      - effect: !ModifyTarget
+          modifier:
+            add_static_abilities:
+              - ability: !PreventAbilityActivation {}
+          duration:
+            duration: !UntilUntapped {}
+restrictions:
+  - restriction: !NotOfType
+      types:
+        - type_: !BasicLand {}
+        - type_: !Land {}
+  - restriction: !Location
+      locations:
+        - location: !OnBattlefield {}

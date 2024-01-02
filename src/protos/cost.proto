@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package cost;
 
+import "counters.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
@@ -38,6 +39,10 @@ message AdditionalCost {
   message PayLife {
     int32 count = 1;
   }
+  message RemoveCounters {
+    counters.Counter counter = 1;
+    int32 count = 2;
+  }
   message SacrificePermanent {
     repeated targets.Restriction restrictions = 1;
   }
@@ -57,10 +62,11 @@ message AdditionalCost {
     ExileSharingCardType exile_sharing_card_type = 6;
     ExileXOrMoreCards exile_x_or_more_cards = 7;
     PayLife pay_life = 8;
-    SacrificePermanent sacrifice_permanent = 9;
-    SacrificeSource sacrifice_source = 10;
-    TapPermanent tap_permanent = 11;
-    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 12;
+    RemoveCounters remove_counters = 9;
+    SacrificePermanent sacrifice_permanent = 10;
+    SacrificeSource sacrifice_source = 11;
+    TapPermanent tap_permanent = 12;
+    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 13;
   }
 }
 

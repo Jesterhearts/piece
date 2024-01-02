@@ -6,9 +6,8 @@ cost:
     - cost: !Blue {}
 types:
   - type_: !Instant {}
-oracle_text:
-  Return target creature to its owner's hand. If it was tapped, create a map
-  token.
+oracle_text: Return target creature to its owner's hand. If it was tapped, create
+  a map token.
 effects:
   - effect: !ApplyThenIfWas
       apply:

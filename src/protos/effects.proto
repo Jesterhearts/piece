@@ -125,11 +125,13 @@ message Duration {
   message UntilEndOfTurn {}
   message UntilSourceLeavesBattlefield {}
   message UntilTargetLeavesBattlefield {}
+  message UntilUntapped {}
   oneof duration {
     Permanently permanently = 1;
     UntilEndOfTurn until_end_of_turn = 2;
     UntilSourceLeavesBattlefield until_source_leaves_battlefield = 3;
     UntilTargetLeavesBattlefield until_target_leaves_battlefield = 4;
+    UntilUntapped until_untapped = 5;
   }
 }
 
@@ -187,6 +189,9 @@ message ForEachPlayerChooseThen {
 
 message GainCounter {
   message Single {}
+  message Multiple {
+    int32 count = 1;
+  }
   message Dynamic {
     message X {}
     message LeftBattlefieldThisTurn {
@@ -201,11 +206,12 @@ message GainCounter {
 
   oneof count {
     Single single = 4;
-    Dynamic dynamic = 5;
+    Multiple multiple = 5;
+    Dynamic dynamic = 6;
   }
 
-  counters.Counter counter = 6;
-  repeated targets.Restriction restrictions = 7;
+  counters.Counter counter = 7;
+  repeated targets.Restriction restrictions = 8;
 }
 
 message GainLife {

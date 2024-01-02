@@ -24,8 +24,13 @@ path = "src/bin/export_json.rs"
 name = "toml"
 path = "src/bin/export_toml.rs"
 
+[[bin]]
+name = "validate"
+path = "src/bin/validate.rs"
+
 [dependencies]
 anyhow             = "1.0.75"
+ariadne            = "0.4.0"
 bevy_ecs           = { version = "0.12.1", default-features = false }
 counter            = "0.5.7"
 derive_more        = "0.99.17"

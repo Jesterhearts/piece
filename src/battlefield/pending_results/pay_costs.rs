@@ -860,49 +860,8 @@ impl PayCost {
 }
 
 impl PendingResult for PayCost {
-    fn optional(&self, db: &Database, all_players: &AllPlayers) -> bool {
-        match self {
-            PayCost::SacrificePermanent(_) => false,
-            PayCost::TapPermanent(_) => false,
-            PayCost::TapPermanentsPowerXOrMore(_) => false,
-            PayCost::ExilePermanentsCmcX(_) => true,
-            PayCost::ExileCards(ExileCards { minimum, .. }) => *minimum == 0,
-            PayCost::ExileCardsSharingType(_) => false,
-            PayCost::SpendMana(spend) => {
-                let (mana, source) = spend.paying();
-                if let Some(pool_post_pay) = all_players[spend.source.controller(db)].pool_post_pay(
-                    db,
-                    &mana,
-                    &source,
-                    spend.reason,
-                ) {
-                    if let Some(first_unpaid) = spend.first_unpaid_x_always_unpaid() {
-                        match first_unpaid {
-                            ManaCost::Generic(_) => true,
-                            ManaCost::X => true,
-                            ManaCost::TwoX => {
-                                spend
-                                    .paid
-                                    .get(&ManaCost::TwoX)
-                                    .iter()
-                                    .flat_map(|i| i.values())
-                                    .flat_map(|i| i.values())
-                                    .sum::<usize>()
-                                    % 2
-                                    == 0
-                            }
-                            unpaid => {
-                                pool_post_pay.can_spend(db, unpaid, ManaSource::Any, spend.reason)
-                            }
-                        }
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                }
-            }
-        }
+    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+        true
     }
 
     fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {

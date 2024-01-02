@@ -206,6 +206,11 @@ pub(crate) enum ActionResult {
     MoveToHandFromLibrary(CardId),
     PermanentToGraveyard(CardId),
     PlayerLoses(Owner),
+    RemoveCounters {
+        target: CardId,
+        counter: Counter,
+        count: usize,
+    },
     ReturnFromBattlefieldToLibrary {
         target: ActiveTarget,
     },
@@ -578,6 +583,13 @@ impl Battlefield {
                             ExileCardsSharingType::new(exile_reason, card, *count),
                         ));
                     }
+                    AdditionalCost::RemoveCounter { counter, count } => {
+                        results.push_settled(ActionResult::RemoveCounters {
+                            target: card,
+                            counter: *counter,
+                            count: *count,
+                        })
+                    }
                 }
             }
 
@@ -860,6 +872,14 @@ impl Battlefield {
                 Entry::Card(card) => Battlefield::stack_to_graveyard(db, *card),
                 Entry::Ability { .. } | Entry::Trigger { .. } => unreachable!(),
             },
+            ActionResult::RemoveCounters {
+                target,
+                counter,
+                count,
+            } => {
+                CounterId::remove_counters(db, *target, *counter, *count);
+                PendingResults::default()
+            }
             ActionResult::AddCounters {
                 source,
                 target,
@@ -869,6 +889,9 @@ impl Battlefield {
                 match count {
                     GainCount::Single => {
                         CounterId::add_counters(db, *target, *counter, 1);
+                    }
+                    GainCount::Multiple(count) => {
+                        CounterId::add_counters(db, *target, *counter, *count);
                     }
                     GainCount::Dynamic(dynamic) => match dynamic {
                         DynamicCounter::X => {

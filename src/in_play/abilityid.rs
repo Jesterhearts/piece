@@ -18,8 +18,8 @@ use crate::{
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     effects::{AnyEffect, Effects},
     in_play::{
-        number_of_attackers_this_turn, CardId, Database, InHand, InStack, OnBattlefield, Temporary,
-        NEXT_STACK_SEQ,
+        number_of_attackers_this_turn, CardId, CounterId, Database, InHand, InStack, OnBattlefield,
+        Temporary, NEXT_STACK_SEQ,
     },
     mana::{Mana, ManaRestriction},
     player::{
@@ -609,6 +609,11 @@ fn can_pay_costs(
             }
             AdditionalCost::DiscardThis => {
                 if !source.is_in_location::<InHand>(db) {
+                    return false;
+                }
+            }
+            AdditionalCost::RemoveCounter { counter, count } => {
+                if CounterId::counters_on(db, source, *counter) < *count {
                     return false;
                 }
             }

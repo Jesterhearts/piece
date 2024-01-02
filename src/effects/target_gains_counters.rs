@@ -18,6 +18,7 @@ newtype_enum! {
 pub enum Counter {
     Any,
     Charge,
+    Net,
     P1P1,
     M1M1,
 }
@@ -65,6 +66,7 @@ impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCoun
 #[derive(Debug, Clone)]
 pub(crate) enum GainCount {
     Single,
+    Multiple(usize),
     Dynamic(DynamicCounter),
 }
 
@@ -74,6 +76,9 @@ impl TryFrom<&protogen::effects::gain_counter::Count> for GainCount {
     fn try_from(value: &protogen::effects::gain_counter::Count) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::gain_counter::Count::Single(_) => Ok(Self::Single),
+            protogen::effects::gain_counter::Count::Multiple(value) => {
+                Ok(Self::Multiple(usize::try_from(value.count)?))
+            }
             protogen::effects::gain_counter::Count::Dynamic(dynamic) => {
                 Ok(Self::Dynamic(dynamic.try_into()?))
             }
@@ -98,6 +103,7 @@ impl From<&protogen::counters::counter::Type> for Counter {
         match value {
             protogen::counters::counter::Type::Any(_) => Self::Any,
             protogen::counters::counter::Type::Charge(_) => Self::Charge,
+            protogen::counters::counter::Type::Net(_) => Self::Net,
             protogen::counters::counter::Type::P1p1(_) => Self::P1P1,
             protogen::counters::counter::Type::M1m1(_) => Self::M1M1,
         }

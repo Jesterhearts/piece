@@ -713,6 +713,7 @@ fn add_card_to_stack(
         match cost {
             AdditionalCost::DiscardThis => unreachable!(),
             AdditionalCost::SacrificeSource => unreachable!(),
+            AdditionalCost::RemoveCounter { .. } => unreachable!(),
             AdditionalCost::PayLife(_) => todo!(),
             AdditionalCost::SacrificePermanent(restrictions) => {
                 results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(

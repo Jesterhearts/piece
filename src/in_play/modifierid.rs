@@ -12,7 +12,8 @@ use crate::{
     },
     effects::{
         effect_duration::{
-            Permanently, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilTargetLeavesBattlefield,
+            Permanently, UntilEndOfTurn, UntilSourceLeavesBattlefield,
+            UntilTargetLeavesBattlefield, UntilUntapped,
         },
         BattlefieldModifier, DynamicPowerToughness, EffectDuration,
     },
@@ -79,6 +80,9 @@ impl ModifierId {
             }
             EffectDuration::Permanently => {
                 entity.insert(Permanently);
+            }
+            EffectDuration::UntilUntapped => {
+                entity.insert(UntilUntapped);
             }
         }
 
