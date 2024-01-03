@@ -16,8 +16,7 @@ mana_abilities:
       tap: true
     gain_mana:
       gain: !Specific
-        gains:
-          - mana: !White {}
+        gain: '{W}'
     mana_source:
       source: !Cave {}
 etb_tapped: true

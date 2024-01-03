@@ -14,15 +14,5 @@ activated_abilities:
                   tap: true
                 gain_mana:
                   gain: !Choice
-                    choices:
-                      - gains:
-                          - mana: !White {}
-                      - gains:
-                          - mana: !Blue {}
-                      - gains:
-                          - mana: !Black {}
-                      - gains:
-                          - mana: !Red {}
-                      - gains:
-                          - mana: !Green {}
+                    choices: '{W}, {U}, {B}, {R}, {G}'
     oracle_text: Equip

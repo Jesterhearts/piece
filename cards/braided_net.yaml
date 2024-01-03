@@ -57,9 +57,7 @@ back_face:
   colors:
     - color: !Blue {}
   activated_abilities:
-    - oracle_text: Draw a card for each artifact you control, then put Braided Quipu
-        into its owner's library third from the top.
-      cost:
+    - cost:
         mana_cost: '{3}{U}'
         tap: true
       effects:
@@ -74,3 +72,5 @@ back_face:
             under_cards: 2
             restrictions:
               - restriction: !Self_ {}
+      oracle_text: Draw a card for each artifact you control, then put Braided Quipu
+        into its owner's library third from the top.

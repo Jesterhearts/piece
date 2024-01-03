@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use bevy_ecs::component::Component;
+use itertools::Itertools;
 
 use crate::{card::Color, protogen};
 
@@ -183,4 +184,42 @@ impl From<&protogen::mana::mana_restriction::Restriction> for ManaRestriction {
             }
         }
     }
+}
+
+pub(crate) fn parse_mana(s: &str) -> anyhow::Result<Vec<Mana>> {
+    let split = s
+        .split('}')
+        .map(|s| s.trim_start_matches('{'))
+        .filter(|s| !s.is_empty())
+        .collect_vec();
+
+    let mut results = vec![];
+    for symbol in split {
+        let mana;
+        match symbol {
+            "W" => mana = Mana::White,
+            "U" => mana = Mana::Blue,
+            "B" => mana = Mana::Black,
+            "R" => mana = Mana::Red,
+            "G" => mana = Mana::Green,
+            "C" => mana = Mana::Colorless,
+            s => {
+                return Err(anyhow!("Invalid mana {}", s));
+            }
+        }
+
+        results.push(mana)
+    }
+
+    debug!("Deserialized {} as {:?}", s, results);
+
+    Ok(results)
+}
+
+pub(crate) fn parse_mana_list(s: &str) -> anyhow::Result<Vec<Vec<Mana>>> {
+    s.split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(parse_mana)
+        .collect::<anyhow::Result<_>>()
 }

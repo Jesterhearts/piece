@@ -18,10 +18,4 @@ mana_abilities:
       tap: true
     gain_mana:
       gain: !Choice
-        choices:
-          - gains:
-              - mana: !White {}
-          - gains:
-              - mana: !Black {}
-          - gains:
-              - mana: !Green {}
+        choices: '{W}, {B}, {G}'

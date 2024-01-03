@@ -18,8 +18,7 @@ enchant:
             tap: true
           gain_mana:
             gain: !Specific
-              gains:
-                - mana: !Colorless {}
+              gain: '{C}'
       duration:
         duration: !UntilSourceLeavesBattlefield {}
     - modifier:
@@ -31,17 +30,7 @@ enchant:
                   count: 1
           gain_mana:
             gain: !Choice
-              choices:
-                - gains:
-                    - mana: !White {}
-                - gains:
-                    - mana: !Blue {}
-                - gains:
-                    - mana: !Black {}
-                - gains:
-                    - mana: !Red {}
-                - gains:
-                    - mana: !Green {}
+              choices: '{W}, {U}, {B}, {R}, {G}'
       duration:
         duration: !UntilSourceLeavesBattlefield {}
 etb_abilities:

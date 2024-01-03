@@ -29,6 +29,5 @@ mana_abilities:
       tap: true
     gain_mana:
       gain: !Specific
-        gains:
-          - mana: !Colorless {}
+        gain: '{C}'
 etb_tapped: true

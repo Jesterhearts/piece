@@ -49,5 +49,4 @@ back_face:
         tap: true
       gain_mana:
         gain: !Specific
-          gains:
-            - mana: !White {}
+          gain: '{W}'

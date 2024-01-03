@@ -29,7 +29,6 @@ mana_abilities:
       tap: true
     gain_mana:
       gain: !Specific
-        gains:
-          - mana: !White {}
+        gain: '{W}'
     mana_restriction:
       restriction: !ArtifactSpellOrAbility {}

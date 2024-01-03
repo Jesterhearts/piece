@@ -234,14 +234,11 @@ message GainLife {
 }
 
 message GainMana {
-  message GainMana {
-    repeated mana.Mana gains = 1;
-  }
   message Specific {
-    repeated mana.Mana gains = 1;
+    string gain = 1;
   }
   message Choice {
-    repeated GainMana choices = 1;
+    string choices = 1;
   }
   oneof gain {
     Specific specific = 2;

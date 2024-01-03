@@ -8,5 +8,4 @@ mana_abilities:
       mana_cost: '{1}'
     gain_mana:
       gain: !Specific
-        gains:
-          - mana: !Black {}
+        gain: '{B}'
