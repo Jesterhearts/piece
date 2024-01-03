@@ -29,6 +29,5 @@ effects:
         duration: !UntilTargetLeavesBattlefield {}
 restrictions:
   - restriction: !NotOfType
-      subtypes:
-        - subtype: !Aura {}
+      subtypes: Aura
   - restriction: !InGraveyard {}

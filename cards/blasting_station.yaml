@@ -9,8 +9,7 @@ activated_abilities:
         - cost: !SacrificePermanent
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Creature {}
+                  types: Creature
     effects:
       - effect: !DealDamage
           quantity: 1
@@ -22,8 +21,7 @@ triggered_abilities:
         location: !Anywhere {}
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
     effects:
       - effect: !UntapThis {}
     oracle_text: Whenever a creature enters the battlefield you may untap blasting

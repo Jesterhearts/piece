@@ -15,7 +15,6 @@ etb_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
 power: 4
 toughness: 3

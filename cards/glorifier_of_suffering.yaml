@@ -13,9 +13,7 @@ etb_abilities:
           - cost: !SacrificePermanent
               restrictions:
                 - restriction: !OfType
-                    types:
-                      - type_: !Artifact {}
-                      - type_: !Creature {}
+                    types: Artifact, Creature
       effects:
         - oracle_text: Put a +1/+1 counter on target creature
           effect: !TargetGainsCounters
@@ -23,8 +21,7 @@ etb_abilities:
               type_: !P1p1 {}
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Creature {}
+                  types: Creature
               - restriction: !OnBattlefield {}
             count: !Single {}
         - oracle_text: Put a +1/+1 counter on target creature
@@ -33,8 +30,7 @@ etb_abilities:
               type_: !P1p1 {}
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Creature {}
+                  types: Creature
               - restriction: !OnBattlefield {}
             count: !Single {}
 power: 3

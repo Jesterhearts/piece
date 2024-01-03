@@ -10,8 +10,7 @@ activated_abilities:
       - effect: !TargetToTopOfLibrary
           restrictions:
             - restriction: !OfType
-                types:
-                  - type_: !Creature {}
+                types: Creature
             - restriction: !OfColor
                 colors:
                   - color: !Green {}

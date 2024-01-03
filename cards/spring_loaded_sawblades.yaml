@@ -12,8 +12,7 @@ etb_abilities:
             controller: !Opponent {}
         - restriction: !Tapped {}
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
         - restriction: !OnBattlefield {}
 activated_abilities:
   - cost:
@@ -22,8 +21,7 @@ activated_abilities:
         - cost: !ExileCard
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
+                  types: Artifact
               - restriction: !Location
                   locations:
                     - location: !OnBattlefield {}
@@ -50,14 +48,12 @@ back_face:
           - cost: !TapPermanent
               restrictions:
                 - restriction: !OfType
-                    types:
-                      - type_: !Artifact {}
+                    types: Artifact
                 - restriction: !NotSelf {}
           - cost: !TapPermanent
               restrictions:
                 - restriction: !OfType
-                    types:
-                      - type_: !Artifact {}
+                    types: Artifact
                 - restriction: !NotSelf {}
       effects:
         - effect: !BattlefieldModifier
@@ -78,8 +74,7 @@ back_face:
               x_is: 1
               restrictions:
                 - restriction: !OfType
-                    types:
-                      - type_: !Creature {}
+                    types: Creature
                 - restriction: !NotSelf {}
       effects:
         - effect: !BattlefieldModifier

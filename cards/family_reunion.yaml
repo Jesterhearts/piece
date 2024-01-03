@@ -16,8 +16,7 @@ modes:
             - restriction: !Controller
                 controller: !Self_ {}
             - restriction: !OfType
-                types:
-                  - type_: !Creature {}
+                types: Creature
   - effects:
       - oracle_text: Creatures you control gain hexproof until end of turn.
         effect: !BattlefieldModifier
@@ -30,5 +29,4 @@ modes:
             - restriction: !Controller
                 controller: !Self_ {}
             - restriction: !OfType
-                types:
-                  - type_: !Creature {}
+                types: Creature

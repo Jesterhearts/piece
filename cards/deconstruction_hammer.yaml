@@ -21,6 +21,4 @@ activated_abilities:
                   - effect: !DestroyTarget
                       restrictions:
                         - restriction: !OfType
-                            types:
-                              - type_: !Artifact {}
-                              - type_: !Enchantment {}
+                            types: Artifact, Enchantment

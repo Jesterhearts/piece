@@ -10,8 +10,7 @@ etb_abilities:
         type_: !P1p1 {}
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
         - restriction: !OnBattlefield {}
       count: !Single {}
 power: 1

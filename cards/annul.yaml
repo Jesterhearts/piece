@@ -7,6 +7,4 @@ effects:
   - effect: !CounterSpell
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Artifact {}
-              - type_: !Enchantment {}
+            types: Artifact, Enchantment

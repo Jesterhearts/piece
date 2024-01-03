@@ -18,5 +18,4 @@ effects:
 restrictions:
   - restriction: !OnBattlefield {}
   - restriction: !OfType
-      types:
-        - type_: !Creature {}
+      types: Creature

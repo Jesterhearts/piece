@@ -10,8 +10,7 @@ activated_abilities:
         - cost: !ExileCardsCmcX
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
+                  types: Artifact
     effects:
       - effect: !ReturnFromGraveyardToBattlefield
           count: 1
@@ -19,8 +18,7 @@ activated_abilities:
             - restriction: !Controller
                 controller: !Self_ {}
             - restriction: !OfType
-                types:
-                  - type_: !Artifact {}
+                types: Artifact
           x_is:
             x_is: !Cmc {}
     oracle_text: Return target artifact card with mana value X or less from yuour

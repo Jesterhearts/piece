@@ -869,7 +869,9 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
     }
 }
 
-pub(crate) fn parse_types(typeline: &str) -> anyhow::Result<(IndexSet<Type>, IndexSet<Subtype>)> {
+pub(crate) fn parse_typeline(
+    typeline: &str,
+) -> anyhow::Result<(IndexSet<Type>, IndexSet<Subtype>)> {
     if typeline.is_empty() {
         return Err(anyhow!("Expected card to have types set"));
     }
@@ -893,4 +895,22 @@ pub(crate) fn parse_types(typeline: &str) -> anyhow::Result<(IndexSet<Type>, Ind
         .collect::<anyhow::Result<_>>()?;
 
     Ok((types, subtypes))
+}
+
+pub(crate) fn parse_type_list(types: &str) -> anyhow::Result<IndexSet<Type>> {
+    types
+        .split(',')
+        .map(|ty| ty.trim())
+        .filter(|ty| !ty.is_empty())
+        .map(|ty| Type::try_from(ty).with_context(|| format!("Parsing {}", ty)))
+        .collect::<anyhow::Result<_>>()
+}
+
+pub(crate) fn parse_subtype_list(types: &str) -> anyhow::Result<IndexSet<Subtype>> {
+    types
+        .split(',')
+        .map(|ty| ty.trim())
+        .filter(|ty| !ty.is_empty())
+        .map(|ty| Subtype::try_from(ty).with_context(|| format!("Parsing {}", ty)))
+        .collect::<anyhow::Result<_>>()
 }

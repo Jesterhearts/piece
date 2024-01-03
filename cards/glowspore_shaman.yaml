@@ -17,8 +17,6 @@ etb_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            types:
-              - type_: !Land {}
-              - type_: !BasicLand {}
+            types: Land, BasicLand
 power: 3
 toughness: 1

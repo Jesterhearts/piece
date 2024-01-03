@@ -27,16 +27,14 @@ triggered_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            subtypes:
-              - subtype: !Cave {}
+            subtypes: Cave
     effects:
       - effect: !TargetGainsCounters
           counter:
             type_: !P1p1 {}
           restrictions:
             - restriction: !OfType
-                types:
-                  - type_: !Creature {}
+                types: Creature
             - restriction: !OnBattlefield {}
           count: !Single {}
     oracle_text: Whenever a Cave enters the battlefield under your control, put a

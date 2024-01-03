@@ -7,8 +7,7 @@ etb_abilities:
       restrictions:
         - restriction: !SourceCast {}
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
         - restriction: !OnBattlefield {}
         - restriction: !Power
             comparison:
@@ -26,8 +25,7 @@ activated_abilities:
             restrictions:
               - restriction: !NotSelf {}
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
+                  types: Artifact
               - restriction: !Location
                   locations:
                     - location: !OnBattlefield {}

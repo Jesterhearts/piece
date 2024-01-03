@@ -11,9 +11,7 @@ etb_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            types:
-              - type_: !Land {}
-              - type_: !BasicLand {}
+            types: Land, BasicLand
 triggered_abilities:
   - trigger:
       source:
@@ -24,9 +22,7 @@ triggered_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            types:
-              - type_: !Land {}
-              - type_: !BasicLand {}
+            types: Land, BasicLand
     effects:
       - effect: !CreateToken
           token: !Creature

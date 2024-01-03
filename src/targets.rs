@@ -15,7 +15,7 @@ use crate::{
     effects::target_gains_counters::Counter,
     player::mana_pool::ManaSource,
     protogen,
-    types::{Subtype, Type},
+    types::{parse_subtype_list, parse_type_list, Subtype, Type},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
@@ -425,18 +425,11 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
                     .collect::<anyhow::Result<_>>()?,
             )),
-            protogen::targets::restriction::Restriction::NotOfType(not) => Ok(Self::NotOfType {
-                types: not
-                    .types
-                    .iter()
-                    .map(Type::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-                subtypes: not
-                    .subtypes
-                    .iter()
-                    .map(Subtype::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-            }),
+            protogen::targets::restriction::Restriction::NotOfType(not) => {
+                let types = parse_type_list(&not.types)?;
+                let subtypes = parse_subtype_list(&not.subtypes)?;
+                Ok(Self::NotOfType { types, subtypes })
+            }
             protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
             protogen::targets::restriction::Restriction::NumberOfCountersOnThis(value) => {
                 Ok(Self::NumberOfCountersOnThis {
@@ -451,18 +444,12 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Color::try_from)
                     .collect::<anyhow::Result<_>>()?,
             )),
-            protogen::targets::restriction::Restriction::OfType(types) => Ok(Self::OfType {
-                types: types
-                    .types
-                    .iter()
-                    .map(Type::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-                subtypes: types
-                    .subtypes
-                    .iter()
-                    .map(Subtype::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-            }),
+            protogen::targets::restriction::Restriction::OfType(of_type) => {
+                let types = parse_type_list(&of_type.types)?;
+                let subtypes = parse_subtype_list(&of_type.subtypes)?;
+
+                Ok(Self::OfType { types, subtypes })
+            }
             protogen::targets::restriction::Restriction::OnBattlefield(_) => {
                 Ok(Self::OnBattlefield)
             }

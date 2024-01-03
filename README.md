@@ -21,18 +21,14 @@ fails.
 - When adding restrictions, individual restrictions are AND'd together. So
   ```yaml
   - restriction: !OfType
-      types:
-      - type_: !Artifact {}
+      types: Artifact
   - restriction: !OfType
-      types:
-      - type_: !Creature {}
+      types: Creature
   ```
   will match anything that is _both_ an artifact and a creature. This is different from subfields in
   restrictions, which are OR'd together. So
   ```yaml
   - restriction: !OfType
-      types:
-      - type_: !Artifact {}
-      - type_: !Creature {}
+      types: Artifact, Creature
   ```
   will matching anything that is either an artifact or a creature (or both).

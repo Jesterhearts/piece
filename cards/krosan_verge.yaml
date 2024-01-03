@@ -11,16 +11,14 @@ activated_abilities:
       - effect: !TutorLibrary
           restrictions:
             - restriction: !OfType
-                subtypes:
-                  - subtype: !Forest {}
+                subtypes: Forest
           destination:
             destination: !Battlefield
               enters_tapped: true
       - effect: !TutorLibrary
           restrictions:
             - restriction: !OfType
-                subtypes:
-                  - subtype: !Plains {}
+                subtypes: Plains
           destination:
             destination: !Battlefield
               enters_tapped: true

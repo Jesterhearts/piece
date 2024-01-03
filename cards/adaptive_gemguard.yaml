@@ -8,15 +8,11 @@ activated_abilities:
         - cost: !TapPermanent
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
-                    - type_: !Creature {}
+                  types: Artifact, Creature
         - cost: !TapPermanent
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
-                    - type_: !Creature {}
+                  types: Artifact, Creature
     effects:
       - effect: !TargetGainsCounters
           counter:

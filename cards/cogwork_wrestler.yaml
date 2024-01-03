@@ -3,19 +3,18 @@ typeline: Artifact Creature - Gnome
 cost:
   mana_cost: '{U}'
 etb_abilities:
-  - effect: !ModifyTarget
+  - oracle_text: When Cogwork Wrestler enters the battlefield, target creature an
+      opponent controls gets -2/-0 until end of turn.
+    effect: !ModifyTarget
       modifier:
         add_power: -2
       duration:
-        duration: !UntilEndOfTurn
+        duration: !UntilEndOfTurn {}
       restrictions:
         - restriction: !Controller
             controller: !Opponent {}
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
-    oracle_text: When Cogwork Wrestler enters the battlefield, target creature an
-      opponent controls gets -2/-0 until end of turn.
+            types: Creature
 power: 1
 toughness: 2
 keywords: Flash

@@ -25,8 +25,7 @@ triggered_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
     effects:
       - effect: !TargetGainsCounters
           counter:

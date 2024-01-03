@@ -54,7 +54,5 @@ etb_abilities:
       count: 1
 restrictions:
   - restriction: !OfType
-      types:
-        - type_: !Land {}
-        - type_: !BasicLand {}
+      types: Land, BasicLand
   - restriction: !OnBattlefield {}

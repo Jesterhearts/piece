@@ -13,6 +13,4 @@ enchant:
         duration: !UntilSourceLeavesBattlefield {}
 restrictions:
   - restriction: !OfType
-      types:
-        - type_: !Creature {}
-        - type_: !Artifact {}
+      types: Creature, Artifact

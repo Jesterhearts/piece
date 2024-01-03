@@ -110,8 +110,8 @@ message Restriction {
     string keywords = 1;
   }
   message NotOfType {
-    repeated types.Type types = 1;
-    repeated types.Subtype subtypes = 2;
+    string types = 1;
+    string subtypes = 2;
   }
   message NotSelf {}
   message NumberOfCountersOnThis {
@@ -122,8 +122,8 @@ message Restriction {
     repeated color.Color colors = 1;
   }
   message OfType {
-    repeated types.Type types = 1;
-    repeated types.Subtype subtypes = 2;
+    string types = 1;
+    string subtypes = 2;
   }
   message OnBattlefield {}
   message Power {

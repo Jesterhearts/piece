@@ -8,7 +8,6 @@ effects:
       quantity: 4
 restrictions:
   - restriction: !OfType
-      types:
-        - type_: !Creature {}
+      types: Creature
   - restriction: !AttackingOrBlocking {}
   - restriction: !OnBattlefield {}

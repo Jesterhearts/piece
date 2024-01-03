@@ -11,8 +11,7 @@ etb_abilities:
                   - restriction: !Controller
                       controller: !Self_ {}
                   - restriction: !OfType
-                      types:
-                        - type_: !Artifact {}
+                      types: Artifact
         - effects:
             - effect: !Scry
                 count: 3

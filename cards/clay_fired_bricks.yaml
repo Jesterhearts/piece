@@ -8,10 +8,8 @@ etb_abilities:
     effect: !TutorLibrary
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !BasicLand {}
-            subtypes:
-              - subtype: !Plains {}
+            types: BasicLand
+            subtypes: Plains
       destination:
         destination: !Hand {}
       reveal: true
@@ -25,8 +23,7 @@ activated_abilities:
         - cost: !ExileCard
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
+                  types: Artifact
               - restriction: !Location
                   locations:
                     - location: !OnBattlefield {}
@@ -73,5 +70,4 @@ back_face:
           - restriction: !Controller
               controller: !Self_ {}
           - restriction: !OfType
-              types:
-                - type_: !Creature {}
+              types: Creature

@@ -13,8 +13,7 @@ activated_abilities:
         - cost: !ExileCard
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
+                  types: Artifact
               - restriction: !Location
                   locations:
                     - location: !OnBattlefield {}
@@ -54,8 +53,7 @@ back_face:
                   controller: !Self_ {}
               - restriction: !Attacking {}
               - restriction: !OfType
-                  types:
-                    - type_: !Creature {}
+                  types: Creature
               - restriction: !NotKeywords
                   keywords: Flying
       oracle_text: Whenever Oteclan Levitator attacks, target attacking creature without

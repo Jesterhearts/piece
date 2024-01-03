@@ -12,8 +12,7 @@ effects:
       for_each:
         restrictions:
           - restriction: !OfType
-              types:
-                - type_: !Creature {}
+              types: Creature
         effects:
           - effect: !CreateTokenCopy
               modifiers:

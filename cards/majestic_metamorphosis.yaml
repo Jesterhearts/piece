@@ -19,9 +19,7 @@ effects:
         duration: !UntilEndOfTurn {}
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
-              - type_: !Artifact {}
+            types: Creature, Artifact
   - oracle_text: Draw a card
     effect: !ControllerDrawCards
       count: 1

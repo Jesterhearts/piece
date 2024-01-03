@@ -10,8 +10,7 @@ effects:
         - effect: !ReturnTargetToHand
             restrictions:
               - restriction: !OfType
-                  types:
-                    - type_: !Creature {}
+                  types: Creature
               - restriction: !Location
                   locations:
                     - location: !OnBattlefield {}

@@ -29,9 +29,7 @@ activated_abilities:
             duration: !UntilUntapped {}
 restrictions:
   - restriction: !NotOfType
-      types:
-        - type_: !BasicLand {}
-        - type_: !Land {}
+      types: BasicLand, Land
   - restriction: !Location
       locations:
         - location: !OnBattlefield {}

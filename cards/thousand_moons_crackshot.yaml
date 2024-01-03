@@ -20,8 +20,7 @@ triggered_abilities:
             - effect: !TapTarget
                 restrictions:
                   - restriction: !OfType
-                      types:
-                        - type_: !Creature {}
+                      types: Creature
     oracle_text: Whenever Thousand Moons Crackshot attacks, you may pay {2}{W}. When
       you do, tap target creature.
 power: 2

@@ -20,6 +20,5 @@ enchant:
         duration: !UntilSourceLeavesBattlefield {}
 restrictions:
   - restriction: !OfType
-      types:
-        - type_: !Creature {}
+      types: Creature
   - restriction: !OnBattlefield {}

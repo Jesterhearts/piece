@@ -9,8 +9,7 @@ effects:
             controller: !Self_ {}
 restrictions:
   - restriction: !OfType
-      types:
-        - type_: !Creature {}
+      types: Creature
   - restriction: !Cmc
       cmc: !Comparison
         value: !LessThanOrEqual

@@ -9,8 +9,7 @@ etb_abilities:
   - effect: !TutorLibrary
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
+            types: Creature
         - restriction: !Toughness
             comparison:
               value: !LessThanOrEqual

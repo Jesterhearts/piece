@@ -21,6 +21,5 @@ enchant:
         - restriction: !ControllerControlsBlackOrGreen {}
 restrictions:
   - restriction: !OfType
-      types:
-        - type_: !Creature {}
+      types: Creature
   - restriction: !OnBattlefield {}

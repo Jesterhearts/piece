@@ -20,7 +20,7 @@ use crate::{
     newtype_enum::newtype_enum,
     protogen,
     targets::Restriction,
-    types::{parse_types, Subtype, Type},
+    types::{parse_typeline, Subtype, Type},
 };
 
 #[derive(Debug, Clone, Component)]
@@ -429,7 +429,7 @@ impl TryFrom<&protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
-        let (types, subtypes) = parse_types(&value.typeline)?;
+        let (types, subtypes) = parse_typeline(&value.typeline)?;
 
         let mut this = Self {
             name: value.name.clone(),

@@ -18,9 +18,7 @@ etb_abilities:
               - restriction: !Controller
                   controller: !Self_ {}
               - restriction: !OfType
-                  types:
-                    - type_: !Artifact {}
-                    - type_: !Creature {}
+                  types: Artifact, Creature
 triggered_abilities:
   - trigger:
       source:
@@ -37,33 +35,23 @@ triggered_abilities:
               - cost: !TapPermanent
                   restrictions:
                     - restriction: !OfType
-                        types:
-                          - type_: !Creature {}
-                          - type_: !Artifact {}
+                        types: Creature, Artifact
               - cost: !TapPermanent
                   restrictions:
                     - restriction: !OfType
-                        types:
-                          - type_: !Creature {}
-                          - type_: !Artifact {}
+                        types: Creature, Artifact
               - cost: !TapPermanent
                   restrictions:
                     - restriction: !OfType
-                        types:
-                          - type_: !Creature {}
-                          - type_: !Artifact {}
+                        types: Creature, Artifact
               - cost: !TapPermanent
                   restrictions:
                     - restriction: !OfType
-                        types:
-                          - type_: !Creature {}
-                          - type_: !Artifact {}
+                        types: Creature, Artifact
               - cost: !TapPermanent
                   restrictions:
                     - restriction: !OfType
-                        types:
-                          - type_: !Creature {}
-                          - type_: !Artifact {}
+                        types: Creature, Artifact
           effects:
             - effect: !Transform {}
     oracle_text: Transform Thousand Moons Smithy
@@ -80,9 +68,7 @@ back_face:
           - restriction: !Controller
               controller: !Self_ {}
           - restriction: !OfType
-              types:
-                - type_: !Artifact {}
-                - type_: !Creature {}
+              types: Artifact, Creature
       effects:
         - effect: !CreateToken
             token: !Creature
@@ -96,9 +82,7 @@ back_face:
                     - restriction: !Controller
                         controller: !Self_ {}
                     - restriction: !OfType
-                        types:
-                          - type_: !Artifact {}
-                          - type_: !Creature {}
+                        types: Artifact, Creature
       oracle_text: Whenever you cast an artifact or creature spell using mana from
         Barracks of the Thousand, create a white Gnome Soldier artifact creature token
         with "This creature's power and toughness are each equal to the number of

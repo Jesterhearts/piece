@@ -8,10 +8,7 @@ effects:
   - effect: !DestroyTarget
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Creature {}
-              - type_: !Enchantment {}
-              - type_: !Planeswalker {}
+            types: Creature, Enchantment, Planeswalker
   - effect: !TargetControllerGainsTokens
       token: !Map {}
   - effect: !TargetControllerGainsTokens

@@ -9,8 +9,7 @@ static_abilities:
         - restriction: !Controller
             controller: !Opponent {}
         - restriction: !OfType
-            types:
-              - type_: !Artifact {}
+            types: Artifact
 activated_abilities:
   - cost:
       mana_cost: '{X}{X}{W}'
@@ -23,8 +22,7 @@ activated_abilities:
                 cmc: !Dynamic
                   dynamic: !X {}
             - restriction: !OfType
-                types:
-                  - type_: !Artifact {}
+                types: Artifact
     oracle_text: Destroy each artifact with mana value X
 power: 1
 toughness: 4

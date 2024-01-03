@@ -6,9 +6,7 @@ cost:
     - cost: !SacrificePermanent
         restrictions:
           - restriction: !OfType
-              types:
-                - type_: !Creature {}
-                - type_: !Artifact {}
+              types: Creature, Artifact
 oracle_text: As an additional cost to cast this spell, sacrifice an artifact or creature.
 ward:
   mana_cost: '{2}'
@@ -20,8 +18,6 @@ etb_abilities:
         duration: !UntilSourceLeavesBattlefield {}
       restrictions:
         - restriction: !OfType
-            types:
-              - type_: !Artifact {}
-              - type_: !Creature {}
+            types: Artifact, Creature
         - restriction: !Controller
             controller: !Opponent {}

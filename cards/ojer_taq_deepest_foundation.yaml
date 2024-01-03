@@ -21,8 +21,7 @@ replacement_effects:
       - restriction: !Controller
           controller: !Self_ {}
       - restriction: !OfType
-          types:
-            - type_: !Creature {}
+          types: Creature
     effects:
       - effect: !MultiplyTokens
           multiplier: 3
