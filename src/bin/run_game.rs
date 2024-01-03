@@ -934,7 +934,7 @@ async fn main() -> anyhow::Result<()> {
                                     .map(Cow::from)
                                     .collect_vec()
                             },
-                            &[1., 1., 0.25, 0.5, 0.5, 0.75],
+                            &[1., 1., 0.1, 0.5, 0.5, 0.1],
                         );
                         let top = search.get(0).map(|result| result.key);
 

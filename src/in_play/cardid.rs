@@ -1347,6 +1347,17 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::Descend(count) => {
+                    let cards = self
+                        .controller(db)
+                        .get_cards_in::<InGraveyard>(db)
+                        .into_iter()
+                        .filter(|card| card.is_permanent(db))
+                        .count();
+                    if cards < *count {
+                        return false;
+                    }
+                }
                 Restriction::DescendedThisTurn => {
                     let descended = times_descended_this_turn(db, self.controller(db).into());
                     if descended < 1 {

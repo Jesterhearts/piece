@@ -85,6 +85,9 @@ message Restriction {
   }
   message ControllerControlsBlackOrGreen {}
   message ControllerHandEmpty {}
+  message Descend {
+    int32 count = 1;
+  }
   message DescendedThisTurn {}
   message DuringControllersTurn {}
   message EnteredBattlefieldThisTurn {
@@ -143,27 +146,28 @@ message Restriction {
     Controller controller = 7;
     ControllerControlsBlackOrGreen controller_controls_black_or_green = 8;
     ControllerHandEmpty controller_hand_empty = 9;
-    DescendedThisTurn descended_this_turn = 10;
-    DuringControllersTurn during_controllers_turn = 11;
-    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 12;
-    InGraveyard in_graveyard = 13;
-    JustCast just_cast = 14;
-    LifeGainedThisTurn life_gained_this_turn = 15;
-    Locations location = 16;
-    ManaSpentFromSource mana_spent_from_source = 17;
-    NotChosen not_chosen = 18;
-    NotKeywords not_keywords = 19;
-    NotOfType not_of_type = 20;
-    NotSelf not_self = 21;
-    NumberOfCountersOnThis number_of_counters_on_this = 22;
-    OfColor of_color = 23;
-    OfType of_type = 24;
-    OnBattlefield on_battlefield = 25;
-    Power power = 26;
-    Self self = 27;
-    SourceCast source_cast = 28;
-    Tapped tapped = 29;
-    Threshold threshold = 30;
-    Toughness toughness = 31;
+    Descend descend = 10;
+    DescendedThisTurn descended_this_turn = 11;
+    DuringControllersTurn during_controllers_turn = 12;
+    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 13;
+    InGraveyard in_graveyard = 14;
+    JustCast just_cast = 15;
+    LifeGainedThisTurn life_gained_this_turn = 16;
+    Locations location = 17;
+    ManaSpentFromSource mana_spent_from_source = 18;
+    NotChosen not_chosen = 19;
+    NotKeywords not_keywords = 20;
+    NotOfType not_of_type = 21;
+    NotSelf not_self = 22;
+    NumberOfCountersOnThis number_of_counters_on_this = 23;
+    OfColor of_color = 24;
+    OfType of_type = 25;
+    OnBattlefield on_battlefield = 26;
+    Power power = 27;
+    Self self = 28;
+    SourceCast source_cast = 29;
+    Tapped tapped = 30;
+    Threshold threshold = 31;
+    Toughness toughness = 32;
   }
 }

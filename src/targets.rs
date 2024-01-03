@@ -220,6 +220,7 @@ pub(crate) enum Restriction {
     Controller(ControllerRestriction),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
+    Descend(usize),
     DescendedThisTurn,
     DuringControllersTurn,
     EnteredTheBattlefieldThisTurn {
@@ -271,6 +272,7 @@ impl Restriction {
                 "controller controls black or green".to_string()
             }
             Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
+            Restriction::Descend(count) => format!("descend {}", count),
             Restriction::DescendedThisTurn => "descended this turn".to_string(),
             Restriction::DuringControllersTurn => "during controller's turn".to_string(),
             Restriction::EnteredTheBattlefieldThisTurn {
@@ -380,6 +382,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             }
             protogen::targets::restriction::Restriction::ControllerHandEmpty(_) => {
                 Ok(Self::ControllerHandEmpty)
+            }
+            protogen::targets::restriction::Restriction::Descend(value) => {
+                Ok(Self::Descend(usize::try_from(value.count)?))
             }
             protogen::targets::restriction::Restriction::DescendedThisTurn(_) => {
                 Ok(Self::DescendedThisTurn)

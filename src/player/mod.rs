@@ -20,7 +20,7 @@ use crate::{
     effects::replacing,
     in_play::{
         current_turn, just_cast, life_gained_this_turn, number_of_attackers_this_turn,
-        times_descended_this_turn, CardId, Database, InHand, ReplacementEffectId,
+        times_descended_this_turn, CardId, Database, InGraveyard, InHand, ReplacementEffectId,
     },
     mana::{Mana, ManaCost, ManaRestriction},
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
@@ -134,6 +134,16 @@ impl Owner {
                 Restriction::LifeGainedThisTurn(count) => {
                     let life_gained = life_gained_this_turn(db, self);
                     if life_gained < *count {
+                        return false;
+                    }
+                }
+                Restriction::Descend(count) => {
+                    let cards = self
+                        .get_cards::<InGraveyard>(db)
+                        .into_iter()
+                        .filter(|card| card.is_permanent(db))
+                        .count();
+                    if cards < *count {
                         return false;
                     }
                 }
