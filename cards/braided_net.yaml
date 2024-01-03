@@ -3,7 +3,8 @@ typeline: Artifact
 cost:
   mana_cost: '{2}{U}'
 etb_abilities:
-  - oracle_text: Braided Net enters the battlefield with three net counters on it.
+  - oracle_text:
+      Braided Net enters the battlefield with three net counters on it.
     effect: !TargetGainsCounters
       counter: Net
       restrictions:
@@ -25,9 +26,53 @@ activated_abilities:
               - ability: !PreventAbilityActivation {}
           duration:
             duration: !UntilUntapped {}
+  - cost:
+      mana_cost: '{1}{U}'
+      additional_costs:
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact
+              - restriction: !Location
+                  locations:
+                    - location: !OnBattlefield {}
+                    - location: !InGraveyard {}
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Return to the battlefield transformed under its owners control.
+    sorcery_speed: true
+    craft: true
 restrictions:
   - restriction: !NotOfType
       types: Land
   - restriction: !Location
       locations:
         - location: !OnBattlefield {}
+back_face:
+  name: Braided Quipu
+  typeline: Artifact
+  colors:
+    - color: !Blue {}
+  activated_abilities:
+    - oracle_text:
+        Draw a card for each artifact you control, then put Braided Quipu into
+        its owner's library third from the top.
+      cost:
+        mana_cost: '{3}{U}'
+        tap: true
+      effects:
+        - effect: !ControllerDrawCards
+            count: !NumberOfPermanentsMatching
+              restrictions:
+                - restriction: !OfType
+                    types: Artifact
+                - restriction: !Controller
+                    controller: !Self_ {}
+        - effect: !TargetToTopOfLibrary
+            under_cards: 2
+            restrictions:
+              - restriction: !Self_ {}

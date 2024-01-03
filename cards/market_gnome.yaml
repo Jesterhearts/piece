@@ -16,7 +16,8 @@ triggered_abilities:
       - effect: !GainLife
           count: 1
       - effect: !ControllerDrawCards
-          count: 1
+          count: !Fixed
+            count: 1
   - trigger:
       source:
         trigger: !ExiledDuringCraft {}
@@ -30,6 +31,7 @@ triggered_abilities:
       - effect: !GainLife
           count: 1
       - effect: !ControllerDrawCards
-          count: 1
+          count: !Fixed
+            count: 1
 power: 0
 toughness: 3

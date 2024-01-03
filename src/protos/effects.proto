@@ -45,7 +45,14 @@ message ControllerDiscards {
 }
 
 message ControllerDrawCards {
-  int32 count = 1;
+  message Fixed {
+    int32 count = 1;
+  }
+
+  oneof count {
+    Fixed fixed = 1;
+    NumberOfPermanentsMatching number_of_permanents_matching = 2;
+  }
 }
 
 message ControllerLosesLife {
@@ -65,7 +72,7 @@ message CounterSpellUnlessPay {
   }
 
   oneof cost {
-    Fixed fixed = 1;
+    Fixed fixed = 2;
   }
 }
 
@@ -150,11 +157,9 @@ message DynamicPowerToughness {
     NumberOfCountersOnThis number_of_counters_on_this = 1;
     NumberOfPermanentsMatching number_of_permanents_matching = 2;
   }
+
   message NumberOfCountersOnThis {
     string counter = 1;
-  }
-  message NumberOfPermanentsMatching {
-    repeated targets.Restriction restrictions = 1;
   }
 }
 
@@ -288,6 +293,10 @@ message MultiplyTokens {
   int32 multiplier = 1;
 }
 
+message NumberOfPermanentsMatching {
+  repeated targets.Restriction restrictions = 1;
+}
+
 message PayCostThen {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
@@ -370,7 +379,8 @@ message TapTarget {
 message TapThis {}
 
 message TargetToTopOfLibrary {
-  repeated targets.Restriction restrictions = 1;
+  int32 under_cards = 1;
+  repeated targets.Restriction restrictions = 2;
 }
 
 message Transform {}

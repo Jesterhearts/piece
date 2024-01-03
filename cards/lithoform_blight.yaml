@@ -46,7 +46,8 @@ enchant:
         duration: !UntilSourceLeavesBattlefield {}
 etb_abilities:
   - effect: !ControllerDrawCards
-      count: 1
+      count: !Fixed
+        count: 2
 restrictions:
   - restriction: !OfType
       types: Land

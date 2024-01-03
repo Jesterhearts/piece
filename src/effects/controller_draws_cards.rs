@@ -1,15 +1,62 @@
 use std::vec::IntoIter;
 
+use anyhow::anyhow;
+
 use crate::{
     battlefield::{ActionResult, PendingResults},
     effects::EffectBehaviors,
-    in_play::{Database, ReplacementEffectId},
+    in_play::{cards, Database, OnBattlefield, ReplacementEffectId},
     player::Player,
+    protogen,
+    targets::Restriction,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug)]
+pub(crate) enum Count {
+    Fixed(usize),
+    NumberOfPermanentsMatching(Vec<Restriction>),
+}
+
+impl TryFrom<&protogen::effects::controller_draw_cards::Count> for Count {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: &protogen::effects::controller_draw_cards::Count,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            protogen::effects::controller_draw_cards::Count::Fixed(count) => {
+                Ok(Self::Fixed(usize::try_from(count.count)?))
+            }
+            protogen::effects::controller_draw_cards::Count::NumberOfPermanentsMatching(
+                matching,
+            ) => Ok(Self::NumberOfPermanentsMatching(
+                matching
+                    .restrictions
+                    .iter()
+                    .map(Restriction::try_from)
+                    .collect::<anyhow::Result<_>>()?,
+            )),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct ControllerDrawsCards {
-    pub(crate) count: usize,
+    count: Count,
+}
+
+impl TryFrom<&protogen::effects::ControllerDrawCards> for ControllerDrawsCards {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &protogen::effects::ControllerDrawCards) -> Result<Self, Self::Error> {
+        Ok(Self {
+            count: value
+                .count
+                .as_ref()
+                .ok_or_else(|| anyhow!("Expected count to have a count set"))
+                .and_then(Count::try_from)?,
+        })
+    }
 }
 
 impl EffectBehaviors for ControllerDrawsCards {
@@ -31,42 +78,44 @@ impl EffectBehaviors for ControllerDrawsCards {
 
     fn push_pending_behavior(
         &self,
-        _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        db: &mut crate::in_play::Database,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
+        let count = match &self.count {
+            Count::Fixed(count) => *count,
+            Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
+                .into_iter()
+                .filter(|card| card.passes_restrictions(db, source, &matching))
+                .count(),
+        };
+
         results.push_settled(ActionResult::DrawCards {
             target: controller,
-            count: self.count,
-        });
-    }
-
-    fn push_behavior_from_top_of_library(
-        &self,
-        db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-        target: crate::in_play::CardId,
-        results: &mut crate::battlefield::PendingResults,
-    ) {
-        results.push_settled(ActionResult::DrawCards {
-            target: target.controller(db),
-            count: self.count,
+            count,
         });
     }
 
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::battlefield::PendingResults,
     ) {
+        let count = match &self.count {
+            Count::Fixed(count) => *count,
+            Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
+                .into_iter()
+                .filter(|card| card.passes_restrictions(db, source, &matching))
+                .count(),
+        };
         results.push_settled(ActionResult::DrawCards {
             target: controller,
-            count: self.count,
+            count,
         });
     }
 
@@ -79,6 +128,14 @@ impl EffectBehaviors for ControllerDrawsCards {
         _count: usize,
         results: &mut PendingResults,
     ) {
-        player.draw_with_replacement(db, replacements, self.count, results);
+        let count = match &self.count {
+            Count::Fixed(count) => *count,
+            Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
+                .into_iter()
+                .filter(|card| card.passes_restrictions(db, *card, &matching))
+                .count(),
+        };
+
+        player.draw_with_replacement(db, replacements, count, results);
     }
 }

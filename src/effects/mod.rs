@@ -188,13 +188,11 @@ pub(crate) struct NumberOfPermanentsMatching {
     pub(crate) restrictions: Vec<Restriction>,
 }
 
-impl TryFrom<&protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatching>
-    for NumberOfPermanentsMatching
-{
+impl TryFrom<&protogen::effects::NumberOfPermanentsMatching> for NumberOfPermanentsMatching {
     type Error = anyhow::Error;
 
     fn try_from(
-        value: &protogen::effects::dynamic_power_toughness::NumberOfPermanentsMatching,
+        value: &protogen::effects::NumberOfPermanentsMatching,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             restrictions: value
@@ -495,11 +493,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ControllerDiscards(value) => Ok(Self(Box::leak(
                 Box::new(ControllerDiscards::try_from(value)?),
             ))),
-            protogen::effects::effect::Effect::ControllerDrawCards(value) => {
-                Ok(Self(Box::leak(Box::new(ControllerDrawsCards {
-                    count: usize::try_from(value.count)?,
-                }))))
-            }
+            protogen::effects::effect::Effect::ControllerDrawCards(value) => Ok(Self(Box::leak(
+                Box::new(ControllerDrawsCards::try_from(value)?),
+            ))),
             protogen::effects::effect::Effect::ControllerLosesLife(value) => Ok(Self(Box::leak(
                 Box::new(ControllerLosesLife::try_from(value)?),
             ))),

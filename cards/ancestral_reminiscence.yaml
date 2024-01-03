@@ -5,7 +5,8 @@ cost:
 oracle_text: Draw three cards, then discard a card.
 effects:
   - effect: !ControllerDrawCards
-      count: 3
+      count: !Fixed
+        count: 3
   - effect: !ControllerDiscards
       count: 1
 apply_individually: true

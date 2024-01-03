@@ -5,7 +5,8 @@ cost:
 oracle_text: Draw two cards. Then discard a card unless you attacked this turn.
 effects:
   - effect: !ControllerDrawCards
-      count: 2
+      count: !Fixed
+        count: 2
   - effect: !ControllerDiscards
       count: 1
       unless:

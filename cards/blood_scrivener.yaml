@@ -11,7 +11,8 @@ replacement_effects:
       - restriction: !ControllerHandEmpty {}
     effects:
       - effect: !ControllerDrawCards
-          count: 2
+          count: !Fixed
+            count: 2
       - effect: !ControllerLosesLife
           count: 1
     replacing: !Draw {}

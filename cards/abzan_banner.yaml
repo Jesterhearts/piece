@@ -10,7 +10,8 @@ activated_abilities:
         - cost: !SacrificeSource {}
     effects:
       - effect: !ControllerDrawCards
-          count: 1
+          count: !Fixed
+            count: 1
     oracle_text: Draw a card.
 mana_abilities:
   - cost:
