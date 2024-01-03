@@ -33,6 +33,6 @@ fails.
   ```
   will matching anything that is either an artifact or a creature (or both).
 - The yaml tags are UpperCamelCase versions of the snake_case field names for oneofs in the proto
-  definitions. E.g. `battlefield_modifier` is `BattlefieldModifier` and `modify_target` is
-  `ModifyTarget` for the `effect` oneof field in the `Effects` proto.
+  definitions. E.g. `battlefield_modifier` is `!BattlefieldModifier` and `modify_target` is
+  `!ModifyTarget` for the `effect` oneof field in the `Effects` proto.
 
