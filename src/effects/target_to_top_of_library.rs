@@ -12,6 +12,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub(crate) struct TargetToTopOfLibrary {
     restrictions: Vec<Restriction>,
+    under_cards: usize,
 }
 
 impl TryFrom<&protogen::effects::TargetToTopOfLibrary> for TargetToTopOfLibrary {
@@ -24,6 +25,7 @@ impl TryFrom<&protogen::effects::TargetToTopOfLibrary> for TargetToTopOfLibrary 
                 .iter()
                 .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
+            under_cards: usize::try_from(value.under_cards)?,
         })
     }
 }
@@ -97,7 +99,10 @@ impl EffectBehaviors for TargetToTopOfLibrary {
         results: &mut crate::battlefield::PendingResults,
     ) {
         for target in targets {
-            results.push_settled(ActionResult::ReturnFromBattlefieldToLibrary { target });
+            results.push_settled(ActionResult::ReturnFromBattlefieldToLibrary {
+                target,
+                under_cards: self.under_cards,
+            });
         }
     }
 }

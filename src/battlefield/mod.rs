@@ -214,6 +214,7 @@ pub(crate) enum ActionResult {
     },
     ReturnFromBattlefieldToLibrary {
         target: ActiveTarget,
+        under_cards: usize,
     },
     ReturnFromGraveyardToBattlefield {
         targets: Vec<ActiveTarget>,
@@ -767,12 +768,17 @@ impl Battlefield {
 
                 PendingResults::default()
             }
-            ActionResult::ReturnFromBattlefieldToLibrary { target } => {
+            ActionResult::ReturnFromBattlefieldToLibrary {
+                target,
+                under_cards,
+            } => {
                 let ActiveTarget::Battlefield { id: target } = target else {
                     unreachable!()
                 };
 
-                all_players[target.owner(db)].deck.place_on_top(db, *target);
+                all_players[target.owner(db)]
+                    .deck
+                    .place_under_top(db, *target, *under_cards);
                 PendingResults::default()
             }
             ActionResult::LoseLife { target, count } => {

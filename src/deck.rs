@@ -58,6 +58,12 @@ impl Deck {
         }
     }
 
+    pub(crate) fn place_under_top(&mut self, db: &mut Database, card: CardId, n: usize) {
+        if card.move_to_library(db) {
+            self.cards.insert(self.cards.len() - n, card);
+        }
+    }
+
     pub(crate) fn place_on_bottom(&mut self, db: &mut Database, card: CardId) {
         if card.move_to_library(db) {
             self.cards.push_front(card);
