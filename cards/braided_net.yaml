@@ -5,8 +5,7 @@ cost:
 etb_abilities:
   - oracle_text: Braided Net enters the battlefield with three net counters on it.
     effect: !TargetGainsCounters
-      counter:
-        type_: !Net {}
+      counter: Net
       restrictions:
         - restriction: !Self_ {}
       count: !Multiple
@@ -16,8 +15,7 @@ activated_abilities:
       tap: true
       additional_costs:
         - cost: !RemoveCounters
-            counter:
-              type_: !Net {}
+            counter: Net
             count: 1
     effects:
       - effect: !TapTarget {}

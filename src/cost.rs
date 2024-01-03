@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     card::Color,
-    effects::target_gains_counters::Counter,
+    counters::Counter,
     in_play::{CardId, Database},
     mana::ManaCost,
     protogen,
@@ -232,7 +232,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
             }
             protogen::cost::additional_cost::Cost::RemoveCounters(value) => {
                 Ok(Self::RemoveCounter {
-                    counter: value.counter.get_or_default().try_into()?,
+                    counter: (&value.counter).try_into()?,
                     count: usize::try_from(value.count)?,
                 })
             }

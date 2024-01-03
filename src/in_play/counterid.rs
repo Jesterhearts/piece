@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use strum::IntoEnumIterator;
 
 use crate::{
-    effects::target_gains_counters::{counter, Counter},
+    counters::{counter, Counter},
     in_play::{CardId, Database},
 };
 

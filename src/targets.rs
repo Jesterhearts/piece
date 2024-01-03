@@ -12,7 +12,7 @@ use itertools::Itertools;
 
 use crate::{
     card::{Color, Keyword},
-    effects::target_gains_counters::Counter,
+    counters::Counter,
     player::mana_pool::ManaSource,
     protogen,
     types::{parse_subtype_list, parse_type_list, Subtype, Type},
@@ -434,7 +434,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::NumberOfCountersOnThis(value) => {
                 Ok(Self::NumberOfCountersOnThis {
                     comparison: value.comparison.get_or_default().try_into()?,
-                    counter: value.counter.get_or_default().try_into()?,
+                    counter: (&value.counter).try_into()?,
                 })
             }
             protogen::targets::restriction::Restriction::OfColor(colors) => Ok(Self::OfColor(

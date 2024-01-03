@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use tracing::Level;
 
 use crate::{
-    effects::target_gains_counters::Counter,
+    counters::Counter,
     in_play::{current_turn, AbilityId, CardId, CounterId, Database, TriggerId},
     player::{Controller, Owner},
     targets::Restriction,

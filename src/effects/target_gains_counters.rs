@@ -4,25 +4,13 @@ use tracing::Level;
 
 use crate::{
     battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
+    counters::Counter,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location},
-    newtype_enum::newtype_enum,
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
 };
-
-newtype_enum! {
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-#[derive(strum::EnumIter, strum::AsRefStr, Hash)]
-pub enum Counter {
-    Any,
-    Charge,
-    Net,
-    P1P1,
-    M1M1,
-}
-}
 
 #[derive(Debug, Clone)]
 pub(crate) enum DynamicCounter {
@@ -86,30 +74,6 @@ impl TryFrom<&protogen::effects::gain_counter::Count> for GainCount {
     }
 }
 
-impl TryFrom<&protogen::counters::Counter> for Counter {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::counters::Counter) -> Result<Self, Self::Error> {
-        value
-            .type_
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected counter to have a type specified"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::counters::counter::Type> for Counter {
-    fn from(value: &protogen::counters::counter::Type) -> Self {
-        match value {
-            protogen::counters::counter::Type::Any(_) => Self::Any,
-            protogen::counters::counter::Type::Charge(_) => Self::Charge,
-            protogen::counters::counter::Type::Net(_) => Self::Net,
-            protogen::counters::counter::Type::P1p1(_) => Self::P1P1,
-            protogen::counters::counter::Type::M1m1(_) => Self::M1M1,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct TargetGainsCounters {
     count: GainCount,
@@ -127,7 +91,7 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
                 .and_then(GainCount::try_from)?,
-            counter: value.counter.get_or_default().try_into()?,
+            counter: (&value.counter).try_into()?,
             restrictions: value
                 .restrictions
                 .iter()

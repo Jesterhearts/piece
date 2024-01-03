@@ -4,7 +4,6 @@ package effects;
 
 import "color.proto";
 import "cost.proto";
-import "counters.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
@@ -152,7 +151,7 @@ message DynamicPowerToughness {
     NumberOfPermanentsMatching number_of_permanents_matching = 2;
   }
   message NumberOfCountersOnThis {
-    counters.Counter counter = 1;
+    string counter = 1;
   }
   message NumberOfPermanentsMatching {
     repeated targets.Restriction restrictions = 1;
@@ -221,7 +220,7 @@ message GainCounter {
     Dynamic dynamic = 6;
   }
 
-  counters.Counter counter = 7;
+  string counter = 7;
   repeated targets.Restriction restrictions = 8;
 }
 

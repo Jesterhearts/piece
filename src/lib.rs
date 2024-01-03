@@ -20,6 +20,7 @@ pub mod ai;
 pub mod battlefield;
 pub mod card;
 pub mod cost;
+pub mod counters;
 pub mod deck;
 pub mod effects;
 pub mod in_play;

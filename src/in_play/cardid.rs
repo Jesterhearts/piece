@@ -29,9 +29,9 @@ use crate::{
         TriggeredAbilityModifier,
     },
     cost::{CastingCost, CostReducer, Ward},
+    counters::{counter, Counter},
     effects::{
         effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilUntapped},
-        target_gains_counters::{counter, Counter},
         AnyEffect, DynamicPowerToughness, EffectDuration, Effects, Modes, ReplacementEffects,
         Token,
     },

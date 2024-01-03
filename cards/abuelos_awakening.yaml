@@ -12,8 +12,7 @@ effects:
         - restriction: !Controller
             controller: !Self_ {}
   - effect: !TargetGainsCounters
-      counter:
-        type_: !P1p1 {}
+      counter: +1/+1
       count: !Dynamic
         dynamic: !X {}
   - effect: !ModifyTarget

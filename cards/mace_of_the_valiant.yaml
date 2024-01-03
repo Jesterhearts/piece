@@ -12,8 +12,7 @@ activated_abilities:
           modifiers:
             - add_dynamic_power_toughness:
                 source: !NumberOfCountersOnThis
-                  counter:
-                    type_: !Charge {}
+                  counter: Charge
     oracle_text: Equip
 triggered_abilities:
   - trigger:
@@ -28,8 +27,7 @@ triggered_abilities:
             types: Creature
     effects:
       - effect: !TargetGainsCounters
-          counter:
-            type_: !Charge {}
+          counter: Charge
           restrictions:
             - restriction: !Self_ {}
           count: !Single {}
