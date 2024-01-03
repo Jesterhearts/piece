@@ -15,3 +15,5 @@ etb_abilities:
         - restriction: !Descend
             count: 4
 keywords: Flying
+power: 4
+toughness: 4

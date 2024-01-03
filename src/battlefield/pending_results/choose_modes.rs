@@ -13,7 +13,7 @@ pub(crate) struct ChooseModes {
 
 impl PendingResult for ChooseModes {
     fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
-        false
+        true
     }
 
     fn options(&self, db: &mut Database, _all_players: &AllPlayers) -> Vec<(usize, String)> {

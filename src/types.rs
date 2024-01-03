@@ -23,7 +23,6 @@ pub(crate) struct RemoveTypes(pub(crate) IndexSet<Type>);
 )]
 pub enum Type {
     Legendary,
-    Basic,
     World,
     Tribal,
     Instant,
@@ -36,6 +35,7 @@ pub enum Type {
     Land,
     Planeswalker,
     Stickers,
+    Basic,
 }
 
 impl TryFrom<&protogen::types::Type> for Type {
