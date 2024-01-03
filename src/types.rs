@@ -902,11 +902,7 @@ pub(crate) fn parse_type_list(types: &str) -> anyhow::Result<IndexSet<Type>> {
         .split(',')
         .map(|ty| ty.trim())
         .filter(|ty| !ty.is_empty())
-        .map(|ty| match ty {
-            // Only basic lands have the type basic, so this will only intersect with basic lands.
-            "Basic Land" => Ok(Type::Basic),
-            other => Type::try_from(other).with_context(|| format!("Parsing {}", ty)),
-        })
+        .map(|ty| Type::try_from(ty).with_context(|| format!("Parsing {}", ty)))
         .collect::<anyhow::Result<_>>()
 }
 

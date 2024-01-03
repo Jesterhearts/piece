@@ -8,7 +8,7 @@ etb_abilities:
     effect: !TutorLibrary
       restrictions:
         - restriction: !OfType
-            types: Basic Land
+            types: Basic
             subtypes: Plains
       destination:
         destination: !Hand {}

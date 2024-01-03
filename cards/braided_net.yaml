@@ -3,8 +3,7 @@ typeline: Artifact
 cost:
   mana_cost: '{2}{U}'
 etb_abilities:
-  - oracle_text:
-      Braided Net enters the battlefield with three net counters on it.
+  - oracle_text: Braided Net enters the battlefield with three net counters on it.
     effect: !TargetGainsCounters
       counter: Net
       restrictions:
@@ -58,9 +57,8 @@ back_face:
   colors:
     - color: !Blue {}
   activated_abilities:
-    - oracle_text:
-        Draw a card for each artifact you control, then put Braided Quipu into
-        its owner's library third from the top.
+    - oracle_text: Draw a card for each artifact you control, then put Braided Quipu
+        into its owner's library third from the top.
       cost:
         mana_cost: '{3}{U}'
         tap: true
