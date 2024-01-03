@@ -250,8 +250,8 @@ impl Controller {
     pub(crate) fn get_cards(self, db: &mut Database) -> Vec<CardId> {
         db.query::<(Entity, &Controller)>()
             .iter(db)
-            .filter_map(|(card, owner)| {
-                if self == *owner {
+            .filter_map(|(card, controller)| {
+                if self == *controller {
                     Some(card.into())
                 } else {
                     None

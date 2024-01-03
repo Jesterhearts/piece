@@ -4,10 +4,9 @@ cost:
   mana_cost: '{4}{U}{U}'
 keywords: Flying
 etb_abilities:
-  - oracle_text:
-      When Council of Echoes enters the battlefield, if there are four or more
-      permanent cards in your graveyard, return up to one target nonland
-      permanent other than Council of Echoes to its owner's hand.
+  - oracle_text: When Council of Echoes enters the battlefield, if there are four
+      or more permanent cards in your graveyard, return up to one target nonland permanent
+      other than Council of Echoes to its owner's hand.
     effect: !ReturnTargetToHand
       restrictions:
         - restriction: !Location
