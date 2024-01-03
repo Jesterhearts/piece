@@ -87,7 +87,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
                 .into_iter()
-                .filter(|card| card.passes_restrictions(db, source, &matching))
+                .filter(|card| card.passes_restrictions(db, source, matching))
                 .count(),
         };
 
@@ -110,7 +110,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
                 .into_iter()
-                .filter(|card| card.passes_restrictions(db, source, &matching))
+                .filter(|card| card.passes_restrictions(db, source, matching))
                 .count(),
         };
         results.push_settled(ActionResult::DrawCards {
@@ -132,7 +132,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
                 .into_iter()
-                .filter(|card| card.passes_restrictions(db, *card, &matching))
+                .filter(|card| card.passes_restrictions(db, *card, matching))
                 .count(),
         };
 
