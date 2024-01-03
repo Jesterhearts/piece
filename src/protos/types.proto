@@ -4,7 +4,7 @@ package types;
 
 message Type {
   message Artifact {}
-  message BasicLand {}
+  message Basic {}
   message Battle {}
   message Creature {}
   message Enchantment {}
@@ -20,7 +20,7 @@ message Type {
 
   oneof type {
     Artifact artifact = 1;
-    BasicLand basic_land = 2;
+    Basic basic = 2;
     Battle battle = 3;
     Creature creature = 4;
     Enchantment enchantment = 5;

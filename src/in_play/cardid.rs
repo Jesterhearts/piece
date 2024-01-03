@@ -2005,7 +2005,7 @@ impl CardId {
     }
 
     pub(crate) fn is_land(self, db: &Database) -> bool {
-        self.types_intersect(db, &IndexSet::from([Type::Land, Type::BasicLand]))
+        self.types_intersect(db, &IndexSet::from([Type::Land]))
     }
 
     pub(crate) fn manifest(self, db: &mut Database) {

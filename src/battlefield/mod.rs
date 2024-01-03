@@ -1332,7 +1332,7 @@ impl Battlefield {
                 let explorer = target.id().unwrap();
                 if let Some(card) = all_players[explorer.controller(db)].deck.draw() {
                     card.reveal(db);
-                    if card.types_intersect(db, &IndexSet::from([Type::BasicLand, Type::Land])) {
+                    if card.types_intersect(db, &IndexSet::from([Type::Land])) {
                         card.move_to_hand(db);
                         PendingResults::default()
                     } else {

@@ -6,7 +6,7 @@ cost:
     - cost: !TapPermanent
         restrictions:
           - restriction: !OfType
-              types: Artifact, Creature, Land, BasicLand
+              types: Artifact, Creature, Land
 power: 4
 toughness: 4
 keywords: Flying

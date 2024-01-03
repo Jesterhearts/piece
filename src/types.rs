@@ -23,6 +23,7 @@ pub(crate) struct RemoveTypes(pub(crate) IndexSet<Type>);
 )]
 pub enum Type {
     Legendary,
+    Basic,
     World,
     Tribal,
     Instant,
@@ -34,7 +35,6 @@ pub enum Type {
     Snow,
     Land,
     Planeswalker,
-    BasicLand,
     Stickers,
 }
 
@@ -53,7 +53,7 @@ impl TryFrom<&protogen::types::Type> for Type {
 impl From<&protogen::types::type_::Type> for Type {
     fn from(value: &protogen::types::type_::Type) -> Self {
         match value {
-            protogen::types::type_::Type::BasicLand(_) => Self::BasicLand,
+            protogen::types::type_::Type::Basic(_) => Self::Basic,
             protogen::types::type_::Type::Land(_) => Self::Land,
             protogen::types::type_::Type::Instant(_) => Self::Instant,
             protogen::types::type_::Type::Sorcery(_) => Self::Sorcery,
@@ -902,7 +902,12 @@ pub(crate) fn parse_type_list(types: &str) -> anyhow::Result<IndexSet<Type>> {
         .split(',')
         .map(|ty| ty.trim())
         .filter(|ty| !ty.is_empty())
-        .map(|ty| Type::try_from(ty).with_context(|| format!("Parsing {}", ty)))
+        .flat_map(|ty| match ty {
+            "Basic Land" => vec![Ok(Type::Basic), Ok(Type::Land)].into_iter(),
+            other => {
+                vec![Type::try_from(other).with_context(|| format!("Parsing {}", ty))].into_iter()
+            }
+        })
         .collect::<anyhow::Result<_>>()
 }
 

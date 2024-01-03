@@ -16,7 +16,7 @@ static_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfType
-            types: Land, BasicLand
+            types: Land
   - ability: !ExtraLandsPerTurn
       count: 1
 power: 2
