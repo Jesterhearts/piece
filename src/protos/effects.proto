@@ -267,10 +267,10 @@ message ModifyBattlefield {
   optional int32 base_power = 1;
   optional int32 base_toughness = 2;
   optional DynamicPowerToughness add_dynamic_power_toughness = 3;
-  repeated types.Type add_types = 4;
-  repeated types.Subtype add_subtypes = 5;
-  repeated types.Type remove_types = 6;
-  repeated types.Subtype remove_subtypes = 7;
+  string add_types = 4;
+  string add_subtypes = 5;
+  string remove_types = 6;
+  string remove_subtypes = 7;
   repeated color.Color add_colors = 8;
   bool remove_all_colors = 9;
   optional int32 add_power = 10;

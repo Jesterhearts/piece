@@ -119,7 +119,7 @@ use crate::{
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
-    types::{parse_typeline, Subtype, Type},
+    types::{parse_subtype_list, parse_type_list, parse_typeline, Subtype, Type},
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -311,6 +311,11 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::effects::ModifyBattlefield) -> Result<Self, Self::Error> {
+        let add_types = parse_type_list(&value.add_types)?;
+        let remove_types = parse_type_list(&value.remove_types)?;
+        let add_subtypes = parse_subtype_list(&value.add_subtypes)?;
+        let remove_subtypes = parse_subtype_list(&value.remove_subtypes)?;
+
         Ok(Self {
             base_power: value.base_power,
             base_toughness: value.base_toughness,
@@ -320,31 +325,15 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .add_dynamic_power_toughness
                 .as_ref()
                 .map_or(Ok(None), |pt| pt.try_into().map(Some))?,
-            add_types: value
-                .add_types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            add_subtypes: value
-                .add_subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            add_types,
+            add_subtypes,
             add_colors: value
                 .add_colors
                 .iter()
                 .map(Color::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            remove_types: value
-                .remove_types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            remove_subtypes: value
-                .remove_subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            remove_types,
+            remove_subtypes,
             add_static_abilities: value
                 .add_static_abilities
                 .iter()
@@ -366,14 +355,16 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
             add_keywords: value
                 .add_keywords
                 .split(',')
+                .map(|s| s.trim())
                 .filter(|s| !s.is_empty())
-                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .map(|s| Keyword::from_str(s).with_context(|| anyhow!("Parsing {}", s)))
                 .collect::<anyhow::Result<_>>()?,
             remove_keywords: value
                 .remove_keywords
                 .split(',')
+                .map(|s| s.trim())
                 .filter(|s| !s.is_empty())
-                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
+                .map(|s| Keyword::from_str(s).with_context(|| anyhow!("Parsing {}", s)))
                 .collect::<anyhow::Result<_>>()?,
         })
     }

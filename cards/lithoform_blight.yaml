@@ -9,12 +9,7 @@ oracle_text: |-
 enchant:
   modifiers:
     - modifier:
-        remove_subtypes:
-          - subtype: !Plains {}
-          - subtype: !Island {}
-          - subtype: !Swamp {}
-          - subtype: !Mountain {}
-          - subtype: !Forest {}
+        remove_subtypes: Plains, Island, Swamp, Mountain, Forest
       duration:
         duration: !UntilSourceLeavesBattlefield {}
     - modifier:

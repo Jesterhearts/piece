@@ -58,9 +58,7 @@ back_face:
       effects:
         - effect: !BattlefieldModifier
             modifier:
-              add_types:
-                - type_: !Creature {}
-                - type_: !Artifact {}
+              add_types: Creature, Artifact
             duration:
               duration: !UntilEndOfTurn {}
             restrictions:
@@ -79,9 +77,7 @@ back_face:
       effects:
         - effect: !BattlefieldModifier
             modifier:
-              add_types:
-                - type_: !Creature {}
-                - type_: !Artifact {}
+              add_types: Creature, Artifact
             duration:
               duration: !UntilEndOfTurn {}
             restrictions:

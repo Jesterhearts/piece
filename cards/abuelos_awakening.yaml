@@ -20,10 +20,8 @@ effects:
       modifier:
         base_power: 1
         base_toughness: 1
-        add_types:
-          - type_: !Creature {}
-        add_subtypes:
-          - subtype: !Spirit {}
+        add_types: Creature
+        add_subtypes: Spirit
         add_keywords: Flying
       duration:
         duration: !UntilTargetLeavesBattlefield {}

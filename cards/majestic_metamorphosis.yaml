@@ -9,11 +9,8 @@ effects:
       modifier:
         base_power: 4
         base_toughness: 4
-        add_types:
-          - type_: !Creature {}
-          - type_: !Artifact {}
-        add_subtypes:
-          - subtype: !Angel {}
+        add_types: Creature, Artifact
+        add_subtypes: Angel
         add_keywords: Flying
       duration:
         duration: !UntilEndOfTurn {}

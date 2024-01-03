@@ -19,8 +19,7 @@ activated_abilities:
           modifier:
             base_power: 5
             base_toughness: 5
-            add_subtypes:
-              - subtype: !Dinosaur {}
+            add_subtypes: Dinosaur
             entire_battlefield: true
           duration:
             duration: !UntilEndOfTurn {}

@@ -18,8 +18,7 @@ effects:
               modifiers:
                 - base_power: 1
                   base_toughness: 1
-                  add_subtypes:
-                    - subtype: !Spirit {}
+                  add_subtypes: Spirit
                   add_keywords: Flying
         if_none:
           effects:
