@@ -254,6 +254,7 @@ impl CardId {
                 .remove::<effect_duration::UntilEndOfTurn>()
                 .remove::<effect_duration::UntilSourceLeavesBattlefield>()
                 .remove::<EnteredBattlefieldTurn>()
+                .insert(Settled)
                 .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
                 .insert(Targets(targets));
 

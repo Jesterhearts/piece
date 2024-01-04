@@ -132,7 +132,7 @@ pub fn load_cards() -> anyhow::Result<Cards> {
         };
     }
 
-    debug!(
+    info!(
         "Loaded {} cards in {}ms",
         cards.len(),
         timer.elapsed().as_millis()

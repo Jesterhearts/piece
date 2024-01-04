@@ -40,7 +40,6 @@ async fn main() -> anyhow::Result<()> {
         .with_line_number(true)
         .with_file(true)
         .with_target(false)
-        .with_span_events(FmtSpan::ENTER)
         .with_writer(non_blocking)
         .init();
 
