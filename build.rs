@@ -20,12 +20,36 @@ fn main() {
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {
-            if field.is_repeated() {
+            if field.name() == "choices" && field.containing_message().name() == "Choice" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_mana_choice",
+                        deserialize_with="crate::deserialize_mana_choice",
+                        skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
+            } else if field.name() == "gain" && field.containing_message().name() == "Specific" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_gain_mana",
+                        deserialize_with="crate::deserialize_gain_mana",
+                        skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
+            } else if field.is_repeated() {
                 Customize::default()
                     .before("#[serde(default, skip_serializing_if=\"Vec::is_empty\")]")
             } else if !field.is_repeated() && field.proto().type_() == Type::TYPE_MESSAGE {
                 Customize::default().before(
-                    "#[serde(serialize_with = \"crate::serialize_message\", deserialize_with = \"crate::deserialize_message\", default, skip_serializing_if=\"::protobuf::MessageField::is_none\")]")
+                    r#"#[serde(
+                        serialize_with = "crate::serialize_message",
+                        deserialize_with = "crate::deserialize_message",
+                        default,
+                        skip_serializing_if="::protobuf::MessageField::is_none"
+                    )]"#,
+                )
             } else {
                 Customize::default()
                     .before("#[serde(default, skip_serializing_if=\"crate::is_default_value\")]")

@@ -8,9 +8,13 @@ use anyhow::{anyhow, Context};
 use ariadne::{Label, Report, ReportKind, Source};
 use include_dir::{include_dir, Dir, File};
 use indexmap::IndexMap;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use itertools::Itertools;
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::card::Card;
+use crate::{
+    card::Card,
+    protogen::{effects::gain_mana, mana::Mana},
+};
 
 #[cfg(test)]
 mod _tests;
@@ -132,6 +136,130 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 
 pub fn is_default_value<T: Default + PartialEq>(t: &T) -> bool {
     *t == T::default()
+}
+
+pub fn deserialize_gain_mana<'de, D>(deserializer: D) -> Result<Vec<Mana>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<Mana>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a sequence of {W}, {U}, {B}, {R}, {G}, or {C}")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            parse_mana_symbol(v)
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+fn parse_mana_symbol<E>(v: &str) -> Result<Vec<Mana>, E>
+where
+    E: serde::de::Error,
+{
+    let split = v
+        .split('}')
+        .map(|s| s.trim_start_matches('{'))
+        .filter(|s| !s.is_empty())
+        .collect_vec();
+
+    let mut results = vec![];
+    for symbol in split {
+        let mut mana = Mana::default();
+        match symbol {
+            "W" => mana.set_white(Default::default()),
+            "U" => mana.set_blue(Default::default()),
+            "B" => mana.set_black(Default::default()),
+            "R" => mana.set_red(Default::default()),
+            "G" => mana.set_green(Default::default()),
+            "C" => mana.set_colorless(Default::default()),
+            s => {
+                return Err(E::custom(format!("Invalid mana {}", s)));
+            }
+        }
+
+        results.push(mana);
+    }
+    Ok(results)
+}
+
+fn serialize_gain_mana<S>(value: &[Mana], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let result = mana_to_string(value);
+
+    serializer.serialize_str(&result)
+}
+
+fn mana_to_string(value: &[Mana]) -> String {
+    let mut result = String::default();
+    for mana in value.iter() {
+        match mana.mana.as_ref().unwrap() {
+            protogen::mana::mana::Mana::White(_) => result.push_str("{W}"),
+            protogen::mana::mana::Mana::Blue(_) => result.push_str("{U}"),
+            protogen::mana::mana::Mana::Black(_) => result.push_str("{B}"),
+            protogen::mana::mana::Mana::Red(_) => result.push_str("{R}"),
+            protogen::mana::mana::Mana::Green(_) => result.push_str("{G}"),
+            protogen::mana::mana::Mana::Colorless(_) => result.push_str("{C}"),
+        }
+    }
+    result
+}
+
+pub fn deserialize_mana_choice<'de, D>(
+    deserializer: D,
+) -> Result<Vec<gain_mana::GainMana>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<gain_mana::GainMana>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter
+                .write_str("expected a comma separated sequence of {W}, {U}, {B}, {R}, {G}, or {C}")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            v.split(',')
+                .map(|v| v.trim())
+                .map(parse_mana_symbol)
+                .map(|gains| {
+                    Ok(gain_mana::GainMana {
+                        gains: gains?,
+                        ..Default::default()
+                    })
+                })
+                .collect::<Result<Self::Value, E>>()
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+fn serialize_mana_choice<S>(value: &[gain_mana::GainMana], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &value
+            .iter()
+            .map(|gain| mana_to_string(&gain.gains))
+            .join(", "),
+    )
 }
 
 pub fn serialize_message<T, S>(

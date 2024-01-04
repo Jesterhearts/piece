@@ -9,7 +9,7 @@ use crate::{
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
-    mana::{parse_mana, parse_mana_list, Mana, ManaRestriction},
+    mana::{Mana, ManaRestriction},
     player::{mana_pool::ManaSource, Controller},
     protogen,
     targets::Restriction,
@@ -269,10 +269,24 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     fn try_from(value: &protogen::effects::gain_mana::Gain) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::gain_mana::Gain::Specific(specific) => Ok(Self::Specific {
-                gains: parse_mana(&specific.gain)?,
+                gains: specific
+                    .gain
+                    .iter()
+                    .map(Mana::try_from)
+                    .collect::<anyhow::Result<_>>()?,
             }),
             protogen::effects::gain_mana::Gain::Choice(choice) => Ok(Self::Choice {
-                choices: parse_mana_list(&choice.choices)?,
+                choices: choice
+                    .choices
+                    .iter()
+                    .map(|choice| {
+                        choice
+                            .gains
+                            .iter()
+                            .map(Mana::try_from)
+                            .collect::<anyhow::Result<Vec<_>>>()
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()?,
             }),
         }
     }
