@@ -17,7 +17,7 @@ use crate::{
     battlefield::{ActionResult, Battlefield, PendingResults},
     card::Color,
     deck::Deck,
-    effects::replacing,
+    effects::{replacing, EffectBehaviors},
     in_play::{
         current_turn, just_cast, life_gained_this_turn, number_of_attackers_this_turn,
         times_descended_this_turn, CardId, Database, InGraveyard, InHand, ReplacementEffectId,

@@ -572,7 +572,7 @@ impl From<Token> for Card {
                         restrictions: vec![],
                     },
                     effects: vec![AnyEffect {
-                        effect: Effect(&TargetCreatureExplores),
+                        effect: Effect::from(TargetCreatureExplores),
                         oracle_text: String::default(),
                     }],
                     apply_to_self: false,

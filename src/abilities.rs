@@ -7,7 +7,7 @@ use derive_more::{Deref, DerefMut};
 use crate::{
     card::{replace_symbols, Keyword},
     cost::AbilityCost,
-    effects::{AnyEffect, BattlefieldModifier},
+    effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
     in_play::{AbilityId, CardId, Database, TriggerId},
     mana::{Mana, ManaRestriction},
     player::{mana_pool::ManaSource, Controller},

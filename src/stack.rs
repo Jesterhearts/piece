@@ -20,6 +20,7 @@ use crate::{
     },
     card::keyword::SplitSecond,
     cost::AdditionalCost,
+    effects::EffectBehaviors,
     in_play::{
         cast_from, AbilityId, CardId, CastFrom, Database, InStack, TriggerId, TriggerInStack,
     },

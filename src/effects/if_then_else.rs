@@ -4,11 +4,11 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct IfThenElse {
     if_: Vec<Restriction>,
-    then: Effect,
-    else_: Effect,
+    then: Box<Effect>,
+    else_: Box<Effect>,
 }
 
 impl TryFrom<&protogen::effects::IfThenElse> for IfThenElse {
@@ -21,15 +21,15 @@ impl TryFrom<&protogen::effects::IfThenElse> for IfThenElse {
                 .iter()
                 .map(Restriction::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            then: value.then.get_or_default().try_into()?,
-            else_: value.else_.get_or_default().try_into()?,
+            then: Box::new(value.then.get_or_default().try_into()?),
+            else_: Box::new(value.else_.get_or_default().try_into()?),
         })
     }
 }
 
 impl EffectBehaviors for IfThenElse {
     fn needs_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
@@ -41,7 +41,7 @@ impl EffectBehaviors for IfThenElse {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
@@ -53,7 +53,7 @@ impl EffectBehaviors for IfThenElse {
     }
 
     fn valid_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -69,7 +69,7 @@ impl EffectBehaviors for IfThenElse {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -85,7 +85,7 @@ impl EffectBehaviors for IfThenElse {
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         apply_to_self: bool,

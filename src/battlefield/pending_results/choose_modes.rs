@@ -2,6 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::{PendingResult, Source},
+    effects::EffectBehaviors,
     in_play::Database,
     player::AllPlayers,
 };

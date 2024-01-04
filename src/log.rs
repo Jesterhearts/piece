@@ -6,6 +6,7 @@ use tracing::Level;
 
 use crate::{
     counters::Counter,
+    effects::EffectBehaviors,
     in_play::{current_turn, AbilityId, CardId, CounterId, Database, TriggerId},
     player::{Controller, Owner},
     targets::Restriction,

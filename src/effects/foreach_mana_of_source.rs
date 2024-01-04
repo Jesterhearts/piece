@@ -5,10 +5,10 @@ use crate::{
     protogen,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ForEachManaOfSource {
     pub(crate) source: ManaSource,
-    pub(crate) effect: Effect,
+    pub(crate) effect: Box<Effect>,
 }
 
 impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {
@@ -17,14 +17,14 @@ impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {
     fn try_from(value: &protogen::effects::ForEachManaOfSource) -> Result<Self, Self::Error> {
         Ok(Self {
             source: value.source.get_or_default().try_into()?,
-            effect: value.effect.get_or_default().try_into()?,
+            effect: Box::new(value.effect.get_or_default().try_into()?),
         })
     }
 }
 
 impl EffectBehaviors for ForEachManaOfSource {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -32,7 +32,7 @@ impl EffectBehaviors for ForEachManaOfSource {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -49,7 +49,7 @@ impl EffectBehaviors for ForEachManaOfSource {
         results.push_settled(ActionResult::ForEachManaOfSource {
             card: source,
             source: self.source,
-            effect: self.effect.clone(),
+            effect: *self.effect.clone(),
         });
     }
 
@@ -65,7 +65,7 @@ impl EffectBehaviors for ForEachManaOfSource {
         results.push_settled(ActionResult::ForEachManaOfSource {
             card: source,
             source: self.source,
-            effect: self.effect.clone(),
+            effect: *self.effect.clone(),
         });
     }
 }

@@ -31,7 +31,7 @@ use crate::{
         },
         ActionResult, Battlefield,
     },
-    effects::{Destination, Effect},
+    effects::{Destination, Effect, EffectBehaviors},
     in_play::{AbilityId, AuraId, CardId, CastFrom, Database, OnBattlefield},
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, StackEntry},

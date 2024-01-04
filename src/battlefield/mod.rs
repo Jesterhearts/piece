@@ -29,8 +29,8 @@ use crate::{
         replacing,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Destination, Effect, EffectDuration, ModifyBattlefield,
-        Token,
+        AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, EffectDuration,
+        ModifyBattlefield, Token,
     },
     in_play::{
         self, add_just_cast, all_cards, ban_attacking_this_turn, cards, clear_just_cast,
@@ -996,7 +996,7 @@ impl Battlefield {
                                 )],
                             },
                             effects: vec![AnyEffect {
-                                effect: Effect(&Cascade),
+                                effect: Effect::from(Cascade),
                                 oracle_text: Default::default(),
                             }],
                             oracle_text: "Cascade".to_string(),
@@ -1283,7 +1283,7 @@ impl Battlefield {
                                     )],
                                 },
                                 effects: vec![AnyEffect {
-                                    effect: Effect(&BattleCry),
+                                    effect: Effect::from(BattleCry),
                                     oracle_text: String::default(),
                                 }],
                                 oracle_text: "Battle cry".to_string(),

@@ -1,6 +1,6 @@
 use crate::{battlefield::create_token_copy_with_replacements, effects::EffectBehaviors, protogen};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct MultiplyTokens {
     multiplier: usize,
 }
@@ -17,7 +17,7 @@ impl TryFrom<&protogen::effects::MultiplyTokens> for MultiplyTokens {
 
 impl EffectBehaviors for MultiplyTokens {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -25,7 +25,7 @@ impl EffectBehaviors for MultiplyTokens {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -33,7 +33,7 @@ impl EffectBehaviors for MultiplyTokens {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
@@ -43,7 +43,7 @@ impl EffectBehaviors for MultiplyTokens {
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
@@ -55,7 +55,7 @@ impl EffectBehaviors for MultiplyTokens {
     }
 
     fn replace_token_creation(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         replacements: &mut std::vec::IntoIter<crate::in_play::ReplacementEffectId>,

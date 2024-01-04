@@ -10,7 +10,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct TapTarget {
     restrictions: Vec<Restriction>,
 }
@@ -31,7 +31,7 @@ impl TryFrom<&protogen::effects::TapTarget> for TapTarget {
 
 impl EffectBehaviors for TapTarget {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -39,7 +39,7 @@ impl EffectBehaviors for TapTarget {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -47,7 +47,7 @@ impl EffectBehaviors for TapTarget {
     }
 
     fn valid_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
@@ -65,7 +65,7 @@ impl EffectBehaviors for TapTarget {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -75,7 +75,7 @@ impl EffectBehaviors for TapTarget {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            crate::battlefield::TargetSource::Effect(Effect(self)),
+            crate::battlefield::TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             source,
         ));
@@ -83,7 +83,7 @@ impl EffectBehaviors for TapTarget {
 
     #[instrument(level = Level::INFO, skip(_db, results))]
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,

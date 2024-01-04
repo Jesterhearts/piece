@@ -21,7 +21,7 @@ impl TryFrom<&protogen::effects::CreateToken> for CreateToken {
 
 impl EffectBehaviors for CreateToken {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -29,7 +29,7 @@ impl EffectBehaviors for CreateToken {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {

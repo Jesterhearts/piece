@@ -8,6 +8,7 @@ use crate::{
         pay_costs::{PayCost, SpendMana},
         ActionResult, Pending, PendingResult, TargetSource,
     },
+    effects::EffectBehaviors,
     in_play::{CardId, Database},
     player::{mana_pool::SpendReason, AllPlayers},
     stack::ActiveTarget,

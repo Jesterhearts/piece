@@ -5,7 +5,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ApplyThenIfWas {
     apply: Vec<Effect>,
     then_if_was: Vec<Restriction>,
@@ -42,7 +42,7 @@ impl TryFrom<&protogen::effects::ApplyThenIfWas> for ApplyThenIfWas {
 
 impl EffectBehaviors for ApplyThenIfWas {
     fn needs_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
@@ -54,7 +54,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
@@ -66,7 +66,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     }
 
     fn valid_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -80,7 +80,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -92,7 +92,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         apply_to_self: bool,

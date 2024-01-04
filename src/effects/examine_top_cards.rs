@@ -6,7 +6,7 @@ use crate::{
     protogen,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ExamineTopCards {
     count: usize,
     destinations: IndexMap<Destination, usize>,
@@ -34,7 +34,7 @@ impl TryFrom<&protogen::effects::ExamineTopCards> for ExamineTopCards {
 
 impl EffectBehaviors for ExamineTopCards {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -42,7 +42,7 @@ impl EffectBehaviors for ExamineTopCards {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -50,7 +50,7 @@ impl EffectBehaviors for ExamineTopCards {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -64,7 +64,7 @@ impl EffectBehaviors for ExamineTopCards {
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,

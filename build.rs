@@ -96,7 +96,6 @@ fn main() {
                 .map(|f| f.unwrap().path()),
         )
         .out_dir("src/protogen")
-        .customize(Customize::default().lite_runtime(true))
         .customize_callback(GenSerde)
         .run_from_script();
 }

@@ -55,6 +55,7 @@ use std::{collections::HashSet, fmt::Debug, str::FromStr, vec::IntoIter};
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
+use enum_dispatch::enum_dispatch;
 use indexmap::IndexSet;
 use itertools::Itertools;
 
@@ -64,9 +65,10 @@ use crate::{
     card::{replace_symbols, Color, Keyword},
     counters::Counter,
     effects::{
-        apply_then_if_was::ApplyThenIfWas, cant_attack_this_turn::CantAttackThisTurn,
-        cascade::Cascade, controller_discards::ControllerDiscards,
-        controller_draws_cards::ControllerDrawsCards, controller_loses_life::ControllerLosesLife,
+        apply_then_if_was::ApplyThenIfWas, battle_cry::BattleCry,
+        cant_attack_this_turn::CantAttackThisTurn, cascade::Cascade,
+        controller_discards::ControllerDiscards, controller_draws_cards::ControllerDrawsCards,
+        controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
         counter_spell::CounterSpell, counter_spell_unless_pay::CounterSpellUnlessPay,
         create_token::CreateToken, create_token_copy::CreateTokenCopy, cycling::Cycling,
@@ -100,8 +102,61 @@ use crate::{
     types::{parse_typeline, Subtype, Type},
 };
 
-#[derive(Debug, Clone, Deref, DerefMut)]
-pub(crate) struct Effect(pub(crate) &'static (dyn EffectBehaviors + Send + Sync));
+#[derive(Debug, Clone)]
+#[enum_dispatch(EffectBehaviors)]
+pub(crate) enum Effect {
+    ApplyThenIfWas(ApplyThenIfWas),
+    BattleCry(BattleCry),
+    BattlefieldModifier(BattlefieldModifier),
+    CantAttackThisTurn(CantAttackThisTurn),
+    Cascade(Cascade),
+    ControllerDiscards(ControllerDiscards),
+    ControllerDrawsCards(ControllerDrawsCards),
+    ControllerLosesLife(ControllerLosesLife),
+    CopyOfAnyCreatureNonTargeting(CopyOfAnyCreatureNonTargeting),
+    CounterSpell(CounterSpell),
+    CounterSpellUnlessPay(CounterSpellUnlessPay),
+    CreateToken(CreateToken),
+    CreateTokenCopy(CreateTokenCopy),
+    Cycling(Cycling),
+    DealDamage(DealDamage),
+    DestroyEach(DestroyEach),
+    DestroyTarget(DestroyTarget),
+    Discover(Discover),
+    Equip(Equip),
+    ExamineTopCards(ExamineTopCards),
+    ExileTarget(ExileTarget),
+    ExileTargetCreatureManifestTopOfLibrary(ExileTargetCreatureManifestTopOfLibrary),
+    ExileTargetGraveyard(ExileTargetGraveyard),
+    ForEachPlayerChooseThen(ForEachPlayerChooseThen),
+    ForEachManaOfSource(ForEachManaOfSource),
+    GainLife(GainLife),
+    IfThenElse(IfThenElse),
+    Mill(Mill),
+    Modal(Modal),
+    ModifyTarget(ModifyTarget),
+    MultiplyTokens(MultiplyTokens),
+    PayCostThen(PayCostThen),
+    ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
+    ReturnFromGraveyardToHand(ReturnFromGraveyardToHand),
+    ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
+    ReturnSelfToHand(ReturnSelfToHand),
+    ReturnTargetToHand(ReturnTargetToHand),
+    ReturnTransformed(ReturnTransformed),
+    RevealEachTopOfLibrary(RevealEachTopOfLibrary),
+    Scry(Scry),
+    SelfExplores(SelfExplores),
+    TapTarget(TapTarget),
+    TapThis(TapThis),
+    TargetControllerGainsTokens(TargetControllerGainsTokens),
+    TargetCreatureExplores(TargetCreatureExplores),
+    TargetGainsCounters(TargetGainsCounters),
+    TargetToTopOfLibrary(TargetToTopOfLibrary),
+    Transform(Transform),
+    TutorLibrary(TutorLibrary),
+    UntapTarget(UntapTarget),
+    UntapThis(UntapThis),
+}
 
 pub(crate) use battlefield_modifier::BattlefieldModifier;
 
@@ -355,9 +410,10 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
     }
 }
 
+#[enum_dispatch]
 pub(crate) trait EffectBehaviors: Debug {
     fn choices(
-        &'static self,
+        &self,
         db: &mut Database,
         all_players: &AllPlayers,
         targets: &[ActiveTarget],
@@ -368,28 +424,28 @@ pub(crate) trait EffectBehaviors: Debug {
             .collect_vec()
     }
 
-    fn modes(&'static self) -> Vec<Mode> {
+    fn modes(&self) -> Vec<Mode> {
         vec![]
     }
 
-    fn is_sorcery_speed(&'static self) -> bool {
+    fn is_sorcery_speed(&self) -> bool {
         false
     }
 
-    fn is_equip(&'static self) -> bool {
+    fn is_equip(&self) -> bool {
         false
     }
 
-    fn cycling(&'static self) -> bool {
+    fn cycling(&self) -> bool {
         false
     }
 
-    fn needs_targets(&'static self, db: &mut Database, source: crate::in_play::CardId) -> usize;
+    fn needs_targets(&self, db: &mut Database, source: crate::in_play::CardId) -> usize;
 
-    fn wants_targets(&'static self, db: &mut Database, source: crate::in_play::CardId) -> usize;
+    fn wants_targets(&self, db: &mut Database, source: crate::in_play::CardId) -> usize;
 
     fn valid_targets(
-        &'static self,
+        &self,
         db: &mut Database,
         source: crate::in_play::CardId,
         controller: Controller,
@@ -403,7 +459,7 @@ pub(crate) trait EffectBehaviors: Debug {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut Database,
         source: crate::in_play::CardId,
         controller: Controller,
@@ -411,7 +467,7 @@ pub(crate) trait EffectBehaviors: Debug {
     );
 
     fn push_behavior_from_top_of_library(
-        &'static self,
+        &self,
         db: &Database,
         source: crate::in_play::CardId,
         target: crate::in_play::CardId,
@@ -425,7 +481,7 @@ pub(crate) trait EffectBehaviors: Debug {
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         apply_to_self: bool,
@@ -435,7 +491,7 @@ pub(crate) trait EffectBehaviors: Debug {
     );
 
     fn replace_draw(
-        &'static self,
+        &self,
         player: &mut Player,
         db: &mut Database,
         replacements: &mut IntoIter<ReplacementEffectId>,
@@ -453,7 +509,7 @@ pub(crate) trait EffectBehaviors: Debug {
     }
 
     fn replace_token_creation(
-        &'static self,
+        &self,
         db: &mut Database,
         source: crate::in_play::CardId,
         replacements: &mut IntoIter<ReplacementEffectId>,
@@ -489,141 +545,143 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
     fn try_from(value: &protogen::effects::effect::Effect) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::effect::Effect::ApplyThenIfWas(value) => {
-                Ok(Self(Box::leak(Box::new(ApplyThenIfWas::try_from(value)?))))
+                Ok(Self::from(ApplyThenIfWas::try_from(value)?))
             }
-            protogen::effects::effect::Effect::BattlefieldModifier(value) => Ok(Self(Box::leak(
-                Box::new(BattlefieldModifier::try_from(value)?),
-            ))),
+            protogen::effects::effect::Effect::BattlefieldModifier(value) => {
+                Ok(Self::from(BattlefieldModifier::try_from(value)?))
+            }
             protogen::effects::effect::Effect::ModifyTarget(value) => {
-                Ok(Self(Box::leak(Box::new(ModifyTarget::try_from(value)?))))
+                Ok(Self::from(ModifyTarget::try_from(value)?))
             }
-            protogen::effects::effect::Effect::CantAttackThisTurn(value) => Ok(Self(Box::leak(
-                Box::new(CantAttackThisTurn::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::Cascade(_) => Ok(Self(&Cascade)),
-            protogen::effects::effect::Effect::ControllerDiscards(value) => Ok(Self(Box::leak(
-                Box::new(ControllerDiscards::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::ControllerDrawCards(value) => Ok(Self(Box::leak(
-                Box::new(ControllerDrawsCards::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::ControllerLosesLife(value) => Ok(Self(Box::leak(
-                Box::new(ControllerLosesLife::try_from(value)?),
-            ))),
+            protogen::effects::effect::Effect::CantAttackThisTurn(value) => {
+                Ok(Self::from(CantAttackThisTurn::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::Cascade(_) => Ok(Self::from(Cascade)),
+            protogen::effects::effect::Effect::ControllerDiscards(value) => {
+                Ok(Self::from(ControllerDiscards::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::ControllerDrawCards(value) => {
+                Ok(Self::from(ControllerDrawsCards::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::ControllerLosesLife(value) => {
+                Ok(Self::from(ControllerLosesLife::try_from(value)?))
+            }
             protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(_) => {
-                Ok(Self(&CopyOfAnyCreatureNonTargeting))
+                Ok(Self::from(CopyOfAnyCreatureNonTargeting))
             }
             protogen::effects::effect::Effect::CounterSpell(value) => {
-                Ok(Self(Box::leak(Box::new(CounterSpell::try_from(value)?))))
+                Ok(Self::from(CounterSpell::try_from(value)?))
             }
-            protogen::effects::effect::Effect::CounterSpellUnlessPay(value) => Ok(Self(Box::leak(
-                Box::new(CounterSpellUnlessPay::try_from(value)?),
-            ))),
+            protogen::effects::effect::Effect::CounterSpellUnlessPay(value) => {
+                Ok(Self::from(CounterSpellUnlessPay::try_from(value)?))
+            }
             protogen::effects::effect::Effect::CreateToken(value) => {
-                Ok(Self(Box::leak(Box::new(CreateToken::try_from(value)?))))
+                Ok(Self::from(CreateToken::try_from(value)?))
             }
             protogen::effects::effect::Effect::CreateTokenCopy(value) => {
-                Ok(Self(Box::leak(Box::new(CreateTokenCopy::try_from(value)?))))
+                Ok(Self::from(CreateTokenCopy::try_from(value)?))
             }
             protogen::effects::effect::Effect::Cycling(value) => {
-                Ok(Self(Box::leak(Box::new(Cycling::try_from(value)?))))
+                Ok(Self::from(Cycling::try_from(value)?))
             }
             protogen::effects::effect::Effect::DealDamage(value) => {
-                Ok(Self(Box::leak(Box::new(DealDamage::try_from(value)?))))
+                Ok(Self::from(DealDamage::try_from(value)?))
             }
             protogen::effects::effect::Effect::DestroyEach(value) => {
-                Ok(Self(Box::leak(Box::new(DestroyEach::try_from(value)?))))
+                Ok(Self::from(DestroyEach::try_from(value)?))
             }
             protogen::effects::effect::Effect::DestroyTarget(value) => {
-                Ok(Self(Box::leak(Box::new(DestroyTarget::try_from(value)?))))
+                Ok(Self::from(DestroyTarget::try_from(value)?))
             }
             protogen::effects::effect::Effect::Discover(value) => {
-                Ok(Self(Box::leak(Box::new(Discover::try_from(value)?))))
+                Ok(Self::from(Discover::try_from(value)?))
             }
             protogen::effects::effect::Effect::Equip(value) => {
-                Ok(Self(Box::leak(Box::new(Equip::try_from(value)?))))
+                Ok(Self::from(Equip::try_from(value)?))
             }
             protogen::effects::effect::Effect::ExamineTopCards(value) => {
-                Ok(Self(Box::leak(Box::new(ExamineTopCards::try_from(value)?))))
+                Ok(Self::from(ExamineTopCards::try_from(value)?))
             }
             protogen::effects::effect::Effect::ExileTarget(value) => {
-                Ok(Self(Box::leak(Box::new(ExileTarget::try_from(value)?))))
+                Ok(Self::from(ExileTarget::try_from(value)?))
             }
             protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
-                Ok(Self(&ExileTargetCreatureManifestTopOfLibrary))
+                Ok(Self::from(ExileTargetCreatureManifestTopOfLibrary))
             }
             protogen::effects::effect::Effect::ExileTargetGraveyard(_) => {
-                Ok(Self(&ExileTargetGraveyard))
+                Ok(Self::from(ExileTargetGraveyard))
             }
-            protogen::effects::effect::Effect::ForEachManaOfSource(value) => Ok(Self(Box::leak(
-                Box::new(ForEachManaOfSource::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::ForEachPlayerChooseThen(value) => Ok(Self(
-                Box::leak(Box::new(ForEachPlayerChooseThen::try_from(value)?)),
-            )),
-            protogen::effects::effect::Effect::TargetGainsCounters(value) => Ok(Self(Box::leak(
-                Box::new(TargetGainsCounters::try_from(value)?),
-            ))),
+            protogen::effects::effect::Effect::ForEachManaOfSource(value) => {
+                Ok(Self::from(ForEachManaOfSource::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::ForEachPlayerChooseThen(value) => {
+                Ok(Self::from(ForEachPlayerChooseThen::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::TargetGainsCounters(value) => {
+                Ok(Self::from(TargetGainsCounters::try_from(value)?))
+            }
             protogen::effects::effect::Effect::GainLife(value) => {
-                Ok(Self(Box::leak(Box::new(GainLife::try_from(value)?))))
+                Ok(Self::from(GainLife::try_from(value)?))
             }
             protogen::effects::effect::Effect::IfThenElse(value) => {
-                Ok(Self(Box::leak(Box::new(IfThenElse::try_from(value)?))))
+                Ok(Self::from(IfThenElse::try_from(value)?))
             }
             protogen::effects::effect::Effect::Mill(value) => {
-                Ok(Self(Box::leak(Box::new(Mill::try_from(value)?))))
+                Ok(Self::from(Mill::try_from(value)?))
             }
             protogen::effects::effect::Effect::Modal(value) => {
-                Ok(Self(Box::leak(Box::new(Modal::try_from(value)?))))
+                Ok(Self::from(Modal::try_from(value)?))
             }
             protogen::effects::effect::Effect::MultiplyTokens(value) => {
-                Ok(Self(Box::leak(Box::new(MultiplyTokens::try_from(value)?))))
+                Ok(Self::from(MultiplyTokens::try_from(value)?))
             }
             protogen::effects::effect::Effect::PayCostThen(value) => {
-                Ok(Self(Box::leak(Box::new(PayCostThen::try_from(value)?))))
+                Ok(Self::from(PayCostThen::try_from(value)?))
             }
-            protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => Ok(Self(
-                Box::leak(Box::new(ReturnFromGraveyardToBattlefield::try_from(value)?)),
-            )),
-            protogen::effects::effect::Effect::ReturnFromGraveyardToHand(value) => Ok(Self(
-                Box::leak(Box::new(ReturnFromGraveyardToHand::try_from(value)?)),
-            )),
-            protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => Ok(Self(
-                Box::leak(Box::new(ReturnFromGraveyardToLibrary::try_from(value)?)),
-            )),
-            protogen::effects::effect::Effect::ReturnTransformed(value) => Ok(Self(Box::leak(
-                Box::new(ReturnTransformed::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::ReturnSelfToHand(_) => Ok(Self(&ReturnSelfToHand)),
-            protogen::effects::effect::Effect::ReturnTargetToHand(value) => Ok(Self(Box::leak(
-                Box::new(ReturnTargetToHand::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => Ok(Self(
-                Box::leak(Box::new(RevealEachTopOfLibrary::try_from(value)?)),
-            )),
+            protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => Ok(
+                Self::from(ReturnFromGraveyardToBattlefield::try_from(value)?),
+            ),
+            protogen::effects::effect::Effect::ReturnFromGraveyardToHand(value) => {
+                Ok(Self::from(ReturnFromGraveyardToHand::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => {
+                Ok(Self::from(ReturnFromGraveyardToLibrary::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::ReturnTransformed(value) => {
+                Ok(Self::from(ReturnTransformed::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::ReturnSelfToHand(_) => {
+                Ok(Self::from(ReturnSelfToHand))
+            }
+            protogen::effects::effect::Effect::ReturnTargetToHand(value) => {
+                Ok(Self::from(ReturnTargetToHand::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => {
+                Ok(Self::from(RevealEachTopOfLibrary::try_from(value)?))
+            }
             protogen::effects::effect::Effect::Scry(value) => {
-                Ok(Self(Box::leak(Box::new(Scry::try_from(value)?))))
+                Ok(Self::from(Scry::try_from(value)?))
             }
-            protogen::effects::effect::Effect::SelfExplores(_) => Ok(Self(&SelfExplores)),
+            protogen::effects::effect::Effect::SelfExplores(_) => Ok(Self::from(SelfExplores)),
             protogen::effects::effect::Effect::TapTarget(value) => {
-                Ok(Self(Box::leak(Box::new(TapTarget::try_from(value)?))))
+                Ok(Self::from(TapTarget::try_from(value)?))
             }
-            protogen::effects::effect::Effect::TapThis(_) => Ok(Self(&TapThis)),
-            protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => Ok(Self(
-                Box::leak(Box::new(TargetControllerGainsTokens::try_from(value)?)),
-            )),
+            protogen::effects::effect::Effect::TapThis(_) => Ok(Self::from(TapThis)),
+            protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => {
+                Ok(Self::from(TargetControllerGainsTokens::try_from(value)?))
+            }
             protogen::effects::effect::Effect::TargetExplores(_) => {
-                Ok(Self(&TargetCreatureExplores))
+                Ok(Self::from(TargetCreatureExplores))
             }
-            protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => Ok(Self(Box::leak(
-                Box::new(TargetToTopOfLibrary::try_from(value)?),
-            ))),
-            protogen::effects::effect::Effect::Transform(_) => Ok(Self(&Transform)),
+            protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => {
+                Ok(Self::from(TargetToTopOfLibrary::try_from(value)?))
+            }
+            protogen::effects::effect::Effect::Transform(_) => Ok(Self::from(Transform)),
             protogen::effects::effect::Effect::TutorLibrary(value) => {
-                Ok(Self(Box::leak(Box::new(TutorLibrary::try_from(value)?))))
+                Ok(Self::from(TutorLibrary::try_from(value)?))
             }
-            protogen::effects::effect::Effect::UntapThis(_) => Ok(Self(&UntapThis)),
-            protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self(&UntapTarget)),
+            protogen::effects::effect::Effect::UntapThis(_) => Ok(Self::from(UntapThis)),
+            protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self::from(UntapTarget)),
         }
     }
 }

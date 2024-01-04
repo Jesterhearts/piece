@@ -5,7 +5,7 @@ pub(crate) struct Cascade;
 
 impl EffectBehaviors for Cascade {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -13,7 +13,7 @@ impl EffectBehaviors for Cascade {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {

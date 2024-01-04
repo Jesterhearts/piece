@@ -40,7 +40,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
 
 impl EffectBehaviors for BattlefieldModifier {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -48,7 +48,7 @@ impl EffectBehaviors for BattlefieldModifier {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {

@@ -17,7 +17,7 @@ impl TryFrom<&protogen::effects::Scry> for Scry {
 
 impl EffectBehaviors for Scry {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -25,7 +25,7 @@ impl EffectBehaviors for Scry {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {

@@ -9,7 +9,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ControllerLosesLife {
     count: usize,
     unless: Vec<Restriction>,
@@ -32,7 +32,7 @@ impl TryFrom<&protogen::effects::ControllerLosesLife> for ControllerLosesLife {
 
 impl EffectBehaviors for ControllerLosesLife {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -40,7 +40,7 @@ impl EffectBehaviors for ControllerLosesLife {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {

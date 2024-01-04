@@ -11,7 +11,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Count {
     Fixed(usize),
     NumberOfPermanentsMatching(Vec<Restriction>),
@@ -40,7 +40,7 @@ impl TryFrom<&protogen::effects::controller_draw_cards::Count> for Count {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ControllerDrawsCards {
     count: Count,
 }
@@ -61,7 +61,7 @@ impl TryFrom<&protogen::effects::ControllerDrawCards> for ControllerDrawsCards {
 
 impl EffectBehaviors for ControllerDrawsCards {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -69,7 +69,7 @@ impl EffectBehaviors for ControllerDrawsCards {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {

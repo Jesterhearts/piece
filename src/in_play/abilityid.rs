@@ -17,7 +17,7 @@ use crate::{
     battlefield::PendingResults,
     card::OracleText,
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
-    effects::{AnyEffect, Effects},
+    effects::{AnyEffect, EffectBehaviors, Effects},
     in_play::{
         number_of_attackers_this_turn, CardId, CounterId, Database, InHand, InStack, OnBattlefield,
         Temporary, NEXT_STACK_SEQ,

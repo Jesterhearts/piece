@@ -17,7 +17,7 @@ use crate::{
     stack::{ActiveTarget, Stack},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Cost {
     Fixed(usize),
 }
@@ -36,7 +36,7 @@ impl TryFrom<&protogen::effects::counter_spell_unless_pay::Cost> for Cost {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct CounterSpellUnlessPay {
     cost: Cost,
 }
@@ -57,7 +57,7 @@ impl TryFrom<&protogen::effects::CounterSpellUnlessPay> for CounterSpellUnlessPa
 
 impl EffectBehaviors for CounterSpellUnlessPay {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -65,7 +65,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -73,7 +73,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     }
 
     fn valid_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
@@ -97,7 +97,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -107,7 +107,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(self)),
+            TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             source,
         ));
@@ -115,7 +115,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
 
     #[instrument(level = Level::INFO, skip(db, results))]
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,

@@ -37,7 +37,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToBattlefield>
 
 impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -45,7 +45,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -66,7 +66,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -76,7 +76,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect(self)),
+            TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             source,
         ));

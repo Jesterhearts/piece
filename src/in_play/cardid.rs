@@ -32,8 +32,8 @@ use crate::{
     counters::{counter, Counter},
     effects::{
         effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilUntapped},
-        AnyEffect, DynamicPowerToughness, EffectDuration, Effects, Modes, ReplacementEffects,
-        Token,
+        AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, Effects, Modes,
+        ReplacementEffects, Token,
     },
     in_play::{
         self, cast_from, current_turn, descend, exile_reason, just_cast, life_gained_this_turn,

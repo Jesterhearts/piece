@@ -1,11 +1,11 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Transform;
 
 impl EffectBehaviors for Transform {
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -13,7 +13,7 @@ impl EffectBehaviors for Transform {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -21,7 +21,7 @@ impl EffectBehaviors for Transform {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
@@ -31,7 +31,7 @@ impl EffectBehaviors for Transform {
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,

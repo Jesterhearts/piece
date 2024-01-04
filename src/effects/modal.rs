@@ -4,7 +4,7 @@ use crate::{
     protogen,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Modal {
     modes: Vec<Mode>,
 }
@@ -24,12 +24,12 @@ impl TryFrom<&protogen::effects::Modes> for Modal {
 }
 
 impl EffectBehaviors for Modal {
-    fn modes(&'static self) -> Vec<Mode> {
+    fn modes(&self) -> Vec<Mode> {
         self.modes.clone()
     }
 
     fn needs_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -37,7 +37,7 @@ impl EffectBehaviors for Modal {
     }
 
     fn wants_targets(
-        &'static self,
+        &self,
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
@@ -45,7 +45,7 @@ impl EffectBehaviors for Modal {
     }
 
     fn push_pending_behavior(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -58,12 +58,12 @@ impl EffectBehaviors for Modal {
                     .push_pending_behavior(db, source, controller, results);
             }
         } else {
-            results.push_choose_mode(Source::Effect(Effect(self), source));
+            results.push_choose_mode(Source::Effect(Effect::from(self.clone()), source));
         }
     }
 
     fn push_behavior_with_targets(
-        &'static self,
+        &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
