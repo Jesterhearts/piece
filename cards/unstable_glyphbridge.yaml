@@ -17,6 +17,9 @@ etb_abilities:
         - effect: !DestroyEach
             restrictions:
               - restriction: !NotChosen {}
+    oracle_text: When Unstable Glyphbridge enters the battlefield, if you cast it,
+      for each player, choose a creature with power 2 or less that player controls.
+      Then destroy all creatures except creatures chosen this way.
 activated_abilities:
   - cost:
       mana_cost: '{3}{W}{W}'
@@ -35,12 +38,18 @@ activated_abilities:
               - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
-    oracle_text: Return to the battlefield transformed under its owners control.
+    oracle_text: Craft with artifact {3}{W}{W}
     sorcery_speed: true
     craft: true
 back_face:
   name: Sandswirl Wanderglyph
   typeline: Artifact Creature - Golem
+  oracle_text: >-
+    Whenever an opponent casts a spell during their turn, they can't attack you or
+    planeswalkers you control this turn.
+
+    Each opponent who attacked you or a planeswalker you control this turn can't cast
+    spells.
   colors:
     - color: !White {}
   static_abilities:

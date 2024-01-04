@@ -156,7 +156,7 @@ impl InStack {
                 }
             })
         {
-            return format!("Stack ({}): {}", self, found.short_text(db));
+            return format!("Stack ({}): {}", self, found.text(db));
         }
 
         let found = db
@@ -172,7 +172,7 @@ impl InStack {
             })
             .expect("Should have a valid stack target");
 
-        found.short_text(db)
+        found.text(db)
     }
 }
 

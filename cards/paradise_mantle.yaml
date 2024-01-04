@@ -15,4 +15,7 @@ activated_abilities:
                 gain_mana:
                   gain: !Choice
                     choices: '{W}, {U}, {B}, {R}, {G}'
-    oracle_text: Equip
+                oracle_text: >
+                  {T}: Add one mana of any color.
+
+    oracle_text: Equip {1}

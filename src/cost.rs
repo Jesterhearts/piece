@@ -4,14 +4,7 @@ use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use itertools::Itertools;
 
-use crate::{
-    card::Color,
-    counters::Counter,
-    in_play::{CardId, Database},
-    mana::ManaCost,
-    protogen,
-    targets::Restriction,
-};
+use crate::{card::Color, counters::Counter, mana::ManaCost, protogen, targets::Restriction};
 
 #[derive(Debug, Clone, Default, Component)]
 pub struct CastingCost {
@@ -103,53 +96,6 @@ pub(crate) enum AdditionalCost {
         x_is: usize,
         restrictions: Vec<Restriction>,
     },
-}
-
-impl AdditionalCost {
-    pub(crate) fn text(&self, db: &Database, source: CardId) -> String {
-        match self {
-            AdditionalCost::DiscardThis => format!("discard {}", source.name(db)),
-            AdditionalCost::SacrificeSource => format!("Sacrifice {}", source.name(db)),
-            AdditionalCost::PayLife(pay) => format!("Pay {} life", pay.count),
-            AdditionalCost::SacrificePermanent(restrictions) => {
-                format!(
-                    "Sacrifice {}",
-                    restrictions.iter().map(|r| r.text()).join(", ")
-                )
-            }
-            AdditionalCost::TapPermanent(tap) => {
-                format!("Tap {}", tap.iter().map(|t| t.text()).join(", "))
-            }
-            AdditionalCost::ExileCardsCmcX(restrictions) => format!(
-                "Exile one or more {} cards with cmc X",
-                restrictions.iter().map(|r| r.text()).join(", ")
-            ),
-            AdditionalCost::ExileCard { restrictions } => {
-                format!("Exile {}", restrictions.iter().map(|r| r.text()).join(", "))
-            }
-            AdditionalCost::ExileXOrMoreCards {
-                minimum,
-                restrictions,
-            } => format!(
-                "Exile {} or more {}",
-                minimum,
-                restrictions.iter().map(|r| r.text()).join(", ")
-            ),
-            AdditionalCost::ExileSharingCardType { count } => {
-                format!("Exile {} cards sharing a card type", count)
-            }
-            AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
-                format!(
-                    "Tap any number of {} with power {} or more",
-                    restrictions.iter().map(|r| r.text()).join(", "),
-                    x_is
-                )
-            }
-            AdditionalCost::RemoveCounter { counter, count } => {
-                format!("Remove {} counters of type {}", count, counter.as_ref())
-            }
-        }
-    }
 }
 
 impl TryFrom<&protogen::cost::AdditionalCost> for AdditionalCost {
@@ -294,29 +240,6 @@ pub(crate) struct AbilityCost {
     pub(crate) tap: bool,
     pub(crate) additional_cost: Vec<AdditionalCost>,
     pub(crate) restrictions: Vec<AbilityRestriction>,
-}
-
-impl AbilityCost {
-    pub(crate) fn text(&self, db: &Database, source: CardId) -> String {
-        std::iter::once(
-            self.mana_cost
-                .iter()
-                .map(|c| {
-                    let mut result = String::default();
-                    c.push_mana_symbol(&mut result);
-                    result
-                })
-                .join(""),
-        )
-        .filter(|t| !t.is_empty())
-        .chain(self.tap.then(|| "\u{e61a}".to_string()))
-        .chain(
-            self.additional_cost
-                .iter()
-                .map(|cost| cost.text(db, source)),
-        )
-        .join(", ")
-    }
 }
 
 impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {

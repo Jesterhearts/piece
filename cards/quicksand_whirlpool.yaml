@@ -18,3 +18,4 @@ effects:
         - restriction: !OfType
             types: Creature
         - restriction: !OnBattlefield {}
+    oracle_text: Exile target creature.

@@ -23,6 +23,7 @@ activated_abilities:
                   dynamic: !X {}
             - restriction: !OfType
                 types: Artifact
-    oracle_text: Destroy each artifact with mana value X
+    oracle_text: >-
+      {X}{X}{W}: Destroy each artifact with mana value X
 power: 1
 toughness: 4

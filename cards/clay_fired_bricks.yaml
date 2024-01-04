@@ -34,7 +34,7 @@ activated_abilities:
               - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
-    oracle_text: Return to the battlefield transformed under its owners control.
+    oracle_text: Craft with artifact {5}{W}{W}
     sorcery_speed: true
     craft: true
 back_face:

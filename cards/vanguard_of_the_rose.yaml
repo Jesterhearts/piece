@@ -22,5 +22,8 @@ activated_abilities:
             - restriction: !Self_ {}
       - effect: !TapThis {}
     apply_to_self: true
+    oracle_text: >-
+      {1}, Sacrifce another creature or artifact: Vanguard of the Rose gains indestructible
+      until end of turn. Tap it.
 power: 3
 toughness: 1

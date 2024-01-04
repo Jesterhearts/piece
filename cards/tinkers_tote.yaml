@@ -19,3 +19,5 @@ activated_abilities:
     effects:
       - effect: !GainLife
           count: 3
+    oracle_text: >-
+      {W}, Sacrifice Tinker's Tote: You gain 3 life

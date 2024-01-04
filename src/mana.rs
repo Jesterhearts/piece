@@ -141,31 +141,6 @@ impl TryFrom<&protogen::cost::mana_cost::Cost> for ManaCost {
     }
 }
 
-impl TryFrom<&protogen::mana::Mana> for Mana {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::mana::Mana) -> Result<Self, Self::Error> {
-        value
-            .mana
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected mana to have a mana field specified"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::mana::mana::Mana> for Mana {
-    fn from(value: &protogen::mana::mana::Mana) -> Self {
-        match value {
-            protogen::mana::mana::Mana::White(_) => Self::White,
-            protogen::mana::mana::Mana::Blue(_) => Self::Blue,
-            protogen::mana::mana::Mana::Black(_) => Self::Black,
-            protogen::mana::mana::Mana::Red(_) => Self::Red,
-            protogen::mana::mana::Mana::Green(_) => Self::Green,
-            protogen::mana::mana::Mana::Colorless(_) => Self::Colorless,
-        }
-    }
-}
-
 impl From<&protogen::mana::ManaRestriction> for ManaRestriction {
     fn from(value: &protogen::mana::ManaRestriction) -> Self {
         value
@@ -195,18 +170,17 @@ pub(crate) fn parse_mana(s: &str) -> anyhow::Result<Vec<Mana>> {
 
     let mut results = vec![];
     for symbol in split {
-        let mana;
-        match symbol {
-            "W" => mana = Mana::White,
-            "U" => mana = Mana::Blue,
-            "B" => mana = Mana::Black,
-            "R" => mana = Mana::Red,
-            "G" => mana = Mana::Green,
-            "C" => mana = Mana::Colorless,
+        let mana = match symbol {
+            "W" => Mana::White,
+            "U" => Mana::Blue,
+            "B" => Mana::Black,
+            "R" => Mana::Red,
+            "G" => Mana::Green,
+            "C" => Mana::Colorless,
             s => {
                 return Err(anyhow!("Invalid mana {}", s));
             }
-        }
+        };
 
         results.push(mana)
     }

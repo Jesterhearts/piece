@@ -2,8 +2,9 @@ name: Dryad of the Ilysian Grove
 typeline: Enchantment Creature - Nymph Dryad
 cost:
   mana_cost: '{2}{G}'
-oracle_text: |-
+oracle_text: >-
   You may play an additional land on each of your turns.
+
   Lands you control are every basic land type in addition to their other types.
 static_abilities:
   - ability: !BattlefieldModifier

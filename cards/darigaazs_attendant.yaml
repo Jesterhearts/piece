@@ -2,7 +2,6 @@ name: Darigaaz's Attendant
 typeline: Artifact Creature - Golem
 cost:
   mana_cost: '{5}'
-oracle_text: "{1}, Sacrifice Darigaaz's Attendant: Add {B}{R}{G}."
 mana_abilities:
   - cost:
       mana_cost: '{1}'
@@ -11,3 +10,5 @@ mana_abilities:
     gain_mana:
       gain: !Specific
         gain: '{B}{R}{G}'
+    oracle_text: >-
+      {1}, Sacrifice Darigaaz's Attendant: Add {B}{R}{G}.

@@ -19,8 +19,10 @@ activated_abilities:
           restrictions:
             - restriction: !Self_ {}
           count: !Single {}
-    oracle_text: |-
-      Put a +1/+1 counter on Adpative Gemguard.
+    oracle_text: >-
+      Tap two u ntapped artifacts and/or creatures you control: Put a +1/+1 counter
+      on Adpative Gemguard.
+
       Activate only as sourcery.
     sorcery_speed: true
 power: 3

@@ -2,6 +2,8 @@ name: Zhulodok, Void Gorger
 typeline: Legendary Creature - Eldrazi
 cost:
   mana_cost: '{5}{C}'
+oracle_text: Colorless spells you cast from your hand with mana value 7 or greater
+  have “Cascade, cascade."
 static_abilities:
   - ability: !BattlefieldModifier
       modifier:

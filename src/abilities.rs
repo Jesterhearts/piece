@@ -3,10 +3,9 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
-use itertools::Itertools;
 
 use crate::{
-    card::Keyword,
+    card::{replace_symbols, Keyword},
     cost::AbilityCost,
     effects::{AnyEffect, BattlefieldModifier},
     in_play::{AbilityId, CardId, Database, TriggerId},
@@ -197,7 +196,7 @@ impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             apply_to_self: value.apply_to_self,
-            oracle_text: value.oracle_text.clone(),
+            oracle_text: replace_symbols(&value.oracle_text),
             sorcery_speed: value.sorcery_speed,
             craft: value.craft,
         })
@@ -241,7 +240,7 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
                 .iter()
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            oracle_text: value.oracle_text.clone(),
+            oracle_text: replace_symbols(&value.oracle_text),
         })
     }
 }
@@ -250,38 +249,6 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
 pub(crate) enum GainMana {
     Specific { gains: Vec<Mana> },
     Choice { choices: Vec<Vec<Mana>> },
-}
-
-impl GainMana {
-    fn text(&self) -> String {
-        match self {
-            GainMana::Specific { gains } => {
-                let mut result = "Add ".to_string();
-                for mana in gains {
-                    mana.push_mana_symbol(&mut result);
-                }
-                result
-            }
-            GainMana::Choice { choices } => {
-                let mut result = "Add one of ".to_string();
-
-                result.push_str(
-                    &choices
-                        .iter()
-                        .map(|choice| {
-                            let mut result = String::default();
-                            for mana in choice.iter() {
-                                mana.push_mana_symbol(&mut result);
-                            }
-                            result
-                        })
-                        .join(", "),
-                );
-
-                result
-            }
-        }
-    }
 }
 
 impl TryFrom<&protogen::effects::GainMana> for GainMana {
@@ -320,11 +287,7 @@ pub(crate) struct GainManaAbility {
     pub(crate) gain: GainMana,
     pub(crate) mana_source: Option<ManaSource>,
     pub(crate) mana_restriction: ManaRestriction,
-}
-impl GainManaAbility {
-    pub(crate) fn text(&self, db: &Database, source: CardId) -> String {
-        format!("{}: {}", self.cost.text(db, source), self.gain.text())
-    }
+    pub(crate) oracle_text: String,
 }
 
 impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
@@ -339,6 +302,7 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
                 .as_ref()
                 .map_or(Ok(None), |value| value.try_into().map(Some))?,
             mana_restriction: value.mana_restriction.get_or_default().into(),
+            oracle_text: replace_symbols(&value.oracle_text),
         })
     }
 }

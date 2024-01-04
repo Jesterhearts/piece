@@ -42,7 +42,8 @@ activated_abilities:
               - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
-    oracle_text: Return to the battlefield transformed under its owners control.
+    oracle_text: >-
+      Craft with artifact {1}{U}
     sorcery_speed: true
     craft: true
 restrictions:
@@ -72,5 +73,6 @@ back_face:
             under_cards: 2
             restrictions:
               - restriction: !Self_ {}
-      oracle_text: Draw a card for each artifact you control, then put Braided Quipu
+      oracle_text: >-
+        {3}{U}, {T}: Draw a card for each artifact you control, then put Braided Quipu
         into its owner's library third from the top.

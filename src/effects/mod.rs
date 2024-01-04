@@ -61,7 +61,7 @@ use itertools::Itertools;
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
     battlefield::PendingResults,
-    card::{Color, Keyword},
+    card::{replace_symbols, Color, Keyword},
     counters::Counter,
     effects::{
         apply_then_if_was::ApplyThenIfWas, cant_attack_this_turn::CantAttackThisTurn,
@@ -636,7 +636,7 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected effect to have an effect specified"))
                 .and_then(Effect::try_from)?,
-            oracle_text: value.oracle_text.clone(),
+            oracle_text: replace_symbols(&value.oracle_text),
         })
     }
 }

@@ -1,14 +1,9 @@
-use std::{
-    collections::HashSet,
-    fmt::{Display, Write},
-    str::FromStr,
-};
+use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
-use itertools::Itertools;
 
 use crate::{
     card::{Color, Keyword},
@@ -59,21 +54,6 @@ pub(crate) enum Comparison {
     LessThanOrEqual(i32),
     GreaterThan(i32),
     GreaterThanOrEqual(i32),
-}
-
-impl Display for Comparison {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Comparison::LessThan(i) => f.write_fmt(format_args!("less than {}", i)),
-            Comparison::LessThanOrEqual(i) => {
-                f.write_fmt(format_args!("less than or equal to {}", i))
-            }
-            Comparison::GreaterThan(i) => f.write_fmt(format_args!("greater than {}", i)),
-            Comparison::GreaterThanOrEqual(i) => {
-                f.write_fmt(format_args!("greater than or equal to {}", i))
-            }
-        }
-    }
 }
 
 impl TryFrom<&protogen::targets::Comparison> for Comparison {
@@ -133,27 +113,10 @@ impl From<&protogen::targets::dynamic::Dynamic> for Dynamic {
     }
 }
 
-impl std::fmt::Display for Dynamic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Dynamic::X => f.write_char('X'),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Cmc {
     Comparison(Comparison),
     Dynamic(Dynamic),
-}
-
-impl std::fmt::Display for Cmc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Cmc::Comparison(comparison) => comparison.fmt(f),
-            Cmc::Dynamic(dy) => dy.fmt(f),
-        }
-    }
 }
 
 impl TryFrom<&protogen::targets::restriction::Cmc> for Cmc {
@@ -257,95 +220,6 @@ pub(crate) enum Restriction {
     Tapped,
     Threshold,
     Toughness(Comparison),
-}
-
-impl Restriction {
-    pub(crate) fn text(&self) -> String {
-        match self {
-            Restriction::AttackedThisTurn => "attacked this turn".to_string(),
-            Restriction::Attacking => "attacking".to_string(),
-            Restriction::AttackingOrBlocking => "attacking or blocking".to_string(),
-            Restriction::CastFromHand => "cast from your hand".to_string(),
-            Restriction::Cmc(cmc) => format!("cmc {}", cmc),
-            Restriction::Controller(controller) => format!("{} controls", controller.as_ref()),
-            Restriction::ControllerControlsBlackOrGreen => {
-                "controller controls black or green".to_string()
-            }
-            Restriction::ControllerHandEmpty => "controller hand empty".to_string(),
-            Restriction::Descend(count) => format!("descend {}", count),
-            Restriction::DescendedThisTurn => "descended this turn".to_string(),
-            Restriction::DuringControllersTurn => "during controller's turn".to_string(),
-            Restriction::EnteredTheBattlefieldThisTurn {
-                count,
-                restrictions,
-            } => format!(
-                "{} {} entered the battlefield this turn",
-                count,
-                restrictions.iter().map(|r| r.text()).join(", ")
-            ),
-            Restriction::InGraveyard => "in a graveyard".to_string(),
-            Restriction::InLocation { locations } => {
-                format!("in {}", locations.iter().map(|l| l.as_ref()).join(", "))
-            }
-            Self::JustCast => "just cast".to_string(),
-            Restriction::LifeGainedThisTurn(count) => {
-                format!("{} or more life this turn", count)
-            }
-            Restriction::ManaSpentFromSource(source) => {
-                format!("mana from {}", source.as_ref())
-            }
-            Restriction::NotChosen => "not chosen".to_string(),
-            Restriction::NotKeywords(keywords) => {
-                format!("without {}", keywords.iter().map(|k| k.as_ref()).join(", "))
-            }
-            Restriction::NotOfType { types, subtypes } => {
-                if !types.is_empty() && !subtypes.is_empty() {
-                    format!(
-                        "not a {} - {}",
-                        types.iter().map(|ty| ty.as_ref()).join(" or "),
-                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
-                    )
-                } else if !types.is_empty() {
-                    format!("not a {}", types.iter().map(|ty| ty.as_ref()).join(" or "))
-                } else {
-                    format!(
-                        "not a {}",
-                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
-                    )
-                }
-            }
-            Restriction::NotSelf => "other permanent".to_string(),
-            Restriction::NumberOfCountersOnThis {
-                comparison,
-                counter,
-            } => {
-                format!("{} counters {}", counter.as_ref(), comparison)
-            }
-            Restriction::OfColor(colors) => {
-                format!("one of {}", colors.iter().map(|c| c.as_ref()).join(", "))
-            }
-            Restriction::OfType { types, subtypes } => {
-                if !types.is_empty() && !subtypes.is_empty() {
-                    format!(
-                        "{} - {}",
-                        types.iter().map(|ty| ty.as_ref()).join(" or "),
-                        subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
-                    )
-                } else if !types.is_empty() {
-                    types.iter().map(|ty| ty.as_ref()).join(" or ")
-                } else {
-                    subtypes.iter().map(|ty| ty.as_ref()).join(" or ")
-                }
-            }
-            Restriction::OnBattlefield => "on the battlefield".to_string(),
-            Restriction::Power(power) => format!("power {}", power),
-            Restriction::Self_ => "self".to_string(),
-            Restriction::SourceCast => "cast".to_string(),
-            Restriction::Tapped => "tapped".to_string(),
-            Restriction::Threshold => "threshold".to_string(),
-            Restriction::Toughness(toughness) => format!("toughness {}", toughness),
-        }
-    }
 }
 
 impl TryFrom<&protogen::targets::Restriction> for Restriction {

@@ -9,6 +9,8 @@ etb_abilities:
             controller: !Self_ {}
         - restriction: !NotSelf {}
         - restriction: !OnBattlefield {}
+    oracle_text: When Mischievous Pup enters the battlefield, return up to one other
+      target permanent you control to its owner's hand.
 power: 3
 toughness: 1
 keywords: Flash

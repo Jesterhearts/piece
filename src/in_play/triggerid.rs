@@ -192,15 +192,6 @@ impl TriggerId {
             .unwrap_or_default()
     }
 
-    pub(crate) fn short_text(self, db: &Database) -> String {
-        let mut text = self.text(db);
-        if text.len() > 10 {
-            text.truncate(10);
-            text.push_str("...")
-        }
-        text
-    }
-
     pub(crate) fn settle(self, db: &mut Database) {
         db.triggers.entity_mut(self.0).insert(Settled);
     }

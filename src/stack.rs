@@ -133,7 +133,7 @@ impl StackEntry {
                 card_source,
                 ..
             } => {
-                format!("{}: {}", card_source.name(db), source.short_text(db))
+                format!("{}: {}", card_source.name(db), source.text(db))
             }
         }
     }

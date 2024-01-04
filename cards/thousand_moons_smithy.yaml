@@ -54,7 +54,9 @@ triggered_abilities:
                         types: Creature, Artifact
           effects:
             - effect: !Transform {}
-    oracle_text: Transform Thousand Moons Smithy
+    oracle_text: At the beginning of your precombat main phase, you may tap five untapped
+      artifacts and/or creatures you control. If you do, transform Thousand Moons
+      Smithy.
 back_face:
   name: Barracks of the Thousand
   typeline: Legendary Artifact Land

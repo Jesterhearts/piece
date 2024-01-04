@@ -2,6 +2,12 @@ name: Petrify
 typeline: Enchantment - Aura
 cost:
   mana_cost: '{1}{W}'
+oracle_text: >
+  Enchant artifact or creature
+
+  Enchanted permanent can't attack or block, and its activated abilities can't be
+  activated.
+
 enchant:
   modifiers:
     - modifier:

@@ -9,6 +9,8 @@ etb_abilities:
         typeline: Artifact Creature - Gnome
         power: 1
         toughness: 1
+    oracle_text: When Oltec Cloud Guard enters the battlefield, create a 1/1 colorless
+      Gnome artifact creature token.
 power: 3
 toughness: 2
 keywords: Flying

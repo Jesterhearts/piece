@@ -14,4 +14,5 @@ activated_abilities:
             - restriction: !OfColor
                 colors:
                   - color: !Green {}
-    oracle_text: Put target green creature on top of its owner's library
+    oracle_text: >-
+      {1}{U}, {T}: Put target green creature on top of its owner's library

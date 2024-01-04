@@ -2,6 +2,8 @@ name: Helping Hand
 typeline: Sorcery
 cost:
   mana_cost: '{W}'
+oracle_text: Return target creature card with mana value 3 or less from your graveyard
+  to the battlefield tapped.
 effects:
   - effect: !ReturnFromGraveyardToBattlefield
       restrictions:

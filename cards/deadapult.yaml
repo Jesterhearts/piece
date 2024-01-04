@@ -1,6 +1,5 @@
 name: Deadapult
 typeline: Enchantment
-oracle_text: '{R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.'
 activated_abilities:
   - cost:
       mana_cost: '{R}'
@@ -12,3 +11,5 @@ activated_abilities:
     effects:
       - effect: !DealDamage
           quantity: 2
+    oracle_text: >-
+      {R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.

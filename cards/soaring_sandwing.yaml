@@ -15,7 +15,7 @@ activated_abilities:
       - effect: !Cycling
           subtypes:
             - subtype: !Plains {}
-    oracle_text: Plainscycling
+    oracle_text: Plainscycling {2}
 power: 3
 toughness: 5
 keywords: Flying

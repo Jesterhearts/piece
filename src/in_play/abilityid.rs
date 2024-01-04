@@ -78,6 +78,10 @@ impl AbilityId {
                     entity.insert(source);
                 }
 
+                if !ability.oracle_text.is_empty() {
+                    entity.insert(OracleText(ability.oracle_text.clone()));
+                }
+
                 Self(entity.id())
             }
             Ability::Etb { effects } => {
@@ -324,33 +328,31 @@ impl AbilityId {
                 &GainMana,
                 Option<&ManaSource>,
                 &ManaRestriction,
+                Option<&OracleText>,
             )>()
             .iter(&db.abilities)
-            .find_map(|(e, cost, effect, mana_source, restriction)| {
+            .find_map(|(e, cost, effect, mana_source, restriction, oracle_text)| {
                 if Self(e) == self {
-                    Some((cost, effect, mana_source, restriction))
+                    Some((cost, effect, mana_source, restriction, oracle_text))
                 } else {
                     None
                 }
             })
-            .map(|(cost, gain, source, restriction)| GainManaAbility {
-                cost: cost.clone(),
-                gain: gain.clone(),
-                mana_source: source.copied(),
-                mana_restriction: *restriction,
-            })
+            .map(
+                |(cost, gain, source, restriction, oracle_text)| GainManaAbility {
+                    cost: cost.clone(),
+                    gain: gain.clone(),
+                    mana_source: source.copied(),
+                    mana_restriction: *restriction,
+                    oracle_text: oracle_text.map(|o| o.0.clone()).unwrap_or_default(),
+                },
+            )
     }
 
     pub fn text(self, db: &mut Database) -> String {
         match self.ability(db) {
-            Ability::Activated(activated) => {
-                format!(
-                    "{}: {}",
-                    activated.cost.text(db, self.source(db)),
-                    activated.oracle_text
-                )
-            }
-            Ability::Mana(ability) => ability.text(db, self.source(db)),
+            Ability::Activated(activated) => activated.oracle_text,
+            Ability::Mana(ability) => ability.oracle_text,
             Ability::Etb { effects } => {
                 let text = effects
                     .iter()
@@ -408,16 +410,6 @@ impl AbilityId {
 
     pub(crate) fn delete(self, db: &mut Database) {
         db.abilities.despawn(self.0);
-    }
-
-    pub(crate) fn short_text(self, db: &mut Database) -> String {
-        let mut text = self.text(db);
-        if text.len() > 10 {
-            text.truncate(10);
-            text.push_str("...");
-        }
-
-        text
     }
 
     pub(crate) fn settle(self, db: &mut Database) {

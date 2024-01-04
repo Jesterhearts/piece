@@ -11,4 +11,4 @@ activated_abilities:
           modifiers:
             - add_power: 2
               add_toughness: 2
-    oracle_text: Equip
+    oracle_text: Equip {3}

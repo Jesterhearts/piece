@@ -2,6 +2,12 @@ name: Market Gnome
 typeline: Artifact Creature - Gnome
 cost:
   mana_cost: '{W}'
+oracle_text: >
+  When Market Gnome dies, you gain 1 life and draw a card.
+
+  When Market Gnome is exiled from the battlefield while you're activating a craft
+  ability, you gain 1 life and draw a card.
+
 triggered_abilities:
   - trigger:
       source:

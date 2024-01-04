@@ -32,8 +32,7 @@ activated_abilities:
               - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
-    oracle_text: Return this card transformed under its owner's control. Craft only
-      as sorcery.
+    oracle_text: Craft with artifact {3}{W}
     sorcery_speed: true
     craft: true
 keywords: Flash
@@ -65,7 +64,9 @@ back_face:
               - restriction: !Controller
                   controller: !Self_ {}
       apply_to_self: true
-      oracle_text: Bladewheel Chariot becomes an artifact creature until end of turn.
+      oracle_text: >-
+        Tap two other untapped artifacts you control: Bladewheel Chariot becomes an
+        artifact creature until end of turn.
     - cost:
         additional_costs:
           - cost: !TapPermanentsPowerXOrMore
@@ -84,6 +85,6 @@ back_face:
               - restriction: !Controller
                   controller: !Self_ {}
       apply_to_self: true
-      oracle_text: Bladewheel Chariot becomes an artifact creature until end of turn.
+      oracle_text: Crew 1
   power: 5
   toughness: 5

@@ -18,7 +18,8 @@ activated_abilities:
                 controller: !Self_ {}
             - restriction: !Self_ {}
     apply_to_self: true
-    oracle_text: Until end of turn, Resplendent Angel gets +2/+2 and gains lifelink.
+    oracle_text: >-
+      {3}{W}{W}{W}: Until end of turn, Resplendent Angel gets +2/+2 and gains lifelink.
 triggered_abilities:
   - trigger:
       source:
