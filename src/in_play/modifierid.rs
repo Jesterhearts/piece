@@ -22,7 +22,9 @@ use crate::{
         Temporary, NEXT_MODIFIER_SEQ,
     },
     targets::{Restriction, Restrictions},
-    types::{AddSubtypes, AddTypes, RemoveAllSubtypes, RemoveSubtypes, RemoveTypes},
+    types::{
+        AddSubtypes, AddTypes, RemoveAllCreatureTypes, RemoveAllTypes, RemoveSubtypes, RemoveTypes,
+    },
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord, Component)]
@@ -134,8 +136,12 @@ impl ModifierId {
             entity.insert(RemoveSubtypes(modifier.modifier.remove_subtypes.clone()));
         }
 
-        if modifier.modifier.remove_all_subtypes {
-            entity.insert(RemoveAllSubtypes);
+        if modifier.modifier.remove_all_creature_types {
+            entity.insert(RemoveAllCreatureTypes);
+        }
+
+        if modifier.modifier.remove_all_types {
+            entity.insert(RemoveAllTypes);
         }
 
         if modifier.modifier.remove_all_colors {
@@ -301,5 +307,13 @@ impl ModifierId {
 
     pub(crate) fn remove_all_colors(self, db: &Database) -> bool {
         db.modifiers.get::<RemoveAllColors>(self.0).is_some()
+    }
+
+    pub(crate) fn remove_all_types(self, db: &Database) -> bool {
+        db.modifiers.get::<RemoveAllTypes>(self.0).is_some()
+    }
+
+    pub(crate) fn remove_all_creature_types(self, db: &Database) -> bool {
+        db.modifiers.get::<RemoveAllCreatureTypes>(self.0).is_some()
     }
 }

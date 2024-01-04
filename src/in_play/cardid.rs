@@ -721,11 +721,21 @@ impl CardId {
                 }
             }
 
+            if modifier.remove_all_types(db) {
+                applied_modifiers.insert(modifier);
+                types.clear();
+            }
+
             if let Some(remove) = modifier.remove_subtypes(db) {
                 applied_modifiers.insert(modifier);
                 for ty in remove.iter() {
                     subtypes.remove(ty);
                 }
+            }
+
+            if modifier.remove_all_creature_types(db) {
+                applied_modifiers.insert(modifier);
+                subtypes.retain(|ty| !ty.is_creature_type());
             }
         }
 

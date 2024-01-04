@@ -18,6 +18,9 @@ pub(crate) struct AddTypes(pub(crate) IndexSet<Type>);
 #[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
 pub(crate) struct RemoveTypes(pub(crate) IndexSet<Type>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+pub(crate) struct RemoveAllTypes;
+
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, strum::AsRefStr, strum::EnumString,
 )]
@@ -84,7 +87,7 @@ pub(crate) struct AddSubtypes(pub(crate) IndexSet<Subtype>);
 pub(crate) struct RemoveSubtypes(pub(crate) IndexSet<Subtype>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-pub(crate) struct RemoveAllSubtypes;
+pub(crate) struct RemoveAllCreatureTypes;
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, strum::AsRefStr, strum::EnumString,
@@ -105,6 +108,7 @@ pub enum Subtype {
     Archer,
     Archon,
     Arlinn,
+    Army,
     Artificer,
     Ashiok,
     Assassin,
@@ -119,6 +123,7 @@ pub enum Subtype {
     Background,
     Badger,
     Bahamut,
+    Balloon,
     Barbarian,
     Bard,
     Basilisk,
@@ -130,13 +135,16 @@ pub enum Subtype {
     Beholder,
     Berserker,
     Bird,
+    Blinkmoth,
     Boar,
     Bolas,
     Bringer,
     Brushwagg,
     Calix,
+    Camarid,
     Camel,
     Capybara,
+    Caribou,
     Carrier,
     Cartouche,
     Cat,
@@ -171,6 +179,7 @@ pub enum Subtype {
     Demigod,
     Demon,
     Desert,
+    Deserter,
     Detective,
     Devil,
     Dihada,
@@ -218,6 +227,7 @@ pub enum Subtype {
     Gargoyle,
     Garruk,
     Gate,
+    Germ,
     Giant,
     Gideon,
     Gith,
@@ -228,6 +238,7 @@ pub enum Subtype {
     God,
     Golem,
     Gorgon,
+    Graveborn,
     Gremlin,
     Griffin,
     Grist,
@@ -235,6 +246,7 @@ pub enum Subtype {
     Guff,
     Hag,
     Halfling,
+    Hamster,
     Harpy,
     Hellion,
     Hippo,
@@ -250,6 +262,7 @@ pub enum Subtype {
     Illusion,
     Imp,
     Incarnation,
+    Inkling,
     Inquisitor,
     Insect,
     Island,
@@ -329,6 +342,7 @@ pub enum Subtype {
     Ogre,
     Oko,
     Ooze,
+    Orb,
     Orc,
     Orgg,
     Otter,
@@ -338,12 +352,14 @@ pub enum Subtype {
     Pangolin,
     Peasant,
     Pegasus,
+    Pentavite,
     Performer,
     Pest,
     Phelddagrif,
     Phoenix,
     Phyrexian,
     Pilot,
+    Pincher,
     Pirate,
     Plains,
     Plant,
@@ -351,6 +367,7 @@ pub enum Subtype {
     Powerstone,
     Praetor,
     Primarch,
+    Prism,
     Processor,
     Quintorius,
     Rabbit,
@@ -359,6 +376,7 @@ pub enum Subtype {
     Ranger,
     Rat,
     Rebel,
+    Reflection,
     Rhino,
     Rigger,
     Robot,
@@ -370,14 +388,20 @@ pub enum Subtype {
     Saheeli,
     Salamander,
     Samurai,
+    Sand,
+    Saproling,
     Samut,
     Sarkhan,
     Satyr,
     Scarecrow,
     Scientist,
+    Scion,
     Scorpion,
     Scout,
+    Sculpture,
+    Serf,
     Serpent,
+    Servo,
     Serra,
     Shade,
     Shaman,
@@ -405,16 +429,20 @@ pub enum Subtype {
     Spider,
     Spike,
     Spirit,
+    Splinter,
     Sponge,
     Squid,
     Squirrel,
     Starfish,
     Surrakar,
+    Survivor,
     Swamp,
     Szat,
     Tamiyo,
     Tasha,
     Teferi,
+    Tentacle,
+    Tetravite,
     Teyo,
     Tezzeret,
     Thalakos,
@@ -428,6 +456,7 @@ pub enum Subtype {
     Treasure,
     Treefolk,
     Trilobite,
+    Triskelavite,
     Troll,
     Turtle,
     Tyranid,
@@ -469,6 +498,302 @@ pub enum Subtype {
     Zariel,
     Zombie,
     Zubera,
+}
+
+impl Subtype {
+    pub(crate) fn is_creature_type(&self) -> bool {
+        matches!(
+            self,
+            Self::Advisor
+                | Self::Aetherborn
+                | Self::Alien
+                | Self::Ally
+                | Self::Angel
+                | Self::Antelope
+                | Self::Ape
+                | Self::Archer
+                | Self::Archon
+                | Self::Army
+                | Self::Artificer
+                | Self::Assassin
+                | Self::AssemblyWorker
+                | Self::Astartes
+                | Self::Atog
+                | Self::Aurochs
+                | Self::Avatar
+                | Self::Azra
+                | Self::Badger
+                | Self::Balloon
+                | Self::Barbarian
+                | Self::Bard
+                | Self::Basilisk
+                | Self::Bat
+                | Self::Bear
+                | Self::Beast
+                | Self::Beeble
+                | Self::Beholder
+                | Self::Berserker
+                | Self::Bird
+                | Self::Blinkmoth
+                | Self::Boar
+                | Self::Bringer
+                | Self::Brushwagg
+                | Self::Camarid
+                | Self::Camel
+                | Self::Caribou
+                | Self::Carrier
+                | Self::Cat
+                | Self::Centaur
+                | Self::Cephalid
+                | Self::Child
+                | Self::Chimera
+                | Self::Citizen
+                | Self::Cleric
+                | Self::Clown
+                | Self::Cockatrice
+                | Self::Construct
+                | Self::Coward
+                | Self::Crab
+                | Self::Crocodile
+                | Self::Ctan
+                | Self::Custodes
+                | Self::Cyberman
+                | Self::Cyclops
+                | Self::Dalek
+                | Self::Dauthi
+                | Self::Demigod
+                | Self::Demon
+                | Self::Deserter
+                | Self::Detective
+                | Self::Devil
+                | Self::Dinosaur
+                | Self::Djinn
+                | Self::Doctor
+                | Self::Dog
+                | Self::Dragon
+                | Self::Drake
+                | Self::Dreadnought
+                | Self::Drone
+                | Self::Druid
+                | Self::Dryad
+                | Self::Dwarf
+                | Self::Efreet
+                | Self::Egg
+                | Self::Elder
+                | Self::Eldrazi
+                | Self::Elemental
+                | Self::Elephant
+                | Self::Elf
+                | Self::Elk
+                | Self::Employee
+                | Self::Eye
+                | Self::Faerie
+                | Self::Ferret
+                | Self::Fish
+                | Self::Flagbearer
+                | Self::Fox
+                | Self::Fractal
+                | Self::Frog
+                | Self::Fungus
+                | Self::Gamer
+                | Self::Gargoyle
+                | Self::Germ
+                | Self::Giant
+                | Self::Gith
+                | Self::Gnoll
+                | Self::Gnome
+                | Self::Goat
+                | Self::Goblin
+                | Self::God
+                | Self::Golem
+                | Self::Gorgon
+                | Self::Graveborn
+                | Self::Gremlin
+                | Self::Griffin
+                | Self::Guest
+                | Self::Hag
+                | Self::Halfling
+                | Self::Hamster
+                | Self::Harpy
+                | Self::Hellion
+                | Self::Hippo
+                | Self::Hippogriff
+                | Self::Homarid
+                | Self::Homunculus
+                | Self::Horror
+                | Self::Horse
+                | Self::Human
+                | Self::Hydra
+                | Self::Hyena
+                | Self::Illusion
+                | Self::Imp
+                | Self::Incarnation
+                | Self::Inkling
+                | Self::Inquisitor
+                | Self::Insect
+                | Self::Jackal
+                | Self::Jellyfish
+                | Self::Juggernaut
+                | Self::Kavu
+                | Self::Kirin
+                | Self::Kithkin
+                | Self::Knight
+                | Self::Kobold
+                | Self::Kor
+                | Self::Kraken
+                | Self::Lamia
+                | Self::Lammasu
+                | Self::Leech
+                | Self::Leviathan
+                | Self::Lhurgoyf
+                | Self::Licid
+                | Self::Lizard
+                | Self::Lord
+                | Self::Manticore
+                | Self::Masticore
+                | Self::Mercenary
+                | Self::Merfolk
+                | Self::Metathran
+                | Self::Minion
+                | Self::Minotaur
+                | Self::Mite
+                | Self::Mole
+                | Self::Monger
+                | Self::Mongoose
+                | Self::Monk
+                | Self::Monkey
+                | Self::Moonfolk
+                | Self::Mouse
+                | Self::Mutant
+                | Self::Myr
+                | Self::Mystic
+                | Self::Naga
+                | Self::Nautilus
+                | Self::Necron
+                | Self::Nephilim
+                | Self::Nightmare
+                | Self::Nightstalker
+                | Self::Ninja
+                | Self::Noble
+                | Self::Noggle
+                | Self::Nomad
+                | Self::Nymph
+                | Self::Octopus
+                | Self::Ogre
+                | Self::Ooze
+                | Self::Orb
+                | Self::Orc
+                | Self::Orgg
+                | Self::Otter
+                | Self::Ouphe
+                | Self::Ox
+                | Self::Oyster
+                | Self::Pangolin
+                | Self::Peasant
+                | Self::Pegasus
+                | Self::Pentavite
+                | Self::Performer
+                | Self::Pest
+                | Self::Phelddagrif
+                | Self::Phoenix
+                | Self::Phyrexian
+                | Self::Pilot
+                | Self::Pincher
+                | Self::Pirate
+                | Self::Plant
+                | Self::Praetor
+                | Self::Primarch
+                | Self::Prism
+                | Self::Processor
+                | Self::Raccoon
+                | Self::Rabbit
+                | Self::Ranger
+                | Self::Rat
+                | Self::Rebel
+                | Self::Reflection
+                | Self::Rhino
+                | Self::Rigger
+                | Self::Robot
+                | Self::Rogue
+                | Self::Sable
+                | Self::Salamander
+                | Self::Samurai
+                | Self::Sand
+                | Self::Saproling
+                | Self::Satyr
+                | Self::Scarecrow
+                | Self::Scientist
+                | Self::Scion
+                | Self::Scorpion
+                | Self::Scout
+                | Self::Sculpture
+                | Self::Serf
+                | Self::Serpent
+                | Self::Servo
+                | Self::Shade
+                | Self::Shaman
+                | Self::Shapeshifter
+                | Self::Shark
+                | Self::Sheep
+                | Self::Siren
+                | Self::Skeleton
+                | Self::Slith
+                | Self::Sliver
+                | Self::Slug
+                | Self::Snake
+                | Self::Soldier
+                | Self::Soltari
+                | Self::Spawn
+                | Self::Specter
+                | Self::Spellshaper
+                | Self::Sphinx
+                | Self::Spider
+                | Self::Spike
+                | Self::Spirit
+                | Self::Splinter
+                | Self::Sponge
+                | Self::Squid
+                | Self::Squirrel
+                | Self::Starfish
+                | Self::Surrakar
+                | Self::Survivor
+                | Self::Tentacle
+                | Self::Tetravite
+                | Self::Thalakos
+                | Self::Thopter
+                | Self::Thrull
+                | Self::Tiefling
+                | Self::Time
+                | Self::Treefolk
+                | Self::Trilobite
+                | Self::Triskelavite
+                | Self::Troll
+                | Self::Turtle
+                | Self::Tyranid
+                | Self::Unicorn
+                | Self::Vampire
+                | Self::Vedalken
+                | Self::Viashino
+                | Self::Volver
+                | Self::Wall
+                | Self::Walrus
+                | Self::Warlock
+                | Self::Warrior
+                | Self::Weird
+                | Self::Werewolf
+                | Self::Whale
+                | Self::Wizard
+                | Self::Wolf
+                | Self::Wolverine
+                | Self::Wombat
+                | Self::Worm
+                | Self::Wraith
+                | Self::Wurm
+                | Self::Yeti
+                | Self::Zombie
+                | Self::Zubera
+        )
+    }
 }
 
 impl TryFrom<&protogen::types::Subtype> for Subtype {

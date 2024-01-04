@@ -325,7 +325,8 @@ pub(crate) struct ModifyBattlefield {
     pub(crate) add_ability: Option<ActivatedAbility>,
     pub(crate) mana_ability: Option<GainManaAbility>,
 
-    pub(crate) remove_all_subtypes: bool,
+    pub(crate) remove_all_types: bool,
+    pub(crate) remove_all_creature_types: bool,
     pub(crate) remove_all_abilities: bool,
     pub(crate) remove_all_colors: bool,
 
@@ -387,8 +388,9 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .mana_ability
                 .as_ref()
                 .map_or(Ok(None), |v| v.try_into().map(Some))?,
-            remove_all_subtypes: value.remove_all_subtypes,
-            remove_all_abilities: false,
+            remove_all_types: value.remove_all_types,
+            remove_all_creature_types: value.remove_all_creature_types,
+            remove_all_abilities: value.remove_all_abilities,
             remove_all_colors: value.remove_all_colors,
             entire_battlefield: value.entire_battlefield,
             global: value.global,

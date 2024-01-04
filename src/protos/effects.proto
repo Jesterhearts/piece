@@ -277,17 +277,19 @@ message ModifyBattlefield {
   repeated types.Type remove_types = 6;
   repeated types.Subtype remove_subtypes = 7;
   repeated color.Color add_colors = 8;
-  bool remove_all_colors = 9;
-  optional int32 add_power = 10;
-  optional int32 add_toughness = 11;
-  optional ActivatedAbility add_ability = 12;
-  optional GainManaAbility mana_ability = 13;
-  repeated StaticAbility add_static_abilities = 14;
-  bool remove_all_subtypes = 15;
-  bool entire_battlefield = 16;
-  bool global = 17;
-  string add_keywords = 18;
-  string remove_keywords = 19;
+  optional int32 add_power = 9;
+  optional int32 add_toughness = 10;
+  optional ActivatedAbility add_ability = 11;
+  optional GainManaAbility mana_ability = 12;
+  repeated StaticAbility add_static_abilities = 13;
+  bool remove_all_creature_types = 14;
+  bool remove_all_types = 15;
+  bool remove_all_colors = 17;
+  bool remove_all_abilities = 18;
+  bool entire_battlefield = 19;
+  bool global = 20;
+  string add_keywords = 21;
+  string remove_keywords = 22;
 }
 
 message MultiplyTokens {
