@@ -19,6 +19,28 @@ cards in the DB can be loaded successfully and should print helpful error messag
 fails.
 
 ## Quirks to be aware of
+- Type (and subtype) list fields must be written as a comma separated list of types. The parser
+  automatically converts these to a list of the appropriate type. This means that instead of
+  writing:
+  ```yaml
+  types:
+    - type_: !Artifact {}
+    - type_: !Creature {}
+  ```
+  instead you write:
+  ```yaml
+  types: Artifact, Creature
+  ```
+  The same is true of mana gain abilities, which are written with the standard {W}, {U}, {B}, {R},
+  {G}, {C} notation for White, Blue, Black, Red, Green, and Colorless respectively:
+  ```yaml
+  gain: !Specific
+    # This is not comma separated, it's just a list of mana to gain.
+    gain: '{W}{U}'
+  gain: !Choice
+    # This separates each choice with a comma
+    choices: '{W}{U}, {U}{B}'
+  ```
 - When adding restrictions, individual restrictions are AND'd together. So
   ```yaml
   - restriction: !OfType
