@@ -1,0 +1,17 @@
+name: Didact Echo
+cost:
+  mana_cost: '{4}{U}'
+typeline: Creature - Spirit Cleric
+oracle_text: Descend 4 - Didact Echo has flying as long as there are four or more
+  permanent cards in your graveyard.
+etb_abilities:
+  - effect: !ControllerDrawCards
+      count: !Fixed
+        count: 1
+    oracle_text: When Didact Echo enters the battlefield, draw a card.
+static_abilities:
+  - ability: !AddKeywordsIf
+      keywords: Flying
+      restrictions:
+        - restriction: !Descend
+            count: 4
