@@ -59,3 +59,6 @@ fails.
   definitions. E.g. `battlefield_modifier` is `!BattlefieldModifier` and `modify_target` is
   `!ModifyTarget` for the `effect` oneof field in the `Effects` proto.
 
+
+---
+Mana symbols are sourced from: https://github.com/andrewgioia/Mana
