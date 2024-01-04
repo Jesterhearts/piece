@@ -38,6 +38,30 @@ fn main() {
                         skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
+            } else if field.name() == "types"
+                || field.name() == "add_types"
+                || field.name() == "remove_types"
+            {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_types",
+                        deserialize_with="crate::deserialize_types",
+                        skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
+            } else if field.name() == "subtypes"
+                || field.name() == "add_subtypes"
+                || field.name() == "remove_subtypes"
+            {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_subtypes",
+                        deserialize_with="crate::deserialize_subtypes",
+                        skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
             } else if field.is_repeated() {
                 Customize::default()
                     .before("#[serde(default, skip_serializing_if=\"Vec::is_empty\")]")

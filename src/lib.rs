@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate tracing;
 
+use std::str::FromStr;
+
 use anyhow::{anyhow, Context};
 
 use ariadne::{Label, Report, ReportKind, Source};
@@ -13,7 +15,11 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     card::Card,
-    protogen::{effects::gain_mana, mana::Mana},
+    protogen::{
+        effects::gain_mana,
+        mana::Mana,
+        types::{subtype, type_, Subtype, Type},
+    },
 };
 
 #[cfg(test)]
@@ -258,6 +264,94 @@ where
         &value
             .iter()
             .map(|gain| mana_to_string(&gain.gains))
+            .join(", "),
+    )
+}
+
+pub fn deserialize_types<'de, D>(deserializer: D) -> Result<Vec<Type>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<Type>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of types")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            v.split(',')
+                .map(|v| v.trim())
+                .map(type_::Type::from_str)
+                .map(|type_| {
+                    Ok(Type {
+                        type_: Some(type_.map_err(|e| E::custom(e.to_string()))?),
+                        ..Default::default()
+                    })
+                })
+                .collect::<Result<Self::Value, E>>()
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+pub fn serialize_types<S>(value: &[Type], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &value
+            .iter()
+            .map(|ty| ty.type_.as_ref().unwrap().as_ref())
+            .join(", "),
+    )
+}
+
+pub fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<Vec<Subtype>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<Subtype>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of types")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            v.split(',')
+                .map(|v| v.trim())
+                .map(subtype::Subtype::from_str)
+                .map(|subtype| {
+                    Ok(Subtype {
+                        subtype: Some(subtype.map_err(|e| E::custom(e.to_string()))?),
+                        ..Default::default()
+                    })
+                })
+                .collect::<Result<Self::Value, E>>()
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+pub fn serialize_subtypes<S>(value: &[Subtype], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &value
+            .iter()
+            .map(|ty| ty.subtype.as_ref().unwrap().as_ref())
             .join(", "),
     )
 }
