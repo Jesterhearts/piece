@@ -7,7 +7,7 @@ use crate::{
     stack::ActiveTarget,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct ExileTargetGraveyard;
 
 impl EffectBehaviors for ExileTargetGraveyard {
@@ -50,7 +50,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(self.clone())),
+            TargetSource::Effect(Effect::from(*self)),
             valid_targets,
             source,
         ))

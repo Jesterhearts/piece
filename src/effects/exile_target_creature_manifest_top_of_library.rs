@@ -63,7 +63,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
             self.valid_targets(db, source, controller, results.all_currently_targeted());
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(self.clone())),
+            TargetSource::Effect(Effect::from(*self)),
             valid_targets,
             source,
         ));
