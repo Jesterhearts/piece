@@ -1,0 +1,25 @@
+name: Deeproot Pilgrimage
+cost:
+  mana_cost: '{1}{U}'
+typeline: Enchantment
+triggered_abilities:
+  - trigger:
+      source:
+        trigger: !OneOrMoreTapped {}
+      from:
+        location: !Battlefield {}
+      restrictions:
+        - restriction: !OfType
+            subtypes: Merfolk
+        - restriction: !NonToken {}
+    effects:
+      - effect: !CreateToken
+          token: !Creature
+            name: Merfolk
+            typeline: Creature - Merfolk
+            colors:
+              - color: !Blue {}
+            power: 1
+            toughness: 1
+    oracle_text: Whenever one or more nontoken Merfolk you control become tapped,
+      create a 1/1 blue Merfolk creature token with hexproof.

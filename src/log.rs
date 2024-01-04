@@ -27,7 +27,7 @@ impl LogId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LeaveReason {
     Exiled,
     PutIntoGraveyard,
@@ -35,7 +35,7 @@ pub enum LeaveReason {
     ReturnedToLibrary,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LogEntry {
     NewTurn {
         player: Owner,
@@ -63,6 +63,9 @@ pub enum LogEntry {
     TriggerResolved {
         source: CardId,
         controller: Controller,
+    },
+    Tapped {
+        card: CardId,
     },
 }
 
@@ -157,6 +160,13 @@ impl Log {
         } else {
             &[]
         }
+    }
+
+    pub(crate) fn tapped(db: &mut Database, id: LogId, card: CardId) {
+        let entry = LogEntry::Tapped { card };
+
+        event!(Level::INFO, ?entry);
+        db.resource_mut::<Self>().entries.push((id, entry));
     }
 
     pub(crate) fn left_battlefield(

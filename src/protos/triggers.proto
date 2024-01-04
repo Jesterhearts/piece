@@ -23,6 +23,7 @@ message TriggerSource {
   message EndStep {}
   message EntersTheBattlefield {}
   message ExiledDuringCraft {}
+  message OneOrMoreTapped {}
   message PreCombatMainPhase {}
   message PutIntoGraveyard {}
   message StartOfCombat {}
@@ -34,15 +35,16 @@ message TriggerSource {
     EndStep end_step = 3;
     EntersTheBattlefield enters_the_battlefield = 4;
     ExiledDuringCraft exiled_during_craft = 5;
-    PreCombatMainPhase pre_combat_main_phase = 6;
-    PutIntoGraveyard put_into_graveyard = 7;
-    StartOfCombat start_of_combat = 8;
-    Tapped tapped = 9;
+    OneOrMoreTapped one_or_more_tapped = 6;
+    PreCombatMainPhase pre_combat_main_phase = 7;
+    PutIntoGraveyard put_into_graveyard = 8;
+    StartOfCombat start_of_combat = 9;
+    Tapped tapped = 10;
   }
 }
 
 message Trigger {
   TriggerSource source = 1;
   Location from = 2;
-  repeated targets.Restriction restrictions = 4;
+  repeated targets.Restriction restrictions = 3;
 }

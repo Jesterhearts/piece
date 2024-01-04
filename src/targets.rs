@@ -197,6 +197,7 @@ pub(crate) enum Restriction {
     JustCast,
     LifeGainedThisTurn(usize),
     ManaSpentFromSource(ManaSource),
+    NonToken,
     NotChosen,
     NotKeywords(IndexSet<Keyword>),
     NotOfType {
@@ -291,6 +292,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::ManaSpentFromSource(spent) => Ok(
                 Self::ManaSpentFromSource(spent.source.get_or_default().try_into()?),
             ),
+            protogen::targets::restriction::Restriction::NonToken(_) => Ok(Self::NonToken),
             protogen::targets::restriction::Restriction::NotChosen(_) => Ok(Self::NotChosen),
             protogen::targets::restriction::Restriction::NotKeywords(not) => Ok(Self::NotKeywords(
                 not.keywords

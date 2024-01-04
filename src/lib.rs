@@ -11,6 +11,7 @@ use ariadne::{Label, Report, ReportKind, Source};
 use include_dir::{include_dir, Dir, File};
 use indexmap::IndexMap;
 use itertools::Itertools;
+use protobuf::{MessageDyn, MessageFull};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
@@ -362,7 +363,7 @@ pub fn serialize_message<T, S>(
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
-    T: Serialize,
+    T: Serialize + MessageFull,
 {
     if let Some(value) = value.as_ref() {
         value.serialize(serializer)
@@ -376,7 +377,23 @@ pub fn deserialize_message<'de, T, D>(
 ) -> Result<::protobuf::MessageField<T>, D::Error>
 where
     D: Deserializer<'de>,
-    T: Deserialize<'de>,
+    T: Deserialize<'de> + MessageFull,
 {
-    Option::<T>::deserialize(deserializer).map(|t| ::protobuf::MessageField::from_option(t))
+    Option::<T>::deserialize(deserializer).and_then(|t| {
+        let message = ::protobuf::MessageField::from_option(t);
+
+        let descriptor = message.descriptor_dyn();
+        for oneof in descriptor.oneofs() {
+            if oneof
+                .fields()
+                .all(|field| field.get_singular(message.get_or_default()).is_none())
+            {
+                return Err(<D::Error as serde::de::Error>::custom(format!(
+                    "Expected at least one type of {} to be set",
+                    oneof.name()
+                )));
+            }
+        }
+        Ok(message)
+    })
 }

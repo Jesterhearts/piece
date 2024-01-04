@@ -42,6 +42,7 @@ pub(crate)enum TriggerSource {
     EndStep,
     EntersTheBattlefield,
     ExiledDuringCraft,
+    OneOrMoreTapped,
     PreCombatMainPhase,
     PutIntoGraveyard,
     StartOfCombat,
@@ -95,6 +96,9 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
             }
             protogen::triggers::trigger_source::Trigger::ExiledDuringCraft(_) => {
                 Self::ExiledDuringCraft
+            }
+            protogen::triggers::trigger_source::Trigger::OneOrMoreTapped(_) => {
+                Self::OneOrMoreTapped
             }
             protogen::triggers::trigger_source::Trigger::PreCombatMainPhase(_) => {
                 Self::PreCombatMainPhase

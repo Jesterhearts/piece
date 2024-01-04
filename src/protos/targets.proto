@@ -104,6 +104,7 @@ message Restriction {
   message ManaSpentFromSource {
     ManaSource source = 1;
   }
+  message NonToken {}
   message NotChosen {}
   message NotKeywords {
     string keywords = 1;
@@ -154,19 +155,20 @@ message Restriction {
     LifeGainedThisTurn life_gained_this_turn = 16;
     Locations location = 17;
     ManaSpentFromSource mana_spent_from_source = 18;
-    NotChosen not_chosen = 19;
-    NotKeywords not_keywords = 20;
-    NotOfType not_of_type = 21;
-    NotSelf not_self = 22;
-    NumberOfCountersOnThis number_of_counters_on_this = 23;
-    OfColor of_color = 24;
-    OfType of_type = 25;
-    OnBattlefield on_battlefield = 26;
-    Power power = 27;
-    Self self = 28;
-    SourceCast source_cast = 29;
-    Tapped tapped = 30;
-    Threshold threshold = 31;
-    Toughness toughness = 32;
+    NonToken non_token = 19;
+    NotChosen not_chosen = 20;
+    NotKeywords not_keywords = 21;
+    NotOfType not_of_type = 22;
+    NotSelf not_self = 23;
+    NumberOfCountersOnThis number_of_counters_on_this = 24;
+    OfColor of_color = 25;
+    OfType of_type = 26;
+    OnBattlefield on_battlefield = 27;
+    Power power = 28;
+    Self self = 29;
+    SourceCast source_cast = 30;
+    Tapped tapped = 31;
+    Threshold threshold = 32;
+    Toughness toughness = 33;
   }
 }

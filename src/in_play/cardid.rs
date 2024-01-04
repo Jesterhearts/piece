@@ -1448,6 +1448,11 @@ impl CardId {
                         return false;
                     }
                 }
+                Restriction::NonToken => {
+                    if self.is_token(db) {
+                        return false;
+                    };
+                }
             }
         }
 
@@ -1947,6 +1952,8 @@ impl CardId {
     }
 
     pub(crate) fn tap(self, db: &mut Database) -> PendingResults {
+        Log::tapped(db, LogId::current(), self);
+
         let mut pending = PendingResults::default();
         for trigger in TriggerId::active_triggers_of_source::<trigger_source::Tapped>(db) {
             let restrictions = trigger.restrictions(db);

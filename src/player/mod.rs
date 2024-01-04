@@ -216,6 +216,9 @@ impl Owner {
                         return false;
                     }
                 }
+                Restriction::NonToken => {
+                    return false;
+                }
             }
         }
 

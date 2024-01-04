@@ -69,6 +69,9 @@ impl TriggerId {
             TriggerSource::PreCombatMainPhase => {
                 entity.insert(trigger_source::PreCombatMainPhase);
             }
+            TriggerSource::OneOrMoreTapped => {
+                entity.insert(trigger_source::OneOrMoreTapped);
+            }
         }
 
         Self(entity.id())

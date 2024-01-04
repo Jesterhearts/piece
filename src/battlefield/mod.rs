@@ -38,7 +38,7 @@ use crate::{
         Database, ExileReason, InExile, InGraveyard, InHand, InLibrary, InStack, ModifierId,
         NumberOfAttackers, OnBattlefield, ReplacementEffectId, TriggerId,
     },
-    log::Log,
+    log::{Log, LogEntry},
     mana::{Mana, ManaRestriction},
     player::{
         mana_pool::{ManaSource, SpendReason},
@@ -658,6 +658,28 @@ impl Battlefield {
 
         for result in results.iter() {
             pending.extend(Self::apply_action_result(db, all_players, turn, result));
+        }
+
+        let entries = Log::current_session(db).to_vec();
+        for trigger in TriggerId::active_triggers_of_source::<trigger_source::OneOrMoreTapped>(db) {
+            let listener = trigger.listener(db);
+            let restrictions = trigger.restrictions(db);
+            if entries.iter().any(|entry| {
+                let (_, LogEntry::Tapped { card }) = entry else {
+                    return false;
+                };
+
+                card.passes_restrictions(db, listener, &restrictions)
+            }) {
+                for effect in trigger.effects(db) {
+                    effect.effect.push_pending_behavior(
+                        db,
+                        listener,
+                        listener.controller(db),
+                        &mut pending,
+                    );
+                }
+            }
         }
 
         for card in all_cards(db) {
