@@ -9,8 +9,8 @@ Future plans:
 # Adding Cards
 Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto
 schema is defined in the [protos directory](src/protos). In particular, check out the
-[card](src/protos/card.proto), [effect](src/protos/effects.proto), and
-[restriction](src/protos/targets.proto) definitions for all of the fields available. See the
+[card](src/protos/card.proto), [effect](src/protos/effects.proto#L11), and
+[restriction](src/protos/targets.proto#L8) definitions for all of the fields available. See the
 [counter](src/counters.rs), and [keyword](src/card.rs) implementations for their definitions.
 
 ## Validation
@@ -19,6 +19,8 @@ cards in the DB can be loaded successfully and should print helpful error messag
 fails.
 
 ## Quirks to be aware of
+- Assume most effects are pulling targets from anywhere (battlefield, graveyard, exile, etc) and use
+  restrictions to narrow down the target list appropriately.
 - Type, subtype, and color list fields must be written as a comma separated list of values. The parser
   automatically converts these to a list of the appropriate type. This means that instead of
   writing:

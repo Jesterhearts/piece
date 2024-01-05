@@ -5,63 +5,6 @@ package targets;
 import "color.proto";
 import "types.proto";
 
-message ManaSource {
-  message BarracksOfTheThousand {}
-  message Cave {}
-  message Treasure {}
-  oneof source {
-    BarracksOfTheThousand barracks_of_the_thousand = 1;
-    Cave cave = 2;
-    Treasure treasure = 3;
-  }
-}
-
-message Comparison {
-  message LessThan {
-    int32 value = 1;
-  }
-  message LessThanOrEqual {
-    int32 value = 1;
-  }
-  message GreaterThan {
-    int32 value = 1;
-  }
-  message GreaterThanOrEqual {
-    int32 value = 1;
-  }
-
-  oneof value {
-    LessThan less_than = 2;
-    LessThanOrEqual less_than_or_equal = 3;
-    GreaterThan greater_than = 4;
-    GreaterThanOrEqual greater_than_or_equal = 5;
-  }
-}
-
-message Dynamic {
-  message X {}
-
-  oneof dynamic {
-    X x = 1;
-  }
-}
-
-message Location {
-  message OnBattlefield {}
-  message InGraveyard {}
-  message InLibrary {}
-  message InExile {}
-  message InStack {}
-
-  oneof location {
-    OnBattlefield on_battlefield = 1;
-    InGraveyard in_graveyard = 2;
-    InLibrary in_library = 3;
-    InExile in_exile = 4;
-    InStack in_stack = 5;
-  }
-}
-
 message Restriction {
   message AttackedThisTurn {}
   message Attacking {}
@@ -170,5 +113,62 @@ message Restriction {
     Tapped tapped = 31;
     Threshold threshold = 32;
     Toughness toughness = 33;
+  }
+}
+
+message ManaSource {
+  message BarracksOfTheThousand {}
+  message Cave {}
+  message Treasure {}
+  oneof source {
+    BarracksOfTheThousand barracks_of_the_thousand = 1;
+    Cave cave = 2;
+    Treasure treasure = 3;
+  }
+}
+
+message Comparison {
+  message LessThan {
+    int32 value = 1;
+  }
+  message LessThanOrEqual {
+    int32 value = 1;
+  }
+  message GreaterThan {
+    int32 value = 1;
+  }
+  message GreaterThanOrEqual {
+    int32 value = 1;
+  }
+
+  oneof value {
+    LessThan less_than = 2;
+    LessThanOrEqual less_than_or_equal = 3;
+    GreaterThan greater_than = 4;
+    GreaterThanOrEqual greater_than_or_equal = 5;
+  }
+}
+
+message Dynamic {
+  message X {}
+
+  oneof dynamic {
+    X x = 1;
+  }
+}
+
+message Location {
+  message OnBattlefield {}
+  message InGraveyard {}
+  message InLibrary {}
+  message InExile {}
+  message InStack {}
+
+  oneof location {
+    OnBattlefield on_battlefield = 1;
+    InGraveyard in_graveyard = 2;
+    InLibrary in_library = 3;
+    InExile in_exile = 4;
+    InStack in_stack = 5;
   }
 }
