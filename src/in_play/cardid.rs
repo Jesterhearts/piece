@@ -811,6 +811,53 @@ impl CardId {
             colors.remove(&Color::Colorless);
         }
 
+        let add_keywords = self
+            .static_abilities(db)
+            .into_iter()
+            .filter_map(|sa| {
+                if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
+                    keywords: add_keywords,
+                    restrictions,
+                }) = sa
+                {
+                    let power = base_power.as_ref().map(|base| match base {
+                        BasePowerType::Static(value) => *value,
+                        BasePowerType::Dynamic(dynamic) => {
+                            self.dynamic_power_toughness(db, dynamic) as i32
+                        }
+                    });
+                    let toughness = base_toughness.as_ref().map(|base| match base {
+                        BaseToughnessType::Static(value) => *value,
+                        BaseToughnessType::Dynamic(dynamic) => {
+                            self.dynamic_power_toughness(db, dynamic) as i32
+                        }
+                    });
+                    if self.passes_restrictions_given_attributes(
+                        db,
+                        self,
+                        self.controller(db),
+                        &restrictions,
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
+                        power,
+                        toughness,
+                    ) {
+                        Some(add_keywords)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
+
+        for add in add_keywords {
+            keywords.extend(add);
+        }
+
         for modifier in modifiers.iter().copied() {
             if !applied_modifiers.contains(&modifier) {
                 let source = modifier.source(db);
@@ -2039,49 +2086,10 @@ impl CardId {
     }
 
     pub(crate) fn keywords(self, db: &mut Database) -> ::counter::Counter<Keyword> {
-        let mut base_keywords = db
-            .get::<ModifiedKeywords>(self.0)
+        db.get::<ModifiedKeywords>(self.0)
             .map(|t| t.0.clone())
             .or_else(|| db.get::<Keywords>(self.0).map(|t| t.0.clone()))
-            .unwrap_or_default();
-        let add = self
-            .static_abilities(db)
-            .into_iter()
-            .filter_map(|sa| {
-                if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
-                    keywords,
-                    restrictions,
-                }) = sa
-                {
-                    let power = self.power(db);
-                    let toughness = self.toughness(db);
-                    if self.passes_restrictions_given_attributes(
-                        db,
-                        self,
-                        self.controller(db),
-                        &restrictions,
-                        &self.types(db),
-                        &self.subtypes(db),
-                        &base_keywords,
-                        &self.colors(db),
-                        power,
-                        toughness,
-                    ) {
-                        Some(keywords)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect_vec();
-
-        for add in add {
-            base_keywords.extend(add);
-        }
-
-        base_keywords
+            .unwrap_or_default()
     }
 
     pub(crate) fn shroud(self, db: &mut Database) -> bool {
