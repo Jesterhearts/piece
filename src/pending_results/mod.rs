@@ -19,20 +19,16 @@ use itertools::Itertools;
 
 use crate::{
     abilities::GainMana,
-    battlefield::{
-        choose_for_each_player::ChooseForEachPlayer,
-        choosing_cast::ChoosingCast,
-        examine_top_cards::ExamineCards,
-        organizing_stack::OrganizingStack,
-        pay_costs::PayCost,
-        pending_results::{
-            choose_modes::ChooseModes, choose_targets::ChooseTargets,
-            declaring_attackers::DeclaringAttackers, library_or_graveyard::LibraryOrGraveyard,
-        },
-        ActionResult, Battlefield,
-    },
+    battlefield::{ActionResult, Battlefield},
     effects::{Destination, Effect, EffectBehaviors},
     in_play::{AbilityId, AuraId, CardId, CastFrom, Database, OnBattlefield},
+    pending_results::{
+        choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
+        choose_targets::ChooseTargets, choosing_cast::ChoosingCast,
+        declaring_attackers::DeclaringAttackers, examine_top_cards::ExamineCards,
+        library_or_graveyard::LibraryOrGraveyard, organizing_stack::OrganizingStack,
+        pay_costs::PayCost,
+    },
     player::{AllPlayers, Controller, Owner},
     stack::{ActiveTarget, StackEntry},
     turns::Turn,

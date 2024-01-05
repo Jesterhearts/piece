@@ -4,11 +4,12 @@ use bevy_ecs::{event::Events, system::Resource};
 use indexmap::IndexSet;
 
 use crate::{
-    battlefield::{Battlefield, PendingResults},
+    battlefield::Battlefield,
     in_play::{
         set_current_turn, AttackingBannedThisTurn, CardId, Database, DeleteAbility, InHand,
         LifeGained, TimesDescended, TriggerId,
     },
+    pending_results::PendingResults,
     player::{AllPlayers, Owner},
     stack::Stack,
     triggers::trigger_source,

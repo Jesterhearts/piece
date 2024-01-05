@@ -9,15 +9,7 @@ use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{
-        choose_targets::ChooseTargets,
-        pay_costs::SpendMana,
-        pay_costs::TapPermanent,
-        pay_costs::{ExileCards, ExilePermanentsCmcX},
-        pay_costs::{ExileCardsSharingType, PayCost},
-        pay_costs::{SacrificePermanent, TapPermanentsPowerXOrMore},
-        ActionResult, PendingResults, Source, TargetSource,
-    },
+    battlefield::ActionResult,
     card::keyword::SplitSecond,
     cost::AdditionalCost,
     effects::EffectBehaviors,
@@ -25,6 +17,15 @@ use crate::{
         cast_from, AbilityId, CardId, CastFrom, Database, InStack, TriggerId, TriggerInStack,
     },
     log::{Log, LogId},
+    pending_results::{
+        choose_targets::ChooseTargets,
+        pay_costs::SpendMana,
+        pay_costs::TapPermanent,
+        pay_costs::{ExileCards, ExilePermanentsCmcX},
+        pay_costs::{ExileCardsSharingType, PayCost},
+        pay_costs::{SacrificePermanent, TapPermanentsPowerXOrMore},
+        PendingResults, Source, TargetSource,
+    },
     player::{mana_pool::SpendReason, AllPlayers, Owner},
 };
 
@@ -776,9 +777,9 @@ fn add_card_to_stack(
 #[cfg(test)]
 mod tests {
     use crate::{
-        battlefield::ResolutionResult,
         in_play::{self, CardId, Database, OnBattlefield},
         load_cards,
+        pending_results::ResolutionResult,
         player::AllPlayers,
         stack::Stack,
         turns::Turn,

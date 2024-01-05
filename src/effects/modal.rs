@@ -1,6 +1,6 @@
 use crate::{
-    battlefield::Source,
     effects::{Effect, EffectBehaviors, Mode},
+    pending_results::Source,
     protogen,
 };
 
@@ -49,7 +49,7 @@ impl EffectBehaviors for Modal {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if let Some(mode) = results.chosen_modes().pop() {
             for effect in self.modes[mode].effects.iter() {
@@ -69,7 +69,7 @@ impl EffectBehaviors for Modal {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         self.push_pending_behavior(db, source, controller, results);
     }

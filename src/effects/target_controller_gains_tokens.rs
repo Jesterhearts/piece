@@ -43,7 +43,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        _results: &mut crate::battlefield::PendingResults,
+        _results: &mut crate::pending_results::PendingResults,
     ) {
     }
 
@@ -54,7 +54,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
             source: targets.into_iter().exactly_one().unwrap().id().unwrap(),

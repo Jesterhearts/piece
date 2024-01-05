@@ -1,9 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{PendingResult, Source},
     effects::EffectBehaviors,
     in_play::Database,
+    pending_results::{PendingResult, Source},
     player::AllPlayers,
 };
 

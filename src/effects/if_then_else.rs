@@ -73,7 +73,7 @@ impl EffectBehaviors for IfThenElse {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if source.passes_restrictions(db, source, &self.if_) {
             self.then
@@ -91,7 +91,7 @@ impl EffectBehaviors for IfThenElse {
         apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if source.passes_restrictions(db, source, &self.if_) {
             self.then.push_behavior_with_targets(

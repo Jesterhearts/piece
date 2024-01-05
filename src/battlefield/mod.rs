@@ -1,5 +1,3 @@
-pub(crate) mod pending_results;
-
 use std::{collections::HashSet, vec::IntoIter};
 
 use bevy_ecs::{entity::Entity, query::With};
@@ -11,14 +9,6 @@ use tracing::Level;
 
 use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
-    battlefield::{
-        choose_targets::ChooseTargets,
-        examine_top_cards::ExamineCards,
-        pay_costs::{
-            ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
-            SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
-        },
-    },
     card::Color,
     cost::{AdditionalCost, PayLife},
     counters::Counter,
@@ -40,6 +30,15 @@ use crate::{
     },
     log::{Log, LogEntry},
     mana::{Mana, ManaRestriction},
+    pending_results::{
+        choose_targets::ChooseTargets,
+        examine_top_cards::{self, ExamineCards},
+        pay_costs::{
+            ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
+            SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
+        },
+        PendingResults, Source, TargetSource,
+    },
     player::{
         mana_pool::{ManaSource, SpendReason},
         AllPlayers, Controller, Owner,
@@ -50,8 +49,6 @@ use crate::{
     turns::Turn,
     types::Type,
 };
-
-pub use pending_results::*;
 
 #[must_use]
 #[derive(Debug)]

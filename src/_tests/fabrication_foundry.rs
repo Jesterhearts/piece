@@ -1,9 +1,10 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, ResolutionResult},
+    battlefield::Battlefield,
     in_play::{CardId, Database, InExile, OnBattlefield},
     load_cards,
+    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
     turns::{Phase, Turn},

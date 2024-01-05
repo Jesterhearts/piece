@@ -1,12 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, ResolutionResult},
-    in_play::CardId,
-    in_play::Database,
-    load_cards,
-    player::AllPlayers,
-    turns::Turn,
+    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    pending_results::ResolutionResult, player::AllPlayers, turns::Turn,
 };
 
 #[test]

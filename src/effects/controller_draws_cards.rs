@@ -3,9 +3,10 @@ use std::vec::IntoIter;
 use anyhow::anyhow;
 
 use crate::{
-    battlefield::{ActionResult, PendingResults},
+    battlefield::ActionResult,
     effects::EffectBehaviors,
     in_play::{cards, Database, OnBattlefield, ReplacementEffectId},
+    pending_results::PendingResults,
     player::Player,
     protogen,
     targets::Restriction,
@@ -81,7 +82,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let count = match &self.count {
             Count::Fixed(count) => *count,
@@ -104,7 +105,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let count = match &self.count {
             Count::Fixed(count) => *count,

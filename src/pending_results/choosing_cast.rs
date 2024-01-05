@@ -1,8 +1,8 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{PendingResult, PendingResults},
     in_play::{CardId, Database},
+    pending_results::{PendingResult, PendingResults},
     player::AllPlayers,
     stack::Stack,
 };

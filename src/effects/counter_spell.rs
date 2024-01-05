@@ -2,9 +2,10 @@ use bevy_ecs::entity::Entity;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
+    battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     in_play::{CardId, InStack},
+    pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
     stack::{ActiveTarget, Stack},
     targets::Restriction,
@@ -74,7 +75,7 @@ impl EffectBehaviors for CounterSpell {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -92,7 +93,7 @@ impl EffectBehaviors for CounterSpell {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let in_stack = Stack::in_stack(db);
         for target in targets {

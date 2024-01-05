@@ -1,9 +1,10 @@
 use indexmap::IndexSet;
 
 use crate::{
-    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
+    battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     in_play::{self, OnBattlefield},
+    pending_results::{choose_targets::ChooseTargets, TargetSource},
     player::AllPlayers,
     protogen,
     stack::ActiveTarget,
@@ -85,7 +86,7 @@ impl EffectBehaviors for DealDamage {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -104,7 +105,7 @@ impl EffectBehaviors for DealDamage {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
             results.push_settled(ActionResult::DamageTarget {

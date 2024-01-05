@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::choose_for_each_player::ChooseForEachPlayer,
     effects::{Effect, EffectBehaviors},
     in_play::{all_cards, target_from_location, Database},
+    pending_results::choose_for_each_player::ChooseForEachPlayer,
     player::AllPlayers,
     protogen,
     targets::Restriction,
@@ -85,7 +85,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         db: &mut Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -103,7 +103,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
             target.id().unwrap().choose(db);

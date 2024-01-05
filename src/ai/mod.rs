@@ -1,6 +1,6 @@
 use crate::{
-    battlefield::{PendingResults, ResolutionResult},
     in_play::Database,
+    pending_results::{PendingResults, ResolutionResult},
     player::{AllPlayers, Owner},
     turns::Turn,
 };

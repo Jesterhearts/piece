@@ -2,9 +2,10 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, ResolutionResult},
+    battlefield::Battlefield,
     in_play::{self, CardId, Database, OnBattlefield},
     load_cards,
+    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
     turns::{Phase, Turn},

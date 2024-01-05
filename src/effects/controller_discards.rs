@@ -46,7 +46,7 @@ impl EffectBehaviors for ControllerDiscards {
         db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
             || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)
@@ -65,7 +65,7 @@ impl EffectBehaviors for ControllerDiscards {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
             || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)

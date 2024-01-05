@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
+    battlefield::ActionResult,
     effects::{Effect, EffectBehaviors, ModifyBattlefield},
     in_play::{self, target_from_location},
+    pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
 };
 
@@ -72,7 +73,7 @@ impl EffectBehaviors for CreateTokenCopy {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -90,7 +91,7 @@ impl EffectBehaviors for CreateTokenCopy {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let target = targets.into_iter().exactly_one().unwrap();
         let target = target.id();
@@ -106,7 +107,7 @@ impl EffectBehaviors for CreateTokenCopy {
         _db: &in_play::Database,
         source: in_play::CardId,
         target: in_play::CardId,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateTokenCopyOf {
             source,

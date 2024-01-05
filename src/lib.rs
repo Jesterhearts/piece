@@ -39,6 +39,7 @@ pub mod in_play;
 pub mod log;
 pub mod mana;
 pub mod newtype_enum;
+pub mod pending_results;
 pub mod player;
 pub mod protogen;
 pub mod stack;

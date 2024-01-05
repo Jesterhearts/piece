@@ -4,11 +4,12 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, PendingResult, PendingResults},
+    battlefield::ActionResult,
     cost::ReduceWhen,
     effects::EffectDuration,
     in_play::{target_from_location, CardId, Database, ExileReason, OnBattlefield},
     mana::{Mana, ManaCost},
+    pending_results::{PendingResult, PendingResults},
     player::{
         mana_pool::{ManaSource, SpendReason},
         AllPlayers,

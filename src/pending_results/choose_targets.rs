@@ -4,12 +4,13 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{
-        pay_costs::{PayCost, SpendMana},
-        ActionResult, Pending, PendingResult, TargetSource,
-    },
+    battlefield::ActionResult,
     effects::EffectBehaviors,
     in_play::{CardId, Database},
+    pending_results::{
+        pay_costs::{PayCost, SpendMana},
+        Pending, PendingResult, TargetSource,
+    },
     player::{mana_pool::SpendReason, AllPlayers},
     stack::ActiveTarget,
 };

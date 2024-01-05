@@ -4,10 +4,10 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::ResolutionResult,
     card::Keyword,
     in_play::{CardId, Database, InHand, OnBattlefield},
     load_cards,
+    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
     turns::Turn,

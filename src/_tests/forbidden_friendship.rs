@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::ResolutionResult,
     in_play::{self, CardId, Database, OnBattlefield},
     load_cards,
+    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
     turns::Turn,

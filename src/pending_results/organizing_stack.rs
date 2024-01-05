@@ -2,8 +2,9 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{ActionResult, PendingResult, PendingResults},
+    battlefield::ActionResult,
     in_play::Database,
+    pending_results::{PendingResult, PendingResults},
     player::AllPlayers,
     stack::StackEntry,
 };

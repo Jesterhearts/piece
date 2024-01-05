@@ -14,7 +14,6 @@ use crate::{
         Ability, ActivatedAbility, ApplyToSelf, Craft, GainMana, GainManaAbility, SorcerySpeed,
         StaticAbility,
     },
-    battlefield::PendingResults,
     card::OracleText,
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     effects::{AnyEffect, EffectBehaviors, Effects},
@@ -23,6 +22,7 @@ use crate::{
         Temporary, NEXT_STACK_SEQ,
     },
     mana::{Mana, ManaRestriction},
+    pending_results::PendingResults,
     player::{
         mana_pool::{ManaSource, SpendReason},
         AllPlayers, Controller, Owner,

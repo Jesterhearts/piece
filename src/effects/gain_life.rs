@@ -37,7 +37,7 @@ impl EffectBehaviors for GainLife {
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::GainLife {
             target: controller,
@@ -52,7 +52,7 @@ impl EffectBehaviors for GainLife {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::GainLife {
             target: controller,

@@ -63,7 +63,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        _results: &mut crate::battlefield::PendingResults,
+        _results: &mut crate::pending_results::PendingResults,
     ) {
         unreachable!()
     }
@@ -75,7 +75,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
             let ActiveTarget::Player { id } = target else {

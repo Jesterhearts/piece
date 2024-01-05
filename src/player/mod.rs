@@ -14,7 +14,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{ActionResult, Battlefield, PendingResults},
+    battlefield::{ActionResult, Battlefield},
     card::Color,
     deck::Deck,
     effects::{replacing, EffectBehaviors},
@@ -23,6 +23,7 @@ use crate::{
         times_descended_this_turn, CardId, Database, InGraveyard, InHand, ReplacementEffectId,
     },
     mana::{Mana, ManaCost, ManaRestriction},
+    pending_results::PendingResults,
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
     stack::Stack,
     targets::Restriction,

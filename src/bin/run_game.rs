@@ -9,11 +9,12 @@ use itertools::Itertools;
 use macroquad::window::next_frame;
 use piece::{
     ai::AI,
-    battlefield::{Battlefield, PendingResults, ResolutionResult},
+    battlefield::Battlefield,
     card::{replace_symbols, Card},
     deck::DeckDefinition,
     in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
+    pending_results::{PendingResults, ResolutionResult},
     player::AllPlayers,
     stack::Stack,
     turns::Turn,
@@ -921,7 +922,7 @@ async fn main() -> anyhow::Result<()> {
                                 .text_color(if is_valid {
                                     Color32::GREEN
                                 } else {
-                                    Color32::RED
+                                    Color32::WHITE
                                 }),
                         );
                         if edit.changed() {

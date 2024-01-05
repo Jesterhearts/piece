@@ -1,10 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{
-        choose_targets::ChooseTargets, compute_graveyard_targets, ActionResult, TargetSource,
-    },
+    battlefield::{compute_graveyard_targets, ActionResult},
     effects::{Effect, EffectBehaviors},
+    pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
@@ -66,7 +65,7 @@ impl EffectBehaviors for ReturnFromGraveyardToHand {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -85,7 +84,7 @@ impl EffectBehaviors for ReturnFromGraveyardToHand {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::ReturnFromGraveyardToHand { targets });
     }

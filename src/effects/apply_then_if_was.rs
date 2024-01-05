@@ -84,7 +84,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
             effect.push_pending_behavior(db, source, controller, results);
@@ -98,7 +98,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
             effect.push_behavior_with_targets(

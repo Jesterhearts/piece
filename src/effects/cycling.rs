@@ -2,10 +2,9 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{
-        choose_targets::ChooseTargets, compute_deck_targets, ActionResult, TargetSource,
-    },
+    battlefield::{compute_deck_targets, ActionResult},
     effects::{Effect, EffectBehaviors},
+    pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
@@ -91,7 +90,7 @@ impl EffectBehaviors for Cycling {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if self.types.is_empty() && self.subtypes.is_empty() {
             results.push_settled(ActionResult::DrawCards {
@@ -116,7 +115,7 @@ impl EffectBehaviors for Cycling {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         if self.types.is_empty() && self.subtypes.is_empty() {
             results.push_settled(ActionResult::DrawCards {

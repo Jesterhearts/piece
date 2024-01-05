@@ -4,8 +4,8 @@ use egui::{
 use itertools::Itertools;
 
 use crate::{
-    battlefield::PendingResults,
     in_play::{CardId, CounterId, Database, InHand},
+    pending_results::PendingResults,
     player::{AllPlayers, Owner},
     turns::Turn,
 };

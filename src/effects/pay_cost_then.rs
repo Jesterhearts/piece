@@ -1,9 +1,9 @@
 use crate::{
     abilities::Ability,
-    battlefield::pay_costs::{PayCost, SacrificePermanent, SpendMana, TapPermanent},
     cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, EffectBehaviors},
     in_play::AbilityId,
+    pending_results::pay_costs::{PayCost, SacrificePermanent, SpendMana, TapPermanent},
     player::mana_pool::SpendReason,
     protogen,
 };
@@ -51,7 +51,7 @@ impl EffectBehaviors for PayCostThen {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
             self.cost.mana_cost.clone(),
@@ -101,7 +101,7 @@ impl EffectBehaviors for PayCostThen {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
             self.cost.mana_cost.clone(),

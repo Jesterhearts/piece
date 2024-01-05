@@ -25,7 +25,7 @@ impl EffectBehaviors for Cascade {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
             source,
@@ -39,7 +39,7 @@ impl EffectBehaviors for Cascade {
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _target: crate::in_play::CardId,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
             source,
@@ -55,7 +55,7 @@ impl EffectBehaviors for Cascade {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
             source,

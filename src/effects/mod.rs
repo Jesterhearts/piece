@@ -61,7 +61,6 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
-    battlefield::PendingResults,
     card::{replace_symbols, Color, Keyword},
     counters::Counter,
     effects::{
@@ -95,6 +94,7 @@ use crate::{
     },
     in_play::{self, Database, OnBattlefield, ReplacementEffectId},
     newtype_enum::newtype_enum,
+    pending_results::PendingResults,
     player::{AllPlayers, Controller, Player},
     protogen,
     stack::ActiveTarget,

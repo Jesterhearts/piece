@@ -19,7 +19,7 @@ use crate::{
         ModifiedActivatedAbilities, ModifiedETBAbilities, ModifiedStaticAbilities,
         ModifiedTriggers, StaticAbilities, StaticAbility, Triggers,
     },
-    battlefield::{Battlefield, PendingResults},
+    battlefield::Battlefield,
     card::{
         keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, ApplyIndividually,
         BackFace, BasePower, BasePowerType, BaseToughness, BaseToughnessType, CannotBeCountered,
@@ -45,6 +45,7 @@ use crate::{
         UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
     },
     log::{LeaveReason, Log, LogId},
+    pending_results::PendingResults,
     player::{
         mana_pool::{ManaSource, SourcedMana},
         Controller, Owner,

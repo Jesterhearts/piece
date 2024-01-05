@@ -2,11 +2,12 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::{Battlefield, ResolutionResult},
+    battlefield::Battlefield,
     in_play::CardId,
     in_play::Database,
     load_cards,
     mana::{Mana, ManaRestriction},
+    pending_results::ResolutionResult,
     player::{mana_pool::ManaSource, AllPlayers},
     turns::{Phase, Turn},
 };

@@ -2,9 +2,10 @@ use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{choose_targets::ChooseTargets, ActionResult, PendingResults, TargetSource},
+    battlefield::ActionResult,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
     in_play::{self, target_from_location, Database, ModifierId},
+    pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
     protogen,
     stack::ActiveTarget,

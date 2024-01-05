@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{choose_targets::ChooseTargets, ActionResult, TargetSource},
+    battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     in_play::{self, target_from_location, OnBattlefield},
+    pending_results::{choose_targets::ChooseTargets, TargetSource},
     stack::ActiveTarget,
 };
 
@@ -53,7 +54,7 @@ impl EffectBehaviors for UntapTarget {
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets =
             self.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -71,7 +72,7 @@ impl EffectBehaviors for UntapTarget {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         let Ok(ActiveTarget::Battlefield { id }) = targets.into_iter().exactly_one() else {
             unreachable!()

@@ -37,7 +37,7 @@ impl EffectBehaviors for MultiplyTokens {
         _db: &mut crate::in_play::Database,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        _results: &mut crate::battlefield::PendingResults,
+        _results: &mut crate::pending_results::PendingResults,
     ) {
         unreachable!()
     }
@@ -49,7 +49,7 @@ impl EffectBehaviors for MultiplyTokens {
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        _results: &mut crate::battlefield::PendingResults,
+        _results: &mut crate::pending_results::PendingResults,
     ) {
         unreachable!()
     }
@@ -61,7 +61,7 @@ impl EffectBehaviors for MultiplyTokens {
         replacements: &mut std::vec::IntoIter<crate::in_play::ReplacementEffectId>,
         token: crate::in_play::CardId,
         modifiers: &[super::ModifyBattlefield],
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         for _ in 0..self.multiplier {
             create_token_copy_with_replacements(

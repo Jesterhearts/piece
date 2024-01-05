@@ -25,7 +25,7 @@ impl EffectBehaviors for Transform {
         _db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Transform { target: source })
     }
@@ -37,7 +37,7 @@ impl EffectBehaviors for Transform {
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
-        results: &mut crate::battlefield::PendingResults,
+        results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Transform { target: source })
     }
