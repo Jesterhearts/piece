@@ -942,9 +942,9 @@ async fn main() -> anyhow::Result<()> {
                             .take(10)
                             .sorted_by(|l, r| {
                                 if ulps_eq!(l.score, r.score) {
-                                    l.key.cmp(&r.key)
+                                    r.key.cmp(&l.key)
                                 } else {
-                                    l.score.partial_cmp(&r.score).unwrap()
+                                    r.score.partial_cmp(&l.score).unwrap()
                                 }
                             })
                             .map(|result| result.key)
