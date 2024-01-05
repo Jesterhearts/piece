@@ -9,8 +9,7 @@ activated_abilities:
     effects:
       - effect: !Discover
           count: 4
-    oracle_text: >-
-      {4}{W}: Discover 4. Activate only as Sorcery.
+    oracle_text: '{4}{W}: Discover 4. Activate only as Sorcery.'
     sorcery_speed: true
 mana_abilities:
   - cost:

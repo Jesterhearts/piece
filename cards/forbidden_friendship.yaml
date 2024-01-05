@@ -9,8 +9,7 @@ effects:
       token: !Creature
         name: Dinosaur
         typeline: Creature - Dinosaur
-        colors:
-          - color: !Red {}
+        colors: Red
         power: 1
         toughness: 1
         keywords: Haste
@@ -18,7 +17,6 @@ effects:
       token: !Creature
         name: Human Soldier
         typeline: Creature - Human Soldier
-        colors:
-          - color: !White {}
+        colors: White
         power: 1
         toughness: 1

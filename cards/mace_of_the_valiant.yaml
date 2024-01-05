@@ -13,9 +13,8 @@ activated_abilities:
             - add_dynamic_power_toughness:
                 source: !NumberOfCountersOnThis
                   counter: Charge
-    oracle_text: >
+    oracle_text: |
       Equip {3}
-
 triggered_abilities:
   - trigger:
       source:

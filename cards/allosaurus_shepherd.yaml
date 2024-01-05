@@ -28,8 +28,8 @@ activated_abilities:
                 controller: !Self_ {}
             - restriction: !OfType
                 subtypes: Elf
-    oracle_text: >-
-      {4}{G}{G}: Until end of turn, each Elf creature you control has base power and
-      toughness 5/5 and becomes a dinosaur in addition to its other creature types.
+    oracle_text: '{4}{G}{G}: Until end of turn, each Elf creature you control has
+      base power and toughness 5/5 and becomes a dinosaur in addition to its other
+      creature types.'
 power: 1
 toughness: 1

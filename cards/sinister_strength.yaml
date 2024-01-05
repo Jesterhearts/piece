@@ -8,14 +8,13 @@ oracle_text: |-
 enchant:
   modifiers:
     - modifier:
-        remove_all_colors: true
         add_power: 3
         add_toughness: 1
+        remove_all_colors: true
       duration:
         duration: !UntilSourceLeavesBattlefield {}
     - modifier:
-        add_colors:
-          - color: !Black {}
+        add_colors: Black
       duration:
         duration: !UntilSourceLeavesBattlefield {}
 restrictions:

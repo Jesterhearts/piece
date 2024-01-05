@@ -15,8 +15,7 @@ static_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !OfColor
-            colors:
-              - color: !Colorless {}
+            colors: Colorless
         - restriction: !Cmc
             cmc: !Comparison
               value: !GreaterThanOrEqual

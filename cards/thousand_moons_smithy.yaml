@@ -10,8 +10,7 @@ etb_abilities:
       token: !Creature
         name: Gnome Soldier
         typeline: Artifact Creature - Gnome Soldier
-        colors:
-          - color: !White {}
+        colors: White
         dynamic_power_toughness:
           source: !NumberOfPermanentsMatching
             restrictions:
@@ -76,8 +75,7 @@ back_face:
             token: !Creature
               name: Gnome Soldier
               typeline: Artifact Creature - Gnome Soldier
-              colors:
-                - color: !White {}
+              colors: White
               dynamic_power_toughness:
                 source: !NumberOfPermanentsMatching
                   restrictions:

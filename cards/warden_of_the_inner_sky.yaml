@@ -36,7 +36,6 @@ activated_abilities:
           count: !Single {}
       - effect: !Scry
           count: 1
-    oracle_text: >-
-      Tap three untapped artifacts and/or creatures you control: Put a +1/+1 counter
-      on Warden of the Inner Sky. Scry 1. Activate only as sorcery.
+    oracle_text: 'Tap three untapped artifacts and/or creatures you control: Put a
+      +1/+1 counter on Warden of the Inner Sky. Scry 1. Activate only as sorcery.'
     sorcery_speed: true

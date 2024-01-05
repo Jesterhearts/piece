@@ -22,15 +22,13 @@ activated_abilities:
           destination:
             destination: !Battlefield
               enters_tapped: true
-    oracle_text: >-
-      {2}, {T}, Sacrifice Krosan Verge: Search your library for a Forest card and
-      a Plains cards, put them onto the battlefield tapped, then shuffle.
+    oracle_text: '{2}, {T}, Sacrifice Krosan Verge: Search your library for a Forest
+      card and a Plains cards, put them onto the battlefield tapped, then shuffle.'
 mana_abilities:
   - cost:
       tap: true
     gain_mana:
       gain: !Specific
         gain: '{C}'
-    oracle_text: >-
-      {T}: Add {C}.
+    oracle_text: '{T}: Add {C}.'
 etb_tapped: true

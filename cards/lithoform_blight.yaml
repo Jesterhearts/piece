@@ -19,8 +19,7 @@ enchant:
           gain_mana:
             gain: !Specific
               gain: '{C}'
-          oracle_text: >-
-            {T}: Add {C}.
+          oracle_text: '{T}: Add {C}.'
       duration:
         duration: !UntilSourceLeavesBattlefield {}
     - modifier:
@@ -33,8 +32,7 @@ enchant:
           gain_mana:
             gain: !Choice
               choices: '{W}, {U}, {B}, {R}, {G}'
-          oracle_text: >-
-            {T}, Pay 1 life: Add one mana of any color.
+          oracle_text: '{T}, Pay 1 life: Add one mana of any color.'
       duration:
         duration: !UntilSourceLeavesBattlefield {}
 etb_abilities:

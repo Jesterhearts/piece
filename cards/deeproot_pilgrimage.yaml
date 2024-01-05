@@ -1,7 +1,7 @@
 name: Deeproot Pilgrimage
+typeline: Enchantment
 cost:
   mana_cost: '{1}{U}'
-typeline: Enchantment
 triggered_abilities:
   - trigger:
       source:
@@ -17,8 +17,7 @@ triggered_abilities:
           token: !Creature
             name: Merfolk
             typeline: Creature - Merfolk
-            colors:
-              - color: !Blue {}
+            colors: Blue
             power: 1
             toughness: 1
     oracle_text: Whenever one or more nontoken Merfolk you control become tapped,

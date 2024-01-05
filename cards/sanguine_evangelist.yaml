@@ -9,8 +9,7 @@ etb_abilities:
       token: !Creature
         name: Bat
         typeline: Creature - Bat
-        colors:
-          - color: !Black {}
+        colors: Black
         power: 1
         toughness: 1
 triggered_abilities:
@@ -28,8 +27,7 @@ triggered_abilities:
           token: !Creature
             name: Bat
             typeline: Creature - Bat
-            colors:
-              - color: !Black {}
+            colors: Black
             power: 1
             toughness: 1
     oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a

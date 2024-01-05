@@ -38,6 +38,15 @@ fn main() {
                         skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
+            } else if field.name() == "colors" || field.name() == "add_colors" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_colors",
+                        deserialize_with="crate::deserialize_colors",
+                        skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
             } else if field.name() == "types"
                 || field.name() == "add_types"
                 || field.name() == "remove_types"

@@ -17,6 +17,7 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use crate::{
     card::Card,
     protogen::{
+        color::{color, Color},
         effects::gain_mana,
         mana::Mana,
         types::{subtype, type_, Subtype, Type},
@@ -353,6 +354,50 @@ where
         &value
             .iter()
             .map(|ty| ty.subtype.as_ref().unwrap().as_ref())
+            .join(", "),
+    )
+}
+
+pub fn deserialize_colors<'de, D>(deserializer: D) -> Result<Vec<Color>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<Color>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of colors")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            v.split(',')
+                .map(|v| v.trim())
+                .map(color::Color::from_str)
+                .map(|color| {
+                    Ok(Color {
+                        color: Some(color.map_err(|e| E::custom(e.to_string()))?),
+                        ..Default::default()
+                    })
+                })
+                .collect::<Result<Self::Value, E>>()
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+pub fn serialize_colors<S>(value: &[Color], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &value
+            .iter()
+            .map(|color| color.color.as_ref().unwrap().as_ref())
             .join(", "),
     )
 }

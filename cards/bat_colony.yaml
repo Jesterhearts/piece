@@ -13,8 +13,7 @@ etb_abilities:
           token: !Creature
             name: Bat
             typeline: Creature - Bat
-            colors:
-              - color: !Black {}
+            colors: Black
             power: 1
             toughness: 1
 triggered_abilities:

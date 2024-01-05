@@ -11,11 +11,11 @@ oracle_text: |-
   This spell costs {3} less to cast if it targets a tapped creature
   Exile target creature.
 effects:
-  - effect: !ExileTarget
+  - oracle_text: Exile target creature.
+    effect: !ExileTarget
       duration:
         duration: !Permanently {}
       restrictions:
         - restriction: !OfType
             types: Creature
         - restriction: !OnBattlefield {}
-    oracle_text: Exile target creature.

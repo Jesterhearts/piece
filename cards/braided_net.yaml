@@ -42,8 +42,7 @@ activated_abilities:
               - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
-    oracle_text: >-
-      Craft with artifact {1}{U}
+    oracle_text: Craft with artifact {1}{U}
     sorcery_speed: true
     craft: true
 restrictions:
@@ -55,8 +54,7 @@ restrictions:
 back_face:
   name: Braided Quipu
   typeline: Artifact
-  colors:
-    - color: !Blue {}
+  colors: Blue
   activated_abilities:
     - cost:
         mana_cost: '{3}{U}'
@@ -73,6 +71,5 @@ back_face:
             under_cards: 2
             restrictions:
               - restriction: !Self_ {}
-      oracle_text: >-
-        {3}{U}, {T}: Draw a card for each artifact you control, then put Braided Quipu
-        into its owner's library third from the top.
+      oracle_text: '{3}{U}, {T}: Draw a card for each artifact you control, then put
+        Braided Quipu into its owner''s library third from the top.'

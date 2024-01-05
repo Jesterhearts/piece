@@ -40,8 +40,7 @@ activated_abilities:
 back_face:
   name: Cosmium Kiln
   typeline: Artifact
-  colors:
-    - color: !White {}
+  colors: White
   oracle_text: Creatures you control get +1/+1
   etb_abilities:
     - effect: !CreateToken

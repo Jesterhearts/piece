@@ -30,8 +30,7 @@ activated_abilities:
 back_face:
   name: Oteclan Levitator
   typeline: Artifact Creature - Golem
-  colors:
-    - color: !White {}
+  colors: White
   triggered_abilities:
     - trigger:
         source:

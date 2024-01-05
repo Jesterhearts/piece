@@ -41,9 +41,8 @@ back_face:
               x_is: 3
       effects:
         - effect: !Transform {}
-      oracle_text: >-
-        {2}{W}, {T}: Transform Temple of Civilization. Activate only if you attacked
-        with three or more creatures this turn and only as sorcery.
+      oracle_text: '{2}{W}, {T}: Transform Temple of Civilization. Activate only if
+        you attacked with three or more creatures this turn and only as sorcery.'
       sorcery_speed: true
   mana_abilities:
     - cost:

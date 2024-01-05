@@ -13,9 +13,8 @@ activated_abilities:
     effects:
       - effect: !DealDamage
           quantity: 1
-    oracle_text: >-
-      {T}, sacrifice a creature: Blasting Station deals 1 daamage to target creature
-      or player.
+    oracle_text: '{T}, sacrifice a creature: Blasting Station deals 1 daamage to target
+      creature or player.'
 triggered_abilities:
   - trigger:
       source:
@@ -27,5 +26,5 @@ triggered_abilities:
             types: Creature
     effects:
       - effect: !UntapThis {}
-    oracle_text: >-
-      Whenever a creature enters the battlefield you may untap blasting station.
+    oracle_text: Whenever a creature enters the battlefield you may untap blasting
+      station.

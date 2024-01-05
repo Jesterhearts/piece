@@ -11,5 +11,4 @@ activated_abilities:
     effects:
       - effect: !DealDamage
           quantity: 2
-    oracle_text: >-
-      {R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.
+    oracle_text: '{R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.'

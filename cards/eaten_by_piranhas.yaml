@@ -1,23 +1,19 @@
 name: Eaten by Piranhas
+typeline: Enchantment - Aura
 cost:
   mana_cost: '{1}{U}'
-typeline: Enchantment - Aura
-oracle_text: >-
+oracle_text: |-
   Flash
-
   Enchant creature
-
-  Enchanted creature loses all abilities and is a black Skeleton creature with base
-  power and toughness 1/1.
-keywords: Flash
+  Enchanted creature loses all abilities and is a black Skeleton creature with base power and toughness 1/1.
 enchant:
   modifiers:
     - modifier:
-        remove_all_abilities: true
-        remove_all_types: true
-        remove_all_creature_types: true
         base_power: 1
         base_toughness: 1
+        remove_all_creature_types: true
+        remove_all_types: true
+        remove_all_abilities: true
       duration:
         duration: !UntilSourceLeavesBattlefield {}
     - modifier:
@@ -25,6 +21,7 @@ enchant:
         add_subtypes: Skeleton
       duration:
         duration: !UntilSourceLeavesBattlefield {}
+keywords: Flash
 restrictions:
   - restriction: !OfType
       types: Creature

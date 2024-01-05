@@ -10,5 +10,4 @@ mana_abilities:
     gain_mana:
       gain: !Specific
         gain: '{B}{R}{G}'
-    oracle_text: >-
-      {1}, Sacrifice Darigaaz's Attendant: Add {B}{R}{G}.
+    oracle_text: '{1}, Sacrifice Darigaaz''s Attendant: Add {B}{R}{G}.'

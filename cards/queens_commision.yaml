@@ -8,15 +8,13 @@ effects:
       token: !Creature
         name: Vampire
         typeline: Creature - Vampire
-        colors:
-          - color: !White {}
+        colors: White
         power: 1
         toughness: 1
   - effect: !CreateToken
       token: !Creature
         name: Vampire
         typeline: Creature - Vampire
-        colors:
-          - color: !White {}
+        colors: White
         power: 1
         toughness: 1

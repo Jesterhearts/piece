@@ -2,13 +2,10 @@ name: Oltec Archaeologists
 typeline: Creature - Human Artificer Scout
 cost:
   mana_cost: '{4}{W}'
-oracle_text: >
+oracle_text: |
   When Oltec Archaeologists enters the battlefield, choose one -
-
   - Return target artifact card from your graveyard to your hand.
-
   - Scry 3.
-
 etb_abilities:
   - effect: !Modal
       modes:

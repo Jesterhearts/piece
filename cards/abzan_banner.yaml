@@ -12,13 +12,11 @@ activated_abilities:
       - effect: !ControllerDrawCards
           count: !Fixed
             count: 1
-    oracle_text: >-
-      {W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card
+    oracle_text: '{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card'
 mana_abilities:
   - cost:
       tap: true
     gain_mana:
       gain: !Choice
         choices: '{W}, {B}, {G}'
-    oracle_text: >-
-      {T}: Add {W}, {B}, or {G}
+    oracle_text: '{T}: Add {W}, {B}, or {G}'

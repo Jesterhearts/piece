@@ -14,6 +14,6 @@ etb_abilities:
         - restriction: !NotSelf {}
         - restriction: !Descend
             count: 4
-keywords: Flying
 power: 4
 toughness: 4
+keywords: Flying

@@ -18,8 +18,8 @@ activated_abilities:
                 controller: !Self_ {}
             - restriction: !Self_ {}
     apply_to_self: true
-    oracle_text: >-
-      {3}{W}{W}{W}: Until end of turn, Resplendent Angel gets +2/+2 and gains lifelink.
+    oracle_text: '{3}{W}{W}{W}: Until end of turn, Resplendent Angel gets +2/+2 and
+      gains lifelink.'
 triggered_abilities:
   - trigger:
       source:
@@ -34,8 +34,7 @@ triggered_abilities:
           token: !Creature
             name: Angel
             typeline: Creature - Angel
-            colors:
-              - color: !White {}
+            colors: White
             power: 4
             toughness: 4
             keywords: Flying, Vigilance

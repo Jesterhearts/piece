@@ -39,8 +39,7 @@ keywords: Flash
 back_face:
   name: Bladewheel Chariot
   typeline: Artifact - Vehicle
-  colors:
-    - color: !White {}
+  colors: White
   activated_abilities:
     - cost:
         additional_costs:
@@ -64,9 +63,8 @@ back_face:
               - restriction: !Controller
                   controller: !Self_ {}
       apply_to_self: true
-      oracle_text: >-
-        Tap two other untapped artifacts you control: Bladewheel Chariot becomes an
-        artifact creature until end of turn.
+      oracle_text: 'Tap two other untapped artifacts you control: Bladewheel Chariot
+        becomes an artifact creature until end of turn.'
     - cost:
         additional_costs:
           - cost: !TapPermanentsPowerXOrMore

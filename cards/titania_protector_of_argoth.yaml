@@ -28,8 +28,7 @@ triggered_abilities:
           token: !Creature
             name: Elemental
             typeline: Creature - Elemental
-            colors:
-              - color: !Green {}
+            colors: Green
             power: 5
             toughness: 3
     oracle_text: Whenever a land you control is put into a graveyard from the battlefield,
