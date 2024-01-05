@@ -186,9 +186,33 @@ impl ManaPool {
                     sourced.get_mut(&ManaRestriction::ArtifactSpellOrAbility)
                 {
                     Some(restricted)
+                } else if matches!(reason, SpendReason::Activating(_)) {
+                    if let Some(restricted) = sourced.get_mut(&ManaRestriction::ActivateAbility) {
+                        Some(restricted)
+                    } else {
+                        sourced.get_mut(&ManaRestriction::None)
+                    }
                 } else {
                     sourced.get_mut(&ManaRestriction::None)
                 };
+
+                if let Some(restricted) = restricted {
+                    let Some(mana) = restricted.checked_sub(1) else {
+                        return (false, ManaSource::Any);
+                    };
+
+                    *restricted = mana;
+                    (true, ultimate_source)
+                } else {
+                    (false, ManaSource::Any)
+                }
+            } else if matches!(reason, SpendReason::Activating(_)) {
+                let restricted =
+                    if let Some(restricted) = sourced.get_mut(&ManaRestriction::ActivateAbility) {
+                        Some(restricted)
+                    } else {
+                        sourced.get_mut(&ManaRestriction::None)
+                    };
 
                 if let Some(restricted) = restricted {
                     let Some(mana) = restricted.checked_sub(1) else {

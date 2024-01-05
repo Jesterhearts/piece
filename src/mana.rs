@@ -28,6 +28,7 @@ pub enum ManaCost {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash, strum::AsRefStr, Component)]
 pub(crate) enum ManaRestriction {
+    ActivateAbility,
     ArtifactSpellOrAbility,
     None,
 }
@@ -178,6 +179,9 @@ impl From<&protogen::mana::ManaRestriction> for ManaRestriction {
 impl From<&protogen::mana::mana_restriction::Restriction> for ManaRestriction {
     fn from(value: &protogen::mana::mana_restriction::Restriction) -> Self {
         match value {
+            protogen::mana::mana_restriction::Restriction::ActivateAbility(_) => {
+                Self::ActivateAbility
+            }
             protogen::mana::mana_restriction::Restriction::ArtifactSpellOrAbility(_) => {
                 Self::ArtifactSpellOrAbility
             }

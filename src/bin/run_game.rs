@@ -22,7 +22,6 @@ use piece::{
 };
 use probly_search::{score::bm25, Index};
 use taffy::prelude::*;
-use tracing_subscriber::fmt::format::FmtSpan;
 
 #[macroquad::main("Piece MTG")]
 async fn main() -> anyhow::Result<()> {

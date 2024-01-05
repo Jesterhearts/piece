@@ -34,8 +34,10 @@ message Mana {
 }
 
 message ManaRestriction {
+  message ActivateAbility {}
   message ArtifactSpellOrAbility {}
   oneof restriction {
-    ArtifactSpellOrAbility artifact_spell_or_ability = 1;
+    ActivateAbility activate_ability = 1;
+    ArtifactSpellOrAbility artifact_spell_or_ability = 2;
   }
 }
