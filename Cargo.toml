@@ -29,6 +29,7 @@ name = "validate"
 path = "src/bin/validate.rs"
 
 [dependencies]
+aho-corasick       = "1.1.2"
 anyhow             = "1.0.75"
 approx             = "0.5.1"
 ariadne            = "0.4.0"

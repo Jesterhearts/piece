@@ -1,5 +1,6 @@
 use std::{collections::HashSet, str::FromStr};
 
+use aho_corasick::AhoCorasick;
 use anyhow::{anyhow, Context};
 use bevy_ecs::component::Component;
 use counter::Counter;
@@ -420,6 +421,11 @@ impl Card {
                     .flat_map(|m| m.effects.iter().map(|e| e.oracle_text.as_str())),
             )
             .chain(self.etb_abilities.iter().map(|e| e.oracle_text.as_str()))
+            .chain(
+                self.activated_abilities
+                    .iter()
+                    .map(|a| a.oracle_text.as_str()),
+            )
             .filter(|t| !t.is_empty())
             .join("\n");
     }
@@ -587,37 +593,75 @@ impl From<Token> for Card {
     }
 }
 
-pub(crate) fn replace_symbols(result: &str) -> String {
-    let result = result.replace("{W}", "\u{e600}");
-    let result = result.replace("{U}", "\u{e601}");
-    let result = result.replace("{B}", "\u{e602}");
-    let result = result.replace("{R}", "\u{e603}");
-    let result = result.replace("{G}", "\u{e604}");
-    let result = result.replace("{C}", "\u{e904}");
-    let result = result.replace("{0}", "\u{e605}");
-    let result = result.replace("{1}", "\u{e606}");
-    let result = result.replace("{2}", "\u{e607}");
-    let result = result.replace("{3}", "\u{e608}");
-    let result = result.replace("{4}", "\u{e609}");
-    let result = result.replace("{5}", "\u{e60a}");
-    let result = result.replace("{6}", "\u{e60b}");
-    let result = result.replace("{7}", "\u{e60c}");
-    let result = result.replace("{8}", "\u{e60d}");
-    let result = result.replace("{9}", "\u{e60e}");
-    let result = result.replace("{10}", "\u{e60f}");
-    let result = result.replace("{11}", "\u{e610}");
-    let result = result.replace("{12}", "\u{e611}");
-    let result = result.replace("{13}", "\u{e612}");
-    let result = result.replace("{14}", "\u{e613}");
-    let result = result.replace("{15}", "\u{e614}");
-    let result = result.replace("{16}", "\u{e62a}");
-    let result = result.replace("{17}", "\u{e62b}");
-    let result = result.replace("{18}", "\u{e62c}");
-    let result = result.replace("{19}", "\u{e62d}");
-    let result = result.replace("{20}", "\u{e62e}");
-    let result = result.replace("{X}", "\u{e615}");
-    // Tap
-    let result = result.replace("{T}", "\u{e61a}");
-    // Untap
-    result.replace("{Q}", "\u{e61b}")
+pub fn replace_symbols(result: &str) -> String {
+    #[rustfmt::skip]
+    let patterns = &[
+        "{W}",
+        "{U}",
+        "{B}",
+        "{R}",
+        "{G}",
+        "{C}",
+        "{0}",
+        "{1}",
+        "{2}",
+        "{3}",
+        "{4}",
+        "{5}",
+        "{6}",
+        "{7}",
+        "{8}",
+        "{9}",
+        "{10}",
+        "{11}",
+        "{12}",
+        "{13}",
+        "{14}",
+        "{15}",
+        "{16}",
+        "{17}",
+        "{18}",
+        "{19}",
+        "{20}",
+        "{X}",
+        "{T}",
+        "{Q}",
+    ];
+
+    #[rustfmt::skip]
+    let replace_with = &[
+        "\u{e600}",
+        "\u{e601}",
+        "\u{e602}",
+        "\u{e603}",
+        "\u{e604}",
+        "\u{e904}",
+        "\u{e605}",
+        "\u{e606}",
+        "\u{e607}",
+        "\u{e608}",
+        "\u{e609}",
+        "\u{e60a}",
+        "\u{e60b}",
+        "\u{e60c}",
+        "\u{e60d}",
+        "\u{e60e}",
+        "\u{e60f}",
+        "\u{e610}",
+        "\u{e611}",
+        "\u{e612}",
+        "\u{e613}",
+        "\u{e614}",
+        "\u{e62a}",
+        "\u{e62b}",
+        "\u{e62c}",
+        "\u{e62d}",
+        "\u{e62e}",
+        "\u{e615}",
+        "\u{e61a}",
+        "\u{e61b}",
+    ];
+
+    let ac = AhoCorasick::new(patterns).unwrap();
+    ac.replace_all(result, replace_with)
 }

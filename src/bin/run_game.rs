@@ -10,7 +10,7 @@ use macroquad::window::next_frame;
 use piece::{
     ai::AI,
     battlefield::{Battlefield, PendingResults, ResolutionResult},
-    card::Card,
+    card::{replace_symbols, Card},
     deck::DeckDefinition,
     in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
     load_cards,
@@ -58,9 +58,8 @@ async fn main() -> anyhow::Result<()> {
             ],
             |title| {
                 title
-                    .split('\n')
-                    .flat_map(|s| s.split(' '))
-                    .map(str::to_lowercase)
+                    .split_whitespace()
+                    .map(str::to_ascii_lowercase)
                     .map(Cow::from)
                     .collect_vec()
             },
@@ -888,15 +887,19 @@ async fn main() -> anyhow::Result<()> {
 
             if let Some(inspecting) = inspecting_card {
                 let mut open = true;
-                egui::Window::new(inspecting.name(&db))
-                    .open(&mut open)
-                    .show(ctx, |ui| {
-                        ui.add(ui::Card {
-                            db: &mut db,
-                            card: inspecting,
-                            title: None,
-                        });
+                egui::Window::new(format!(
+                    "{} - {}",
+                    inspecting.name(&db),
+                    inspecting.cost(&db).cost_string
+                ))
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    ui.add(ui::Card {
+                        db: &mut db,
+                        card: inspecting,
+                        title: None,
                     });
+                });
 
                 if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
                     inspecting_card = None;
@@ -921,14 +924,17 @@ async fn main() -> anyhow::Result<()> {
                                     Color32::RED
                                 }),
                         );
+                        if edit.changed() {
+                            *adding = replace_symbols(adding);
+                        }
 
                         let search = index.query(
                             adding,
                             &mut bm25::new(),
                             |title| {
                                 title
-                                    .split(' ')
-                                    .map(str::to_lowercase)
+                                    .split_whitespace()
+                                    .map(str::to_ascii_lowercase)
                                     .map(Cow::from)
                                     .collect_vec()
                             },
@@ -936,30 +942,28 @@ async fn main() -> anyhow::Result<()> {
                         );
                         let top = search.get(0).map(|result| result.key);
 
+                        let mut inspecting = None;
                         let mut clicked = None;
                         for result in search
                             .into_iter()
                             .take(10)
                             .sorted_by(|l, r| {
                                 if ulps_eq!(l.score, r.score) {
-                                    r.key.cmp(&l.key)
+                                    l.key.cmp(&r.key)
                                 } else {
                                     r.score.partial_cmp(&l.score).unwrap()
                                 }
                             })
                             .map(|result| result.key)
                         {
-                            if ui
-                                .add(
-                                    Label::new(format!(
-                                        "•\t{}",
-                                        cards.get_index(result).unwrap().0
-                                    ))
+                            let label = ui.add(
+                                Label::new(format!("•\t{}", cards.get_index(result).unwrap().0))
                                     .sense(Sense::click()),
-                                )
-                                .clicked()
-                            {
+                            );
+                            if label.clicked() {
                                 clicked = Some(result);
+                            } else if label.clicked_by(egui::PointerButton::Secondary) {
+                                inspecting = Some(result);
                             }
                         }
 
@@ -978,6 +982,14 @@ async fn main() -> anyhow::Result<()> {
                             let card = CardId::upload(&mut db, &cards, player1, adding);
                             card.move_to_hand(&mut db);
                             adding_card = None;
+                        } else if let Some(inspecting) = inspecting {
+                            let card = CardId::upload(
+                                &mut db,
+                                &cards,
+                                player1,
+                                cards.get_index(inspecting).unwrap().0,
+                            );
+                            inspecting_card = Some(card);
                         }
                         edit.request_focus();
                     });

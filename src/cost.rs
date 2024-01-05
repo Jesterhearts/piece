@@ -4,7 +4,13 @@ use anyhow::anyhow;
 use bevy_ecs::component::Component;
 use itertools::Itertools;
 
-use crate::{card::Color, counters::Counter, mana::ManaCost, protogen, targets::Restriction};
+use crate::{
+    card::{replace_symbols, Color},
+    counters::Counter,
+    mana::ManaCost,
+    protogen,
+    targets::Restriction,
+};
 
 #[derive(Debug, Clone, Default, Component)]
 pub struct CastingCost {
@@ -44,7 +50,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            cost_string: value.mana_cost.clone(),
+            cost_string: replace_symbols(&value.mana_cost),
             mana_cost: parse_mana_cost(&value.mana_cost)?,
             additional_cost: value
                 .additional_costs
