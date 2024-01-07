@@ -11,6 +11,12 @@ etb_abilities:
         typeline: Artifact Creature - Gnome
         power: 1
         toughness: 1
+  - effect: !CreateToken
+      token: !Creature
+        name: Gnome
+        typeline: Artifact Creature - Gnome
+        power: 1
+        toughness: 1
 activated_abilities:
   - cost:
       mana_cost: '{W}'
@@ -19,4 +25,4 @@ activated_abilities:
     effects:
       - effect: !GainLife
           count: 3
-    oracle_text: '{W}, Sacrifice Tinker''s Tote: You gain 3 life'
+    oracle_text: "{W}, Sacrifice Tinker's Tote: You gain 3 life"
