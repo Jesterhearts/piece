@@ -216,6 +216,10 @@ impl Owner {
                 Restriction::NonToken => {
                     return false;
                 }
+                Restriction::TargetedBy => {
+                    // TODO
+                    return false;
+                }
             }
         }
 

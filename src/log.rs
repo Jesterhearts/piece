@@ -66,6 +66,10 @@ pub enum LogEntry {
     Cast {
         card: CardId,
     },
+    Targeted {
+        source: CardId,
+        target: CardId,
+    },
 }
 
 impl LogEntry {
@@ -147,7 +151,9 @@ impl Log {
             .rev()
             .position(|(id, _)| *id != current)
         {
-            db.log.entries.split_at(pos + 1).1
+            let entries = db.log.entries.split_at(pos + 1).1;
+            event!(Level::DEBUG, ?entries, "{:?}", current);
+            entries
         } else {
             &[]
         }
@@ -197,6 +203,13 @@ impl Log {
             had_counters: db[card].counters.clone(),
             turn: db.turn.turn_count,
         };
+
+        event!(Level::INFO, ?entry);
+        db.log.entries.push((id, entry));
+    }
+
+    pub(crate) fn targetted(db: &mut Database, id: LogId, source: CardId, target: CardId) {
+        let entry = LogEntry::Targeted { source, target };
 
         event!(Level::INFO, ?entry);
         db.log.entries.push((id, entry));

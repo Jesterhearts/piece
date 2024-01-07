@@ -8,11 +8,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub(crate) struct CounterSpell {
+pub(crate) struct CounterSpellOrAbility {
     pub(crate) restrictions: Vec<Restriction>,
 }
 
-impl TryFrom<&protogen::effects::CounterSpell> for CounterSpell {
+impl TryFrom<&protogen::effects::CounterSpell> for CounterSpellOrAbility {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::effects::CounterSpell) -> Result<Self, Self::Error> {
@@ -26,7 +26,7 @@ impl TryFrom<&protogen::effects::CounterSpell> for CounterSpell {
     }
 }
 
-impl EffectBehaviors for CounterSpell {
+impl EffectBehaviors for CounterSpellOrAbility {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
@@ -94,7 +94,7 @@ impl EffectBehaviors for CounterSpell {
     }
     fn push_behavior_with_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
@@ -106,9 +106,7 @@ impl EffectBehaviors for CounterSpell {
                 unreachable!()
             };
 
-            results.push_settled(ActionResult::SpellCountered {
-                id: db.stack.entries[id].ty.clone(),
-            });
+            results.push_settled(ActionResult::SpellCountered { index: id });
         }
     }
 }

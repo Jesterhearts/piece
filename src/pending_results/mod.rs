@@ -142,6 +142,11 @@ pub(crate) trait PendingResult: std::fmt::Debug {
     fn optional(&self, db: &Database) -> bool;
 
     #[must_use]
+    fn cancelable(&self, db: &Database) -> bool {
+        self.optional(db)
+    }
+
+    #[must_use]
     fn recompute_targets(
         &mut self,
         db: &mut Database,
@@ -491,13 +496,19 @@ impl PendingResults {
     }
 
     pub fn can_cancel(&self, db: &Database) -> bool {
-        self.is_empty() || (self.choices_optional(db) && !self.applied)
+        self.is_empty()
+            || (self
+                .pending
+                .front()
+                .map(|pend| pend.cancelable(db))
+                .unwrap_or(true)
+                && !self.applied)
     }
 
     pub fn priority(&self, db: &Database) -> Owner {
         if let Some(pend) = self.pending.front() {
             match pend {
-                Pending::PayCosts(pay) => db[pay.source()].controller.into(),
+                Pending::PayCosts(pay) => db[pay.source].controller.into(),
                 Pending::DeclaringAttackers(declaring) => {
                     let mut all_players = db
                         .all_players

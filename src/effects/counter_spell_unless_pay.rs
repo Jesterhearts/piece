@@ -3,11 +3,11 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    effects::{Effect, EffectBehaviors},
+    effects::{counter_spell::CounterSpellOrAbility, Effect, EffectBehaviors},
     mana::ManaCost,
     pending_results::{
         choose_targets::ChooseTargets,
-        pay_costs::{PayCost, SpendMana},
+        pay_costs::{self, PayCost, SpendMana},
         TargetSource,
     },
     player::mana_pool::SpendReason,
@@ -78,7 +78,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for (stack_id, card) in db
+        for id in db
             .stack
             .entries
             .iter()
@@ -89,15 +89,23 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                     ..
                 } = entry
                 {
-                    Some((id, card))
+                    if card.can_be_countered(db, source, &[]) {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                } else if let StackEntry {
+                    ty: Entry::Ability { .. },
+                    ..
+                } = entry
+                {
+                    Some(id)
                 } else {
                     None
                 }
             })
         {
-            if card.can_be_countered(db, source, &[]) {
-                targets.push(ActiveTarget::Stack { id: stack_id });
-            }
+            targets.push(ActiveTarget::Stack { id });
         }
 
         targets
@@ -130,18 +138,24 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if let Ok(ActiveTarget::Stack { id }) = targets.into_iter().exactly_one() {
+        if let Ok(ActiveTarget::Stack { id }) = targets.iter().exactly_one() {
             match self.cost {
                 Cost::Fixed(count) => {
-                    results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-                        vec![ManaCost::Generic(count)],
-                        db.stack.entries[id].ty.source(),
-                        SpendReason::Other,
-                    )));
+                    results.push_pay_costs(PayCost::new_or_else(
+                        db.stack.entries[*id].ty.source(),
+                        pay_costs::Cost::SpendMana(SpendMana::new(
+                            vec![ManaCost::Generic(count)],
+                            SpendReason::Other,
+                        )),
+                        vec![Effect::CounterSpellOrAbility(CounterSpellOrAbility {
+                            restrictions: Default::default(),
+                        })],
+                        targets,
+                    ));
                 }
             }
         } else {
-            warn!("Skipping targetting");
+            warn!("Skipping targeting");
         }
     }
 }

@@ -26,8 +26,8 @@ use crate::{
         choose_targets::ChooseTargets,
         examine_top_cards::{self, ExamineCards},
         pay_costs::{
-            ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost, SacrificePermanent,
-            SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
+            Cost, ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost,
+            SacrificePermanent, SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
         },
         PendingResults, Source, TargetSource,
     },
@@ -223,7 +223,7 @@ pub(crate) enum ActionResult {
     Scry(CardId, usize),
     Shuffle(Owner),
     SpellCountered {
-        id: Entry,
+        index: usize,
     },
     SpendMana {
         card: CardId,
@@ -549,50 +549,66 @@ impl Battlefield {
                         })
                     }
                     AdditionalCost::SacrificePermanent(restrictions) => {
-                        results.push_pay_costs(PayCost::SacrificePermanent(
-                            SacrificePermanent::new(restrictions.clone(), source),
+                        results.push_pay_costs(PayCost::new(
+                            source,
+                            Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
                         ));
                     }
                     AdditionalCost::TapPermanent(restrictions) => {
-                        results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
-                            restrictions.clone(),
+                        results.push_pay_costs(PayCost::new(
                             source,
-                        )));
+                            Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                        ));
                     }
                     AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
-                        results.push_pay_costs(PayCost::TapPermanentsPowerXOrMore(
-                            TapPermanentsPowerXOrMore::new(restrictions.clone(), *x_is, source),
+                        results.push_pay_costs(PayCost::new(
+                            source,
+                            Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
+                                restrictions.clone(),
+                                *x_is,
+                            )),
                         ));
                     }
                     AdditionalCost::ExileCardsCmcX(restrictions) => {
-                        results.push_pay_costs(PayCost::ExilePermanentsCmcX(
-                            ExilePermanentsCmcX::new(restrictions.clone(), source),
+                        results.push_pay_costs(PayCost::new(
+                            source,
+                            Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(
+                                restrictions.clone(),
+                            )),
                         ));
                     }
                     AdditionalCost::ExileCard { restrictions } => {
-                        results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
-                            exile_reason,
-                            1,
-                            1,
-                            restrictions.clone(),
+                        results.push_pay_costs(PayCost::new(
                             source,
-                        )));
+                            Cost::ExileCards(ExileCards::new(
+                                exile_reason,
+                                1,
+                                1,
+                                restrictions.clone(),
+                            )),
+                        ));
                     }
                     AdditionalCost::ExileXOrMoreCards {
                         minimum,
                         restrictions,
                     } => {
-                        results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
-                            exile_reason,
-                            *minimum,
-                            usize::MAX,
-                            restrictions.clone(),
+                        results.push_pay_costs(PayCost::new(
                             source,
-                        )));
+                            Cost::ExileCards(ExileCards::new(
+                                exile_reason,
+                                *minimum,
+                                usize::MAX,
+                                restrictions.clone(),
+                            )),
+                        ));
                     }
                     AdditionalCost::ExileSharingCardType { count } => {
-                        results.push_pay_costs(PayCost::ExileCardsSharingType(
-                            ExileCardsSharingType::new(exile_reason, source, *count),
+                        results.push_pay_costs(PayCost::new(
+                            source,
+                            Cost::ExileCardsSharingType(ExileCardsSharingType::new(
+                                exile_reason,
+                                *count,
+                            )),
                         ));
                     }
                     AdditionalCost::RemoveCounter { counter, count } => {
@@ -605,11 +621,13 @@ impl Battlefield {
                 }
             }
 
-            results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-                cost.mana_cost.clone(),
+            results.push_pay_costs(PayCost::new(
                 source,
-                SpendReason::Activating(source),
-            )));
+                Cost::SpendMana(SpendMana::new(
+                    cost.mana_cost.clone(),
+                    SpendReason::Activating(source),
+                )),
+            ));
         }
 
         if let Ability::Mana(gain) = ability {
@@ -725,22 +743,18 @@ impl Battlefield {
                 if let Some(x) = x_is {
                     db[*source].x_is = *x;
                 }
-                db.stack
-                    .push_ability(*source, ability.clone(), targets.clone());
-                PendingResults::default()
+                Stack::push_ability(db, *source, ability.clone(), targets.clone())
             }
             ActionResult::AddTriggerToStack {
                 source,
                 trigger,
                 targets,
-            } => {
-                db.stack.push_ability(
-                    *source,
-                    Ability::EtbOrTriggered(trigger.effects.clone()),
-                    targets.clone(),
-                );
-                PendingResults::default()
-            }
+            } => Stack::push_ability(
+                db,
+                *source,
+                Ability::EtbOrTriggered(trigger.effects.clone()),
+                targets.clone(),
+            ),
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let ActiveTarget::Battlefield { id: target } = target {
                     source.clone_card(db, *target);
@@ -899,9 +913,12 @@ impl Battlefield {
                 }
                 PendingResults::default()
             }
-            ActionResult::SpellCountered { id } => match id {
+            ActionResult::SpellCountered { index } => match &db.stack.entries[*index].ty {
                 Entry::Card(card) => Battlefield::stack_to_graveyard(db, *card),
-                Entry::Ability { .. } => unreachable!(),
+                Entry::Ability { .. } => {
+                    db.stack.entries.remove(*index);
+                    PendingResults::default()
+                }
             },
             ActionResult::RemoveCounters {
                 target,
@@ -994,7 +1011,12 @@ impl Battlefield {
 
                 Log::cast(db, LogId::current(), *card);
 
-                card.move_to_stack(db, targets.clone(), Some(*from), chosen_modes.clone());
+                results.extend(card.move_to_stack(
+                    db,
+                    targets.clone(),
+                    Some(*from),
+                    chosen_modes.clone(),
+                ));
                 if let Some(x_is) = x_is {
                     db[*card].x_is = *x_is;
                 };
@@ -1032,6 +1054,7 @@ impl Battlefield {
             }
             ActionResult::UpdateStackEntries(entries) => {
                 db.stack.entries = entries.clone();
+                db.stack.settle();
                 PendingResults::default()
             }
             ActionResult::HandFromBattlefield(card) => Self::permanent_to_hand(db, *card),
@@ -1370,13 +1393,18 @@ impl Battlefield {
             } => {
                 target.transform(db);
                 let mut results = PendingResults::default();
-                move_card_to_battlefield(db, *target, *enters_tapped, &mut results, None);
-                if target.is_in_location(db, Location::Exile) {
-                    complete_add_from_exile(db, *target, &mut results);
+                let location = if target.is_in_location(db, Location::Exile) {
+                    Location::Exile
                 } else if target.is_in_location(db, Location::Graveyard) {
-                    complete_add_from_graveyard(db, *target, &mut results);
+                    Location::Graveyard
                 } else {
                     unreachable!()
+                };
+                move_card_to_battlefield(db, *target, *enters_tapped, &mut results, None);
+                match location {
+                    Location::Exile => complete_add_from_exile(db, *target, &mut results),
+                    Location::Graveyard => complete_add_from_graveyard(db, *target, &mut results),
+                    _ => unreachable!(),
                 }
 
                 results

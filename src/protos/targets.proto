@@ -75,6 +75,7 @@ message Restriction {
   message Self {}
   message SourceCast {}
   message Tapped {}
+  message TargetedBy {}
   message Threshold {}
   message Toughness {
     Comparison comparison = 1;
@@ -111,8 +112,9 @@ message Restriction {
     Self self = 29;
     SourceCast source_cast = 30;
     Tapped tapped = 31;
-    Threshold threshold = 32;
-    Toughness toughness = 33;
+    TargetedBy targeted_by = 32;
+    Threshold threshold = 33;
+    Toughness toughness = 34;
   }
 }
 

@@ -6,11 +6,8 @@ use itertools::Itertools;
 use crate::{
     effects::{Effect, EffectBehaviors},
     in_play::{CardId, Database},
-    pending_results::{
-        pay_costs::{PayCost, SpendMana},
-        Pending, PendingResult,
-    },
-    player::{mana_pool::SpendReason, Controller},
+    pending_results::{Pending, PendingResult},
+    player::Controller,
     stack::ActiveTarget,
 };
 
@@ -133,18 +130,6 @@ impl PendingResult for ChooseForEachPlayer {
         if self.choose_targets(db, choice) {
             if self.choices_complete(db) {
                 let choices = self.chosen_targets();
-
-                for target in choices.iter() {
-                    if let ActiveTarget::Battlefield { id } = target {
-                        if let Some(ward) = id.faceup_face(db).ward.as_ref() {
-                            results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-                                ward.mana_cost.clone(),
-                                self.card,
-                                SpendReason::Other,
-                            )));
-                        }
-                    }
-                }
 
                 results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {

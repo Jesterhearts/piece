@@ -29,9 +29,13 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let counterspell_1 = CardId::upload(&mut db, &cards, player, "Counterspell");
     let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    counterspell_1.move_to_stack(&mut db, Default::default(), None, vec![]);
+    let mut results = counterspell_1.move_to_stack(&mut db, Default::default(), None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let targets = vec![vec![db.stack.target_nth(0)]];
-    counterspell_2.move_to_stack(&mut db, targets, None, vec![]);
+    let mut results = counterspell_2.move_to_stack(&mut db, targets, None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 

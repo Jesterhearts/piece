@@ -44,6 +44,7 @@ pub(crate) enum TriggerSource {
     PutIntoGraveyard,
     StartOfCombat,
     Tapped,
+    Targeted,
 }
 
 #[derive(Debug, Clone)]
@@ -104,6 +105,7 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
             }
             protogen::triggers::trigger_source::Trigger::StartOfCombat(_) => Self::StartOfCombat,
             protogen::triggers::trigger_source::Trigger::Tapped(_) => Self::Tapped,
+            protogen::triggers::trigger_source::Trigger::Targeted(_) => Self::Targeted,
         }
     }
 }

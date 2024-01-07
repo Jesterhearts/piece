@@ -68,7 +68,7 @@ use crate::{
         controller_discards::ControllerDiscards, controller_draws_cards::ControllerDrawsCards,
         controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
-        counter_spell::CounterSpell, counter_spell_unless_pay::CounterSpellUnlessPay,
+        counter_spell::CounterSpellOrAbility, counter_spell_unless_pay::CounterSpellUnlessPay,
         create_token::CreateToken, create_token_copy::CreateTokenCopy, cycling::Cycling,
         deal_damage::DealDamage, destroy_each::DestroyEach, destroy_target::DestroyTarget,
         discover::Discover, equip::Equip, examine_top_cards::ExamineTopCards,
@@ -112,7 +112,7 @@ pub(crate) enum Effect {
     ControllerDrawsCards(ControllerDrawsCards),
     ControllerLosesLife(ControllerLosesLife),
     CopyOfAnyCreatureNonTargeting(CopyOfAnyCreatureNonTargeting),
-    CounterSpell(CounterSpell),
+    CounterSpellOrAbility(CounterSpellOrAbility),
     CounterSpellUnlessPay(CounterSpellUnlessPay),
     CreateToken(CreateToken),
     CreateTokenCopy(CreateTokenCopy),
@@ -555,7 +555,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Ok(Self::from(CopyOfAnyCreatureNonTargeting))
             }
             protogen::effects::effect::Effect::CounterSpell(value) => {
-                Ok(Self::from(CounterSpell::try_from(value)?))
+                Ok(Self::from(CounterSpellOrAbility::try_from(value)?))
             }
             protogen::effects::effect::Effect::CounterSpellUnlessPay(value) => {
                 Ok(Self::from(CounterSpellUnlessPay::try_from(value)?))

@@ -36,12 +36,14 @@ fn damages_target() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    blast.move_to_stack(
+    let mut results = blast.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
         vec![],
     );
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     dbg!(&results);
@@ -95,12 +97,14 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    blast.move_to_stack(
+    let mut results = blast.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
         vec![],
     );
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
 
@@ -155,12 +159,14 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    blast.move_to_stack(
+    let mut results = blast.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
         vec![],
     );
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
 

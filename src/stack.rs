@@ -13,14 +13,15 @@ use crate::{
     log::{Log, LogId},
     pending_results::{
         choose_targets::ChooseTargets,
-        pay_costs::SpendMana,
         pay_costs::TapPermanent,
+        pay_costs::{Cost, ExileCardsSharingType},
         pay_costs::{ExileCards, ExilePermanentsCmcX},
-        pay_costs::{ExileCardsSharingType, PayCost},
+        pay_costs::{PayCost, SpendMana},
         pay_costs::{SacrificePermanent, TapPermanentsPowerXOrMore},
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
+    triggers::TriggerSource,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -347,31 +348,63 @@ impl Stack {
     }
 
     pub(crate) fn push_card(
-        &mut self,
-        arg: CardId,
+        db: &mut Database,
+        source: CardId,
         targets: Vec<Vec<ActiveTarget>>,
         chosen_modes: Vec<usize>,
-    ) {
-        self.entries.push(StackEntry {
-            ty: Entry::Card(arg),
-            targets,
+    ) -> PendingResults {
+        db.stack.entries.push(StackEntry {
+            ty: Entry::Card(source),
+            targets: targets.clone(),
             settled: true,
             mode: chosen_modes,
         });
+
+        let mut results = PendingResults::default();
+        for target in targets.into_iter().flat_map(|t| t.into_iter()) {
+            if let ActiveTarget::Battlefield { id } = target {
+                Log::targetted(db, LogId::current(), source, id);
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
+                    if listener == id
+                        && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                    {
+                        results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    }
+                }
+            }
+        }
+
+        results
     }
 
     pub(crate) fn push_ability(
-        &mut self,
+        db: &mut Database,
         source: CardId,
         ability: Ability,
         targets: Vec<Vec<ActiveTarget>>,
-    ) {
-        self.entries.push(StackEntry {
+    ) -> PendingResults {
+        db.stack.entries.push(StackEntry {
             ty: Entry::Ability { source, ability },
-            targets,
+            targets: targets.clone(),
             mode: vec![],
-            settled: false,
-        })
+            settled: true,
+        });
+
+        let mut results = PendingResults::default();
+        for target in targets.into_iter().flat_map(|t| t.into_iter()) {
+            if let ActiveTarget::Battlefield { id } = target {
+                Log::targetted(db, LogId::current(), source, id);
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
+                    if listener == id
+                        && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                    {
+                        results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    }
+                }
+            }
+        }
+
+        results
     }
 }
 
@@ -437,11 +470,13 @@ fn add_card_to_stack(
     // It is important that paying costs happens last, because some cards have effects that depend on what they are targeting.
     let cost = &card.faceup_face(db).cost;
     if paying_costs {
-        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-            cost.mana_cost.clone(),
+        results.push_pay_costs(PayCost::new(
             card,
-            SpendReason::Casting(card),
-        )));
+            Cost::SpendMana(SpendMana::new(
+                cost.mana_cost.clone(),
+                SpendReason::Casting(card),
+            )),
+        ));
     }
     for cost in cost.additional_cost.iter() {
         match cost {
@@ -450,53 +485,57 @@ fn add_card_to_stack(
             AdditionalCost::RemoveCounter { .. } => unreachable!(),
             AdditionalCost::PayLife(_) => todo!(),
             AdditionalCost::SacrificePermanent(restrictions) => {
-                results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                ));
             }
             AdditionalCost::TapPermanent(restrictions) => {
-                results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                ));
             }
             AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
-                results.push_pay_costs(PayCost::TapPermanentsPowerXOrMore(
-                    TapPermanentsPowerXOrMore::new(restrictions.clone(), *x_is, card),
+                results.push_pay_costs(PayCost::new(
+                    card,
+                    Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
+                        restrictions.clone(),
+                        *x_is,
+                    )),
                 ));
             }
             AdditionalCost::ExileCardsCmcX(restrictions) => {
-                results.push_pay_costs(PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone())),
+                ));
             }
             AdditionalCost::ExileCard { restrictions } => {
-                results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
-                    None,
-                    1,
-                    1,
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::ExileCards(ExileCards::new(None, 1, 1, restrictions.clone())),
+                ));
             }
             AdditionalCost::ExileXOrMoreCards {
                 minimum,
                 restrictions,
             } => {
-                results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
-                    None,
-                    *minimum,
-                    usize::MAX,
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::ExileCards(ExileCards::new(
+                        None,
+                        *minimum,
+                        usize::MAX,
+                        restrictions.clone(),
+                    )),
+                ));
             }
             AdditionalCost::ExileSharingCardType { count } => {
-                results.push_pay_costs(PayCost::ExileCardsSharingType(ExileCardsSharingType::new(
-                    None, card, *count,
-                )));
+                results.push_pay_costs(PayCost::new(
+                    card,
+                    Cost::ExileCardsSharingType(ExileCardsSharingType::new(None, *count)),
+                ));
             }
         }
     }
@@ -524,7 +563,9 @@ mod tests {
         let mut db = Database::new(all_players);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
-        card1.move_to_stack(&mut db, Default::default(), None, vec![]);
+        let mut results = card1.move_to_stack(&mut db, Default::default(), None, vec![]);
+        let result = results.resolve(&mut db, None);
+        assert_eq!(result, ResolutionResult::Complete);
 
         let mut results = Stack::resolve_1(&mut db);
 

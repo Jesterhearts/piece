@@ -36,12 +36,14 @@ fn metamorphosis() -> anyhow::Result<()> {
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
 
-    majestic.move_to_stack(
+    let mut results = majestic.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: mantle }]],
         None,
         vec![],
     );
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
@@ -89,12 +91,14 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
 
-    majestic.move_to_stack(
+    let mut results = majestic.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
         vec![],
     );
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);

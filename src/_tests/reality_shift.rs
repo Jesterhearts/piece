@@ -48,12 +48,14 @@ fn resolves_shift() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, bear3);
 
     let shift = CardId::upload(&mut db, &all_cards, player, "Reality Shift");
-    shift.move_to_stack(
+    let mut results = shift.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear1 }]],
         None,
         vec![],
     );
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);

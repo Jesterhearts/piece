@@ -97,9 +97,13 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    card.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let targets = vec![vec![db.stack.target_nth(0)]];
-    counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    let mut results = counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 
@@ -154,9 +158,13 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    card2.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = card2.move_to_stack(&mut db, vec![], None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let targets = vec![vec![db.stack.target_nth(0)]];
-    counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    let mut results = counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 
@@ -212,9 +220,13 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    card2.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = card2.move_to_stack(&mut db, vec![], None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
     let targets = vec![vec![db.stack.target_nth(0)]];
-    counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    let mut results = counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 

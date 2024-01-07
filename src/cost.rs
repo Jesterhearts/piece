@@ -191,21 +191,6 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Ward {
-    pub(crate) mana_cost: Vec<ManaCost>,
-}
-
-impl TryFrom<&protogen::cost::Ward> for Ward {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::cost::Ward) -> Result<Self, Self::Error> {
-        Ok(Self {
-            mana_cost: parse_mana_cost(&value.mana_cost)?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum AbilityRestriction {
     AttackedWithXOrMoreCreatures(usize),

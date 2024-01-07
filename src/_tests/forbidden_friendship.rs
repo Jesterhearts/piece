@@ -30,7 +30,9 @@ fn creates_tokens() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
-    card.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);

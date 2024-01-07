@@ -2,7 +2,7 @@ use crate::{
     abilities::Ability,
     cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, EffectBehaviors},
-    pending_results::pay_costs::{PayCost, SacrificePermanent, SpendMana, TapPermanent},
+    pending_results::pay_costs::{Cost, PayCost, SacrificePermanent, SpendMana, TapPermanent},
     player::mana_pool::SpendReason,
     protogen,
 };
@@ -52,11 +52,13 @@ impl EffectBehaviors for PayCostThen {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-            self.cost.mana_cost.clone(),
+        results.push_pay_costs(PayCost::new(
             source,
-            SpendReason::Other,
-        )));
+            Cost::SpendMana(SpendMana::new(
+                self.cost.mana_cost.clone(),
+                SpendReason::Other,
+            )),
+        ));
 
         for cost in self.cost.additional_cost.iter() {
             match cost {
@@ -70,16 +72,16 @@ impl EffectBehaviors for PayCostThen {
                 AdditionalCost::TapPermanentsPowerXOrMore { .. } => todo!(),
                 AdditionalCost::RemoveCounter { .. } => todo!(),
                 AdditionalCost::SacrificePermanent(restrictions) => {
-                    results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
-                        restrictions.clone(),
+                    results.push_pay_costs(PayCost::new(
                         source,
-                    )));
+                        Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                    ));
                 }
                 AdditionalCost::TapPermanent(restrictions) => {
-                    results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
-                        restrictions.clone(),
+                    results.push_pay_costs(PayCost::new(
                         source,
-                    )));
+                        Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                    ));
                 }
             }
         }
@@ -96,11 +98,13 @@ impl EffectBehaviors for PayCostThen {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-            self.cost.mana_cost.clone(),
+        results.push_pay_costs(PayCost::new(
             source,
-            SpendReason::Other,
-        )));
+            Cost::SpendMana(SpendMana::new(
+                self.cost.mana_cost.clone(),
+                SpendReason::Other,
+            )),
+        ));
 
         for cost in self.cost.additional_cost.iter() {
             match cost {
@@ -114,16 +118,16 @@ impl EffectBehaviors for PayCostThen {
                 AdditionalCost::TapPermanentsPowerXOrMore { .. } => todo!(),
                 AdditionalCost::RemoveCounter { .. } => todo!(),
                 AdditionalCost::SacrificePermanent(restrictions) => {
-                    results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
-                        restrictions.clone(),
+                    results.push_pay_costs(PayCost::new(
                         source,
-                    )));
+                        Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                    ));
                 }
                 AdditionalCost::TapPermanent(restrictions) => {
-                    results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
-                        restrictions.clone(),
+                    results.push_pay_costs(PayCost::new(
                         source,
-                    )));
+                        Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                    ));
                 }
             }
         }

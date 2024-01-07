@@ -8,7 +8,7 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
-    cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer, Ward},
+    cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer},
     effects::{
         target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
         Mode, ReplacementAbility, Token, TokenCreature,
@@ -263,8 +263,6 @@ pub struct Card {
     pub(crate) etb_abilities: Vec<AnyEffect>,
     pub(crate) apply_individually: bool,
 
-    pub(crate) ward: Option<Ward>,
-
     pub(crate) static_abilities: Vec<StaticAbility>,
 
     pub(crate) activated_abilities: Vec<ActivatedAbility>,
@@ -351,10 +349,6 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .map(AnyEffect::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             apply_individually: value.apply_individually,
-            ward: value
-                .ward
-                .as_ref()
-                .map_or(Ok(None), |ward| ward.try_into().map(Some))?,
             static_abilities: value
                 .static_abilities
                 .iter()

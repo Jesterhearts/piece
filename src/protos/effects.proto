@@ -163,8 +163,8 @@ message ApplyThenIfWas {
     repeated Effect apply = 2;
   }
 
-  repeated Effect apply = 1;
-  Then then = 2;
+  repeated Effect apply = 3;
+  Then then = 4;
 }
 
 message BattlefieldModifier {
@@ -190,8 +190,8 @@ message ControllerDrawCards {
   }
 
   oneof count {
-    Fixed fixed = 1;
-    NumberOfPermanentsMatching number_of_permanents_matching = 2;
+    Fixed fixed = 2;
+    NumberOfPermanentsMatching number_of_permanents_matching = 3;
   }
 }
 
@@ -424,12 +424,12 @@ message ModifyBattlefield {
   repeated StaticAbility add_static_abilities = 13;
   bool remove_all_creature_types = 14;
   bool remove_all_types = 15;
-  bool remove_all_colors = 17;
-  bool remove_all_abilities = 18;
-  bool entire_battlefield = 19;
-  bool global = 20;
-  string add_keywords = 21;
-  string remove_keywords = 22;
+  bool remove_all_colors = 16;
+  bool remove_all_abilities = 17;
+  bool entire_battlefield = 18;
+  bool global = 19;
+  string add_keywords = 20;
+  string remove_keywords = 21;
 }
 
 message MultiplyTokens {

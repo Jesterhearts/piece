@@ -7,11 +7,7 @@ use crate::{
     battlefield::ActionResult,
     effects::EffectBehaviors,
     in_play::{CardId, Database},
-    pending_results::{
-        pay_costs::{PayCost, SpendMana},
-        Pending, PendingResult, TargetSource,
-    },
-    player::mana_pool::SpendReason,
+    pending_results::{Pending, PendingResult, TargetSource},
     stack::ActiveTarget,
 };
 
@@ -155,18 +151,6 @@ impl PendingResult for ChooseTargets {
             if self.choices_complete(db) {
                 let (choices, effect_or_aura) = self.chosen_targets_and_effect();
 
-                for target in choices.iter() {
-                    if let ActiveTarget::Battlefield { id } = target {
-                        if let Some(ward) = id.faceup_face(db).ward.as_ref() {
-                            results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-                                ward.mana_cost.clone(),
-                                self.card,
-                                SpendReason::Other,
-                            )));
-                        }
-                    }
-                }
-
                 results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {
                     let player = db[self.card].controller;
@@ -192,10 +176,7 @@ impl PendingResult for ChooseTargets {
                     results.chosen_targets.push(choices.clone());
                 }
 
-                if !{
-                    let this = self.card;
-                    this.faceup_face(db).apply_individually
-                } {
+                if !self.card.faceup_face(db).apply_individually {
                     let player = db[self.card].controller;
 
                     let mut effect_or_auras = vec![];

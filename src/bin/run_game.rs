@@ -475,6 +475,7 @@ async fn main() -> anyhow::Result<()> {
                             .stack
                             .entries()
                             .iter()
+                            .rev()
                             .enumerate()
                             .map(|(idx, e)| format!("({}) {}", idx, e.display(&db)))
                             .collect_vec(),

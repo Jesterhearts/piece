@@ -357,14 +357,15 @@ impl CardId {
         targets: Vec<Vec<ActiveTarget>>,
         from: Option<CastFrom>,
         chosen_modes: Vec<usize>,
-    ) {
+    ) -> PendingResults {
         if db.stack.split_second(db) {
             warn!("Skipping add to stack (split second)");
-            return;
+            return PendingResults::default();
         }
 
         if db[self].token {
             self.move_to_limbo(db);
+            PendingResults::default()
         } else {
             self.remove_all_modifiers(db);
 
@@ -377,7 +378,7 @@ impl CardId {
             view.library.remove(self);
             view.hand.remove(&self);
 
-            db.stack.push_card(self, targets, chosen_modes);
+            Stack::push_card(db, self, targets, chosen_modes)
         }
     }
 
@@ -1448,6 +1449,21 @@ impl CardId {
                         return false;
                     };
                 }
+                Restriction::TargetedBy => {
+                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                        if let LogEntry::Targeted {
+                            source: targeting,
+                            target,
+                        } = entry
+                        {
+                            self == *targeting && *target == source
+                        } else {
+                            false
+                        }
+                    }) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -1830,7 +1846,6 @@ fn clone_card(db: &mut Database, cloning: CardId) -> Card {
         modes: cloning.faceup_face(db).modes.clone(),
         etb_abilities: cloning.faceup_face(db).etb_abilities.clone(),
         apply_individually: cloning.faceup_face(db).apply_individually,
-        ward: cloning.faceup_face(db).ward.clone(),
         static_abilities: cloning.faceup_face(db).static_abilities.clone(),
         activated_abilities: cloning.faceup_face(db).activated_abilities.clone(),
         triggered_abilities: cloning.faceup_face(db).triggered_abilities.clone(),
