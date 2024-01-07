@@ -2,6 +2,7 @@ use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{anyhow, Context};
 use derive_more::{Deref, DerefMut};
+use itertools::Itertools;
 
 use crate::{
     card::{replace_symbols, Keyword},
@@ -409,7 +410,9 @@ impl Ability {
         match self {
             Ability::Activated(ActivatedAbility { oracle_text, .. })
             | Ability::Mana(GainManaAbility { oracle_text, .. }) => oracle_text.clone(),
-            Ability::EtbOrTriggered(_) => String::default(),
+            Ability::EtbOrTriggered(effects) => {
+                effects.iter().map(|effect| &effect.oracle_text).join("\n")
+            }
         }
     }
 
