@@ -301,6 +301,8 @@ impl CardId {
     pub fn faceup_face(self, db: &Database) -> &Card {
         if db[self].facedown {
             db[self].card.back_face.as_deref().unwrap_or(&db[self].card)
+        } else if let Some(cloning) = db[self].cloning.as_ref() {
+            cloning
         } else {
             &db[self].card
         }
@@ -1739,7 +1741,7 @@ impl CardId {
     }
 
     pub fn name(self, db: &Database) -> &String {
-        &self.faceup_face(db).name
+        &db[self].modified_name
     }
 
     pub(crate) fn has_flash(self, db: &Database) -> bool {

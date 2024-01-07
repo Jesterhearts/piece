@@ -354,22 +354,17 @@ impl Widget for Battlefield<'_, '_> {
                             .cards
                             .iter()
                             .map(|(_, card)| {
-                                let manifested = {
-                                    let db = self.db;
-                                    db[*card].manifested
-                                };
-
-                                let name = if manifested {
+                                let name = if self.db[*card].manifested {
                                     "Manifested".to_string()
+                                } else if self.db[*card].cloning.is_some() {
+                                    format!("({}) {}", self.db[*card].card.name, card.name(self.db))
                                 } else {
                                     card.name(self.db).clone()
                                 };
 
-                                let cost = {
-                                    let db: &Database = self.db;
-                                    &card.faceup_face(db).cost
-                                };
-                                if cost.mana_cost.is_empty() || manifested {
+                                let cost = &self.db[*card].modified_cost;
+
+                                if cost.mana_cost.is_empty() || self.db[*card].manifested {
                                     format!("({}) {}", card, name)
                                 } else {
                                     format!("({}) {} - {}", card, name, cost.text())
