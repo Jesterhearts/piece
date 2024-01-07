@@ -151,8 +151,14 @@ impl Log {
             .rev()
             .position(|(id, _)| *id != current)
         {
-            let entries = db.log.entries.split_at(pos + 1).1;
-            event!(Level::DEBUG, ?entries, "{:?}", current);
+            let entries = db.log.entries.split_at(db.log.entries.len() - pos).1;
+            event!(
+                Level::DEBUG,
+                ?entries,
+                "{:?} searching {:?}",
+                current,
+                db.log.entries
+            );
             entries
         } else {
             &[]
