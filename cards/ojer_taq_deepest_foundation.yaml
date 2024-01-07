@@ -2,6 +2,8 @@ name: Ojer Taq, Deepest Foundation
 typeline: Legendary Creature - God
 cost:
   mana_cost: '{4}{W}{W}'
+oracle_text: If one or more creature tokens would be created under your control, three
+  times that many of those tokens are created instead.
 triggered_abilities:
   - trigger:
       source:

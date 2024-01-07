@@ -359,6 +359,8 @@ impl Battlefield {
     ) -> PartialAddToBattlefieldResult {
         let mut results = PendingResults::default();
 
+        db[source_card_id].replacements_active = true;
+
         for (source, replacement) in db.replacement_abilities_watching(Replacing::Etb) {
             if !source_card_id.passes_restrictions(db, source, &replacement.restrictions) {
                 continue;

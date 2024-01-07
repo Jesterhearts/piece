@@ -174,6 +174,8 @@ pub struct CardInPlay {
     pub(crate) chosen: bool,
     pub(crate) token: bool,
 
+    pub(crate) replacements_active: bool,
+
     pub(crate) modified_name: String,
     pub(crate) modified_cost: CastingCost,
     pub(crate) modified_base_power: Option<BasePowerType>,
@@ -369,6 +371,7 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
 
+            db[self].replacements_active = false;
             db[self].cast_from = from;
 
             let view = db.owner_view_mut(db[self].owner);

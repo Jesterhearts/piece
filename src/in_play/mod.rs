@@ -1,7 +1,7 @@
 mod cardid;
 mod modifierid;
 
-use std::{collections::HashMap, sync::atomic::AtomicUsize};
+use std::sync::atomic::AtomicUsize;
 
 use indexmap::{IndexMap, IndexSet};
 
@@ -45,7 +45,7 @@ pub(crate) enum ExileReason {
 pub struct Database {
     pub log: Log,
 
-    pub(crate) cards: HashMap<CardId, CardInPlay>,
+    pub(crate) cards: IndexMap<CardId, CardInPlay>,
     pub(crate) modifiers: IndexMap<ModifierId, ModifierInPlay>,
 
     pub battlefield: Battlefield,
@@ -158,14 +158,16 @@ impl Database {
     ) -> Vec<(CardId, ReplacementAbility)> {
         self.cards
             .keys()
+            .copied()
+            .filter(|card| self[*card].replacements_active)
             .flat_map(|card| {
-                self[*card]
+                self[card]
                     .modified_replacement_abilities
                     .get(&replacement)
                     .cloned()
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|replacing| (*card, replacing))
+                    .map(move |replacing| (card, replacing))
             })
             .collect_vec()
     }
