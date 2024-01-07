@@ -355,16 +355,18 @@ impl Battlefield {
         source_card_id: CardId,
         enters_tapped: bool,
         target: Option<CardId>,
-        construct_skip_replacement: impl FnOnce(CardId, bool) -> ActionResult,
+        mut construct_skip_replacement: impl FnMut(CardId, bool) -> ActionResult,
     ) -> PartialAddToBattlefieldResult {
         let mut results = PendingResults::default();
 
         db[source_card_id].replacements_active = true;
 
+        let mut replaced = false;
         for (source, replacement) in db.replacement_abilities_watching(Replacing::Etb) {
             if !source_card_id.passes_restrictions(db, source, &replacement.restrictions) {
                 continue;
             }
+            replaced = true;
 
             let controller = db[source].controller;
             for effect in replacement.effects.iter() {
@@ -375,6 +377,9 @@ impl Battlefield {
 
             source_card_id.apply_modifiers_layered(db);
             results.push_settled(construct_skip_replacement(source_card_id, enters_tapped));
+        }
+
+        if replaced {
             return PartialAddToBattlefieldResult::NeedsResolution(results);
         }
 
