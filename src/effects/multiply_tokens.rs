@@ -1,4 +1,8 @@
-use crate::{battlefield::create_token_copy_with_replacements, effects::EffectBehaviors, protogen};
+use crate::{
+    battlefield::create_token_copy_with_replacements,
+    effects::{EffectBehaviors, ReplacementEffect},
+    protogen,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct MultiplyTokens {
@@ -18,7 +22,7 @@ impl TryFrom<&protogen::effects::MultiplyTokens> for MultiplyTokens {
 impl EffectBehaviors for MultiplyTokens {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -26,7 +30,7 @@ impl EffectBehaviors for MultiplyTokens {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -58,7 +62,7 @@ impl EffectBehaviors for MultiplyTokens {
         &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
-        replacements: &mut std::vec::IntoIter<crate::in_play::ReplacementEffectId>,
+        replacements: &mut std::vec::IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
         token: crate::in_play::CardId,
         modifiers: &[super::ModifyBattlefield],
         results: &mut crate::pending_results::PendingResults,

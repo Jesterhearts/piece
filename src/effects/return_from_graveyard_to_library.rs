@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{compute_graveyard_targets, ActionResult},
+    battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
@@ -35,7 +35,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToLibrary> for ReturnFromGra
 impl EffectBehaviors for ReturnFromGraveyardToLibrary {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         self.count
@@ -43,7 +43,7 @@ impl EffectBehaviors for ReturnFromGraveyardToLibrary {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         self.count
@@ -51,14 +51,20 @@ impl EffectBehaviors for ReturnFromGraveyardToLibrary {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        compute_graveyard_targets(db, source, &self.restrictions)
-            .into_iter()
-            .map(|card| ActiveTarget::Graveyard { id: card })
+        db.graveyard
+            .graveyards
+            .values()
+            .flat_map(|g| g.iter())
+            .filter(|card| {
+                !card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
+                    || !card.passes_restrictions(db, source, &self.restrictions)
+            })
+            .map(|card| ActiveTarget::Graveyard { id: *card })
             .collect_vec()
     }
 

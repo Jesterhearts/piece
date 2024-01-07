@@ -2,7 +2,6 @@ use crate::{
     abilities::Ability,
     cost::{AbilityCost, AdditionalCost},
     effects::{AnyEffect, EffectBehaviors},
-    in_play::AbilityId,
     pending_results::pay_costs::{PayCost, SacrificePermanent, SpendMana, TapPermanent},
     player::mana_pool::SpendReason,
     protogen,
@@ -32,7 +31,7 @@ impl TryFrom<&protogen::effects::PayCostThen> for PayCostThen {
 impl EffectBehaviors for PayCostThen {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -40,7 +39,7 @@ impl EffectBehaviors for PayCostThen {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -48,7 +47,7 @@ impl EffectBehaviors for PayCostThen {
 
     fn push_pending_behavior(
         &self,
-        db: &mut crate::in_play::Database,
+        _db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
@@ -85,18 +84,12 @@ impl EffectBehaviors for PayCostThen {
             }
         }
 
-        results.add_ability_to_stack(AbilityId::upload_ability(
-            db,
-            source,
-            Ability::Etb {
-                effects: self.effects.clone(),
-            },
-        ))
+        results.add_ability_to_stack(source, Ability::EtbOrTriggered(self.effects.clone()));
     }
 
     fn push_behavior_with_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
@@ -135,12 +128,6 @@ impl EffectBehaviors for PayCostThen {
             }
         }
 
-        results.add_ability_to_stack(AbilityId::upload_ability(
-            db,
-            source,
-            Ability::Etb {
-                effects: self.effects.clone(),
-            },
-        ))
+        results.add_ability_to_stack(source, Ability::EtbOrTriggered(self.effects.clone()));
     }
 }

@@ -4,9 +4,8 @@ use itertools::Itertools;
 
 use crate::{
     effects::{Effect, EffectBehaviors},
-    in_play::{all_cards, target_from_location, Database},
+    in_play::{target_from_location, Database},
     pending_results::choose_for_each_player::ChooseForEachPlayer,
-    player::AllPlayers,
     protogen,
     targets::Restriction,
 };
@@ -39,40 +38,40 @@ impl TryFrom<&protogen::effects::ForEachPlayerChooseThen> for ForEachPlayerChoos
 impl EffectBehaviors for ForEachPlayerChooseThen {
     fn needs_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
-        AllPlayers::all_players_in_db(db).len()
+        db.all_players.all_players().len()
     }
 
     fn wants_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
-        AllPlayers::all_players_in_db(db).len()
+        db.all_players.all_players().len()
     }
 
     fn valid_targets(
         &self,
-        db: &mut Database,
+        db: &Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let already_chosen = already_chosen
             .iter()
-            .map(|target| target.id().unwrap().controller(db))
+            .map(|target| db[target.id().unwrap()].controller)
             .collect::<HashSet<_>>();
 
-        all_cards(db)
-            .into_iter()
+        db.cards
+            .keys()
             .filter_map(|card| {
-                if card.passes_restrictions(db, source, &source.restrictions(db))
+                if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                     && card.passes_restrictions(db, source, &self.restrictions)
-                    && !already_chosen.contains(&card.controller(db))
+                    && !already_chosen.contains(&db[*card].controller)
                 {
-                    Some(target_from_location(db, card))
+                    Some(target_from_location(db, *card))
                 } else {
                     None
                 }
@@ -106,7 +105,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
-            target.id().unwrap().choose(db);
+            db[target.id().unwrap()].chosen = true;
         }
 
         for effect in self.effects.iter() {

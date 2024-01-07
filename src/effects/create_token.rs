@@ -22,7 +22,7 @@ impl TryFrom<&protogen::effects::CreateToken> for CreateToken {
 impl EffectBehaviors for CreateToken {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -30,7 +30,7 @@ impl EffectBehaviors for CreateToken {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0

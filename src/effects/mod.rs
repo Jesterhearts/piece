@@ -53,7 +53,6 @@ pub(crate) mod untap_this;
 use std::{collections::HashSet, fmt::Debug, str::FromStr, vec::IntoIter};
 
 use anyhow::{anyhow, Context};
-use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use enum_dispatch::enum_dispatch;
 use indexmap::IndexSet;
@@ -92,10 +91,9 @@ use crate::{
         transform::Transform, tutor_library::TutorLibrary, untap_target::UntapTarget,
         untap_this::UntapThis,
     },
-    in_play::{self, Database, OnBattlefield, ReplacementEffectId},
-    newtype_enum::newtype_enum,
+    in_play::{CardId, Database},
     pending_results::PendingResults,
-    player::{AllPlayers, Controller, Player},
+    player::{Controller, Owner},
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
@@ -199,15 +197,14 @@ impl From<&protogen::effects::destination::Destination> for Destination {
     }
 }
 
-newtype_enum! {
-#[derive(Debug, PartialEq, Eq, Clone, Copy, bevy_ecs::component::Component)]
-pub(crate)enum EffectDuration {
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub(crate) enum EffectDuration {
+    #[default]
     Permanently,
     UntilEndOfTurn,
     UntilSourceLeavesBattlefield,
     UntilTargetLeavesBattlefield,
     UntilUntapped,
-}
 }
 
 impl TryFrom<&protogen::effects::Duration> for EffectDuration {
@@ -259,16 +256,7 @@ impl TryFrom<&protogen::effects::NumberOfPermanentsMatching> for NumberOfPermane
     }
 }
 
-impl NumberOfPermanentsMatching {
-    pub(crate) fn matching(&self, db: &mut Database, source: crate::in_play::CardId) -> usize {
-        in_play::cards::<OnBattlefield>(db)
-            .into_iter()
-            .filter(|card| card.passes_restrictions(db, source, &self.restrictions))
-            .count()
-    }
-}
-
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) enum DynamicPowerToughness {
     NumberOfCountersOnThis(Counter),
     NumberOfPermanentsMatching(NumberOfPermanentsMatching),
@@ -414,15 +402,10 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
 
 #[enum_dispatch]
 pub(crate) trait EffectBehaviors: Debug {
-    fn choices(
-        &self,
-        db: &mut Database,
-        all_players: &AllPlayers,
-        targets: &[ActiveTarget],
-    ) -> Vec<String> {
+    fn choices(&self, db: &Database, targets: &[ActiveTarget]) -> Vec<String> {
         targets
             .iter()
-            .map(|target| target.display(db, all_players))
+            .map(|target| target.display(db))
             .collect_vec()
     }
 
@@ -442,14 +425,14 @@ pub(crate) trait EffectBehaviors: Debug {
         false
     }
 
-    fn needs_targets(&self, db: &mut Database, source: crate::in_play::CardId) -> usize;
+    fn needs_targets(&self, db: &Database, source: CardId) -> usize;
 
-    fn wants_targets(&self, db: &mut Database, source: crate::in_play::CardId) -> usize;
+    fn wants_targets(&self, db: &Database, source: CardId) -> usize;
 
     fn valid_targets(
         &self,
-        db: &mut Database,
-        source: crate::in_play::CardId,
+        db: &Database,
+        source: CardId,
         controller: Controller,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
@@ -463,7 +446,7 @@ pub(crate) trait EffectBehaviors: Debug {
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: crate::in_play::CardId,
+        source: CardId,
         controller: Controller,
         results: &mut PendingResults,
     );
@@ -471,8 +454,8 @@ pub(crate) trait EffectBehaviors: Debug {
     fn push_behavior_from_top_of_library(
         &self,
         db: &Database,
-        source: crate::in_play::CardId,
-        target: crate::in_play::CardId,
+        source: CardId,
+        target: CardId,
         results: &mut PendingResults,
     ) {
         let _ = db;
@@ -487,22 +470,22 @@ pub(crate) trait EffectBehaviors: Debug {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         apply_to_self: bool,
-        source: crate::in_play::CardId,
+        source: CardId,
         controller: Controller,
         results: &mut PendingResults,
     );
 
     fn replace_draw(
         &self,
-        player: &mut Player,
         db: &mut Database,
-        replacements: &mut IntoIter<ReplacementEffectId>,
+        player: Owner,
+        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
         controller: Controller,
         count: usize,
         results: &mut PendingResults,
     ) {
-        let _ = player;
         let _ = db;
+        let _ = player;
         let _ = replacements;
         let _ = controller;
         let _ = count;
@@ -513,9 +496,9 @@ pub(crate) trait EffectBehaviors: Debug {
     fn replace_token_creation(
         &self,
         db: &mut Database,
-        source: crate::in_play::CardId,
-        replacements: &mut IntoIter<ReplacementEffectId>,
-        token: crate::in_play::CardId,
+        source: CardId,
+        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
+        token: CardId,
         modifiers: &[ModifyBattlefield],
         results: &mut PendingResults,
     ) {
@@ -688,7 +671,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
     }
 }
 
-#[derive(Debug, Deref, Clone, DerefMut, Component, Default)]
+#[derive(Debug, Deref, Clone, DerefMut, Default)]
 pub(crate) struct Effects(pub(crate) Vec<AnyEffect>);
 
 #[derive(Debug, Clone)]
@@ -785,13 +768,11 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
     }
 }
 
-newtype_enum! {
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub(crate)enum Replacing {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Replacing {
     Draw,
     Etb,
     TokenCreation,
-}
 }
 
 impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
@@ -805,9 +786,6 @@ impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
         }
     }
 }
-
-#[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub(crate) struct ReplacementEffects(pub(crate) Vec<ReplacementEffectId>);
 
 #[derive(Debug, Clone)]
 pub(crate) struct ReplacementEffect {
@@ -842,7 +820,7 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
     }
 }
 
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct Modes(pub(crate) Vec<Mode>);
 
 #[derive(Debug, Clone)]

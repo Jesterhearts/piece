@@ -1,13 +1,9 @@
-use bevy_ecs::entity::Entity;
-use itertools::Itertools;
-
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::{CardId, InStack},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
-    stack::{ActiveTarget, Stack},
+    stack::{ActiveTarget, Entry, StackEntry},
     targets::Restriction,
 };
 
@@ -33,7 +29,7 @@ impl TryFrom<&protogen::effects::CounterSpell> for CounterSpell {
 impl EffectBehaviors for CounterSpell {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -41,7 +37,7 @@ impl EffectBehaviors for CounterSpell {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -49,24 +45,34 @@ impl EffectBehaviors for CounterSpell {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        let cards_in_stack = db
-            .query::<(Entity, &InStack)>()
-            .iter(db)
-            .map(|(entity, in_stack)| (CardId::from(entity), *in_stack))
-            .sorted_by_key(|(_, in_stack)| *in_stack)
-            .collect_vec();
-
         let mut targets = vec![];
-        for (card, stack_id) in cards_in_stack.into_iter() {
+        for (stack_id, card) in db
+            .stack
+            .entries
+            .iter()
+            .enumerate()
+            .filter_map(|(id, entry)| {
+                if let StackEntry {
+                    ty: Entry::Card(card),
+                    ..
+                } = entry
+                {
+                    Some((id, card))
+                } else {
+                    None
+                }
+            })
+        {
             if card.can_be_countered(db, source, &self.restrictions) {
                 targets.push(ActiveTarget::Stack { id: stack_id });
             }
         }
+
         targets
     }
 
@@ -95,14 +101,13 @@ impl EffectBehaviors for CounterSpell {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let in_stack = Stack::in_stack(db);
         for target in targets {
             let ActiveTarget::Stack { id } = target else {
                 unreachable!()
             };
 
             results.push_settled(ActionResult::SpellCountered {
-                id: *in_stack.get(&id).unwrap(),
+                id: db.stack.entries[id].ty.clone(),
             });
         }
     }

@@ -1,14 +1,14 @@
+use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefield,
+    in_play::CardId,
     in_play::Database,
-    in_play::{self, CardId, OnBattlefield},
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
-    turns::Turn,
 };
 
 #[test]
@@ -25,12 +25,12 @@ fn damages_target() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&mut db, &all_players);
+
+    let mut db = Database::new(all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
@@ -45,14 +45,22 @@ fn damages_target() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     dbg!(&results);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), []);
+    assert_eq!(
+        db.battlefield
+            .battlefields
+            .values()
+            .flat_map(|b| b.iter())
+            .copied()
+            .collect_vec(),
+        []
+    );
 
     Ok(())
 }
@@ -71,12 +79,12 @@ fn damages_target_threshold() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&mut db, &all_players);
+
+    let mut db = Database::new(all_players);
 
     for _ in 0..7 {
         let card = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
@@ -96,14 +104,22 @@ fn damages_target_threshold() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
 
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 5);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), []);
+    assert_eq!(
+        db.battlefield
+            .battlefields
+            .values()
+            .flat_map(|b| b.iter())
+            .copied()
+            .collect_vec(),
+        []
+    );
 
     Ok(())
 }
@@ -122,14 +138,13 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&mut db, &all_players);
-
     let other = all_players.new_player("Player".to_string(), 20);
+
+    let mut db = Database::new(all_players);
 
     for _ in 0..7 {
         let card = CardId::upload(&mut db, &cards, other, "Alpine Grizzly");
@@ -149,14 +164,22 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
 
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(in_play::cards::<OnBattlefield>(&mut db), []);
+    assert_eq!(
+        db.battlefield
+            .battlefields
+            .values()
+            .flat_map(|b| b.iter())
+            .copied()
+            .collect_vec(),
+        []
+    );
 
     Ok(())
 }

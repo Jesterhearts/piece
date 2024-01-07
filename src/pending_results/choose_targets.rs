@@ -11,7 +11,7 @@ use crate::{
         pay_costs::{PayCost, SpendMana},
         Pending, PendingResult, TargetSource,
     },
-    player::{mana_pool::SpendReason, AllPlayers},
+    player::mana_pool::SpendReason,
     stack::ActiveTarget,
 };
 
@@ -44,7 +44,7 @@ impl ChooseTargets {
         db: &mut Database,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
-        let controller = self.card.controller(db);
+        let controller = db[self.card].controller;
         match &self.target_source {
             TargetSource::Effect(effect) => {
                 let new_targets = effect.valid_targets(db, self.card, controller, already_chosen);
@@ -125,15 +125,15 @@ impl ChooseTargets {
 }
 
 impl PendingResult for ChooseTargets {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         self.valid_targets.is_empty()
     }
 
-    fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.valid_targets
             .iter()
             .enumerate()
-            .map(|(idx, target)| (idx, target.display(db, all_players)))
+            .map(|(idx, target)| (idx, target.display(db)))
             .collect_vec()
     }
 
@@ -148,7 +148,6 @@ impl PendingResult for ChooseTargets {
     fn make_choice(
         &mut self,
         db: &mut Database,
-        _all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut super::PendingResults,
     ) -> bool {
@@ -158,7 +157,7 @@ impl PendingResult for ChooseTargets {
 
                 for target in choices.iter() {
                     if let ActiveTarget::Battlefield { id } = target {
-                        if let Some(ward) = id.ward(db) {
+                        if let Some(ward) = id.faceup_face(db).ward.as_ref() {
                             results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
                                 ward.mana_cost.clone(),
                                 self.card,
@@ -170,7 +169,7 @@ impl PendingResult for ChooseTargets {
 
                 results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {
-                    let player = self.card.controller(db);
+                    let player = db[self.card].controller;
                     match effect_or_aura {
                         TargetSource::Effect(effect) => {
                             effect.push_behavior_with_targets(
@@ -182,9 +181,9 @@ impl PendingResult for ChooseTargets {
                                 results,
                             );
                         }
-                        TargetSource::Aura(aura) => {
+                        TargetSource::Aura(aura_source) => {
                             results.push_settled(ActionResult::ApplyAuraToTarget {
-                                aura,
+                                aura_source,
                                 target: *choices.iter().exactly_one().unwrap(),
                             });
                         }
@@ -193,8 +192,11 @@ impl PendingResult for ChooseTargets {
                     results.chosen_targets.push(choices.clone());
                 }
 
-                if !self.card.apply_individually(db) {
-                    let player = self.card.controller(db);
+                if !{
+                    let this = self.card;
+                    this.faceup_face(db).apply_individually
+                } {
+                    let player = db[self.card].controller;
 
                     let mut effect_or_auras = vec![];
                     results.pending.retain(|p| {
@@ -220,9 +222,9 @@ impl PendingResult for ChooseTargets {
                                         results,
                                     );
                                 }
-                                TargetSource::Aura(aura) => {
+                                TargetSource::Aura(aura_source) => {
                                     results.push_settled(ActionResult::ApplyAuraToTarget {
-                                        aura,
+                                        aura_source,
                                         target: *choices.iter().exactly_one().unwrap(),
                                     })
                                 }

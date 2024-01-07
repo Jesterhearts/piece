@@ -4,7 +4,6 @@ use itertools::Itertools;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::OnBattlefield,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     stack::ActiveTarget,
     types::Type,
@@ -16,7 +15,7 @@ pub(crate) struct TargetCreatureExplores;
 impl EffectBehaviors for TargetCreatureExplores {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -24,7 +23,7 @@ impl EffectBehaviors for TargetCreatureExplores {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -32,19 +31,18 @@ impl EffectBehaviors for TargetCreatureExplores {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        controller
-            .get_cards_in::<OnBattlefield>(db)
-            .into_iter()
+        db.battlefield[controller]
+            .iter()
             .filter(|card| {
                 card.types_intersect(db, &IndexSet::from([Type::Creature]))
                     && card.can_be_targeted(db, controller)
             })
-            .map(|card| ActiveTarget::Battlefield { id: card })
+            .map(|card| ActiveTarget::Battlefield { id: *card })
             .filter(|target| !already_chosen.contains(target))
             .collect_vec()
     }

@@ -1,19 +1,18 @@
 use std::collections::{BTreeMap, HashMap};
 
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 use strum::IntoEnumIterator;
 
 use crate::{
-    in_play::{AbilityId, CardId, Database},
+    in_play::{CardId, Database},
     mana::{Mana, ManaCost, ManaRestriction},
     protogen,
     types::Type,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut, Component)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct SourcedMana(pub(crate) HashMap<ManaSource, usize>);
 
 #[derive(
@@ -25,11 +24,12 @@ pub(crate) struct SourcedMana(pub(crate) HashMap<ManaSource, usize>);
     PartialOrd,
     Ord,
     Hash,
-    bevy_ecs::component::Component,
     strum::AsRefStr,
     strum::EnumIter,
+    Default,
 )]
 pub(crate) enum ManaSource {
+    #[default]
     Any,
     BarracksOfTheThousand,
     Treasure,
@@ -39,15 +39,15 @@ pub(crate) enum ManaSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SpendReason {
     Casting(CardId),
-    Activating(AbilityId),
+    Activating(CardId),
     Other,
 }
 
 impl SpendReason {
-    fn card(&self, db: &Database) -> Option<CardId> {
+    fn card(&self) -> Option<CardId> {
         match self {
             SpendReason::Casting(card) => Some(*card),
-            SpendReason::Activating(ability) => Some(ability.source(db)),
+            SpendReason::Activating(source) => Some(*source),
             SpendReason::Other => None,
         }
     }
@@ -164,7 +164,7 @@ impl ManaPool {
         }
 
         if let Some(sourced) = sourced {
-            let card = reason.card(db);
+            let card = reason.card();
 
             if card.is_none() {
                 let restricted = sourced.get_mut(&ManaRestriction::None);
@@ -325,7 +325,7 @@ impl ManaPool {
                     return true;
                 }
 
-                if let Some(card) = reason.card(db) {
+                if let Some(card) = reason.card() {
                     card.types_intersect(db, &IndexSet::from([Type::Artifact]))
                 } else {
                     false
@@ -358,7 +358,7 @@ fn has_available_mana(
         .filter_map(|(restriction, count)| {
             if *restriction == ManaRestriction::None {
                 Some(count)
-            } else if let Some(card) = reason.card(db) {
+            } else if let Some(card) = reason.card() {
                 if card.types_intersect(db, &IndexSet::from([Type::Artifact])) {
                     Some(count)
                 } else {

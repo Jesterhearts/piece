@@ -4,14 +4,15 @@ use egui::{
 use itertools::Itertools;
 
 use crate::{
-    in_play::{CardId, CounterId, Database, InHand},
+    in_play::{CardId, Database},
     pending_results::PendingResults,
-    player::{AllPlayers, Owner},
+    player::Owner,
+    targets::Location,
     turns::Turn,
 };
 
 pub struct Card<'db> {
-    pub db: &'db mut Database,
+    pub db: &'db Database,
     pub card: CardId,
     pub title: Option<String>,
 }
@@ -24,52 +25,73 @@ impl Widget for Card<'_> {
             ui.style_mut().visuals.widgets.inactive = ui.style().visuals.widgets.noninteractive;
         }
 
-        let source = self
-            .card
-            .cloning(self.db)
-            .map(CardId::from)
-            .unwrap_or(self.card);
-
-        let types = source.types(self.db);
-        let subtypes = source.subtypes(self.db);
-
-        let typeline = std::iter::once(types.iter().map(|ty| ty.as_ref()).join(" "))
-            .chain(
-                std::iter::once(subtypes.iter().map(|ty| ty.as_ref()).join(" "))
+        let source = &self.db[self.card];
+        let typeline =
+            std::iter::once(source.modified_types.iter().map(|ty| ty.as_ref()).join(" "))
+                .chain(
+                    std::iter::once(
+                        source
+                            .modified_subtypes
+                            .iter()
+                            .map(|ty| ty.as_ref())
+                            .join(" "),
+                    )
                     .filter(|s| !s.is_empty()),
-            )
-            .join(" - ");
+                )
+                .join(" - ");
 
-        let oracle_text = source.oracle_text(self.db);
+        let oracle_text = self.card.faceup_face(self.db).oracle_text.clone();
         let has_oracle_text = !oracle_text.is_empty();
-        let etb_text = source
-            .etb_abilities(self.db)
-            .into_iter()
-            .map(|ability| ability.text(self.db))
-            .filter(|text| !text.is_empty())
-            .collect_vec();
 
-        let has_etb_text = !etb_text.is_empty();
-        let effects_text = source
-            .effects(self.db)
-            .into_iter()
-            .map(|effect| effect.oracle_text)
+        let etb_text = source
+            .modified_etb_abilities
+            .iter()
+            .map(|ability| &ability.oracle_text)
             .filter(|text| !text.is_empty())
+            .cloned()
+            .collect_vec();
+        let has_etb_text = !etb_text.is_empty();
+
+        let effects_text = self
+            .card
+            .faceup_face(self.db)
+            .effects
+            .iter()
+            .map(|effect| &effect.oracle_text)
+            .filter(|text| !text.is_empty())
+            .cloned()
             .collect_vec();
         let has_effects_text = !effects_text.is_empty();
-        let triggers = source.triggers_text(self.db);
+
+        let triggers = source
+            .modified_triggers
+            .values()
+            .flat_map(|triggers| triggers.iter())
+            .map(|trigger| &trigger.oracle_text)
+            .filter(|text| !text.is_empty())
+            .cloned()
+            .collect_vec();
         let has_triggers = !triggers.is_empty();
-        let abilities = source.abilities_text(self.db);
+
+        let abilities = source
+            .abilities()
+            .iter()
+            .map(|ability| ability.text())
+            .filter(|text| !text.is_empty())
+            .collect_vec();
         let has_abilities = !abilities.is_empty();
+
         let keywords = source
-            .keywords(self.db)
+            .modified_keywords
             .keys()
             .map(|k| k.as_ref())
             .join(", ");
         let has_keywords = !keywords.is_empty();
-        let modified_by = source.modified_by_text(self.db);
+
+        let modified_by = self.card.modified_by_text(self.db);
         let is_modified = !modified_by.is_empty();
-        let counters = CounterId::counter_text_on(self.db, source);
+
+        let counters = source.counter_text_on();
         let has_counters = !counters.is_empty();
 
         let paragraph = std::iter::once(oracle_text)
@@ -82,7 +104,7 @@ impl Widget for Card<'_> {
             .chain(std::iter::once(String::default()).filter(|_| has_triggers))
             .chain(std::iter::once(keywords).filter(|_| has_keywords))
             .chain(std::iter::once(String::default()).filter(|_| has_keywords))
-            .chain(std::iter::once(abilities))
+            .chain(abilities)
             .chain(std::iter::once(String::default()).filter(|_| has_abilities))
             .chain(std::iter::once("Modified by:".to_string()).filter(|_| is_modified))
             .chain(modified_by)
@@ -263,7 +285,7 @@ impl Widget for Graveyard<'_> {
 }
 
 pub struct Hand<'db, 'clicked> {
-    pub db: &'db mut Database,
+    pub db: &'db Database,
     pub owner: Owner,
     pub cards: Vec<CardId>,
     pub left_clicked: &'clicked mut Option<usize>,
@@ -298,7 +320,7 @@ impl Widget for Hand<'_, '_> {
 }
 
 pub struct Battlefield<'db, 'clicked> {
-    pub db: &'db mut Database,
+    pub db: &'db Database,
     pub player: Owner,
     pub cards: Vec<(usize, CardId)>,
     pub left_clicked: &'clicked mut Option<usize>,
@@ -316,9 +338,14 @@ impl Widget for Battlefield<'_, '_> {
                     Layout::left_to_right(egui::Align::Min).with_main_wrap(true),
                     |ui| {
                         self.cards.sort_by_cached_key(|(_, card)| {
-                            let mut types = card.types(self.db).into_iter().collect_vec();
+                            let mut types =
+                                self.db[*card].modified_types.iter().copied().collect_vec();
                             types.sort();
-                            let mut subtypes = card.subtypes(self.db).into_iter().collect_vec();
+                            let mut subtypes = self.db[*card]
+                                .modified_subtypes
+                                .iter()
+                                .copied()
+                                .collect_vec();
                             subtypes.sort();
                             (types, subtypes)
                         });
@@ -327,20 +354,25 @@ impl Widget for Battlefield<'_, '_> {
                             .cards
                             .iter()
                             .map(|(_, card)| {
-                                let manifested = card.manifested(self.db);
+                                let manifested = {
+                                    let db = self.db;
+                                    db[*card].manifested
+                                };
 
-                                let index = card.id(self.db);
                                 let name = if manifested {
                                     "Manifested".to_string()
                                 } else {
-                                    card.name(self.db)
+                                    card.name(self.db).clone()
                                 };
 
-                                let cost = card.cost(self.db);
+                                let cost = {
+                                    let db: &Database = self.db;
+                                    &card.faceup_face(db).cost
+                                };
                                 if cost.mana_cost.is_empty() || manifested {
-                                    format!("({}) {}", index, name)
+                                    format!("({}) {}", card, name)
                                 } else {
-                                    format!("({}) {} - {}", index, name, cost.text())
+                                    format!("({}) {} - {}", card, name, cost.text())
                                 }
                             })
                             .collect_vec();
@@ -372,35 +404,33 @@ impl Widget for Battlefield<'_, '_> {
     }
 }
 
-pub struct Actions<'db, 'ap, 't, 'p, 'clicked> {
-    pub db: &'db mut Database,
-    pub all_players: &'ap AllPlayers,
-    pub turn: &'t Turn,
+pub struct Actions<'db, 'p, 'clicked> {
+    pub db: &'db Database,
     pub player: Owner,
     pub card: Option<CardId>,
     pub pending: &'p Option<PendingResults>,
     pub left_clicked: &'clicked mut Option<usize>,
 }
 
-impl Widget for Actions<'_, '_, '_, '_, '_> {
+impl Widget for Actions<'_, '_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let abilities = if let Some(card) = self.card {
-            if card.is_in_location::<InHand>(self.db) && self.turn.can_cast(self.db, card) {
+            if card.is_in_location(self.db, Location::Hand) && Turn::can_cast(self.db, card) {
                 [(0, format!("Play {}", card.name(self.db)))]
                     .into_iter()
                     .chain(
-                        card.activated_abilities(self.db)
+                        self.db[card]
+                            .abilities()
                             .into_iter()
                             .enumerate()
                             .filter_map(|(idx, ability)| {
                                 if ability.can_be_activated(
                                     self.db,
-                                    self.all_players,
-                                    self.turn,
+                                    card,
                                     self.player,
                                     self.pending,
                                 ) {
-                                    Some((idx + 1, ability.text(self.db)))
+                                    Some((idx + 1, ability.text()))
                                 } else {
                                     None
                                 }
@@ -408,18 +438,13 @@ impl Widget for Actions<'_, '_, '_, '_, '_> {
                     )
                     .collect_vec()
             } else {
-                card.activated_abilities(self.db)
+                self.db[card]
+                    .abilities()
                     .into_iter()
                     .enumerate()
                     .filter_map(|(idx, ability)| {
-                        if ability.can_be_activated(
-                            self.db,
-                            self.all_players,
-                            self.turn,
-                            self.player,
-                            self.pending,
-                        ) {
-                            Some((idx, ability.text(self.db)))
+                        if ability.can_be_activated(self.db, card, self.player, self.pending) {
+                            Some((idx, ability.text()))
                         } else {
                             None
                         }

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
 use itertools::Itertools;
 
 use crate::{
@@ -12,7 +11,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone, Default, Component)]
+#[derive(Debug, Clone, Default)]
 pub struct CastingCost {
     pub cost_string: String,
     pub(crate) mana_cost: Vec<ManaCost>,
@@ -192,7 +191,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Ward {
     pub(crate) mana_cost: Vec<ManaCost>,
 }
@@ -240,7 +239,7 @@ impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestr
     }
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) struct AbilityCost {
     pub(crate) mana_cost: Vec<ManaCost>,
     pub(crate) tap: bool,
@@ -309,7 +308,7 @@ impl From<&protogen::cost::cost_reducer::When> for ReduceWhen {
     }
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) struct CostReducer {
     pub(crate) when: ReduceWhen,
     pub(crate) reduction: ManaCost,

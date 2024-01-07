@@ -30,7 +30,7 @@ impl TryFrom<&protogen::effects::IfThenElse> for IfThenElse {
 impl EffectBehaviors for IfThenElse {
     fn needs_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
         if source.passes_restrictions(db, source, &self.if_) {
@@ -42,7 +42,7 @@ impl EffectBehaviors for IfThenElse {
 
     fn wants_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
         if source.passes_restrictions(db, source, &self.if_) {
@@ -54,7 +54,7 @@ impl EffectBehaviors for IfThenElse {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,

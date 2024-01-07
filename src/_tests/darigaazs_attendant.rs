@@ -9,7 +9,7 @@ use crate::{
     mana::{Mana, ManaRestriction},
     pending_results::ResolutionResult,
     player::{mana_pool::ManaSource, AllPlayers},
-    turns::{Phase, Turn},
+    turns::Phase,
 };
 
 #[test]
@@ -26,10 +26,10 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
+
     *all_players[player]
         .mana_pool
         .sourced
@@ -39,32 +39,23 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
         .or_default()
         .entry(ManaRestriction::None)
         .or_default() = 1;
+    let mut db = Database::new(all_players);
 
-    let mut turn = Turn::new(&mut db, &all_players);
-    turn.set_phase(Phase::PreCombatMainPhase);
-
+    db.turn.set_phase(Phase::PreCombatMainPhase);
     let attendant = CardId::upload(&mut db, &cards, player, "Darigaaz's Attendant");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, attendant, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(
-        &mut db,
-        &mut all_players,
-        &turn,
-        &None,
-        player,
-        attendant,
-        0,
-    );
+    let mut results = Battlefield::activate_ability(&mut db, &None, player, attendant, 0);
 
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
             (0, Mana::White, ManaSource::Any, ManaRestriction::None),
             (0, Mana::Blue, ManaSource::Any, ManaRestriction::None),

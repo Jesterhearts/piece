@@ -5,7 +5,6 @@ use crate::{
     battlefield::ActionResult,
     in_play::Database,
     pending_results::{PendingResult, PendingResults},
-    player::AllPlayers,
     stack::StackEntry,
 };
 
@@ -24,11 +23,11 @@ impl OrganizingStack {
 }
 
 impl PendingResult for OrganizingStack {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database, _all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.entries
             .iter()
             .enumerate()
@@ -48,7 +47,6 @@ impl PendingResult for OrganizingStack {
     fn make_choice(
         &mut self,
         _db: &mut Database,
-        _all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut PendingResults,
     ) -> bool {

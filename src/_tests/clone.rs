@@ -1,13 +1,9 @@
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
-    in_play::CardId,
-    in_play::{self, Database, InGraveyard},
-    load_cards,
-    pending_results::ResolutionResult,
-    player::AllPlayers,
-    turns::Turn,
+    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    pending_results::ResolutionResult, player::AllPlayers,
 };
 
 #[test]
@@ -24,26 +20,26 @@ fn etb_clones() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&mut db, &all_players);
+
+    let mut db = Database::new(all_players);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, None);
 
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(clone.cloning(&db), Some(creature.into()));
+    assert_eq!(db[clone].cloned_id, Some(creature));
 
     Ok(())
 }
@@ -62,23 +58,23 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&mut db, &all_players);
+
+    let mut db = Database::new(all_players);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Battlefield::check_sba(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(in_play::cards::<InGraveyard>(&mut db), [clone]);
+    assert_eq!(db.graveyard[player], IndexSet::from([clone]));
 
     Ok(())
 }

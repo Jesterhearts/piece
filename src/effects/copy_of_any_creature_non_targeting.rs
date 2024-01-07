@@ -7,9 +7,9 @@ use tracing::Level;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::{self, OnBattlefield},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     stack::ActiveTarget,
+    targets::Location,
     types::Type,
 };
 
@@ -19,7 +19,7 @@ pub(crate) struct CopyOfAnyCreatureNonTargeting;
 impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -27,7 +27,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -35,18 +35,18 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
-        source: in_play::CardId,
+        db: &crate::in_play::Database,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         already_chosen: &HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for creature in in_play::all_cards(db).into_iter().filter(|card| {
-            card.passes_restrictions(db, source, &source.restrictions(db))
-                && card.is_in_location::<OnBattlefield>(db)
+        for creature in db.cards.keys().filter(|card| {
+            card.passes_restrictions(db, source, &card.faceup_face(db).restrictions)
+                && card.is_in_location(db, Location::Battlefield)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
         }) {
-            let target = ActiveTarget::Battlefield { id: creature };
+            let target = ActiveTarget::Battlefield { id: *creature };
             if already_chosen.contains(&target) {
                 continue;
             }

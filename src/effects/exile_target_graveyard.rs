@@ -4,7 +4,6 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    player::AllPlayers,
     stack::ActiveTarget,
 };
 
@@ -14,7 +13,7 @@ pub(crate) struct ExileTargetGraveyard;
 impl EffectBehaviors for ExileTargetGraveyard {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -22,7 +21,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -30,12 +29,13 @@ impl EffectBehaviors for ExileTargetGraveyard {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        AllPlayers::all_players_in_db(db)
+        db.all_players
+            .all_players()
             .into_iter()
             .map(|player| ActiveTarget::Player { id: player })
             .collect_vec()

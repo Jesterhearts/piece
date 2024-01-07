@@ -6,7 +6,6 @@ use crate::{
     effects::Destination,
     in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
-    player::AllPlayers,
 };
 
 #[derive(Debug)]
@@ -77,15 +76,15 @@ impl ExamineCards {
 }
 
 impl PendingResult for ExamineCards {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         (self.placing < self.destinations.len() - 1)
             || (*self.destinations.get_index(self.placing).unwrap().1 >= self.cards.len())
     }
 
-    fn options(&self, db: &mut Database, _all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.cards
             .iter()
-            .map(|card| card.name(db))
+            .map(|card| card.name(db).clone())
             .enumerate()
             .collect_vec()
     }
@@ -109,7 +108,6 @@ impl PendingResult for ExamineCards {
     fn make_choice(
         &mut self,
         _db: &mut Database,
-        _all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut PendingResults,
     ) -> bool {

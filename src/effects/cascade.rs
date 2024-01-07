@@ -6,7 +6,7 @@ pub(crate) struct Cascade;
 impl EffectBehaviors for Cascade {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -14,7 +14,7 @@ impl EffectBehaviors for Cascade {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -29,7 +29,7 @@ impl EffectBehaviors for Cascade {
     ) {
         results.push_settled(ActionResult::Cascade {
             source,
-            cascading: source.cost(db).cmc(),
+            cascading: source.faceup_face(db).cost.cmc(),
             player: controller,
         });
     }
@@ -43,8 +43,8 @@ impl EffectBehaviors for Cascade {
     ) {
         results.push_settled(ActionResult::Cascade {
             source,
-            cascading: source.cost(db).cmc(),
-            player: source.controller(db),
+            cascading: source.faceup_face(db).cost.cmc(),
+            player: db[source].controller,
         })
     }
 
@@ -59,7 +59,7 @@ impl EffectBehaviors for Cascade {
     ) {
         results.push_settled(ActionResult::Cascade {
             source,
-            cascading: source.cost(db).cmc(),
+            cascading: source.faceup_face(db).cost.cmc(),
             player: controller,
         })
     }

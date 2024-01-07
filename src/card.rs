@@ -2,12 +2,9 @@ use std::{collections::HashSet, str::FromStr};
 
 use aho_corasick::AhoCorasick;
 use anyhow::{anyhow, Context};
-use bevy_ecs::component::Component;
 use counter::Counter;
-use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
@@ -16,30 +13,15 @@ use crate::{
         target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
         Mode, ReplacementEffect, Token, TokenCreature,
     },
-    in_play::{AbilityId, CardId, TriggerId},
     mana::ManaCost,
-    newtype_enum::newtype_enum,
     protogen,
     targets::Restriction,
     types::{parse_typeline, Subtype, Type},
 };
 
-#[derive(Debug, Clone, Component)]
-pub(crate) struct BackFace(pub(crate) CardId);
-
-#[derive(Debug, Clone, Component)]
-pub(crate) struct FrontFace(pub(crate) CardId);
-
-#[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub(crate) struct Keywords(pub(crate) Counter<Keyword>);
-
-#[derive(Debug, Clone, Deref, DerefMut, Component)]
-pub(crate) struct ModifiedKeywords(pub(crate) Counter<Keyword>);
-
-#[rustfmt::skip]
-newtype_enum!{
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, bevy_ecs::component::Component)]
-#[derive(strum::EnumIter, strum::EnumString, strum::AsRefStr)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter, strum::EnumString, strum::AsRefStr,
+)]
 #[strum(ascii_case_insensitive)]
 pub enum Keyword {
     Absorb,
@@ -209,37 +191,6 @@ pub enum Keyword {
     Ward,
     Wither,
 }
-}
-
-impl Keyword {
-    pub(crate) fn all() -> HashSet<Keyword> {
-        Keyword::iter().collect()
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct PaidX(pub(crate) usize);
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct ApplyIndividually;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct Revealed;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
-pub(crate) struct CannotBeCountered;
-
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub(crate) struct Colors(pub(crate) HashSet<Color>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub(crate) struct ModifiedColors(pub(crate) HashSet<Color>);
-
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
-pub(crate) struct AddColors(pub(crate) HashSet<Color>);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-pub(crate) struct RemoveAllColors;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum Color {
@@ -276,93 +227,19 @@ impl From<&protogen::color::color::Color> for Color {
     }
 }
 
-#[derive(Debug, Clone, Component)]
-pub(crate) enum StaticAbilityModifier {
-    RemoveAll,
-    AddAll(Vec<StaticAbility>),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-pub(crate) enum ActivatedAbilityModifier {
-    RemoveAll,
-    Add(AbilityId),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
-#[allow(unused)]
-pub(crate) enum TriggeredAbilityModifier {
-    RemoveAll,
-    Add(TriggerId),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
-#[allow(unused)]
-pub(crate) enum EtbAbilityModifier {
-    RemoveAll,
-    Add(AbilityId),
-}
-
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) enum BasePowerType {
     Static(i32),
     Dynamic(DynamicPowerToughness),
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) enum BaseToughnessType {
     Static(i32),
     Dynamic(DynamicPowerToughness),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct Name(pub(crate) String);
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct OracleText(pub(crate) String);
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
-)]
-pub(crate) struct MarkedDamage(pub(crate) i32);
-
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub(crate) struct BasePower(pub(crate) BasePowerType);
-
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub(crate) struct ModifiedBasePower(pub(crate) BasePowerType);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct BasePowerModifier(pub(crate) i32);
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
-)]
-pub(crate) struct AddPower(pub(crate) i32);
-
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub(crate) struct BaseToughness(pub(crate) BaseToughnessType);
-
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
-pub(crate) struct ModifiedBaseToughness(pub(crate) BaseToughnessType);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut)]
-pub(crate) struct BaseToughnessModifier(pub(crate) i32);
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Deref, DerefMut, Default,
-)]
-pub(crate) struct AddToughness(pub(crate) i32);
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct EtbTapped;
-
-#[derive(Debug, Clone, Component)]
-pub(crate) enum ModifyKeywords {
-    Remove(HashSet<Keyword>),
-    Add(Counter<Keyword>),
-}
-
-#[derive(Debug, Clone, Default, Component)]
+#[derive(Debug, Clone, Default)]
 pub struct Card {
     pub name: String,
     pub types: IndexSet<Type>,

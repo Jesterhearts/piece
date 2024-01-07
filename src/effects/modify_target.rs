@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     battlefield::ActionResult,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
-    in_play::{self, target_from_location, Database, ModifierId},
+    in_play::{target_from_location, Database, ModifierId},
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
     protogen,
@@ -25,7 +25,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for ModifyTarget {
 impl EffectBehaviors for ModifyTarget {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -33,7 +33,7 @@ impl EffectBehaviors for ModifyTarget {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -41,18 +41,18 @@ impl EffectBehaviors for ModifyTarget {
 
     fn valid_targets(
         &self,
-        db: &mut Database,
+        db: &Database,
         source: crate::in_play::CardId,
         controller: Controller,
         already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
+        for card in db.cards.keys() {
             if card.can_be_targeted(db, controller)
-                && card.passes_restrictions(db, source, &source.restrictions(db))
+                && card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.passes_restrictions(db, source, &self.restrictions)
             {
-                let target = target_from_location(db, card);
+                let target = target_from_location(db, *card);
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }
@@ -102,11 +102,23 @@ impl EffectBehaviors for ModifyTarget {
 
         let modifier = match self.duration {
             EffectDuration::UntilTargetLeavesBattlefield => ModifierId::upload_temporary_modifier(
-                db,
+                &mut db.modifiers,
                 final_targets.iter().exactly_one().unwrap().id().unwrap(),
-                self,
+                BattlefieldModifier {
+                    modifier: self.modifier.clone(),
+                    duration: self.duration,
+                    restrictions: vec![],
+                },
             ),
-            _ => ModifierId::upload_temporary_modifier(db, source, self),
+            _ => ModifierId::upload_temporary_modifier(
+                &mut db.modifiers,
+                source,
+                BattlefieldModifier {
+                    modifier: self.modifier.clone(),
+                    duration: self.duration,
+                    restrictions: vec![],
+                },
+            ),
         };
 
         results.push_settled(ActionResult::ModifyCreatures {

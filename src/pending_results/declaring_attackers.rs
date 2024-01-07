@@ -5,7 +5,7 @@ use crate::{
     battlefield::ActionResult,
     in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
-    player::{AllPlayers, Owner},
+    player::Owner,
 };
 
 #[derive(Debug)]
@@ -17,22 +17,22 @@ pub(crate) struct DeclaringAttackers {
 }
 
 impl PendingResult for DeclaringAttackers {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         if self.choices.len() == self.targets.len() {
             self.candidates
                 .iter()
-                .map(|card| card.name(db))
+                .map(|card| card.name(db).clone())
                 .enumerate()
                 .filter(|(idx, _)| !self.choices.contains(idx))
                 .collect_vec()
         } else {
             self.valid_targets
                 .iter()
-                .map(|player| all_players[*player].name.clone())
+                .map(|player| db.all_players[*player].name.clone())
                 .enumerate()
                 .collect_vec()
         }
@@ -49,7 +49,6 @@ impl PendingResult for DeclaringAttackers {
     fn make_choice(
         &mut self,
         _db: &mut Database,
-        _all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut PendingResults,
     ) -> bool {

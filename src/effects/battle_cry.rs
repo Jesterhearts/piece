@@ -14,7 +14,7 @@ pub(crate) struct BattleCry;
 impl EffectBehaviors for BattleCry {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -22,7 +22,7 @@ impl EffectBehaviors for BattleCry {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -35,29 +35,29 @@ impl EffectBehaviors for BattleCry {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::AddModifier {
-            modifier: ModifierId::upload_temporary_modifier(
-                db,
-                source,
-                &BattlefieldModifier {
-                    modifier: ModifyBattlefield {
-                        add_power: Some(1),
-                        entire_battlefield: true,
-                        ..Default::default()
-                    },
-                    duration: EffectDuration::UntilEndOfTurn,
-                    restrictions: vec![
-                        Restriction::Controller(ControllerRestriction::Self_),
-                        Restriction::Attacking,
-                        Restriction::NotSelf,
-                        Restriction::OfType {
-                            types: IndexSet::from([Type::Creature]),
-                            subtypes: Default::default(),
-                        },
-                    ],
+        let modifier = ModifierId::upload_temporary_modifier(
+            &mut db.modifiers,
+            source,
+            BattlefieldModifier {
+                modifier: ModifyBattlefield {
+                    add_power: Some(1),
+                    entire_battlefield: true,
+                    ..Default::default()
                 },
-            ),
-        })
+                duration: EffectDuration::UntilEndOfTurn,
+                restrictions: vec![
+                    Restriction::Controller(ControllerRestriction::Self_),
+                    Restriction::Attacking,
+                    Restriction::NotSelf,
+                    Restriction::OfType {
+                        types: IndexSet::from([Type::Creature]),
+                        subtypes: Default::default(),
+                    },
+                ],
+            },
+        );
+
+        results.push_settled(ActionResult::AddModifier { modifier });
     }
 
     fn push_behavior_with_targets(

@@ -1,13 +1,10 @@
 use std::{
+    cell::OnceCell,
     collections::{HashMap, HashSet},
+    rc::Rc,
     sync::atomic::Ordering,
 };
 
-use bevy_ecs::{
-    component::Component,
-    entity::Entity,
-    query::{With, Without},
-};
 use derive_more::From;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -15,202 +12,336 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::{
-        Ability, ActivatedAbilities, AddKeywordsIf, ETBAbilities, GainMana,
-        ModifiedActivatedAbilities, ModifiedETBAbilities, ModifiedStaticAbilities,
-        ModifiedTriggers, StaticAbilities, StaticAbility, Triggers,
+        Ability, ActivatedAbility, AddKeywordsIf, GainMana, GainManaAbility, StaticAbility,
+        TriggeredAbility,
     },
     battlefield::Battlefield,
-    card::{
-        keyword::SplitSecond, ActivatedAbilityModifier, AddPower, AddToughness, ApplyIndividually,
-        BackFace, BasePower, BasePowerType, BaseToughness, BaseToughnessType, CannotBeCountered,
-        Card, Color, Colors, EtbAbilityModifier, EtbTapped, FrontFace, Keyword, Keywords,
-        MarkedDamage, ModifiedBasePower, ModifiedBaseToughness, ModifiedColors, ModifiedKeywords,
-        ModifyKeywords, Name, OracleText, PaidX, Revealed, StaticAbilityModifier,
-        TriggeredAbilityModifier,
-    },
-    cost::{CastingCost, CostReducer, Ward},
-    counters::{counter, Counter},
-    effects::{
-        effect_duration::{self, UntilEndOfTurn, UntilSourceLeavesBattlefield, UntilUntapped},
-        AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, Effects, Modes,
-        ReplacementEffects, Token,
-    },
-    in_play::{
-        self, cast_from, current_turn, descend, exile_reason, just_cast, life_gained_this_turn,
-        number_of_attackers_this_turn, times_descended_this_turn, AbilityId, Active, Attacking,
-        AuraId, CastFrom, Chosen, CounterId, CurrentTurn, Database, EnteredBattlefieldTurn,
-        EntireBattlefield, ExileReason, ExiledWith, FaceDown, Global, InExile, InGraveyard, InHand,
-        InLibrary, InStack, IsToken, LeftBattlefieldTurn, Manifested, ModifierId, ModifierSeq,
-        Modifiers, Modifying, OnBattlefield, ReplacementEffectId, Tapped, Transformed, TriggerId,
-        UniqueId, NEXT_BATTLEFIELD_SEQ, NEXT_GRAVEYARD_SEQ, NEXT_HAND_SEQ, NEXT_STACK_SEQ,
-    },
-    log::{LeaveReason, Log, LogId},
+    card::{replace_symbols, BasePowerType, BaseToughnessType, Card, Color, Keyword},
+    cost::{AbilityCost, CastingCost},
+    counters::Counter,
+    effects::{AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, Token},
+    in_play::{CastFrom, Database, ExileReason, ModifierId, NEXT_CARD_ID},
+    log::{LeaveReason, Log, LogEntry, LogId},
+    mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
-    player::{
-        mana_pool::{ManaSource, SourcedMana},
-        Controller, Owner,
-    },
-    stack::{self, ActiveTarget, Settled, Stack, Targets},
-    targets::{self, Cmc, Comparison, Dynamic, Restriction, Restrictions},
-    triggers::trigger_source,
-    types::{ModifiedSubtypes, ModifiedTypes, Subtype, Subtypes, Type, Types},
+    player::{mana_pool::ManaSource, Controller, Owner},
+    stack::{ActiveTarget, Stack},
+    targets::{self, Cmc, Comparison, Dynamic, Location, Restriction},
+    triggers::TriggerSource,
+    types::{Subtype, Type},
     Cards,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
-pub struct CardId(pub(super) Entity);
+type MakeLandAbility = Rc<dyn Fn() -> GainManaAbility>;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Component)]
-pub(crate) struct Cloning(pub(super) Entity);
+thread_local! {
+    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, MakeLandAbility>> = OnceCell::new();
+}
 
-impl From<Cloning> for CardId {
-    fn from(value: Cloning) -> Self {
-        Self(value.0)
+fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
+    INIT_LAND_ABILITIES.with(|init| {
+        init.get_or_init(|| {
+            let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
+
+            let add = Rc::new(|| GainManaAbility {
+                cost: AbilityCost {
+                    mana_cost: vec![],
+                    tap: true,
+                    additional_cost: vec![],
+                    restrictions: vec![],
+                },
+                gain: GainMana::Specific {
+                    gains: vec![Mana::White],
+                },
+                mana_restriction: ManaRestriction::None,
+                mana_source: None,
+                oracle_text: replace_symbols("{T}: Add {W}."),
+            });
+            abilities.insert(Subtype::Plains, add);
+
+            let add = Rc::new(|| GainManaAbility {
+                cost: AbilityCost {
+                    mana_cost: vec![],
+                    tap: true,
+                    additional_cost: vec![],
+                    restrictions: vec![],
+                },
+                gain: GainMana::Specific {
+                    gains: vec![Mana::Blue],
+                },
+                mana_restriction: ManaRestriction::None,
+                mana_source: None,
+                oracle_text: replace_symbols("{T}: Add {U}."),
+            });
+            abilities.insert(Subtype::Island, add);
+
+            let add = Rc::new(|| GainManaAbility {
+                cost: AbilityCost {
+                    mana_cost: vec![],
+                    tap: true,
+                    additional_cost: vec![],
+                    restrictions: vec![],
+                },
+                gain: GainMana::Specific {
+                    gains: vec![Mana::Black],
+                },
+                mana_restriction: ManaRestriction::None,
+                mana_source: None,
+                oracle_text: replace_symbols("{T}: Add {B}."),
+            });
+            abilities.insert(Subtype::Swamp, add);
+
+            let add = Rc::new(|| GainManaAbility {
+                cost: AbilityCost {
+                    mana_cost: vec![],
+                    tap: true,
+                    additional_cost: vec![],
+                    restrictions: vec![],
+                },
+                gain: GainMana::Specific {
+                    gains: vec![Mana::Red],
+                },
+                mana_restriction: ManaRestriction::None,
+                mana_source: None,
+                oracle_text: replace_symbols("{T}: Add {R}."),
+            });
+            abilities.insert(Subtype::Mountain, add);
+
+            let add = Rc::new(|| GainManaAbility {
+                cost: AbilityCost {
+                    mana_cost: vec![],
+                    tap: true,
+                    additional_cost: vec![],
+                    restrictions: vec![],
+                },
+                gain: GainMana::Specific {
+                    gains: vec![Mana::Green],
+                },
+                mana_restriction: ManaRestriction::None,
+                mana_source: None,
+                oracle_text: replace_symbols("{T}: Add {G}."),
+            });
+            abilities.insert(Subtype::Forest, add);
+
+            abilities
+        })
+        .clone()
+    })
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
+pub struct CardId(usize);
+
+impl std::fmt::Display for CardId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
-impl From<CardId> for Cloning {
-    fn from(value: CardId) -> Self {
-        Self(value.0)
-    }
+#[derive(Debug, Default)]
+pub struct CardInPlay {
+    pub(crate) card: Card,
+    pub(crate) cloning: Option<Card>,
+    pub(crate) cloned_id: Option<CardId>,
+
+    pub(crate) owner: Owner,
+    pub(crate) controller: Controller,
+
+    pub(crate) entered_battlefield_turn: Option<usize>,
+    pub(crate) left_battlefield_turn: Option<usize>,
+
+    pub(crate) cast_from: Option<CastFrom>,
+
+    pub(crate) exiled_with: Option<CardId>,
+    pub(crate) exile_reason: Option<ExileReason>,
+    pub(crate) exile_duration: Option<EffectDuration>,
+
+    pub(crate) sourced_mana: HashMap<ManaSource, usize>,
+
+    pub(crate) x_is: usize,
+
+    pub(crate) enchanting: Option<CardId>,
+    pub(crate) revealed: bool,
+    pub(crate) tapped: bool,
+    pub(crate) attacking: Option<Owner>,
+    pub manifested: bool,
+    pub(crate) facedown: bool,
+    pub(crate) transformed: bool,
+    pub(crate) chosen: bool,
+    pub(crate) token: bool,
+
+    pub(crate) owned_modifiers: Vec<ModifierId>,
+
+    pub(crate) modified_name: String,
+    pub(crate) modified_cost: CastingCost,
+    pub(crate) modified_base_power: Option<BasePowerType>,
+    pub(crate) modified_base_toughness: Option<BaseToughnessType>,
+    pub(crate) add_power: i32,
+    pub(crate) add_toughness: i32,
+    pub(crate) modified_types: IndexSet<Type>,
+    pub(crate) modified_subtypes: IndexSet<Subtype>,
+    pub(crate) modified_colors: HashSet<Color>,
+    pub(crate) modified_keywords: ::counter::Counter<Keyword>,
+    pub(crate) modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
+    pub(crate) modified_etb_abilities: Vec<AnyEffect>,
+    pub(crate) modified_static_abilities: Vec<StaticAbility>,
+    pub(crate) modified_activated_abilities: Vec<ActivatedAbility>,
+    pub(crate) modified_mana_abilities: Vec<GainManaAbility>,
+
+    pub(crate) marked_damage: i32,
+
+    pub(crate) counters: HashMap<Counter, usize>,
 }
 
-impl PartialEq<CardId> for Cloning {
-    fn eq(&self, other: &CardId) -> bool {
-        self.0 == other.0
+impl CardInPlay {
+    fn reset(&mut self) {
+        let mut card = Card::default();
+        std::mem::swap(&mut card, &mut self.card);
+        let owner = self.owner;
+
+        *self = Self {
+            card,
+            owner,
+            controller: owner.into(),
+            ..Default::default()
+        };
+    }
+
+    pub fn abilities(&self) -> Vec<Ability> {
+        self.modified_mana_abilities
+            .iter()
+            .map(|ability| Ability::Mana(ability.clone()))
+            .chain(
+                self.modified_activated_abilities
+                    .iter()
+                    .map(|ability| Ability::Activated(ability.clone())),
+            )
+            .collect_vec()
+    }
+
+    pub(crate) fn counter_text_on(&self) -> Vec<String> {
+        let mut results = vec![];
+
+        for counter in Counter::iter() {
+            let amount = self.counters.get(&counter).copied().unwrap_or_default();
+            if amount > 0 {
+                results.push(match counter {
+                    Counter::Charge => format!("Charge x{}", amount),
+                    Counter::Net => format!("Net x{}", amount),
+                    Counter::P1P1 => format!("+1/+1 x{}", amount),
+                    Counter::M1M1 => format!("-1/-1 x{}", amount),
+                    Counter::Any => format!("{} total counters", amount),
+                });
+            }
+        }
+
+        results
     }
 }
 
 impl CardId {
-    pub fn id(self, db: &Database) -> usize {
-        db.get::<UniqueId>(self.0).unwrap().0
+    pub fn new() -> Self {
+        Self(NEXT_CARD_ID.fetch_add(1, Ordering::Relaxed))
     }
 
-    pub fn is_in_location<Location: Component + Ord>(self, db: &Database) -> bool {
-        db.get::<Location>(self.0).is_some()
+    pub fn upload(db: &mut Database, cards: &Cards, player: Owner, card: &str) -> CardId {
+        let card = cards.get(card).expect("Invalid card name");
+        let id = Self::new();
+        db.cards.insert(
+            id,
+            CardInPlay {
+                card: card.clone(),
+                controller: player.into(),
+                owner: player,
+                ..Default::default()
+            },
+        );
+
+        id
     }
 
-    pub(crate) fn is_token(self, db: &Database) -> bool {
-        db.get::<IsToken>(self.0).is_some()
+    pub(crate) fn upload_token(db: &mut Database, player: Owner, token: Token) -> CardId {
+        let id = Self::new();
+        db.cards.insert(
+            id,
+            CardInPlay {
+                card: token.into(),
+                controller: player.into(),
+                owner: player,
+                ..Default::default()
+            },
+        );
+
+        id
     }
 
-    pub(crate) fn facedown(self, db: &Database) -> bool {
-        db.get::<FaceDown>(self.0).is_some()
-    }
-
-    pub(crate) fn transformed(self, db: &Database) -> bool {
-        db.get::<Transformed>(self.0).is_some()
+    pub fn is_in_location(self, db: &Database, location: Location) -> bool {
+        match location {
+            Location::Battlefield => db.battlefield[db[self].controller].contains(&self),
+            Location::Graveyard => db.graveyard[db[self].owner].contains(&self),
+            Location::Exile => db.exile[db[self].owner].contains(&self),
+            Location::Library => db.all_players[db[self].owner].library.cards.contains(&self),
+            Location::Hand => db.hand[db[self].owner].contains(&self),
+            Location::Stack => db.stack.contains(self),
+        }
     }
 
     pub(crate) fn transform(self, db: &mut Database) {
-        let front_face = self.faceup_face(db);
-        let back_face = self.facedown_face(db);
-        for counter in Counter::iter() {
-            let count = CounterId::counters_on(db, front_face, counter);
-            CounterId::add_counters(db, back_face, counter, count);
-            CounterId::remove_counters(db, front_face, counter, count);
-        }
+        db[self].facedown = !db[self].facedown;
+        db[self].transformed = !db[self].transformed;
+    }
 
-        for modifier in front_face.modifiers(db) {
-            back_face.apply_modifier(db, modifier);
-        }
-
-        front_face.remove_all_modifiers(db);
-
-        let transformed = self.transformed(db);
-        if transformed {
-            db.entity_mut(front_face.0).remove::<Transformed>();
-            db.entity_mut(back_face.0).remove::<Transformed>();
+    pub fn faceup_face(self, db: &Database) -> &Card {
+        if db[self].facedown {
+            db[self].card.back_face.as_deref().unwrap_or(&db[self].card)
         } else {
-            db.entity_mut(front_face.0).insert(Transformed);
-            db.entity_mut(back_face.0).insert(Transformed);
+            &db[self].card
         }
     }
 
-    pub(crate) fn faceup_face(self, db: &Database) -> CardId {
-        let transformed = self.transformed(db);
-        if transformed {
-            db.get::<BackFace>(self.0).map(|b| b.0).unwrap()
-        } else {
-            db.get::<FrontFace>(self.0).map(|f| f.0).unwrap_or(self)
-        }
+    pub(crate) fn entered_battlefield_this_turn(
+        db: &Database,
+    ) -> impl Iterator<Item = CardId> + '_ {
+        db.cards.iter().filter_map(|(id, card)| {
+            if card.entered_battlefield_turn == Some(db.turn.turn_count) {
+                Some(*id)
+            } else {
+                None
+            }
+        })
     }
 
-    pub(crate) fn facedown_face(self, db: &Database) -> CardId {
-        let transformed = self.transformed(db);
-        if transformed {
-            db.get::<FrontFace>(self.0).map(|f| f.0).unwrap()
-        } else {
-            db.get::<BackFace>(self.0).map(|b| b.0).unwrap()
-        }
-    }
-
-    pub(crate) fn entered_battlefield_this_turn(db: &mut Database) -> Vec<CardId> {
-        let current_turn = db.resource::<CurrentTurn>().turn;
-
-        db.query::<(Entity, &EnteredBattlefieldTurn)>()
-            .iter(db)
-            .filter_map(|(e, turn)| {
-                if turn.0 == current_turn {
-                    Some(Self(e))
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
-    }
-
-    pub(crate) fn left_battlefield(self, db: &mut Database, turn_count: usize) {
-        db.entity_mut(self.0)
-            .insert(LeftBattlefieldTurn(turn_count));
-    }
-
-    pub(crate) fn left_battlefield_this_turn(db: &mut Database, turn_count: usize) -> Vec<CardId> {
-        db.query::<(Entity, &LeftBattlefieldTurn)>()
-            .iter(db)
-            .filter_map(|(e, turn)| {
-                if turn.0 == turn_count {
-                    Some(Self(e))
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
+    pub(crate) fn left_battlefield_this_turn(db: &Database) -> impl Iterator<Item = CardId> + '_ {
+        db.cards.iter().filter_map(|(id, card)| {
+            if card.left_battlefield_turn == Some(db.turn.turn_count) {
+                Some(*id)
+            } else {
+                None
+            }
+        })
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
-        if self.is_in_location::<OnBattlefield>(db) {
+        if self.is_in_location(db, Location::Battlefield) {
             Log::left_battlefield(db, LogId::current(), LeaveReason::ReturnedToHand, self);
         }
 
-        if self.is_token(db) {
+        if db[self].token {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            TriggerId::deactivate_all_for_card(db, self);
-            ReplacementEffectId::deactivate_all_for_card(db, self);
-            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
-            self.untap(db);
+            db[self].reset();
+            db.stack.remove(self);
 
-            let owner = self.owner(db);
-            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+            let view = db.owner_view_mut(db[self].owner);
+            view.battlefield.remove(&self);
+            view.graveyard.remove(&self);
+            view.exile.remove(&self);
+            view.library.remove(self);
 
-            db.entity_mut(self.0)
-                .remove::<InLibrary>()
-                .remove::<InHand>()
-                .remove::<InStack>()
-                .remove::<OnBattlefield>()
-                .remove::<InGraveyard>()
-                .remove::<InExile>()
-                .remove::<cast_from::Hand>()
-                .remove::<cast_from::Exile>()
-                .remove::<exile_reason::Cascade>()
-                .remove::<effect_duration::UntilEndOfTurn>()
-                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-                .remove::<EnteredBattlefieldTurn>()
-                .insert(InHand(NEXT_HAND_SEQ.fetch_add(1, Ordering::Relaxed)));
+            view.hand.insert(self);
 
             self.apply_modifiers_layered(db);
         }
@@ -223,166 +354,95 @@ impl CardId {
         from: Option<CastFrom>,
         chosen_modes: Vec<usize>,
     ) {
-        if Stack::split_second(db) {
+        if db.stack.split_second(db) {
+            warn!("Skipping add to stack (split second)");
             return;
         }
 
-        if self.is_token(db) {
+        if db[self].token {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            TriggerId::deactivate_all_for_card(db, self);
-            ReplacementEffectId::deactivate_all_for_card(db, self);
-            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
-            self.untap(db);
+            db[self].reset();
+            db[self].cast_from = from;
 
-            let owner = self.owner(db);
-            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+            let view = db.owner_view_mut(db[self].owner);
+            view.battlefield.remove(&self);
+            view.graveyard.remove(&self);
+            view.exile.remove(&self);
+            view.library.remove(self);
+            view.hand.remove(&self);
 
-            let mut entity = db.entity_mut(self.0);
-            entity
-                .remove::<InLibrary>()
-                .remove::<InHand>()
-                .remove::<InStack>()
-                .remove::<OnBattlefield>()
-                .remove::<InGraveyard>()
-                .remove::<InExile>()
-                .remove::<cast_from::Hand>()
-                .remove::<cast_from::Exile>()
-                .remove::<exile_reason::Cascade>()
-                .remove::<effect_duration::UntilEndOfTurn>()
-                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-                .remove::<EnteredBattlefieldTurn>()
-                .insert(Settled)
-                .insert(InStack(NEXT_STACK_SEQ.fetch_add(1, Ordering::Relaxed)))
-                .insert(Targets(targets));
-
-            if !chosen_modes.is_empty() {
-                debug!("Chosen modes: {:?}", chosen_modes);
-                entity.insert(stack::Modes(chosen_modes));
-            }
-
-            if let Some(from) = from {
-                match from {
-                    CastFrom::Hand => {
-                        entity.insert(cast_from::Hand);
-                    }
-                    CastFrom::Exile => {
-                        entity.insert(cast_from::Exile);
-                    }
-                }
-            }
+            db.stack.push_card(self, targets, chosen_modes);
         }
-    }
-
-    pub(crate) fn cast_from_hand(self, db: &Database) -> bool {
-        db.get::<InStack>(self.0).is_some() && db.get::<cast_from::Hand>(self.0).is_some()
     }
 
     pub(crate) fn move_to_battlefield(self, db: &mut Database) {
-        let current_turn = db.resource::<CurrentTurn>().turn;
+        db.stack.remove(self);
 
-        db.cards
-            .entity_mut(self.0)
-            .remove::<InLibrary>()
-            .remove::<InHand>()
-            .remove::<InStack>()
-            .remove::<OnBattlefield>()
-            .remove::<InGraveyard>()
-            .remove::<InExile>()
-            .remove::<cast_from::Hand>()
-            .remove::<cast_from::Exile>()
-            .remove::<exile_reason::Cascade>()
-            .remove::<effect_duration::UntilEndOfTurn>()
-            .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-            .remove::<LeftBattlefieldTurn>()
-            .insert(EnteredBattlefieldTurn(current_turn))
-            .insert(OnBattlefield(
-                NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed),
-            ));
+        let view = db.owner_view_mut(db[self].controller.into());
+        view.graveyard.remove(&self);
+        view.exile.remove(&self);
+        view.library.remove(self);
+        view.hand.remove(&self);
+
+        view.battlefield.insert(self);
+
+        db[self].entered_battlefield_turn = Some(db.turn.turn_count);
 
         self.apply_modifiers_layered(db);
-        TriggerId::activate_all_for_card(db, self);
-        ReplacementEffectId::activate_all_for_card(db, self);
     }
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
-        if self.is_in_location::<OnBattlefield>(db) {
+        if self.is_in_location(db, Location::Battlefield) {
             Log::left_battlefield(db, LogId::current(), LeaveReason::PutIntoGraveyard, self);
         }
 
-        if self.is_token(db) {
+        if db[self].token {
             self.move_to_limbo(db);
         } else {
-            descend(db, self.owner(db));
-
             self.remove_all_modifiers(db);
-            TriggerId::deactivate_all_for_card(db, self);
-            ReplacementEffectId::deactivate_all_for_card(db, self);
-            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
-            self.untap(db);
+            db[self].reset();
+            let view = db.owner_view_mut(db[self].owner);
+            view.exile.remove(&self);
+            view.library.remove(self);
+            view.hand.remove(&self);
+            view.battlefield.remove(&self);
 
-            let owner = self.owner(db);
-            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+            let owner = db[self].owner;
+            db.graveyard[owner].insert(self);
+            if self.is_permanent(db) {
+                *db.graveyard.descended_this_turn.entry(owner).or_default() += 1;
+            }
 
-            db.entity_mut(self.0)
-                .remove::<InLibrary>()
-                .remove::<InHand>()
-                .remove::<InStack>()
-                .remove::<OnBattlefield>()
-                .remove::<InGraveyard>()
-                .remove::<InExile>()
-                .remove::<cast_from::Hand>()
-                .remove::<cast_from::Exile>()
-                .remove::<exile_reason::Cascade>()
-                .remove::<effect_duration::UntilEndOfTurn>()
-                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-                .remove::<EnteredBattlefieldTurn>()
-                .insert(InGraveyard(
-                    NEXT_GRAVEYARD_SEQ.fetch_add(1, Ordering::Relaxed),
-                ));
             self.apply_modifiers_layered(db);
         }
     }
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
-        if self.is_in_location::<OnBattlefield>(db) {
+        if self.is_in_location(db, Location::Battlefield) {
             Log::left_battlefield(db, LogId::current(), LeaveReason::ReturnedToLibrary, self);
         }
 
-        if self.is_token(db) {
+        if db[self].token {
             self.move_to_limbo(db);
             false
         } else {
             self.remove_all_modifiers(db);
-            TriggerId::deactivate_all_for_card(db, self);
-            ReplacementEffectId::deactivate_all_for_card(db, self);
-            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
-            self.untap(db);
+            db[self].reset();
 
-            let owner = self.owner(db);
-            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+            let view = db.owner_view_mut(db[self].owner);
+            view.exile.remove(&self);
+            view.hand.remove(&self);
+            view.battlefield.remove(&self);
+            view.graveyard.remove(&self);
 
-            db.entity_mut(self.0)
-                .remove::<InLibrary>()
-                .remove::<InHand>()
-                .remove::<InStack>()
-                .remove::<OnBattlefield>()
-                .remove::<InGraveyard>()
-                .remove::<InExile>()
-                .remove::<cast_from::Hand>()
-                .remove::<cast_from::Exile>()
-                .remove::<exile_reason::Cascade>()
-                .remove::<effect_duration::UntilEndOfTurn>()
-                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-                .remove::<EnteredBattlefieldTurn>()
-                .insert(InLibrary);
             self.apply_modifiers_layered(db);
             true
         }
@@ -395,260 +455,184 @@ impl CardId {
         reason: Option<ExileReason>,
         duration: EffectDuration,
     ) {
-        if self.is_in_location::<OnBattlefield>(db) {
+        if self.is_in_location(db, Location::Battlefield) {
             Log::left_battlefield(db, LogId::current(), LeaveReason::Exiled, self);
         }
 
-        if self.is_token(db) {
+        if db[self].token {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            TriggerId::deactivate_all_for_card(db, self);
-            ReplacementEffectId::deactivate_all_for_card(db, self);
-            AbilityId::cleanup_temporary_abilities(db, self);
             self.deactivate_modifiers(db);
 
-            self.untap(db);
+            db[self].reset();
+            db[self].exile_reason = reason;
+            db[self].exiled_with = Some(source);
+            db[self].exile_duration = Some(duration);
 
-            let owner = self.owner(db);
-            *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
+            let view = db.owner_view_mut(db[self].owner);
+            view.hand.remove(&self);
+            view.library.remove(self);
+            view.battlefield.remove(&self);
+            view.graveyard.remove(&self);
 
-            let mut entity = db.entity_mut(self.0);
-            entity
-                .remove::<InLibrary>()
-                .remove::<InHand>()
-                .remove::<InStack>()
-                .remove::<OnBattlefield>()
-                .remove::<InGraveyard>()
-                .remove::<InExile>()
-                .remove::<cast_from::Hand>()
-                .remove::<cast_from::Exile>()
-                .remove::<exile_reason::Cascade>()
-                .remove::<effect_duration::UntilEndOfTurn>()
-                .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-                .remove::<EnteredBattlefieldTurn>()
-                .insert(InExile)
-                .insert(ExiledWith(source));
+            view.exile.insert(self);
 
-            match duration {
-                EffectDuration::Permanently => {}
-                EffectDuration::UntilEndOfTurn => {
-                    entity.insert(effect_duration::UntilEndOfTurn);
-                }
-                EffectDuration::UntilSourceLeavesBattlefield => {
-                    entity.insert(effect_duration::UntilSourceLeavesBattlefield);
-                }
-                _ => {
-                    unreachable!()
-                }
-            }
-
-            if let Some(reason) = reason {
-                match reason {
-                    ExileReason::Cascade => {
-                        entity.insert(exile_reason::Cascade);
-                    }
-                    ExileReason::Craft => {
-                        entity.insert(exile_reason::Craft);
-                    }
-                }
-            }
             self.apply_modifiers_layered(db);
         }
     }
 
     pub(crate) fn move_to_limbo(self, db: &mut Database) {
         self.remove_all_modifiers(db);
-        TriggerId::deactivate_all_for_card(db, self);
-        ReplacementEffectId::deactivate_all_for_card(db, self);
-        AbilityId::cleanup_temporary_abilities(db, self);
         self.deactivate_modifiers(db);
 
-        self.untap(db);
-
-        let owner = self.owner(db);
-        *db.get_mut::<Controller>(self.0).unwrap() = owner.into();
-
-        let mut entity = db.entity_mut(self.0);
-        entity
-            .remove::<InLibrary>()
-            .remove::<InHand>()
-            .remove::<InStack>()
-            .remove::<OnBattlefield>()
-            .remove::<InGraveyard>()
-            .remove::<InExile>()
-            .remove::<cast_from::Hand>()
-            .remove::<cast_from::Exile>()
-            .remove::<exile_reason::Cascade>()
-            .remove::<effect_duration::UntilEndOfTurn>()
-            .remove::<effect_duration::UntilSourceLeavesBattlefield>()
-            .remove::<EnteredBattlefieldTurn>();
+        db[self].reset();
+        let view = db.owner_view_mut(db[self].owner);
+        view.hand.remove(&self);
+        view.library.remove(self);
+        view.battlefield.remove(&self);
+        view.graveyard.remove(&self);
+        view.exile.remove(&self);
     }
 
     pub(crate) fn cleanup_tokens_in_limbo(db: &mut Database) {
-        for entity in db
-            .query_filtered::<Entity, (With<IsToken>, Without<OnBattlefield>)>()
-            .iter(db)
-            .collect_vec()
-        {
-            db.despawn(entity);
-        }
+        db.cards
+            .retain(|id, card| !card.token || db.battlefield[card.controller].contains(id));
     }
 
     pub(crate) fn remove_all_modifiers(self, db: &mut Database) {
-        for mut modifying in db
-            .modifiers
-            .query::<&mut Modifying>()
-            .iter_mut(&mut db.modifiers)
-        {
-            modifying.remove(&self);
+        for modifier in db.modifiers.values_mut() {
+            modifier.modifying.remove(&self);
         }
-    }
-
-    pub(crate) fn modifiers(self, db: &mut Database) -> Vec<ModifierId> {
-        db.modifiers
-            .query::<(Entity, &Modifying)>()
-            .iter(&db.modifiers)
-            .filter_map(|(entity, modifying)| {
-                if modifying.contains(&self) {
-                    Some(ModifierId::from(entity))
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 
     pub(crate) fn deactivate_modifiers(self, db: &mut Database) {
-        let mut entities = vec![];
-
-        for (entity, source, mut modifying) in db.modifiers.query_filtered::<(Entity, &CardId, &mut Modifying), With<UntilSourceLeavesBattlefield>>().iter_mut(&mut db.modifiers) {
-            if *source == self {
-                modifying.clear();
-                entities.push(entity);
-            }
-        }
-
-        for entity in entities {
-            ModifierId::from(entity).deactivate(db);
+        for modifier in db.cards.entry(self).or_default().owned_modifiers.iter() {
+            modifier.deactivate(&mut db.modifiers)
         }
     }
 
     pub(crate) fn activate_modifiers(self, db: &mut Database) {
-        let mut entities = vec![];
-
-        for (entity, source) in db
-            .modifiers
-            .query::<(Entity, &CardId)>()
-            .iter_mut(&mut db.modifiers)
-        {
-            if *source == self {
-                entities.push(entity);
-            }
-        }
-
-        for entity in entities {
-            ModifierId::from(entity).activate(db);
+        for modifier in db.cards.entry(self).or_default().owned_modifiers.iter() {
+            modifier.activate(&mut db.modifiers);
         }
     }
 
     pub(crate) fn apply_modifiers_layered(self, db: &mut Database) {
-        TriggerId::unsubscribe_all_for_card(db, self);
-
-        let on_battlefield = Self::is_in_location::<OnBattlefield>(self, db);
+        let on_battlefield = self.is_in_location(db, Location::Battlefield);
 
         let modifiers = db
             .modifiers
-            .query_filtered::<(
-                Entity,
-                &ModifierSeq,
-                &Modifying,
-                Option<&Global>,
-                Option<&EntireBattlefield>,
-            ), With<Active>>()
-            .iter(&db.modifiers)
-            .sorted_by_key(|(_, seq, _, _, _)| *seq)
-            .filter_map(|(entity, _, modifying, global, entire_battlefield)| {
-                if global.is_some()
-                    || (on_battlefield && entire_battlefield.is_some())
-                    || modifying.contains(&self)
-                {
-                    Some(ModifierId::from(entity))
-                } else {
-                    None
-                }
+            .iter()
+            .filter(|(_, modifier)| {
+                modifier.modifier.modifier.global
+                    || (on_battlefield && modifier.modifier.modifier.entire_battlefield)
+                    || modifier.modifying.contains(&self)
             })
             .collect_vec();
 
-        let facedown = self.facedown(db) && !self.transformed(db);
-        let source = self.faceup_face(db);
+        let facedown = db[self].facedown && !db[self].transformed;
+        let source = if let Some(cloning) = db[self].cloning.as_ref() {
+            cloning
+        } else {
+            self.faceup_face(db)
+        };
+
+        let name = if facedown {
+            String::default()
+        } else {
+            source.name.clone()
+        };
+
+        let cost = if facedown {
+            CastingCost::default()
+        } else {
+            source.cost.clone()
+        };
 
         let mut base_power = if facedown {
             Some(BasePowerType::Static(2))
+        } else if let Some(dynamic) = source.dynamic_power_toughness.as_ref() {
+            Some(BasePowerType::Dynamic(dynamic.clone()))
         } else {
-            db.get::<BasePower>(source.0).map(|bp| bp.0.clone())
+            source
+                .power
+                .map(|power| BasePowerType::Static(power as i32))
         };
+
         let mut base_toughness = if facedown {
             Some(BaseToughnessType::Static(2))
+        } else if let Some(dynamic) = source.dynamic_power_toughness.as_ref() {
+            Some(BaseToughnessType::Dynamic(dynamic.clone()))
         } else {
-            db.get::<BaseToughness>(source.0).map(|bt| bt.0.clone())
+            source
+                .toughness
+                .map(|toughness| BaseToughnessType::Static(toughness as i32))
         };
+
         let mut types = if facedown {
             IndexSet::from([Type::Creature])
         } else {
-            db.get::<Types>(source.0).unwrap().0.clone()
+            source.types.clone()
         };
+
         let mut subtypes = if facedown {
             Default::default()
         } else {
-            db.get::<Subtypes>(source.0).unwrap().0.clone()
+            source.subtypes.clone()
         };
+
         let mut keywords = if facedown {
             ::counter::Counter::default()
         } else {
-            db.get::<Keywords>(source.0).unwrap().0.clone()
+            source.keywords.clone()
         };
+
         let mut colors: HashSet<Color> = if facedown {
             HashSet::default()
         } else {
-            db.get::<Colors>(source.0)
-                .unwrap()
-                .0
-                .union(&db.get::<CastingCost>(source.0).unwrap().colors())
+            source
+                .colors
+                .union(&source.cost.colors())
                 .copied()
                 .collect()
         };
-        let mut triggers = if facedown {
-            vec![]
+
+        let mut triggers: HashMap<TriggerSource, Vec<TriggeredAbility>> = if facedown {
+            Default::default()
         } else {
-            db.get::<Triggers>(source.0)
-                .cloned()
-                .map(|t| t.0)
-                .unwrap_or_default()
+            let mut triggers: HashMap<TriggerSource, Vec<TriggeredAbility>> = Default::default();
+            for ability in source.triggered_abilities.iter() {
+                triggers
+                    .entry(ability.trigger.trigger)
+                    .or_default()
+                    .push(ability.clone());
+            }
+            triggers
         };
+
         let mut etb_abilities = if facedown {
             vec![]
         } else {
-            db.get::<ETBAbilities>(source.0)
-                .cloned()
-                .map(|t| t.0)
-                .unwrap_or_default()
+            source.etb_abilities.clone()
         };
+
         let mut static_abilities = if facedown {
             vec![]
         } else {
-            db.get::<StaticAbilities>(source.0)
-                .cloned()
-                .map(|s| s.0)
-                .unwrap_or_default()
+            source.static_abilities.clone()
         };
+
         let mut activated_abilities = if facedown {
             vec![]
         } else {
-            db.get::<ActivatedAbilities>(source.0)
-                .cloned()
-                .map(|s| s.0)
-                .unwrap_or_default()
+            source.activated_abilities.clone()
+        };
+
+        let mut mana_abilities = if facedown {
+            vec![]
+        } else {
+            source.mana_abilities.clone()
         };
 
         let mut applied_modifiers: HashSet<ModifierId> = Default::default();
@@ -656,18 +640,15 @@ impl CardId {
         // TODO control changing effects go here
         // TODO text changing effects go here
 
-        for modifier in modifiers.iter().copied() {
-            if !applied_modifiers.contains(&modifier) {
-                let source = modifier.source(db);
-                let restrictions = modifier.restrictions(db);
+        for (id, modifier) in modifiers.iter() {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
                         db,
                         dynamic,
-                        modifier,
-                        source,
-                        self.controller(db),
+                        modifier.source,
+                        db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -680,9 +661,8 @@ impl CardId {
                         self.dynamic_power_toughness_given_types(
                             db,
                             dynamic,
-                            modifier,
-                            source,
-                            self.controller(db),
+                            modifier.source,
+                            db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -692,9 +672,9 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
-                    source,
-                    self.controller(db),
-                    &restrictions,
+                    modifier.source,
+                    db[self].controller,
+                    &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
                     &keywords,
@@ -706,59 +686,52 @@ impl CardId {
                 }
             }
 
-            if let Some(add) = modifier.add_types(db) {
-                applied_modifiers.insert(modifier);
-                types.extend(add.0.iter().copied())
+            if !modifier.modifier.modifier.add_types.is_empty() {
+                applied_modifiers.insert(**id);
+                types.extend(modifier.modifier.modifier.add_types.iter().copied());
             }
 
-            if let Some(add) = modifier.add_subtypes(db) {
-                applied_modifiers.insert(modifier);
-                subtypes.extend(add.0.iter().copied())
+            if !modifier.modifier.modifier.add_subtypes.is_empty() {
+                applied_modifiers.insert(**id);
+                subtypes.extend(modifier.modifier.modifier.add_subtypes.iter().copied());
             }
 
-            if let Some(remove) = modifier.remove_types(db) {
-                applied_modifiers.insert(modifier);
-                for ty in remove.iter() {
-                    types.remove(ty);
-                }
+            if !modifier.modifier.modifier.remove_types.is_empty() {
+                applied_modifiers.insert(**id);
+                types.retain(|ty| !modifier.modifier.modifier.remove_types.contains(ty));
             }
 
-            if modifier.remove_all_types(db) {
-                applied_modifiers.insert(modifier);
+            if modifier.modifier.modifier.remove_all_types {
+                applied_modifiers.insert(**id);
                 types.clear();
             }
 
-            if let Some(remove) = modifier.remove_subtypes(db) {
-                applied_modifiers.insert(modifier);
-                for ty in remove.iter() {
-                    subtypes.remove(ty);
-                }
+            if !modifier.modifier.modifier.remove_subtypes.is_empty() {
+                applied_modifiers.insert(**id);
+                subtypes.retain(|ty| !modifier.modifier.modifier.remove_subtypes.contains(ty));
             }
 
-            if modifier.remove_all_creature_types(db) {
-                applied_modifiers.insert(modifier);
+            if modifier.modifier.modifier.remove_all_creature_types {
+                applied_modifiers.insert(**id);
                 subtypes.retain(|ty| !ty.is_creature_type());
             }
         }
 
-        for (ty, add_ability) in AbilityId::land_abilities() {
+        for (ty, add_ability) in land_abilities() {
             if subtypes.contains(&ty) {
-                activated_abilities.push(add_ability(db, self));
+                mana_abilities.push(add_ability());
             }
         }
 
-        for modifier in modifiers.iter().copied() {
-            if !applied_modifiers.contains(&modifier) {
-                let source = modifier.source(db);
-                let restrictions = modifier.restrictions(db);
+        for (id, modifier) in modifiers.iter() {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
                         db,
                         dynamic,
-                        modifier,
-                        source,
-                        self.controller(db),
+                        modifier.source,
+                        db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -771,9 +744,8 @@ impl CardId {
                         self.dynamic_power_toughness_given_types(
                             db,
                             dynamic,
-                            modifier,
-                            source,
-                            self.controller(db),
+                            modifier.source,
+                            db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -783,9 +755,9 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
-                    source,
-                    self.controller(db),
-                    &restrictions,
+                    modifier.source,
+                    db[self].controller,
+                    &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
                     &keywords,
@@ -797,13 +769,13 @@ impl CardId {
                 }
             }
 
-            if let Some(add) = modifier.add_colors(db) {
-                applied_modifiers.insert(modifier);
-                colors.extend(add.0.iter().copied())
+            if !modifier.modifier.modifier.add_colors.is_empty() {
+                applied_modifiers.insert(**id);
+                colors.extend(modifier.modifier.modifier.add_colors.iter().copied());
             }
 
-            if modifier.remove_all_colors(db) {
-                applied_modifiers.insert(modifier);
+            if modifier.modifier.modifier.remove_all_colors {
+                applied_modifiers.insert(**id);
                 colors.clear();
             }
         }
@@ -812,9 +784,9 @@ impl CardId {
             colors.remove(&Color::Colorless);
         }
 
-        let add_keywords = self
-            .static_abilities(db)
-            .into_iter()
+        let add_keywords = db[self]
+            .modified_static_abilities
+            .iter()
             .filter_map(|sa| {
                 if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
                     keywords: add_keywords,
@@ -836,8 +808,8 @@ impl CardId {
                     if self.passes_restrictions_given_attributes(
                         db,
                         self,
-                        self.controller(db),
-                        &restrictions,
+                        db[self].controller,
+                        restrictions,
                         &types,
                         &subtypes,
                         &keywords,
@@ -856,21 +828,18 @@ impl CardId {
             .collect_vec();
 
         for add in add_keywords {
-            keywords.extend(add);
+            keywords.extend(add.iter());
         }
 
-        for modifier in modifiers.iter().copied() {
-            if !applied_modifiers.contains(&modifier) {
-                let source = modifier.source(db);
-                let restrictions = modifier.restrictions(db);
+        for (id, modifier) in modifiers.iter() {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
                         db,
                         dynamic,
-                        modifier,
-                        source,
-                        self.controller(db),
+                        modifier.source,
+                        db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -883,9 +852,8 @@ impl CardId {
                         self.dynamic_power_toughness_given_types(
                             db,
                             dynamic,
-                            modifier,
-                            source,
-                            self.controller(db),
+                            modifier.source,
+                            db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -895,9 +863,9 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
-                    source,
-                    self.controller(db),
-                    &restrictions,
+                    modifier.source,
+                    db[self].controller,
+                    &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
                     &keywords,
@@ -909,94 +877,92 @@ impl CardId {
                 }
             }
 
-            if let Some(modify) = modifier.triggered_ability_modifiers(db) {
-                applied_modifiers.insert(modifier);
-                match modify {
-                    TriggeredAbilityModifier::RemoveAll => triggers.clear(),
-                    TriggeredAbilityModifier::Add(add) => triggers.push(*add),
-                }
+            if modifier.modifier.modifier.remove_all_abilities {
+                applied_modifiers.insert(**id);
+
+                triggers.clear();
+                etb_abilities.clear();
+                static_abilities.clear();
+                activated_abilities.clear();
+                mana_abilities.clear();
             }
 
-            if let Some(modify) = modifier.etb_ability_modifiers(db) {
-                applied_modifiers.insert(modifier);
-                match modify {
-                    EtbAbilityModifier::RemoveAll => etb_abilities.clear(),
-                    EtbAbilityModifier::Add(add) => etb_abilities.push(*add),
-                }
+            if let Some(ability) = modifier.modifier.modifier.mana_ability.as_ref() {
+                applied_modifiers.insert(**id);
+
+                mana_abilities.push(ability.clone());
             }
 
-            if let Some(modify) = modifier.static_ability_modifiers(db) {
-                applied_modifiers.insert(modifier);
-                match modify {
-                    StaticAbilityModifier::AddAll(add) => {
-                        for ability in add.iter() {
-                            static_abilities.push(ability.clone());
-                        }
-                    }
-                    StaticAbilityModifier::RemoveAll => static_abilities.clear(),
-                }
+            if !modifier.modifier.modifier.add_static_abilities.is_empty() {
+                applied_modifiers.insert(**id);
+
+                static_abilities.extend(
+                    modifier
+                        .modifier
+                        .modifier
+                        .add_static_abilities
+                        .iter()
+                        .cloned(),
+                );
             }
 
-            if let Some(modify) = modifier.activated_ability_modifiers(db) {
-                applied_modifiers.insert(modifier);
-                match modify {
-                    ActivatedAbilityModifier::Add(add) => activated_abilities.push(*add),
-                    ActivatedAbilityModifier::RemoveAll => activated_abilities.clear(),
-                }
+            if let Some(modify) = modifier.modifier.modifier.add_ability.as_ref() {
+                applied_modifiers.insert(**id);
+
+                activated_abilities.push(modify.clone())
             }
 
-            if let Some(modify) = modifier.keyword_modifiers(db) {
-                match modify {
-                    ModifyKeywords::Remove(remove) => keywords.retain(|kw, _| !remove.contains(kw)),
-                    ModifyKeywords::Add(add) => keywords.extend(add.iter()),
-                }
+            if !modifier.modifier.modifier.remove_keywords.is_empty() {
+                applied_modifiers.insert(**id);
+
+                keywords.retain(|kw, _| !modifier.modifier.modifier.remove_keywords.contains(kw));
+            }
+
+            if !modifier.modifier.modifier.add_keywords.is_empty() {
+                applied_modifiers.insert(**id);
+
+                keywords.extend(modifier.modifier.modifier.add_keywords.clone());
             }
         }
 
         let mut add_power = 0;
         let mut add_toughness = 0;
 
-        for modifier in modifiers.iter().copied() {
-            if !applied_modifiers.contains(&modifier) {
-                let source = modifier.source(db);
-                let restrictions = modifier.restrictions(db);
+        for (id, modifier) in modifiers.iter() {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
                         db,
                         dynamic,
-                        modifier,
-                        source,
-                        self.controller(db),
+                        modifier.source,
+                        db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
                         &colors,
                     ) as i32,
                 });
-                let toughness = base_toughness
-                    .as_ref()
-                    .map(|base| match base {
-                        BaseToughnessType::Static(value) => *value,
-                        BaseToughnessType::Dynamic(dynamic) => self
-                            .dynamic_power_toughness_given_types(
-                                db,
-                                dynamic,
-                                modifier,
-                                source,
-                                self.controller(db),
-                                &types,
-                                &subtypes,
-                                &keywords,
-                                &colors,
-                            ) as i32,
-                    })
-                    .map(|t| t + add_toughness);
+                let toughness = base_toughness.as_ref().map(|base| match base {
+                    BaseToughnessType::Static(value) => *value,
+                    BaseToughnessType::Dynamic(dynamic) => {
+                        self.dynamic_power_toughness_given_types(
+                            db,
+                            dynamic,
+                            modifier.source,
+                            db[self].controller,
+                            &types,
+                            &subtypes,
+                            &keywords,
+                            &colors,
+                        ) as i32
+                    }
+                });
                 if !self.passes_restrictions_given_attributes(
                     db,
-                    source,
-                    self.controller(db),
-                    &restrictions,
+                    modifier.source,
+                    db[self].controller,
+                    &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
                     &keywords,
@@ -1008,24 +974,36 @@ impl CardId {
                 }
             }
 
-            if let Some(base) = modifier.base_power(db) {
+            if let Some(base) = modifier.modifier.modifier.base_power {
+                applied_modifiers.insert(**id);
+
                 base_power = Some(BasePowerType::Static(base));
             }
 
-            if let Some(base) = modifier.base_toughness(db) {
+            if let Some(base) = modifier.modifier.modifier.base_toughness {
+                applied_modifiers.insert(**id);
+
                 base_toughness = Some(BaseToughnessType::Static(base));
             }
 
-            add_power += modifier.add_power(db).unwrap_or_default();
-            add_toughness += modifier.add_toughness(db).unwrap_or_default();
+            if let Some(add) = modifier.modifier.modifier.add_power {
+                applied_modifiers.insert(**id);
 
-            if let Some(dynamic) = modifier.dynamic_power(db) {
+                add_power += add;
+            }
+
+            if let Some(add) = modifier.modifier.modifier.add_toughness {
+                applied_modifiers.insert(**id);
+
+                add_toughness += add;
+            }
+
+            if let Some(dynamic) = modifier.modifier.modifier.dynamic_power_toughness.as_ref() {
                 let to_add = self.dynamic_power_toughness_given_types(
                     db,
-                    &dynamic,
-                    modifier,
-                    source,
-                    self.controller(db),
+                    dynamic,
+                    self,
+                    db[self].controller,
                     &types,
                     &subtypes,
                     &keywords,
@@ -1037,44 +1015,37 @@ impl CardId {
             }
         }
 
-        let p1p1 = CounterId::counters_of_type_on::<counter::P1P1>(db, source);
+        let p1p1 = *db[self].counters.entry(Counter::P1P1).or_default();
         add_power += p1p1 as i32;
         add_toughness += p1p1 as i32;
 
-        let m1m1 = CounterId::counters_of_type_on::<counter::M1M1>(db, source);
+        let m1m1 = *db[self].counters.entry(Counter::M1M1).or_default();
         add_power -= m1m1 as i32;
         add_toughness -= m1m1 as i32;
 
-        if let Some(bp) = base_power {
-            db.entity_mut(source.0).insert(ModifiedBasePower(bp));
-        }
-        if let Some(bt) = base_toughness {
-            db.entity_mut(source.0).insert(ModifiedBaseToughness(bt));
-        }
+        db[self].modified_base_power = base_power;
+        db[self].modified_base_toughness = base_toughness;
 
-        for trigger in triggers.iter() {
-            trigger.add_listener(db, source);
-        }
-
-        db.entity_mut(source.0)
-            .insert(AddPower(add_power))
-            .insert(AddToughness(add_toughness))
-            .insert(ModifiedTypes(types))
-            .insert(ModifiedColors(colors))
-            .insert(ModifiedKeywords(keywords))
-            .insert(ModifiedSubtypes(subtypes))
-            .insert(ModifiedTriggers(triggers))
-            .insert(ModifiedETBAbilities(etb_abilities))
-            .insert(ModifiedStaticAbilities(static_abilities))
-            .insert(ModifiedActivatedAbilities(activated_abilities));
+        db[self].add_power = add_power;
+        db[self].modified_cost = cost;
+        db[self].modified_name = name;
+        db[self].add_toughness = add_toughness;
+        db[self].modified_types = types;
+        db[self].modified_colors = colors;
+        db[self].modified_subtypes = subtypes;
+        db[self].modified_triggers = triggers;
+        db[self].modified_keywords = keywords;
+        db[self].modified_etb_abilities = etb_abilities;
+        db[self].modified_mana_abilities = mana_abilities;
+        db[self].modified_static_abilities = static_abilities;
+        db[self].modified_activated_abilities = activated_abilities;
     }
 
     #[allow(clippy::too_many_arguments)]
     fn dynamic_power_toughness_given_types(
         self,
-        db: &mut Database,
+        db: &Database,
         dynamic: &DynamicPowerToughness,
-        modifier: ModifierId,
         source: CardId,
         self_controller: Controller,
         self_types: &IndexSet<Type>,
@@ -1084,123 +1055,67 @@ impl CardId {
     ) -> usize {
         match dynamic {
             DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
-                let source = modifier.source(db);
-                CounterId::counters_on(db, source, *counter)
+                if let Counter::Any = counter {
+                    db[self].counters.values().sum::<usize>()
+                } else {
+                    db[self].counters.get(counter).copied().unwrap_or_default()
+                }
             }
-            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => {
-                in_play::cards::<OnBattlefield>(db)
-                    .into_iter()
-                    .filter(|card| {
-                        card.passes_restrictions_given_attributes(
-                            db,
-                            source,
-                            self_controller,
-                            &matching.restrictions,
-                            self_types,
-                            self_subtypes,
-                            self_keywords,
-                            self_colors,
-                            None,
-                            None,
-                        )
-                    })
-                    .count()
-            }
+            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => db
+                .battlefield
+                .battlefields
+                .values()
+                .flat_map(|battlefield| battlefield.iter())
+                .filter(|card| {
+                    card.passes_restrictions_given_attributes(
+                        db,
+                        source,
+                        self_controller,
+                        &matching.restrictions,
+                        self_types,
+                        self_subtypes,
+                        self_keywords,
+                        self_colors,
+                        None,
+                        None,
+                    )
+                })
+                .count(),
         }
-    }
-
-    pub(crate) fn triggers(self, db: &Database) -> Vec<TriggerId> {
-        db.get::<ModifiedTriggers>(self.0)
-            .map(|t| t.0.clone())
-            .or_else(|| db.get::<Triggers>(self.0).map(|t| t.0.clone()))
-            .unwrap_or_default()
-    }
-
-    pub fn equal(self, db: &mut Database, other: CardId) -> bool {
-        self.name(db) == other.name(db)
-            && self.power(db) == other.power(db)
-            && self.toughness(db) == other.toughness(db)
-            && self.types(db) == other.types(db)
-            && self.colors(db) == other.colors(db)
-            && self.keywords(db) == other.keywords(db)
-            && self.activated_abilities(db) == other.activated_abilities(db)
-            && self.tapped(db) == other.tapped(db)
-    }
-
-    pub(crate) fn etb_abilities(self, db: &Database) -> Vec<AbilityId> {
-        db.get::<ModifiedETBAbilities>(self.0)
-            .cloned()
-            .map(|m| m.0)
-            .or_else(|| db.get::<ETBAbilities>(self.0).cloned().map(|m| m.0))
-            .unwrap_or_default()
-    }
-
-    pub(crate) fn static_abilities(self, db: &Database) -> Vec<StaticAbility> {
-        db.get::<ModifiedStaticAbilities>(self.0)
-            .cloned()
-            .map(|m| m.0)
-            .or_else(|| db.get::<StaticAbilities>(self.0).cloned().map(|m| m.0))
-            .unwrap_or_default()
-    }
-    pub fn activated_abilities(self, db: &Database) -> Vec<AbilityId> {
-        db.get::<ModifiedActivatedAbilities>(self.0)
-            .cloned()
-            .map(|m| m.0)
-            .or_else(|| db.get::<ActivatedAbilities>(self.0).cloned().map(|m| m.0))
-            .unwrap_or_default()
-    }
-
-    pub(crate) fn controller(self, db: &Database) -> Controller {
-        db.get::<Controller>(self.0).copied().unwrap()
-    }
-
-    pub(crate) fn owner(self, db: &Database) -> Owner {
-        db.get::<Owner>(self.0).copied().unwrap()
-    }
-
-    pub(crate) fn etb_tapped(self, db: &Database) -> bool {
-        db.get::<EtbTapped>(self.0).is_some()
     }
 
     pub(crate) fn apply_modifier(self, db: &mut Database, modifier: ModifierId) {
         db.modifiers
-            .get_mut::<Modifying>(modifier.into())
+            .get_mut(&modifier)
             .unwrap()
+            .modifying
             .insert(self);
-        modifier.activate(db);
+        modifier.activate(&mut db.modifiers);
         self.apply_modifiers_layered(db);
     }
 
-    pub(crate) fn effects(self, db: &Database) -> Vec<AnyEffect> {
-        db.get::<Effects>(self.0).cloned().unwrap_or_default().0
-    }
-
-    pub(crate) fn modes(self, db: &Database) -> Option<Modes> {
-        db.get::<Modes>(self.0).cloned()
-    }
-
-    pub(crate) fn has_modes(&self, db: &mut Database) -> bool {
-        db.get::<Modes>(self.0).is_some()
+    pub(crate) fn has_modes(self, db: &mut Database) -> bool {
+        !self.faceup_face(db).modes.is_empty()
     }
 
     #[allow(unused)]
     pub(crate) fn needs_targets(self, db: &mut Database) -> Vec<usize> {
-        let effects = self.effects(db);
-        let controller = self.controller(db);
-        let aura_targets = self.aura(db).map(|_| 1);
+        let effects = &self.faceup_face(db).effects;
+        let controller = db[self].controller;
+        let aura_targets = self.faceup_face(db).enchant.as_ref().map(|_| 1);
         std::iter::once(())
             .filter_map(|()| aura_targets)
             .chain(
                 effects
-                    .into_iter()
+                    .iter()
                     .map(|effect| effect.effect.needs_targets(db, self)),
             )
             .collect_vec()
     }
 
     pub(crate) fn wants_targets(self, db: &mut Database) -> Vec<usize> {
-        let effects = self.effects(db);
-        let aura_targets = self.aura(db).map(|_| 1);
+        let effects = self.faceup_face(db).effects.clone();
+        let aura_targets = self.faceup_face(db).enchant.as_ref().map(|_| 1);
         std::iter::once(())
             .filter_map(|()| aura_targets)
             .chain(
@@ -1211,31 +1126,23 @@ impl CardId {
             .collect_vec()
     }
 
-    pub(crate) fn restrictions(self, db: &Database) -> Vec<Restriction> {
-        db.get::<Restrictions>(self.0)
-            .cloned()
-            .map(|r| r.0)
-            .unwrap()
-    }
-
     pub(crate) fn passes_restrictions(
         self,
-        db: &mut Database,
+        db: &Database,
         source: CardId,
         restrictions: &[Restriction],
     ) -> bool {
         let power = self.power(db);
         let toughness = self.toughness(db);
-        let keywords = self.keywords(db);
         self.passes_restrictions_given_attributes(
             db,
             source,
-            self.controller(db),
+            db[self].controller,
             restrictions,
-            &self.types(db),
-            &self.subtypes(db),
-            &keywords,
-            &self.colors(db),
+            &db[self].modified_types,
+            &db[self].modified_subtypes,
+            &db[self].modified_keywords,
+            &db[self].modified_colors,
             power,
             toughness,
         )
@@ -1244,7 +1151,7 @@ impl CardId {
     #[allow(clippy::too_many_arguments)]
     fn passes_restrictions_given_attributes(
         self,
-        db: &mut Database,
+        db: &Database,
         source: CardId,
         self_controller: Controller,
         restrictions: &[Restriction],
@@ -1321,7 +1228,7 @@ impl CardId {
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if self_controller.has_cards::<InHand>(db) {
+                    if self_controller.has_cards(db, Location::Hand) {
                         return false;
                     }
                 }
@@ -1331,7 +1238,7 @@ impl CardId {
                     }
                 }
                 Restriction::Cmc(cmc_test) => {
-                    let cmc = self.cost(db).cmc() as i32;
+                    let cmc = self.faceup_face(db).cost.cmc() as i32;
                     match cmc_test {
                         Cmc::Comparison(comparison) => {
                             let matches = match comparison {
@@ -1355,40 +1262,33 @@ impl CardId {
                     }
                 }
                 Restriction::InGraveyard => {
-                    if !self.is_in_location::<InGraveyard>(db) {
+                    if !self.is_in_location(db, Location::Graveyard) {
                         return false;
                     }
                 }
                 Restriction::OnBattlefield => {
-                    if !self.is_in_location::<OnBattlefield>(db) {
+                    if !self.is_in_location(db, Location::Battlefield) {
                         return false;
                     }
                 }
                 Restriction::CastFromHand => {
-                    if !self.cast_from_hand(db) {
+                    if !matches!(db[self].cast_from, Some(CastFrom::Hand)) {
                         return false;
                     }
                 }
                 Restriction::AttackingOrBlocking => {
                     // TODO blocking
-                    if !self.attacking(db) {
+                    if db[self].attacking.is_none() {
                         return false;
                     }
                 }
                 Restriction::InLocation { locations } => {
-                    if !locations.iter().any(|loc| match loc {
-                        targets::Location::Battlefield => self.is_in_location::<OnBattlefield>(db),
-                        targets::Location::Graveyard => self.is_in_location::<InGraveyard>(db),
-                        targets::Location::Exile => self.is_in_location::<InExile>(db),
-                        targets::Location::Library => self.is_in_location::<InLibrary>(db),
-                        targets::Location::Hand => self.is_in_location::<InHand>(db),
-                        targets::Location::Stack => self.is_in_location::<InStack>(db),
-                    }) {
+                    if !locations.iter().any(|loc| self.is_in_location(db, *loc)) {
                         return false;
                     }
                 }
                 Restriction::Attacking => {
-                    if !self.attacking(db) {
+                    if db[self].attacking.is_none() {
                         return false;
                     }
                 }
@@ -1401,16 +1301,19 @@ impl CardId {
                     }
                 }
                 Restriction::LifeGainedThisTurn(count) => {
-                    let gained_this_turn = life_gained_this_turn(db, self_controller.into());
+                    let gained_this_turn = db
+                        .turn
+                        .life_gained_this_turn
+                        .get(&Owner::from(self_controller))
+                        .copied()
+                        .unwrap_or_default();
                     if gained_this_turn < *count {
                         return false;
                     }
                 }
                 Restriction::Descend(count) => {
-                    let cards = self
-                        .controller(db)
-                        .get_cards_in::<InGraveyard>(db)
-                        .into_iter()
+                    let cards = db.graveyard[db[self].controller]
+                        .iter()
                         .filter(|card| card.is_permanent(db))
                         .count();
                     if cards < *count {
@@ -1418,7 +1321,13 @@ impl CardId {
                     }
                 }
                 Restriction::DescendedThisTurn => {
-                    let descended = times_descended_this_turn(db, self.controller(db).into());
+                    let descended = db
+                        .graveyard
+                        .descended_this_turn
+                        .get(&Owner::from(db[self].controller))
+                        .copied()
+                        .unwrap_or_default();
+
                     if descended < 1 {
                         return false;
                     }
@@ -1429,42 +1338,44 @@ impl CardId {
                     }
                 }
                 Restriction::ManaSpentFromSource(source) => {
-                    if let Some(sources) = self.get_mana_from_sources(db) {
-                        if !sources.contains_key(source) {
-                            return false;
-                        }
-                    } else {
+                    if !db[self].sourced_mana.contains_key(source) {
                         return false;
                     }
                 }
                 Restriction::NotChosen => {
-                    if self.chosen(db) {
+                    if db[self].chosen {
                         return false;
                     }
                 }
                 Restriction::SourceCast => {
-                    if !source.was_cast(db) {
+                    if db[source].cast_from.is_none() {
                         return false;
                     }
                 }
                 Restriction::DuringControllersTurn => {
-                    if self.controller(db) != current_turn(db).player {
+                    if db[self].controller != db.turn.active_player() {
                         return false;
                     }
                 }
                 Restriction::JustCast => {
-                    if !just_cast(db, self.controller(db)) {
+                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                        if let LogEntry::Cast { card } = entry {
+                            db[*card].controller == self_controller
+                        } else {
+                            false
+                        }
+                    }) {
                         return false;
                     }
                 }
                 Restriction::Controller(controller_restriction) => match controller_restriction {
                     targets::ControllerRestriction::Self_ => {
-                        if source.controller(db) != self_controller {
+                        if db[source].controller != self_controller {
                             return false;
                         }
                     }
                     targets::ControllerRestriction::Opponent => {
-                        if source.controller(db) == self_controller {
+                        if db[source].controller == self_controller {
                             return false;
                         }
                     }
@@ -1473,7 +1384,12 @@ impl CardId {
                     comparison,
                     counter,
                 } => {
-                    let count = CounterId::counters_on(db, self, *counter) as i32;
+                    let count = if let Counter::Any = counter {
+                        db[self].counters.values().sum::<usize>()
+                    } else {
+                        db[self].counters.get(counter).copied().unwrap_or_default()
+                    } as i32;
+
                     let matched = match comparison {
                         Comparison::LessThan(value) => count < *value,
                         Comparison::LessThanOrEqual(value) => count <= *value,
@@ -1490,7 +1406,6 @@ impl CardId {
                     restrictions,
                 } => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
-                        .into_iter()
                         .filter(|card| card.passes_restrictions(db, source, restrictions))
                         .count();
                     if entered_this_turn < *count {
@@ -1498,17 +1413,17 @@ impl CardId {
                     }
                 }
                 Restriction::AttackedThisTurn => {
-                    if number_of_attackers_this_turn(db) < 1 {
+                    if db.turn.number_of_attackers_this_turn < 1 {
                         return false;
                     }
                 }
                 Restriction::Threshold => {
-                    if Battlefield::number_of_cards_in_graveyard(db, self.controller(db)) < 7 {
+                    if db.graveyard[db[self].controller].len() < 7 {
                         return false;
                     }
                 }
                 Restriction::NonToken => {
-                    if self.is_token(db) {
+                    if db[self].token {
                         return false;
                     };
                 }
@@ -1518,414 +1433,99 @@ impl CardId {
         true
     }
 
-    pub(crate) fn apply_aura(self, db: &mut Database, aura: AuraId) {
-        let modifiers = aura.modifiers(db);
+    pub(crate) fn apply_aura(self, db: &mut Database, aura_source: CardId) {
+        db[aura_source].enchanting = Some(self);
 
-        for modifier in modifiers.iter() {
-            self.apply_modifier(db, *modifier);
+        for modifier in aura_source
+            .faceup_face(db)
+            .enchant
+            .iter()
+            .flat_map(|enchant| enchant.modifiers.iter())
+            .cloned()
+            .collect_vec()
+        {
+            let modifier =
+                ModifierId::upload_temporary_modifier(&mut db.modifiers, aura_source, modifier);
+            self.apply_modifier(db, modifier);
+            db.modifiers
+                .get_mut(&modifier)
+                .unwrap()
+                .modifying
+                .insert(self);
+            modifier.activate(&mut db.modifiers);
         }
+        self.apply_modifiers_layered(db);
     }
 
     pub(crate) fn marked_damage(self, db: &Database) -> i32 {
-        db.get::<MarkedDamage>(self.0)
-            .copied()
-            .unwrap_or_default()
-            .0
+        db[self].marked_damage
     }
 
     pub(crate) fn mark_damage(self, db: &mut Database, amount: usize) {
-        if let Some(mut marked) = db.get_mut::<MarkedDamage>(self.0) {
-            **marked += amount as i32;
-        } else {
-            db.entity_mut(self.0).insert(MarkedDamage(amount as i32));
-        }
+        db[self].marked_damage += amount as i32;
     }
 
-    pub(crate) fn clear_damage(self, db: &mut Database) {
-        if let Some(mut marked) = db.get_mut::<MarkedDamage>(self.0) {
-            **marked = 0;
-        }
+    pub(crate) fn power(self, db: &Database) -> Option<i32> {
+        db[self].modified_base_power.as_ref().map(|power| match power {
+                    BasePowerType::Static(value) => *value,
+                    BasePowerType::Dynamic(dynamic) => {
+                        self.dynamic_power_toughness(db, dynamic) as i32
+                    }
+                } + db[self].add_power)
     }
 
-    pub(crate) fn power(self, db: &mut Database) -> Option<i32> {
-        db.get::<ModifiedBasePower>(self.0)
-            .map(|bp| bp.0.clone())
-            .or_else(|| db.get::<BasePower>(self.0).map(|bp| bp.0.clone()))
-            .map(|bp| match bp {
-                BasePowerType::Static(value) => value,
-                BasePowerType::Dynamic(dynamic) => {
-                    self.dynamic_power_toughness(db, &dynamic) as i32
-                }
-            })
-            .map(|bp| bp + db.get::<AddPower>(self.0).map(|a| a.0).unwrap_or_default())
+    pub(crate) fn toughness(self, db: &Database) -> Option<i32> {
+        db[self].modified_base_toughness.as_ref().map(|toughness| match toughness {
+                    BaseToughnessType::Static(value) => *value,
+                    BaseToughnessType::Dynamic(dynamic) => {
+                        self.dynamic_power_toughness(db, dynamic) as i32
+                    }
+                } + db[self].add_toughness)
     }
 
-    fn dynamic_power_toughness(self, db: &mut Database, dynamic: &DynamicPowerToughness) -> usize {
+    fn dynamic_power_toughness(self, db: &Database, dynamic: &DynamicPowerToughness) -> usize {
         match dynamic {
-            DynamicPowerToughness::NumberOfCountersOnThis(counters) => {
-                CounterId::counters_on(db, self, *counters)
+            DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
+                if let Counter::Any = counter {
+                    db[self].counters.values().sum::<usize>()
+                } else {
+                    db[self].counters.get(counter).copied().unwrap_or_default()
+                }
             }
-            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => {
-                matching.matching(db, self)
-            }
+            DynamicPowerToughness::NumberOfPermanentsMatching(matching) => db
+                .battlefield
+                .battlefields
+                .values()
+                .flat_map(|battlefield| battlefield.iter())
+                .filter(|card| card.passes_restrictions(db, self, &matching.restrictions))
+                .count(),
         }
-    }
-
-    pub(crate) fn toughness(self, db: &mut Database) -> Option<i32> {
-        db.get::<ModifiedBaseToughness>(self.0)
-            .map(|bt| bt.0.clone())
-            .or_else(|| db.get::<BaseToughness>(self.0).map(|bt| bt.0.clone()))
-            .map(|bt| match bt {
-                BaseToughnessType::Static(value) => value,
-                BaseToughnessType::Dynamic(dynamic) => {
-                    self.dynamic_power_toughness(db, &dynamic) as i32
-                }
-            })
-            .map(|bt| {
-                bt + db
-                    .get::<AddToughness>(self.0)
-                    .map(|a| a.0)
-                    .unwrap_or_default()
-            })
-    }
-
-    pub(crate) fn aura(self, db: &Database) -> Option<AuraId> {
-        db.get::<AuraId>(self.0).copied()
-    }
-
-    pub(crate) fn colors(self, db: &Database) -> HashSet<Color> {
-        db.get::<ModifiedColors>(self.0)
-            .map(|bp| bp.0.clone())
-            .or_else(|| {
-                db.get::<Colors>(self.0).map(|c| {
-                    let mut colors = db.get::<CastingCost>(self.0).unwrap().colors();
-                    colors.extend(c.iter());
-                    if colors.len() != 1 {
-                        colors.remove(&Color::Colorless);
-                    }
-                    colors
-                })
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn color_identity(self, db: &mut Database) -> HashSet<Color> {
-        let mut identity = self.colors(db);
-
-        let abilities = db.get::<ActivatedAbilities>(self.0).cloned().unwrap();
-
-        for ability in abilities.iter() {
-            let ability = ability.ability(db);
-            if let Some(cost) = ability.cost() {
-                for mana in cost.mana_cost.iter() {
-                    let color = mana.color();
-                    identity.insert(color);
-                }
-            }
-
-            if let Ability::Mana(mana) = ability {
-                match mana.gain {
-                    GainMana::Specific { gains } => {
-                        for gain in gains.iter() {
-                            identity.insert(gain.color());
-                        }
-                    }
-                    GainMana::Choice { choices } => {
-                        for choice in choices.iter() {
-                            for mana in choice.iter() {
-                                identity.insert(mana.color());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        identity
     }
 
     pub(crate) fn types_intersect(self, db: &Database, types: &IndexSet<Type>) -> bool {
-        types.is_empty() || !self.types(db).is_disjoint(types)
-    }
-
-    pub(crate) fn types(self, db: &Database) -> IndexSet<Type> {
-        db.get::<ModifiedTypes>(self.0)
-            .map(|t| t.0.clone())
-            .or_else(|| db.get::<Types>(self.0).map(|t| t.0.clone()))
-            .unwrap_or_default()
+        types.is_empty() || !db[self].modified_types.is_disjoint(types)
     }
 
     #[allow(unused)]
     pub(crate) fn subtypes_intersect(self, db: &Database, types: &IndexSet<Subtype>) -> bool {
-        types.is_empty() || !self.subtypes(db).is_disjoint(types)
-    }
-
-    pub(crate) fn subtypes(self, db: &Database) -> IndexSet<Subtype> {
-        db.get::<ModifiedSubtypes>(self.0)
-            .map(|t| t.0.clone())
-            .or_else(|| db.get::<Subtypes>(self.0).map(|t| t.0.clone()))
-            .unwrap_or_default()
-    }
-
-    #[must_use]
-    pub fn upload(db: &mut Database, cards: &Cards, player: Owner, name: &str) -> CardId {
-        let card = cards.get(name).expect("Valid card name");
-
-        Self::upload_card(db, card, player, InLibrary, false)
-    }
-
-    #[must_use]
-    pub(crate) fn upload_token(db: &mut Database, player: Owner, token: Token) -> CardId {
-        let card: Card = token.into();
-
-        Self::upload_card(
-            db,
-            &card,
-            player,
-            OnBattlefield(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed)),
-            true,
-        )
-    }
-
-    #[must_use]
-    pub(crate) fn token_copy_of(self, db: &mut Database, player: Owner) -> CardId {
-        Self::upload_card(
-            db,
-            &self.original(db),
-            player,
-            OnBattlefield(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed)),
-            true,
-        )
-    }
-
-    pub(crate) fn original(self, db: &Database) -> Card {
-        db.get::<Card>(self.0).cloned().unwrap()
-    }
-
-    fn upload_card<Location: Component + std::marker::Copy + std::fmt::Debug>(
-        db: &mut Database,
-        card: &Card,
-        player: Owner,
-        destination: Location,
-        is_token: bool,
-    ) -> CardId {
-        let cardid = CardId(db.spawn_empty().id());
-        Self::insert_components(db, cardid, card, player, destination, is_token);
-        cardid
-    }
-
-    #[instrument(skip(db, card))]
-    fn insert_components<Location: Component + std::marker::Copy + std::fmt::Debug>(
-        db: &mut Database,
-        cardid: CardId,
-        card: &Card,
-        player: Owner,
-        destination: Location,
-        is_token: bool,
-    ) {
-        let mut entity = db.entity_mut(cardid.0);
-
-        entity.insert((
-            card.clone(),
-            destination,
-            Name(card.name.clone()),
-            OracleText(card.oracle_text.clone()),
-            player,
-            Controller::from(player),
-            card.cost.clone(),
-            Types(card.types.clone()),
-            Subtypes(card.subtypes.clone()),
-            Colors(card.colors.clone()),
-            Keywords(card.keywords.clone()),
-            Restrictions(card.restrictions.clone()),
-            UniqueId::new(),
-        ));
-
-        if is_token {
-            entity.insert(IsToken);
-        }
-
-        if let Some(reducer) = card.reducer.as_ref() {
-            entity.insert(reducer.clone());
-        }
-
-        if let Some(ward) = card.ward.as_ref() {
-            entity.insert(ward.clone());
-        }
-
-        if card.apply_individually {
-            entity.insert(ApplyIndividually);
-        }
-
-        if card.etb_tapped {
-            entity.insert(EtbTapped);
-        }
-
-        if let Some(power) = card.power {
-            entity.insert(BasePower(BasePowerType::Static(power as i32)));
-        }
-
-        if let Some(toughness) = card.toughness {
-            entity.insert(BaseToughness(BaseToughnessType::Static(toughness as i32)));
-        }
-
-        if let Some(pt) = &card.dynamic_power_toughness {
-            entity.insert(BasePower(BasePowerType::Dynamic(pt.clone())));
-            entity.insert(BaseToughness(BaseToughnessType::Dynamic(pt.clone())));
-        }
-
-        if card.cannot_be_countered {
-            entity.insert(CannotBeCountered);
-        }
-
-        if card.keywords.contains_key(&Keyword::SplitSecond) {
-            entity.insert(SplitSecond);
-        }
-
-        if !card.effects.is_empty() {
-            entity.insert(Effects(card.effects.clone()));
-        }
-
-        if !card.modes.is_empty() {
-            entity.insert(Modes(card.modes.clone()));
-        }
-
-        if !card.etb_abilities.is_empty() {
-            let id = AbilityId::upload_ability(
-                db,
-                cardid,
-                Ability::Etb {
-                    effects: card.etb_abilities.clone(),
-                },
-            );
-
-            db.entity_mut(cardid.0).insert(ETBAbilities(vec![id]));
-        }
-
-        if !card.mana_abilities.is_empty() {
-            let mut ability_ids = vec![];
-            for gain_mana in card.mana_abilities.iter() {
-                let id = AbilityId::upload_ability(db, cardid, Ability::Mana(gain_mana.clone()));
-
-                ability_ids.push(id);
-            }
-
-            if let Some(mut abilities) = db.get_mut::<ActivatedAbilities>(cardid.0) {
-                abilities.extend(ability_ids);
-            } else {
-                db.entity_mut(cardid.0)
-                    .insert(ActivatedAbilities(ability_ids));
-            }
-        }
-
-        if !card.activated_abilities.is_empty() {
-            let mut ability_ids = vec![];
-            for ability in card.activated_abilities.iter() {
-                let id = AbilityId::upload_ability(db, cardid, Ability::Activated(ability.clone()));
-
-                ability_ids.push(id);
-            }
-
-            if let Some(mut abilities) = db.get_mut::<ActivatedAbilities>(cardid.0) {
-                abilities.extend(ability_ids);
-            } else {
-                db.entity_mut(cardid.0)
-                    .insert(ActivatedAbilities(ability_ids));
-            }
-        }
-
-        if !card.static_abilities.is_empty() {
-            db.entity_mut(cardid.0)
-                .insert(StaticAbilities(card.static_abilities.clone()));
-        }
-
-        if let Some(enchant) = &card.enchant {
-            let mut modifierids = vec![];
-            for modifier in enchant.modifiers.iter() {
-                let modifierid = ModifierId::upload_modifier(db, cardid, modifier, false);
-                modifierids.push(modifierid);
-            }
-
-            let auraid = AuraId::from(db.auras.spawn((Modifiers(modifierids),)).id());
-
-            db.entity_mut(cardid.0).insert(auraid);
-        }
-
-        if !card.triggered_abilities.is_empty() {
-            let mut trigger_ids = vec![];
-            for ability in card.triggered_abilities.iter() {
-                trigger_ids.push(TriggerId::upload(db, ability, cardid, false));
-            }
-
-            db.entity_mut(cardid.0).insert(Triggers(trigger_ids));
-        }
-
-        if !card.replacement_effects.is_empty() {
-            let mut ids = vec![];
-            for effect in card.replacement_effects.iter() {
-                ids.push(ReplacementEffectId::upload_replacement_effect(
-                    db, effect, cardid,
-                ));
-            }
-
-            db.entity_mut(cardid.0).insert(ReplacementEffects(ids));
-        }
-
-        if let Some(back) = &card.back_face {
-            let id = CardId::upload_card(db, back, player, destination, is_token);
-            id.move_to_limbo(db);
-
-            db.entity_mut(id.0).insert(FrontFace(cardid));
-            db.entity_mut(id.0).insert(BackFace(id));
-            db.entity_mut(cardid.0).insert(FrontFace(cardid));
-            db.entity_mut(cardid.0).insert(BackFace(id));
-        }
-
-        cardid.apply_modifiers_layered(db);
-    }
-
-    pub fn cost(self, db: &Database) -> &CastingCost {
-        db.get::<CastingCost>(self.0).unwrap()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn valid_targets(
-        self,
-        db: &mut Database,
-        already_chosen: &HashSet<ActiveTarget>,
-    ) -> Vec<Vec<ActiveTarget>> {
-        let mut targets = vec![];
-
-        if let Some(aura_targets) = self.targets_for_aura(db) {
-            targets.push(aura_targets);
-        }
-
-        let controller = self.controller(db);
-        for effect in self.effects(db) {
-            let effect = effect.effect;
-            targets.push(effect.valid_targets(db, self, controller, already_chosen));
-        }
-
-        for ability in self.activated_abilities(db) {
-            targets.extend(self.targets_for_ability(db, ability, already_chosen));
-        }
-
-        targets
+        types.is_empty() || !db[self].modified_subtypes.is_disjoint(types)
     }
 
     pub(crate) fn targets_for_ability(
         self,
-        db: &mut Database,
-        ability: AbilityId,
+        db: &Database,
+        ability: &Ability,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
-        let ability = ability.ability(db);
-        let controller = self.controller(db);
+        let controller = db[self].controller;
         if !ability.apply_to_self() {
-            for effect in ability.into_effects() {
-                let effect = effect.effect;
-                targets.push(effect.valid_targets(db, self, controller, already_chosen));
+            for effect in ability.effects().iter() {
+                targets.push(
+                    effect
+                        .effect
+                        .valid_targets(db, self, controller, already_chosen),
+                );
             }
         } else {
             targets.push(vec![ActiveTarget::Battlefield { id: self }])
@@ -1934,13 +1534,12 @@ impl CardId {
         targets
     }
 
-    pub(crate) fn targets_for_aura(self, db: &mut Database) -> Option<Vec<ActiveTarget>> {
-        if self.aura(db).is_some() {
+    pub(crate) fn targets_for_aura(self, db: &Database) -> Option<Vec<ActiveTarget>> {
+        if self.faceup_face(db).enchant.is_some() {
             let mut targets = vec![];
-            let controller = self.controller(db);
-            for card in in_play::cards::<OnBattlefield>(db) {
-                let card_restrictions = self.restrictions(db);
-                if !card.passes_restrictions(db, self, &card_restrictions) {
+            let controller = db[self].controller;
+            for card in db.battlefield[controller].iter() {
+                if !card.passes_restrictions(db, self, &self.faceup_face(db).restrictions) {
                     continue;
                 }
 
@@ -1948,7 +1547,7 @@ impl CardId {
                     continue;
                 }
 
-                targets.push(ActiveTarget::Battlefield { id: card });
+                targets.push(ActiveTarget::Battlefield { id: *card });
             }
             Some(targets)
         } else {
@@ -1958,11 +1557,11 @@ impl CardId {
 
     pub(crate) fn can_be_countered(
         self,
-        db: &mut Database,
+        db: &Database,
         source: CardId,
         restrictions: &[Restriction],
     ) -> bool {
-        if db.get::<CannotBeCountered>(self.0).is_some() {
+        if self.faceup_face(db).cannot_be_countered {
             return false;
         }
 
@@ -1970,11 +1569,10 @@ impl CardId {
             return false;
         }
 
-        let colors = self.colors(db);
         for (ability, _) in Battlefield::static_abilities(db) {
             match &ability {
                 StaticAbility::GreenCannotBeCountered { restrictions } => {
-                    if colors.contains(&Color::Green)
+                    if db[self].modified_colors.contains(&Color::Green)
                         && self.passes_restrictions(db, source, restrictions)
                     {
                         return false;
@@ -1987,12 +1585,12 @@ impl CardId {
         true
     }
 
-    pub(crate) fn can_be_targeted(self, db: &mut Database, caster: Controller) -> bool {
+    pub(crate) fn can_be_targeted(self, db: &Database, caster: Controller) -> bool {
         if self.shroud(db) {
             return false;
         }
 
-        if self.hexproof(db) && self.controller(db) != caster {
+        if self.hexproof(db) && db[self].controller != caster {
             return false;
         }
 
@@ -2007,133 +1605,107 @@ impl CardId {
     }
 
     pub(crate) fn tapped(self, db: &Database) -> bool {
-        db.get::<Tapped>(self.0).is_some()
+        db[self].tapped
     }
 
     pub(crate) fn tap(self, db: &mut Database) -> PendingResults {
         Log::tapped(db, LogId::current(), self);
 
+        db[self].tapped = true;
+
         let mut pending = PendingResults::default();
-        for trigger in TriggerId::active_triggers_of_source::<trigger_source::Tapped>(db) {
-            let restrictions = trigger.restrictions(db);
-            if self.passes_restrictions(db, trigger.listener(db), &restrictions) {
-                pending.extend(Stack::move_trigger_to_stack(db, trigger));
+        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Tapped) {
+            if self.passes_restrictions(db, listener, &trigger.trigger.restrictions) {
+                pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }
-
-        db.entity_mut(self.0).insert(Tapped);
 
         pending
     }
 
     pub fn untap(self, db: &mut Database) {
-        db.entity_mut(self.0).remove::<Tapped>();
+        db[self].tapped = false;
 
         let mut entities = vec![];
-        for (entity, mut modifying) in db
-            .modifiers
-            .query_filtered::<(Entity, &mut Modifying), With<UntilUntapped>>()
-            .iter_mut(&mut db.modifiers)
-        {
-            modifying.remove(&self);
-            if modifying.is_empty() {
-                entities.push(ModifierId::from(entity));
+
+        for (id, modifier) in db.modifiers.iter_mut().filter(|(_, modifier)| {
+            matches!(modifier.modifier.duration, EffectDuration::UntilUntapped)
+        }) {
+            modifier.modifying.remove(&self);
+            if modifier.modifying.is_empty() {
+                entities.push(*id);
             }
         }
 
         for entity in entities {
-            entity.deactivate(db);
+            entity.deactivate(&mut db.modifiers);
         }
 
         self.apply_modifiers_layered(db);
     }
 
-    pub(crate) fn clone_card<Location: Component + std::marker::Copy + std::fmt::Debug>(
-        self,
-        db: &mut Database,
-        source: CardId,
-        location: Location,
-    ) {
-        db.entity_mut(self.0).insert(Cloning(source.0));
-        let controller = source.controller(db);
-        Self::insert_components(
-            db,
-            self,
-            &source.original(db).clone(),
-            controller.into(),
-            location,
-            false,
+    pub(crate) fn token_copy_of(self, db: &mut Database, controller: Controller) -> CardId {
+        let card = clone_card(db, self);
+
+        let id = Self::new();
+        db.cards.insert(
+            id,
+            CardInPlay {
+                card,
+                controller,
+                owner: controller.into(),
+                token: true,
+                ..Default::default()
+            },
         );
+        id
     }
 
-    pub(crate) fn cloning(self, db: &Database) -> Option<Cloning> {
-        db.get::<Cloning>(self.0).copied()
+    pub(crate) fn clone_card(self, db: &mut Database, cloning: CardId) {
+        db[self].cloned_id = Some(cloning);
+        db[self].cloning = Some(clone_card(db, cloning));
     }
 
     pub(crate) fn is_land(self, db: &Database) -> bool {
         self.types_intersect(db, &IndexSet::from([Type::Land]))
     }
 
-    pub(crate) fn manifest(self, db: &mut Database) {
-        db.entity_mut(self.0).insert(Manifested).insert(FaceDown);
-    }
-
-    pub(crate) fn manifested(self, db: &Database) -> bool {
-        db.get::<Manifested>(self.0).is_some()
-    }
-
     pub(crate) fn is_permanent(self, db: &Database) -> bool {
         !self.types_intersect(db, &IndexSet::from([Type::Instant, Type::Sorcery]))
     }
 
-    pub(crate) fn keywords(self, db: &mut Database) -> ::counter::Counter<Keyword> {
-        db.get::<ModifiedKeywords>(self.0)
-            .map(|t| t.0.clone())
-            .or_else(|| db.get::<Keywords>(self.0).map(|t| t.0.clone()))
-            .unwrap_or_default()
+    pub(crate) fn shroud(self, db: &Database) -> bool {
+        db[self].modified_keywords.contains_key(&Keyword::Shroud)
     }
 
-    pub(crate) fn shroud(self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::Shroud)
-    }
-
-    pub(crate) fn hexproof(self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::Hexproof)
+    pub(crate) fn hexproof(self, db: &Database) -> bool {
+        db[self].modified_keywords.contains_key(&Keyword::Hexproof)
     }
 
     #[allow(unused)]
-    pub(crate) fn flying(self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::Flying)
+    pub(crate) fn flying(self, db: &Database) -> bool {
+        db[self].modified_keywords.contains_key(&Keyword::Flying)
     }
 
-    pub(crate) fn indestructible(self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::Indestructible)
+    pub(crate) fn indestructible(self, db: &Database) -> bool {
+        db[self]
+            .modified_keywords
+            .contains_key(&Keyword::Indestructible)
     }
 
-    pub(crate) fn vigilance(self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::Vigilance)
+    pub(crate) fn vigilance(self, db: &Database) -> bool {
+        db[self].modified_keywords.contains_key(&Keyword::Vigilance)
     }
 
-    pub fn name(self, db: &Database) -> String {
-        db.get::<Name>(self.0).unwrap().0.clone()
+    pub fn name(self, db: &Database) -> &String {
+        &self.faceup_face(db).name
     }
 
-    pub fn oracle_text(self, db: &Database) -> String {
-        db.get::<OracleText>(self.0).unwrap().0.clone()
+    pub(crate) fn has_flash(self, db: &Database) -> bool {
+        db[self].modified_keywords.contains_key(&Keyword::Flash)
     }
 
-    pub(crate) fn has_flash(&self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::Flash)
-    }
-
-    pub(crate) fn abilities_text(self, db: &mut Database) -> String {
-        self.activated_abilities(db)
-            .into_iter()
-            .map(|ability| ability.text(db))
-            .join("\n")
-    }
-
-    pub fn pt_text(&self, db: &mut Database) -> Option<String> {
+    pub fn pt_text(&self, db: &Database) -> Option<String> {
         let power = self.power(db);
         let toughness = self.toughness(db);
 
@@ -2145,92 +1717,47 @@ impl CardId {
         }
     }
 
-    pub fn modified_by_text(&self, db: &mut Database) -> Vec<String> {
+    pub fn modified_by_text(self, db: &Database) -> Vec<String> {
         self.modified_by(db)
             .into_iter()
             .map(|card| card.name(db))
+            .cloned()
             .collect_vec()
     }
 
-    pub fn modified_by(&self, db: &mut Database) -> Vec<CardId> {
-        let mut results = vec![];
-
-        let modifiers = self.modifiers(db);
-        for modifier in modifiers {
-            results.push(modifier.source(db));
-        }
-
-        results
-    }
-
-    pub fn triggers_text(self, db: &mut Database) -> Vec<String> {
-        let triggers = self.triggers(db);
-
-        let mut results = vec![];
-        for trigger in triggers {
-            results.push(trigger.text(db))
-        }
-
-        results
-    }
-
-    pub(crate) fn reveal(self, db: &mut Database) {
-        db.entity_mut(self.0).insert(Revealed);
-    }
-
-    pub(crate) fn settle(self, db: &mut Database) {
-        db.entity_mut(self.0).insert(Settled);
-    }
-
-    pub(crate) fn cast_location<Location: Component + Default>(self, db: &mut Database) {
-        db.entity_mut(self.0).insert(Location::default());
-    }
-
-    pub(crate) fn was_cast(self, db: &mut Database) -> bool {
-        for location in CastFrom::iter() {
-            match location {
-                CastFrom::Hand => {
-                    if db.get::<cast_from::Hand>(self.0).is_some() {
-                        return true;
-                    }
+    pub fn modified_by(self, db: &Database) -> Vec<CardId> {
+        db.modifiers
+            .values()
+            .filter_map(|modifier| {
+                if modifier.modifying.contains(&self) {
+                    Some(modifier.source)
+                } else {
+                    None
                 }
-                CastFrom::Exile => {
-                    if db.get::<cast_from::Exile>(self.0).is_some() {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        false
+            })
+            .collect_vec()
     }
 
     pub(crate) fn cascade(self, db: &mut Database) -> usize {
-        self.keywords(db)
+        db[self]
+            .modified_keywords
             .get(&Keyword::Cascade)
             .copied()
             .unwrap_or_default()
     }
 
     pub(crate) fn exiled_with_cascade(db: &mut Database) -> Vec<CardId> {
-        db.query_filtered::<Entity, (With<InExile>, With<exile_reason::Cascade>)>()
-            .iter(db)
-            .map(Self)
+        db.exile
+            .exile_zones
+            .values()
+            .flat_map(|e| e.iter())
+            .copied()
+            .filter(|card| matches!(db[*card].exile_reason, Some(ExileReason::Cascade)))
             .collect_vec()
     }
 
-    pub(crate) fn apply_individually(self, db: &Database) -> bool {
-        db.get::<ApplyIndividually>(self.0).is_some()
-    }
-
-    pub(crate) fn set_x(self, db: &mut Database, x_is: usize) {
-        db.entity_mut(self.0).insert(PaidX(x_is));
-    }
-
     pub(crate) fn get_x(self, db: &Database) -> usize {
-        db.get::<PaidX>(self.0)
-            .map(|paid| paid.0)
-            .unwrap_or_default()
+        db[self].x_is
     }
 
     pub(crate) fn mana_from_source(self, db: &mut Database, sources: &[ManaSource]) {
@@ -2239,95 +1766,97 @@ impl CardId {
             *sourced.entry(source).or_default() += 1
         }
 
-        db.entity_mut(self.0).insert(SourcedMana(sourced));
-    }
-
-    pub(crate) fn get_mana_from_sources(self, db: &Database) -> Option<SourcedMana> {
-        db.get::<SourcedMana>(self.0).cloned()
-    }
-
-    pub(crate) fn attacking(self, db: &Database) -> bool {
-        db.get::<Attacking>(self.0).is_some()
-    }
-
-    pub(crate) fn set_attacking(self, db: &mut Database, target: Owner) {
-        db.entity_mut(self.0).insert(Attacking(target));
-    }
-
-    pub(crate) fn all_attackers(db: &mut Database) -> Vec<(CardId, Owner)> {
-        db.query::<(Entity, &Attacking)>()
-            .iter(db)
-            .map(|(e, attacking)| (Self(e), attacking.0))
-            .collect_vec()
-    }
-
-    pub(crate) fn clear_all_attacking(db: &mut Database) {
-        for card in db
-            .query_filtered::<Entity, With<Attacking>>()
-            .iter(db)
-            .collect_vec()
-        {
-            db.entity_mut(card).remove::<Attacking>();
-        }
+        db[self].sourced_mana = sourced;
     }
 
     pub(crate) fn can_attack(self, db: &Database) -> bool {
         self.types_intersect(db, &IndexSet::from([Type::Creature]))
-            && !self
-                .static_abilities(db)
-                .into_iter()
+            && !db[self]
+                .modified_static_abilities
+                .iter()
                 .any(|ability| matches!(ability, StaticAbility::PreventAttacks))
     }
 
-    pub(crate) fn exile_source(self, db: &Database) -> ExiledWith {
-        db.get::<ExiledWith>(self.0).copied().unwrap()
-    }
-
-    pub(crate) fn until_source_leaves_battlefield(self, db: &Database) -> bool {
-        db.get::<UntilSourceLeavesBattlefield>(self.0).is_some()
-    }
-
-    pub(crate) fn until_end_of_turn(self, db: &Database) -> bool {
-        db.get::<UntilEndOfTurn>(self.0).is_some()
-    }
-
-    pub(crate) fn ward(self, db: &mut Database) -> Option<&Ward> {
-        db.get::<Ward>(self.0)
-    }
-
-    pub(crate) fn cost_reducer(&self, db: &Database) -> Option<CostReducer> {
-        db.get::<CostReducer>(self.0).cloned()
-    }
-
-    pub(crate) fn battle_cry(&self, db: &mut Database) -> bool {
-        self.keywords(db).contains_key(&Keyword::BattleCry)
-    }
-
-    pub(crate) fn chosen(self, db: &Database) -> bool {
-        db.get::<Chosen>(self.0).is_some()
-    }
-
-    pub(crate) fn choose(self, db: &mut Database) {
-        db.entity_mut(self.0).insert(Chosen);
-    }
-
-    pub(crate) fn clear_all_chosen(db: &mut Database) {
-        let entities = db
-            .query_filtered::<Entity, With<Chosen>>()
-            .iter(db)
-            .collect_vec();
-        for e in entities {
-            db.entity_mut(e).remove::<Chosen>();
-        }
+    pub(crate) fn battle_cry(self, db: &Database) -> usize {
+        db[self]
+            .modified_keywords
+            .get(&Keyword::BattleCry)
+            .copied()
+            .unwrap_or_default()
     }
 }
 
-pub(crate) fn target_from_location(db: &mut Database, card: CardId) -> ActiveTarget {
-    if card.is_in_location::<OnBattlefield>(db) {
+impl Default for CardId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn clone_card(db: &mut Database, cloning: CardId) -> Card {
+    Card {
+        name: db[cloning].modified_name.clone(),
+        types: db[cloning].modified_types.clone(),
+        subtypes: db[cloning].modified_subtypes.clone(),
+        cost: db[cloning].modified_cost.clone(),
+        reducer: Default::default(),
+        cannot_be_countered: false,
+        colors: db[cloning].modified_colors.clone(),
+        oracle_text: String::default(),
+        full_text: String::default(),
+        enchant: if db[cloning].facedown && !db[cloning].transformed {
+            None
+        } else {
+            cloning.faceup_face(db).enchant.clone()
+        },
+        effects: cloning.faceup_face(db).effects.clone(),
+        modes: cloning.faceup_face(db).modes.clone(),
+        etb_abilities: db[cloning].modified_etb_abilities.clone(),
+        apply_individually: cloning.faceup_face(db).apply_individually,
+        ward: cloning.faceup_face(db).ward.clone(),
+        static_abilities: db[cloning].modified_static_abilities.clone(),
+        activated_abilities: db[cloning].modified_activated_abilities.clone(),
+        triggered_abilities: db[cloning]
+            .modified_triggers
+            .values()
+            .flat_map(|triggers| triggers.iter())
+            .cloned()
+            .collect_vec(),
+        replacement_effects: cloning.faceup_face(db).replacement_effects.clone(),
+        mana_abilities: db[cloning].modified_mana_abilities.clone(),
+        dynamic_power_toughness: db[cloning]
+            .modified_base_power
+            .as_ref()
+            .and_then(|bp| match bp {
+                BasePowerType::Static(_) => None,
+                BasePowerType::Dynamic(dynamic) => Some(dynamic.clone()),
+            }),
+        power: db[cloning]
+            .modified_base_power
+            .as_ref()
+            .and_then(|bp| match bp {
+                BasePowerType::Static(value) => Some(*value as usize),
+                BasePowerType::Dynamic(_) => None,
+            }),
+        toughness: db[cloning]
+            .modified_base_toughness
+            .as_ref()
+            .and_then(|bt| match bt {
+                BaseToughnessType::Static(value) => Some(*value as usize),
+                BaseToughnessType::Dynamic(_) => None,
+            }),
+        etb_tapped: cloning.faceup_face(db).etb_tapped,
+        keywords: db[cloning].modified_keywords.clone(),
+        restrictions: cloning.faceup_face(db).restrictions.clone(),
+        back_face: None,
+    }
+}
+
+pub(crate) fn target_from_location(db: &Database, card: CardId) -> ActiveTarget {
+    if db.battlefield[db[card].controller].contains(&card) {
         ActiveTarget::Battlefield { id: card }
-    } else if card.is_in_location::<InGraveyard>(db) {
+    } else if db.graveyard[db[card].owner].contains(&card) {
         ActiveTarget::Graveyard { id: card }
-    } else if card.is_in_location::<InLibrary>(db) {
+    } else if db.all_players[db[card].owner].library.cards.contains(&card) {
         ActiveTarget::Library { id: card }
     } else {
         todo!()

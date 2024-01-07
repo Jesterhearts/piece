@@ -1,24 +1,23 @@
 use anyhow::{anyhow, Context};
-use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::protogen;
 
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct Types(pub(crate) IndexSet<Type>);
 
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct ModifiedTypes(pub(crate) IndexSet<Type>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct AddTypes(pub(crate) IndexSet<Type>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct RemoveTypes(pub(crate) IndexSet<Type>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RemoveAllTypes;
 
 #[derive(
@@ -74,19 +73,19 @@ impl From<&protogen::types::type_::Type> for Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct Subtypes(pub(crate) IndexSet<Subtype>);
 
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct ModifiedSubtypes(pub(crate) IndexSet<Subtype>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct AddSubtypes(pub(crate) IndexSet<Subtype>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct RemoveSubtypes(pub(crate) IndexSet<Subtype>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RemoveAllCreatureTypes;
 
 #[derive(

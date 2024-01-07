@@ -10,7 +10,7 @@ use crate::{
         pay_costs::{PayCost, SpendMana},
         Pending, PendingResult,
     },
-    player::{mana_pool::SpendReason, AllPlayers, Controller},
+    player::{mana_pool::SpendReason, Controller},
     stack::ActiveTarget,
 };
 
@@ -41,7 +41,7 @@ impl ChooseForEachPlayer {
         db: &mut Database,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
-        let controller = self.card.controller(db);
+        let controller = db[self.card].controller;
         let new_targets =
             self.target_source
                 .valid_targets(db, self.card, controller, already_chosen);
@@ -64,7 +64,7 @@ impl ChooseForEachPlayer {
             } else {
                 *self
                     .chosen
-                    .entry(self.valid_targets[choice].id().unwrap().controller(db))
+                    .entry(db[self.valid_targets[choice].id().unwrap()].controller)
                     .or_default() = choice;
                 true
             }
@@ -72,7 +72,7 @@ impl ChooseForEachPlayer {
             debug!("Choosing default only target");
             *self
                 .chosen
-                .entry(self.valid_targets[0].id().unwrap().controller(db))
+                .entry(db[self.valid_targets[0].id().unwrap()].controller)
                 .or_default() = 0;
             true
         } else {
@@ -104,15 +104,15 @@ impl ChooseForEachPlayer {
 }
 
 impl PendingResult for ChooseForEachPlayer {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         self.valid_targets.len() <= 1
     }
 
-    fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.valid_targets
             .iter()
             .enumerate()
-            .map(|(idx, target)| (idx, target.display(db, all_players)))
+            .map(|(idx, target)| (idx, target.display(db)))
             .collect_vec()
     }
 
@@ -127,7 +127,6 @@ impl PendingResult for ChooseForEachPlayer {
     fn make_choice(
         &mut self,
         db: &mut Database,
-        _all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut super::PendingResults,
     ) -> bool {
@@ -137,7 +136,7 @@ impl PendingResult for ChooseForEachPlayer {
 
                 for target in choices.iter() {
                     if let ActiveTarget::Battlefield { id } = target {
-                        if let Some(ward) = id.ward(db) {
+                        if let Some(ward) = id.faceup_face(db).ward.as_ref() {
                             results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
                                 ward.mana_cost.clone(),
                                 self.card,
@@ -149,7 +148,7 @@ impl PendingResult for ChooseForEachPlayer {
 
                 results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {
-                    let player = self.card.controller(db);
+                    let player = db[self.card].controller;
                     self.target_source.push_behavior_with_targets(
                         db,
                         choices.clone(),
@@ -162,8 +161,11 @@ impl PendingResult for ChooseForEachPlayer {
                     results.chosen_targets.push(choices.clone());
                 }
 
-                if !self.card.apply_individually(db) {
-                    let player = self.card.controller(db);
+                if !{
+                    let this = self.card;
+                    this.faceup_face(db).apply_individually
+                } {
+                    let player = db[self.card].controller;
 
                     let mut effect_or_auras = vec![];
                     results.pending.retain(|p| {

@@ -1,7 +1,6 @@
 use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{anyhow, Context};
-use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 
@@ -15,7 +14,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 #[allow(unused)]
-pub(crate) enum Location {
+pub enum Location {
     Battlefield,
     Graveyard,
     Exile,
@@ -85,7 +84,7 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
     }
 }
 
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct Restrictions(pub(crate) Vec<Restriction>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -2,8 +2,7 @@ use std::vec::IntoIter;
 
 use crate::{
     battlefield::ActionResult,
-    effects::EffectBehaviors,
-    in_play::ReplacementEffectId,
+    effects::{EffectBehaviors, ReplacementEffect},
     pending_results::PendingResults,
     player::{Owner, Player},
     protogen,
@@ -34,7 +33,7 @@ impl TryFrom<&protogen::effects::ControllerLosesLife> for ControllerLosesLife {
 impl EffectBehaviors for ControllerLosesLife {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -42,7 +41,7 @@ impl EffectBehaviors for ControllerLosesLife {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -86,11 +85,11 @@ impl EffectBehaviors for ControllerLosesLife {
 
     fn replace_draw(
         &self,
-        _player: &mut Player,
         db: &mut crate::in_play::Database,
-        _replacements: &mut IntoIter<ReplacementEffectId>,
+        player: crate::player::Owner,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
         controller: crate::player::Controller,
-        _count: usize,
+        count: usize,
         results: &mut PendingResults,
     ) {
         if self.unless.is_empty()
@@ -101,5 +100,7 @@ impl EffectBehaviors for ControllerLosesLife {
                 count: self.count,
             });
         }
+
+        Player::draw_with_replacement(db, player, replacements, count, results);
     }
 }
