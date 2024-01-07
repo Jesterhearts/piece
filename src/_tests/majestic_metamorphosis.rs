@@ -45,6 +45,8 @@ fn metamorphosis() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(mantle.power(&db), Some(4));
@@ -95,6 +97,8 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     );
 
     let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

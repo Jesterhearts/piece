@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    vec::IntoIter,
-};
+use std::{collections::HashSet, vec::IntoIter};
 
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -19,7 +16,7 @@ use crate::{
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
         AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, EffectDuration,
-        ModifyBattlefield, ReplacementEffect, Replacing, Token,
+        ModifyBattlefield, ReplacementAbility, Replacing, Token,
     },
     in_play::{CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
@@ -245,7 +242,7 @@ pub(crate) enum ActionResult {
 
 #[derive(Debug, Default)]
 pub struct Battlefield {
-    pub battlefields: HashMap<Controller, IndexSet<CardId>>,
+    pub battlefields: IndexMap<Controller, IndexSet<CardId>>,
 }
 
 impl std::ops::Index<Owner> for Battlefield {
@@ -362,7 +359,7 @@ impl Battlefield {
     ) -> PartialAddToBattlefieldResult {
         let mut results = PendingResults::default();
 
-        for (source, replacement) in db.replacement_effects_watching(Replacing::Etb) {
+        for (source, replacement) in db.replacement_abilities_watching(Replacing::Etb) {
             if !source_card_id.passes_restrictions(db, source, &replacement.restrictions) {
                 continue;
             }
@@ -507,7 +504,7 @@ impl Battlefield {
             return PendingResults::default();
         }
 
-        let ability = db[source].abilities().into_iter().nth(index).unwrap();
+        let (ability_source, ability) = db[source].abilities().into_iter().nth(index).unwrap();
 
         if !ability.can_be_activated(db, source, activator, pending) {
             debug!("Can't activate ability (can't meet costs)");
@@ -538,11 +535,12 @@ impl Battlefield {
             for cost in cost.additional_cost.iter() {
                 match cost {
                     AdditionalCost::DiscardThis => {
-                        results.push_settled(ActionResult::Discard(source));
+                        results.push_settled(ActionResult::Discard(ability_source));
                     }
                     AdditionalCost::SacrificeSource => {
-                        results.push_settled(ActionResult::PermanentToGraveyard(source));
-                        results.push_invalid_target(ActiveTarget::Battlefield { id: source })
+                        results.push_settled(ActionResult::PermanentToGraveyard(ability_source));
+                        results
+                            .push_invalid_target(ActiveTarget::Battlefield { id: ability_source })
                     }
                     AdditionalCost::PayLife(PayLife { count }) => {
                         results.push_settled(ActionResult::LoseLife {
@@ -666,7 +664,7 @@ impl Battlefield {
         result
     }
 
-    #[instrument(skip(db, ), level = Level::DEBUG)]
+    #[instrument(skip(db), level = Level::DEBUG)]
     pub(crate) fn apply_action_results(
         db: &mut Database,
         results: &[ActionResult],
@@ -834,7 +832,7 @@ impl Battlefield {
                 let mut results = PendingResults::default();
 
                 let mut replacements = db
-                    .replacement_effects_watching(Replacing::TokenCreation)
+                    .replacement_abilities_watching(Replacing::TokenCreation)
                     .into_iter();
 
                 let card = CardId::upload_token(db, db[*source].controller.into(), token.clone());
@@ -853,10 +851,7 @@ impl Battlefield {
             ActionResult::AddToBattlefield(card, target) => {
                 Battlefield::add_from_stack_or_hand(db, *card, *target)
             }
-            ActionResult::StackToGraveyard(card) => {
-                assert!(card.is_in_location(db, Location::Stack));
-                Battlefield::stack_to_graveyard(db, *card)
-            }
+            ActionResult::StackToGraveyard(card) => Battlefield::stack_to_graveyard(db, *card),
             ActionResult::ApplyToBattlefield(modifier) => {
                 modifier.activate(&mut db.modifiers);
                 PendingResults::default()
@@ -1094,7 +1089,7 @@ impl Battlefield {
                 let mut results = PendingResults::default();
 
                 let mut replacements = db
-                    .replacement_effects_watching(Replacing::TokenCreation)
+                    .replacement_abilities_watching(Replacing::TokenCreation)
                     .into_iter();
 
                 create_token_copy_with_replacements(
@@ -1488,6 +1483,29 @@ impl Battlefield {
             results.extend(Battlefield::add_from_exile(db, card, false, None));
         }
 
+        for modifier in db
+            .modifiers
+            .iter()
+            .filter_map(|(id, modifier)| {
+                if (matches!(
+                    modifier.modifier.duration,
+                    EffectDuration::UntilSourceLeavesBattlefield
+                ) && modifier.source == target)
+                    || (matches!(
+                        modifier.modifier.duration,
+                        EffectDuration::UntilTargetLeavesBattlefield
+                    ) && modifier.modifying.contains(&target))
+                {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect_vec()
+        {
+            modifier.deactivate(&mut db.modifiers);
+        }
+
         db[target].left_battlefield_turn = Some(db.turn.turn_count);
 
         results
@@ -1544,7 +1562,7 @@ pub(crate) fn create_token_copy_with_replacements(
     source: CardId,
     copying: CardId,
     modifiers: &[ModifyBattlefield],
-    replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
+    replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
     results: &mut PendingResults,
 ) {
     let mut replaced = false;
@@ -1589,6 +1607,8 @@ pub(crate) fn create_token_copy_with_replacements(
 
             token.apply_modifier(db, modifier);
         }
+
+        token.apply_modifiers_layered(db);
         results.extend(Battlefield::add_from_stack_or_hand(db, token, None));
     }
 }
@@ -1674,7 +1694,10 @@ fn move_card_to_battlefield(
     results: &mut PendingResults,
     target: Option<CardId>,
 ) {
-    target.unwrap().apply_aura(db, source_card_id);
+    if let Some(target) = target {
+        target.apply_aura(db, source_card_id);
+    }
+
     for ability in db
         .cards
         .entry(source_card_id)

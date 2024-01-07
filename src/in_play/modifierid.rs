@@ -2,6 +2,7 @@ use std::{collections::HashSet, sync::atomic::Ordering};
 
 use derive_more::{From, Into};
 use indexmap::IndexMap;
+use tracing::Level;
 
 use crate::{
     effects::BattlefieldModifier,
@@ -39,7 +40,7 @@ impl ModifierId {
             ModifierInPlay {
                 source,
                 temporary: true,
-                active: false,
+                active: true,
                 modifier,
                 modifying: Default::default(),
             },
@@ -48,19 +49,20 @@ impl ModifierId {
         id
     }
 
+    #[instrument(level = Level::DEBUG)]
     pub(crate) fn activate(self, modifiers: &mut IndexMap<ModifierId, ModifierInPlay>) {
         modifiers.get_mut(&self).unwrap().active = true;
     }
 
+    #[instrument(level = Level::DEBUG)]
     pub(crate) fn deactivate(self, modifiers: &mut IndexMap<ModifierId, ModifierInPlay>) {
         let modifier = modifiers.get_mut(&self).unwrap();
-        let is_temporary = modifier.temporary;
-        let modifying = &modifier.modifying;
 
-        if is_temporary && modifying.is_empty() {
+        if modifier.temporary && modifier.modifying.is_empty() {
             modifiers.remove(&self);
         } else {
             modifier.active = false;
+            modifier.modifying.clear();
         }
     }
 }

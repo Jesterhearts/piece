@@ -11,7 +11,7 @@ use crate::{
     cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer, Ward},
     effects::{
         target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
-        Mode, ReplacementEffect, Token, TokenCreature,
+        Mode, ReplacementAbility, Token, TokenCreature,
     },
     mana::ManaCost,
     protogen,
@@ -271,7 +271,7 @@ pub struct Card {
 
     pub(crate) triggered_abilities: Vec<TriggeredAbility>,
 
-    pub(crate) replacement_effects: Vec<ReplacementEffect>,
+    pub(crate) replacement_abilities: Vec<ReplacementAbility>,
 
     pub(crate) mana_abilities: Vec<GainManaAbility>,
 
@@ -370,10 +370,10 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .iter()
                 .map(TriggeredAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
-            replacement_effects: value
-                .replacement_effects
+            replacement_abilities: value
+                .replacement_abilities
                 .iter()
-                .map(ReplacementEffect::try_from)
+                .map(ReplacementAbility::try_from)
                 .collect::<anyhow::Result<_>>()?,
             mana_abilities: value
                 .mana_abilities

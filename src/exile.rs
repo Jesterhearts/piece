@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     in_play::CardId,
@@ -9,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct Exile {
-    pub(crate) exile_zones: HashMap<Owner, IndexSet<CardId>>,
+    pub(crate) exile_zones: IndexMap<Owner, IndexSet<CardId>>,
 }
 
 impl std::ops::Index<Owner> for Exile {

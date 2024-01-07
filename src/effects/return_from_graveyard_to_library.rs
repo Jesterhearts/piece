@@ -61,8 +61,8 @@ impl EffectBehaviors for ReturnFromGraveyardToLibrary {
             .values()
             .flat_map(|g| g.iter())
             .filter(|card| {
-                !card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
-                    || !card.passes_restrictions(db, source, &self.restrictions)
+                card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
+                    && card.passes_restrictions(db, source, &self.restrictions)
             })
             .map(|card| ActiveTarget::Graveyard { id: *card })
             .collect_vec()

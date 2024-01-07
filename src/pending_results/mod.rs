@@ -16,6 +16,7 @@ use std::{
 use enum_dispatch::enum_dispatch;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
     abilities::{Ability, GainMana, GainManaAbility},
@@ -280,6 +281,7 @@ impl PendingResults {
         self.pending.push_back(Pending::ChooseForEachPlayer(choice));
     }
 
+    #[instrument(level = Level::DEBUG, skip(self))]
     pub(crate) fn push_choose_targets(&mut self, choice: ChooseTargets) {
         self.pending.push_back(Pending::ChooseTargets(choice));
     }
@@ -375,7 +377,7 @@ impl PendingResults {
             if let Some(source) = self.add_to_stack.take() {
                 match source {
                     Source::Card(card) => {
-                        debug!("Casting card");
+                        debug!("Casting card {}", db[card].modified_name);
                         self.settled_effects.push(ActionResult::CastCard {
                             card,
                             targets: self.chosen_targets.clone(),

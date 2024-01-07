@@ -14,7 +14,7 @@ pub(crate) use modifierid::{ModifierId, ModifierInPlay};
 use crate::{
     abilities::TriggeredAbility,
     battlefield::Battlefield,
-    effects::{ReplacementEffect, Replacing},
+    effects::{ReplacementAbility, Replacing},
     exile::Exile,
     graveyard::Graveyard,
     hand::Hand,
@@ -144,27 +144,27 @@ impl Database {
                 self[*card]
                     .modified_triggers
                     .get(&source)
-                    .unwrap()
                     .iter()
+                    .flat_map(|triggers| triggers.iter())
                     .map(|ability| (*card, ability.clone()))
+                    .collect_vec()
             })
             .collect_vec()
     }
 
-    pub(crate) fn replacement_effects_watching(
+    pub(crate) fn replacement_abilities_watching(
         &self,
         replacement: Replacing,
-    ) -> Vec<(CardId, ReplacementEffect)> {
-        self.battlefield
-            .battlefields
-            .values()
-            .flat_map(|b| b.iter())
+    ) -> Vec<(CardId, ReplacementAbility)> {
+        self.cards
+            .keys()
             .flat_map(|card| {
-                card.faceup_face(self)
-                    .replacement_effects
-                    .iter()
-                    .filter(|replacing| replacing.replacing == replacement)
+                self[*card]
+                    .modified_replacement_abilities
+                    .get(&replacement)
                     .cloned()
+                    .unwrap_or_default()
+                    .into_iter()
                     .map(|replacing| (*card, replacing))
             })
             .collect_vec()

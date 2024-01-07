@@ -187,7 +187,7 @@ impl Log {
                 db[*card]
                     .modified_activated_abilities
                     .iter()
-                    .any(|ability| {
+                    .any(|(_, ability)| {
                         ability
                             .effects
                             .iter()

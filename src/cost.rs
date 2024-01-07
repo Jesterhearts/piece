@@ -364,7 +364,5 @@ pub(crate) fn parse_mana_cost(s: &str) -> anyhow::Result<Vec<ManaCost>> {
         }
     }
 
-    debug!("Deserialized {} as {:?}", s, results);
-
     Ok(results)
 }

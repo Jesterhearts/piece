@@ -4,7 +4,7 @@ use anyhow::anyhow;
 
 use crate::{
     battlefield::ActionResult,
-    effects::{EffectBehaviors, ReplacementEffect},
+    effects::{EffectBehaviors, ReplacementAbility},
     in_play::Database,
     pending_results::PendingResults,
     player::Player,
@@ -124,7 +124,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         &self,
         db: &mut Database,
         player: crate::player::Owner,
-        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementAbility)>,
         controller: crate::player::Controller,
         _count: usize,
         results: &mut PendingResults,

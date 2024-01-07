@@ -106,10 +106,22 @@ impl EffectBehaviors for Equip {
         results: &mut crate::pending_results::PendingResults,
     ) {
         let target = targets.into_iter().exactly_one().unwrap();
-        // This is a hack. I hope equipment doesn't come with anthem effects.
-        // It probably works even so.
-        source.deactivate_modifiers(db);
-        source.activate_modifiers(db);
+        for modifier in db
+            .modifiers
+            .iter()
+            .filter_map(|(id, modifier)| {
+                if modifier.source == source {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .copied()
+            .collect_vec()
+        {
+            db.modifiers.get_mut(&modifier).unwrap().modifying.clear();
+        }
+
         for modifier in self.modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(
                 &mut db.modifiers,

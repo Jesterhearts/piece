@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     in_play::CardId,
@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct Graveyard {
-    pub(crate) graveyards: HashMap<Owner, IndexSet<CardId>>,
+    pub(crate) graveyards: IndexMap<Owner, IndexSet<CardId>>,
     pub(crate) descended_this_turn: HashMap<Owner, usize>,
 }
 

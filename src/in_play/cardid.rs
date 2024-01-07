@@ -9,6 +9,7 @@ use derive_more::From;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use strum::IntoEnumIterator;
+use tracing::Level;
 
 use crate::{
     abilities::{
@@ -19,7 +20,10 @@ use crate::{
     card::{replace_symbols, BasePowerType, BaseToughnessType, Card, Color, Keyword},
     cost::{AbilityCost, CastingCost},
     counters::Counter,
-    effects::{AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, Token},
+    effects::{
+        AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, ReplacementAbility,
+        Replacing, Token,
+    },
     in_play::{CastFrom, Database, ExileReason, ModifierId, NEXT_CARD_ID},
     log::{LeaveReason, Log, LogEntry, LogId},
     mana::{Mana, ManaRestriction},
@@ -164,13 +168,11 @@ pub struct CardInPlay {
     pub(crate) revealed: bool,
     pub(crate) tapped: bool,
     pub(crate) attacking: Option<Owner>,
-    pub manifested: bool,
+    pub(crate) manifested: bool,
     pub(crate) facedown: bool,
     pub(crate) transformed: bool,
     pub(crate) chosen: bool,
     pub(crate) token: bool,
-
-    pub(crate) owned_modifiers: Vec<ModifierId>,
 
     pub(crate) modified_name: String,
     pub(crate) modified_cost: CastingCost,
@@ -182,11 +184,12 @@ pub struct CardInPlay {
     pub(crate) modified_subtypes: IndexSet<Subtype>,
     pub(crate) modified_colors: HashSet<Color>,
     pub(crate) modified_keywords: ::counter::Counter<Keyword>,
+    pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
     pub(crate) modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
     pub(crate) modified_etb_abilities: Vec<AnyEffect>,
     pub(crate) modified_static_abilities: Vec<StaticAbility>,
-    pub(crate) modified_activated_abilities: Vec<ActivatedAbility>,
-    pub(crate) modified_mana_abilities: Vec<GainManaAbility>,
+    pub(crate) modified_activated_abilities: Vec<(CardId, ActivatedAbility)>,
+    pub(crate) modified_mana_abilities: Vec<(CardId, GainManaAbility)>,
 
     pub(crate) marked_damage: i32,
 
@@ -207,14 +210,14 @@ impl CardInPlay {
         };
     }
 
-    pub fn abilities(&self) -> Vec<Ability> {
+    pub fn abilities(&self) -> Vec<(CardId, Ability)> {
         self.modified_mana_abilities
             .iter()
-            .map(|ability| Ability::Mana(ability.clone()))
+            .map(|(source, ability)| (*source, Ability::Mana(ability.clone())))
             .chain(
                 self.modified_activated_abilities
                     .iter()
-                    .map(|ability| Ability::Activated(ability.clone())),
+                    .map(|(source, ability)| (*source, Ability::Activated(ability.clone()))),
             )
             .collect_vec()
     }
@@ -257,6 +260,7 @@ impl CardId {
             },
         );
 
+        id.apply_modifiers_layered(db);
         id
     }
 
@@ -272,6 +276,7 @@ impl CardId {
             },
         );
 
+        id.apply_modifiers_layered(db);
         id
     }
 
@@ -330,7 +335,6 @@ impl CardId {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            self.deactivate_modifiers(db);
 
             db[self].reset();
             db.stack.remove(self);
@@ -363,9 +367,7 @@ impl CardId {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            self.deactivate_modifiers(db);
 
-            db[self].reset();
             db[self].cast_from = from;
 
             let view = db.owner_view_mut(db[self].owner);
@@ -404,9 +406,9 @@ impl CardId {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            self.deactivate_modifiers(db);
 
             db[self].reset();
+            db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.exile.remove(&self);
             view.library.remove(self);
@@ -433,10 +435,9 @@ impl CardId {
             false
         } else {
             self.remove_all_modifiers(db);
-            self.deactivate_modifiers(db);
 
             db[self].reset();
-
+            db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.exile.remove(&self);
             view.hand.remove(&self);
@@ -463,13 +464,13 @@ impl CardId {
             self.move_to_limbo(db);
         } else {
             self.remove_all_modifiers(db);
-            self.deactivate_modifiers(db);
 
             db[self].reset();
             db[self].exile_reason = reason;
             db[self].exiled_with = Some(source);
             db[self].exile_duration = Some(duration);
 
+            db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.hand.remove(&self);
             view.library.remove(self);
@@ -484,15 +485,17 @@ impl CardId {
 
     pub(crate) fn move_to_limbo(self, db: &mut Database) {
         self.remove_all_modifiers(db);
-        self.deactivate_modifiers(db);
 
         db[self].reset();
+        db.stack.remove(self);
         let view = db.owner_view_mut(db[self].owner);
         view.hand.remove(&self);
         view.library.remove(self);
         view.battlefield.remove(&self);
         view.graveyard.remove(&self);
         view.exile.remove(&self);
+
+        self.apply_modifiers_layered(db);
     }
 
     pub(crate) fn cleanup_tokens_in_limbo(db: &mut Database) {
@@ -506,24 +509,13 @@ impl CardId {
         }
     }
 
-    pub(crate) fn deactivate_modifiers(self, db: &mut Database) {
-        for modifier in db.cards.entry(self).or_default().owned_modifiers.iter() {
-            modifier.deactivate(&mut db.modifiers)
-        }
-    }
-
-    pub(crate) fn activate_modifiers(self, db: &mut Database) {
-        for modifier in db.cards.entry(self).or_default().owned_modifiers.iter() {
-            modifier.activate(&mut db.modifiers);
-        }
-    }
-
     pub(crate) fn apply_modifiers_layered(self, db: &mut Database) {
         let on_battlefield = self.is_in_location(db, Location::Battlefield);
 
         let modifiers = db
             .modifiers
             .iter()
+            .filter(|(_, modifier)| modifier.active)
             .filter(|(_, modifier)| {
                 modifier.modifier.modifier.global
                     || (on_battlefield && modifier.modifier.modifier.entire_battlefield)
@@ -626,13 +618,36 @@ impl CardId {
         let mut activated_abilities = if facedown {
             vec![]
         } else {
-            source.activated_abilities.clone()
+            source
+                .activated_abilities
+                .iter()
+                .cloned()
+                .map(|ability| (self, ability))
+                .collect_vec()
         };
 
         let mut mana_abilities = if facedown {
             vec![]
         } else {
-            source.mana_abilities.clone()
+            source
+                .mana_abilities
+                .iter()
+                .cloned()
+                .map(|ability| (self, ability))
+                .collect_vec()
+        };
+
+        let mut replacement_abilities = if facedown {
+            Default::default()
+        } else {
+            let mut abilities: HashMap<Replacing, Vec<ReplacementAbility>> = Default::default();
+            for ability in source.replacement_abilities.iter() {
+                abilities
+                    .entry(ability.replacing)
+                    .or_default()
+                    .push(ability.clone());
+            }
+            abilities
         };
 
         let mut applied_modifiers: HashSet<ModifierId> = Default::default();
@@ -719,7 +734,7 @@ impl CardId {
 
         for (ty, add_ability) in land_abilities() {
             if subtypes.contains(&ty) {
-                mana_abilities.push(add_ability());
+                mana_abilities.push((self, add_ability()));
             }
         }
 
@@ -885,12 +900,13 @@ impl CardId {
                 static_abilities.clear();
                 activated_abilities.clear();
                 mana_abilities.clear();
+                replacement_abilities.clear();
             }
 
             if let Some(ability) = modifier.modifier.modifier.mana_ability.as_ref() {
                 applied_modifiers.insert(**id);
 
-                mana_abilities.push(ability.clone());
+                mana_abilities.push((modifier.source, ability.clone()));
             }
 
             if !modifier.modifier.modifier.add_static_abilities.is_empty() {
@@ -909,7 +925,7 @@ impl CardId {
             if let Some(modify) = modifier.modifier.modifier.add_ability.as_ref() {
                 applied_modifiers.insert(**id);
 
-                activated_abilities.push(modify.clone())
+                activated_abilities.push((modifier.source, modify.clone()))
             }
 
             if !modifier.modifier.modifier.remove_keywords.is_empty() {
@@ -1002,7 +1018,7 @@ impl CardId {
                 let to_add = self.dynamic_power_toughness_given_types(
                     db,
                     dynamic,
-                    self,
+                    modifier.source,
                     db[self].controller,
                     &types,
                     &subtypes,
@@ -1039,6 +1055,7 @@ impl CardId {
         db[self].modified_mana_abilities = mana_abilities;
         db[self].modified_static_abilities = static_abilities;
         db[self].modified_activated_abilities = activated_abilities;
+        db[self].modified_replacement_abilities = replacement_abilities;
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1056,9 +1073,13 @@ impl CardId {
         match dynamic {
             DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
                 if let Counter::Any = counter {
-                    db[self].counters.values().sum::<usize>()
+                    db[source].counters.values().sum::<usize>()
                 } else {
-                    db[self].counters.get(counter).copied().unwrap_or_default()
+                    db[source]
+                        .counters
+                        .get(counter)
+                        .copied()
+                        .unwrap_or_default()
                 }
             }
             DynamicPowerToughness::NumberOfPermanentsMatching(matching) => db
@@ -1555,6 +1576,7 @@ impl CardId {
         }
     }
 
+    #[instrument(level = Level::DEBUG)]
     pub(crate) fn can_be_countered(
         self,
         db: &Database,
@@ -1794,58 +1816,31 @@ impl Default for CardId {
 
 fn clone_card(db: &mut Database, cloning: CardId) -> Card {
     Card {
-        name: db[cloning].modified_name.clone(),
-        types: db[cloning].modified_types.clone(),
-        subtypes: db[cloning].modified_subtypes.clone(),
-        cost: db[cloning].modified_cost.clone(),
+        name: cloning.faceup_face(db).name.clone(),
+        types: cloning.faceup_face(db).types.clone(),
+        subtypes: cloning.faceup_face(db).subtypes.clone(),
+        cost: cloning.faceup_face(db).cost.clone(),
         reducer: Default::default(),
         cannot_be_countered: false,
-        colors: db[cloning].modified_colors.clone(),
+        colors: cloning.faceup_face(db).colors.clone(),
         oracle_text: String::default(),
         full_text: String::default(),
-        enchant: if db[cloning].facedown && !db[cloning].transformed {
-            None
-        } else {
-            cloning.faceup_face(db).enchant.clone()
-        },
+        enchant: cloning.faceup_face(db).enchant.clone(),
         effects: cloning.faceup_face(db).effects.clone(),
         modes: cloning.faceup_face(db).modes.clone(),
-        etb_abilities: db[cloning].modified_etb_abilities.clone(),
+        etb_abilities: cloning.faceup_face(db).etb_abilities.clone(),
         apply_individually: cloning.faceup_face(db).apply_individually,
         ward: cloning.faceup_face(db).ward.clone(),
-        static_abilities: db[cloning].modified_static_abilities.clone(),
-        activated_abilities: db[cloning].modified_activated_abilities.clone(),
-        triggered_abilities: db[cloning]
-            .modified_triggers
-            .values()
-            .flat_map(|triggers| triggers.iter())
-            .cloned()
-            .collect_vec(),
-        replacement_effects: cloning.faceup_face(db).replacement_effects.clone(),
-        mana_abilities: db[cloning].modified_mana_abilities.clone(),
-        dynamic_power_toughness: db[cloning]
-            .modified_base_power
-            .as_ref()
-            .and_then(|bp| match bp {
-                BasePowerType::Static(_) => None,
-                BasePowerType::Dynamic(dynamic) => Some(dynamic.clone()),
-            }),
-        power: db[cloning]
-            .modified_base_power
-            .as_ref()
-            .and_then(|bp| match bp {
-                BasePowerType::Static(value) => Some(*value as usize),
-                BasePowerType::Dynamic(_) => None,
-            }),
-        toughness: db[cloning]
-            .modified_base_toughness
-            .as_ref()
-            .and_then(|bt| match bt {
-                BaseToughnessType::Static(value) => Some(*value as usize),
-                BaseToughnessType::Dynamic(_) => None,
-            }),
+        static_abilities: cloning.faceup_face(db).static_abilities.clone(),
+        activated_abilities: cloning.faceup_face(db).activated_abilities.clone(),
+        triggered_abilities: cloning.faceup_face(db).triggered_abilities.clone(),
+        replacement_abilities: cloning.faceup_face(db).replacement_abilities.clone(),
+        mana_abilities: cloning.faceup_face(db).mana_abilities.clone(),
+        dynamic_power_toughness: cloning.faceup_face(db).dynamic_power_toughness.clone(),
+        power: cloning.faceup_face(db).power,
+        toughness: cloning.faceup_face(db).toughness,
         etb_tapped: cloning.faceup_face(db).etb_tapped,
-        keywords: db[cloning].modified_keywords.clone(),
+        keywords: cloning.faceup_face(db).keywords.clone(),
         restrictions: cloning.faceup_face(db).restrictions.clone(),
         back_face: None,
     }

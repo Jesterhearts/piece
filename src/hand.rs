@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     in_play::CardId,
@@ -9,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct Hand {
-    pub(crate) hands: HashMap<Owner, IndexSet<CardId>>,
+    pub(crate) hands: IndexMap<Owner, IndexSet<CardId>>,
 }
 
 impl std::ops::Index<Owner> for Hand {

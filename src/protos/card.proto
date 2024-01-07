@@ -35,7 +35,7 @@ message Card {
   repeated effects.ActivatedAbility activated_abilities = 15;
   repeated abilities.TriggeredAbility triggered_abilities = 16;
   repeated effects.GainManaAbility mana_abilities = 17;
-  repeated effects.ReplacementEffect replacement_effects = 18;
+  repeated effects.ReplacementEffect replacement_abilities = 18;
 
   optional effects.DynamicPowerToughness dynamic_power_toughness = 19;
   optional int32 power = 20;

@@ -14,7 +14,7 @@ use crate::{
     abilities::StaticAbility,
     battlefield::{ActionResult, Battlefield},
     card::Color,
-    effects::{EffectBehaviors, ReplacementEffect, Replacing},
+    effects::{EffectBehaviors, ReplacementAbility, Replacing},
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry},
@@ -355,7 +355,7 @@ impl Player {
         let mut results = PendingResults::default();
 
         for _ in 0..count {
-            let replacements = db.replacement_effects_watching(Replacing::Draw);
+            let replacements = db.replacement_abilities_watching(Replacing::Draw);
             if !replacements.is_empty() {
                 Self::draw_with_replacement(
                     db,
@@ -378,7 +378,7 @@ impl Player {
     pub(crate) fn draw_with_replacement(
         db: &mut Database,
         player: Owner,
-        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
+        replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
         count: usize,
         results: &mut PendingResults,
     ) {

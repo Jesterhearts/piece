@@ -25,6 +25,8 @@ effects:
       duration:
         duration: !UntilTargetLeavesBattlefield {}
 restrictions:
+  - restriction: !OfType
+      types: Artifact, Enchantment
   - restriction: !NotOfType
       subtypes: Aura
   - restriction: !InGraveyard {}

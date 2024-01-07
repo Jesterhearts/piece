@@ -479,7 +479,7 @@ pub(crate) trait EffectBehaviors: Debug {
         &self,
         db: &mut Database,
         player: Owner,
-        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
+        replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
         controller: Controller,
         count: usize,
         results: &mut PendingResults,
@@ -497,7 +497,7 @@ pub(crate) trait EffectBehaviors: Debug {
         &self,
         db: &mut Database,
         source: CardId,
-        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
+        replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
         token: CardId,
         modifiers: &[ModifyBattlefield],
         results: &mut PendingResults,
@@ -768,7 +768,7 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Replacing {
     Draw,
     Etb,
@@ -788,13 +788,13 @@ impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ReplacementEffect {
+pub(crate) struct ReplacementAbility {
     pub(crate) replacing: Replacing,
     pub(crate) restrictions: Vec<Restriction>,
     pub(crate) effects: Vec<AnyEffect>,
 }
 
-impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementEffect {
+impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementAbility {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::effects::ReplacementEffect) -> Result<Self, Self::Error> {

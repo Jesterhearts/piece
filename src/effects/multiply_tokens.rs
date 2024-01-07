@@ -1,6 +1,6 @@
 use crate::{
     battlefield::create_token_copy_with_replacements,
-    effects::{EffectBehaviors, ReplacementEffect},
+    effects::{EffectBehaviors, ReplacementAbility},
     protogen,
 };
 
@@ -62,7 +62,7 @@ impl EffectBehaviors for MultiplyTokens {
         &self,
         db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
-        replacements: &mut std::vec::IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
+        replacements: &mut std::vec::IntoIter<(crate::in_play::CardId, ReplacementAbility)>,
         token: crate::in_play::CardId,
         modifiers: &[super::ModifyBattlefield],
         results: &mut crate::pending_results::PendingResults,
