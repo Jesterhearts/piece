@@ -6,7 +6,7 @@ use crate::{
     battlefield::ActionResult,
     counters::Counter,
     effects::{Effect, EffectBehaviors},
-    in_play::{self, target_from_location},
+    in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
     stack::ActiveTarget,
@@ -105,7 +105,7 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
 impl EffectBehaviors for TargetGainsCounters {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -113,7 +113,7 @@ impl EffectBehaviors for TargetGainsCounters {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -121,18 +121,18 @@ impl EffectBehaviors for TargetGainsCounters {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
+        for card in db.cards.keys() {
             if card.passes_restrictions(db, source, &self.restrictions)
-                && card.passes_restrictions(db, source, &source.restrictions(db))
+                && card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.can_be_targeted(db, controller)
             {
-                let target = target_from_location(db, card);
+                let target = target_from_location(db, *card);
                 if already_chosen.contains(&target) {
                     continue;
                 }

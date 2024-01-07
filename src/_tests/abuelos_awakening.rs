@@ -1,15 +1,13 @@
-use std::collections::HashSet;
-
 use indexmap::IndexSet;
+use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    in_play::{self, CardId, Database, OnBattlefield},
+    in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    stack::{ActiveTarget, Stack},
-    turns::Turn,
+    stack::Stack,
     types::{Subtype, Type},
 };
 
@@ -27,12 +25,12 @@ fn x_is_zero() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
 
     let player = all_players.new_player("player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&mut db, &all_players);
+
+    let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
     let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
@@ -41,40 +39,44 @@ fn x_is_zero() -> anyhow::Result<()> {
     target.move_to_graveyard(&mut db);
     non_target.move_to_graveyard(&mut db);
 
-    assert_eq!(
-        card.valid_targets(&mut db, &HashSet::default())[0],
-        [ActiveTarget::Graveyard { id: target }]
-    );
-
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Choose the target
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the white
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay the generic
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Skip the X
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let on_battlefield = in_play::cards::<OnBattlefield>(&mut db);
+    let on_battlefield = db
+        .battlefield
+        .battlefields
+        .values()
+        .flat_map(|b| b.iter())
+        .copied()
+        .collect_vec();
     assert_eq!(on_battlefield, [target]);
-    assert_eq!(target.power(&mut db), Some(1));
-    assert_eq!(target.toughness(&mut db), Some(1));
+    assert_eq!(target.power(&db), Some(1));
+    assert_eq!(target.toughness(&db), Some(1));
     assert_eq!(
-        target.types(&db),
+        db[target].modified_types,
         IndexSet::from([Type::Creature, Type::Artifact])
     );
-    assert_eq!(target.subtypes(&db), IndexSet::from([Subtype::Spirit]));
+    assert_eq!(
+        db[target].modified_subtypes,
+        IndexSet::from([Subtype::Spirit])
+    );
 
     Ok(())
 }
@@ -93,12 +95,11 @@ fn x_is_two() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
-
     let player = all_players.new_player("player".to_string(), 20);
     all_players[player].infinite_mana();
-    let turn = Turn::new(&mut db, &all_players);
+
+    let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
     let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
@@ -107,47 +108,51 @@ fn x_is_two() -> anyhow::Result<()> {
     target.move_to_graveyard(&mut db);
     non_target.move_to_graveyard(&mut db);
 
-    assert_eq!(
-        card.valid_targets(&mut db, &HashSet::default())[0],
-        [ActiveTarget::Graveyard { id: target }]
-    );
-
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Choose the target
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay the white
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Pay the generic
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
     // pay 1 for X
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     // pay 1 for X
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     // Skip paying x
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Add card to stack & pay
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let on_battlefield = in_play::cards::<OnBattlefield>(&mut db);
+    let on_battlefield = db
+        .battlefield
+        .battlefields
+        .values()
+        .flat_map(|b| b.iter())
+        .copied()
+        .collect_vec();
     assert_eq!(on_battlefield, [target]);
-    assert_eq!(target.power(&mut db), Some(3));
-    assert_eq!(target.toughness(&mut db), Some(3));
+    assert_eq!(target.power(&db), Some(3));
+    assert_eq!(target.toughness(&db), Some(3));
     assert_eq!(
-        target.types(&db),
+        db[target].modified_types,
         IndexSet::from([Type::Creature, Type::Artifact])
     );
-    assert_eq!(target.subtypes(&db), IndexSet::from([Subtype::Spirit]));
+    assert_eq!(
+        db[target].modified_subtypes,
+        IndexSet::from([Subtype::Spirit])
+    );
 
     Ok(())
 }

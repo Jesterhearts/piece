@@ -3,7 +3,6 @@ use itertools::Itertools;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::{self, OnBattlefield},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
     stack::ActiveTarget,
@@ -34,7 +33,7 @@ impl TryFrom<&protogen::effects::TargetToTopOfLibrary> for TargetToTopOfLibrary 
 impl EffectBehaviors for TargetToTopOfLibrary {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -42,7 +41,7 @@ impl EffectBehaviors for TargetToTopOfLibrary {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -50,21 +49,26 @@ impl EffectBehaviors for TargetToTopOfLibrary {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for target in in_play::cards::<OnBattlefield>(db)
-            .into_iter()
-            .filter(|card| card.passes_restrictions(db, source, &source.restrictions(db)))
+        for target in db
+            .battlefield
+            .battlefields
+            .values()
+            .flat_map(|b| b.iter())
+            .filter(|card| {
+                card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
+            })
             .collect_vec()
         {
             if target.can_be_targeted(db, controller)
                 && target.passes_restrictions(db, source, &self.restrictions)
             {
-                let target = ActiveTarget::Battlefield { id: target };
+                let target = ActiveTarget::Battlefield { id: *target };
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }

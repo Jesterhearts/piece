@@ -8,7 +8,6 @@ use crate::{
     pending_results::ResolutionResult,
     player::AllPlayers,
     stack::{ActiveTarget, Stack},
-    turns::Turn,
     types::{Subtype, Type},
 };
 
@@ -26,40 +25,43 @@ fn metamorphosis() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&mut db, &all_players);
+    let mut db = Database::new(all_players);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, mantle, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
 
-    majestic.move_to_stack(
+    let mut results = majestic.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: mantle }]],
         None,
         vec![],
     );
-
-    let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(mantle.power(&mut db), Some(4));
-    assert_eq!(mantle.toughness(&mut db), Some(4));
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    assert_eq!(mantle.power(&db), Some(4));
+    assert_eq!(mantle.toughness(&db), Some(4));
     assert_eq!(
-        mantle.subtypes(&db),
+        db[mantle].modified_subtypes,
         IndexSet::from([Subtype::Equipment, Subtype::Angel])
     );
     assert_eq!(
-        mantle.types(&db),
+        db[mantle].modified_types,
         IndexSet::from([Type::Artifact, Type::Creature])
     );
-    assert!(mantle.flying(&mut db));
+    assert!(mantle.flying(&db));
 
     Ok(())
 }
@@ -78,40 +80,43 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&mut db, &all_players);
+    let mut db = Database::new(all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
 
-    majestic.move_to_stack(
+    let mut results = majestic.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear }]],
         None,
         vec![],
     );
-
-    let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(bear.power(&mut db), Some(4));
-    assert_eq!(bear.toughness(&mut db), Some(4));
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    assert_eq!(bear.power(&db), Some(4));
+    assert_eq!(bear.toughness(&db), Some(4));
     assert_eq!(
-        bear.subtypes(&db),
+        db[bear].modified_subtypes,
         IndexSet::from([Subtype::Bear, Subtype::Angel])
     );
     assert_eq!(
-        bear.types(&db),
+        db[bear].modified_types,
         IndexSet::from([Type::Artifact, Type::Creature])
     );
-    assert!(bear.flying(&mut db));
+    assert!(bear.flying(&db));
 
     Ok(())
 }

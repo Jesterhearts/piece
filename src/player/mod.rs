@@ -1,13 +1,11 @@
 pub(crate) mod mana_pool;
 
 use std::{
-    collections::HashSet,
     ops::{Index, IndexMut},
     sync::atomic::{AtomicUsize, Ordering},
     vec::IntoIter,
 };
 
-use bevy_ecs::{component::Component, entity::Entity, query::With};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use strum::IntoEnumIterator;
@@ -16,22 +14,20 @@ use crate::{
     abilities::StaticAbility,
     battlefield::{ActionResult, Battlefield},
     card::Color,
-    deck::Deck,
-    effects::{replacing, EffectBehaviors},
-    in_play::{
-        current_turn, just_cast, life_gained_this_turn, number_of_attackers_this_turn,
-        times_descended_this_turn, CardId, Database, InGraveyard, InHand, ReplacementEffectId,
-    },
+    effects::{EffectBehaviors, ReplacementAbility, Replacing},
+    in_play::{CardId, Database},
+    library::Library,
+    log::{Log, LogEntry},
     mana::{Mana, ManaCost, ManaRestriction},
     pending_results::PendingResults,
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
     stack::Stack,
-    targets::Restriction,
+    targets::{Location, Restriction},
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Owner(usize);
 
 impl From<Controller> for Owner {
@@ -53,23 +49,9 @@ impl PartialEq<Owner> for Controller {
 }
 
 impl Owner {
-    pub fn get_cards<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
-        db.query::<(Entity, &Owner, &Zone)>()
-            .iter(db)
-            .sorted_by_key(|(_, _, zone)| *zone)
-            .filter_map(|(card, owner, _)| {
-                if self == *owner {
-                    Some(card.into())
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
-    }
-
     pub(crate) fn passes_restrictions(
         self,
-        db: &mut Database,
+        db: &Database,
         controller: Controller,
         restrictions: &[Restriction],
     ) -> bool {
@@ -113,7 +95,7 @@ impl Owner {
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if controller.has_cards::<InHand>(db) {
+                    if controller.has_cards(db, Location::Hand) {
                         return false;
                     }
                 }
@@ -133,15 +115,19 @@ impl Owner {
                     return false;
                 }
                 Restriction::LifeGainedThisTurn(count) => {
-                    let life_gained = life_gained_this_turn(db, self);
+                    let life_gained = db
+                        .turn
+                        .life_gained_this_turn
+                        .get(&self)
+                        .copied()
+                        .unwrap_or_default();
                     if life_gained < *count {
                         return false;
                     }
                 }
                 Restriction::Descend(count) => {
-                    let cards = self
-                        .get_cards::<InGraveyard>(db)
-                        .into_iter()
+                    let cards = db.graveyard[self]
+                        .iter()
                         .filter(|card| card.is_permanent(db))
                         .count();
                     if cards < *count {
@@ -149,7 +135,12 @@ impl Owner {
                     }
                 }
                 Restriction::DescendedThisTurn => {
-                    let descended = times_descended_this_turn(db, self);
+                    let descended = db
+                        .graveyard
+                        .descended_this_turn
+                        .get(&self)
+                        .copied()
+                        .unwrap_or_default();
                     if descended < 1 {
                         return false;
                     }
@@ -170,12 +161,18 @@ impl Owner {
                     return false;
                 }
                 Restriction::DuringControllersTurn => {
-                    if self != current_turn(db).player {
+                    if self != db.turn.active_player() {
                         return false;
                     }
                 }
                 Restriction::JustCast => {
-                    if !just_cast(db, self.into()) {
+                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                        if let LogEntry::Cast { card } = entry {
+                            db[*card].controller == self
+                        } else {
+                            false
+                        }
+                    }) {
                         return false;
                     }
                 }
@@ -200,7 +197,6 @@ impl Owner {
                     restrictions,
                 } => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
-                        .into_iter()
                         .filter(|card| card.passes_restrictions(db, *card, restrictions))
                         .count();
                     if entered_this_turn < *count {
@@ -208,16 +204,20 @@ impl Owner {
                     }
                 }
                 Restriction::AttackedThisTurn => {
-                    if number_of_attackers_this_turn(db) < 1 {
+                    if db.turn.number_of_attackers_this_turn < 1 {
                         return false;
                     }
                 }
                 Restriction::Threshold => {
-                    if Battlefield::number_of_cards_in_graveyard(db, self.into()) < 7 {
+                    if db.graveyard[self].len() < 7 {
                         return false;
                     }
                 }
                 Restriction::NonToken => {
+                    return false;
+                }
+                Restriction::TargetedBy => {
+                    // TODO
                     return false;
                 }
             }
@@ -227,7 +227,7 @@ impl Owner {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Controller(usize);
 
 impl From<Owner> for Controller {
@@ -237,37 +237,15 @@ impl From<Owner> for Controller {
 }
 
 impl Controller {
-    pub(crate) fn get_cards_in<Zone: Component + Ord>(self, db: &mut Database) -> Vec<CardId> {
-        db.query::<(Entity, &Controller, &Zone)>()
-            .iter(db)
-            .sorted_by_key(|(_, _, zone)| *zone)
-            .filter_map(|(card, owner, _)| {
-                if self == *owner {
-                    Some(card.into())
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
-    }
-
-    pub(crate) fn get_cards(self, db: &mut Database) -> Vec<CardId> {
-        db.query::<(Entity, &Controller)>()
-            .iter(db)
-            .filter_map(|(card, controller)| {
-                if self == *controller {
-                    Some(card.into())
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
-    }
-
-    pub(crate) fn has_cards<Zone: Component>(self, db: &mut Database) -> bool {
-        db.query_filtered::<&Controller, With<Zone>>()
-            .iter(db)
-            .any(|owner| self == *owner)
+    pub(crate) fn has_cards(self, db: &Database, location: Location) -> bool {
+        match location {
+            Location::Battlefield => !db.battlefield[self].is_empty(),
+            Location::Graveyard => !db.graveyard[self].is_empty(),
+            Location::Exile => !db.exile[self].is_empty(),
+            Location::Library => !db.all_players[self].library.is_empty(),
+            Location::Hand => !db.hand[self].is_empty(),
+            Location::Stack => unreachable!(),
+        }
     }
 }
 
@@ -316,13 +294,12 @@ impl AllPlayers {
             id,
             Player {
                 name,
-                id,
                 hexproof: false,
                 life_total,
                 lands_played: 0,
                 hand_size: 7,
                 mana_pool: Default::default(),
-                deck: Deck::empty(),
+                library: Library::empty(),
                 lost: false,
             },
         );
@@ -333,17 +310,11 @@ impl AllPlayers {
     pub(crate) fn all_players(&self) -> Vec<Owner> {
         self.players.keys().copied().collect_vec()
     }
-
-    pub(crate) fn all_players_in_db(db: &mut Database) -> HashSet<Owner> {
-        db.query::<&Owner>().iter(db).copied().collect()
-    }
 }
 
 #[derive(Debug)]
 pub struct Player {
     pub name: String,
-
-    pub(crate) id: Owner,
 
     #[allow(unused)]
     pub(crate) hexproof: bool,
@@ -353,7 +324,7 @@ pub struct Player {
 
     pub life_total: i32,
 
-    pub deck: Deck,
+    pub library: Library,
 
     pub lost: bool,
 }
@@ -376,7 +347,7 @@ impl Player {
     pub fn draw_initial_hand(&mut self, db: &mut Database) {
         for _ in 0..7 {
             let card = self
-                .deck
+                .library
                 .draw()
                 .expect("Decks should have at least 7 cards");
 
@@ -384,17 +355,23 @@ impl Player {
         }
     }
 
-    pub fn draw(&mut self, db: &mut Database, count: usize) -> PendingResults {
+    pub fn draw(db: &mut Database, player: Owner, count: usize) -> PendingResults {
         let mut results = PendingResults::default();
 
         for _ in 0..count {
-            let replacements = ReplacementEffectId::watching::<replacing::Draw>(db);
+            let replacements = db.replacement_abilities_watching(Replacing::Draw);
             if !replacements.is_empty() {
-                self.draw_with_replacement(db, &mut replacements.into_iter(), 1, &mut results);
-            } else if let Some(card) = self.deck.draw() {
+                Self::draw_with_replacement(
+                    db,
+                    player,
+                    &mut replacements.into_iter(),
+                    1,
+                    &mut results,
+                );
+            } else if let Some(card) = db.all_players[player].library.draw() {
                 card.move_to_hand(db);
             } else {
-                results.push_settled(ActionResult::PlayerLoses(self.id));
+                results.push_settled(ActionResult::PlayerLoses(player));
                 return results;
             }
         }
@@ -403,34 +380,31 @@ impl Player {
     }
 
     pub(crate) fn draw_with_replacement(
-        &mut self,
         db: &mut Database,
-        replacements: &mut IntoIter<ReplacementEffectId>,
+        player: Owner,
+        replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
         count: usize,
         results: &mut PendingResults,
     ) {
         for _ in 0..count {
             if replacements.len() > 0 {
-                while let Some(replacement) = replacements.next() {
-                    let source = replacement.source(db);
-                    let restrictions = replacement.restrictions(db);
-                    if !source.passes_restrictions(db, source, &restrictions) {
+                while let Some((source, replacement)) = replacements.next() {
+                    if !source.passes_restrictions(db, source, &replacement.restrictions) {
                         continue;
                     }
 
-                    let controller = replacement.source(db).controller(db);
-                    for effect in replacement.effects(db) {
+                    for effect in replacement.effects.iter() {
                         effect.effect.replace_draw(
-                            self,
                             db,
+                            player,
                             replacements,
-                            controller,
+                            db[source].controller,
                             count,
                             results,
                         );
                     }
                 }
-            } else if let Some(card) = self.deck.draw() {
+            } else if let Some(card) = db.all_players[player].library.draw() {
                 card.move_to_hand(db);
             } else {
                 return;
@@ -438,16 +412,18 @@ impl Player {
         }
     }
 
-    pub fn play_card(&mut self, db: &mut Database, card: CardId) -> PendingResults {
-        assert!(card.is_in_location::<InHand>(db));
+    pub fn play_card(db: &mut Database, player: Owner, card: CardId) -> PendingResults {
+        assert!(db.hand[player].contains(&card));
 
-        if card.is_land(db) && self.lands_played >= Self::lands_per_turn(db) {
+        if card.is_land(db)
+            && db.all_players[player].lands_played >= Self::lands_per_turn(db, player)
+        {
             return PendingResults::default();
         }
 
-        let mut db = scopeguard::guard(db, Stack::settle);
+        let mut db = scopeguard::guard(db, |db| db.stack.settle());
         if card.is_land(&db) {
-            self.lands_played += 1;
+            db.all_players[player].lands_played += 1;
             return Battlefield::add_from_stack_or_hand(&mut db, card, None);
         }
 
@@ -512,13 +488,13 @@ impl Player {
     }
 
     pub(crate) fn spend_mana(
-        &mut self,
-        db: &Database,
+        db: &mut Database,
+        player: Owner,
         mana: &[Mana],
         sources: &[ManaSource],
         reason: SpendReason,
     ) -> bool {
-        let mut mana_pool = self.mana_pool.clone();
+        let mut mana_pool = db.all_players[player].mana_pool.clone();
 
         for (mana, source) in mana.iter().copied().zip(
             sources
@@ -531,25 +507,34 @@ impl Player {
             }
         }
 
-        self.mana_pool = mana_pool;
+        db.all_players[player].mana_pool = mana_pool;
         true
     }
 
-    pub(crate) fn manifest(&mut self, db: &mut Database) -> PendingResults {
-        if let Some(manifested) = self.deck.draw() {
-            manifested.manifest(db);
+    pub(crate) fn manifest(db: &mut Database, player: Owner) -> PendingResults {
+        if let Some(manifested) = db.all_players[player].library.draw() {
+            {
+                db[manifested].manifested = true;
+                db[manifested].facedown = true;
+            };
             Battlefield::add_from_stack_or_hand(db, manifested, None)
         } else {
             PendingResults::default()
         }
     }
 
-    pub(crate) fn lands_per_turn(db: &mut Database) -> usize {
+    pub(crate) fn lands_per_turn(db: &mut Database, player: Owner) -> usize {
         1 + Battlefield::static_abilities(db)
             .into_iter()
-            .filter_map(|(ability, _)| match ability {
-                StaticAbility::ExtraLandsPerTurn(count) => Some(count),
-                _ => None,
+            .filter_map(|(ability, card)| {
+                if db[card].controller == player {
+                    match ability {
+                        StaticAbility::ExtraLandsPerTurn(count) => Some(count),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
             })
             .sum::<usize>()
     }

@@ -4,7 +4,6 @@ use tracing::Level;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::{self, OnBattlefield},
     pending_results::choose_targets::ChooseTargets,
     protogen,
     stack::ActiveTarget,
@@ -33,7 +32,7 @@ impl TryFrom<&protogen::effects::TapTarget> for TapTarget {
 impl EffectBehaviors for TapTarget {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -41,7 +40,7 @@ impl EffectBehaviors for TapTarget {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -49,18 +48,20 @@ impl EffectBehaviors for TapTarget {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        in_play::cards::<OnBattlefield>(db)
-            .into_iter()
+        db.battlefield
+            .battlefields
+            .values()
+            .flat_map(|b| b.iter())
             .filter(|card| {
                 card.passes_restrictions(db, source, &self.restrictions)
-                    && card.passes_restrictions(db, source, &source.restrictions(db))
+                    && card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
             })
-            .map(|card| crate::stack::ActiveTarget::Battlefield { id: card })
+            .map(|card| crate::stack::ActiveTarget::Battlefield { id: *card })
             .filter(|target| !already_chosen.contains(target))
             .collect_vec()
     }

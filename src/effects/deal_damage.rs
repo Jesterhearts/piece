@@ -3,9 +3,7 @@ use indexmap::IndexSet;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::{self, OnBattlefield},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    player::AllPlayers,
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
@@ -36,7 +34,7 @@ impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
 impl EffectBehaviors for DealDamage {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -44,7 +42,7 @@ impl EffectBehaviors for DealDamage {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -52,28 +50,28 @@ impl EffectBehaviors for DealDamage {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::cards::<OnBattlefield>(db) {
-            if card.passes_restrictions(db, source, &source.restrictions(db))
+        for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
+            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
                 && card.can_be_targeted(db, controller)
                 && card.passes_restrictions(db, source, &self.restrictions)
             {
-                let target = ActiveTarget::Battlefield { id: card };
+                let target = ActiveTarget::Battlefield { id: *card };
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }
             }
         }
 
-        for player in AllPlayers::all_players_in_db(db) {
+        for player in db.all_players.all_players() {
             // TODO player hexproof, non-all-target-damage
-            if player.passes_restrictions(db, controller, &source.restrictions(db)) {
+            if player.passes_restrictions(db, controller, &source.faceup_face(db).restrictions) {
                 targets.push(ActiveTarget::Player { id: player });
             }
         }

@@ -1,7 +1,6 @@
 use std::{collections::HashSet, str::FromStr};
 
 use anyhow::{anyhow, Context};
-use bevy_ecs::component::Component;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 
@@ -15,7 +14,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
 #[allow(unused)]
-pub(crate) enum Location {
+pub enum Location {
     Battlefield,
     Graveyard,
     Exile,
@@ -85,7 +84,7 @@ impl From<&protogen::targets::comparison::Value> for Comparison {
     }
 }
 
-#[derive(Debug, Clone, Component, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct Restrictions(pub(crate) Vec<Restriction>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -219,6 +218,7 @@ pub(crate) enum Restriction {
     Self_,
     SourceCast,
     Tapped,
+    TargetedBy,
     Threshold,
     Toughness(Comparison),
 }
@@ -348,6 +348,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
             protogen::targets::restriction::Restriction::SourceCast(_) => Ok(Self::SourceCast),
             protogen::targets::restriction::Restriction::Tapped(_) => Ok(Self::Tapped),
+            protogen::targets::restriction::Restriction::TargetedBy(_) => Ok(Self::TargetedBy),
             protogen::targets::restriction::Restriction::Threshold(_) => Ok(Self::Threshold),
             protogen::targets::restriction::Restriction::Toughness(toughness) => Ok(
                 Self::Toughness(toughness.comparison.get_or_default().try_into()?),

@@ -3,9 +3,9 @@ use itertools::Itertools;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    in_play::{self, target_from_location, OnBattlefield},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
+    stack::ActiveTarget,
     targets::Restriction,
 };
 
@@ -31,7 +31,7 @@ impl TryFrom<&protogen::effects::DestroyTarget> for DestroyTarget {
 impl EffectBehaviors for DestroyTarget {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -39,7 +39,7 @@ impl EffectBehaviors for DestroyTarget {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -47,19 +47,19 @@ impl EffectBehaviors for DestroyTarget {
 
     fn valid_targets(
         &self,
-        db: &mut in_play::Database,
-        source: in_play::CardId,
+        db: &crate::in_play::Database,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::cards::<OnBattlefield>(db) {
-            if card.passes_restrictions(db, source, &source.restrictions(db))
+        for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
+            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.can_be_targeted(db, controller)
                 && card.passes_restrictions(db, source, &self.restrictions)
                 && !card.indestructible(db)
             {
-                let target = target_from_location(db, card);
+                let target = ActiveTarget::Battlefield { id: *card };
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }

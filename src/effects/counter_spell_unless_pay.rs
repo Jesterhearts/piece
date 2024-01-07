@@ -1,20 +1,18 @@
 use anyhow::anyhow;
-use bevy_ecs::entity::Entity;
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    effects::{Effect, EffectBehaviors},
-    in_play::{CardId, InStack},
+    effects::{counter_spell::CounterSpellOrAbility, Effect, EffectBehaviors},
     mana::ManaCost,
     pending_results::{
         choose_targets::ChooseTargets,
-        pay_costs::{PayCost, SpendMana},
+        pay_costs::{self, PayCost, SpendMana},
         TargetSource,
     },
     player::mana_pool::SpendReason,
     protogen,
-    stack::{ActiveTarget, Stack},
+    stack::{ActiveTarget, Entry, StackEntry},
 };
 
 #[derive(Debug, Clone)]
@@ -58,7 +56,7 @@ impl TryFrom<&protogen::effects::CounterSpellUnlessPay> for CounterSpellUnlessPa
 impl EffectBehaviors for CounterSpellUnlessPay {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -66,7 +64,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -74,23 +72,40 @@ impl EffectBehaviors for CounterSpellUnlessPay {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        let cards_in_stack = db
-            .query::<(Entity, &InStack)>()
-            .iter(db)
-            .map(|(entity, in_stack)| (CardId::from(entity), *in_stack))
-            .sorted_by_key(|(_, in_stack)| *in_stack)
-            .collect_vec();
-
         let mut targets = vec![];
-        for (card, stack_id) in cards_in_stack.into_iter() {
-            if card.can_be_countered(db, source, &[]) {
-                targets.push(ActiveTarget::Stack { id: stack_id });
-            }
+        for id in db
+            .stack
+            .entries
+            .iter()
+            .enumerate()
+            .filter_map(|(id, entry)| {
+                if let StackEntry {
+                    ty: Entry::Card(card),
+                    ..
+                } = entry
+                {
+                    if card.can_be_countered(db, source, &[]) {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                } else if let StackEntry {
+                    ty: Entry::Ability { .. },
+                    ..
+                } = entry
+                {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+        {
+            targets.push(ActiveTarget::Stack { id });
         }
 
         targets
@@ -123,18 +138,24 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if let Ok(ActiveTarget::Stack { id }) = targets.into_iter().exactly_one() {
+        if let Ok(ActiveTarget::Stack { id }) = targets.iter().exactly_one() {
             match self.cost {
                 Cost::Fixed(count) => {
-                    results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-                        vec![ManaCost::Generic(count)],
-                        Stack::in_stack(db).get(&id).unwrap().source(),
-                        SpendReason::Other,
-                    )));
+                    results.push_pay_costs(PayCost::new_or_else(
+                        db.stack.entries[*id].ty.source(),
+                        pay_costs::Cost::SpendMana(SpendMana::new(
+                            vec![ManaCost::Generic(count)],
+                            SpendReason::Other,
+                        )),
+                        vec![Effect::CounterSpellOrAbility(CounterSpellOrAbility {
+                            restrictions: Default::default(),
+                        })],
+                        targets,
+                    ));
                 }
             }
         } else {
-            warn!("Skipping targetting");
+            warn!("Skipping targeting");
         }
     }
 }

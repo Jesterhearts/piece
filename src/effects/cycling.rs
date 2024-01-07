@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::{compute_deck_targets, ActionResult},
+    battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
@@ -39,7 +39,7 @@ impl TryFrom<&protogen::effects::Cycling> for Cycling {
 impl EffectBehaviors for Cycling {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -47,7 +47,7 @@ impl EffectBehaviors for Cycling {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         if !self.types.is_empty() || !self.subtypes.is_empty() {
@@ -63,8 +63,8 @@ impl EffectBehaviors for Cycling {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        db: &crate::in_play::Database,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
@@ -72,17 +72,18 @@ impl EffectBehaviors for Cycling {
             return vec![];
         }
 
-        compute_deck_targets(
-            db,
-            controller,
-            &[Restriction::OfType {
-                types: self.types.clone(),
-                subtypes: self.subtypes.clone(),
-            }],
-        )
-        .into_iter()
-        .map(|card| ActiveTarget::Library { id: card })
-        .collect_vec()
+        let restrictions = [Restriction::OfType {
+            types: self.types.clone(),
+            subtypes: self.subtypes.clone(),
+        }];
+
+        db.all_players[controller]
+            .library
+            .cards
+            .iter()
+            .filter(|card| card.passes_restrictions(db, source, &restrictions))
+            .map(|card| ActiveTarget::Library { id: *card })
+            .collect_vec()
     }
 
     fn push_pending_behavior(

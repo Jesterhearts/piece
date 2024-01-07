@@ -1,8 +1,8 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult, effects::EffectBehaviors, player::AllPlayers, protogen,
-    stack::ActiveTarget, targets::Restriction,
+    battlefield::ActionResult, effects::EffectBehaviors, protogen, stack::ActiveTarget,
+    targets::Restriction,
 };
 
 #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ impl TryFrom<&protogen::effects::CantAttackThisTurn> for CantAttackThisTurn {
 impl EffectBehaviors for CantAttackThisTurn {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -35,7 +35,7 @@ impl EffectBehaviors for CantAttackThisTurn {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -43,15 +43,16 @@ impl EffectBehaviors for CantAttackThisTurn {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        AllPlayers::all_players_in_db(db)
+        db.all_players
+            .all_players()
             .into_iter()
             .filter(|player| {
-                player.passes_restrictions(db, controller, &source.restrictions(db))
+                player.passes_restrictions(db, controller, &source.faceup_face(db).restrictions)
                     && player.passes_restrictions(db, controller, &self.retrictions)
             })
             .map(|player| ActiveTarget::Player { id: player })

@@ -3,7 +3,6 @@ use itertools::Itertools;
 use crate::{
     in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
-    player::AllPlayers,
     stack::Stack,
 };
 
@@ -15,15 +14,15 @@ pub(crate) struct ChoosingCast {
 }
 
 impl PendingResult for ChoosingCast {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database, _all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.choosing_to_cast
             .iter()
             .enumerate()
-            .map(|(idx, card)| (idx, card.name(db)))
+            .map(|(idx, card)| (idx, card.name(db).clone()))
             .collect_vec()
     }
 
@@ -38,7 +37,6 @@ impl PendingResult for ChoosingCast {
     fn make_choice(
         &mut self,
         db: &mut Database,
-        _all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut PendingResults,
     ) -> bool {

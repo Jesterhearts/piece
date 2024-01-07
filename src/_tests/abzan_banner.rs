@@ -1,15 +1,17 @@
+use indexmap::IndexSet;
 use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefield,
-    in_play::{CardId, Database, InGraveyard, InHand},
+    in_play::{CardId, Database},
+    library::Library,
     load_cards,
     mana::{Mana, ManaRestriction},
     pending_results::ResolutionResult,
     player::{mana_pool::ManaSource, AllPlayers},
     stack::Stack,
-    turns::{Phase, Turn},
+    turns::Phase,
 };
 
 #[test]
@@ -26,42 +28,39 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
-
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     all_players[player].infinite_mana();
 
+    let mut db = Database::new(all_players);
+
     let land = CardId::upload(&mut db, &cards, player, "Forest");
-    all_players[player].deck.place_on_top(&mut db, land);
+    Library::place_on_top(&mut db, player, land);
 
-    let mut turn = Turn::new(&mut db, &all_players);
-    turn.set_phase(Phase::PreCombatMainPhase);
-
+    db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player, card, 1);
+    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 1);
     // Pay banner cost
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay banner costs
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(player.get_cards::<InGraveyard>(&mut db), vec![card]);
-    assert_eq!(player.get_cards::<InHand>(&mut db), vec![land]);
+    assert_eq!(db.graveyard[player], IndexSet::from([card]));
+    assert_eq!(db.hand[player], IndexSet::from([land]));
 
     Ok(())
 }
@@ -80,30 +79,29 @@ fn add_mana() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    let mut turn = Turn::new(&mut db, &all_players);
-    turn.set_phase(Phase::PreCombatMainPhase);
+
+    let mut db = Database::new(all_players);
+    db.turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player, card, 0);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 0);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
             (1, Mana::White, ManaSource::Any, ManaRestriction::None),
             (0, Mana::Blue, ManaSource::Any, ManaRestriction::None),

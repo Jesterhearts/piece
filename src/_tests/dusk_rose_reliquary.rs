@@ -1,13 +1,14 @@
+use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefield,
-    in_play::{CardId, Database, InExile, InGraveyard, OnBattlefield},
+    in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
-    turns::{Phase, Turn},
+    turns::Phase,
 };
 
 #[test]
@@ -24,15 +25,13 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player(String::default(), 20);
     all_players[player1].infinite_mana();
     let player2 = all_players.new_player(String::default(), 20);
+    let mut db = Database::new(all_players);
 
-    let mut turn = Turn::new(&mut db, &all_players);
-    turn.set_phase(Phase::PreCombatMainPhase);
-
+    db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player1, "Dusk Rose Reliquary");
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
     let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
@@ -45,81 +44,76 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     card5.move_to_battlefield(&mut db);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     // Pay mana
     assert_eq!(result, ResolutionResult::TryAgain);
     // Compute sacrifice cost
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay sacrifice
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     //resolve casting the reliquary
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // resolve the etb
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(player2.get_cards::<InExile>(&mut db), [card3]);
+    assert_eq!(db.exile[player2], IndexSet::from([card3]));
     assert_eq!(
-        player1.get_cards::<OnBattlefield>(&mut db),
-        [card4, card5, card]
+        db.battlefield[player1],
+        IndexSet::from([card4, card5, card]),
     );
-    assert_eq!(player1.get_cards::<InGraveyard>(&mut db), [card2]);
+    assert_eq!(db.graveyard[player1], IndexSet::from([card2]));
 
     // Equip deconstruction hammer
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card5, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay costs
     // Target the bear
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the equip
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card4, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card4, 0);
     // Pay the genric mana
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose the reliquary as the default only target
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay for ward
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the ability
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(player2.get_cards::<OnBattlefield>(&mut db), [card3]);
-    assert_eq!(player1.get_cards::<OnBattlefield>(&mut db), [card4]);
-    assert_eq!(
-        player1.get_cards::<InGraveyard>(&mut db),
-        [card2, card5, card]
-    );
+    assert_eq!(db.battlefield[player2], IndexSet::from([card3]));
+    assert_eq!(db.battlefield[player1], IndexSet::from([card4]));
+    assert_eq!(db.graveyard[player1], IndexSet::from([card2, card5, card]));
 
     Ok(())
 }
@@ -138,15 +132,13 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player(String::default(), 20);
     all_players[player1].infinite_mana();
     let player2 = all_players.new_player(String::default(), 20);
+    let mut db = Database::new(all_players);
 
-    let mut turn = Turn::new(&mut db, &all_players);
-    turn.set_phase(Phase::PreCombatMainPhase);
-
+    db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player1, "Dusk Rose Reliquary");
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
     let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
@@ -159,76 +151,71 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     card5.move_to_battlefield(&mut db);
 
     // Equip deconstruction hammer
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card5, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay costs
     // Target the bear
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(1));
+    let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the equip
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Pay mana
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Compute sacrifice cost
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay sacrifice
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(0));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     //resolve casting the reliquary
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
-    let mut results =
-        Battlefield::activate_ability(&mut db, &mut all_players, &turn, &None, player1, card4, 0);
+    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card4, 0);
     // Pay the mana
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay mana
     // Target the reliquary
-    let result = results.resolve(&mut db, &mut all_players, &turn, Some(1));
+    let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, ResolutionResult::TryAgain);
     // Pay for ward
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // End pay for ward
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the ability
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Resolve the etb
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(player2.get_cards::<OnBattlefield>(&mut db), [card3]);
-    assert_eq!(player1.get_cards::<OnBattlefield>(&mut db), [card4]);
-    assert_eq!(
-        player1.get_cards::<InGraveyard>(&mut db),
-        [card2, card5, card]
-    );
+    assert_eq!(db.battlefield[player2], IndexSet::from([card3]));
+    assert_eq!(db.battlefield[player1], IndexSet::from([card4]));
+    assert_eq!(db.graveyard[player1], IndexSet::from([card2, card5, card]));
 
     Ok(())
 }

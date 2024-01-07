@@ -28,6 +28,7 @@ message TriggerSource {
   message PutIntoGraveyard {}
   message StartOfCombat {}
   message Tapped {}
+  message Targeted {}
 
   oneof trigger {
     Attacks attacks = 1;
@@ -40,6 +41,7 @@ message TriggerSource {
     PutIntoGraveyard put_into_graveyard = 8;
     StartOfCombat start_of_combat = 9;
     Tapped tapped = 10;
+    Targeted targeted = 11;
   }
 }
 

@@ -1,414 +1,172 @@
-mod abilityid;
-mod auraid;
 mod cardid;
-mod counterid;
 mod modifierid;
-mod replacementid;
-mod triggerid;
 
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Neg,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::{collections::HashMap, sync::atomic::AtomicUsize};
 
-use bevy_ecs::{
-    component::Component,
-    entity::Entity,
-    event::{Event, Events},
-    system::Resource,
-    world::World,
-};
-use derive_more::{Deref, DerefMut};
-use itertools::Itertools;
+use indexmap::{IndexMap, IndexSet};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Event)]
-pub(crate) struct DeleteAbility {
-    pub(crate) ability: AbilityId,
-}
-
-pub use abilityid::AbilityId;
-pub(crate) use auraid::AuraId;
 pub(crate) use cardid::target_from_location;
 pub use cardid::CardId;
-pub(crate) use counterid::CounterId;
-pub(crate) use modifierid::{ModifierId, ModifierSeq, Modifiers};
-pub(crate) use replacementid::ReplacementEffectId;
-pub(crate) use triggerid::TriggerId;
+pub(crate) use cardid::CardInPlay;
+use itertools::Itertools;
+pub(crate) use modifierid::{ModifierId, ModifierInPlay};
 
 use crate::{
+    abilities::TriggeredAbility,
+    battlefield::Battlefield,
+    effects::{ReplacementAbility, Replacing},
+    exile::Exile,
+    graveyard::Graveyard,
+    hand::Hand,
+    library::Library,
     log::Log,
-    newtype_enum::newtype_enum,
-    player::{Controller, Owner},
+    player::{AllPlayers, Controller, Owner},
+    stack::Stack,
+    triggers::TriggerSource,
+    turns::Turn,
 };
 
-static NEXT_BATTLEFIELD_SEQ: AtomicUsize = AtomicUsize::new(0);
-static NEXT_GRAVEYARD_SEQ: AtomicUsize = AtomicUsize::new(0);
-static NEXT_HAND_SEQ: AtomicUsize = AtomicUsize::new(0);
-static NEXT_MODIFIER_SEQ: AtomicUsize = AtomicUsize::new(0);
-static NEXT_REPLACEMENT_SEQ: AtomicUsize = AtomicUsize::new(0);
-/// Starts at 1 because 0 should never be a valid stack id.
-static NEXT_STACK_SEQ: AtomicUsize = AtomicUsize::new(1);
+static NEXT_CARD_ID: AtomicUsize = AtomicUsize::new(0);
+static NEXT_MODIFIER_ID: AtomicUsize = AtomicUsize::new(0);
 
-static UNIQUE_ID: AtomicUsize = AtomicUsize::new(1);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
-pub(crate) struct LeftBattlefieldTurn(pub(crate) usize);
-
-#[derive(Debug, Component)]
-pub(crate) struct EnteredBattlefieldTurn(pub(crate) usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Component)]
-pub(crate) struct UniqueId(usize);
-
-impl UniqueId {
-    pub(crate) fn new() -> Self {
-        Self(UNIQUE_ID.fetch_add(1, Ordering::Relaxed))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub(crate) struct Attacking(pub(crate) Owner);
-
-newtype_enum! {
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-#[derive(strum::EnumIter)]
-pub(crate)enum CastFrom {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
+pub(crate) enum CastFrom {
     Hand,
     Exile,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ExileReason {
+    Cascade,
+    Craft,
 }
 
-newtype_enum! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-    pub(crate)enum ExileReason {
-        Cascade,
-        Craft,
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct ExiledWith(pub(crate) CardId);
-
-impl PartialEq<CardId> for ExiledWith {
-    fn eq(&self, other: &CardId) -> bool {
-        self.0 == *other
-    }
-}
-
-#[derive(Debug, Component)]
-pub(crate) struct Active;
-
-#[derive(Debug, Component)]
-pub(crate) struct Tapped;
-
-#[derive(Debug, Component)]
-pub(crate) struct Temporary;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct Global;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct EntireBattlefield;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
-pub struct InLibrary;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
-pub struct InHand(usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Hash)]
-pub struct InStack(usize);
-
-impl Neg for InStack {
-    type Output = i32;
-
-    fn neg(self) -> Self::Output {
-        -(self.0 as i32)
-    }
-}
-
-impl InStack {
-    pub(crate) fn title(self, db: &mut Database) -> String {
-        if let Some(found) = db
-            .query::<(Entity, &InStack)>()
-            .iter(db)
-            .find_map(|(card, loc)| {
-                if *loc == self {
-                    Some(CardId(card))
-                } else {
-                    None
-                }
-            })
-        {
-            return format!("Stack ({}): {}", self, found.name(db));
-        }
-
-        if let Some(found) = db
-            .abilities
-            .query::<(Entity, &InStack)>()
-            .iter(&db.abilities)
-            .find_map(|(ability, loc)| {
-                if *loc == self {
-                    Some(AbilityId::from(ability))
-                } else {
-                    None
-                }
-            })
-        {
-            return format!("Stack ({}): {}", self, found.text(db));
-        }
-
-        let found = db
-            .triggers
-            .query::<(Entity, &InStack)>()
-            .iter(&db.triggers)
-            .find_map(|(trigger, loc)| {
-                if *loc == self {
-                    Some(TriggerId::from(trigger))
-                } else {
-                    None
-                }
-            })
-            .expect("Should have a valid stack target");
-
-        found.text(db)
-    }
-}
-
-impl From<TriggerInStack> for InStack {
-    fn from(value: TriggerInStack) -> Self {
-        Self(value.seq)
-    }
-}
-
-impl std::fmt::Display for InStack {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Component, Hash)]
-pub(crate) struct TriggerInStack {
-    pub(crate) seq: usize,
-    pub(crate) source: CardId,
-    pub(crate) trigger: TriggerId,
-}
-
-impl Neg for TriggerInStack {
-    type Output = i32;
-
-    fn neg(self) -> Self::Output {
-        -(self.seq as i32)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component, Default)]
-pub struct OnBattlefield(usize);
-
-impl OnBattlefield {
-    pub(crate) fn new() -> Self {
-        Self(NEXT_BATTLEFIELD_SEQ.fetch_add(1, Ordering::Relaxed))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
-pub struct InGraveyard(usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Component)]
-pub struct InExile;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct IsToken;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct Chosen;
-
-#[derive(Debug, Clone, Component, Deref, DerefMut, Default)]
-pub(crate) struct Modifying(HashSet<CardId>);
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct FaceDown;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct Transformed;
-
-#[derive(Debug, Clone, Copy, Component)]
-pub(crate) struct Manifested;
-
-pub(crate) fn all_cards(db: &mut Database) -> Vec<CardId> {
-    db.query::<Entity>().iter(db).map(CardId).collect()
-}
-
-pub fn cards<Location: Component + Ord>(db: &mut Database) -> Vec<CardId> {
-    db.query::<(Entity, &Location)>()
-        .iter(db)
-        .sorted_by_key(|(_, loc)| *loc)
-        .map(|(card, _)| CardId(card))
-        .collect()
-}
-
-#[derive(Debug, Clone, Copy, Resource)]
-pub(crate) struct CurrentTurn {
-    pub(crate) player: Owner,
-    pub(crate) turn: usize,
-}
-
-pub(crate) fn current_turn(db: &Database) -> CurrentTurn {
-    *db.resource::<CurrentTurn>()
-}
-
-pub(crate) fn set_current_turn(db: &mut Database, player: Owner, turn_count: usize) {
-    Log::new_turn(db, player);
-    db.insert_resource(CurrentTurn {
-        player,
-        turn: turn_count,
-    });
-}
-
-#[derive(Debug, Resource)]
-pub(crate) struct NumberOfAttackers {
-    pub(crate) count: usize,
-    pub(crate) turn: usize,
-}
-
-pub(crate) fn number_of_attackers_this_turn(db: &Database) -> usize {
-    if let Some(number) = db.get_resource::<NumberOfAttackers>() {
-        if number.turn == current_turn(db).turn {
-            number.count
-        } else {
-            0
-        }
-    } else {
-        0
-    }
-}
-
-#[derive(Debug, Resource)]
-pub(crate) struct LifeGained {
-    pub(crate) counts: HashMap<Owner, usize>,
-}
-
-pub(crate) fn update_life_gained_this_turn(db: &mut Database, player: Owner, amount: usize) {
-    let mut number = db.get_resource_or_insert_with::<LifeGained>(|| LifeGained {
-        counts: HashMap::from([(player, amount)]),
-    });
-
-    *number.counts.entry(player).or_default() += amount
-}
-
-pub(crate) fn life_gained_this_turn(db: &Database, player: Owner) -> usize {
-    if let Some(number) = db.get_resource::<LifeGained>() {
-        number.counts.get(&player).copied().unwrap_or_default()
-    } else {
-        0
-    }
-}
-
-#[derive(Debug, Resource, Deref, DerefMut)]
-pub(crate) struct JustCast(HashSet<Controller>);
-
-pub(crate) fn just_cast(db: &mut Database, controller: Controller) -> bool {
-    if let Some(just_cast) = db.get_resource::<JustCast>() {
-        just_cast.contains(&controller)
-    } else {
-        false
-    }
-}
-
-pub(crate) fn add_just_cast(db: &mut Database, controller: Controller) {
-    let mut just_cast =
-        db.get_resource_or_insert_with::<JustCast>(|| JustCast(HashSet::from([controller])));
-
-    just_cast.insert(controller);
-}
-
-pub(crate) fn clear_just_cast(db: &mut Database) {
-    db.remove_resource::<JustCast>();
-}
-
-#[derive(Debug, Resource)]
-pub(crate) struct TimesDescended {
-    counts: HashMap<Owner, usize>,
-}
-
-pub(crate) fn descend(db: &mut Database, player: Owner) {
-    if let Some(mut number) = db.get_resource_mut::<LifeGained>() {
-        *number.counts.entry(player).or_default() += 1;
-    } else {
-        db.insert_resource(LifeGained {
-            counts: HashMap::from([(player, 1)]),
-        })
-    }
-}
-
-pub(crate) fn times_descended_this_turn(db: &Database, player: Owner) -> usize {
-    if let Some(number) = db.get_resource::<TimesDescended>() {
-        number.counts.get(&player).copied().unwrap_or_default()
-    } else {
-        0
-    }
-}
-
-#[derive(Debug, Resource, Deref, DerefMut)]
-pub(crate) struct AttackingBannedThisTurn(HashSet<Owner>);
-
-pub(crate) fn ban_attacking_this_turn(db: &mut Database, player: Owner) {
-    if let Some(mut banned) = db.get_resource_mut::<AttackingBannedThisTurn>() {
-        banned.insert(player);
-    } else {
-        db.insert_resource(AttackingBannedThisTurn(HashSet::from([player])));
-    }
-}
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub struct CardDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub(crate) struct ModifierDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub(crate) struct TriggerDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub(crate) struct ActivatedAbilityDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub(crate) struct AurasDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub(crate) struct CountersDb(World);
-
-#[derive(Debug, Deref, DerefMut, Default)]
-pub(crate) struct ReplacementDb(World);
-
-#[derive(Debug, Deref, DerefMut)]
+#[derive(Debug)]
 pub struct Database {
-    #[deref]
-    #[deref_mut]
-    pub(crate) cards: CardDb,
-    pub(crate) modifiers: ModifierDb,
-    pub(crate) triggers: TriggerDb,
-    pub(crate) abilities: ActivatedAbilityDb,
-    pub(crate) auras: AurasDb,
-    pub(crate) counters: CountersDb,
-    pub(crate) replacement_effects: ReplacementDb,
+    pub log: Log,
+
+    pub(crate) cards: HashMap<CardId, CardInPlay>,
+    pub(crate) modifiers: IndexMap<ModifierId, ModifierInPlay>,
+
+    pub battlefield: Battlefield,
+    pub graveyard: Graveyard,
+    pub exile: Exile,
+    pub hand: Hand,
+
+    pub stack: Stack,
+
+    pub turn: Turn,
+    pub all_players: AllPlayers,
 }
 
-impl Default for Database {
-    fn default() -> Self {
-        let mut cards = CardDb::default();
-        cards.insert_resource(Events::<DeleteAbility>::default());
-        cards.insert_resource(Log::default());
+pub struct OwnerViewMut<'db> {
+    battlefield: &'db mut IndexSet<CardId>,
+    graveyard: &'db mut IndexSet<CardId>,
+    exile: &'db mut IndexSet<CardId>,
+    hand: &'db mut IndexSet<CardId>,
+    library: &'db mut Library,
+}
+
+impl std::ops::Index<CardId> for Database {
+    type Output = CardInPlay;
+
+    fn index(&self, index: CardId) -> &Self::Output {
+        self.cards.get(&index).unwrap()
+    }
+}
+
+impl std::ops::Index<ModifierId> for Database {
+    type Output = ModifierInPlay;
+
+    fn index(&self, index: ModifierId) -> &Self::Output {
+        self.modifiers.get(&index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<CardId> for Database {
+    fn index_mut(&mut self, index: CardId) -> &mut Self::Output {
+        self.cards.get_mut(&index).unwrap()
+    }
+}
+
+impl Database {
+    pub fn new(all_players: AllPlayers) -> Self {
+        let mut battlefield = Battlefield::default();
+        let mut graveyard = Graveyard::default();
+        let mut exile = Exile::default();
+        let mut hand = Hand::default();
+
+        for player in all_players.all_players() {
+            battlefield
+                .battlefields
+                .entry(Controller::from(player))
+                .or_default();
+            graveyard.graveyards.entry(player).or_default();
+            exile.exile_zones.entry(player).or_default();
+            hand.hands.entry(player).or_default();
+        }
+
+        let turn = Turn::new(&all_players);
 
         Self {
-            cards,
+            all_players,
+            log: Default::default(),
+            cards: Default::default(),
             modifiers: Default::default(),
-            triggers: Default::default(),
-            abilities: Default::default(),
-            auras: Default::default(),
-            counters: Default::default(),
-            replacement_effects: Default::default(),
+            battlefield,
+            graveyard,
+            exile,
+            hand,
+            stack: Default::default(),
+            turn,
         }
+    }
+
+    pub(crate) fn owner_view_mut(&mut self, owner: Owner) -> OwnerViewMut {
+        OwnerViewMut {
+            battlefield: &mut self.battlefield[owner],
+            graveyard: &mut self.graveyard[owner],
+            exile: &mut self.exile[owner],
+            hand: &mut self.hand[owner],
+            library: &mut self.all_players[owner].library,
+        }
+    }
+
+    pub(crate) fn active_triggers_of_source(
+        &self,
+        source: TriggerSource,
+    ) -> Vec<(CardId, TriggeredAbility)> {
+        self.battlefield
+            .battlefields
+            .values()
+            .flat_map(|b| b.iter())
+            .flat_map(|card| {
+                self[*card]
+                    .modified_triggers
+                    .get(&source)
+                    .iter()
+                    .flat_map(|triggers| triggers.iter())
+                    .map(|ability| (*card, ability.clone()))
+                    .collect_vec()
+            })
+            .collect_vec()
+    }
+
+    pub(crate) fn replacement_abilities_watching(
+        &self,
+        replacement: Replacing,
+    ) -> Vec<(CardId, ReplacementAbility)> {
+        self.cards
+            .keys()
+            .flat_map(|card| {
+                self[*card]
+                    .modified_replacement_abilities
+                    .get(&replacement)
+                    .cloned()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|replacing| (*card, replacing))
+            })
+            .collect_vec()
     }
 }

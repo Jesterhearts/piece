@@ -11,12 +11,13 @@ use piece::{
     ai::AI,
     battlefield::Battlefield,
     card::{replace_symbols, Card},
-    deck::DeckDefinition,
-    in_play::{self, CardId, Database, InExile, InGraveyard, InHand, OnBattlefield},
+    in_play::{CardId, Database},
+    library::DeckDefinition,
     load_cards,
     pending_results::{PendingResults, ResolutionResult},
-    player::AllPlayers,
+    player::{AllPlayers, Player},
     stack::Stack,
+    targets::Location,
     turns::Turn,
     ui::{self, ManaDisplay},
     FONT_DATA,
@@ -44,7 +45,15 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
+
+    let mut all_players = AllPlayers::default();
+
+    let player1 = all_players.new_player("Player 1".to_string(), 20);
+    let player2 = all_players.new_player("Player 2".to_string(), 20);
+    all_players[player1].infinite_mana();
+
+    let mut db = Database::new(all_players);
+    let ai = AI::new(player2);
 
     let mut index = Index::<usize>::new(6);
     for (idx, card) in cards.values().enumerate() {
@@ -69,16 +78,6 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let mut all_players = AllPlayers::default();
-
-    let player1 = all_players.new_player("Player 1".to_string(), 20);
-    let player2 = all_players.new_player("Player 2".to_string(), 20);
-    all_players[player1].infinite_mana();
-
-    let ai = AI::new(player2);
-
-    let mut turn = Turn::new(&mut db, &all_players);
-
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land3 = CardId::upload(&mut db, &cards, player1, "Forest");
@@ -88,48 +87,30 @@ async fn main() -> anyhow::Result<()> {
 
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, &turn, None),
-        ResolutionResult::Complete
-    );
+    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, &turn, None),
-        ResolutionResult::Complete
-    );
+    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card8 = CardId::upload(&mut db, &cards, player1, "Might of the Ancestors");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card8, None);
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, &turn, None),
-        ResolutionResult::Complete
-    );
+    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card9 = CardId::upload(&mut db, &cards, player1, "Bat Colony");
     card9.move_to_hand(&mut db);
 
     let card10 = CardId::upload(&mut db, &cards, player1, "Ojer Taq, Deepest Foundation");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card10, None);
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, &turn, None),
-        ResolutionResult::Complete
-    );
+    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card11 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card11, None);
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, &turn, None),
-        ResolutionResult::Complete
-    );
+    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card12 = CardId::upload(&mut db, &cards, player1, "Resplendent Angel");
     let mut results = Battlefield::add_from_stack_or_hand(&mut db, card12, None);
-    assert_eq!(
-        results.resolve(&mut db, &mut all_players, &turn, None),
-        ResolutionResult::Complete
-    );
+    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card13 = CardId::upload(&mut db, &cards, player1, "Get Lost");
     card13.move_to_hand(&mut db);
@@ -137,18 +118,16 @@ async fn main() -> anyhow::Result<()> {
     let card14 = CardId::upload(&mut db, &cards, player1, "Kutzil's Flanker");
     card14.move_to_hand(&mut db);
 
-    while !Stack::is_empty(&mut db) {
+    while !db.stack.is_empty() {
         let mut results = Stack::resolve_1(&mut db);
-        while results.resolve(&mut db, &mut all_players, &turn, None) != ResolutionResult::Complete
-        {
-        }
+        while results.resolve(&mut db, None) != ResolutionResult::Complete {}
     }
 
     let mut def = DeckDefinition::default();
     for card in cards.keys() {
         def.add_card(card.clone(), 1);
     }
-    all_players[player1].deck = def.build_deck(&mut db, &cards, player1);
+    db.all_players[player1].library = def.build_deck(&mut db, &cards, player1);
 
     let mut tree = Taffy::default();
 
@@ -344,29 +323,18 @@ async fn main() -> anyhow::Result<()> {
     });
 
     loop {
-        if turn.priority_player() == player2 {
+        if db.turn.priority_player() == player2 {
             debug!("Giving ai priority");
-            let mut pending = ai.priority(
-                &mut db,
-                &mut all_players,
-                &mut turn,
-                &mut PendingResults::default(),
-            );
+            let mut pending = ai.priority(&mut db, &mut PendingResults::default());
 
-            while pending.only_immediate_results(&db, &all_players) {
-                let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+            while pending.only_immediate_results(&db) {
+                let result = pending.resolve(&mut db, None);
                 if result == ResolutionResult::Complete {
                     break;
                 }
             }
 
-            maybe_organize_stack(
-                &mut db,
-                &turn,
-                pending,
-                &mut to_resolve,
-                &mut organizing_stack,
-            );
+            maybe_organize_stack(&mut db, pending, &mut to_resolve, &mut organizing_stack);
         }
 
         egui_macroquad::ui(|ctx| {
@@ -378,14 +346,13 @@ async fn main() -> anyhow::Result<()> {
                             && ctx.input(|input| input.key_released(egui::Key::Num1)))
                     {
                         debug!("Passing priority");
-                        assert_eq!(turn.priority_player(), player1);
-                        turn.pass_priority();
+                        assert_eq!(db.turn.priority_player(), player1);
+                        db.turn.pass_priority();
 
-                        if turn.passed_full_round() {
-                            let mut pending = turn.step(&mut db, &mut all_players);
-                            while pending.only_immediate_results(&db, &all_players) {
-                                let result =
-                                    pending.resolve(&mut db, &mut all_players, &turn, None);
+                        if db.turn.passed_full_round() {
+                            let mut pending = Turn::step(&mut db);
+                            while pending.only_immediate_results(&db) {
+                                let result = pending.resolve(&mut db, None);
                                 if result == ResolutionResult::Complete {
                                     break;
                                 }
@@ -393,7 +360,6 @@ async fn main() -> anyhow::Result<()> {
 
                             maybe_organize_stack(
                                 &mut db,
-                                &turn,
                                 pending,
                                 &mut to_resolve,
                                 &mut organizing_stack,
@@ -405,7 +371,14 @@ async fn main() -> anyhow::Result<()> {
                         || (ui.is_enabled()
                             && ctx.input(|input| input.key_released(egui::Key::Num2)))
                     {
-                        for card in in_play::cards::<OnBattlefield>(&mut db) {
+                        for card in db
+                            .battlefield
+                            .battlefields
+                            .values()
+                            .flat_map(|b| b.iter())
+                            .copied()
+                            .collect_vec()
+                        {
                             card.untap(&mut db);
                         }
                     }
@@ -414,16 +387,16 @@ async fn main() -> anyhow::Result<()> {
                         || (ui.is_enabled()
                             && ctx.input(|input| input.key_released(egui::Key::Num3)))
                     {
-                        all_players[player1].infinite_mana();
+                        db.all_players[player1].infinite_mana();
                     }
 
                     if ui.button("(Debug) Draw").clicked()
                         || (ui.is_enabled()
                             && ctx.input(|input| input.key_released(egui::Key::Num4)))
                     {
-                        let mut pending = all_players[player1].draw(&mut db, 1);
-                        while pending.only_immediate_results(&db, &all_players) {
-                            let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                        let mut pending = Player::draw(&mut db, player1, 1);
+                        while pending.only_immediate_results(&db) {
+                            let result = pending.resolve(&mut db, None);
                             if result == ResolutionResult::Complete {
                                 break;
                             }
@@ -431,7 +404,6 @@ async fn main() -> anyhow::Result<()> {
 
                         maybe_organize_stack(
                             &mut db,
-                            &turn,
                             pending,
                             &mut to_resolve,
                             &mut organizing_stack,
@@ -449,20 +421,20 @@ async fn main() -> anyhow::Result<()> {
                 ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
                     ui.label(format!(
                         "{} {}",
-                        all_players[turn.active_player()].name,
-                        turn.phase.as_ref()
+                        db.all_players[db.turn.active_player()].name,
+                        db.turn.phase.as_ref()
                     ));
 
                     ui.separator();
                     ui.label(format!(
                         "{} ({})",
-                        all_players[player1].name, all_players[player1].life_total
+                        db.all_players[player1].name, db.all_players[player1].life_total
                     ));
 
                     ui.separator();
                     ui.label(format!(
                         "{} ({})",
-                        all_players[player2].name, all_players[player2].life_total
+                        db.all_players[player2].name, db.all_players[player2].life_total
                     ));
                 })
             });
@@ -488,7 +460,7 @@ async fn main() -> anyhow::Result<()> {
                     ),
                     ManaDisplay {
                         player: player2,
-                        items: all_players[player2].mana_pool.pools_display(),
+                        items: db.all_players[player2].mana_pool.pools_display(),
                     },
                 );
 
@@ -499,9 +471,13 @@ async fn main() -> anyhow::Result<()> {
                         egui::vec2(pos.size.width, pos.size.height),
                     ),
                     ui::Stack {
-                        items: Stack::entries(&mut db)
-                            .into_iter()
-                            .map(|e| format!("({}) {}", e.0, e.1.display(&mut db)))
+                        items: db
+                            .stack
+                            .entries()
+                            .iter()
+                            .rev()
+                            .enumerate()
+                            .map(|(idx, e)| format!("({}) {}", idx, e.display(&db)))
                             .collect_vec(),
                         left_clicked: &mut left_clicked,
                     },
@@ -511,13 +487,7 @@ async fn main() -> anyhow::Result<()> {
                     && (left_clicked.take().is_some()
                         || ctx.input(|input| input.key_released(egui::Key::Enter)))
                 {
-                    cleanup_stack(
-                        &mut db,
-                        &mut all_players,
-                        &turn,
-                        &mut to_resolve,
-                        &mut organizing_stack,
-                    );
+                    cleanup_stack(&mut db, &mut to_resolve, &mut organizing_stack);
                 }
 
                 let pos = tree.layout(player1_mana).unwrap();
@@ -528,15 +498,15 @@ async fn main() -> anyhow::Result<()> {
                     ),
                     ManaDisplay {
                         player: player1,
-                        items: all_players[player1].mana_pool.pools_display(),
+                        items: db.all_players[player1].mana_pool.pools_display(),
                     },
                 );
 
                 let mut col_offset = tree.layout(lhs_column).unwrap().size.width;
 
-                let cards = player2
-                    .get_cards::<OnBattlefield>(&mut db)
-                    .into_iter()
+                let cards = db.battlefield[player2]
+                    .iter()
+                    .copied()
                     .enumerate()
                     .collect_vec();
                 let pos = tree.layout(player2_battlefield).unwrap();
@@ -555,12 +525,12 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player2.get_cards::<OnBattlefield>(&mut db)[clicked]);
+                    inspecting_card = Some(db.battlefield[player2][clicked]);
                 }
 
-                let cards = player1
-                    .get_cards::<OnBattlefield>(&mut db)
-                    .into_iter()
+                let cards = db.battlefield[player1]
+                    .iter()
+                    .copied()
                     .enumerate()
                     .collect_vec();
                 let pos = tree.layout(player1_battlefield).unwrap();
@@ -579,9 +549,9 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = left_clicked.take() {
-                    selected_card = Some(player1.get_cards::<OnBattlefield>(&mut db)[clicked]);
+                    selected_card = Some(db.battlefield[player1][clicked]);
                 } else if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player1.get_cards::<OnBattlefield>(&mut db)[clicked]);
+                    inspecting_card = Some(db.battlefield[player1][clicked]);
                 }
 
                 let pos = tree.layout(player1_options).unwrap();
@@ -592,8 +562,6 @@ async fn main() -> anyhow::Result<()> {
                     ),
                     ui::Actions {
                         db: &mut db,
-                        all_players: &all_players,
-                        turn: &turn,
                         player: player1,
                         card: selected_card,
                         pending: &to_resolve,
@@ -604,13 +572,13 @@ async fn main() -> anyhow::Result<()> {
                 if let Some(clicked) = left_clicked.take() {
                     let card = selected_card.unwrap();
                     let mut selected_ability = None;
-                    if card.is_in_location::<InHand>(&db)
+                    if card.is_in_location(&db, Location::Hand)
                         && clicked == 0
-                        && turn.can_cast(&mut db, card)
+                        && Turn::can_cast(&db, card)
                     {
-                        let mut pending = all_players[player1].play_card(&mut db, card);
-                        while pending.only_immediate_results(&db, &all_players) {
-                            let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                        let mut pending = Player::play_card(&mut db, player1, card);
+                        while pending.only_immediate_results(&db) {
+                            let result = pending.resolve(&mut db, None);
                             if result == ResolutionResult::Complete {
                                 break;
                             }
@@ -618,34 +586,29 @@ async fn main() -> anyhow::Result<()> {
 
                         maybe_organize_stack(
                             &mut db,
-                            &turn,
                             pending,
                             &mut to_resolve,
                             &mut organizing_stack,
                         );
-                    } else if card.is_in_location::<InHand>(&db) && turn.can_cast(&mut db, card) {
+                    } else if card.is_in_location(&db, Location::Hand) && Turn::can_cast(&db, card)
+                    {
                         selected_ability = Some(clicked - 1);
                     } else {
                         selected_ability = Some(clicked);
                     }
 
                     if let Some(selected) = selected_ability {
-                        let abilities = card.activated_abilities(&db);
-
-                        if selected < abilities.len() {
+                        if selected < db[card].abilities().len() {
                             let mut pending = Battlefield::activate_ability(
                                 &mut db,
-                                &mut all_players,
-                                &turn,
                                 &to_resolve,
                                 player1,
                                 card,
                                 selected,
                             );
 
-                            while pending.only_immediate_results(&db, &all_players) {
-                                let result =
-                                    pending.resolve(&mut db, &mut all_players, &turn, None);
+                            while pending.only_immediate_results(&db) {
+                                let result = pending.resolve(&mut db, None);
                                 if result == ResolutionResult::Complete {
                                     break;
                                 }
@@ -657,7 +620,6 @@ async fn main() -> anyhow::Result<()> {
 
                             maybe_organize_stack(
                                 &mut db,
-                                &turn,
                                 pending,
                                 &mut to_resolve,
                                 &mut organizing_stack,
@@ -666,7 +628,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                let cards = player1.get_cards::<InHand>(&mut db);
+                let cards = db.hand[player1].iter().copied().collect_vec();
                 let pos = tree.layout(player1_hand).unwrap();
                 ui.put(
                     egui::Rect::from_min_size(
@@ -683,17 +645,17 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = left_clicked.take() {
-                    selected_card = Some(player1.get_cards::<InHand>(&mut db)[clicked]);
+                    selected_card = Some(db.hand[player1][clicked]);
                 } else if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player1.get_cards::<InHand>(&mut db)[clicked]);
+                    inspecting_card = Some(db.hand[player1][clicked]);
                 }
 
                 col_offset += tree.layout(center_column).unwrap().size.width;
 
-                let cards = player2
-                    .get_cards::<InExile>(&mut db)
-                    .into_iter()
+                let cards = db.exile[player2]
+                    .iter()
                     .map(|card| card.name(&db))
+                    .cloned()
                     .collect_vec();
                 let pos = tree.layout(player2_exile).unwrap();
                 ui.put(
@@ -709,13 +671,13 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player2.get_cards::<InExile>(&mut db)[clicked]);
+                    inspecting_card = Some(db.exile[player2][clicked]);
                 }
 
-                let cards = player2
-                    .get_cards::<InGraveyard>(&mut db)
-                    .into_iter()
+                let cards = db.graveyard[player2]
+                    .iter()
                     .map(|card| card.name(&db))
+                    .cloned()
                     .collect_vec();
                 let pos = tree.layout(player2_graveyard).unwrap();
                 ui.put(
@@ -731,13 +693,13 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player2.get_cards::<InGraveyard>(&mut db)[clicked]);
+                    inspecting_card = Some(db.graveyard[player2][clicked]);
                 }
 
-                let cards = player1
-                    .get_cards::<InGraveyard>(&mut db)
-                    .into_iter()
+                let cards = db.graveyard[player1]
+                    .iter()
                     .map(|card| card.name(&db))
+                    .cloned()
                     .collect_vec();
                 let pos = tree.layout(player1_graveyard).unwrap();
                 ui.put(
@@ -753,13 +715,13 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player1.get_cards::<InGraveyard>(&mut db)[clicked]);
+                    inspecting_card = Some(db.graveyard[player1][clicked]);
                 }
 
-                let cards = player1
-                    .get_cards::<InExile>(&mut db)
-                    .into_iter()
+                let cards = db.exile[player1]
+                    .iter()
                     .map(|card| card.name(&db))
+                    .cloned()
                     .collect_vec();
                 let pos = tree.layout(player1_exile).unwrap();
                 ui.put(
@@ -775,29 +737,23 @@ async fn main() -> anyhow::Result<()> {
                 );
 
                 if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(player1.get_cards::<InExile>(&mut db)[clicked]);
+                    inspecting_card = Some(db.exile[player1][clicked]);
                 }
             });
 
             let mut choice: Option<Option<usize>> = None;
             if let Some(resolving) = to_resolve.as_mut() {
-                if resolving.priority(&db, &all_players, &turn) == player2 {
-                    let mut pending = ai.priority(&mut db, &mut all_players, &mut turn, resolving);
+                if resolving.priority(&db) == player2 {
+                    let mut pending = ai.priority(&mut db, resolving);
 
-                    while pending.only_immediate_results(&db, &all_players) {
-                        let result = pending.resolve(&mut db, &mut all_players, &turn, None);
+                    while pending.only_immediate_results(&db) {
+                        let result = pending.resolve(&mut db, None);
                         if result == ResolutionResult::Complete {
                             break;
                         }
                     }
 
-                    maybe_organize_stack(
-                        &mut db,
-                        &turn,
-                        pending,
-                        &mut to_resolve,
-                        &mut organizing_stack,
-                    );
+                    maybe_organize_stack(&mut db, pending, &mut to_resolve, &mut organizing_stack);
                 } else {
                     let mut open = true;
 
@@ -805,13 +761,11 @@ async fn main() -> anyhow::Result<()> {
                         .open(&mut open)
                         .show(ctx, |ui| {
                             ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                                if resolving.choices_optional(&db, &all_players)
-                                    && ui.button("None").clicked()
-                                {
+                                if resolving.choices_optional(&db) && ui.button("None").clicked() {
                                     choice = Some(None);
                                 }
 
-                                for (idx, option) in resolving.options(&mut db, &all_players) {
+                                for (idx, option) in resolving.options(&mut db) {
                                     if ui.button(option).clicked() {
                                         choice = Some(Some(idx));
                                     }
@@ -820,46 +774,37 @@ async fn main() -> anyhow::Result<()> {
                         });
 
                     if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
-                        let can_cancel = resolving.can_cancel(&db, &all_players);
+                        let can_cancel = resolving.can_cancel(&db);
                         debug!("Can cancel {:?} = {}", resolving, can_cancel);
                         if can_cancel {
                             to_resolve = None;
                         }
                     } else if let Some(choice) = choice {
                         loop {
-                            match resolving.resolve(&mut db, &mut all_players, &turn, choice) {
+                            match resolving.resolve(&mut db, choice) {
                                 ResolutionResult::Complete => {
                                     let mut pending = Battlefield::check_sba(&mut db);
-                                    while pending.only_immediate_results(&db, &all_players) {
-                                        let result =
-                                            pending.resolve(&mut db, &mut all_players, &turn, None);
+                                    while pending.only_immediate_results(&db) {
+                                        let result = pending.resolve(&mut db, None);
                                         if result == ResolutionResult::Complete {
                                             break;
                                         }
                                     }
 
                                     if pending.is_empty() {
-                                        let entries = Stack::entries_unsettled(&mut db)
-                                            .into_iter()
-                                            .map(|(_, entry)| entry)
-                                            .collect_vec();
+                                        let entries = db.stack.entries_unsettled();
                                         if !organizing_stack && entries.len() > 1 {
-                                            resolving.set_organize_stack(&db, entries, &turn);
+                                            resolving.set_organize_stack(&db, entries);
                                             organizing_stack = true;
                                         } else {
                                             debug!("Stepping priority");
-                                            turn.step_priority();
-                                            assert_eq!(turn.priority_player(), player2);
+                                            db.turn.step_priority();
+                                            assert_eq!(db.turn.priority_player(), player2);
                                             debug!("Giving ai priority",);
-                                            let pending = ai.priority(
-                                                &mut db,
-                                                &mut all_players,
-                                                &mut turn,
-                                                &mut PendingResults::default(),
-                                            );
+                                            let pending = ai
+                                                .priority(&mut db, &mut PendingResults::default());
                                             maybe_organize_stack(
                                                 &mut db,
-                                                &turn,
                                                 pending,
                                                 &mut to_resolve,
                                                 &mut organizing_stack,
@@ -873,7 +818,7 @@ async fn main() -> anyhow::Result<()> {
                                 }
                                 ResolutionResult::TryAgain => {
                                     debug!("Trying again for {:#?}", resolving);
-                                    if !resolving.only_immediate_results(&db, &all_players) {
+                                    if !resolving.only_immediate_results(&db) {
                                         break;
                                     }
                                 }
@@ -891,7 +836,7 @@ async fn main() -> anyhow::Result<()> {
                 egui::Window::new(format!(
                     "{} - {}",
                     inspecting.name(&db),
-                    inspecting.cost(&db).cost_string
+                    inspecting.faceup_face(&db).cost.cost_string
                 ))
                 .open(&mut open)
                 .show(ctx, |ui| {
@@ -1009,14 +954,12 @@ async fn main() -> anyhow::Result<()> {
 
 fn cleanup_stack(
     db: &mut Database,
-    all_players: &mut AllPlayers,
-    turn: &Turn,
     to_resolve: &mut Option<PendingResults>,
     organizing_stack: &mut bool,
 ) {
     let mut pending = Stack::resolve_1(db);
-    while pending.only_immediate_results(db, all_players) {
-        let result = pending.resolve(db, all_players, turn, None);
+    while pending.only_immediate_results(db) {
+        let result = pending.resolve(db, None);
         if result == ResolutionResult::Complete {
             break;
         }
@@ -1024,20 +967,19 @@ fn cleanup_stack(
 
     if pending.is_empty() {
         pending = Battlefield::check_sba(db);
-        while pending.only_immediate_results(db, all_players) {
-            let result = pending.resolve(db, all_players, turn, None);
+        while pending.only_immediate_results(db) {
+            let result = pending.resolve(db, None);
             if result == ResolutionResult::Complete {
                 break;
             }
         }
     }
 
-    maybe_organize_stack(db, turn, pending, to_resolve, organizing_stack);
+    maybe_organize_stack(db, pending, to_resolve, organizing_stack);
 }
 
 fn maybe_organize_stack(
     db: &mut Database,
-    turn: &Turn,
     mut pending: PendingResults,
     to_resolve: &mut Option<PendingResults>,
     organizing_stack: &mut bool,
@@ -1046,13 +988,10 @@ fn maybe_organize_stack(
         *to_resolve = Some(pending);
         *organizing_stack = false;
     } else {
-        let entries = Stack::entries_unsettled(db)
-            .into_iter()
-            .map(|(_, entry)| entry)
-            .collect_vec();
+        let entries = db.stack.entries_unsettled();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.set_organize_stack(db, entries, turn);
+            pending.set_organize_stack(db, entries);
             *to_resolve = Some(pending);
             *organizing_stack = true;
         } else {

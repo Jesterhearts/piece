@@ -1,71 +1,66 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use bevy_ecs::{
-    component::Component,
-    entity::Entity,
-    query::{With, Without},
-};
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
+    abilities::{Ability, TriggeredAbility},
     battlefield::ActionResult,
-    card::keyword::SplitSecond,
+    card::Keyword,
     cost::AdditionalCost,
     effects::EffectBehaviors,
-    in_play::{
-        cast_from, AbilityId, CardId, CastFrom, Database, InStack, TriggerId, TriggerInStack,
-    },
+    in_play::{CardId, CastFrom, Database},
     log::{Log, LogId},
     pending_results::{
         choose_targets::ChooseTargets,
-        pay_costs::SpendMana,
         pay_costs::TapPermanent,
+        pay_costs::{Cost, ExileCardsSharingType},
         pay_costs::{ExileCards, ExilePermanentsCmcX},
-        pay_costs::{ExileCardsSharingType, PayCost},
+        pay_costs::{PayCost, SpendMana},
         pay_costs::{SacrificePermanent, TapPermanentsPowerXOrMore},
         PendingResults, Source, TargetSource,
     },
-    player::{mana_pool::SpendReason, AllPlayers, Owner},
+    player::{mana_pool::SpendReason, Owner},
+    triggers::TriggerSource,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Component)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) struct Settled;
 
-#[derive(Debug, PartialEq, Eq, Clone, Component)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct Targets(pub(crate) Vec<Vec<ActiveTarget>>);
 
 #[derive(Debug)]
 enum ResolutionType {
     Card(CardId),
-    Ability(AbilityId),
-    Trigger(TriggerId),
+    Ability(CardId),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub(crate) enum ActiveTarget {
-    Stack { id: InStack },
+    Stack { id: usize },
     Battlefield { id: CardId },
     Graveyard { id: CardId },
     Library { id: CardId },
     Player { id: Owner },
 }
+
 impl ActiveTarget {
-    pub(crate) fn display(&self, db: &mut Database, all_players: &AllPlayers) -> String {
+    pub(crate) fn display(&self, db: &Database) -> String {
         match self {
             ActiveTarget::Stack { id } => {
-                format!("Stack ({}): {}", id, id.title(db))
+                format!("Stack ({}): {}", id, db.stack.entries[*id].display(db))
             }
             ActiveTarget::Battlefield { id } => {
-                format!("{} - ({})", id.name(db), id.id(db),)
+                format!("{} - ({})", id.name(db), id)
             }
             ActiveTarget::Graveyard { id } => {
-                format!("{} - ({})", id.name(db), id.id(db),)
+                format!("{} - ({})", id.name(db), id)
             }
             ActiveTarget::Library { id } => {
-                format!("{} - ({})", id.name(db), id.id(db),)
+                format!("{} - ({})", id.name(db), id)
             }
-            ActiveTarget::Player { id } => all_players[*id].name.clone(),
+            ActiveTarget::Player { id } => db.all_players[*id].name.clone(),
         }
     }
 
@@ -80,436 +75,137 @@ impl ActiveTarget {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum Entry {
     Card(CardId),
-    Ability {
-        in_stack: AbilityId,
-        source: AbilityId,
-        card_source: CardId,
-    },
-    Trigger {
-        in_stack: TriggerId,
-        source: TriggerId,
-        card_source: CardId,
-    },
+    Ability { source: CardId, ability: Ability },
 }
 
 impl Entry {
     pub(crate) fn source(&self) -> CardId {
         match self {
-            Entry::Card(card_source)
-            | Entry::Ability { card_source, .. }
-            | Entry::Trigger { card_source, .. } => *card_source,
+            Entry::Card(source) | Entry::Ability { source, .. } => *source,
         }
     }
 }
 
-#[derive(Debug, Clone, Deref, DerefMut, Component)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct Modes(pub(crate) Vec<usize>);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct StackEntry {
     pub(crate) ty: Entry,
     pub(crate) targets: Vec<Vec<ActiveTarget>>,
-    pub(crate) mode: Option<Vec<usize>>,
+    pub(crate) mode: Vec<usize>,
+    pub(crate) settled: bool,
 }
 
 impl StackEntry {
-    pub(crate) fn remove_from_stack(&self, db: &mut Database) {
-        match self.ty {
-            Entry::Card(_) => {}
-            Entry::Ability { in_stack, .. } => in_stack.remove_from_stack(db),
-            Entry::Trigger { in_stack, .. } => in_stack.remove_from_stack(db),
-        }
-    }
-
-    pub fn display(&self, db: &mut Database) -> String {
-        match self.ty {
-            Entry::Card(card) => card.name(db),
-            Entry::Ability { source, .. } => {
-                format!("{}: {}", source.source(db).name(db), source.text(db))
-            }
-            Entry::Trigger {
-                source,
-                card_source,
-                ..
+    pub fn display(&self, db: &Database) -> String {
+        match &self.ty {
+            Entry::Card(card) => card.faceup_face(db).name.clone(),
+            Entry::Ability {
+                source: card_source,
+                ability,
             } => {
-                format!("{}: {}", card_source.name(db), source.text(db))
+                format!("{}: {}", db[*card_source].modified_name, ability.text())
             }
         }
     }
 }
 
-#[derive(Debug)]
-pub struct Stack;
+#[derive(Debug, Default)]
+pub struct Stack {
+    pub(crate) entries: Vec<StackEntry>,
+}
 
 impl Stack {
-    pub(crate) fn split_second(db: &mut Database) -> bool {
-        db.query_filtered::<(), (With<InStack>, With<SplitSecond>)>()
-            .iter(db)
-            .next()
-            .is_some()
+    pub(crate) fn contains(&self, card: CardId) -> bool {
+        self.entries
+            .iter()
+            .any(|entry| matches!(entry.ty, Entry::Card(entry) if entry == card))
+    }
+
+    pub(crate) fn split_second(&self, db: &Database) -> bool {
+        if let Some(StackEntry {
+            ty: Entry::Card(card),
+            ..
+        }) = self.entries.last()
+        {
+            db[*card]
+                .modified_keywords
+                .contains_key(&Keyword::SplitSecond)
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn remove(&mut self, card: CardId) {
+        self.entries
+            .retain(|entry| !matches!(entry.ty, Entry::Card(entry) if entry == card));
     }
 
     #[cfg(test)]
-    pub(crate) fn target_nth(db: &mut Database, nth: usize) -> ActiveTarget {
-        let nth = db
-            .cards
-            .query::<&InStack>()
-            .iter(&db.cards)
-            .copied()
-            .chain(
-                db.abilities
-                    .query::<&InStack>()
-                    .iter(&db.abilities)
-                    .copied(),
-            )
-            .sorted()
-            .chain(
-                db.triggers
-                    .query::<&TriggerInStack>()
-                    .iter(&db.triggers)
-                    .map(|seq| (*seq).into()),
-            )
-            .collect_vec()[nth];
-
+    pub(crate) fn target_nth(&self, nth: usize) -> ActiveTarget {
         ActiveTarget::Stack { id: nth }
     }
 
-    pub(crate) fn in_stack(db: &mut Database) -> HashMap<InStack, Entry> {
-        db.cards
-            .query::<(&InStack, Entity)>()
-            .iter(&db.cards)
-            .map(|(seq, entity)| (*seq, Entry::Card(entity.into())))
-            .chain(
-                db.abilities
-                    .query::<(&InStack, Entity, &AbilityId, &CardId)>()
-                    .iter(&db.abilities)
-                    .map(|(seq, entity, source, card_source)| {
-                        (
-                            *seq,
-                            Entry::Ability {
-                                in_stack: entity.into(),
-                                source: *source,
-                                card_source: *card_source,
-                            },
-                        )
-                    }),
-            )
-            .chain(
-                db.triggers
-                    .query::<(&TriggerInStack, Entity)>()
-                    .iter(&db.triggers)
-                    .map(|(seq, entity)| {
-                        (
-                            (*seq).into(),
-                            Entry::Trigger {
-                                in_stack: TriggerId::from(entity),
-                                source: seq.trigger,
-                                card_source: seq.source,
-                            },
-                        )
-                    }),
-            )
-            .sorted_by_key(|(seq, _)| *seq)
-            .collect()
+    pub fn entries(&self) -> &Vec<StackEntry> {
+        &self.entries
     }
 
-    pub fn entries_unsettled(db: &mut Database) -> Vec<(InStack, StackEntry)> {
-        db.cards
-            .query_filtered::<(&InStack, Entity, &Targets, Option<&Modes>), Without<Settled>>()
-            .iter(&db.cards)
-            .map(|(seq, entity, targets, mode)| {
-                (
-                    *seq,
-                    StackEntry {
-                        ty: Entry::Card(entity.into()),
-                        targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0.clone()),
-                    },
-                )
-            })
-            .chain(
-                db.abilities
-                    .query_filtered::<(
-                        &InStack,
-                        Entity,
-                        &AbilityId,
-                        &Targets,
-                        &CardId,
-                        Option<&Modes>,
-                    ), Without<Settled>>()
-                    .iter(&db.abilities)
-                    .map(|(seq, entity, source, targets, card_source, mode)| {
-                        (
-                            *seq,
-                            StackEntry {
-                                ty: Entry::Ability {
-                                    in_stack: entity.into(),
-                                    source: *source,
-                                    card_source: *card_source,
-                                },
-                                targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0.clone()),
-                            },
-                        )
-                    }),
-            )
-            .chain(
-                db.triggers
-                    .query_filtered::<(&TriggerInStack, Entity, &Targets, Option<&Modes>), Without<Settled>>()
-                    .iter(&db.triggers)
-                    .map(|(seq, entity, targets, mode)| {
-                        (
-                            (*seq).into(),
-                            StackEntry {
-                                ty: Entry::Trigger {
-                                    in_stack: TriggerId::from(entity),
-                                    source: seq.trigger,
-                                    card_source: seq.source,
-                                },
-                                targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0.clone()),
-                            },
-                        )
-                    }),
-            )
-            .sorted_by_key(|(seq, _)| -*seq)
+    pub fn entries_unsettled(&self) -> Vec<StackEntry> {
+        self.entries
+            .iter()
+            .filter(|entry| !entry.settled)
+            .cloned()
             .collect_vec()
     }
 
-    pub fn entries(db: &mut Database) -> Vec<(InStack, StackEntry)> {
-        db.cards
-            .query::<(&InStack, Entity, &Targets, Option<&Modes>)>()
-            .iter(&db.cards)
-            .map(|(seq, entity, targets, mode)| {
-                (
-                    *seq,
-                    StackEntry {
-                        ty: Entry::Card(entity.into()),
-                        targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0.clone()),
-                    },
-                )
-            })
-            .chain(
-                db.abilities
-                    .query::<(
-                        &InStack,
-                        Entity,
-                        &AbilityId,
-                        &Targets,
-                        &CardId,
-                        Option<&Modes>,
-                    )>()
-                    .iter(&db.abilities)
-                    .map(|(seq, entity, source, targets, card_source, mode)| {
-                        (
-                            *seq,
-                            StackEntry {
-                                ty: Entry::Ability {
-                                    in_stack: entity.into(),
-                                    source: *source,
-                                    card_source: *card_source,
-                                },
-                                targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0.clone()),
-                            },
-                        )
-                    }),
-            )
-            .chain(
-                db.triggers
-                    .query::<(&TriggerInStack, Entity, &Targets, Option<&Modes>)>()
-                    .iter(&db.triggers)
-                    .map(|(seq, entity, targets, mode)| {
-                        (
-                            (*seq).into(),
-                            StackEntry {
-                                ty: Entry::Trigger {
-                                    in_stack: TriggerId::from(entity),
-                                    source: seq.trigger,
-                                    card_source: seq.source,
-                                },
-                                targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0.clone()),
-                            },
-                        )
-                    }),
-            )
-            .sorted_by_key(|(seq, _)| -*seq)
-            .collect_vec()
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
     }
 
-    fn pop(db: &mut Database) -> Option<StackEntry> {
-        db.cards
-            .query::<(&InStack, Entity, &Targets, Option<&Modes>)>()
-            .iter(&db.cards)
-            .map(|(seq, entity, targets, mode)| {
-                (
-                    *seq,
-                    StackEntry {
-                        ty: Entry::Card(entity.into()),
-                        targets: targets.0.clone(),
-                        mode: mode.map(|mode| mode.0.clone()),
-                    },
-                )
-            })
-            .chain(
-                db.abilities
-                    .query::<(
-                        &InStack,
-                        Entity,
-                        &AbilityId,
-                        &Targets,
-                        &CardId,
-                        Option<&Modes>,
-                    )>()
-                    .iter(&db.abilities)
-                    .map(|(seq, entity, source, targets, card_source, mode)| {
-                        (
-                            *seq,
-                            StackEntry {
-                                ty: Entry::Ability {
-                                    in_stack: entity.into(),
-                                    source: *source,
-                                    card_source: *card_source,
-                                },
-                                targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0.clone()),
-                            },
-                        )
-                    }),
-            )
-            .chain(
-                db.triggers
-                    .query::<(Entity, &TriggerInStack, &Targets, Option<&Modes>)>()
-                    .iter(&db.triggers)
-                    .map(|(entity, seq, targets, mode)| {
-                        (
-                            (*seq).into(),
-                            StackEntry {
-                                ty: Entry::Trigger {
-                                    in_stack: TriggerId::from(entity),
-                                    source: seq.trigger,
-                                    card_source: seq.source,
-                                },
-                                targets: targets.0.clone(),
-                                mode: mode.map(|mode| mode.0.clone()),
-                            },
-                        )
-                    }),
-            )
-            .sorted_by_key(|(seq, _)| *seq)
-            .last()
-            .map(|(_, entry)| {
-                entry.remove_from_stack(db);
-                entry
-            })
-    }
-
-    pub fn is_empty(db: &mut Database) -> bool {
-        db.cards
-            .query_filtered::<(), With<InStack>>()
-            .iter(&db.cards)
-            .chain(
-                db.abilities
-                    .query_filtered::<(), With<InStack>>()
-                    .iter(&db.abilities),
-            )
-            .chain(
-                db.triggers
-                    .query_filtered::<(), With<TriggerInStack>>()
-                    .iter(&db.triggers),
-            )
-            .next()
-            .is_none()
-    }
-
-    #[allow(unused)]
-    pub(crate) fn len(db: &mut Database) -> usize {
-        db.cards
-            .query_filtered::<(), With<InStack>>()
-            .iter(&db.cards)
-            .chain(
-                db.abilities
-                    .query_filtered::<(), With<InStack>>()
-                    .iter(&db.abilities),
-            )
-            .chain(
-                db.triggers
-                    .query_filtered::<(), With<TriggerInStack>>()
-                    .iter(&db.triggers),
-            )
-            .count()
-    }
-
-    pub(crate) fn settle(db: &mut Database) {
-        let in_stack = Self::in_stack(db);
-        for (_, entry) in in_stack.iter() {
-            match entry {
-                Entry::Card(card) => {
-                    card.settle(db);
-                }
-                Entry::Ability { in_stack, .. } => {
-                    in_stack.settle(db);
-                }
-                Entry::Trigger { in_stack, .. } => {
-                    in_stack.settle(db);
-                }
-            }
+    pub(crate) fn settle(&mut self) {
+        for entry in self.entries.iter_mut() {
+            entry.settled = true;
         }
     }
 
     pub fn resolve_1(db: &mut Database) -> PendingResults {
-        let Some(next) = Self::pop(db) else {
+        let Some(next) = db.stack.entries.pop() else {
             return PendingResults::default();
         };
 
-        Self::settle(db);
+        db.stack.settle();
+
         let (apply_to_self, effects, controller, resolving_card, source, ty) = match next.ty {
             Entry::Card(card) => {
-                let effects = if let Some(modes) = card.modes(db) {
-                    debug!("Modes: {:?}", modes);
-                    modes
-                        .0
-                        .into_iter()
-                        .nth(next.mode.unwrap().into_iter().exactly_one().unwrap())
-                        .unwrap()
+                let effects = if !card.faceup_face(db).modes.is_empty() {
+                    debug!("Modes: {:?}", card.faceup_face(db).modes);
+                    card.faceup_face(db).modes[next.mode.into_iter().exactly_one().unwrap()]
                         .effects
+                        .clone()
                 } else {
-                    card.effects(db)
+                    card.faceup_face(db).effects.clone()
                 };
 
                 (
                     false,
                     effects,
-                    card.controller(db),
+                    db[card].controller,
                     Some(card),
                     card,
                     ResolutionType::Card(card),
                 )
             }
-            Entry::Ability { source, .. } => (
-                source.apply_to_self(db),
-                source.effects(db),
-                source.controller(db),
+            Entry::Ability { source, ability } => (
+                ability.apply_to_self(),
+                ability.effects(),
+                db[source].controller,
                 None,
-                source.source(db),
-                ResolutionType::Ability(source),
-            ),
-            Entry::Trigger {
                 source,
-                card_source,
-                ..
-            } => (
-                false,
-                source.effects(db),
-                card_source.controller(db),
-                None,
-                card_source,
-                ResolutionType::Trigger(source),
+                ResolutionType::Ability(source),
             ),
         };
 
@@ -584,8 +280,7 @@ impl Stack {
         let id = LogId::new();
         match ty {
             ResolutionType::Card(card) => Log::spell_resolved(db, id, card),
-            ResolutionType::Ability(ability) => Log::ability_resolved(db, id, ability),
-            ResolutionType::Trigger(trigger) => Log::trigger_resolved(db, id, trigger),
+            ResolutionType::Ability(source) => Log::ability_resolved(db, id, source),
         }
 
         results
@@ -593,37 +288,45 @@ impl Stack {
 
     pub(crate) fn move_etb_ability_to_stack(
         db: &mut Database,
-        ability: AbilityId,
+        ability: Ability,
         source: CardId,
     ) -> PendingResults {
         let mut results = PendingResults::default();
 
+        let targets = source.targets_for_ability(db, &ability, &HashSet::default());
         results.push_settled(ActionResult::AddAbilityToStack {
             ability,
             source,
-            targets: source.targets_for_ability(db, ability, &HashSet::default()),
+            targets,
             x_is: None,
         });
 
         results
     }
 
-    pub(crate) fn move_trigger_to_stack(db: &mut Database, trigger: TriggerId) -> PendingResults {
+    pub(crate) fn move_trigger_to_stack(
+        db: &mut Database,
+        listener: CardId,
+        trigger: TriggeredAbility,
+    ) -> PendingResults {
         let mut results = PendingResults::default();
 
         let mut targets = vec![];
-        let controller = trigger.listener(db).controller(db);
-        for effect in trigger.effects(db) {
-            let effect = effect.effect;
-            targets.push(effect.valid_targets(
+        let controller = db[listener].controller;
+        for effect in trigger.effects.iter() {
+            targets.push(effect.effect.valid_targets(
                 db,
-                trigger.listener(db),
+                listener,
                 controller,
                 &HashSet::default(),
             ));
         }
 
-        results.push_settled(ActionResult::AddTriggerToStack { trigger, targets });
+        results.push_settled(ActionResult::AddTriggerToStack {
+            source: listener,
+            trigger,
+            targets,
+        });
 
         results
     }
@@ -643,6 +346,66 @@ impl Stack {
     ) -> PendingResults {
         add_card_to_stack(card, db, CastFrom::Exile, paying_costs)
     }
+
+    pub(crate) fn push_card(
+        db: &mut Database,
+        source: CardId,
+        targets: Vec<Vec<ActiveTarget>>,
+        chosen_modes: Vec<usize>,
+    ) -> PendingResults {
+        db.stack.entries.push(StackEntry {
+            ty: Entry::Card(source),
+            targets: targets.clone(),
+            settled: true,
+            mode: chosen_modes,
+        });
+
+        let mut results = PendingResults::default();
+        for target in targets.into_iter().flat_map(|t| t.into_iter()) {
+            if let ActiveTarget::Battlefield { id } = target {
+                Log::targetted(db, LogId::current(), source, id);
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
+                    if listener == id
+                        && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                    {
+                        results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    }
+                }
+            }
+        }
+
+        results
+    }
+
+    pub(crate) fn push_ability(
+        db: &mut Database,
+        source: CardId,
+        ability: Ability,
+        targets: Vec<Vec<ActiveTarget>>,
+    ) -> PendingResults {
+        db.stack.entries.push(StackEntry {
+            ty: Entry::Ability { source, ability },
+            targets: targets.clone(),
+            mode: vec![],
+            settled: true,
+        });
+
+        let mut results = PendingResults::default();
+        for target in targets.into_iter().flat_map(|t| t.into_iter()) {
+            if let ActiveTarget::Battlefield { id } = target {
+                Log::targetted(db, LogId::current(), source, id);
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
+                    if listener == id
+                        && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                    {
+                        results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    }
+                }
+            }
+        }
+
+        results
+    }
 }
 
 fn add_card_to_stack(
@@ -653,14 +416,7 @@ fn add_card_to_stack(
 ) -> PendingResults {
     let mut results = PendingResults::default();
 
-    match from {
-        CastFrom::Hand => {
-            card.cast_location::<cast_from::Hand>(db);
-        }
-        CastFrom::Exile => {
-            card.cast_location::<cast_from::Exile>(db);
-        }
-    }
+    db[card].cast_from = Some(from);
     card.apply_modifiers_layered(db);
 
     if card.has_modes(db) {
@@ -669,34 +425,41 @@ fn add_card_to_stack(
 
     results.add_card_to_stack(card, from);
     if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
-        let controller = card.controller(db);
-        if let Some(aura) = card.aura(db) {
+        let controller = db[card].controller;
+        if card.faceup_face(db).enchant.is_some() {
             results.push_choose_targets(ChooseTargets::new(
-                TargetSource::Aura(aura),
+                TargetSource::Aura(card),
                 card.targets_for_aura(db).unwrap(),
                 card,
             ))
         }
 
-        let effects = card.effects(db);
-        if effects.len() == 1 {
-            let effect = effects.into_iter().exactly_one().unwrap().effect;
+        if card.faceup_face(db).effects.len() == 1 {
+            let effect = &card
+                .faceup_face(db)
+                .effects
+                .iter()
+                .exactly_one()
+                .unwrap()
+                .effect;
             let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
             if valid_targets.len() < effect.needs_targets(db, card) {
                 return PendingResults::default();
             }
 
             results.push_choose_targets(ChooseTargets::new(
-                TargetSource::Effect(effect),
+                TargetSource::Effect(effect.clone()),
                 valid_targets,
                 card,
             ));
         } else {
-            for effect in card.effects(db) {
-                let effect = effect.effect;
-                let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
+            for effect in card.faceup_face(db).effects.iter() {
+                let valid_targets =
+                    effect
+                        .effect
+                        .valid_targets(db, card, controller, &HashSet::default());
                 results.push_choose_targets(ChooseTargets::new(
-                    TargetSource::Effect(effect),
+                    TargetSource::Effect(effect.effect.clone()),
                     valid_targets,
                     card,
                 ));
@@ -705,13 +468,15 @@ fn add_card_to_stack(
     }
 
     // It is important that paying costs happens last, because some cards have effects that depend on what they are targeting.
-    let cost = card.cost(db);
+    let cost = &card.faceup_face(db).cost;
     if paying_costs {
-        results.push_pay_costs(PayCost::SpendMana(SpendMana::new(
-            cost.mana_cost.clone(),
+        results.push_pay_costs(PayCost::new(
             card,
-            SpendReason::Casting(card),
-        )));
+            Cost::SpendMana(SpendMana::new(
+                cost.mana_cost.clone(),
+                SpendReason::Casting(card),
+            )),
+        ));
     }
     for cost in cost.additional_cost.iter() {
         match cost {
@@ -720,53 +485,57 @@ fn add_card_to_stack(
             AdditionalCost::RemoveCounter { .. } => unreachable!(),
             AdditionalCost::PayLife(_) => todo!(),
             AdditionalCost::SacrificePermanent(restrictions) => {
-                results.push_pay_costs(PayCost::SacrificePermanent(SacrificePermanent::new(
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                ));
             }
             AdditionalCost::TapPermanent(restrictions) => {
-                results.push_pay_costs(PayCost::TapPermanent(TapPermanent::new(
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                ));
             }
             AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
-                results.push_pay_costs(PayCost::TapPermanentsPowerXOrMore(
-                    TapPermanentsPowerXOrMore::new(restrictions.clone(), *x_is, card),
+                results.push_pay_costs(PayCost::new(
+                    card,
+                    Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
+                        restrictions.clone(),
+                        *x_is,
+                    )),
                 ));
             }
             AdditionalCost::ExileCardsCmcX(restrictions) => {
-                results.push_pay_costs(PayCost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone())),
+                ));
             }
             AdditionalCost::ExileCard { restrictions } => {
-                results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
-                    None,
-                    1,
-                    1,
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::ExileCards(ExileCards::new(None, 1, 1, restrictions.clone())),
+                ));
             }
             AdditionalCost::ExileXOrMoreCards {
                 minimum,
                 restrictions,
             } => {
-                results.push_pay_costs(PayCost::ExileCards(ExileCards::new(
-                    None,
-                    *minimum,
-                    usize::MAX,
-                    restrictions.clone(),
+                results.push_pay_costs(PayCost::new(
                     card,
-                )));
+                    Cost::ExileCards(ExileCards::new(
+                        None,
+                        *minimum,
+                        usize::MAX,
+                        restrictions.clone(),
+                    )),
+                ));
             }
             AdditionalCost::ExileSharingCardType { count } => {
-                results.push_pay_costs(PayCost::ExileCardsSharingType(ExileCardsSharingType::new(
-                    None, card, *count,
-                )));
+                results.push_pay_costs(PayCost::new(
+                    card,
+                    Cost::ExileCardsSharingType(ExileCardsSharingType::new(None, *count)),
+                ));
             }
         }
     }
@@ -776,33 +545,43 @@ fn add_card_to_stack(
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use crate::{
-        in_play::{self, CardId, Database, OnBattlefield},
+        in_play::{CardId, Database},
         load_cards,
         pending_results::ResolutionResult,
         player::AllPlayers,
         stack::Stack,
-        turns::Turn,
     };
 
     #[test]
     fn resolves_creatures() -> anyhow::Result<()> {
         let cards = load_cards()?;
-        let mut db = Database::default();
         let mut all_players = AllPlayers::default();
         let player = all_players.new_player("Player".to_string(), 20);
-        let turn = Turn::new(&mut db, &all_players);
+        let mut db = Database::new(all_players);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
-        card1.move_to_stack(&mut db, Default::default(), None, vec![]);
+        let mut results = card1.move_to_stack(&mut db, Default::default(), None, vec![]);
+        let result = results.resolve(&mut db, None);
+        assert_eq!(result, ResolutionResult::Complete);
 
         let mut results = Stack::resolve_1(&mut db);
 
-        let result = results.resolve(&mut db, &mut all_players, &turn, None);
+        let result = results.resolve(&mut db, None);
         assert_eq!(result, ResolutionResult::Complete);
 
-        assert!(Stack::is_empty(&mut db));
-        assert_eq!(in_play::cards::<OnBattlefield>(&mut db), [card1]);
+        assert!(db.stack.is_empty());
+        assert_eq!(
+            db.battlefield
+                .battlefields
+                .values()
+                .flat_map(|b| b.iter())
+                .copied()
+                .collect_vec(),
+            [card1]
+        );
 
         Ok(())
     }

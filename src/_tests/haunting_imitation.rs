@@ -1,16 +1,14 @@
-use std::collections::HashSet;
-
 use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
     card::Keyword,
-    in_play::{CardId, Database, InHand, OnBattlefield},
+    in_play::{CardId, Database},
+    library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
-    turns::Turn,
     types::{Subtype, Type},
 };
 
@@ -28,41 +26,41 @@ fn reveals_clones() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&mut db, &all_players);
+    let mut db = Database::new(all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let targets = haunting.valid_targets(&mut db, &HashSet::default());
-    haunting.move_to_stack(&mut db, targets, None, vec![]);
+    let mut results = haunting.move_to_stack(&mut db, vec![], None, vec![]);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
 
     let land = CardId::upload(&mut db, &cards, player1, "Forest");
     let creature = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
 
-    all_players[player1].deck.place_on_top(&mut db, land);
-    all_players[player2].deck.place_on_top(&mut db, creature);
+    Library::place_on_top(&mut db, player1, land);
+    Library::place_on_top(&mut db, player2, creature);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut on_battlefield = player1.get_cards::<OnBattlefield>(&mut db);
+    let on_battlefield = &mut db.battlefield[player1];
     assert_eq!(on_battlefield.len(), 1);
     let token = on_battlefield.pop().unwrap();
 
-    assert_eq!(token.types(&db), IndexSet::from([Type::Creature]));
+    assert_eq!(db[token].modified_types, IndexSet::from([Type::Creature]));
     assert_eq!(
-        token.subtypes(&db),
+        db[token].modified_subtypes,
         IndexSet::from([Subtype::Bear, Subtype::Spirit])
     );
-    assert_eq!(token.power(&mut db), Some(1));
-    assert_eq!(token.toughness(&mut db), Some(1));
+    assert_eq!(token.power(&db), Some(1));
+    assert_eq!(token.toughness(&db), Some(1));
     assert_eq!(
-        token.keywords(&mut db),
+        db[token].modified_keywords,
         [Keyword::Flying].into_iter().collect()
     );
 
@@ -83,31 +81,30 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
         .try_init();
 
     let cards = load_cards()?;
-    let mut db = Database::default();
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player("Player".to_string(), 20);
     let player2 = all_players.new_player("Player".to_string(), 20);
-    let turn = Turn::new(&mut db, &all_players);
+    let mut db = Database::new(all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player2, "Swamp");
 
-    all_players[player1].deck.place_on_top(&mut db, land1);
-    all_players[player2].deck.place_on_top(&mut db, land2);
+    Library::place_on_top(&mut db, player1, land1);
+    Library::place_on_top(&mut db, player2, land2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, &mut all_players, &turn, None);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(player1.get_cards::<OnBattlefield>(&mut db).len(), 0);
-    assert_eq!(player1.get_cards::<InHand>(&mut db), vec![haunting]);
+    assert_eq!(db.battlefield[player1], IndexSet::<CardId>::default());
+    assert_eq!(db.hand[player1], IndexSet::from([haunting]));
 
     Ok(())
 }

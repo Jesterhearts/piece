@@ -19,7 +19,7 @@ impl DeckDefinition {
         self.cards.insert(name, count);
     }
 
-    pub fn build_deck(&self, db: &mut Database, cards: &Cards, player: Owner) -> Deck {
+    pub fn build_deck(&self, db: &mut Database, cards: &Cards, player: Owner) -> Library {
         let mut deck = VecDeque::default();
         for (card, count) in self.cards.iter() {
             for _ in 0..*count {
@@ -28,16 +28,16 @@ impl DeckDefinition {
             }
         }
 
-        Deck::new(deck)
+        Library::new(deck)
     }
 }
 
-#[derive(Debug)]
-pub struct Deck {
+#[derive(Debug, Default)]
+pub struct Library {
     pub(crate) cards: VecDeque<CardId>,
 }
 
-impl Deck {
+impl Library {
     pub(crate) fn empty() -> Self {
         Self {
             cards: Default::default(),
@@ -52,21 +52,47 @@ impl Deck {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
-    pub(crate) fn place_on_top(&mut self, db: &mut Database, card: CardId) {
+    pub(crate) fn place_on_top(db: &mut Database, player: Owner, card: CardId) {
         if card.move_to_library(db) {
-            self.cards.push_back(card);
+            db.all_players[player].library.cards.push_back(card);
         }
     }
 
-    pub(crate) fn place_under_top(&mut self, db: &mut Database, card: CardId, n: usize) {
+    pub(crate) fn place_under_top(db: &mut Database, player: Owner, card: CardId, n: usize) {
         if card.move_to_library(db) {
-            self.cards.insert(self.cards.len() - n, card);
+            let library = &mut db.all_players[player].library;
+            library.cards.insert(library.cards.len() - n, card);
         }
     }
 
-    pub(crate) fn place_on_bottom(&mut self, db: &mut Database, card: CardId) {
+    pub(crate) fn place_on_bottom(db: &mut Database, player: Owner, card: CardId) {
         if card.move_to_library(db) {
-            self.cards.push_front(card);
+            db.all_players[player].library.cards.push_front(card);
+        }
+    }
+
+    pub(crate) fn exile_top_card(
+        db: &mut Database,
+        player: Owner,
+        source: CardId,
+        reason: Option<ExileReason>,
+    ) -> Option<CardId> {
+        if let Some(card) = db.all_players[player].library.cards.pop_back() {
+            card.move_to_exile(db, source, reason, EffectDuration::Permanently);
+            Some(card)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn reveal_top(db: &mut Database, player: Owner) -> Option<CardId> {
+        if let Some(card) = db.all_players[player].library.cards.back().copied() {
+            {
+                db[card].revealed = true;
+            };
+            Some(card)
+        } else {
+            None
         }
     }
 
@@ -74,40 +100,16 @@ impl Deck {
         self.cards.pop_back()
     }
 
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn len(&self) -> usize {
         self.cards.len()
     }
 
-    #[allow(unused)]
     pub(crate) fn is_empty(&self) -> bool {
         self.cards.is_empty()
     }
 
     pub(crate) fn remove(&mut self, card: CardId) {
         self.cards.retain(|deck| *deck != card);
-    }
-
-    pub(crate) fn reveal_top(&self, db: &mut Database) -> Option<CardId> {
-        if let Some(card) = self.cards.back() {
-            card.reveal(db);
-            Some(*card)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn exile_top_card(
-        &mut self,
-        db: &mut Database,
-        source: CardId,
-        reason: Option<ExileReason>,
-    ) -> Option<CardId> {
-        if let Some(card) = self.cards.pop_back() {
-            card.move_to_exile(db, source, reason, EffectDuration::Permanently);
-            Some(card)
-        } else {
-            None
-        }
     }
 }

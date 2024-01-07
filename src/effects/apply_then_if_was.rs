@@ -43,7 +43,7 @@ impl TryFrom<&protogen::effects::ApplyThenIfWas> for ApplyThenIfWas {
 impl EffectBehaviors for ApplyThenIfWas {
     fn needs_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
         self.apply
@@ -55,7 +55,7 @@ impl EffectBehaviors for ApplyThenIfWas {
 
     fn wants_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
         self.apply
@@ -67,7 +67,7 @@ impl EffectBehaviors for ApplyThenIfWas {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,

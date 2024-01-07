@@ -3,7 +3,6 @@ use indexmap::IndexSet;
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors, EffectDuration},
-    in_play::{self, OnBattlefield},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     stack::ActiveTarget,
     types::Type,
@@ -15,7 +14,7 @@ pub(crate) struct ExileTargetCreatureManifestTopOfLibrary;
 impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -23,7 +22,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -31,18 +30,17 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
-            if card.passes_restrictions(db, source, &source.restrictions(db))
-                && card.is_in_location::<OnBattlefield>(db)
+        for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
+            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
             {
-                let target = ActiveTarget::Battlefield { id: card };
+                let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {
                     continue;
                 }
@@ -87,7 +85,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                 reason: None,
             });
             results.push_settled(ActionResult::ManifestTopOfLibrary(
-                target.id().unwrap().controller(db),
+                db[target.id().unwrap()].controller,
             ));
         }
     }

@@ -6,7 +6,6 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    player::AllPlayers,
     protogen,
     stack::ActiveTarget,
     targets::Restriction,
@@ -36,7 +35,7 @@ impl TryFrom<&protogen::effects::Mill> for Mill {
 impl EffectBehaviors for Mill {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -44,7 +43,7 @@ impl EffectBehaviors for Mill {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -52,12 +51,13 @@ impl EffectBehaviors for Mill {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         _already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
-        AllPlayers::all_players_in_db(db)
+        db.all_players
+            .all_players()
             .into_iter()
             .filter(|player| player.passes_restrictions(db, controller, &self.restrictions))
             .map(|player| ActiveTarget::Player { id: player })

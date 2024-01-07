@@ -16,12 +16,13 @@ use std::{
 use enum_dispatch::enum_dispatch;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
-    abilities::GainMana,
+    abilities::{Ability, GainMana, GainManaAbility},
     battlefield::{ActionResult, Battlefield},
     effects::{Destination, Effect, EffectBehaviors},
-    in_play::{AbilityId, AuraId, CardId, CastFrom, Database, OnBattlefield},
+    in_play::{CardId, CastFrom, Database},
     pending_results::{
         choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
         choose_targets::ChooseTargets, choosing_cast::ChoosingCast,
@@ -29,9 +30,8 @@ use crate::{
         library_or_graveyard::LibraryOrGraveyard, organizing_stack::OrganizingStack,
         pay_costs::PayCost,
     },
-    player::{AllPlayers, Controller, Owner},
+    player::{Controller, Owner},
     stack::{ActiveTarget, StackEntry},
-    turns::Turn,
 };
 
 #[must_use]
@@ -45,7 +45,7 @@ pub enum ResolutionResult {
 #[derive(Debug, Clone)]
 pub(crate) enum Source {
     Card(CardId),
-    Ability(AbilityId),
+    Ability { source: CardId, ability: Ability },
     Effect(Effect, CardId),
 }
 
@@ -53,25 +53,25 @@ impl Source {
     fn mode_options(&self, db: &mut Database) -> Vec<(usize, String)> {
         match self {
             Source::Card(card) => card
-                .modes(db)
-                .unwrap()
-                .0
-                .into_iter()
+                .faceup_face(db)
+                .modes
+                .iter()
                 .map(|mode| {
                     mode.effects
-                        .into_iter()
-                        .map(|effect| effect.oracle_text)
+                        .iter()
+                        .map(|effect| &effect.oracle_text)
+                        .cloned()
                         .join(", ")
                 })
                 .enumerate()
                 .collect_vec(),
-            Source::Ability(ability) => {
-                if let Some(gain) = ability.gain_mana_ability(db) {
-                    match gain.gain {
+            Source::Ability { ability, .. } => {
+                if let Ability::Mana(gain) = ability {
+                    match &gain.gain {
                         GainMana::Specific { .. } => vec![],
                         GainMana::Choice { choices } => {
                             let mut result = vec![];
-                            for (idx, choice) in choices.into_iter().enumerate() {
+                            for (idx, choice) in choices.iter().enumerate() {
                                 let mut add = "Add ".to_string();
                                 for mana in choice {
                                     mana.push_mana_symbol(&mut add);
@@ -103,7 +103,7 @@ impl Source {
 #[derive(Debug, Clone)]
 pub(crate) enum TargetSource {
     Effect(Effect),
-    Aura(AuraId),
+    Aura(CardId),
 }
 
 impl TargetSource {
@@ -139,19 +139,26 @@ pub(crate) enum Pending {
 #[enum_dispatch]
 pub(crate) trait PendingResult: std::fmt::Debug {
     #[must_use]
-    fn optional(&self, db: &Database, all_players: &AllPlayers) -> bool;
+    fn optional(&self, db: &Database) -> bool;
+
+    #[must_use]
+    fn cancelable(&self, db: &Database) -> bool {
+        self.optional(db)
+    }
 
     #[must_use]
     fn recompute_targets(
         &mut self,
-        _db: &mut Database,
-        _already_chosen: &HashSet<ActiveTarget>,
+        db: &mut Database,
+        already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
+        let _ = db;
+        let _ = already_chosen;
         false
     }
 
     #[must_use]
-    fn options(&self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)>;
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)>;
 
     #[must_use]
     fn description(&self, db: &Database) -> String;
@@ -163,7 +170,6 @@ pub(crate) trait PendingResult: std::fmt::Debug {
     fn make_choice(
         &mut self,
         db: &mut Database,
-        all_players: &mut AllPlayers,
         choice: Option<usize>,
         results: &mut PendingResults,
     ) -> bool;
@@ -181,7 +187,7 @@ pub struct PendingResults {
     settled_effects: Vec<ActionResult>,
 
     apply_in_stages: bool,
-    gain_mana: Option<AbilityId>,
+    gain_mana: Option<(CardId, GainManaAbility)>,
     add_to_stack: Option<Source>,
     cast_from: Option<CastFrom>,
 
@@ -191,12 +197,12 @@ pub struct PendingResults {
 }
 
 impl PendingResults {
-    pub(crate) fn add_gain_mana(&mut self, source: AbilityId) {
-        self.gain_mana = Some(source);
+    pub(crate) fn add_gain_mana(&mut self, source: CardId, gain: GainManaAbility) {
+        self.gain_mana = Some((source, gain));
     }
 
-    pub(crate) fn add_ability_to_stack(&mut self, source: AbilityId) {
-        self.add_to_stack = Some(Source::Ability(source));
+    pub(crate) fn add_ability_to_stack(&mut self, source: CardId, ability: Ability) {
+        self.add_to_stack = Some(Source::Ability { source, ability });
     }
 
     pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: CastFrom) {
@@ -280,6 +286,7 @@ impl PendingResults {
         self.pending.push_back(Pending::ChooseForEachPlayer(choice));
     }
 
+    #[instrument(level = Level::DEBUG, skip(self))]
     pub(crate) fn push_choose_targets(&mut self, choice: ChooseTargets) {
         self.pending.push_back(Pending::ChooseTargets(choice));
     }
@@ -290,37 +297,32 @@ impl PendingResults {
         }
     }
 
-    pub fn set_organize_stack(&mut self, db: &Database, mut entries: Vec<StackEntry>, turn: &Turn) {
+    pub fn set_organize_stack(&mut self, db: &Database, mut entries: Vec<StackEntry>) {
         entries.sort_by_key(|e| {
-            e.ty.source().controller(db) != Controller::from(turn.priority_player())
+            db[e.ty.source()].controller != Controller::from(db.turn.priority_player())
         });
 
         self.pending
             .push_back(Pending::OrganizingStack(OrganizingStack::new(entries)))
     }
 
-    pub(crate) fn set_declare_attackers(
-        &mut self,
-        db: &mut Database,
-        all_players: &AllPlayers,
-        attacker: Owner,
-    ) {
-        let mut players = all_players.all_players();
+    pub(crate) fn set_declare_attackers(&mut self, db: &mut Database, attacker: Owner) {
+        let mut players = db.all_players.all_players();
         players.retain(|player| *player != attacker);
         debug!(
             "Attacking {:?}",
             players
                 .iter()
-                .map(|player| all_players[*player].name.clone())
+                .map(|player| db.all_players[*player].name.clone())
                 .collect_vec()
         );
         // TODO goad, etc.
         self.pending
             .push_back(Pending::DeclaringAttackers(DeclaringAttackers {
-                candidates: attacker
-                    .get_cards::<OnBattlefield>(db)
-                    .into_iter()
+                candidates: db.battlefield[attacker]
+                    .iter()
                     .filter(|card| card.can_attack(db))
+                    .copied()
                     .collect_vec(),
                 choices: IndexSet::default(),
                 targets: vec![],
@@ -328,20 +330,20 @@ impl PendingResults {
             }));
     }
 
-    pub fn choices_optional(&self, db: &Database, all_players: &AllPlayers) -> bool {
+    pub fn choices_optional(&self, db: &Database) -> bool {
         self.pending
             .front()
-            .map(|pend| pend.optional(db, all_players))
+            .map(|pend| pend.optional(db))
             .unwrap_or(true)
     }
 
-    pub fn options(&mut self, db: &mut Database, all_players: &AllPlayers) -> Vec<(usize, String)> {
+    pub fn options(&mut self, db: &mut Database) -> Vec<(usize, String)> {
         for pending in self.pending.iter_mut() {
             let _ = pending.recompute_targets(db, &self.all_chosen_targets);
         }
 
         if let Some(pending) = self.pending.front_mut() {
-            pending.options(db, all_players)
+            pending.options(db)
         } else {
             vec![]
         }
@@ -355,13 +357,7 @@ impl PendingResults {
         }
     }
 
-    pub fn resolve(
-        &mut self,
-        db: &mut Database,
-        all_players: &mut AllPlayers,
-        turn: &Turn,
-        choice: Option<usize>,
-    ) -> ResolutionResult {
+    pub fn resolve(&mut self, db: &mut Database, choice: Option<usize>) -> ResolutionResult {
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
         debug!("Choosing {:?} for {:#?}", choice, self);
 
@@ -386,7 +382,7 @@ impl PendingResults {
             if let Some(source) = self.add_to_stack.take() {
                 match source {
                     Source::Card(card) => {
-                        debug!("Casting card");
+                        debug!("Casting card {}", db[card].modified_name);
                         self.settled_effects.push(ActionResult::CastCard {
                             card,
                             targets: self.chosen_targets.clone(),
@@ -397,8 +393,7 @@ impl PendingResults {
 
                         self.chosen_modes.clear();
                     }
-                    Source::Ability(ability) => {
-                        let source = ability.source(db);
+                    Source::Ability { source, ability } => {
                         self.settled_effects.push(ActionResult::AddAbilityToStack {
                             source,
                             ability,
@@ -408,38 +403,35 @@ impl PendingResults {
                     }
                     Source::Effect(_, _) => unreachable!(),
                 }
-            } else if let Some(id) = self.gain_mana.take() {
-                let target = id.source(db).controller(db);
-                let source = id.mana_source(db);
-                let restriction = id.mana_restriction(db);
-                if let Some(mana) = id.gain_mana_ability(db) {
-                    match mana.gain {
-                        GainMana::Specific { gains } => {
-                            self.settled_effects.push(ActionResult::GainMana {
-                                gain: gains,
-                                target,
-                                source,
-                                restriction,
-                            })
-                        }
-                        GainMana::Choice { choices } => {
-                            let option = self.chosen_modes.pop().unwrap();
-                            self.chosen_modes.clear();
-                            self.settled_effects.push(ActionResult::GainMana {
-                                gain: choices[option].clone(),
-                                target,
-                                source,
-                                restriction,
-                            })
-                        }
+            } else if let Some((source, gain)) = self.gain_mana.take() {
+                let target = db[source].controller;
+                let source = gain.mana_source.unwrap_or_default();
+                let restriction = gain.mana_restriction;
+                match gain.gain {
+                    GainMana::Specific { gains } => {
+                        self.settled_effects.push(ActionResult::GainMana {
+                            gain: gains,
+                            target,
+                            source,
+                            restriction,
+                        })
+                    }
+                    GainMana::Choice { choices } => {
+                        let option = self.chosen_modes.pop().unwrap();
+                        self.chosen_modes.clear();
+                        self.settled_effects.push(ActionResult::GainMana {
+                            gain: choices[option].clone(),
+                            target,
+                            source,
+                            restriction,
+                        })
                     }
                 }
             }
 
             if !self.settled_effects.is_empty() {
                 self.applied = true;
-                let results =
-                    Battlefield::apply_action_results(db, all_players, turn, &self.settled_effects);
+                let results = Battlefield::apply_action_results(db, &self.settled_effects);
                 self.settled_effects.clear();
                 self.extend(results);
             }
@@ -453,8 +445,7 @@ impl PendingResults {
 
         if self.apply_in_stages && !self.settled_effects.is_empty() {
             self.applied = true;
-            let results =
-                Battlefield::apply_action_results(db, all_players, turn, &self.settled_effects);
+            let results = Battlefield::apply_action_results(db, &self.settled_effects);
             self.settled_effects.clear();
             self.extend(results);
 
@@ -466,7 +457,7 @@ impl PendingResults {
         }
 
         if let Some(mut next) = self.pending.pop_front() {
-            if next.make_choice(db, all_players, choice, self) {
+            if next.make_choice(db, choice, self) {
                 ResolutionResult::TryAgain
             } else {
                 self.pending.push_front(next);
@@ -496,24 +487,31 @@ impl PendingResults {
         self.pending.is_empty() && self.settled_effects.is_empty()
     }
 
-    pub fn only_immediate_results(&self, db: &Database, all_players: &AllPlayers) -> bool {
+    pub fn only_immediate_results(&self, db: &Database) -> bool {
         self.pending.iter().all(|pend| match pend {
             Pending::ChooseTargets(targets) => targets.is_empty(),
-            Pending::PayCosts(pay) => pay.autopay(db, all_players),
+            Pending::PayCosts(pay) => pay.autopay(db),
             _ => false,
         })
     }
 
-    pub fn can_cancel(&self, db: &Database, all_players: &AllPlayers) -> bool {
-        self.is_empty() || (self.choices_optional(db, all_players) && !self.applied)
+    pub fn can_cancel(&self, db: &Database) -> bool {
+        self.is_empty()
+            || (self
+                .pending
+                .front()
+                .map(|pend| pend.cancelable(db))
+                .unwrap_or(true)
+                && !self.applied)
     }
 
-    pub fn priority(&self, db: &Database, all_players: &AllPlayers, turn: &Turn) -> Owner {
+    pub fn priority(&self, db: &Database) -> Owner {
         if let Some(pend) = self.pending.front() {
             match pend {
-                Pending::PayCosts(pay) => pay.source().controller(db).into(),
+                Pending::PayCosts(pay) => db[pay.source].controller.into(),
                 Pending::DeclaringAttackers(declaring) => {
-                    let mut all_players = all_players
+                    let mut all_players = db
+                        .all_players
                         .all_players()
                         .into_iter()
                         .collect::<HashSet<_>>();
@@ -530,15 +528,15 @@ impl PendingResults {
                         .enumerate()
                         .find(|(idx, _)| !organizing.choices.contains(idx))
                     {
-                        first.1.ty.source().controller(db).into()
+                        db[first.1.ty.source()].controller.into()
                     } else {
-                        turn.priority_player()
+                        db.turn.priority_player()
                     }
                 }
-                _ => turn.priority_player(),
+                _ => db.turn.priority_player(),
             }
         } else {
-            turn.priority_player()
+            db.turn.priority_player()
         }
     }
 }

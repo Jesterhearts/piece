@@ -1,10 +1,9 @@
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors, EffectDuration},
-    in_play::{self, OnBattlefield},
+    in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
-    stack::ActiveTarget,
     targets::Restriction,
 };
 
@@ -32,7 +31,7 @@ impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
 impl EffectBehaviors for ExileTarget {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -40,7 +39,7 @@ impl EffectBehaviors for ExileTarget {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -48,18 +47,17 @@ impl EffectBehaviors for ExileTarget {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::all_cards(db) {
-            if card.passes_restrictions(db, source, &source.restrictions(db))
-                && card.is_in_location::<OnBattlefield>(db)
+        for card in db.cards.keys() {
+            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.passes_restrictions(db, source, &self.restrictions)
             {
-                let target = ActiveTarget::Battlefield { id: card };
+                let target = target_from_location(db, *card);
                 if already_chosen.contains(&target) {
                     continue;
                 }

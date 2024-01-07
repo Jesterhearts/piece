@@ -1,15 +1,13 @@
 use anyhow::anyhow;
 
-use crate::{newtype_enum::newtype_enum, protogen, targets::Restriction};
+use crate::{protogen, targets::Restriction};
 
-newtype_enum! {
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub(crate)enum Location {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Location {
     Anywhere,
     Battlefield,
     Hand,
     Library,
-}
 }
 
 impl TryFrom<&protogen::triggers::Location> for Location {
@@ -34,9 +32,8 @@ impl From<&protogen::triggers::location::Location> for Location {
     }
 }
 
-newtype_enum! {
-#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
-pub(crate)enum TriggerSource {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum TriggerSource {
     Attacks,
     Cast,
     EndStep,
@@ -47,10 +44,10 @@ pub(crate)enum TriggerSource {
     PutIntoGraveyard,
     StartOfCombat,
     Tapped,
-}
+    Targeted,
 }
 
-#[derive(Debug, Clone, bevy_ecs::component::Component)]
+#[derive(Debug, Clone)]
 pub(crate) struct Trigger {
     pub(crate) trigger: TriggerSource,
     pub(crate) from: Location,
@@ -108,6 +105,7 @@ impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
             }
             protogen::triggers::trigger_source::Trigger::StartOfCombat(_) => Self::StartOfCombat,
             protogen::triggers::trigger_source::Trigger::Tapped(_) => Self::Tapped,
+            protogen::triggers::trigger_source::Trigger::Targeted(_) => Self::Targeted,
         }
     }
 }

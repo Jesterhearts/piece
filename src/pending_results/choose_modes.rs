@@ -4,7 +4,6 @@ use crate::{
     effects::EffectBehaviors,
     in_play::Database,
     pending_results::{PendingResult, Source},
-    player::AllPlayers,
 };
 
 #[derive(Debug)]
@@ -13,11 +12,11 @@ pub(crate) struct ChooseModes {
 }
 
 impl PendingResult for ChooseModes {
-    fn optional(&self, _db: &Database, _all_players: &AllPlayers) -> bool {
+    fn optional(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database, _all_players: &AllPlayers) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.source.mode_options(db)
     }
 
@@ -32,7 +31,6 @@ impl PendingResult for ChooseModes {
     fn make_choice(
         &mut self,
         db: &mut crate::in_play::Database,
-        _all_players: &mut crate::player::AllPlayers,
         choice: Option<usize>,
         results: &mut super::PendingResults,
     ) -> bool {
@@ -40,22 +38,23 @@ impl PendingResult for ChooseModes {
             results.push_chosen_mode(choice);
             match &self.source {
                 Source::Card(card) => {
-                    for effect in card.modes(db).unwrap()[choice]
+                    for effect in card.faceup_face(db).modes[choice]
                         .effects
                         .iter()
                         .filter(|effect| effect.effect.wants_targets(db, *card) > 0)
+                        .cloned()
                         .collect_vec()
                     {
                         effect.effect.push_pending_behavior(
                             db,
                             *card,
-                            card.controller(db),
+                            db[*card].controller,
                             results,
                         );
                     }
                 }
                 Source::Effect(effect, source) => {
-                    effect.push_pending_behavior(db, *source, source.controller(db), results);
+                    effect.push_pending_behavior(db, *source, db[*source].controller, results);
                 }
                 _ => {}
             }

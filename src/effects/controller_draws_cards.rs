@@ -4,8 +4,8 @@ use anyhow::anyhow;
 
 use crate::{
     battlefield::ActionResult,
-    effects::EffectBehaviors,
-    in_play::{cards, Database, OnBattlefield, ReplacementEffectId},
+    effects::{EffectBehaviors, ReplacementAbility},
+    in_play::Database,
     pending_results::PendingResults,
     player::Player,
     protogen,
@@ -63,7 +63,7 @@ impl TryFrom<&protogen::effects::ControllerDrawCards> for ControllerDrawsCards {
 impl EffectBehaviors for ControllerDrawsCards {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -71,7 +71,7 @@ impl EffectBehaviors for ControllerDrawsCards {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -86,8 +86,8 @@ impl EffectBehaviors for ControllerDrawsCards {
     ) {
         let count = match &self.count {
             Count::Fixed(count) => *count,
-            Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
-                .into_iter()
+            Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
+                .iter()
                 .filter(|card| card.passes_restrictions(db, source, matching))
                 .count(),
         };
@@ -109,8 +109,8 @@ impl EffectBehaviors for ControllerDrawsCards {
     ) {
         let count = match &self.count {
             Count::Fixed(count) => *count,
-            Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
-                .into_iter()
+            Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
+                .iter()
                 .filter(|card| card.passes_restrictions(db, source, matching))
                 .count(),
         };
@@ -122,21 +122,21 @@ impl EffectBehaviors for ControllerDrawsCards {
 
     fn replace_draw(
         &self,
-        player: &mut Player,
         db: &mut Database,
-        replacements: &mut IntoIter<ReplacementEffectId>,
-        _controller: crate::player::Controller,
+        player: crate::player::Owner,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementAbility)>,
+        controller: crate::player::Controller,
         _count: usize,
         results: &mut PendingResults,
     ) {
         let count = match &self.count {
             Count::Fixed(count) => *count,
-            Count::NumberOfPermanentsMatching(matching) => cards::<OnBattlefield>(db)
-                .into_iter()
-                .filter(|card| card.passes_restrictions(db, *card, matching))
+            Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
+                .iter()
+                .filter(|card| card.passes_restrictions(db, **card, matching))
                 .count(),
         };
 
-        player.draw_with_replacement(db, replacements, count, results);
+        Player::draw_with_replacement(db, player, replacements, count, results);
     }
 }

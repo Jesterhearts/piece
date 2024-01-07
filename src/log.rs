@@ -1,13 +1,14 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-use bevy_ecs::system::Resource;
-use indexmap::IndexMap;
 use tracing::Level;
 
 use crate::{
     counters::Counter,
     effects::EffectBehaviors,
-    in_play::{current_turn, AbilityId, CardId, CounterId, Database, TriggerId},
+    in_play::{CardId, Database},
     player::{Controller, Owner},
     targets::Restriction,
 };
@@ -49,7 +50,7 @@ pub enum LogEntry {
         was_tapped: bool,
         was_enchanted: Option<CardId>,
         was_equipped: Option<CardId>,
-        had_counters: IndexMap<Counter, usize>,
+        had_counters: HashMap<Counter, usize>,
         turn: usize,
     },
     SpellResolved {
@@ -57,15 +58,17 @@ pub enum LogEntry {
         controller: Controller,
     },
     AbilityResolved {
-        ability: AbilityId,
-        controller: Controller,
-    },
-    TriggerResolved {
-        source: CardId,
         controller: Controller,
     },
     Tapped {
         card: CardId,
+    },
+    Cast {
+        card: CardId,
+    },
+    Targeted {
+        source: CardId,
+        target: CardId,
     },
 }
 
@@ -104,59 +107,53 @@ impl LogEntry {
     }
 }
 
-#[derive(Debug, Resource, Default)]
+#[derive(Debug, Default)]
 pub struct Log {
     pub entries: Vec<(LogId, LogEntry)>,
     last_turn: usize,
 }
 
 impl Log {
-    pub(crate) fn ability_resolved(db: &mut Database, id: LogId, ability: AbilityId) {
+    pub(crate) fn ability_resolved(db: &mut Database, id: LogId, source: CardId) {
         let entry = LogEntry::AbilityResolved {
-            ability,
-            controller: ability.controller(db),
+            controller: db[source].controller,
         };
         event!(Level::INFO, ?entry);
-        db.resource_mut::<Self>().entries.push((id, entry))
+        db.log.entries.push((id, entry))
     }
 
     pub(crate) fn spell_resolved(db: &mut Database, id: LogId, spell: CardId) {
         let entry = LogEntry::SpellResolved {
             spell,
-            controller: spell.controller(db),
+            controller: db[spell].controller,
         };
         event!(Level::INFO, ?entry);
-        db.resource_mut::<Self>().entries.push((id, entry))
-    }
-
-    pub(crate) fn trigger_resolved(db: &mut Database, id: LogId, trigger: TriggerId) {
-        let entry = LogEntry::TriggerResolved {
-            source: trigger.listener(db),
-            controller: trigger.listener(db).controller(db),
-        };
-        event!(Level::INFO, ?entry);
-        db.resource_mut::<Self>().entries.push((id, entry))
+        db.log.entries.push((id, entry))
     }
 
     pub(crate) fn new_turn(db: &mut Database, player: Owner) {
-        let mut log = db.resource_mut::<Self>();
         let entry = LogEntry::NewTurn { player };
         event!(Level::INFO, ?entry);
-        log.entries.push((LogId::new(), entry));
-        log.last_turn = log.entries.len();
+        db.log.entries.push((LogId::new(), entry));
+        db.log.last_turn = db.log.entries.len();
     }
 
     pub fn since_last_turn(db: &Database) -> &[(LogId, LogEntry)] {
-        let log = db.resource::<Self>();
-        log.entries.as_slice().split_at(log.last_turn).1
+        db.log.entries.as_slice().split_at(db.log.last_turn).1
     }
 
     pub(crate) fn current_session(db: &Database) -> &[(LogId, LogEntry)] {
-        let log = db.resource::<Self>();
-
         let current = LogId::current();
-        if let Some(pos) = log.entries.iter().rev().position(|(id, _)| *id != current) {
-            log.entries.split_at(pos + 1).1
+        if let Some(pos) = db
+            .log
+            .entries
+            .iter()
+            .rev()
+            .position(|(id, _)| *id != current)
+        {
+            let entries = db.log.entries.split_at(pos + 1).1;
+            event!(Level::DEBUG, ?entries, "{:?}", current);
+            entries
         } else {
             &[]
         }
@@ -166,7 +163,12 @@ impl Log {
         let entry = LogEntry::Tapped { card };
 
         event!(Level::INFO, ?entry);
-        db.resource_mut::<Self>().entries.push((id, entry));
+        db.log.entries.push((id, entry));
+    }
+
+    pub(crate) fn cast(db: &mut Database, id: LogId, card: CardId) {
+        let entry = LogEntry::Cast { card };
+        db.log.entries.push((id, entry));
     }
 
     pub(crate) fn left_battlefield(
@@ -178,28 +180,38 @@ impl Log {
         let modified_by = card.modified_by(db);
         let entry = LogEntry::LeftBattlefield {
             reason,
-            name: card.name(db),
+            name: card.faceup_face(db).name.clone(),
             card,
-            was_attacking: card.attacking(db),
-            was_token: card.is_token(db),
+            was_attacking: db[card].attacking.is_some(),
+            was_token: db[card].token,
             was_tapped: card.tapped(db),
             was_enchanted: modified_by
                 .iter()
                 .copied()
-                .find(|card| card.aura(db).is_some()),
+                .find(|card| card.faceup_face(db).enchant.is_some()),
             was_equipped: modified_by.iter().copied().find(|card| {
-                card.activated_abilities(db).into_iter().any(|ability| {
-                    ability
-                        .effects(db)
-                        .into_iter()
-                        .any(|effect| effect.effect.is_equip())
-                })
+                db[*card]
+                    .modified_activated_abilities
+                    .iter()
+                    .any(|(_, ability)| {
+                        ability
+                            .effects
+                            .iter()
+                            .any(|effect| effect.effect.is_equip())
+                    })
             }),
-            had_counters: CounterId::all_counters_on(db, card),
-            turn: current_turn(db).turn,
+            had_counters: db[card].counters.clone(),
+            turn: db.turn.turn_count,
         };
 
         event!(Level::INFO, ?entry);
-        db.resource_mut::<Self>().entries.push((id, entry));
+        db.log.entries.push((id, entry));
+    }
+
+    pub(crate) fn targetted(db: &mut Database, id: LogId, source: CardId, target: CardId) {
+        let entry = LogEntry::Targeted { source, target };
+
+        event!(Level::INFO, ?entry);
+        db.log.entries.push((id, entry));
     }
 }

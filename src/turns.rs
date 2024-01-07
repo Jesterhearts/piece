@@ -1,18 +1,16 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-use bevy_ecs::{event::Events, system::Resource};
 use indexmap::IndexSet;
+use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefield,
-    in_play::{
-        set_current_turn, AttackingBannedThisTurn, CardId, Database, DeleteAbility, InHand,
-        LifeGained, TimesDescended, TriggerId,
-    },
+    in_play::{CardId, Database},
+    log::Log,
     pending_results::PendingResults,
-    player::{AllPlayers, Owner},
+    player::{AllPlayers, Owner, Player},
     stack::Stack,
-    triggers::trigger_source,
+    triggers::TriggerSource,
     types::Type,
 };
 
@@ -33,7 +31,7 @@ pub enum Phase {
     Cleanup,
 }
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Default)]
 pub struct Turn {
     pub turn_count: usize,
     pub phase: Phase,
@@ -41,12 +39,15 @@ pub struct Turn {
     active_player: usize,
     priority_player: usize,
     passed: usize,
+
+    pub(crate) ban_attacking_this_turn: HashSet<Owner>,
+    pub(crate) life_gained_this_turn: HashMap<Owner, usize>,
+    pub(crate) number_of_attackers_this_turn: usize,
 }
 
 impl Turn {
-    pub fn new(db: &mut Database, all_players: &AllPlayers) -> Self {
+    pub fn new(all_players: &AllPlayers) -> Self {
         let turn_order = all_players.all_players();
-        set_current_turn(db, *turn_order.first().unwrap(), 0);
 
         Self {
             turn_count: 0,
@@ -55,6 +56,10 @@ impl Turn {
             active_player: 0,
             priority_player: 0,
             passed: 0,
+
+            ban_attacking_this_turn: Default::default(),
+            life_gained_this_turn: Default::default(),
+            number_of_attackers_this_turn: 0,
         }
     }
 
@@ -73,217 +78,220 @@ impl Turn {
         self.passed = (self.passed + 1) % self.turn_order.len();
     }
 
-    #[instrument(skip(db, all_players))]
-    pub fn step(&mut self, db: &mut Database, all_players: &mut AllPlayers) -> PendingResults {
-        if self.passed != 0 {
+    #[instrument(skip(db))]
+    pub fn step(db: &mut Database) -> PendingResults {
+        if db.turn.passed != 0 {
             return PendingResults::default();
         }
 
-        self.priority_player = self.active_player;
-        if !Stack::is_empty(db) {
+        db.turn.priority_player = db.turn.active_player;
+        if !db.stack.is_empty() {
             return Stack::resolve_1(db);
         }
 
-        match self.phase {
+        match db.turn.phase {
             Phase::Untap => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::Upkeep;
+                db.turn.phase = Phase::Upkeep;
                 PendingResults::default()
             }
             Phase::Upkeep => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::Draw;
-                if self.turn_count != 0 {
-                    return all_players[self.active_player()].draw(db, 1);
+                db.turn.phase = Phase::Draw;
+                if db.turn.turn_count != 0 {
+                    let player = db.turn.active_player();
+                    return Player::draw(db, player, 1);
                 }
                 PendingResults::default()
             }
             Phase::Draw => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::PreCombatMainPhase;
+                db.turn.phase = Phase::PreCombatMainPhase;
 
                 let mut results = PendingResults::default();
+                let player = db.turn.active_player();
 
-                for trigger in
-                    TriggerId::active_triggers_of_source::<trigger_source::PreCombatMainPhase>(db)
+                for (listener, trigger) in
+                    db.active_triggers_of_source(TriggerSource::PreCombatMainPhase)
                 {
-                    if !Owner::from(trigger.listener(db).controller(db)).passes_restrictions(
+                    if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
-                        self.active_player().into(),
-                        &trigger.restrictions(db),
+                        player.into(),
+                        &trigger.trigger.restrictions,
                     ) {
                         continue;
                     }
 
-                    results.extend(Stack::move_trigger_to_stack(db, trigger));
+                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
 
                 results
             }
             Phase::PreCombatMainPhase => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::BeginCombat;
+                db.turn.phase = Phase::BeginCombat;
                 let mut results = PendingResults::default();
-                for trigger in
-                    TriggerId::active_triggers_of_source::<trigger_source::StartOfCombat>(db)
+                let player = db.turn.active_player();
+                for (listener, trigger) in
+                    db.active_triggers_of_source(TriggerSource::StartOfCombat)
                 {
-                    if !Owner::from(trigger.listener(db).controller(db)).passes_restrictions(
+                    if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
-                        self.active_player().into(),
-                        &trigger.restrictions(db),
+                        player.into(),
+                        &trigger.trigger.restrictions,
                     ) {
                         continue;
                     }
 
-                    results.extend(Stack::move_trigger_to_stack(db, trigger));
+                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
                 results
             }
             Phase::BeginCombat => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::DeclareAttackers;
+                db.turn.phase = Phase::DeclareAttackers;
                 let mut results = PendingResults::default();
-                results.set_declare_attackers(db, all_players, self.active_player());
+                let player = db.turn.active_player();
+                results.set_declare_attackers(db, player);
                 results
             }
             Phase::DeclareAttackers => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::DeclareBlockers;
+                db.turn.phase = Phase::DeclareBlockers;
                 PendingResults::default()
             }
             Phase::DeclareBlockers => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::FirstStrike;
+                db.turn.phase = Phase::FirstStrike;
                 PendingResults::default()
             }
             Phase::FirstStrike => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::Damage;
-                let cards = CardId::all_attackers(db);
+                db.turn.phase = Phase::Damage;
                 // TODO blocks
-                for (card, target) in cards {
+                for (card, target) in db.battlefield[db.turn.active_player()]
+                    .iter()
+                    .filter_map(|card| db[*card].attacking.map(|attacking| (*card, attacking)))
+                    .collect_vec()
+                {
                     if let Some(power) = card.power(db) {
                         if power > 0 {
-                            all_players[target].life_total -= power;
+                            db.all_players[target].life_total -= power;
                         }
                     }
                 }
                 PendingResults::default()
             }
             Phase::Damage => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                CardId::clear_all_attacking(db);
-                self.phase = Phase::PostCombatMainPhase;
+
+                for card in db.battlefield[db.turn.active_player()].iter() {
+                    db.cards.get_mut(card).unwrap().attacking = None;
+                }
+
+                db.turn.phase = Phase::PostCombatMainPhase;
                 PendingResults::default()
             }
             Phase::PostCombatMainPhase => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::EndStep;
+                db.turn.phase = Phase::EndStep;
 
                 let mut results = PendingResults::default();
+                let player = db.turn.active_player();
 
-                for trigger in TriggerId::active_triggers_of_source::<trigger_source::EndStep>(db) {
-                    if !Owner::from(trigger.listener(db).controller(db)).passes_restrictions(
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EndStep) {
+                    if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
-                        self.active_player().into(),
-                        &trigger.restrictions(db),
+                        player.into(),
+                        &trigger.trigger.restrictions,
+                    ) || !listener.passes_restrictions(
+                        db,
+                        listener,
+                        &trigger.trigger.restrictions,
                     ) {
                         continue;
                     }
 
-                    if !trigger.listener(db).passes_restrictions(
-                        db,
-                        trigger.listener(db),
-                        &trigger.restrictions(db),
-                    ) {
-                        continue;
-                    }
-
-                    results.extend(Stack::move_trigger_to_stack(db, trigger));
+                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
 
                 results
             }
             Phase::EndStep => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
-                self.phase = Phase::Cleanup;
+                db.turn.phase = Phase::Cleanup;
 
+                let player = db.turn.active_player();
                 let mut pending = Battlefield::end_turn(db);
-                let hand_size = all_players[self.active_player()].hand_size;
-                let in_hand = self.active_player().get_cards::<InHand>(db);
+                let hand_size = db.all_players[player].hand_size;
+                let in_hand = &db.hand[player];
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
-                    pending.push_choose_discard(in_hand, discard);
+                    pending.push_choose_discard(in_hand.iter().copied().collect_vec(), discard);
                 }
                 pending
             }
             Phase::Cleanup => {
-                for player in all_players.all_players() {
-                    all_players[player].mana_pool.drain();
+                for player in db.all_players.all_players() {
+                    db.all_players[player].mana_pool.drain();
                 }
+
                 CardId::cleanup_tokens_in_limbo(db);
-                TriggerId::cleanup_temporary_triggers(db);
+                db.graveyard.descended_this_turn.clear();
+                db.turn.ban_attacking_this_turn.clear();
+                db.turn.life_gained_this_turn.clear();
+                db.turn.number_of_attackers_this_turn = 0;
 
-                db.remove_resource::<LifeGained>();
-                db.remove_resource::<TimesDescended>();
-                db.remove_resource::<AttackingBannedThisTurn>();
+                db.turn.phase = Phase::Untap;
+                db.turn.active_player = (db.turn.active_player + 1) % db.turn.turn_order.len();
+                db.turn.priority_player = db.turn.active_player;
 
-                let mut events = db.resource_mut::<Events<DeleteAbility>>();
-                let events = events.drain().collect::<HashSet<_>>();
-                for event in events {
-                    event.ability.delete(db);
-                }
+                db.turn.turn_count += 1;
+                Log::new_turn(db, db.turn.active_player());
 
-                self.phase = Phase::Untap;
-                self.active_player = (self.active_player + 1) % self.turn_order.len();
-                self.priority_player = self.active_player;
-
-                set_current_turn(db, self.active_player(), self.turn_count);
-
-                Battlefield::untap(db, self.active_player());
-                self.turn_count += 1;
+                Battlefield::untap(db, db.turn.active_player());
                 PendingResults::default()
             }
         }
     }
 
-    pub fn can_cast(&self, db: &mut Database, card: CardId) -> bool {
+    pub fn can_cast(db: &Database, card: CardId) -> bool {
         let instant_or_flash =
             card.types_intersect(db, &IndexSet::from([Type::Instant])) || card.has_flash(db);
         // TODO teferi like effects.
-        if instant_or_flash {
+        if instant_or_flash && !db.stack.split_second(db) {
             return true;
         }
 
-        let active_player = self.active_player();
-        if card.controller(db) == active_player
+        let active_player = db.turn.active_player();
+        if db[card].controller == active_player
             && matches!(
-                self.phase,
+                db.turn.phase,
                 Phase::PreCombatMainPhase | Phase::PostCombatMainPhase
             )
-            && Stack::is_empty(db)
+            && db.stack.is_empty()
         {
             return true;
         }

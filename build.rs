@@ -15,8 +15,16 @@ fn main() {
         }
 
         fn oneof(&self, _oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
-            Customize::default()
-                .before("#[derive(::serde::Serialize, ::serde::Deserialize, ::strum::EnumIter, ::strum::EnumString, ::strum::AsRefStr)]")
+            Customize::default().before(
+                r#"#[derive(
+                    ::serde::Serialize,
+                    ::serde::Deserialize,
+                    ::strum::EnumIter,
+                    ::strum::EnumString,
+                    ::strum::AsRefStr
+                )]
+                #[strum(ascii_case_insensitive)]"#,
+            )
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {

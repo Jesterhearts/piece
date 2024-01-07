@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
 
 use crate::{card::Color, protogen};
 
@@ -26,7 +25,7 @@ pub enum ManaCost {
     TwoX,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash, strum::AsRefStr, Component)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash, strum::AsRefStr)]
 pub(crate) enum ManaRestriction {
     ActivateAbility,
     ArtifactSpellOrAbility,
@@ -45,6 +44,7 @@ impl Mana {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn color(&self) -> Color {
         match self {
             Mana::White => Color::White,

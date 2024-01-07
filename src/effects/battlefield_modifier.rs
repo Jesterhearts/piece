@@ -11,7 +11,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct BattlefieldModifier {
     pub(crate) modifier: ModifyBattlefield,
     pub(crate) duration: EffectDuration,
@@ -42,7 +42,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
 impl EffectBehaviors for BattlefieldModifier {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -50,7 +50,7 @@ impl EffectBehaviors for BattlefieldModifier {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         0
@@ -64,7 +64,11 @@ impl EffectBehaviors for BattlefieldModifier {
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddModifier {
-            modifier: ModifierId::upload_temporary_modifier(db, source, self),
+            modifier: ModifierId::upload_temporary_modifier(
+                &mut db.modifiers,
+                source,
+                self.clone(),
+            ),
         });
     }
 
@@ -78,14 +82,15 @@ impl EffectBehaviors for BattlefieldModifier {
         results: &mut PendingResults,
     ) {
         if apply_to_self {
-            let modifier = ModifierId::upload_temporary_modifier(db, source, self);
+            let modifier =
+                ModifierId::upload_temporary_modifier(&mut db.modifiers, source, self.clone());
             results.push_settled(ActionResult::ModifyCreatures {
                 modifier,
                 targets: vec![ActiveTarget::Battlefield { id: source }],
             });
         } else {
             results.push_settled(ActionResult::ApplyToBattlefield(
-                ModifierId::upload_temporary_modifier(db, source, self),
+                ModifierId::upload_temporary_modifier(&mut db.modifiers, source, self.clone()),
             ));
         }
     }

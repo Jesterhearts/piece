@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     battlefield::ActionResult,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
-    in_play::{self, ModifierId, OnBattlefield},
+    in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen,
     stack::ActiveTarget,
@@ -34,7 +34,7 @@ impl TryFrom<&protogen::effects::Equip> for Equip {
 impl EffectBehaviors for Equip {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -42,7 +42,7 @@ impl EffectBehaviors for Equip {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -58,17 +58,17 @@ impl EffectBehaviors for Equip {
 
     fn valid_targets(
         &self,
-        db: &mut in_play::Database,
-        source: in_play::CardId,
-        _controller: crate::player::Controller,
+        db: &crate::in_play::Database,
+        source: crate::in_play::CardId,
+        controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for card in in_play::cards::<OnBattlefield>(db) {
-            if card.passes_restrictions(db, source, &source.restrictions(db))
+        for card in db.battlefield[controller].iter() {
+            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
             {
-                let target = ActiveTarget::Battlefield { id: card };
+                let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {
                     continue;
                 }
@@ -106,15 +106,27 @@ impl EffectBehaviors for Equip {
         results: &mut crate::pending_results::PendingResults,
     ) {
         let target = targets.into_iter().exactly_one().unwrap();
-        // This is a hack. I hope equipment doesn't come with anthem effects.
-        // It probably works even so.
-        source.deactivate_modifiers(db);
-        source.activate_modifiers(db);
+        for modifier in db
+            .modifiers
+            .iter()
+            .filter_map(|(id, modifier)| {
+                if modifier.source == source {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .copied()
+            .collect_vec()
+        {
+            db.modifiers.get_mut(&modifier).unwrap().modifying.clear();
+        }
+
         for modifier in self.modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(
-                db,
+                &mut db.modifiers,
                 source,
-                &BattlefieldModifier {
+                BattlefieldModifier {
                     modifier: modifier.clone(),
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
                     restrictions: vec![

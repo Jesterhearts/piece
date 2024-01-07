@@ -16,7 +16,7 @@ triggered_abilities:
       - effect: !ReturnTransformed {}
     oracle_text: When Ojer Taq dies, return it to the battlefield tapped and transformed
       under its owner's control.
-replacement_effects:
+replacement_abilities:
   - restrictions:
       - restriction: !Controller
           controller: !Self_ {}

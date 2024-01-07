@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use anyhow::anyhow;
-use bevy_ecs::component::Component;
 use itertools::Itertools;
 
 use crate::{
@@ -12,7 +11,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone, Default, Component)]
+#[derive(Debug, Clone, Default)]
 pub struct CastingCost {
     pub cost_string: String,
     pub(crate) mana_cost: Vec<ManaCost>,
@@ -192,21 +191,6 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
-pub(crate) struct Ward {
-    pub(crate) mana_cost: Vec<ManaCost>,
-}
-
-impl TryFrom<&protogen::cost::Ward> for Ward {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::cost::Ward) -> Result<Self, Self::Error> {
-        Ok(Self {
-            mana_cost: parse_mana_cost(&value.mana_cost)?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum AbilityRestriction {
     AttackedWithXOrMoreCreatures(usize),
@@ -240,7 +224,7 @@ impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestr
     }
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) struct AbilityCost {
     pub(crate) mana_cost: Vec<ManaCost>,
     pub(crate) tap: bool,
@@ -309,7 +293,7 @@ impl From<&protogen::cost::cost_reducer::When> for ReduceWhen {
     }
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone)]
 pub(crate) struct CostReducer {
     pub(crate) when: ReduceWhen,
     pub(crate) reduction: ManaCost,
@@ -364,8 +348,6 @@ pub(crate) fn parse_mana_cost(s: &str) -> anyhow::Result<Vec<ManaCost>> {
             results.push(cost);
         }
     }
-
-    debug!("Deserialized {} as {:?}", s, results);
 
     Ok(results)
 }

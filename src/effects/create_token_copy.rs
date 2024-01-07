@@ -30,7 +30,7 @@ impl TryFrom<&protogen::effects::CreateTokenCopy> for CreateTokenCopy {
 impl EffectBehaviors for CreateTokenCopy {
     fn needs_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -38,7 +38,7 @@ impl EffectBehaviors for CreateTokenCopy {
 
     fn wants_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
         1
@@ -46,19 +46,17 @@ impl EffectBehaviors for CreateTokenCopy {
 
     fn valid_targets(
         &self,
-        db: &mut crate::in_play::Database,
+        db: &crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for target in in_play::all_cards(db)
-            .into_iter()
-            .filter(|card| card.passes_restrictions(db, source, &source.restrictions(db)))
-            .collect_vec()
-        {
+        for target in db.cards.keys().filter(|card| {
+            card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
+        }) {
             if target.can_be_targeted(db, controller) {
-                let target = target_from_location(db, target);
+                let target = target_from_location(db, *target);
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }
