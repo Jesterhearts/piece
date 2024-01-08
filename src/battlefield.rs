@@ -920,7 +920,7 @@ impl Battlefield {
                 match &db.stack.entries.get(index).unwrap().ty {
                     Entry::Card(card) => Battlefield::stack_to_graveyard(db, *card),
                     Entry::Ability { .. } => {
-                        db.stack.entries.remove(index);
+                        db.stack.entries.shift_remove(index);
                         PendingResults::default()
                     }
                 }
