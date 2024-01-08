@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::collections::HashMap;
 
 use tracing::Level;
 
@@ -13,18 +10,17 @@ use crate::{
     targets::Restriction,
 };
 
-static NEXT_LOG_ID: AtomicUsize = AtomicUsize::new(1);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LogId(usize);
 
 impl LogId {
-    pub(crate) fn current() -> Self {
-        Self(NEXT_LOG_ID.load(Ordering::Relaxed))
+    fn new(db: &mut Database) -> Self {
+        db.log.current_id += 1;
+        Self(db.log.current_id)
     }
 
-    pub(crate) fn new() -> Self {
-        Self(NEXT_LOG_ID.fetch_add(1, Ordering::Relaxed))
+    fn current(db: &Database) -> Self {
+        Self(db.log.current_id)
     }
 }
 
@@ -114,21 +110,24 @@ impl LogEntry {
 pub struct Log {
     pub entries: Vec<(LogId, LogEntry)>,
     last_turn: usize,
+
+    current_id: usize,
 }
 
 impl Log {
     pub(crate) fn card_chosen(db: &mut Database, chosen: CardId) {
         let entry = LogEntry::CardChosen { card: chosen };
         event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::current(), entry))
+        db.log.entries.push((LogId::current(db), entry))
     }
 
     pub(crate) fn ability_resolved(db: &mut Database, source: CardId) {
         let entry = LogEntry::AbilityResolved {
             controller: db[source].controller,
         };
-        event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::new(), entry))
+        let id = LogId::new(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry))
     }
 
     pub(crate) fn spell_resolved(db: &mut Database, spell: CardId) {
@@ -136,14 +135,16 @@ impl Log {
             spell,
             controller: db[spell].controller,
         };
-        event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::new(), entry))
+        let id = LogId::new(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry))
     }
 
     pub(crate) fn new_turn(db: &mut Database, player: Owner) {
         let entry = LogEntry::NewTurn { player };
-        event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::new(), entry));
+        let id = LogId::new(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
         db.log.last_turn = db.log.entries.len();
     }
 
@@ -152,7 +153,7 @@ impl Log {
     }
 
     pub(crate) fn current_session(db: &Database) -> &[(LogId, LogEntry)] {
-        let current = LogId::current();
+        let current = LogId::current(db);
         if let Some(pos) = db
             .log
             .entries
@@ -171,13 +172,16 @@ impl Log {
     pub(crate) fn tapped(db: &mut Database, card: CardId) {
         let entry = LogEntry::Tapped { card };
 
-        event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::current(), entry));
+        let id = LogId::current(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
     }
 
     pub(crate) fn cast(db: &mut Database, card: CardId) {
         let entry = LogEntry::Cast { card };
-        db.log.entries.push((LogId::new(), entry));
+        let id = LogId::new(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
     }
 
     pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: CardId) {
@@ -208,14 +212,15 @@ impl Log {
             turn: db.turn.turn_count,
         };
 
-        event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::current(), entry));
+        let id = LogId::current(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
     }
 
     pub(crate) fn targetted(db: &mut Database, source: CardId, target: CardId) {
         let entry = LogEntry::Targeted { source, target };
-
-        event!(Level::INFO, ?entry);
-        db.log.entries.push((LogId::current(), entry));
+        let id = LogId::current(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
     }
 }
