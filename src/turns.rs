@@ -4,7 +4,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     log::Log,
     pending_results::PendingResults,
@@ -244,7 +244,7 @@ impl Turn {
                 db.turn.phase = Phase::Cleanup;
 
                 let player = db.turn.active_player();
-                let mut pending = Battlefield::end_turn(db);
+                let mut pending = Battlefields::end_turn(db);
                 let hand_size = db.all_players[player].hand_size;
                 let in_hand = &db.hand[player];
                 if in_hand.len() > hand_size {
@@ -271,7 +271,7 @@ impl Turn {
                 db.turn.turn_count += 1;
                 Log::new_turn(db, db.turn.active_player());
 
-                Battlefield::untap(db, db.turn.active_player());
+                Battlefields::untap(db, db.turn.active_player());
                 PendingResults::default()
             }
         }

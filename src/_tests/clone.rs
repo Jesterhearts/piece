@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
     pending_results::ResolutionResult, player::AllPlayers,
 };
 
@@ -27,12 +27,12 @@ fn etb_clones() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, clone, None);
 
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -65,13 +65,13 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, clone, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, clone, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::check_sba(&mut db);
+    let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(db.graveyard[player], IndexSet::from([clone]));

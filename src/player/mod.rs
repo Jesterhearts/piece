@@ -12,7 +12,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{ActionResult, Battlefield},
+    battlefield::{ActionResult, Battlefields},
     card::Color,
     effects::{EffectBehaviors, ReplacementAbility, Replacing},
     in_play::{CardId, Database},
@@ -89,7 +89,7 @@ impl Owner {
                     return false;
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
-                    let colors = Battlefield::controlled_colors(db, controller);
+                    let colors = Battlefields::controlled_colors(db, controller);
                     if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
                         return false;
                     }
@@ -424,7 +424,7 @@ impl Player {
         let mut db = scopeguard::guard(db, |db| db.stack.settle());
         if card.is_land(&db) {
             db.all_players[player].lands_played += 1;
-            return Battlefield::add_from_stack_or_hand(&mut db, card, None);
+            return Battlefields::add_from_stack_or_hand(&mut db, card, None);
         }
 
         Stack::move_card_to_stack_from_hand(&mut db, card, true)
@@ -517,14 +517,14 @@ impl Player {
                 db[manifested].manifested = true;
                 db[manifested].facedown = true;
             };
-            Battlefield::add_from_stack_or_hand(db, manifested, None)
+            Battlefields::add_from_stack_or_hand(db, manifested, None)
         } else {
             PendingResults::default()
         }
     }
 
     pub(crate) fn lands_per_turn(db: &mut Database, player: Owner) -> usize {
-        1 + Battlefield::static_abilities(db)
+        1 + Battlefields::static_abilities(db)
             .into_iter()
             .filter_map(|(ability, card)| {
                 if db[card].controller == player {

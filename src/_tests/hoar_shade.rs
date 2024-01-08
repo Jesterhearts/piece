@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
     pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
 };
 
@@ -29,15 +29,15 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, shade1, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, shade2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, shade1, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, shade1, 0);
     // Pay Costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -55,7 +55,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
     assert_eq!(shade2.power(&db), Some(1));
     assert_eq!(shade2.toughness(&db), Some(2));
 
-    let mut results = Battlefield::end_turn(&mut db);
+    let mut results = Battlefields::end_turn(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
@@ -76,7 +76,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     assert_eq!(db.graveyard[player1], IndexSet::from([card2]));
 
     // Equip deconstruction hammer
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card5, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -93,7 +93,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card4, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
     // Pay the white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -159,7 +159,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     card5.move_to_battlefield(&mut db);
 
     // Equip deconstruction hammer
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card5, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -196,7 +196,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card4, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
     // Pay the mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

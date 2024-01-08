@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::CardId,
     in_play::Database,
     library::Library,
@@ -38,10 +38,10 @@ fn resolves_shift() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear1, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, bear2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

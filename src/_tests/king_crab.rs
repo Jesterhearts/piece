@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
@@ -40,7 +40,7 @@ fn place_on_top() -> anyhow::Result<()> {
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     creature.move_to_battlefield(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     // Pay the blue
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);

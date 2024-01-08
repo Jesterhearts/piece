@@ -3,7 +3,7 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
     pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
     types::Subtype,
 };
@@ -31,11 +31,11 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
 
     // Pay costs
     let result = results.resolve(&mut db, None);
@@ -59,7 +59,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
         IndexSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
     );
 
-    let mut results = Battlefield::end_turn(&mut db);
+    let mut results = Battlefields::end_turn(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -155,7 +155,7 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     let mut results = card2.move_to_stack(&mut db, vec![], None, vec![]);
@@ -217,7 +217,7 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card1, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     let mut results = card2.move_to_stack(&mut db, vec![], None, vec![]);

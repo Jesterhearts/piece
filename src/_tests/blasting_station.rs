@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
     pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
 };
 
@@ -26,15 +26,15 @@ fn untaps() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Blasting Station");
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     // Compute targets for sacrifice
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -58,7 +58,7 @@ fn untaps() -> anyhow::Result<()> {
     assert!(card.tapped(&db));
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, creature, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

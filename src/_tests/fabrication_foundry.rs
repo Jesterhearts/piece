@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
@@ -39,7 +39,7 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     gy.move_to_graveyard(&mut db);
     exiled.move_to_battlefield(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
     // Compute exile targets
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

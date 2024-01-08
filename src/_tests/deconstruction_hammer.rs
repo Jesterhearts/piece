@@ -3,7 +3,7 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
     pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
 };
 
@@ -32,20 +32,20 @@ fn destroys_artifact() -> anyhow::Result<()> {
     let card2 = CardId::upload(&mut db, &cards, player1, "Deconstruction Hammer");
     let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card3, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Equip the bear
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card2, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card2, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -62,7 +62,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability on the bear, targeting the banner
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
     // Pay the generic mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

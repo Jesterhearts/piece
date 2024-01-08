@@ -16,7 +16,7 @@ use crate::{
         Ability, ActivatedAbility, AddKeywordsIf, GainMana, GainManaAbility, StaticAbility,
         TriggeredAbility,
     },
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     card::{replace_symbols, BasePowerType, BaseToughnessType, Card, Color, Keyword},
     cost::{AbilityCost, CastingCost},
     counters::Counter,
@@ -1295,7 +1295,7 @@ impl CardId {
                     }
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
-                    let colors = Battlefield::controlled_colors(db, self_controller);
+                    let colors = Battlefields::controlled_colors(db, self_controller);
                     if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
                         return false;
                     }
@@ -1662,7 +1662,7 @@ impl CardId {
             return false;
         }
 
-        for (ability, _) in Battlefield::static_abilities(db) {
+        for (ability, _) in Battlefields::static_abilities(db) {
             match &ability {
                 StaticAbility::GreenCannotBeCountered { restrictions } => {
                     if db[self].modified_colors.contains(&Color::Green)

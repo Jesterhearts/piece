@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -33,12 +33,12 @@ fn adds_land_types() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, land, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, land, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

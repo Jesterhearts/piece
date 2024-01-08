@@ -241,11 +241,11 @@ pub(crate) enum ActionResult {
 }
 
 #[derive(Debug, Default)]
-pub struct Battlefield {
+pub struct Battlefields {
     pub battlefields: IndexMap<Controller, IndexSet<CardId>>,
 }
 
-impl std::ops::Index<Owner> for Battlefield {
+impl std::ops::Index<Owner> for Battlefields {
     type Output = IndexSet<CardId>;
 
     fn index(&self, index: Owner) -> &Self::Output {
@@ -253,7 +253,7 @@ impl std::ops::Index<Owner> for Battlefield {
     }
 }
 
-impl std::ops::Index<Controller> for Battlefield {
+impl std::ops::Index<Controller> for Battlefields {
     type Output = IndexSet<CardId>;
 
     fn index(&self, index: Controller) -> &Self::Output {
@@ -261,7 +261,7 @@ impl std::ops::Index<Controller> for Battlefield {
     }
 }
 
-impl std::ops::IndexMut<Owner> for Battlefield {
+impl std::ops::IndexMut<Owner> for Battlefields {
     fn index_mut(&mut self, index: Owner) -> &mut Self::Output {
         self.battlefields
             .entry(Controller::from(index))
@@ -269,13 +269,13 @@ impl std::ops::IndexMut<Owner> for Battlefield {
     }
 }
 
-impl std::ops::IndexMut<Controller> for Battlefield {
+impl std::ops::IndexMut<Controller> for Battlefields {
     fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
         self.battlefields.entry(index).or_default()
     }
 }
 
-impl Battlefield {
+impl Battlefields {
     #[cfg(test)]
     pub(crate) fn is_empty(&self) -> bool {
         self.battlefields.values().all(|cards| cards.is_empty())
@@ -437,7 +437,7 @@ impl Battlefield {
             .filter(|card| db[*card].exile_duration == Some(EffectDuration::UntilEndOfTurn))
             .collect_vec()
         {
-            results.extend(Battlefield::add_from_exile(db, card, false, None));
+            results.extend(Battlefields::add_from_exile(db, card, false, None));
         }
 
         let all_modifiers = db
@@ -865,9 +865,9 @@ impl Battlefield {
             }
             ActionResult::DrawCards { target, count } => Player::draw(db, (*target).into(), *count),
             ActionResult::AddToBattlefield(card, target) => {
-                Battlefield::add_from_stack_or_hand(db, *card, *target)
+                Battlefields::add_from_stack_or_hand(db, *card, *target)
             }
-            ActionResult::StackToGraveyard(card) => Battlefield::stack_to_graveyard(db, *card),
+            ActionResult::StackToGraveyard(card) => Battlefields::stack_to_graveyard(db, *card),
             ActionResult::ApplyToBattlefield(modifier) => {
                 modifier.activate(&mut db.modifiers);
                 PendingResults::default()
@@ -887,7 +887,7 @@ impl Battlefield {
                     }
                 }
 
-                Battlefield::exile(db, *source, target, *reason, *duration)
+                Battlefields::exile(db, *source, target, *reason, *duration)
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -917,7 +917,7 @@ impl Battlefield {
             }
             ActionResult::SpellCountered { index } => {
                 match &db.stack.entries.get(index).unwrap().ty {
-                    Entry::Card(card) => Battlefield::stack_to_graveyard(db, *card),
+                    Entry::Card(card) => Battlefields::stack_to_graveyard(db, *card),
                     Entry::Ability { .. } => {
                         db.stack.entries.shift_remove(index);
                         PendingResults::default()
@@ -981,7 +981,7 @@ impl Battlefield {
             ActionResult::AddToBattlefieldFromLibrary {
                 card,
                 enters_tapped,
-            } => Battlefield::add_from_library(db, *card, *enters_tapped),
+            } => Battlefields::add_from_library(db, *card, *enters_tapped),
             ActionResult::Shuffle(owner) => {
                 db.all_players[*owner].library.shuffle();
                 PendingResults::default()
@@ -1352,7 +1352,7 @@ impl Battlefield {
 
                 let mut results = PendingResults::default();
                 for card in cards {
-                    results.extend(Battlefield::permanent_to_graveyard(db, card));
+                    results.extend(Battlefields::permanent_to_graveyard(db, card));
                 }
 
                 results
@@ -1362,7 +1362,7 @@ impl Battlefield {
                     unreachable!()
                 };
 
-                Battlefield::permanent_to_graveyard(db, *id)
+                Battlefields::permanent_to_graveyard(db, *id)
             }
             ActionResult::Explore { target } => {
                 let explorer = target.id().unwrap();
@@ -1515,7 +1515,7 @@ impl Battlefield {
             })
             .collect_vec()
         {
-            results.extend(Battlefield::add_from_exile(db, card, false, None));
+            results.extend(Battlefields::add_from_exile(db, card, false, None));
         }
 
         for modifier in db
@@ -1644,7 +1644,7 @@ pub(crate) fn create_token_copy_with_replacements(
         }
 
         token.apply_modifiers_layered(db);
-        results.extend(Battlefield::add_from_stack_or_hand(db, token, None));
+        results.extend(Battlefields::add_from_stack_or_hand(db, token, None));
     }
 }
 
@@ -1753,7 +1753,7 @@ fn move_card_to_battlefield(
         ));
     }
 
-    let must_enter_tapped = Battlefield::static_abilities(db)
+    let must_enter_tapped = Battlefields::static_abilities(db)
         .iter()
         .any(|(ability, card)| match ability {
             StaticAbility::ForceEtbTapped(ForceEtbTapped { restrictions }) => {

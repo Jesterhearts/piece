@@ -20,7 +20,7 @@ use tracing::Level;
 
 use crate::{
     abilities::{Ability, GainMana, GainManaAbility},
-    battlefield::{ActionResult, Battlefield},
+    battlefield::{ActionResult, Battlefields},
     effects::{Destination, Effect, EffectBehaviors},
     in_play::{CardId, CastFrom, Database},
     pending_results::{
@@ -431,7 +431,7 @@ impl PendingResults {
 
             if !self.settled_effects.is_empty() {
                 self.applied = true;
-                let results = Battlefield::apply_action_results(db, &self.settled_effects);
+                let results = Battlefields::apply_action_results(db, &self.settled_effects);
                 self.settled_effects.clear();
                 self.extend(results);
             }
@@ -445,7 +445,7 @@ impl PendingResults {
 
         if self.apply_in_stages && !self.settled_effects.is_empty() {
             self.applied = true;
-            let results = Battlefield::apply_action_results(db, &self.settled_effects);
+            let results = Battlefields::apply_action_results(db, &self.settled_effects);
             self.settled_effects.clear();
             self.extend(results);
 

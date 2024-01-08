@@ -3,7 +3,7 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
@@ -39,11 +39,11 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
     // Pay banner cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -87,11 +87,11 @@ fn add_mana() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
     pending_results::ResolutionResult, player::AllPlayers, stack::Stack,
 };
 
@@ -29,11 +29,11 @@ fn opponent_artifact_etb_tappd() -> anyhow::Result<()> {
     let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -65,11 +65,11 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -83,7 +83,7 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
         [card, card2]
     );
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player1, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
     // Pay white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);

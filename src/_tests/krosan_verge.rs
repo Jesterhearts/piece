@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
@@ -31,7 +31,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -70,13 +70,13 @@ fn tutors() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, annul);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     card.untap(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
 
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

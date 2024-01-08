@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
@@ -38,7 +38,7 @@ fn ability() -> anyhow::Result<()> {
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
 
-    let mut results = Battlefield::activate_ability(&mut db, &None, player, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose to sacrifice the zombie

@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
@@ -37,7 +37,7 @@ fn replacement() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, deck2);
 
     let card = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

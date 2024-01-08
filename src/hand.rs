@@ -6,11 +6,11 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct Hand {
+pub struct Hands {
     pub(crate) hands: IndexMap<Owner, IndexSet<CardId>>,
 }
 
-impl std::ops::Index<Owner> for Hand {
+impl std::ops::Index<Owner> for Hands {
     type Output = IndexSet<CardId>;
 
     fn index(&self, index: Owner) -> &Self::Output {
@@ -18,7 +18,7 @@ impl std::ops::Index<Owner> for Hand {
     }
 }
 
-impl std::ops::Index<Controller> for Hand {
+impl std::ops::Index<Controller> for Hands {
     type Output = IndexSet<CardId>;
 
     fn index(&self, index: Controller) -> &Self::Output {
@@ -26,13 +26,13 @@ impl std::ops::Index<Controller> for Hand {
     }
 }
 
-impl std::ops::IndexMut<Owner> for Hand {
+impl std::ops::IndexMut<Owner> for Hands {
     fn index_mut(&mut self, index: Owner) -> &mut Self::Output {
         self.hands.entry(index).or_default()
     }
 }
 
-impl std::ops::IndexMut<Controller> for Hand {
+impl std::ops::IndexMut<Controller> for Hands {
     fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
         self.hands.entry(Owner::from(index)).or_default()
     }

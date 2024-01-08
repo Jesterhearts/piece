@@ -15,11 +15,11 @@ pub(crate) use static_ability_id::{StaticAbilityId, StaticAbilityInPlay};
 
 use crate::{
     abilities::TriggeredAbility,
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     effects::{ReplacementAbility, Replacing},
-    exile::Exile,
-    graveyard::Graveyard,
-    hand::Hand,
+    exile::Exiles,
+    graveyard::Graveyards,
+    hand::Hands,
     library::Library,
     log::Log,
     player::{AllPlayers, Controller, Owner},
@@ -52,10 +52,10 @@ pub struct Database {
     pub(crate) modifiers: IndexMap<ModifierId, ModifierInPlay>,
     pub(crate) static_abilities: IndexMap<StaticAbilityId, StaticAbilityInPlay>,
 
-    pub battlefield: Battlefield,
-    pub graveyard: Graveyard,
-    pub exile: Exile,
-    pub hand: Hand,
+    pub battlefield: Battlefields,
+    pub graveyard: Graveyards,
+    pub exile: Exiles,
+    pub hand: Hands,
 
     pub stack: Stack,
 
@@ -109,10 +109,10 @@ impl std::ops::IndexMut<StaticAbilityId> for Database {
 
 impl Database {
     pub fn new(all_players: AllPlayers) -> Self {
-        let mut battlefield = Battlefield::default();
-        let mut graveyard = Graveyard::default();
-        let mut exile = Exile::default();
-        let mut hand = Hand::default();
+        let mut battlefield = Battlefields::default();
+        let mut graveyard = Graveyards::default();
+        let mut exile = Exiles::default();
+        let mut hand = Hands::default();
 
         for player in all_players.all_players() {
             battlefield

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -51,7 +51,7 @@ fn damages_target() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
-    let mut results = Battlefield::check_sba(&mut db);
+    let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(
@@ -112,7 +112,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 5);
 
-    let mut results = Battlefield::check_sba(&mut db);
+    let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(
@@ -174,7 +174,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);
 
-    let mut results = Battlefield::check_sba(&mut db);
+    let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(

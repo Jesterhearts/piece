@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield, in_play::CardId, in_play::Database, library::Library, load_cards,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, library::Library, load_cards,
     pending_results::ResolutionResult, player::AllPlayers, stack::Stack,
 };
 
@@ -33,7 +33,7 @@ fn etb() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, nonland);
 
     let glowspore = CardId::upload(&mut db, &cards, player, "Glowspore Shaman");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, glowspore, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, glowspore, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

@@ -4,7 +4,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
@@ -48,7 +48,7 @@ fn cascades() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, deck4);
 
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, zhul, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, zhul, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

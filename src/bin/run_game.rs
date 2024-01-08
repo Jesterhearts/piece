@@ -9,7 +9,7 @@ use itertools::Itertools;
 use macroquad::window::next_frame;
 use piece::{
     ai::AI,
-    battlefield::Battlefield,
+    battlefield::Battlefields,
     card::{replace_symbols, Card},
     in_play::{CardId, Database},
     library::DeckDefinition,
@@ -81,35 +81,35 @@ async fn main() -> anyhow::Result<()> {
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land3 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land1, None);
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land2, None);
-    let _ = Battlefield::add_from_stack_or_hand(&mut db, land3, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, land1, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, land2, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, land3, None);
 
     let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
     assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card3, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card3, None);
     assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card8 = CardId::upload(&mut db, &cards, player1, "Might of the Ancestors");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card8, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card8, None);
     assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card9 = CardId::upload(&mut db, &cards, player1, "Bat Colony");
     card9.move_to_hand(&mut db);
 
     let card10 = CardId::upload(&mut db, &cards, player1, "Ojer Taq, Deepest Foundation");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card10, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card10, None);
     assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card11 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card11, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card11, None);
     assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card12 = CardId::upload(&mut db, &cards, player1, "Resplendent Angel");
-    let mut results = Battlefield::add_from_stack_or_hand(&mut db, card12, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card12, None);
     assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
 
     let card13 = CardId::upload(&mut db, &cards, player1, "Get Lost");
@@ -599,7 +599,7 @@ async fn main() -> anyhow::Result<()> {
 
                     if let Some(selected) = selected_ability {
                         if selected < db[card].abilities().len() {
-                            let mut pending = Battlefield::activate_ability(
+                            let mut pending = Battlefields::activate_ability(
                                 &mut db,
                                 &to_resolve,
                                 player1,
@@ -783,7 +783,7 @@ async fn main() -> anyhow::Result<()> {
                         loop {
                             match resolving.resolve(&mut db, choice) {
                                 ResolutionResult::Complete => {
-                                    let mut pending = Battlefield::check_sba(&mut db);
+                                    let mut pending = Battlefields::check_sba(&mut db);
                                     while pending.only_immediate_results(&db) {
                                         let result = pending.resolve(&mut db, None);
                                         if result == ResolutionResult::Complete {
@@ -966,7 +966,7 @@ fn cleanup_stack(
     }
 
     if pending.is_empty() {
-        pending = Battlefield::check_sba(db);
+        pending = Battlefields::check_sba(db);
         while pending.only_immediate_results(db) {
             let result = pending.resolve(db, None);
             if result == ResolutionResult::Complete {
