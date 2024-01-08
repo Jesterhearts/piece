@@ -253,13 +253,13 @@ impl Index<Owner> for AllPlayers {
     type Output = Player;
 
     fn index(&self, index: Owner) -> &Self::Output {
-        self.players.get(&index).expect("Valid player id")
+        self.players.get(&index).expect("Invalid player id")
     }
 }
 
 impl IndexMut<Owner> for AllPlayers {
     fn index_mut(&mut self, index: Owner) -> &mut Self::Output {
-        self.players.get_mut(&index).expect("Valid player id")
+        self.players.get_mut(&index).expect("Invalid player id")
     }
 }
 
@@ -269,7 +269,7 @@ impl Index<Controller> for AllPlayers {
     fn index(&self, index: Controller) -> &Self::Output {
         self.players
             .get(&Owner::from(index))
-            .expect("Valid player id")
+            .expect("Invalid player id")
     }
 }
 
@@ -277,7 +277,7 @@ impl IndexMut<Controller> for AllPlayers {
     fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
         self.players
             .get_mut(&Owner::from(index))
-            .expect("Valid player id")
+            .expect("Invalid player id")
     }
 }
 

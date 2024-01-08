@@ -804,8 +804,7 @@ impl CardId {
             colors.remove(&Color::Colorless);
         }
 
-        let add_keywords = db[self]
-            .modified_static_abilities
+        let add_keywords = static_abilities
             .iter()
             .filter_map(|sa| {
                 if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
