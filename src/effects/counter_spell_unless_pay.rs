@@ -13,6 +13,7 @@ use crate::{
     player::mana_pool::SpendReason,
     protogen,
     stack::{ActiveTarget, Entry, StackEntry},
+    targets::Restriction,
 };
 
 #[derive(Debug, Clone)]
@@ -37,6 +38,7 @@ impl TryFrom<&protogen::effects::counter_spell_unless_pay::Cost> for Cost {
 #[derive(Debug, Clone)]
 pub(crate) struct CounterSpellUnlessPay {
     cost: Cost,
+    restrictions: Vec<Restriction>,
 }
 
 impl TryFrom<&protogen::effects::CounterSpellUnlessPay> for CounterSpellUnlessPay {
@@ -49,6 +51,11 @@ impl TryFrom<&protogen::effects::CounterSpellUnlessPay> for CounterSpellUnlessPa
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
                 .and_then(Cost::try_from)?,
+            restrictions: value
+                .restrictions
+                .iter()
+                .map(Restriction::try_from)
+                .collect::<anyhow::Result<_>>()?,
         })
     }
 }
@@ -70,6 +77,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         1
     }
 
+    #[instrument(level = Level::DEBUG, skip(db))]
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
@@ -89,17 +97,27 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                     ..
                 } = entry
                 {
-                    if card.can_be_countered(db, source, &[]) {
+                    if card.can_be_countered(db, source, &[])
+                        && card.passes_restrictions(db, source, &self.restrictions)
+                    {
                         Some(id)
                     } else {
                         None
                     }
                 } else if let StackEntry {
-                    ty: Entry::Ability { .. },
+                    ty:
+                        Entry::Ability {
+                            source: ability_source,
+                            ..
+                        },
                     ..
                 } = entry
                 {
-                    Some(id)
+                    if ability_source.passes_restrictions(db, source, &self.restrictions) {
+                        Some(id)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }

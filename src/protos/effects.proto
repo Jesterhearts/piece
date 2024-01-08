@@ -214,6 +214,8 @@ message CounterSpellUnlessPay {
   oneof cost {
     Fixed fixed = 2;
   }
+
+  repeated targets.Restriction restrictions = 3;
 }
 
 message CreateToken {

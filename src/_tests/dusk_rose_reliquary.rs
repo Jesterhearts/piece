@@ -1,4 +1,5 @@
 use indexmap::IndexSet;
+use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -94,14 +95,22 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
 
     // Activate the ability
     let mut results = Battlefield::activate_ability(&mut db, &None, player1, card4, 0);
-    // Pay the genric mana
+    // Pay the white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose the reliquary as the default only target
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    // Pay for ward
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    // Pay for ward
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, ResolutionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -192,18 +201,31 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     // Pay the mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    // End pay mana
     // Target the reliquary
-    let result = results.resolve(&mut db, Some(1));
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
-    // Pay for ward
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    // End pay for ward
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    // Resolve the ability
+    dbg!(&db
+        .stack
+        .entries()
+        .iter()
+        .map(|e| e.display(&db))
+        .collect_vec());
+
+    // Pay for ward
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, ResolutionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    // Resolve the deconstruction hammer
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);

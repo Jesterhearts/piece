@@ -5,6 +5,7 @@ use itertools::Itertools;
 use crate::{
     effects::{Effect, EffectBehaviors},
     in_play::{target_from_location, Database},
+    log::{Log, LogId},
     pending_results::choose_for_each_player::ChooseForEachPlayer,
     protogen,
     targets::Restriction,
@@ -105,7 +106,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
-            db[target.id().unwrap()].chosen = true;
+            Log::card_chosen(db, LogId::current(), target.id().unwrap());
         }
 
         for effect in self.effects.iter() {

@@ -70,6 +70,9 @@ pub enum LogEntry {
         source: CardId,
         target: CardId,
     },
+    CardChosen {
+        card: CardId,
+    },
 }
 
 impl LogEntry {
@@ -114,6 +117,12 @@ pub struct Log {
 }
 
 impl Log {
+    pub(crate) fn card_chosen(db: &mut Database, id: LogId, chosen: CardId) {
+        let entry = LogEntry::CardChosen { card: chosen };
+        event!(Level::INFO, ?entry);
+        db.log.entries.push((id, entry))
+    }
+
     pub(crate) fn ability_resolved(db: &mut Database, id: LogId, source: CardId) {
         let entry = LogEntry::AbilityResolved {
             controller: db[source].controller,
@@ -152,13 +161,7 @@ impl Log {
             .position(|(id, _)| *id != current)
         {
             let entries = db.log.entries.split_at(db.log.entries.len() - pos).1;
-            event!(
-                Level::DEBUG,
-                ?entries,
-                "{:?} searching {:?}",
-                current,
-                db.log.entries
-            );
+            event!(Level::DEBUG, ?entries, "{:?}", current,);
             entries
         } else {
             &[]

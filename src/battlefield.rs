@@ -717,10 +717,6 @@ impl Battlefield {
             card.apply_modifiers_layered(db);
         }
 
-        for card in db.cards.values_mut() {
-            card.chosen = false;
-        }
-
         pending
     }
 

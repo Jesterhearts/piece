@@ -171,7 +171,6 @@ pub struct CardInPlay {
     pub(crate) manifested: bool,
     pub(crate) facedown: bool,
     pub(crate) transformed: bool,
-    pub(crate) chosen: bool,
     pub(crate) token: bool,
 
     pub(crate) replacements_active: bool,
@@ -1370,7 +1369,13 @@ impl CardId {
                     }
                 }
                 Restriction::NotChosen => {
-                    if db[self].chosen {
+                    if Log::current_session(db).iter().any(|(_, entry)| {
+                        let LogEntry::CardChosen { card } = entry else {
+                            return false;
+                        };
+
+                        *card == self
+                    }) {
                         return false;
                     }
                 }
@@ -1386,11 +1391,10 @@ impl CardId {
                 }
                 Restriction::JustCast => {
                     if !Log::current_session(db).iter().any(|(_, entry)| {
-                        if let LogEntry::Cast { card } = entry {
-                            db[*card].controller == self_controller
-                        } else {
-                            false
-                        }
+                        let LogEntry::Cast { card } = entry else {
+                            return false;
+                        };
+                        db[*card].controller == self_controller
                     }) {
                         return false;
                     }
