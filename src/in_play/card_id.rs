@@ -24,7 +24,7 @@ use crate::{
         AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, ReplacementAbility,
         Replacing, Token,
     },
-    in_play::{CastFrom, Database, ExileReason, ModifierId, NEXT_CARD_ID},
+    in_play::{CastFrom, Database, ExileReason, ModifierId, StaticAbilityId, NEXT_CARD_ID},
     log::{LeaveReason, Log, LogEntry},
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
@@ -148,6 +148,8 @@ pub struct CardInPlay {
     pub(crate) cloning: Option<Card>,
     pub(crate) cloned_id: Option<CardId>,
 
+    pub(crate) static_abilities: HashSet<StaticAbilityId>,
+
     pub(crate) owner: Owner,
     pub(crate) controller: Controller,
 
@@ -188,7 +190,7 @@ pub struct CardInPlay {
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
     pub(crate) modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
     pub(crate) modified_etb_abilities: Vec<AnyEffect>,
-    pub(crate) modified_static_abilities: Vec<StaticAbility>,
+    pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
     pub(crate) modified_activated_abilities: Vec<(CardId, ActivatedAbility)>,
     pub(crate) modified_mana_abilities: Vec<(CardId, GainManaAbility)>,
 
@@ -202,10 +204,13 @@ impl CardInPlay {
         let mut card = Card::default();
         std::mem::swap(&mut card, &mut self.card);
         let owner = self.owner;
+        let mut static_abilities = HashSet::default();
+        std::mem::swap(&mut static_abilities, &mut self.static_abilities);
 
         *self = Self {
             card,
             owner,
+            static_abilities,
             controller: owner.into(),
             ..Default::default()
         };
@@ -251,12 +256,19 @@ impl CardId {
     pub fn upload(db: &mut Database, cards: &Cards, player: Owner, card: &str) -> CardId {
         let card = cards.get(card).expect("Invalid card name");
         let id = Self::new();
+
+        let mut static_abilities = HashSet::default();
+        for ability in card.static_abilities.clone() {
+            static_abilities.insert(StaticAbilityId::upload(db, id, ability));
+        }
+
         db.cards.insert(
             id,
             CardInPlay {
                 card: card.clone(),
                 controller: player.into(),
                 owner: player,
+                static_abilities,
                 ..Default::default()
             },
         );
@@ -295,13 +307,20 @@ impl CardId {
     pub(crate) fn transform(self, db: &mut Database) {
         db[self].facedown = !db[self].facedown;
         db[self].transformed = !db[self].transformed;
+
+        db[self].static_abilities.clear();
+
+        for ability in self.faceup_face(db).static_abilities.clone() {
+            let id = StaticAbilityId::upload(db, self, ability);
+            db[self].static_abilities.insert(id);
+        }
     }
 
     pub fn faceup_face(self, db: &Database) -> &Card {
-        if db[self].facedown {
-            db[self].card.back_face.as_deref().unwrap_or(&db[self].card)
-        } else if let Some(cloning) = db[self].cloning.as_ref() {
+        if let Some(cloning) = db[self].cloning.as_ref() {
             cloning
+        } else if db[self].facedown {
+            db[self].card.back_face.as_deref().unwrap_or(&db[self].card)
         } else {
             &db[self].card
         }
@@ -615,9 +634,9 @@ impl CardId {
         };
 
         let mut static_abilities = if facedown {
-            vec![]
+            HashSet::default()
         } else {
-            source.static_abilities.clone()
+            db[self].static_abilities.clone()
         };
 
         let mut activated_abilities = if facedown {
@@ -810,7 +829,7 @@ impl CardId {
                 if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
                     keywords: add_keywords,
                     restrictions,
-                }) = sa
+                }) = &db[*sa].ability
                 {
                     let power = base_power.as_ref().map(|base| match base {
                         BasePowerType::Static(value) => *value,
@@ -916,14 +935,7 @@ impl CardId {
             if !modifier.modifier.modifier.add_static_abilities.is_empty() {
                 applied_modifiers.insert(**id);
 
-                static_abilities.extend(
-                    modifier
-                        .modifier
-                        .modifier
-                        .add_static_abilities
-                        .iter()
-                        .cloned(),
-                );
+                static_abilities.extend(modifier.add_static_abilities.iter().copied());
             }
 
             if let Some(modify) = modifier.modifier.modifier.add_ability.as_ref() {
@@ -1057,9 +1069,45 @@ impl CardId {
         db[self].modified_keywords = keywords;
         db[self].modified_etb_abilities = etb_abilities;
         db[self].modified_mana_abilities = mana_abilities;
-        db[self].modified_static_abilities = static_abilities;
+        db[self].modified_static_abilities = static_abilities
+            .into_iter()
+            .inspect(|sa| {
+                if let StaticAbility::BattlefieldModifier(modifier) = &db[*sa].ability {
+                    if db[*sa].owned_modifier.is_none() {
+                        let modifier = ModifierId::upload_temporary_modifier(
+                            db,
+                            db[*sa].source,
+                            *modifier.clone(),
+                        );
+                        db[*sa].owned_modifier = Some(modifier);
+                    }
+                }
+            })
+            .collect();
         db[self].modified_activated_abilities = activated_abilities;
         db[self].modified_replacement_abilities = replacement_abilities;
+
+        db.static_abilities.retain(|id, ability| {
+            if ability.source == self {
+                if !db
+                    .cards
+                    .get(&self)
+                    .unwrap()
+                    .modified_static_abilities
+                    .contains(id)
+                {
+                    if let Some(modifier) = ability.owned_modifier.take() {
+                        modifier.deactivate(&mut db.modifiers);
+                    }
+
+                    db.cards.get(&self).unwrap().static_abilities.contains(id)
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1489,8 +1537,7 @@ impl CardId {
             .cloned()
             .collect_vec()
         {
-            let modifier =
-                ModifierId::upload_temporary_modifier(&mut db.modifiers, aura_source, modifier);
+            let modifier = ModifierId::upload_temporary_modifier(db, aura_source, modifier);
             self.apply_modifier(db, modifier);
             db.modifiers
                 .get_mut(&modifier)
@@ -1820,7 +1867,7 @@ impl CardId {
             && !db[self]
                 .modified_static_abilities
                 .iter()
-                .any(|ability| matches!(ability, StaticAbility::PreventAttacks))
+                .any(|ability| matches!(db[*ability].ability, StaticAbility::PreventAttacks))
     }
 
     pub(crate) fn battle_cry(self, db: &Database) -> usize {

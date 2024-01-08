@@ -6,11 +6,8 @@ use tracing::Level;
 
 use crate::{
     effects::BattlefieldModifier,
-    in_play::{CardId, NEXT_MODIFIER_ID},
+    in_play::{CardId, Database, StaticAbilityId, NEXT_MODIFIER_ID},
 };
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
-pub(crate) struct ModifierSeq(usize);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
 pub(crate) struct ModifierId(usize);
@@ -22,6 +19,7 @@ pub struct ModifierInPlay {
     pub(crate) active: bool,
     pub(crate) modifier: BattlefieldModifier,
     pub(crate) modifying: HashSet<CardId>,
+    pub(crate) add_static_abilities: HashSet<StaticAbilityId>,
 }
 
 impl ModifierId {
@@ -30,12 +28,18 @@ impl ModifierId {
     }
 
     pub(crate) fn upload_temporary_modifier(
-        modifiers: &mut IndexMap<ModifierId, ModifierInPlay>,
+        db: &mut Database,
         source: CardId,
         modifier: BattlefieldModifier,
     ) -> Self {
         let id = Self::new();
-        modifiers.insert(
+
+        let mut add_static_abilities = HashSet::default();
+        for ability in modifier.modifier.add_static_abilities.iter() {
+            add_static_abilities.insert(StaticAbilityId::upload(db, source, ability.clone()));
+        }
+
+        db.modifiers.insert(
             id,
             ModifierInPlay {
                 source,
@@ -43,6 +47,7 @@ impl ModifierId {
                 active: true,
                 modifier,
                 modifying: Default::default(),
+                add_static_abilities,
             },
         );
 

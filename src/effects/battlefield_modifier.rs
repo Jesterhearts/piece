@@ -64,11 +64,7 @@ impl EffectBehaviors for BattlefieldModifier {
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddModifier {
-            modifier: ModifierId::upload_temporary_modifier(
-                &mut db.modifiers,
-                source,
-                self.clone(),
-            ),
+            modifier: ModifierId::upload_temporary_modifier(db, source, self.clone()),
         });
     }
 
@@ -82,15 +78,14 @@ impl EffectBehaviors for BattlefieldModifier {
         results: &mut PendingResults,
     ) {
         if apply_to_self {
-            let modifier =
-                ModifierId::upload_temporary_modifier(&mut db.modifiers, source, self.clone());
+            let modifier = ModifierId::upload_temporary_modifier(db, source, self.clone());
             results.push_settled(ActionResult::ModifyCreatures {
                 modifier,
                 targets: vec![ActiveTarget::Battlefield { id: source }],
             });
         } else {
             results.push_settled(ActionResult::ApplyToBattlefield(
-                ModifierId::upload_temporary_modifier(&mut db.modifiers, source, self.clone()),
+                ModifierId::upload_temporary_modifier(db, source, self.clone()),
             ));
         }
     }

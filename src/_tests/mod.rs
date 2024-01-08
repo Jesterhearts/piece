@@ -14,6 +14,7 @@ mod deadapult;
 mod deconstruction_hammer;
 mod dryad_of_the_ilysian_grove;
 mod dusk_rose_reliquary;
+mod eaten_by_piranhas;
 mod elesh_norn_grand_cenobite;
 mod fabrication_foundry;
 mod family_reunion;

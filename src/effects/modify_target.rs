@@ -102,7 +102,7 @@ impl EffectBehaviors for ModifyTarget {
 
         let modifier = match self.duration {
             EffectDuration::UntilTargetLeavesBattlefield => ModifierId::upload_temporary_modifier(
-                &mut db.modifiers,
+                db,
                 final_targets.iter().exactly_one().unwrap().id().unwrap(),
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),
@@ -111,7 +111,7 @@ impl EffectBehaviors for ModifyTarget {
                 },
             ),
             _ => ModifierId::upload_temporary_modifier(
-                &mut db.modifiers,
+                db,
                 source,
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),

@@ -3,7 +3,6 @@ typeline: Legendary Creature - Praetor
 cost:
   mana_cost: '{5}{W}{W}'
 oracle_text: |
-  Vigilance
   Other creatures you control get +2/+2
   Creatures your opponents control get -2/-2
 static_abilities:

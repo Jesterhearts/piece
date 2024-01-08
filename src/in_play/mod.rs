@@ -1,15 +1,17 @@
-mod cardid;
-mod modifierid;
+mod card_id;
+mod modifier_id;
+mod static_ability_id;
 
 use std::sync::atomic::AtomicUsize;
 
 use indexmap::{IndexMap, IndexSet};
 
-pub(crate) use cardid::target_from_location;
-pub use cardid::CardId;
-pub(crate) use cardid::CardInPlay;
+pub(crate) use card_id::target_from_location;
+pub use card_id::CardId;
+pub(crate) use card_id::CardInPlay;
 use itertools::Itertools;
-pub(crate) use modifierid::{ModifierId, ModifierInPlay};
+pub(crate) use modifier_id::{ModifierId, ModifierInPlay};
+pub(crate) use static_ability_id::{StaticAbilityId, StaticAbilityInPlay};
 
 use crate::{
     abilities::TriggeredAbility,
@@ -28,6 +30,7 @@ use crate::{
 
 static NEXT_CARD_ID: AtomicUsize = AtomicUsize::new(0);
 static NEXT_MODIFIER_ID: AtomicUsize = AtomicUsize::new(0);
+static NEXT_STATIC_ABILITY_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub(crate) enum CastFrom {
@@ -47,6 +50,7 @@ pub struct Database {
 
     pub(crate) cards: IndexMap<CardId, CardInPlay>,
     pub(crate) modifiers: IndexMap<ModifierId, ModifierInPlay>,
+    pub(crate) static_abilities: IndexMap<StaticAbilityId, StaticAbilityInPlay>,
 
     pub battlefield: Battlefield,
     pub graveyard: Graveyard,
@@ -89,6 +93,20 @@ impl std::ops::IndexMut<CardId> for Database {
     }
 }
 
+impl std::ops::Index<StaticAbilityId> for Database {
+    type Output = StaticAbilityInPlay;
+
+    fn index(&self, index: StaticAbilityId) -> &Self::Output {
+        self.static_abilities.get(&index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<StaticAbilityId> for Database {
+    fn index_mut(&mut self, index: StaticAbilityId) -> &mut Self::Output {
+        self.static_abilities.get_mut(&index).unwrap()
+    }
+}
+
 impl Database {
     pub fn new(all_players: AllPlayers) -> Self {
         let mut battlefield = Battlefield::default();
@@ -113,6 +131,7 @@ impl Database {
             log: Default::default(),
             cards: Default::default(),
             modifiers: Default::default(),
+            static_abilities: Default::default(),
             battlefield,
             graveyard,
             exile,

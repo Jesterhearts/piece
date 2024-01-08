@@ -405,10 +405,9 @@ impl Battlefield {
             .flat_map(|(controller, cards)| cards.iter().map(|card| (*controller, *card)))
             .filter_map(|(controller, card)| {
                 if controller == player
-                    || db[card]
-                        .modified_static_abilities
-                        .iter()
-                        .any(|ability| matches!(ability, StaticAbility::UntapEachUntapStep))
+                    || db[card].modified_static_abilities.iter().any(|ability| {
+                        matches!(db[*ability].ability, StaticAbility::UntapEachUntapStep)
+                    })
                 {
                     Some(card)
                 } else {
@@ -682,7 +681,7 @@ impl Battlefield {
             .copied()
         {
             for ability in db[card].modified_static_abilities.iter() {
-                result.push((ability, card));
+                result.push((&db[*ability].ability, card));
             }
         }
 
@@ -1632,7 +1631,7 @@ pub(crate) fn create_token_copy_with_replacements(
         let token = copying.token_copy_of(db, db[source].controller);
         for modifier in modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(
-                &mut db.modifiers,
+                db,
                 token,
                 BattlefieldModifier {
                     modifier: modifier.clone(),
@@ -1736,21 +1735,13 @@ fn move_card_to_battlefield(
 
     for ability in db
         .cards
-        .entry(source_card_id)
-        .or_default()
+        .get(&source_card_id)
+        .unwrap()
         .modified_static_abilities
         .iter()
     {
-        match ability {
-            StaticAbility::BattlefieldModifier(modifier) => {
-                let modifier = ModifierId::upload_temporary_modifier(
-                    &mut db.modifiers,
-                    source_card_id,
-                    *modifier.clone(),
-                );
-                results.push_settled(ActionResult::AddModifier { modifier })
-            }
-            _ => {}
+        if let Some(modifier) = db[*ability].owned_modifier {
+            results.push_settled(ActionResult::AddModifier { modifier })
         }
     }
 

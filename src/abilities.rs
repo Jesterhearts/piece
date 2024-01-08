@@ -197,10 +197,12 @@ impl ActivatedAbility {
         activator: crate::player::Owner,
         pending: &Option<PendingResults>,
     ) -> bool {
-        let banned = db[source]
-            .modified_static_abilities
-            .iter()
-            .any(|ability| matches!(ability, StaticAbility::PreventAbilityActivation));
+        let banned = db[source].modified_static_abilities.iter().any(|ability| {
+            matches!(
+                db[*ability].ability,
+                StaticAbility::PreventAbilityActivation
+            )
+        });
 
         if banned {
             return false;

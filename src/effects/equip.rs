@@ -124,7 +124,7 @@ impl EffectBehaviors for Equip {
 
         for modifier in self.modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(
-                &mut db.modifiers,
+                db,
                 source,
                 BattlefieldModifier {
                     modifier: modifier.clone(),

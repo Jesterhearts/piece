@@ -36,7 +36,7 @@ impl EffectBehaviors for BattleCry {
         results: &mut crate::pending_results::PendingResults,
     ) {
         let modifier = ModifierId::upload_temporary_modifier(
-            &mut db.modifiers,
+            db,
             source,
             BattlefieldModifier {
                 modifier: ModifyBattlefield {
