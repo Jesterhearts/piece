@@ -25,7 +25,7 @@ use crate::{
         Replacing, Token,
     },
     in_play::{CastFrom, Database, ExileReason, ModifierId, NEXT_CARD_ID},
-    log::{LeaveReason, Log, LogEntry, LogId},
+    log::{LeaveReason, Log, LogEntry},
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{mana_pool::ManaSource, Controller, Owner},
@@ -331,7 +331,7 @@ impl CardId {
 
     pub fn move_to_hand(self, db: &mut Database) {
         if self.is_in_location(db, Location::Battlefield) {
-            Log::left_battlefield(db, LogId::current(), LeaveReason::ReturnedToHand, self);
+            Log::left_battlefield(db, LeaveReason::ReturnedToHand, self);
         }
 
         if db[self].token {
@@ -404,7 +404,7 @@ impl CardId {
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
         if self.is_in_location(db, Location::Battlefield) {
-            Log::left_battlefield(db, LogId::current(), LeaveReason::PutIntoGraveyard, self);
+            Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
         }
 
         if db[self].token {
@@ -432,7 +432,7 @@ impl CardId {
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
         if self.is_in_location(db, Location::Battlefield) {
-            Log::left_battlefield(db, LogId::current(), LeaveReason::ReturnedToLibrary, self);
+            Log::left_battlefield(db, LeaveReason::ReturnedToLibrary, self);
         }
 
         if db[self].token {
@@ -462,7 +462,7 @@ impl CardId {
         duration: EffectDuration,
     ) {
         if self.is_in_location(db, Location::Battlefield) {
-            Log::left_battlefield(db, LogId::current(), LeaveReason::Exiled, self);
+            Log::left_battlefield(db, LeaveReason::Exiled, self);
         }
 
         if db[self].token {
@@ -1656,7 +1656,7 @@ impl CardId {
     }
 
     pub(crate) fn tap(self, db: &mut Database) -> PendingResults {
-        Log::tapped(db, LogId::current(), self);
+        Log::tapped(db, self);
 
         db[self].tapped = true;
 

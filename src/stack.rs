@@ -10,7 +10,7 @@ use crate::{
     cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
-    log::{Log, LogId},
+    log::Log,
     pending_results::{
         choose_targets::ChooseTargets,
         pay_costs::TapPermanent,
@@ -23,12 +23,6 @@ use crate::{
     player::{mana_pool::SpendReason, Owner},
     triggers::TriggerSource,
 };
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) struct Settled;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub(crate) struct Targets(pub(crate) Vec<Vec<ActiveTarget>>);
 
 #[derive(Debug)]
 enum ResolutionType {
@@ -277,10 +271,9 @@ impl Stack {
             }
         }
 
-        let id = LogId::new();
         match ty {
-            ResolutionType::Card(card) => Log::spell_resolved(db, id, card),
-            ResolutionType::Ability(source) => Log::ability_resolved(db, id, source),
+            ResolutionType::Card(card) => Log::spell_resolved(db, card),
+            ResolutionType::Ability(source) => Log::ability_resolved(db, source),
         }
 
         results
@@ -363,7 +356,7 @@ impl Stack {
         let mut results = PendingResults::default();
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
             if let ActiveTarget::Battlefield { id } = target {
-                Log::targetted(db, LogId::current(), source, id);
+                Log::targetted(db, source, id);
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
                     if listener == id
                         && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
@@ -393,7 +386,7 @@ impl Stack {
         let mut results = PendingResults::default();
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
             if let ActiveTarget::Battlefield { id } = target {
-                Log::targetted(db, LogId::current(), source, id);
+                Log::targetted(db, source, id);
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
                     if listener == id
                         && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)

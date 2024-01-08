@@ -117,27 +117,27 @@ pub struct Log {
 }
 
 impl Log {
-    pub(crate) fn card_chosen(db: &mut Database, id: LogId, chosen: CardId) {
+    pub(crate) fn card_chosen(db: &mut Database, chosen: CardId) {
         let entry = LogEntry::CardChosen { card: chosen };
         event!(Level::INFO, ?entry);
-        db.log.entries.push((id, entry))
+        db.log.entries.push((LogId::current(), entry))
     }
 
-    pub(crate) fn ability_resolved(db: &mut Database, id: LogId, source: CardId) {
+    pub(crate) fn ability_resolved(db: &mut Database, source: CardId) {
         let entry = LogEntry::AbilityResolved {
             controller: db[source].controller,
         };
         event!(Level::INFO, ?entry);
-        db.log.entries.push((id, entry))
+        db.log.entries.push((LogId::new(), entry))
     }
 
-    pub(crate) fn spell_resolved(db: &mut Database, id: LogId, spell: CardId) {
+    pub(crate) fn spell_resolved(db: &mut Database, spell: CardId) {
         let entry = LogEntry::SpellResolved {
             spell,
             controller: db[spell].controller,
         };
         event!(Level::INFO, ?entry);
-        db.log.entries.push((id, entry))
+        db.log.entries.push((LogId::new(), entry))
     }
 
     pub(crate) fn new_turn(db: &mut Database, player: Owner) {
@@ -168,24 +168,19 @@ impl Log {
         }
     }
 
-    pub(crate) fn tapped(db: &mut Database, id: LogId, card: CardId) {
+    pub(crate) fn tapped(db: &mut Database, card: CardId) {
         let entry = LogEntry::Tapped { card };
 
         event!(Level::INFO, ?entry);
-        db.log.entries.push((id, entry));
+        db.log.entries.push((LogId::current(), entry));
     }
 
-    pub(crate) fn cast(db: &mut Database, id: LogId, card: CardId) {
+    pub(crate) fn cast(db: &mut Database, card: CardId) {
         let entry = LogEntry::Cast { card };
-        db.log.entries.push((id, entry));
+        db.log.entries.push((LogId::new(), entry));
     }
 
-    pub(crate) fn left_battlefield(
-        db: &mut Database,
-        id: LogId,
-        reason: LeaveReason,
-        card: CardId,
-    ) {
+    pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: CardId) {
         let modified_by = card.modified_by(db);
         let entry = LogEntry::LeftBattlefield {
             reason,
@@ -214,13 +209,13 @@ impl Log {
         };
 
         event!(Level::INFO, ?entry);
-        db.log.entries.push((id, entry));
+        db.log.entries.push((LogId::current(), entry));
     }
 
-    pub(crate) fn targetted(db: &mut Database, id: LogId, source: CardId, target: CardId) {
+    pub(crate) fn targetted(db: &mut Database, source: CardId, target: CardId) {
         let entry = LogEntry::Targeted { source, target };
 
         event!(Level::INFO, ?entry);
-        db.log.entries.push((id, entry));
+        db.log.entries.push((LogId::current(), entry));
     }
 }

@@ -20,7 +20,7 @@ use crate::{
     },
     in_play::{CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
-    log::{Log, LogEntry, LogId},
+    log::{Log, LogEntry},
     mana::{Mana, ManaRestriction},
     pending_results::{
         choose_targets::ChooseTargets,
@@ -1012,7 +1012,7 @@ impl Battlefield {
             } => {
                 let mut results = PendingResults::default();
 
-                Log::cast(db, LogId::current(), *card);
+                Log::cast(db, *card);
 
                 results.extend(card.move_to_stack(
                     db,
