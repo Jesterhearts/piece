@@ -86,43 +86,37 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for id in db
-            .stack
-            .entries
-            .iter()
-            .enumerate()
-            .filter_map(|(id, entry)| {
-                if let StackEntry {
-                    ty: Entry::Card(card),
-                    ..
-                } = entry
+        for id in db.stack.entries.iter().filter_map(|(id, entry)| {
+            if let StackEntry {
+                ty: Entry::Card(card),
+                ..
+            } = entry
+            {
+                if card.can_be_countered(db, source, &[])
+                    && card.passes_restrictions(db, source, &self.restrictions)
                 {
-                    if card.can_be_countered(db, source, &[])
-                        && card.passes_restrictions(db, source, &self.restrictions)
-                    {
-                        Some(id)
-                    } else {
-                        None
-                    }
-                } else if let StackEntry {
-                    ty:
-                        Entry::Ability {
-                            source: ability_source,
-                            ..
-                        },
-                    ..
-                } = entry
-                {
-                    if ability_source.passes_restrictions(db, source, &self.restrictions) {
-                        Some(id)
-                    } else {
-                        None
-                    }
+                    Some(*id)
                 } else {
                     None
                 }
-            })
-        {
+            } else if let StackEntry {
+                ty:
+                    Entry::Ability {
+                        source: ability_source,
+                        ..
+                    },
+                ..
+            } = entry
+            {
+                if ability_source.passes_restrictions(db, source, &self.restrictions) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }) {
             targets.push(ActiveTarget::Stack { id });
         }
 
@@ -160,7 +154,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
             match self.cost {
                 Cost::Fixed(count) => {
                     results.push_pay_costs(PayCost::new_or_else(
-                        db.stack.entries[*id].ty.source(),
+                        db.stack.entries.get(id).unwrap().ty.source(),
                         pay_costs::Cost::SpendMana(SpendMana::new(
                             vec![ManaCost::Generic(count)],
                             SpendReason::Other,

@@ -1,6 +1,10 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexMap;
 use itertools::Itertools;
 
 use crate::{
@@ -24,6 +28,23 @@ use crate::{
     triggers::TriggerSource,
 };
 
+static NEXT_STACK_ID: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct StackId(usize);
+
+impl StackId {
+    pub(crate) fn new() -> Self {
+        Self(NEXT_STACK_ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+impl std::fmt::Display for StackId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
 #[derive(Debug)]
 enum ResolutionType {
     Card(CardId),
@@ -32,7 +53,7 @@ enum ResolutionType {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub(crate) enum ActiveTarget {
-    Stack { id: usize },
+    Stack { id: StackId },
     Battlefield { id: CardId },
     Graveyard { id: CardId },
     Library { id: CardId },
@@ -43,7 +64,11 @@ impl ActiveTarget {
     pub(crate) fn display(&self, db: &Database) -> String {
         match self {
             ActiveTarget::Stack { id } => {
-                format!("Stack ({}): {}", id, db.stack.entries[*id].display(db))
+                format!(
+                    "Stack ({}): {}",
+                    id,
+                    db.stack.entries.get(id).unwrap().display(db)
+                )
             }
             ActiveTarget::Battlefield { id } => {
                 format!("{} - ({})", id.name(db), id)
@@ -110,21 +135,24 @@ impl StackEntry {
 
 #[derive(Debug, Default)]
 pub struct Stack {
-    pub(crate) entries: Vec<StackEntry>,
+    pub(crate) entries: IndexMap<StackId, StackEntry>,
 }
 
 impl Stack {
     pub(crate) fn contains(&self, card: CardId) -> bool {
         self.entries
             .iter()
-            .any(|entry| matches!(entry.ty, Entry::Card(entry) if entry == card))
+            .any(|(_, entry)| matches!(entry.ty, Entry::Card(entry) if entry == card))
     }
 
     pub(crate) fn split_second(&self, db: &Database) -> bool {
-        if let Some(StackEntry {
-            ty: Entry::Card(card),
-            ..
-        }) = self.entries.last()
+        if let Some((
+            _,
+            StackEntry {
+                ty: Entry::Card(card),
+                ..
+            },
+        )) = self.entries.last()
         {
             db[*card]
                 .modified_keywords
@@ -136,21 +164,22 @@ impl Stack {
 
     pub(crate) fn remove(&mut self, card: CardId) {
         self.entries
-            .retain(|entry| !matches!(entry.ty, Entry::Card(entry) if entry == card));
+            .retain(|_, entry| !matches!(entry.ty, Entry::Card(entry) if entry == card));
     }
 
     #[cfg(test)]
     pub(crate) fn target_nth(&self, nth: usize) -> ActiveTarget {
-        ActiveTarget::Stack { id: nth }
+        let id = self.entries.get_index(nth).unwrap().0;
+        ActiveTarget::Stack { id: *id }
     }
 
-    pub fn entries(&self) -> &Vec<StackEntry> {
-        &self.entries
+    pub fn entries(&self) -> Vec<StackEntry> {
+        self.entries.values().cloned().collect_vec()
     }
 
     pub fn entries_unsettled(&self) -> Vec<StackEntry> {
         self.entries
-            .iter()
+            .values()
             .filter(|entry| !entry.settled)
             .cloned()
             .collect_vec()
@@ -161,13 +190,13 @@ impl Stack {
     }
 
     pub(crate) fn settle(&mut self) {
-        for entry in self.entries.iter_mut() {
+        for entry in self.entries.values_mut() {
             entry.settled = true;
         }
     }
 
     pub fn resolve_1(db: &mut Database) -> PendingResults {
-        let Some(next) = db.stack.entries.pop() else {
+        let Some((_, next)) = db.stack.entries.pop() else {
             return PendingResults::default();
         };
 
@@ -346,12 +375,15 @@ impl Stack {
         targets: Vec<Vec<ActiveTarget>>,
         chosen_modes: Vec<usize>,
     ) -> PendingResults {
-        db.stack.entries.push(StackEntry {
-            ty: Entry::Card(source),
-            targets: targets.clone(),
-            settled: true,
-            mode: chosen_modes,
-        });
+        db.stack.entries.insert(
+            StackId::new(),
+            StackEntry {
+                ty: Entry::Card(source),
+                targets: targets.clone(),
+                settled: true,
+                mode: chosen_modes,
+            },
+        );
 
         let mut results = PendingResults::default();
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
@@ -376,12 +408,15 @@ impl Stack {
         ability: Ability,
         targets: Vec<Vec<ActiveTarget>>,
     ) -> PendingResults {
-        db.stack.entries.push(StackEntry {
-            ty: Entry::Ability { source, ability },
-            targets: targets.clone(),
-            mode: vec![],
-            settled: true,
-        });
+        db.stack.entries.insert(
+            StackId::new(),
+            StackEntry {
+                ty: Entry::Ability { source, ability },
+                targets: targets.clone(),
+                mode: vec![],
+                settled: true,
+            },
+        );
 
         let mut results = PendingResults::default();
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {

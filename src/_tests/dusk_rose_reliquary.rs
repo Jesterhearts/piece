@@ -1,5 +1,4 @@
 use indexmap::IndexSet;
-use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -208,13 +207,6 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-
-    dbg!(&db
-        .stack
-        .entries()
-        .iter()
-        .map(|e| e.display(&db))
-        .collect_vec());
 
     // Pay for ward
     let mut results = Stack::resolve_1(&mut db);

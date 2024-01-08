@@ -51,25 +51,19 @@ impl EffectBehaviors for CounterSpellOrAbility {
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
-        for (stack_id, card) in db
-            .stack
-            .entries
-            .iter()
-            .enumerate()
-            .filter_map(|(id, entry)| {
-                if let StackEntry {
-                    ty: Entry::Card(card),
-                    ..
-                } = entry
-                {
-                    Some((id, card))
-                } else {
-                    None
-                }
-            })
-        {
+        for (stack_id, card) in db.stack.entries.iter().filter_map(|(id, entry)| {
+            if let StackEntry {
+                ty: Entry::Card(card),
+                ..
+            } = entry
+            {
+                Some((id, card))
+            } else {
+                None
+            }
+        }) {
             if card.can_be_countered(db, source, &self.restrictions) {
-                targets.push(ActiveTarget::Stack { id: stack_id });
+                targets.push(ActiveTarget::Stack { id: *stack_id });
             }
         }
 

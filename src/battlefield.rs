@@ -35,7 +35,7 @@ use crate::{
         mana_pool::{ManaSource, SpendReason},
         Controller, Owner, Player,
     },
-    stack::{ActiveTarget, Entry, Stack, StackEntry},
+    stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Location, Restriction},
     triggers::{self, Trigger, TriggerSource},
     types::Type,
@@ -223,7 +223,7 @@ pub(crate) enum ActionResult {
     Scry(CardId, usize),
     Shuffle(Owner),
     SpellCountered {
-        index: usize,
+        index: StackId,
     },
     SpendMana {
         card: CardId,
@@ -916,13 +916,15 @@ impl Battlefield {
                 }
                 PendingResults::default()
             }
-            ActionResult::SpellCountered { index } => match &db.stack.entries[*index].ty {
-                Entry::Card(card) => Battlefield::stack_to_graveyard(db, *card),
-                Entry::Ability { .. } => {
-                    db.stack.entries.remove(*index);
-                    PendingResults::default()
+            ActionResult::SpellCountered { index } => {
+                match &db.stack.entries.get(index).unwrap().ty {
+                    Entry::Card(card) => Battlefield::stack_to_graveyard(db, *card),
+                    Entry::Ability { .. } => {
+                        db.stack.entries.remove(index);
+                        PendingResults::default()
+                    }
                 }
-            },
+            }
             ActionResult::RemoveCounters {
                 target,
                 counter,
@@ -1056,7 +1058,10 @@ impl Battlefield {
                 results
             }
             ActionResult::UpdateStackEntries(entries) => {
-                db.stack.entries = entries.clone();
+                db.stack.entries = entries
+                    .iter()
+                    .map(|e| (StackId::new(), e.clone()))
+                    .collect();
                 db.stack.settle();
                 PendingResults::default()
             }
