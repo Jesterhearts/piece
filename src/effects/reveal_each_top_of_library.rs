@@ -5,7 +5,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ForEach {
     pub(crate) restrictions: Vec<Restriction>,
     pub(crate) effects: Vec<Effect>,
@@ -39,7 +39,7 @@ impl TryFrom<&protogen::effects::reveal_each_top_of_library::ForEach> for ForEac
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RevealEachTopOfLibrary {
     pub(crate) for_each: ForEach,
 }

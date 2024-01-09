@@ -8,7 +8,7 @@ use crate::{
     stack::ActiveTarget,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub(crate) struct UntapTarget;
 
 impl EffectBehaviors for UntapTarget {

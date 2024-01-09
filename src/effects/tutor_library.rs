@@ -9,7 +9,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TutorLibrary {
     pub(crate) restrictions: Vec<Restriction>,
     pub(crate) destination: Destination,

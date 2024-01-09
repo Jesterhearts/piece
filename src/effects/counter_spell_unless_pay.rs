@@ -16,7 +16,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Cost {
     Fixed(usize),
 }
@@ -35,7 +35,7 @@ impl TryFrom<&protogen::effects::counter_spell_unless_pay::Cost> for Cost {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CounterSpellUnlessPay {
     cost: Cost,
     restrictions: Vec<Restriction>,

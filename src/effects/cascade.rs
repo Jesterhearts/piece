@@ -1,6 +1,6 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub(crate) struct Cascade;
 
 impl EffectBehaviors for Cascade {

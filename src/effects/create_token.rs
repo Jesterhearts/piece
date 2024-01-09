@@ -4,7 +4,7 @@ use crate::{
     protogen,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CreateToken {
     token: Token,
 }

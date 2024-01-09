@@ -11,7 +11,7 @@ use crate::{
     types::{Subtype, Type},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Cycling {
     types: IndexSet<Type>,
     subtypes: IndexSet<Subtype>,

@@ -13,7 +13,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CopySpellOrAbility {
     restrictions: Vec<Restriction>,
 }

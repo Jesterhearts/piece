@@ -13,7 +13,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DynamicCounter {
     X,
     LeftBattlefieldThisTurn { restrictions: Vec<Restriction> },
@@ -52,7 +52,7 @@ impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCoun
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GainCount {
     Single,
     Multiple(usize),
@@ -75,7 +75,7 @@ impl TryFrom<&protogen::effects::gain_counter::Count> for GainCount {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TargetGainsCounters {
     count: GainCount,
     counter: Counter,

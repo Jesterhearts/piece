@@ -7,7 +7,7 @@ use crate::{
     stack::ActiveTarget,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub(crate) struct ExileTargetGraveyard;
 
 impl EffectBehaviors for ExileTargetGraveyard {

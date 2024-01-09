@@ -8,7 +8,7 @@ use crate::{
     protogen,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CreateTokenCopy {
     modifiers: Vec<ModifyBattlefield>,
 }

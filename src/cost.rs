@@ -75,7 +75,7 @@ impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum AdditionalCost {
     DiscardThis,
     ExileCard {
@@ -191,7 +191,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AbilityRestriction {
     AttackedWithXOrMoreCreatures(usize),
     OncePerTurn,
@@ -228,7 +228,7 @@ impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestr
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AbilityCost {
     pub(crate) mana_cost: Vec<ManaCost>,
     pub(crate) tap: bool,

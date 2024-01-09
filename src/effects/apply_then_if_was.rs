@@ -6,7 +6,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ApplyThenIfWas {
     apply: Vec<Effect>,
     then_if_was: Vec<Restriction>,

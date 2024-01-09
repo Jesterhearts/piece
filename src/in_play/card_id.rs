@@ -1286,6 +1286,7 @@ impl CardId {
                             *modifier.clone(),
                         );
                         db[*sa].owned_modifier = Some(modifier);
+                        modifier.activate(&mut db.modifiers);
                     }
                 }
             })

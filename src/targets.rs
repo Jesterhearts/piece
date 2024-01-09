@@ -13,7 +13,6 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
-#[allow(unused)]
 pub enum Location {
     Battlefield,
     Graveyard,
@@ -145,7 +144,7 @@ impl TryFrom<&protogen::targets::restriction::cmc::Cmc> for Cmc {
     }
 }
 
-#[derive(Debug, Clone, Copy, strum::AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::AsRefStr)]
 pub enum ControllerRestriction {
     Self_,
     Opponent,
@@ -172,7 +171,7 @@ impl From<&protogen::targets::restriction::controller::Controller> for Controlle
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Restriction {
     AttackedThisTurn,
     Attacking,

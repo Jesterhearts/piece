@@ -9,7 +9,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TargetToTopOfLibrary {
     restrictions: Vec<Restriction>,
     under_cards: usize,

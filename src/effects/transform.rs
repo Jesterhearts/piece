@@ -1,6 +1,6 @@
 use crate::{battlefield::ActionResult, effects::EffectBehaviors};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Transform;
 
 impl EffectBehaviors for Transform {

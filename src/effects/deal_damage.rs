@@ -10,7 +10,7 @@ use crate::{
     types::Type,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DealDamage {
     pub(crate) quantity: usize,
     pub(crate) restrictions: Vec<Restriction>,

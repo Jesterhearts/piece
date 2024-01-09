@@ -42,7 +42,7 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AddKeywordsIf {
     pub(crate) keywords: ::counter::Counter<Keyword>,
     pub(crate) restrictions: Vec<Restriction>,
@@ -70,12 +70,12 @@ impl TryFrom<&protogen::effects::static_ability::AddKeywordsIf> for AddKeywordsI
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ForceEtbTapped {
     pub(crate) restrictions: Vec<Restriction>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StaticAbility {
     AddKeywordsIf(AddKeywordsIf),
     AllAbilitiesOfExiledWith {
@@ -165,9 +165,6 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ApplyToSelf;
-
-#[derive(Debug, Clone)]
 pub struct ActivatedAbility {
     pub(crate) cost: AbilityCost,
     pub(crate) effects: Vec<AnyEffect>,
@@ -352,7 +349,7 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct GainManaAbilities(pub(crate) Vec<GainManaAbility>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GainManaAbility {
     pub(crate) cost: AbilityCost,
     pub(crate) gain: GainMana,

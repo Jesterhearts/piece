@@ -5,7 +5,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct IfThenElse {
     if_: Vec<Restriction>,
     then: Box<Effect>,

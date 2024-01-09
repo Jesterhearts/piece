@@ -13,7 +13,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Count {
     Fixed(usize),
     NumberOfPermanentsMatching(Vec<Restriction>),
@@ -42,7 +42,7 @@ impl TryFrom<&protogen::effects::controller_draw_cards::Count> for Count {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ControllerDrawsCards {
     count: Count,
 }

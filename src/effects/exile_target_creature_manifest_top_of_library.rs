@@ -8,7 +8,7 @@ use crate::{
     types::Type,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub(crate) struct ExileTargetCreatureManifestTopOfLibrary;
 
 impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {

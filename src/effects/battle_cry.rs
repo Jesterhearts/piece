@@ -8,7 +8,7 @@ use crate::{
     types::Type,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BattleCry;
 
 impl EffectBehaviors for BattleCry {

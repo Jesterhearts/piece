@@ -11,7 +11,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct BattlefieldModifier {
     pub(crate) modifier: ModifyBattlefield,
     pub(crate) duration: EffectDuration,

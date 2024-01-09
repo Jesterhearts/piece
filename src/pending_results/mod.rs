@@ -406,6 +406,15 @@ impl PendingResults {
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
         debug!("Choosing {:?} for {:#?}", choice, self);
 
+        let mut recomputed = false;
+        for pend in self.pending.iter_mut() {
+            recomputed |= pend.recompute_targets(db, &self.all_chosen_targets);
+        }
+
+        if recomputed {
+            return ResolutionResult::TryAgain;
+        }
+
         self.pending.retain(|pend| {
             let Pending::PayCosts(pay) = pend else {
                 return true;

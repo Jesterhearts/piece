@@ -9,7 +9,7 @@ use crate::{
     targets::Restriction,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ReturnFromGraveyardToHand {
     pub(crate) count: usize,
     pub(crate) restrictions: Vec<Restriction>,

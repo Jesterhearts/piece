@@ -5,7 +5,7 @@ use crate::{
     protogen,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ForEachManaOfSource {
     pub(crate) source: ManaSource,
     pub(crate) effect: Box<Effect>,

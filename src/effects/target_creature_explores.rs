@@ -9,7 +9,7 @@ use crate::{
     types::Type,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TargetCreatureExplores;
 
 impl EffectBehaviors for TargetCreatureExplores {

@@ -102,7 +102,7 @@ use crate::{
     types::{parse_typeline, Subtype, Type},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[enum_dispatch(EffectBehaviors)]
 pub(crate) enum Effect {
     ApplyThenIfWas(ApplyThenIfWas),
@@ -238,7 +238,7 @@ impl From<&protogen::effects::duration::Duration> for EffectDuration {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NumberOfPermanentsMatching {
     pub(crate) restrictions: Vec<Restriction>,
 }
@@ -259,7 +259,7 @@ impl TryFrom<&protogen::effects::NumberOfPermanentsMatching> for NumberOfPermane
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DynamicPowerToughness {
     NumberOfCountersOnThis(Counter),
     NumberOfPermanentsMatching(NumberOfPermanentsMatching),
@@ -294,7 +294,7 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPow
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ModifyBattlefield {
     pub(crate) base_power: Option<i32>,
     pub(crate) base_toughness: Option<i32>,
@@ -682,7 +682,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
 #[derive(Debug, Deref, Clone, DerefMut, Default)]
 pub(crate) struct Effects(pub(crate) Vec<AnyEffect>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyEffect {
     pub(crate) effect: Effect,
     pub(crate) oracle_text: String,
@@ -703,7 +703,7 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TokenCreature {
     pub(crate) name: String,
     pub(crate) types: IndexSet<Type>,
@@ -745,7 +745,7 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Token {
     Map,
     Creature(Box<TokenCreature>),
@@ -831,7 +831,7 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementAbility {
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub(crate) struct Modes(pub(crate) Vec<Mode>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Mode {
     pub(crate) effects: Vec<AnyEffect>,
 }

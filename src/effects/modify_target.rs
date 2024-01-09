@@ -11,7 +11,7 @@ use crate::{
     stack::ActiveTarget,
 };
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
 pub(crate) struct ModifyTarget(pub(crate) BattlefieldModifier);
 
 impl TryFrom<&protogen::effects::BattlefieldModifier> for ModifyTarget {
