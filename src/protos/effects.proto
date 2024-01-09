@@ -228,7 +228,7 @@ message CounterSpellUnlessPay {
 message CreateToken {
   message Creature {
     string name = 1;
-    string typeline = 2;
+    types.Typeline typeline = 2;
     repeated color.Color colors = 3;
     optional DynamicPowerToughness dynamic_power_toughness = 4;
     int32 power = 5;

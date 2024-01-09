@@ -1,7 +1,6 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
-use itertools::Itertools;
 
 use crate::protogen;
 
@@ -1191,32 +1190,4 @@ impl From<&protogen::types::subtype::Subtype> for Subtype {
             protogen::types::subtype::Subtype::Zubera(_) => Self::Zubera,
         }
     }
-}
-
-pub(crate) fn parse_typeline(
-    typeline: &str,
-) -> anyhow::Result<(IndexSet<Type>, IndexSet<Subtype>)> {
-    if typeline.is_empty() {
-        return Err(anyhow!("Expected card to have types set"));
-    }
-
-    let types_and_subtypes = typeline.split('-').collect_vec();
-    let (types, subtypes) = match types_and_subtypes.as_slice() {
-        [types] => (types, &""),
-        [types, subtypes] => (types, subtypes),
-        _ => return Err(anyhow!("Invalid typeline {}", typeline)),
-    };
-
-    let types = types
-        .split(' ')
-        .filter(|ty| !ty.is_empty())
-        .map(|ty| Type::try_from(ty).with_context(|| format!("Parsing {}", ty)))
-        .collect::<anyhow::Result<_>>()?;
-    let subtypes = subtypes
-        .split(' ')
-        .filter(|ty| !ty.is_empty())
-        .map(|ty| Subtype::try_from(ty).with_context(|| format!("Parsing {}", ty)))
-        .collect::<anyhow::Result<_>>()?;
-
-    Ok((types, subtypes))
 }

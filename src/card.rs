@@ -15,7 +15,7 @@ use crate::{
     mana::ManaCost,
     protogen,
     targets::Restriction,
-    types::{parse_typeline, Subtype, Type},
+    types::{Subtype, Type},
 };
 
 #[derive(
@@ -497,12 +497,20 @@ impl TryFrom<&protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
-        let (types, subtypes) = parse_typeline(&value.typeline)?;
-
         let mut this = Self {
             name: value.name.clone(),
-            types,
-            subtypes,
+            types: value
+                .typeline
+                .types
+                .iter()
+                .map(Type::try_from)
+                .collect::<anyhow::Result<_>>()?,
+            subtypes: value
+                .typeline
+                .subtypes
+                .iter()
+                .map(Subtype::try_from)
+                .collect::<anyhow::Result<_>>()?,
             cost: value.cost.get_or_default().try_into()?,
             reducer: value
                 .cost_reducer

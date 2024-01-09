@@ -11,7 +11,7 @@ import "types.proto";
 
 message Card {
   string name = 1;
-  string typeline = 2;
+  types.Typeline typeline = 2;
 
   cost.CastingCost cost = 3;
   optional cost.CostReducer cost_reducer = 4;

@@ -29,7 +29,15 @@ fn main() {
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {
-            if field.name() == "choices" && field.containing_message().name() == "Choice" {
+            if field.name() == "typeline" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_typeline",
+                        deserialize_with="crate::deserialize_typeline",
+                    )]"#,
+                )
+            } else if field.name() == "choices" && field.containing_message().name() == "Choice" {
                 Customize::default().before(
                     r#"#[serde(
                         default,
@@ -56,7 +64,7 @@ fn main() {
                         skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
-            } else if field.name() == "types"
+            } else if (field.name() == "types" && field.containing_message().name() != "Typeline")
                 || field.name() == "add_types"
                 || field.name() == "remove_types"
             {

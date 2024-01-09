@@ -2,6 +2,11 @@ syntax = "proto3";
 
 package types;
 
+message Typeline {
+  repeated types.Type types = 1;
+  repeated types.Subtype subtypes = 2;
+}
+
 message Type {
   message Artifact {}
   message Basic {}

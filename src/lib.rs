@@ -22,7 +22,7 @@ use crate::{
         empty::Empty,
         keywords::keyword,
         mana::Mana,
-        types::{subtype, type_, Subtype},
+        types::{subtype, type_, Subtype, Type, Typeline},
     },
 };
 
@@ -273,6 +273,86 @@ where
             .map(|gain| mana_to_string(&gain.gains))
             .join(", "),
     )
+}
+pub fn deserialize_typeline<'de, D>(
+    deserializer: D,
+) -> Result<protobuf::MessageField<Typeline>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = protobuf::MessageField<Typeline>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of types")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            if v.is_empty() {
+                return Err(E::custom("Expected typeline to be set"));
+            }
+
+            let types_and_subtypes = v.split('-').collect_vec();
+            let (types, subtypes) = match types_and_subtypes.as_slice() {
+                [types] => (types, &""),
+                [types, subtypes] => (types, subtypes),
+                _ => return Err(E::custom(format!("Invalid typeline {}", v))),
+            };
+
+            let types = types
+                .split(' ')
+                .filter(|ty| !ty.is_empty())
+                .map(|ty| type_::Type::from_str(ty).map_err(|e| E::custom(e.to_string())))
+                .map(|ty| {
+                    ty.map(|type_| Type {
+                        type_: Some(type_),
+                        ..Default::default()
+                    })
+                })
+                .collect::<Result<Vec<Type>, E>>()?;
+
+            let subtypes = subtypes
+                .split(' ')
+                .filter(|ty| !ty.is_empty())
+                .map(|ty| subtype::Subtype::from_str(ty).map_err(|e| E::custom(e.to_string())))
+                .map(|ty| {
+                    ty.map(|subtype| Subtype {
+                        subtype: Some(subtype),
+                        ..Default::default()
+                    })
+                })
+                .collect::<Result<Vec<Subtype>, E>>()?;
+
+            Ok(protobuf::MessageField::some(Typeline {
+                types,
+                subtypes,
+                ..Default::default()
+            }))
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+pub fn serialize_typeline<S>(value: &Typeline, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let types = value
+        .types
+        .iter()
+        .map(|ty| ty.type_.as_ref().unwrap().as_ref())
+        .join(" ");
+    let subtypes = value
+        .subtypes
+        .iter()
+        .map(|ty| ty.subtype.as_ref().unwrap().as_ref())
+        .join(" ");
+    serializer.serialize_str(&format!("{} - {}", types, subtypes))
 }
 
 pub fn deserialize_types<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
