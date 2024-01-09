@@ -2,6 +2,7 @@ use std::{
     cell::OnceCell,
     collections::{HashMap, HashSet},
     rc::Rc,
+    str::FromStr,
     sync::atomic::Ordering,
 };
 
@@ -220,7 +221,7 @@ pub struct CardInPlay {
     pub(crate) modified_types: IndexSet<Type>,
     pub(crate) modified_subtypes: IndexSet<Subtype>,
     pub(crate) modified_colors: HashSet<Color>,
-    pub(crate) modified_keywords: ::counter::Counter<Keyword>,
+    pub(crate) modified_keywords: HashMap<String, u32>,
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
     pub(crate) modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
     pub(crate) modified_etb_abilities: Vec<AnyEffect>,
@@ -743,7 +744,7 @@ impl CardId {
         };
 
         let mut keywords = if facedown {
-            ::counter::Counter::default()
+            HashMap::default()
         } else {
             source.keywords.clone()
         };
@@ -866,7 +867,14 @@ impl CardId {
 
             if !modifier.modifier.modifier.add_types.is_empty() {
                 applied_modifiers.insert(id);
-                types.extend(modifier.modifier.modifier.add_types.iter().copied());
+                types.extend(
+                    modifier
+                        .modifier
+                        .modifier
+                        .add_types
+                        .keys()
+                        .map(|ty| Type::from_str(ty).unwrap()),
+                );
             }
 
             if !modifier.modifier.modifier.add_subtypes.is_empty() {
@@ -876,7 +884,13 @@ impl CardId {
 
             if !modifier.modifier.modifier.remove_types.is_empty() {
                 applied_modifiers.insert(id);
-                types.retain(|ty| !modifier.modifier.modifier.remove_types.contains(ty));
+                types.retain(|ty| {
+                    !modifier
+                        .modifier
+                        .modifier
+                        .remove_types
+                        .contains_key(ty.as_ref())
+                });
             }
 
             if modifier.modifier.modifier.remove_all_types {
@@ -1031,7 +1045,9 @@ impl CardId {
             .collect_vec();
 
         for add in add_keywords {
-            keywords.extend(add.iter());
+            for (kw, count) in add.iter() {
+                *keywords.entry(kw.clone()).or_default() += count;
+            }
         }
 
         let add_abilities = static_abilities
@@ -1144,7 +1160,8 @@ impl CardId {
             if !modifier.modifier.modifier.remove_keywords.is_empty() {
                 applied_modifiers.insert(id);
 
-                keywords.retain(|kw, _| !modifier.modifier.modifier.remove_keywords.contains(kw));
+                keywords
+                    .retain(|kw, _| !modifier.modifier.modifier.remove_keywords.contains_key(kw));
             }
 
             if !modifier.modifier.modifier.add_keywords.is_empty() {
@@ -1359,7 +1376,7 @@ impl CardId {
         self_controller: Controller,
         self_types: &IndexSet<Type>,
         self_subtypes: &IndexSet<Subtype>,
-        self_keywords: &::counter::Counter<Keyword>,
+        self_keywords: &HashMap<String, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &HashSet<ActivatedAbilityId>,
     ) -> usize {
@@ -1477,7 +1494,7 @@ impl CardId {
         restrictions: &[Restriction],
         self_types: &IndexSet<Type>,
         self_subtypes: &IndexSet<Subtype>,
-        self_keywords: &::counter::Counter<Keyword>,
+        self_keywords: &HashMap<String, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &HashSet<ActivatedAbilityId>,
         self_power: Option<i32>,
@@ -1662,13 +1679,15 @@ impl CardId {
                 Restriction::NotKeywords(not_keywords) => {
                     if self_keywords
                         .keys()
-                        .any(|keyword| not_keywords.contains(keyword))
+                        .any(|keyword| not_keywords.contains_key(keyword))
                     {
                         return false;
                     }
                 }
                 Restriction::NotOfType { types, subtypes } => {
-                    if !types.is_empty() && !self_types.is_disjoint(types) {
+                    if !types.is_empty()
+                        && self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                     if !subtypes.is_empty() && !self_subtypes.is_disjoint(subtypes) {
@@ -1705,7 +1724,9 @@ impl CardId {
                     }
                 }
                 Restriction::OfType { types, subtypes } => {
-                    if !types.is_empty() && self_types.is_disjoint(types) {
+                    if !types.is_empty()
+                        && !self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                     if !subtypes.is_empty() && self_subtypes.is_disjoint(subtypes) {
@@ -2043,26 +2064,34 @@ impl CardId {
     }
 
     pub(crate) fn shroud(self, db: &Database) -> bool {
-        db[self].modified_keywords.contains_key(&Keyword::Shroud)
+        db[self]
+            .modified_keywords
+            .contains_key(Keyword::Shroud.as_ref())
     }
 
     pub(crate) fn hexproof(self, db: &Database) -> bool {
-        db[self].modified_keywords.contains_key(&Keyword::Hexproof)
+        db[self]
+            .modified_keywords
+            .contains_key(Keyword::Hexproof.as_ref())
     }
 
     #[allow(unused)]
     pub(crate) fn flying(self, db: &Database) -> bool {
-        db[self].modified_keywords.contains_key(&Keyword::Flying)
+        db[self]
+            .modified_keywords
+            .contains_key(Keyword::Flying.as_ref())
     }
 
     pub(crate) fn indestructible(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(&Keyword::Indestructible)
+            .contains_key(Keyword::Indestructible.as_ref())
     }
 
     pub(crate) fn vigilance(self, db: &Database) -> bool {
-        db[self].modified_keywords.contains_key(&Keyword::Vigilance)
+        db[self]
+            .modified_keywords
+            .contains_key(Keyword::Vigilance.as_ref())
     }
 
     pub fn name(self, db: &Database) -> &String {
@@ -2070,7 +2099,9 @@ impl CardId {
     }
 
     pub(crate) fn has_flash(self, db: &Database) -> bool {
-        db[self].modified_keywords.contains_key(&Keyword::Flash)
+        db[self]
+            .modified_keywords
+            .contains_key(Keyword::Flash.as_ref())
     }
 
     pub fn pt_text(&self, db: &Database) -> Option<String> {
@@ -2106,10 +2137,10 @@ impl CardId {
             .collect_vec()
     }
 
-    pub(crate) fn cascade(self, db: &mut Database) -> usize {
+    pub(crate) fn cascade(self, db: &mut Database) -> u32 {
         db[self]
             .modified_keywords
-            .get(&Keyword::Cascade)
+            .get(Keyword::Cascade.as_ref())
             .copied()
             .unwrap_or_default()
     }
@@ -2145,10 +2176,10 @@ impl CardId {
                 .any(|ability| matches!(db[*ability].ability, StaticAbility::PreventAttacks))
     }
 
-    pub(crate) fn battle_cry(self, db: &Database) -> usize {
+    pub(crate) fn battle_cry(self, db: &Database) -> u32 {
         db[self]
             .modified_keywords
-            .get(&Keyword::BattleCry)
+            .get(Keyword::BattleCry.as_ref())
             .copied()
             .unwrap_or_default()
     }

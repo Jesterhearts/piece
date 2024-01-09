@@ -9,8 +9,8 @@ Future plans:
 # Adding Cards
 Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto
 schema is defined in the [protos directory](src/protos). In particular, check out the
-[card](src/protos/card.proto), [effect](src/protos/effects.proto#L11), and
-[restriction](src/protos/targets.proto#L8) definitions for all of the fields available. See the
+[card](src/protos/card.proto), [effect](src/protos/effects.proto#L12), and
+[restriction](src/protos/targets.proto#L9) definitions for all of the fields available. See the
 [counter](src/counters.rs), and [keyword](src/card.rs) implementations for their definitions.
 
 ## Validation

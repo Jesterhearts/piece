@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use indexmap::IndexSet;
 use itertools::Itertools;
 
@@ -5,15 +7,15 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::{self, empty::Empty},
     stack::ActiveTarget,
     targets::Restriction,
-    types::{Subtype, Type},
+    types::Subtype,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Cycling {
-    types: IndexSet<Type>,
+    types: HashMap<String, Empty>,
     subtypes: IndexSet<Subtype>,
 }
 
@@ -22,11 +24,7 @@ impl TryFrom<&protogen::effects::Cycling> for Cycling {
 
     fn try_from(value: &protogen::effects::Cycling) -> Result<Self, Self::Error> {
         Ok(Self {
-            types: value
-                .types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            types: value.types.clone(),
             subtypes: value
                 .subtypes
                 .iter()

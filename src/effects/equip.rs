@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use indexmap::IndexSet;
 use itertools::Itertools;
 
@@ -6,7 +8,7 @@ use crate::{
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::{self, empty::Empty},
     stack::ActiveTarget,
     targets::{ControllerRestriction, Restriction},
     types::Type,
@@ -143,7 +145,10 @@ impl EffectBehaviors for Equip {
                     restrictions: vec![
                         Restriction::Controller(ControllerRestriction::Self_),
                         Restriction::OfType {
-                            types: IndexSet::from([Type::Creature]),
+                            types: HashMap::from([(
+                                Type::Creature.as_ref().to_string(),
+                                Empty::default(),
+                            )]),
                             subtypes: Default::default(),
                         },
                     ],

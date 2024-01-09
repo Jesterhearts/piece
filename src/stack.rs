@@ -115,8 +115,8 @@ pub(crate) struct Modes(pub(crate) Vec<usize>);
 
 #[derive(Debug, Clone)]
 pub struct StackEntry {
-    pub(crate) ty: Entry,
     pub(crate) targets: Vec<Vec<ActiveTarget>>,
+    pub(crate) ty: Entry,
     pub(crate) mode: Vec<usize>,
     pub(crate) settled: bool,
 }
@@ -325,7 +325,7 @@ impl StackEntry {
                     if db[*card]
                         .modified_keywords
                         .keys()
-                        .any(|keyword| not_keywords.contains(keyword))
+                        .any(|keyword| not_keywords.contains_key(keyword))
                     {
                         return false;
                     }
@@ -335,7 +335,12 @@ impl StackEntry {
                         return false;
                     };
 
-                    if !types.is_empty() && !db[*card].modified_types.is_disjoint(types) {
+                    if !types.is_empty()
+                        && db[*card]
+                            .modified_types
+                            .iter()
+                            .any(|ty| types.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                     if !subtypes.is_empty() && !db[*card].modified_subtypes.is_disjoint(subtypes) {
@@ -368,7 +373,12 @@ impl StackEntry {
                         return false;
                     };
 
-                    if !types.is_empty() && db[*card].modified_types.is_disjoint(types) {
+                    if !types.is_empty()
+                        && !db[*card]
+                            .modified_types
+                            .iter()
+                            .any(|ty| types.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                     if !subtypes.is_empty() && db[*card].modified_subtypes.is_disjoint(subtypes) {
@@ -514,7 +524,7 @@ impl Stack {
         {
             db[*card]
                 .modified_keywords
-                .contains_key(&Keyword::SplitSecond)
+                .contains_key(Keyword::SplitSecond.as_ref())
         } else {
             false
         }

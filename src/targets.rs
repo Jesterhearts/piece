@@ -1,15 +1,15 @@
-use std::{collections::HashSet, str::FromStr};
+use std::collections::{HashMap, HashSet};
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
 
 use crate::{
-    card::{Color, Keyword},
+    card::Color,
     counters::Counter,
     player::mana_pool::ManaSource,
-    protogen,
-    types::{Subtype, Type},
+    protogen::{self, empty::Empty},
+    types::Subtype,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
@@ -198,9 +198,9 @@ pub(crate) enum Restriction {
     ManaSpentFromSource(ManaSource),
     NonToken,
     NotChosen,
-    NotKeywords(IndexSet<Keyword>),
+    NotKeywords(HashMap<String, u32>),
     NotOfType {
-        types: IndexSet<Type>,
+        types: HashMap<String, Empty>,
         subtypes: IndexSet<Subtype>,
     },
     NotSelf,
@@ -210,7 +210,7 @@ pub(crate) enum Restriction {
     },
     OfColor(HashSet<Color>),
     OfType {
-        types: IndexSet<Type>,
+        types: HashMap<String, Empty>,
         subtypes: IndexSet<Subtype>,
     },
     OnBattlefield,
@@ -300,19 +300,11 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             ),
             protogen::targets::restriction::Restriction::NonToken(_) => Ok(Self::NonToken),
             protogen::targets::restriction::Restriction::NotChosen(_) => Ok(Self::NotChosen),
-            protogen::targets::restriction::Restriction::NotKeywords(not) => Ok(Self::NotKeywords(
-                not.keywords
-                    .split(',')
-                    .filter(|s| !s.trim().is_empty())
-                    .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
-                    .collect::<anyhow::Result<_>>()?,
-            )),
+            protogen::targets::restriction::Restriction::NotKeywords(not) => {
+                Ok(Self::NotKeywords(not.keywords.clone()))
+            }
             protogen::targets::restriction::Restriction::NotOfType(not) => Ok(Self::NotOfType {
-                types: not
-                    .types
-                    .iter()
-                    .map(Type::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                types: not.types.clone(),
                 subtypes: not
                     .subtypes
                     .iter()
@@ -334,11 +326,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .collect::<anyhow::Result<_>>()?,
             )),
             protogen::targets::restriction::Restriction::OfType(of_type) => Ok(Self::OfType {
-                types: of_type
-                    .types
-                    .iter()
-                    .map(Type::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                types: of_type.types.clone(),
                 subtypes: of_type
                     .subtypes
                     .iter()

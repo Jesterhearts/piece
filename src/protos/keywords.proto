@@ -1,0 +1,341 @@
+syntax = "proto3";
+
+package keywords;
+
+message Keyword {
+  message Absorb {}
+  message Affinity {}
+  message Afflict {}
+  message Afterlife {}
+  message Aftermath {}
+  message Amplify {}
+  message Annihilator {}
+  message Ascend {}
+  message Assist {}
+  message AuraSwap {}
+  message Awaken {}
+  message Backup {}
+  message Banding {}
+  message Bargain {}
+  message BattleCry {}
+  message Bestow {}
+  message Blitz {}
+  message Bloodthirst {}
+  message Boast {}
+  message Bushido {}
+  message Buyback {}
+  message Cascade {}
+  message Casualty {}
+  message Champion {}
+  message Changeling {}
+  message Cipher {}
+  message Cleave {}
+  message Companion {}
+  message Compleated {}
+  message Conspire {}
+  message Convoke {}
+  message Craft {}
+  message Crew {}
+  message CumulativeUpkeep {}
+  message Cycling {}
+  message Dash {}
+  message DayboundAndNightbound {}
+  message Deathtouch {}
+  message Decayed {}
+  message Defender {}
+  message Delve {}
+  message Demonstrate {}
+  message Dethrone {}
+  message Devoid {}
+  message Devour {}
+  message Disturb {}
+  message DoubleStrike {}
+  message Dredge {}
+  message Echo {}
+  message Embalm {}
+  message Emerge {}
+  message Enchant {}
+  message Encore {}
+  message Enlist {}
+  message Entwine {}
+  message Epic {}
+  message Equip {}
+  message Escalate {}
+  message Escape {}
+  message Eternalize {}
+  message Evoke {}
+  message Evolve {}
+  message Exalted {}
+  message Exploit {}
+  message Extort {}
+  message Fabricate {}
+  message Fading {}
+  message Fear {}
+  message FirstStrike {}
+  message Flanking {}
+  message Flash {}
+  message Flashback {}
+  message Flying {}
+  message Forecast {}
+  message Foretell {}
+  message ForMirrodin {}
+  message Fortify {}
+  message Frenzy {}
+  message Fuse {}
+  message Graft {}
+  message Gravestorm {}
+  message Haste {}
+  message Haunt {}
+  message Hexproof {}
+  message HiddenAgenda {}
+  message Hideaway {}
+  message Horsemanship {}
+  message Improvise {}
+  message Indestructible {}
+  message Infect {}
+  message Ingest {}
+  message Intimidate {}
+  message JumpStart {}
+  message Kicker {}
+  message Landwalk {}
+  message LevelUp {}
+  message Lifelink {}
+  message LivingMetal {}
+  message LivingWeapon {}
+  message Madness {}
+  message Melee {}
+  message Menace {}
+  message Mentor {}
+  message Miracle {}
+  message Modular {}
+  message MoreThanMeetsTheEye {}
+  message Morph {}
+  message Mutate {}
+  message Myriad {}
+  message Ninjutsu {}
+  message Offering {}
+  message Outlast {}
+  message Overload {}
+  message Partner {}
+  message Persist {}
+  message Phasing {}
+  message Poisonous {}
+  message Protection {}
+  message Prototype {}
+  message Provoke {}
+  message Prowess {}
+  message Prowl {}
+  message Rampage {}
+  message Ravenous {}
+  message Reach {}
+  message ReadAhead {}
+  message Rebound {}
+  message Reconfigure {}
+  message Recover {}
+  message Reinforce {}
+  message Renown {}
+  message Replicate {}
+  message Retrace {}
+  message Riot {}
+  message Ripple {}
+  message Scavenge {}
+  message Shadow {}
+  message Shroud {}
+  message Skulk {}
+  message Soulbond {}
+  message Soulshift {}
+  message SpaceSculptor {}
+  message Spectacle {}
+  message Splice {}
+  message SplitSecond {}
+  message Squad {}
+  message Storm {}
+  message Sunburst {}
+  message Surge {}
+  message Suspend {}
+  message TotemArmor {}
+  message Toxic {}
+  message Training {}
+  message Trample {}
+  message Transfigure {}
+  message Transmute {}
+  message Tribute {}
+  message Undaunted {}
+  message Undying {}
+  message Unearth {}
+  message Unleash {}
+  message Vanishing {}
+  message Vigilance {}
+  message Visit {}
+  message Ward {}
+  message Wither {}
+
+  oneof keyword {
+    Absorb absorb = 1;
+    Affinity affinity = 2;
+    Afflict afflict = 3;
+    Afterlife afterlife = 4;
+    Aftermath aftermath = 5;
+    Amplify amplify = 6;
+    Annihilator annihilator = 7;
+    Ascend ascend = 8;
+    Assist assist = 9;
+    AuraSwap auraSwap = 10;
+    Awaken awaken = 11;
+    Backup backup = 12;
+    Banding banding = 13;
+    Bargain bargain = 14;
+    BattleCry battle_cry = 15;
+    Bestow bestow = 16;
+    Blitz blitz = 17;
+    Bloodthirst bloodthirst = 18;
+    Boast boast = 19;
+    Bushido bushido = 20;
+    Buyback buyback = 21;
+    Cascade cascade = 22;
+    Casualty casualty = 23;
+    Champion champion = 24;
+    Changeling changeling = 25;
+    Cipher cipher = 26;
+    Cleave cleave = 27;
+    Companion companion = 28;
+    Compleated compleated = 29;
+    Conspire conspire = 30;
+    Convoke convoke = 31;
+    Craft craft = 32;
+    Crew crew = 33;
+    CumulativeUpkeep cumulative_upkeep = 34;
+    Cycling cycling = 35;
+    Dash dash = 36;
+    DayboundAndNightbound daybound_and_nightbound = 37;
+    Deathtouch deathtouch = 38;
+    Decayed decayed = 39;
+    Defender defender = 40;
+    Delve delve = 41;
+    Demonstrate demonstrate = 42;
+    Dethrone dethrone = 43;
+    Devoid devoid = 44;
+    Devour devour = 45;
+    Disturb disturb = 46;
+    DoubleStrike double_strike = 47;
+    Dredge dredge = 48;
+    Echo echo = 49;
+    Embalm embalm = 50;
+    Emerge emerge = 51;
+    Enchant enchant = 52;
+    Encore encore = 53;
+    Enlist enlist = 54;
+    Entwine entwine = 55;
+    Epic epic = 56;
+    Equip equip = 57;
+    Escalate escalate = 58;
+    Escape escape = 59;
+    Eternalize eternalize = 60;
+    Evoke evoke = 61;
+    Evolve evolve = 62;
+    Exalted exalted = 63;
+    Exploit exploit = 64;
+    Extort extort = 65;
+    Fabricate fabricate = 66;
+    Fading fading = 67;
+    Fear fear = 68;
+    FirstStrike firstStrike = 69;
+    Flanking flanking = 70;
+    Flash flash = 71;
+    Flashback flashback = 72;
+    Flying flying = 73;
+    Forecast forecast = 74;
+    Foretell foretell = 75;
+    ForMirrodin for_mirrodin = 76;
+    Fortify fortify = 77;
+    Frenzy frenzy = 78;
+    Fuse fuse = 79;
+    Graft graft = 80;
+    Gravestorm gravestorm = 81;
+    Haste haste = 82;
+    Haunt haunt = 83;
+    Hexproof hexproof = 84;
+    HiddenAgenda hidden_agenda = 85;
+    Hideaway hideaway = 86;
+    Horsemanship horsemanship = 87;
+    Improvise improvise = 88;
+    Indestructible indestructible = 89;
+    Infect infect = 90;
+    Ingest ingest = 91;
+    Intimidate intimidate = 92;
+    JumpStart jumpStart = 93;
+    Kicker kicker = 94;
+    Landwalk landwalk = 95;
+    LevelUp levelUp = 96;
+    Lifelink lifelink = 97;
+    LivingMetal living_metal = 98;
+    LivingWeapon living_weapon = 99;
+    Madness madness = 100;
+    Melee melee = 101;
+    Menace menace = 102;
+    Mentor mentor = 103;
+    Miracle miracle = 104;
+    Modular modular = 105;
+    MoreThanMeetsTheEye more_than_meets_the_eye = 106;
+    Morph morph = 107;
+    Mutate mutate = 108;
+    Myriad myriad = 109;
+    Ninjutsu ninjutsu = 110;
+    Offering offering = 111;
+    Outlast outlast = 112;
+    Overload overload = 113;
+    Partner partner = 114;
+    Persist persist = 115;
+    Phasing phasing = 116;
+    Poisonous poisonous = 117;
+    Protection protection = 118;
+    Prototype prototype = 119;
+    Provoke provoke = 120;
+    Prowess prowess = 121;
+    Prowl prowl = 122;
+    Rampage rampage = 123;
+    Ravenous ravenous = 124;
+    Reach reach = 125;
+    ReadAhead readAhead = 126;
+    Rebound rebound = 127;
+    Reconfigure reconfigure = 128;
+    Recover recover = 129;
+    Reinforce reinforce = 130;
+    Renown renown = 131;
+    Replicate replicate = 132;
+    Retrace retrace = 133;
+    Riot riot = 134;
+    Ripple ripple = 135;
+    Scavenge scavenge = 136;
+    Shadow shadow = 137;
+    Shroud shroud = 138;
+    Skulk skulk = 139;
+    Soulbond soulbond = 140;
+    Soulshift soulshift = 141;
+    SpaceSculptor space_sculptor = 142;
+    Spectacle spectacle = 143;
+    Splice splice = 144;
+    SplitSecond splitSecond = 145;
+    Squad squad = 146;
+    Storm storm = 147;
+    Sunburst sunburst = 148;
+    Surge surge = 149;
+    Suspend suspend = 150;
+    TotemArmor totem_armor = 151;
+    Toxic toxic = 152;
+    Training training = 153;
+    Trample trample = 154;
+    Transfigure transfigure = 155;
+    Transmute transmute = 156;
+    Tribute tribute = 157;
+    Undaunted undaunted = 158;
+    Undying undying = 159;
+    Unearth unearth = 160;
+    Unleash unleash = 161;
+    Vanishing vanishing = 162;
+    Vigilance vigilance = 163;
+    Visit visit = 164;
+    Ward ward = 165;
+    Wither wither = 166;
+  }
+}

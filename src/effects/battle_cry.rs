@@ -1,9 +1,10 @@
-use indexmap::IndexSet;
+use std::collections::HashMap;
 
 use crate::{
     battlefield::ActionResult,
     effects::{BattlefieldModifier, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
+    protogen::empty::Empty,
     targets::{ControllerRestriction, Restriction},
     types::Type,
 };
@@ -50,7 +51,10 @@ impl EffectBehaviors for BattleCry {
                     Restriction::Attacking,
                     Restriction::NotSelf,
                     Restriction::OfType {
-                        types: IndexSet::from([Type::Creature]),
+                        types: HashMap::from([(
+                            Type::Creature.as_ref().to_string(),
+                            Empty::default(),
+                        )]),
                         subtypes: Default::default(),
                     },
                 ],

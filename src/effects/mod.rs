@@ -51,9 +51,13 @@ pub(crate) mod tutor_library;
 pub(crate) mod untap_target;
 pub(crate) mod untap_this;
 
-use std::{collections::HashSet, fmt::Debug, str::FromStr, vec::IntoIter};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    vec::IntoIter,
+};
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 use enum_dispatch::enum_dispatch;
 use indexmap::IndexSet;
@@ -61,7 +65,7 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
-    card::{replace_symbols, Color, Keyword},
+    card::{replace_symbols, Color},
     counters::Counter,
     effects::{
         apply_then_if_was::ApplyThenIfWas, battle_cry::BattleCry,
@@ -96,7 +100,7 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::{Controller, Owner},
-    protogen,
+    protogen::{self, empty::Empty},
     stack::ActiveTarget,
     targets::Restriction,
     types::{parse_typeline, Subtype, Type},
@@ -304,10 +308,10 @@ pub(crate) struct ModifyBattlefield {
 
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
 
-    pub(crate) add_types: IndexSet<Type>,
+    pub(crate) add_types: HashMap<String, Empty>,
     pub(crate) add_subtypes: IndexSet<Subtype>,
 
-    pub(crate) remove_types: IndexSet<Type>,
+    pub(crate) remove_types: HashMap<String, Empty>,
     pub(crate) remove_subtypes: IndexSet<Subtype>,
 
     pub(crate) add_colors: HashSet<Color>,
@@ -324,8 +328,8 @@ pub(crate) struct ModifyBattlefield {
     pub(crate) entire_battlefield: bool,
     pub(crate) global: bool,
 
-    pub(crate) add_keywords: ::counter::Counter<Keyword>,
-    pub(crate) remove_keywords: HashSet<Keyword>,
+    pub(crate) add_keywords: HashMap<String, u32>,
+    pub(crate) remove_keywords: HashMap<String, u32>,
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -341,11 +345,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .add_dynamic_power_toughness
                 .as_ref()
                 .map_or(Ok(None), |pt| pt.try_into().map(Some))?,
-            add_types: value
-                .add_types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            add_types: value.add_types.clone(),
             add_subtypes: value
                 .add_subtypes
                 .iter()
@@ -356,11 +356,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .iter()
                 .map(Color::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            remove_types: value
-                .remove_types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            remove_types: value.remove_types.clone(),
             remove_subtypes: value
                 .remove_subtypes
                 .iter()
@@ -385,20 +381,8 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
             remove_all_colors: value.remove_all_colors,
             entire_battlefield: value.entire_battlefield,
             global: value.global,
-            add_keywords: value
-                .add_keywords
-                .split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .map(|s| Keyword::from_str(s).with_context(|| anyhow!("Parsing {}", s)))
-                .collect::<anyhow::Result<_>>()?,
-            remove_keywords: value
-                .remove_keywords
-                .split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .map(|s| Keyword::from_str(s).with_context(|| anyhow!("Parsing {}", s)))
-                .collect::<anyhow::Result<_>>()?,
+            add_keywords: value.add_keywords.clone(),
+            remove_keywords: value.remove_keywords.clone(),
         })
     }
 }
@@ -709,7 +693,7 @@ pub(crate) struct TokenCreature {
     pub(crate) types: IndexSet<Type>,
     pub(crate) subtypes: IndexSet<Subtype>,
     pub(crate) colors: HashSet<Color>,
-    pub(crate) keywords: ::counter::Counter<Keyword>,
+    pub(crate) keywords: HashMap<String, u32>,
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
     pub(crate) power: usize,
     pub(crate) toughness: usize,
@@ -729,12 +713,7 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
                 .iter()
                 .map(Color::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
-            keywords: value
-                .keywords
-                .split(',')
-                .filter(|s| !s.trim().is_empty())
-                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
-                .collect::<anyhow::Result<_>>()?,
+            keywords: value.keywords.clone(),
             dynamic_power_toughness: value
                 .dynamic_power_toughness
                 .as_ref()

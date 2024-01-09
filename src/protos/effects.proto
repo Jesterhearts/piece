@@ -4,6 +4,7 @@ package effects;
 
 import "color.proto";
 import "cost.proto";
+import "empty.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
@@ -232,7 +233,7 @@ message CreateToken {
     optional DynamicPowerToughness dynamic_power_toughness = 4;
     int32 power = 5;
     int32 toughness = 6;
-    string keywords = 7;
+    map<string, uint32> keywords = 7;
   }
   message Map {}
 
@@ -247,7 +248,7 @@ message CreateTokenCopy {
 }
 
 message Cycling {
-  repeated types.Type types = 1;
+  map<string, empty.Empty> types = 1;
   repeated types.Subtype subtypes = 2;
 }
 
@@ -420,9 +421,9 @@ message ModifyBattlefield {
   optional int32 base_power = 1;
   optional int32 base_toughness = 2;
   optional DynamicPowerToughness add_dynamic_power_toughness = 3;
-  repeated types.Type add_types = 4;
+  map<string, empty.Empty> add_types = 4;
   repeated types.Subtype add_subtypes = 5;
-  repeated types.Type remove_types = 6;
+  map<string, empty.Empty> remove_types = 6;
   repeated types.Subtype remove_subtypes = 7;
   repeated color.Color add_colors = 8;
   optional int32 add_power = 9;
@@ -436,8 +437,8 @@ message ModifyBattlefield {
   bool remove_all_abilities = 17;
   bool entire_battlefield = 18;
   bool global = 19;
-  string add_keywords = 20;
-  string remove_keywords = 21;
+  map<string, uint32> add_keywords = 20;
+  map<string, uint32> remove_keywords = 21;
 }
 
 message MultiplyTokens {
@@ -494,7 +495,7 @@ message Scry {
 
 message StaticAbility {
   message AddKeywordsIf {
-    string keywords = 1;
+    map<string, uint32> keywords = 1;
     repeated targets.Restriction restrictions = 2;
   }
   message AllAbilitiesOfExiledWith {

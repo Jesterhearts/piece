@@ -61,7 +61,9 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(token.toughness(&db), Some(1));
     assert_eq!(
         db[token].modified_keywords,
-        [Keyword::Flying].into_iter().collect()
+        [(Keyword::Flying.as_ref().to_string(), 1)]
+            .into_iter()
+            .collect()
     );
 
     Ok(())

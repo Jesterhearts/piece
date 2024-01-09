@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::{anyhow, Context};
 
@@ -19,8 +19,10 @@ use crate::{
     protogen::{
         color::{color, Color},
         effects::gain_mana,
+        empty::Empty,
+        keywords::keyword,
         mana::Mana,
-        types::{subtype, type_, Subtype, Type},
+        types::{subtype, type_, Subtype},
     },
 };
 
@@ -273,13 +275,13 @@ where
     )
 }
 
-pub fn deserialize_types<'de, D>(deserializer: D) -> Result<Vec<Type>, D::Error>
+pub fn deserialize_types<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visit;
     impl<'de> Visitor<'de> for Visit {
-        type Value = Vec<Type>;
+        type Value = HashMap<String, Empty>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("expected a comma separate sequence of types")
@@ -293,10 +295,9 @@ where
                 .map(|v| v.trim())
                 .map(type_::Type::from_str)
                 .map(|type_| {
-                    Ok(Type {
-                        type_: Some(type_.map_err(|e| E::custom(e.to_string()))?),
-                        ..Default::default()
-                    })
+                    type_
+                        .map(|type_| (type_.as_ref().to_string(), Empty::default()))
+                        .map_err(|e| E::custom(e.to_string()))
                 })
                 .collect::<Result<Self::Value, E>>()
         }
@@ -305,16 +306,11 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_types<S>(value: &[Type], serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize_types<S>(value: &HashMap<String, Empty>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(
-        &value
-            .iter()
-            .map(|ty| ty.type_.as_ref().unwrap().as_ref())
-            .join(", "),
-    )
+    serializer.serialize_str(&value.keys().join(", "))
 }
 
 pub fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<Vec<Subtype>, D::Error>
@@ -357,6 +353,55 @@ where
         &value
             .iter()
             .map(|ty| ty.subtype.as_ref().unwrap().as_ref())
+            .join(", "),
+    )
+}
+
+pub fn deserialize_keywords<'de, D>(deserializer: D) -> Result<HashMap<String, u32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = HashMap<String, u32>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of keywords")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            let mut result = HashMap::default();
+            for kw in v
+                .split(',')
+                .map(|v| v.trim())
+                .map(keyword::Keyword::from_str)
+                .map(|keyword| {
+                    keyword
+                        .map(|kw| kw.as_ref().to_string())
+                        .map_err(|e| E::custom(e.to_string()))
+                })
+            {
+                *result.entry(kw?).or_default() += 1;
+            }
+
+            Ok(result)
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+pub fn serialize_keywords<S>(value: &HashMap<String, u32>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &value
+            .iter()
+            .flat_map(|(kw, count)| std::iter::repeat(kw).take((*count) as usize))
             .join(", "),
     )
 }

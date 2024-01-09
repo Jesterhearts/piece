@@ -1,11 +1,11 @@
-use std::{collections::HashSet, str::FromStr};
+use std::collections::{HashMap, HashSet};
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
-    card::{replace_symbols, Keyword},
+    card::replace_symbols,
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     counters::Counter,
     effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
@@ -44,7 +44,7 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AddKeywordsIf {
-    pub(crate) keywords: ::counter::Counter<Keyword>,
+    pub(crate) keywords: HashMap<String, u32>,
     pub(crate) restrictions: Vec<Restriction>,
 }
 
@@ -55,12 +55,7 @@ impl TryFrom<&protogen::effects::static_ability::AddKeywordsIf> for AddKeywordsI
         value: &protogen::effects::static_ability::AddKeywordsIf,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            keywords: value
-                .keywords
-                .split(',')
-                .filter(|s| !s.trim().is_empty())
-                .map(|s| Keyword::from_str(s.trim()).with_context(|| anyhow!("Parsing {}", s)))
-                .collect::<anyhow::Result<_>>()?,
+            keywords: value.keywords.clone(),
             restrictions: value
                 .restrictions
                 .iter()

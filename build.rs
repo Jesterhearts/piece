@@ -11,7 +11,7 @@ fn main() {
 
     impl CustomizeCallback for GenSerde {
         fn message(&self, _message: &MessageDescriptor) -> Customize {
-            Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize)]\n#[serde(deny_unknown_fields)]")
+            Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq)]\n#[serde(deny_unknown_fields)]")
         }
 
         fn oneof(&self, _oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
@@ -21,7 +21,8 @@ fn main() {
                     ::serde::Deserialize,
                     ::strum::EnumIter,
                     ::strum::EnumString,
-                    ::strum::AsRefStr
+                    ::strum::AsRefStr,
+                    Eq,
                 )]
                 #[strum(ascii_case_insensitive)]"#,
             )
@@ -64,7 +65,7 @@ fn main() {
                         default,
                         serialize_with="crate::serialize_types",
                         deserialize_with="crate::deserialize_types",
-                        skip_serializing_if="Vec::is_empty"
+                        skip_serializing_if="::std::collections::HashMap::is_empty"
                     )]"#,
                 )
             } else if field.name() == "subtypes"
@@ -77,6 +78,18 @@ fn main() {
                         serialize_with="crate::serialize_subtypes",
                         deserialize_with="crate::deserialize_subtypes",
                         skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
+            } else if field.name() == "keywords"
+                || field.name() == "add_keywords"
+                || field.name() == "remove_keywords"
+            {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_keywords",
+                        deserialize_with="crate::deserialize_keywords",
+                        skip_serializing_if="::std::collections::HashMap::is_empty"
                     )]"#,
                 )
             } else if field.is_repeated() {

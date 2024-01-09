@@ -3,6 +3,7 @@ syntax = "proto3";
 package targets;
 
 import "color.proto";
+import "empty.proto";
 import "types.proto";
 
 message Restriction {
@@ -51,10 +52,10 @@ message Restriction {
   message NonToken {}
   message NotChosen {}
   message NotKeywords {
-    string keywords = 1;
+    map<string, uint32> keywords = 1;
   }
   message NotOfType {
-    repeated types.Type types = 1;
+    map<string, empty.Empty> types = 1;
     repeated types.Subtype subtypes = 2;
   }
   message NotSelf {}
@@ -66,7 +67,7 @@ message Restriction {
     repeated color.Color colors = 1;
   }
   message OfType {
-    repeated types.Type types = 1;
+    map<string, empty.Empty> types = 1;
     repeated types.Subtype subtypes = 2;
   }
   message OnBattlefield {}
