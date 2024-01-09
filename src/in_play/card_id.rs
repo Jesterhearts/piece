@@ -364,10 +364,22 @@ impl CardId {
         db[self].transformed = !db[self].transformed;
 
         db[self].static_abilities.clear();
+        db[self].activated_abilities.clear();
+        db[self].mana_abilities.clear();
 
         for ability in self.faceup_face(db).static_abilities.clone() {
             let id = StaticAbilityId::upload(db, self, ability);
             db[self].static_abilities.insert(id);
+        }
+
+        for ability in self.faceup_face(db).activated_abilities.clone() {
+            let id = ActivatedAbilityId::upload(db, self, ability);
+            db[self].activated_abilities.insert(id);
+        }
+
+        for ability in self.faceup_face(db).mana_abilities.clone() {
+            let id = GainManaAbilityId::upload(db, self, ability);
+            db[self].mana_abilities.insert(id);
         }
     }
 

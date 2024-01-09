@@ -18,7 +18,7 @@ use crate::{
         AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, EffectDuration,
         ModifyBattlefield, ReplacementAbility, Replacing, Token,
     },
-    in_play::{CardId, CastFrom, Database, ExileReason, ModifierId},
+    in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry},
     mana::{Mana, ManaRestriction},
@@ -1419,7 +1419,10 @@ impl Battlefields {
                 } else if target.is_in_location(db, Location::Graveyard) {
                     Location::Graveyard
                 } else {
-                    unreachable!()
+                    unreachable!(
+                        "unexpected location {:?}",
+                        target_from_location(db, *target)
+                    )
                 };
                 move_card_to_battlefield(db, *target, *enters_tapped, &mut results, None);
                 match location {

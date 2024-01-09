@@ -28,6 +28,10 @@ activated_abilities:
                   locations:
                     - location: !InGraveyard {}
                     - location: !OnBattlefield {}
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
     effects:
       - effect: !ReturnTransformed {}
     sorcery_speed: true
