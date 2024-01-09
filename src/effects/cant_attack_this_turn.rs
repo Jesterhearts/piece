@@ -45,6 +45,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
@@ -52,8 +53,12 @@ impl EffectBehaviors for CantAttackThisTurn {
             .all_players()
             .into_iter()
             .filter(|player| {
-                player.passes_restrictions(db, controller, &source.faceup_face(db).restrictions)
-                    && player.passes_restrictions(db, controller, &self.retrictions)
+                player.passes_restrictions(
+                    db,
+                    log_session,
+                    controller,
+                    &source.faceup_face(db).restrictions,
+                ) && player.passes_restrictions(db, log_session, controller, &self.retrictions)
             })
             .map(|player| ActiveTarget::Player { id: player })
             .collect_vec()

@@ -8,6 +8,7 @@ use crate::{
     cost::ReduceWhen,
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{target_from_location, CardId, Database, ExileReason},
+    log::LogId,
     mana::{Mana, ManaCost},
     pending_results::{PendingResult, PendingResults},
     player::mana_pool::{ManaSource, SpendReason},
@@ -305,7 +306,12 @@ impl Cost {
                     .copied()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
-                            && target.passes_restrictions(db, source, &sac.restrictions)
+                            && target.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                source,
+                                &sac.restrictions,
+                            )
                     })
                     .collect_vec();
                 if valid_targets != sac.valid_targets {
@@ -323,7 +329,12 @@ impl Cost {
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
                             && !target.tapped(db)
-                            && target.passes_restrictions(db, source, &tap.restrictions)
+                            && target.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                source,
+                                &tap.restrictions,
+                            )
                     })
                     .collect_vec();
                 if valid_targets != tap.valid_targets {
@@ -341,7 +352,12 @@ impl Cost {
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
                             && !target.tapped(db)
-                            && target.passes_restrictions(db, source, &tap.restrictions)
+                            && target.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                source,
+                                &tap.restrictions,
+                            )
                     })
                     .collect_vec();
                 if valid_targets != tap.valid_targets {
@@ -420,7 +436,14 @@ impl Cost {
                 let valid_targets = db.battlefield[controller]
                     .iter()
                     .copied()
-                    .filter(|target| target.passes_restrictions(db, source, &exile.restrictions))
+                    .filter(|target| {
+                        target.passes_restrictions(
+                            db,
+                            LogId::current(db),
+                            source,
+                            &exile.restrictions,
+                        )
+                    })
                     .collect_vec();
 
                 if valid_targets != exile.valid_targets {
@@ -438,7 +461,12 @@ impl Cost {
                     .copied()
                     .filter(|target| {
                         db[*target].controller == controller
-                            && target.passes_restrictions(db, source, &exile.restrictions)
+                            && target.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                source,
+                                &exile.restrictions,
+                            )
                     })
                     .collect_vec();
 

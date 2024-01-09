@@ -7,7 +7,7 @@ use crate::{
     battlefield::ActionResult,
     effects::EffectBehaviors,
     in_play::{CardId, Database},
-    log::Log,
+    log::{Log, LogId},
     pending_results::{Pending, PendingResult, TargetSource},
     stack::{ActiveTarget, Stack},
     triggers::TriggerSource,
@@ -19,6 +19,7 @@ pub(crate) struct ChooseTargets {
     pub(crate) valid_targets: Vec<ActiveTarget>,
     chosen: IndexMap<usize, usize>,
     skipping_remainder: bool,
+    log_session: LogId,
     card: CardId,
 }
 
@@ -26,6 +27,7 @@ impl ChooseTargets {
     pub(crate) fn new(
         target_source: TargetSource,
         valid_targets: Vec<ActiveTarget>,
+        log_session: LogId,
         card: CardId,
     ) -> Self {
         Self {
@@ -33,6 +35,7 @@ impl ChooseTargets {
             valid_targets,
             chosen: Default::default(),
             skipping_remainder: false,
+            log_session,
             card,
         }
     }
@@ -45,7 +48,13 @@ impl ChooseTargets {
         let controller = db[self.card].controller;
         match &self.target_source {
             TargetSource::Effect(effect) => {
-                let new_targets = effect.valid_targets(db, self.card, controller, already_chosen);
+                let new_targets = effect.valid_targets(
+                    db,
+                    self.card,
+                    self.log_session,
+                    controller,
+                    already_chosen,
+                );
                 if new_targets != self.valid_targets {
                     self.valid_targets = new_targets;
                     true
@@ -166,6 +175,7 @@ impl PendingResult for ChooseTargets {
                                 if listener == *id
                                     && self.card.passes_restrictions(
                                         db,
+                                        LogId::current(db),
                                         listener,
                                         &trigger.trigger.restrictions,
                                     )

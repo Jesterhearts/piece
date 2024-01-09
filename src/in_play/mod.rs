@@ -87,6 +87,12 @@ impl std::ops::Index<CardId> for Database {
     }
 }
 
+impl std::ops::IndexMut<CardId> for Database {
+    fn index_mut(&mut self, index: CardId) -> &mut Self::Output {
+        self.cards.get_mut(&index).unwrap()
+    }
+}
+
 impl std::ops::Index<ModifierId> for Database {
     type Output = ModifierInPlay;
 
@@ -95,9 +101,9 @@ impl std::ops::Index<ModifierId> for Database {
     }
 }
 
-impl std::ops::IndexMut<CardId> for Database {
-    fn index_mut(&mut self, index: CardId) -> &mut Self::Output {
-        self.cards.get_mut(&index).unwrap()
+impl std::ops::IndexMut<ModifierId> for Database {
+    fn index_mut(&mut self, index: ModifierId) -> &mut Self::Output {
+        self.modifiers.get_mut(&index).unwrap()
     }
 }
 

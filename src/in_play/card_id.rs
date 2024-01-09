@@ -27,7 +27,7 @@ use crate::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId, NEXT_CARD_ID,
     },
-    log::{LeaveReason, Log, LogEntry},
+    log::{LeaveReason, Log, LogEntry, LogId},
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{mana_pool::ManaSource, Controller, Owner},
@@ -234,7 +234,7 @@ pub struct CardInPlay {
 }
 
 impl CardInPlay {
-    fn reset(&mut self) {
+    fn reset(&mut self, preserve_exiled: bool) {
         let mut card = Card::default();
         std::mem::swap(&mut card, &mut self.card);
 
@@ -247,6 +247,11 @@ impl CardInPlay {
         let mut mana_abilities = HashSet::default();
         std::mem::swap(&mut mana_abilities, &mut self.mana_abilities);
 
+        let mut exiling = HashSet::default();
+        if preserve_exiled {
+            std::mem::swap(&mut exiling, &mut self.exiling);
+        }
+
         let owner = self.owner;
         *self = Self {
             card,
@@ -255,6 +260,7 @@ impl CardInPlay {
             activated_abilities,
             mana_abilities,
             controller: owner.into(),
+            exiling,
             ..Default::default()
         };
     }
@@ -425,16 +431,27 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
 
-            db[self].reset();
+            db[self].reset(false);
             db.stack.remove(self);
 
             let view = db.owner_view_mut(db[self].owner);
-            view.battlefield.remove(&self);
-            view.graveyard.remove(&self);
-            view.exile.remove(&self);
+            view.battlefield.shift_remove(&self);
+            view.graveyard.shift_remove(&self);
+            view.exile.shift_remove(&self);
             view.library.remove(self);
 
             view.hand.insert(self);
+
+            for sa in db[self]
+                .modified_static_abilities
+                .clone()
+                .into_iter()
+                .collect_vec()
+            {
+                if let Some(modifier) = db[sa].owned_modifier.take() {
+                    modifier.deactivate(db);
+                }
+            }
 
             self.apply_modifiers_layered(db);
         }
@@ -462,11 +479,11 @@ impl CardId {
             db[self].cast_from = from;
 
             let view = db.owner_view_mut(db[self].owner);
-            view.battlefield.remove(&self);
-            view.graveyard.remove(&self);
-            view.exile.remove(&self);
+            view.battlefield.shift_remove(&self);
+            view.graveyard.shift_remove(&self);
+            view.exile.shift_remove(&self);
             view.library.remove(self);
-            view.hand.remove(&self);
+            view.hand.shift_remove(&self);
 
             Stack::push_card(db, self, targets, chosen_modes)
         }
@@ -476,12 +493,21 @@ impl CardId {
         db.stack.remove(self);
 
         let view = db.owner_view_mut(db[self].controller.into());
-        view.graveyard.remove(&self);
-        view.exile.remove(&self);
+        view.graveyard.shift_remove(&self);
+        view.exile.shift_remove(&self);
         view.library.remove(self);
-        view.hand.remove(&self);
+        view.hand.shift_remove(&self);
 
         view.battlefield.insert(self);
+
+        for modifier in db[self]
+            .modified_static_abilities
+            .iter()
+            .filter_map(|sa| db[*sa].owned_modifier)
+            .collect_vec()
+        {
+            modifier.activate(&mut db.modifiers);
+        }
 
         db[self].entered_battlefield_turn = Some(db.turn.turn_count);
 
@@ -498,18 +524,29 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
 
-            db[self].reset();
+            db[self].reset(false);
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
-            view.exile.remove(&self);
+            view.exile.shift_remove(&self);
             view.library.remove(self);
-            view.hand.remove(&self);
-            view.battlefield.remove(&self);
+            view.hand.shift_remove(&self);
+            view.battlefield.shift_remove(&self);
 
             let owner = db[self].owner;
             db.graveyard[owner].insert(self);
             if self.is_permanent(db) {
                 *db.graveyard.descended_this_turn.entry(owner).or_default() += 1;
+            }
+
+            for sa in db[self]
+                .modified_static_abilities
+                .clone()
+                .into_iter()
+                .collect_vec()
+            {
+                if let Some(modifier) = db[sa].owned_modifier.take() {
+                    modifier.deactivate(db);
+                }
             }
 
             self.apply_modifiers_layered(db);
@@ -527,13 +564,24 @@ impl CardId {
         } else {
             self.remove_all_modifiers(db);
 
-            db[self].reset();
+            db[self].reset(false);
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
-            view.exile.remove(&self);
-            view.hand.remove(&self);
-            view.battlefield.remove(&self);
-            view.graveyard.remove(&self);
+            view.exile.shift_remove(&self);
+            view.hand.shift_remove(&self);
+            view.battlefield.shift_remove(&self);
+            view.graveyard.shift_remove(&self);
+
+            for sa in db[self]
+                .modified_static_abilities
+                .clone()
+                .into_iter()
+                .collect_vec()
+            {
+                if let Some(modifier) = db[sa].owned_modifier.take() {
+                    modifier.deactivate(db);
+                }
+            }
 
             self.apply_modifiers_layered(db);
             true
@@ -558,18 +606,30 @@ impl CardId {
 
             db[source].exiling.insert(self);
 
-            db[self].reset();
+            db[self].reset(matches!(reason, Some(ExileReason::Craft)));
+
             db[self].exile_reason = reason;
             db[self].exile_duration = Some(duration);
 
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
-            view.hand.remove(&self);
+            view.hand.shift_remove(&self);
             view.library.remove(self);
-            view.battlefield.remove(&self);
-            view.graveyard.remove(&self);
+            view.battlefield.shift_remove(&self);
+            view.graveyard.shift_remove(&self);
 
             view.exile.insert(self);
+
+            for sa in db[self]
+                .modified_static_abilities
+                .clone()
+                .into_iter()
+                .collect_vec()
+            {
+                if let Some(modifier) = db[sa].owned_modifier.take() {
+                    modifier.deactivate(db);
+                }
+            }
 
             self.apply_modifiers_layered(db);
         }
@@ -578,14 +638,25 @@ impl CardId {
     pub(crate) fn move_to_limbo(self, db: &mut Database) {
         self.remove_all_modifiers(db);
 
-        db[self].reset();
+        db[self].reset(false);
         db.stack.remove(self);
         let view = db.owner_view_mut(db[self].owner);
-        view.hand.remove(&self);
+        view.hand.shift_remove(&self);
         view.library.remove(self);
-        view.battlefield.remove(&self);
-        view.graveyard.remove(&self);
-        view.exile.remove(&self);
+        view.battlefield.shift_remove(&self);
+        view.graveyard.shift_remove(&self);
+        view.exile.shift_remove(&self);
+
+        for sa in db[self]
+            .modified_static_abilities
+            .clone()
+            .into_iter()
+            .collect_vec()
+        {
+            if let Some(modifier) = db[sa].owned_modifier.take() {
+                modifier.deactivate(db);
+            }
+        }
 
         self.apply_modifiers_layered(db);
     }
@@ -777,6 +848,7 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
+                    LogId::current(db),
                     modifier.source,
                     db[self].controller,
                     &modifier.modifier.restrictions,
@@ -864,6 +936,7 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
+                    LogId::current(db),
                     modifier.source,
                     db[self].controller,
                     &modifier.modifier.restrictions,
@@ -935,6 +1008,7 @@ impl CardId {
                     });
                     if self.passes_restrictions_given_attributes(
                         db,
+                        LogId::current(db),
                         self,
                         db[self].controller,
                         restrictions,
@@ -1022,6 +1096,7 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
+                    LogId::current(db),
                     modifier.source,
                     db[self].controller,
                     &modifier.modifier.restrictions,
@@ -1117,6 +1192,7 @@ impl CardId {
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
+                    LogId::current(db),
                     modifier.source,
                     db[self].controller,
                     &modifier.modifier.restrictions,
@@ -1306,6 +1382,7 @@ impl CardId {
                 .filter(|card| {
                     card.passes_restrictions_given_attributes(
                         db,
+                        LogId::current(db),
                         source,
                         self_controller,
                         &matching.restrictions,
@@ -1367,6 +1444,7 @@ impl CardId {
     pub(crate) fn passes_restrictions(
         self,
         db: &Database,
+        log_session: LogId,
         source: CardId,
         restrictions: &[Restriction],
     ) -> bool {
@@ -1374,6 +1452,7 @@ impl CardId {
         let toughness = self.toughness(db);
         self.passes_restrictions_given_attributes(
             db,
+            log_session,
             source,
             db[self].controller,
             restrictions,
@@ -1391,6 +1470,7 @@ impl CardId {
     fn passes_restrictions_given_attributes(
         self,
         db: &Database,
+        log_session: LogId,
         source: CardId,
         self_controller: Controller,
         restrictions: &[Restriction],
@@ -1474,7 +1554,7 @@ impl CardId {
                     }
                 }
                 Restriction::ControllerJustCast => {
-                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         let LogEntry::Cast { card } = entry else {
                             return false;
                         };
@@ -1513,7 +1593,9 @@ impl CardId {
                     restrictions,
                 } => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
-                        .filter(|card| card.passes_restrictions(db, source, restrictions))
+                        .filter(|card| {
+                            card.passes_restrictions(db, log_session, source, restrictions)
+                        })
                         .count();
                     if entered_this_turn < *count {
                         return false;
@@ -1535,7 +1617,7 @@ impl CardId {
                     }
                 }
                 Restriction::SpellOrAbilityJustCast => {
-                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Cast { card } = entry {
                             *card == self
                         } else {
@@ -1567,7 +1649,7 @@ impl CardId {
                     };
                 }
                 Restriction::NotChosen => {
-                    if Log::current_session(db).iter().any(|(_, entry)| {
+                    if Log::session(db, log_session).iter().any(|(_, entry)| {
                         let LogEntry::CardChosen { card } = entry else {
                             return false;
                         };
@@ -1664,7 +1746,7 @@ impl CardId {
                     }
                 }
                 Restriction::TargetedBy => {
-                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Targeted {
                             source: targeting,
                             target,
@@ -1766,7 +1848,9 @@ impl CardId {
                 .battlefields
                 .values()
                 .flat_map(|battlefield| battlefield.iter())
-                .filter(|card| card.passes_restrictions(db, self, &matching.restrictions))
+                .filter(|card| {
+                    card.passes_restrictions(db, LogId::current(db), self, &matching.restrictions)
+                })
                 .count(),
         }
     }
@@ -1790,11 +1874,13 @@ impl CardId {
         let controller = db[self].controller;
         if !ability.apply_to_self(db) {
             for effect in ability.effects(db).iter() {
-                targets.push(
-                    effect
-                        .effect
-                        .valid_targets(db, self, controller, already_chosen),
-                );
+                targets.push(effect.effect.valid_targets(
+                    db,
+                    self,
+                    LogId::current(db),
+                    controller,
+                    already_chosen,
+                ));
             }
         } else {
             targets.push(vec![ActiveTarget::Battlefield { id: self }])
@@ -1808,7 +1894,12 @@ impl CardId {
             let mut targets = vec![];
             let controller = db[self].controller;
             for card in db.battlefield[controller].iter() {
-                if !card.passes_restrictions(db, self, &self.faceup_face(db).restrictions) {
+                if !card.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    self,
+                    &self.faceup_face(db).restrictions,
+                ) {
                     continue;
                 }
 
@@ -1824,10 +1915,11 @@ impl CardId {
         }
     }
 
-    #[instrument(level = Level::DEBUG)]
+    #[instrument(level = Level::DEBUG, skip(db))]
     pub(crate) fn can_be_countered(
         self,
         db: &Database,
+        log_session: LogId,
         source: CardId,
         restrictions: &[Restriction],
     ) -> bool {
@@ -1835,7 +1927,7 @@ impl CardId {
             return false;
         }
 
-        if !self.passes_restrictions(db, source, restrictions) {
+        if !self.passes_restrictions(db, log_session, source, restrictions) {
             return false;
         }
 
@@ -1843,7 +1935,7 @@ impl CardId {
             match &ability {
                 StaticAbility::GreenCannotBeCountered { restrictions } => {
                     if db[self].modified_colors.contains(&Color::Green)
-                        && self.passes_restrictions(db, source, restrictions)
+                        && self.passes_restrictions(db, log_session, source, restrictions)
                     {
                         return false;
                     }
@@ -1885,7 +1977,12 @@ impl CardId {
 
         let mut pending = PendingResults::default();
         for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Tapped) {
-            if self.passes_restrictions(db, listener, &trigger.trigger.restrictions) {
+            if self.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }

@@ -49,6 +49,21 @@ pub(crate) enum Source {
     Effect(Effect, CardId),
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum CopySource {
+    Card {
+        card: CardId,
+        controller: Controller,
+        modes: Vec<usize>,
+        x_is: Option<usize>,
+    },
+    Ability {
+        source: CardId,
+        ability: Ability,
+        x_is: Option<usize>,
+    },
+}
+
 impl Source {
     fn mode_options(&self, db: &mut Database) -> Vec<(usize, String)> {
         match self {
@@ -189,6 +204,7 @@ pub struct PendingResults {
     apply_in_stages: bool,
     gain_mana: Option<(CardId, GainManaAbilityId)>,
     add_to_stack: Option<Source>,
+    copy_to_stack: Vec<CopySource>,
     cast_from: Option<CastFrom>,
 
     x_is: Option<usize>,
@@ -208,6 +224,35 @@ impl PendingResults {
     pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: Option<CastFrom>) {
         self.add_to_stack = Some(Source::Card(source));
         self.cast_from(from);
+    }
+
+    pub(crate) fn copy_ability_to_stack(
+        &mut self,
+        source: CardId,
+        ability: Ability,
+        _controller: Controller,
+        x_is: Option<usize>,
+    ) {
+        self.copy_to_stack.push(CopySource::Ability {
+            source,
+            ability,
+            x_is,
+        });
+    }
+
+    pub(crate) fn copy_card_to_stack(
+        &mut self,
+        source: CardId,
+        controller: Controller,
+        modes: Vec<usize>,
+        x_is: Option<usize>,
+    ) {
+        self.copy_to_stack.push(CopySource::Card {
+            card: source,
+            controller,
+            modes,
+            x_is,
+        });
     }
 
     pub(crate) fn cast_from(&mut self, from: Option<CastFrom>) {
@@ -361,15 +406,6 @@ impl PendingResults {
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
         debug!("Choosing {:?} for {:#?}", choice, self);
 
-        let mut recomputed = false;
-        for pend in self.pending.iter_mut() {
-            recomputed |= pend.recompute_targets(db, &self.all_chosen_targets);
-        }
-
-        if recomputed {
-            return ResolutionResult::TryAgain;
-        }
-
         self.pending.retain(|pend| {
             let Pending::PayCosts(pay) = pend else {
                 return true;
@@ -425,6 +461,37 @@ impl PendingResults {
                             source,
                             restriction,
                         })
+                    }
+                }
+            } else if !self.copy_to_stack.is_empty() {
+                for copy in self.copy_to_stack.drain(..) {
+                    match copy {
+                        CopySource::Card {
+                            card,
+                            controller,
+                            modes,
+                            x_is,
+                        } => {
+                            self.settled_effects.push(ActionResult::CopyCardInStack {
+                                card,
+                                controller,
+                                targets: self.chosen_targets.clone(),
+                                x_is,
+                                chosen_modes: modes,
+                            });
+
+                            self.chosen_modes.clear();
+                        }
+                        CopySource::Ability {
+                            source,
+                            ability,
+                            x_is,
+                        } => self.settled_effects.push(ActionResult::CopyAbility {
+                            source,
+                            ability,
+                            targets: self.chosen_targets.clone(),
+                            x_is,
+                        }),
                     }
                 }
             }

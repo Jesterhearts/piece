@@ -51,6 +51,7 @@ impl EffectBehaviors for TargetToTopOfLibrary {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
@@ -61,12 +62,17 @@ impl EffectBehaviors for TargetToTopOfLibrary {
             .values()
             .flat_map(|b| b.iter())
             .filter(|card| {
-                card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
+                card.passes_restrictions(
+                    db,
+                    log_session,
+                    source,
+                    &source.faceup_face(db).restrictions,
+                )
             })
             .collect_vec()
         {
             if target.can_be_targeted(db, controller)
-                && target.passes_restrictions(db, source, &self.restrictions)
+                && target.passes_restrictions(db, log_session, source, &self.restrictions)
             {
                 let target = ActiveTarget::Battlefield { id: *target };
                 if !already_chosen.contains(&target) {
@@ -85,11 +91,17 @@ impl EffectBehaviors for TargetToTopOfLibrary {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ));
     }

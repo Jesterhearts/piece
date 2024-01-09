@@ -17,7 +17,7 @@ use crate::{
     effects::{EffectBehaviors, ReplacementAbility, Replacing},
     in_play::{CardId, Database},
     library::Library,
-    log::{Log, LogEntry},
+    log::{Log, LogEntry, LogId},
     mana::{Mana, ManaCost, ManaRestriction},
     pending_results::PendingResults,
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
@@ -52,6 +52,7 @@ impl Owner {
     pub(crate) fn passes_restrictions(
         self,
         db: &Database,
+        log_session: LogId,
         controller: Controller,
         restrictions: &[Restriction],
     ) -> bool {
@@ -197,7 +198,9 @@ impl Owner {
                     restrictions,
                 } => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
-                        .filter(|card| card.passes_restrictions(db, *card, restrictions))
+                        .filter(|card| {
+                            card.passes_restrictions(db, log_session, *card, restrictions)
+                        })
                         .count();
                     if entered_this_turn < *count {
                         return false;
@@ -395,7 +398,12 @@ impl Player {
         for _ in 0..count {
             if replacements.len() > 0 {
                 while let Some((source, replacement)) = replacements.next() {
-                    if !source.passes_restrictions(db, source, &replacement.restrictions) {
+                    if !source.passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        source,
+                        &replacement.restrictions,
+                    ) {
                         continue;
                     }
 

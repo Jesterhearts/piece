@@ -1,5 +1,5 @@
 use crate::{
-    battlefield::ActionResult, effects::EffectBehaviors, player::Owner, protogen,
+    battlefield::ActionResult, effects::EffectBehaviors, log::LogId, player::Owner, protogen,
     targets::Restriction,
 };
 
@@ -49,7 +49,12 @@ impl EffectBehaviors for ControllerDiscards {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)
+            || !Owner::from(controller).passes_restrictions(
+                db,
+                LogId::current(db),
+                controller,
+                &self.unless,
+            )
         {
             results.push_settled(ActionResult::DiscardCards {
                 target: controller,
@@ -68,7 +73,12 @@ impl EffectBehaviors for ControllerDiscards {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)
+            || !Owner::from(controller).passes_restrictions(
+                db,
+                LogId::current(db),
+                controller,
+                &self.unless,
+            )
         {
             results.push_settled(ActionResult::DiscardCards {
                 target: controller,

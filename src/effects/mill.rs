@@ -53,13 +53,16 @@ impl EffectBehaviors for Mill {
         &self,
         db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         db.all_players
             .all_players()
             .into_iter()
-            .filter(|player| player.passes_restrictions(db, controller, &self.restrictions))
+            .filter(|player| {
+                player.passes_restrictions(db, log_session, controller, &self.restrictions)
+            })
             .map(|player| ActiveTarget::Player { id: player })
             .collect_vec()
     }
@@ -71,12 +74,18 @@ impl EffectBehaviors for Mill {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
 
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ));
     }

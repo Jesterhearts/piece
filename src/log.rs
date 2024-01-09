@@ -19,7 +19,7 @@ impl LogId {
         Self(db.log.current_id)
     }
 
-    fn current(db: &Database) -> Self {
+    pub(crate) fn current(db: &Database) -> Self {
         Self(db.log.current_id)
     }
 }
@@ -154,6 +154,37 @@ impl Log {
 
     pub fn since_last_turn(db: &Database) -> &[(LogId, LogEntry)] {
         db.log.entries.as_slice().split_at(db.log.last_turn).1
+    }
+
+    pub(crate) fn session(db: &Database, session: LogId) -> &[(LogId, LogEntry)] {
+        if let Some(after) = db
+            .log
+            .entries
+            .iter()
+            .rev()
+            .position(|(id, _)| *id == session)
+        {
+            if let Some(len) = db
+                .log
+                .entries
+                .iter()
+                .rev()
+                .skip(after)
+                .position(|(id, _)| *id != session)
+            {
+                let final_entry = db.log.entries.len() - after;
+                let first_entry = db.log.entries.len() - (len + after);
+                event!(Level::DEBUG, ?after, ?len, ?final_entry, ?first_entry);
+
+                let entries = &db.log.entries.as_slice()[first_entry..final_entry];
+                event!(Level::DEBUG, ?entries, "{:?}", session,);
+                entries
+            } else {
+                &[]
+            }
+        } else {
+            &[]
+        }
     }
 
     pub(crate) fn current_session(db: &Database) -> &[(LogId, LogEntry)] {

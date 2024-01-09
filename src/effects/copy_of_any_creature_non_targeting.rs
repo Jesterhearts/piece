@@ -37,12 +37,13 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         already_chosen: &HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for creature in db.cards.keys().filter(|card| {
-            card.passes_restrictions(db, source, &card.faceup_face(db).restrictions)
+            card.passes_restrictions(db, log_session, source, &card.faceup_face(db).restrictions)
                 && card.is_in_location(db, Location::Battlefield)
                 && card.types_intersect(db, &IndexSet::from([Type::Creature]))
         }) {
@@ -63,11 +64,17 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::CopyOfAnyCreatureNonTargeting(*self)),
+            TargetSource::Effect(Effect::from(*self)),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ));
     }

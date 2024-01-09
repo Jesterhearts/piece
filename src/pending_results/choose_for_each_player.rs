@@ -39,9 +39,13 @@ impl ChooseForEachPlayer {
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
         let controller = db[self.card].controller;
-        let new_targets =
-            self.target_source
-                .valid_targets(db, self.card, controller, already_chosen);
+        let new_targets = self.target_source.valid_targets(
+            db,
+            self.card,
+            crate::log::LogId::current(db),
+            controller,
+            already_chosen,
+        );
         if new_targets != self.valid_targets {
             self.valid_targets = new_targets;
             true

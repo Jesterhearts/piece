@@ -6,6 +6,7 @@ use std::{
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexMap;
 use itertools::Itertools;
+use tracing::Level;
 
 use crate::{
     abilities::{Ability, TriggeredAbility},
@@ -14,7 +15,7 @@ use crate::{
     cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
-    log::{Log, LogEntry},
+    log::{Log, LogEntry, LogId},
     pending_results::{
         choose_targets::ChooseTargets,
         pay_costs::TapPermanent,
@@ -136,6 +137,7 @@ impl StackEntry {
     pub(crate) fn passes_restrictions(
         &self,
         db: &Database,
+        log_session: LogId,
         source: CardId,
         restrictions: &[Restriction],
     ) -> bool {
@@ -208,7 +210,7 @@ impl StackEntry {
                     }
                 }
                 Restriction::ControllerJustCast => {
-                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         let LogEntry::Cast { card } = entry else {
                             return false;
                         };
@@ -247,7 +249,9 @@ impl StackEntry {
                     restrictions,
                 } => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
-                        .filter(|card| card.passes_restrictions(db, source, restrictions))
+                        .filter(|card| {
+                            card.passes_restrictions(db, log_session, source, restrictions)
+                        })
                         .count();
                     if entered_this_turn < *count {
                         return false;
@@ -304,7 +308,7 @@ impl StackEntry {
                         return false;
                     };
 
-                    if Log::current_session(db).iter().any(|(_, entry)| {
+                    if Log::session(db, log_session).iter().any(|(_, entry)| {
                         let LogEntry::CardChosen { card } = entry else {
                             return false;
                         };
@@ -409,7 +413,7 @@ impl StackEntry {
                 Restriction::SpellOrAbilityJustCast => {
                     match &self.ty {
                         Entry::Card(candidate) => {
-                            if !Log::current_session(db).iter().any(|(_, entry)| {
+                            if !Log::session(db, log_session).iter().any(|(_, entry)| {
                                 if let LogEntry::Cast { card } = entry {
                                     *card == *candidate
                                 } else {
@@ -423,8 +427,9 @@ impl StackEntry {
                             source,
                             ability: Ability::Activated(candidate),
                         } => {
-                            if !Log::current_session(db).iter().any(|(_, entry)| {
+                            if !Log::session(db, log_session).iter().any(|(_, entry)| {
                                 if let LogEntry::Activated { card, ability } = entry {
+                                    event!(Level::DEBUG, ?card, ?source, ?ability, ?candidate);
                                     *card == *source && *ability == *candidate
                                 } else {
                                     false
@@ -442,7 +447,7 @@ impl StackEntry {
                     return false;
                 }
                 Restriction::TargetedBy => {
-                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Targeted {
                             source: targeting,
                             target,
@@ -597,11 +602,17 @@ impl Stack {
             if targets.len() != effect.needs_targets(db, source)
                 && effect.needs_targets(db, source) != 0
             {
-                let valid_targets =
-                    effect.valid_targets(db, source, controller, &HashSet::default());
+                let valid_targets = effect.valid_targets(
+                    db,
+                    source,
+                    crate::log::LogId::current(db),
+                    controller,
+                    &HashSet::default(),
+                );
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect),
                     valid_targets,
+                    crate::log::LogId::current(db),
                     source,
                 ));
                 continue;
@@ -609,7 +620,13 @@ impl Stack {
 
             if effect.wants_targets(db, source) > 0 {
                 let valid_targets = effect
-                    .valid_targets(db, source, controller, &HashSet::default())
+                    .valid_targets(
+                        db,
+                        source,
+                        crate::log::LogId::current(db),
+                        controller,
+                        &HashSet::default(),
+                    )
                     .into_iter()
                     .collect::<HashSet<_>>();
                 if !targets.iter().all(|target| valid_targets.contains(target)) {
@@ -692,6 +709,7 @@ impl Stack {
             targets.push(effect.effect.valid_targets(
                 db,
                 listener,
+                crate::log::LogId::current(db),
                 controller,
                 &HashSet::default(),
             ));
@@ -744,7 +762,12 @@ impl Stack {
                 Log::targetted(db, source, id);
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
                     if listener == id
-                        && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                        && source.passes_restrictions(
+                            db,
+                            LogId::current(db),
+                            listener,
+                            &trigger.trigger.restrictions,
+                        )
                     {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
@@ -777,7 +800,12 @@ impl Stack {
                 Log::targetted(db, source, id);
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
                     if listener == id
-                        && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                        && source.passes_restrictions(
+                            db,
+                            LogId::current(db),
+                            listener,
+                            &trigger.trigger.restrictions,
+                        )
                     {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
@@ -811,6 +839,7 @@ pub(crate) fn add_card_to_stack(
             results.push_choose_targets(ChooseTargets::new(
                 TargetSource::Aura(card),
                 card.targets_for_aura(db).unwrap(),
+                crate::log::LogId::current(db),
                 card,
             ))
         }
@@ -823,7 +852,13 @@ pub(crate) fn add_card_to_stack(
                 .exactly_one()
                 .unwrap()
                 .effect;
-            let valid_targets = effect.valid_targets(db, card, controller, &HashSet::default());
+            let valid_targets = effect.valid_targets(
+                db,
+                card,
+                crate::log::LogId::current(db),
+                controller,
+                &HashSet::default(),
+            );
             if valid_targets.len() < effect.needs_targets(db, card) {
                 return PendingResults::default();
             }
@@ -831,17 +866,22 @@ pub(crate) fn add_card_to_stack(
             results.push_choose_targets(ChooseTargets::new(
                 TargetSource::Effect(effect.clone()),
                 valid_targets,
+                crate::log::LogId::current(db),
                 card,
             ));
         } else {
             for effect in card.faceup_face(db).effects.iter() {
-                let valid_targets =
-                    effect
-                        .effect
-                        .valid_targets(db, card, controller, &HashSet::default());
+                let valid_targets = effect.effect.valid_targets(
+                    db,
+                    card,
+                    crate::log::LogId::current(db),
+                    controller,
+                    &HashSet::default(),
+                );
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect.effect.clone()),
                     valid_targets,
+                    crate::log::LogId::current(db),
                     card,
                 ));
             }

@@ -6,6 +6,7 @@ use crate::{
     battlefield::ActionResult,
     effects::{EffectBehaviors, ReplacementAbility},
     in_play::Database,
+    log::LogId,
     pending_results::PendingResults,
     player::Player,
     protogen,
@@ -88,7 +89,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
-                .filter(|card| card.passes_restrictions(db, source, matching))
+                .filter(|card| card.passes_restrictions(db, LogId::current(db), source, matching))
                 .count(),
         };
 
@@ -111,7 +112,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
-                .filter(|card| card.passes_restrictions(db, source, matching))
+                .filter(|card| card.passes_restrictions(db, LogId::current(db), source, matching))
                 .count(),
         };
         results.push_settled(ActionResult::DrawCards {
@@ -133,7 +134,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
-                .filter(|card| card.passes_restrictions(db, **card, matching))
+                .filter(|card| card.passes_restrictions(db, LogId::current(db), **card, matching))
                 .count(),
         };
 

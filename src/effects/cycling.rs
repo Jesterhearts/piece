@@ -65,6 +65,7 @@ impl EffectBehaviors for Cycling {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
@@ -81,7 +82,7 @@ impl EffectBehaviors for Cycling {
             .library
             .cards
             .iter()
-            .filter(|card| card.passes_restrictions(db, source, &restrictions))
+            .filter(|card| card.passes_restrictions(db, log_session, source, &restrictions))
             .map(|card| ActiveTarget::Library { id: *card })
             .collect_vec()
     }
@@ -99,11 +100,17 @@ impl EffectBehaviors for Cycling {
                 count: 1,
             })
         } else {
-            let valid_targets =
-                self.valid_targets(db, source, controller, results.all_currently_targeted());
+            let valid_targets = self.valid_targets(
+                db,
+                source,
+                crate::log::LogId::current(db),
+                controller,
+                results.all_currently_targeted(),
+            );
             results.push_choose_targets(ChooseTargets::new(
                 TargetSource::Effect(Effect::from(self.clone())),
                 valid_targets,
+                crate::log::LogId::current(db),
                 source,
             ));
         }

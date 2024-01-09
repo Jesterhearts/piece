@@ -1,5 +1,6 @@
 use crate::{
     effects::{Effect, EffectBehaviors},
+    log::LogId,
     protogen,
     targets::Restriction,
 };
@@ -33,7 +34,7 @@ impl EffectBehaviors for IfThenElse {
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
-        if source.passes_restrictions(db, source, &self.if_) {
+        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
             self.then.needs_targets(db, source)
         } else {
             self.else_.needs_targets(db, source)
@@ -45,7 +46,7 @@ impl EffectBehaviors for IfThenElse {
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
     ) -> usize {
-        if source.passes_restrictions(db, source, &self.if_) {
+        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
             self.then.wants_targets(db, source)
         } else {
             self.else_.wants_targets(db, source)
@@ -56,15 +57,26 @@ impl EffectBehaviors for IfThenElse {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        if source.passes_restrictions(db, source, &self.if_) {
-            self.then
-                .valid_targets(db, source, controller, already_chosen)
+        if source.passes_restrictions(db, log_session, source, &self.if_) {
+            self.then.valid_targets(
+                db,
+                source,
+                crate::log::LogId::current(db),
+                controller,
+                already_chosen,
+            )
         } else {
-            self.else_
-                .valid_targets(db, source, controller, already_chosen)
+            self.else_.valid_targets(
+                db,
+                source,
+                crate::log::LogId::current(db),
+                controller,
+                already_chosen,
+            )
         }
     }
 
@@ -75,7 +87,7 @@ impl EffectBehaviors for IfThenElse {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if source.passes_restrictions(db, source, &self.if_) {
+        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
             self.then
                 .push_pending_behavior(db, source, controller, results)
         } else {
@@ -93,7 +105,7 @@ impl EffectBehaviors for IfThenElse {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if source.passes_restrictions(db, source, &self.if_) {
+        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
             self.then.push_behavior_with_targets(
                 db,
                 targets,

@@ -31,6 +31,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
         &self,
         db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
+        _log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
@@ -48,11 +49,17 @@ impl EffectBehaviors for ExileTargetGraveyard {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect::from(*self)),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ))
     }

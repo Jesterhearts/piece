@@ -93,6 +93,7 @@ use crate::{
         untap_this::UntapThis,
     },
     in_play::{CardId, Database},
+    log::LogId,
     pending_results::PendingResults,
     player::{Controller, Owner},
     protogen,
@@ -435,11 +436,13 @@ pub(crate) trait EffectBehaviors: Debug {
         &self,
         db: &Database,
         source: CardId,
+        log_session: LogId,
         controller: Controller,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         let _ = db;
         let _ = source;
+        let _ = log_session;
         let _ = controller;
         let _ = already_chosen;
         vec![]

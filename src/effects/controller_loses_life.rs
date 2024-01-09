@@ -3,6 +3,7 @@ use std::vec::IntoIter;
 use crate::{
     battlefield::ActionResult,
     effects::{EffectBehaviors, ReplacementAbility},
+    log::LogId,
     pending_results::PendingResults,
     player::{Owner, Player},
     protogen,
@@ -55,7 +56,12 @@ impl EffectBehaviors for ControllerLosesLife {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)
+            || !Owner::from(controller).passes_restrictions(
+                db,
+                LogId::current(db),
+                controller,
+                &self.unless,
+            )
         {
             results.push_settled(ActionResult::LoseLife {
                 target: controller,
@@ -74,7 +80,12 @@ impl EffectBehaviors for ControllerLosesLife {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)
+            || !Owner::from(controller).passes_restrictions(
+                db,
+                LogId::current(db),
+                controller,
+                &self.unless,
+            )
         {
             results.push_settled(ActionResult::LoseLife {
                 target: controller,
@@ -93,7 +104,12 @@ impl EffectBehaviors for ControllerLosesLife {
         results: &mut PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(db, controller, &self.unless)
+            || !Owner::from(controller).passes_restrictions(
+                db,
+                LogId::current(db),
+                controller,
+                &self.unless,
+            )
         {
             results.push_settled(ActionResult::LoseLife {
                 target: controller,

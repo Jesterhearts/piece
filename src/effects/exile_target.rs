@@ -49,13 +49,18 @@ impl EffectBehaviors for ExileTarget {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in db.cards.keys() {
-            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
-                && card.passes_restrictions(db, source, &self.restrictions)
+            if card.passes_restrictions(
+                db,
+                log_session,
+                source,
+                &source.faceup_face(db).restrictions,
+            ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
             {
                 let target = target_from_location(db, *card);
                 if already_chosen.contains(&target) {
@@ -75,12 +80,18 @@ impl EffectBehaviors for ExileTarget {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
 
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ));
     }

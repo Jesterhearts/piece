@@ -36,8 +36,7 @@ activated_abilities:
       - effect: !ReturnTransformed {}
     sorcery_speed: true
     craft: true
-    oracle_text:
-      Craft with four or more nonlands with activated abilities {8}{U}
+    oracle_text: Craft with four or more nonlands with activated abilities {8}{U}
 back_face:
   name: Locus of Enlightenment
   typeline: Legendary Artifact
@@ -56,3 +55,5 @@ back_face:
         - effect: !CopySpellOrAbility
             restrictions:
               - restriction: !SpellOrAbilityJustCast {}
+          oracle_text: Whenever you activate an ability that isn't a mana ability,
+            copy it. You may choose new targets for the copy.

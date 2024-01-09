@@ -52,15 +52,20 @@ impl EffectBehaviors for DealDamage {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
-            if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
-                && card.types_intersect(db, &IndexSet::from([Type::Creature]))
+            if card.passes_restrictions(
+                db,
+                log_session,
+                source,
+                &source.faceup_face(db).restrictions,
+            ) && card.types_intersect(db, &IndexSet::from([Type::Creature]))
                 && card.can_be_targeted(db, controller)
-                && card.passes_restrictions(db, source, &self.restrictions)
+                && card.passes_restrictions(db, log_session, source, &self.restrictions)
             {
                 let target = ActiveTarget::Battlefield { id: *card };
                 if !already_chosen.contains(&target) {
@@ -71,7 +76,12 @@ impl EffectBehaviors for DealDamage {
 
         for player in db.all_players.all_players() {
             // TODO player hexproof, non-all-target-damage
-            if player.passes_restrictions(db, controller, &source.faceup_face(db).restrictions) {
+            if player.passes_restrictions(
+                db,
+                log_session,
+                controller,
+                &source.faceup_face(db).restrictions,
+            ) {
                 targets.push(ActiveTarget::Player { id: player });
             }
         }
@@ -86,12 +96,18 @@ impl EffectBehaviors for DealDamage {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
 
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ));
     }

@@ -5,8 +5,8 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::{CardId, Database},
-    log::Log,
+    in_play::{ActivatedAbilityId, CardId, Database},
+    log::{Log, LogId},
     pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
     stack::Stack,
@@ -43,6 +43,7 @@ pub struct Turn {
     pub(crate) ban_attacking_this_turn: HashSet<Owner>,
     pub(crate) life_gained_this_turn: HashMap<Owner, usize>,
     pub(crate) number_of_attackers_this_turn: usize,
+    pub(crate) activated_abilities: HashSet<ActivatedAbilityId>,
 }
 
 impl Turn {
@@ -60,6 +61,7 @@ impl Turn {
             ban_attacking_this_turn: Default::default(),
             life_gained_this_turn: Default::default(),
             number_of_attackers_this_turn: 0,
+            activated_abilities: Default::default(),
         }
     }
 
@@ -122,6 +124,7 @@ impl Turn {
                 {
                     if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
+                        LogId::current(db),
                         player.into(),
                         &trigger.trigger.restrictions,
                     ) {
@@ -145,6 +148,7 @@ impl Turn {
                 {
                     if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
+                        LogId::current(db),
                         player.into(),
                         &trigger.trigger.restrictions,
                     ) {
@@ -222,10 +226,12 @@ impl Turn {
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EndStep) {
                     if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
+                        LogId::current(db),
                         player.into(),
                         &trigger.trigger.restrictions,
                     ) || !listener.passes_restrictions(
                         db,
+                        LogId::current(db),
                         listener,
                         &trigger.trigger.restrictions,
                     ) {

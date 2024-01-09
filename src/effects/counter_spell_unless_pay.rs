@@ -82,7 +82,8 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        log_session: crate::log::LogId,
+        controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
@@ -92,8 +93,8 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                 ..
             } = entry
             {
-                if card.can_be_countered(db, source, &[])
-                    && card.passes_restrictions(db, source, &self.restrictions)
+                if card.can_be_countered(db, log_session, source, &[])
+                    && card.passes_restrictions(db, log_session, source, &self.restrictions)
                 {
                     Some(*id)
                 } else {
@@ -108,7 +109,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                 ..
             } = entry
             {
-                if ability_source.passes_restrictions(db, source, &self.restrictions) {
+                if ability_source.passes_restrictions(db, log_session, source, &self.restrictions) {
                     Some(*id)
                 } else {
                     None
@@ -130,12 +131,18 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
 
         results.push_choose_targets(ChooseTargets::new(
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
+            crate::log::LogId::current(db),
             source,
         ));
     }

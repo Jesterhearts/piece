@@ -57,6 +57,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         &self,
         db: &Database,
         source: crate::in_play::CardId,
+        log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
@@ -68,8 +69,12 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         db.cards
             .keys()
             .filter_map(|card| {
-                if card.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
-                    && card.passes_restrictions(db, source, &self.restrictions)
+                if card.passes_restrictions(
+                    db,
+                    log_session,
+                    source,
+                    &source.faceup_face(db).restrictions,
+                ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
                     && !already_chosen.contains(&db[*card].controller)
                 {
                     Some(target_from_location(db, *card))
@@ -87,8 +92,13 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let valid_targets =
-            self.valid_targets(db, source, controller, results.all_currently_targeted());
+        let valid_targets = self.valid_targets(
+            db,
+            source,
+            crate::log::LogId::current(db),
+            controller,
+            results.all_currently_targeted(),
+        );
         results.push_choose_for_each(ChooseForEachPlayer::new(
             Effect::from(self.clone()),
             valid_targets,

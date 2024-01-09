@@ -10,6 +10,7 @@ use crate::{
     counters::Counter,
     effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
+    log::LogId,
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{
@@ -208,6 +209,7 @@ impl ActivatedAbility {
         &self,
         db: &Database,
         source: CardId,
+        id: &Ability,
         activator: crate::player::Owner,
         pending: &Option<PendingResults>,
     ) -> bool {
@@ -269,7 +271,7 @@ impl ActivatedAbility {
             }
         }
 
-        if !can_pay_costs(db, &self.cost, source) {
+        if !can_pay_costs(db, id, &self.cost, source) {
             return false;
         }
 
@@ -360,7 +362,13 @@ pub struct GainManaAbility {
 }
 
 impl GainManaAbility {
-    fn can_be_activated(&self, db: &Database, source: CardId, activator: Owner) -> bool {
+    fn can_be_activated(
+        &self,
+        db: &Database,
+        id: &Ability,
+        source: CardId,
+        activator: Owner,
+    ) -> bool {
         if !db.battlefield[db[source].controller].contains(&source) {
             return false;
         }
@@ -369,7 +377,7 @@ impl GainManaAbility {
             return false;
         }
 
-        can_pay_costs(db, &self.cost, source)
+        can_pay_costs(db, id, &self.cost, source)
     }
 }
 
@@ -443,7 +451,7 @@ impl Ability {
             Ability::Activated(activated) => {
                 if !db[*activated]
                     .ability
-                    .can_be_activated(db, source, activator, pending)
+                    .can_be_activated(db, source, self, activator, pending)
                 {
                     return false;
                 }
@@ -458,13 +466,20 @@ impl Ability {
                     .zip(targets)
                     .all(|(needs, has)| has.len() >= needs)
             }
-            Ability::Mana(id) => db[*id].ability.can_be_activated(db, source, activator),
+            Ability::Mana(id) => db[*id]
+                .ability
+                .can_be_activated(db, self, source, activator),
             Ability::EtbOrTriggered(_) => false,
         }
     }
 }
 
-pub(crate) fn can_pay_costs(db: &Database, cost: &AbilityCost, source: CardId) -> bool {
+pub(crate) fn can_pay_costs(
+    db: &Database,
+    id: &Ability,
+    cost: &AbilityCost,
+    source: CardId,
+) -> bool {
     if cost.tap && db[source].tapped {
         return false;
     }
@@ -483,25 +498,25 @@ pub(crate) fn can_pay_costs(db: &Database, cost: &AbilityCost, source: CardId) -
                 }
             }
             AdditionalCost::SacrificePermanent(restrictions) => {
-                let any_target = db.battlefield[controller]
-                    .iter()
-                    .any(|card| card.passes_restrictions(db, source, restrictions));
+                let any_target = db.battlefield[controller].iter().any(|card| {
+                    card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                });
                 if !any_target {
                     return false;
                 }
             }
             AdditionalCost::TapPermanent(restrictions) => {
-                let any_target = db.battlefield[controller]
-                    .iter()
-                    .any(|card| card.passes_restrictions(db, source, restrictions));
+                let any_target = db.battlefield[controller].iter().any(|card| {
+                    card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                });
                 if !any_target {
                     return false;
                 }
             }
             AdditionalCost::ExileCard { restrictions } => {
-                let any_target = db.battlefield[controller]
-                    .iter()
-                    .any(|card| card.passes_restrictions(db, source, restrictions));
+                let any_target = db.battlefield[controller].iter().any(|card| {
+                    card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                });
                 if !any_target {
                     return false;
                 }
@@ -512,7 +527,9 @@ pub(crate) fn can_pay_costs(db: &Database, cost: &AbilityCost, source: CardId) -
             } => {
                 let targets = db.battlefield[controller]
                     .iter()
-                    .filter(|card| card.passes_restrictions(db, source, restrictions))
+                    .filter(|card| {
+                        card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                    })
                     .count();
 
                 if targets < *minimum {
@@ -554,7 +571,15 @@ pub(crate) fn can_pay_costs(db: &Database, cost: &AbilityCost, source: CardId) -
                     return false;
                 }
             }
-            AbilityRestriction::OncePerTurn => todo!(),
+            AbilityRestriction::OncePerTurn => match id {
+                Ability::Activated(id) => {
+                    if db.turn.activated_abilities.contains(id) {
+                        return false;
+                    }
+                }
+                Ability::Mana(_) => todo!(),
+                Ability::EtbOrTriggered(_) => todo!(),
+            },
         }
     }
 

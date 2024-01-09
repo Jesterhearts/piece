@@ -1,6 +1,7 @@
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
+    log::LogId,
     protogen,
     targets::Restriction,
 };
@@ -69,12 +70,15 @@ impl EffectBehaviors for ApplyThenIfWas {
         &self,
         db: &crate::in_play::Database,
         source: crate::in_play::CardId,
+        _log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         self.apply
             .iter()
-            .map(|effect| effect.valid_targets(db, source, controller, already_chosen))
+            .map(|effect| {
+                effect.valid_targets(db, source, LogId::current(db), controller, already_chosen)
+            })
             .max_by_key(|targets| targets.len())
             .unwrap()
     }

@@ -20,7 +20,7 @@ use crate::{
     },
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
-    log::{Log, LogEntry},
+    log::{Log, LogEntry, LogId},
     mana::{Mana, ManaRestriction},
     pending_results::{
         choose_targets::ChooseTargets,
@@ -35,7 +35,7 @@ use crate::{
         mana_pool::{ManaSource, SpendReason},
         Controller, Owner, Player,
     },
-    stack::{add_card_to_stack, ActiveTarget, Entry, Stack, StackEntry, StackId},
+    stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Location, Restriction},
     triggers::{self, Trigger, TriggerSource},
     types::Type,
@@ -104,7 +104,19 @@ pub(crate) enum ActionResult {
         source: CardId,
         target: ActiveTarget,
     },
-    CopyCardInStack(CardId, Controller),
+    CopyAbility {
+        source: CardId,
+        ability: Ability,
+        targets: Vec<Vec<ActiveTarget>>,
+        x_is: Option<usize>,
+    },
+    CopyCardInStack {
+        card: CardId,
+        controller: Controller,
+        targets: Vec<Vec<ActiveTarget>>,
+        x_is: Option<usize>,
+        chosen_modes: Vec<usize>,
+    },
     CreateToken {
         source: CardId,
         token: Token,
@@ -364,7 +376,12 @@ impl Battlefields {
 
         let mut replaced = false;
         for (source, replacement) in db.replacement_abilities_watching(Replacing::Etb) {
-            if !source_card_id.passes_restrictions(db, source, &replacement.restrictions) {
+            if !source_card_id.passes_restrictions(
+                db,
+                LogId::current(db),
+                source,
+                &replacement.restrictions,
+            ) {
                 continue;
             }
             replaced = true;
@@ -650,8 +667,13 @@ impl Battlefields {
 
             for effect in ability.effects(db) {
                 let effect = effect.effect;
-                let valid_targets =
-                    effect.valid_targets(db, source, controller, results.all_currently_targeted());
+                let valid_targets = effect.valid_targets(
+                    db,
+                    source,
+                    crate::log::LogId::current(db),
+                    controller,
+                    results.all_currently_targeted(),
+                );
 
                 if effect.needs_targets(db, source) > valid_targets.len() {
                     return PendingResults::default();
@@ -661,18 +683,9 @@ impl Battlefields {
                     results.push_choose_targets(ChooseTargets::new(
                         TargetSource::Effect(effect),
                         valid_targets,
+                        crate::log::LogId::current(db),
                         source,
                     ));
-                }
-            }
-
-            if let Ability::Activated(ability) = ability {
-                Log::activated(db, source, ability);
-
-                for (listener, trigger) in
-                    db.active_triggers_of_source(TriggerSource::AbilityActivated)
-                {
-                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
             }
         }
@@ -716,7 +729,12 @@ impl Battlefields {
                     return false;
                 };
 
-                card.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                card.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    listener,
+                    &trigger.trigger.restrictions,
+                )
             }) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
@@ -746,7 +764,7 @@ impl Battlefields {
             ActionResult::PermanentToGraveyard(card_id) => {
                 Self::permanent_to_graveyard(db, *card_id)
             }
-            ActionResult::AddAbilityToStack {
+            ActionResult::CopyAbility {
                 source,
                 ability,
                 targets,
@@ -756,6 +774,37 @@ impl Battlefields {
                     db[*source].x_is = *x;
                 }
                 Stack::push_ability(db, *source, ability.clone(), targets.clone())
+            }
+            ActionResult::AddAbilityToStack {
+                source,
+                ability,
+                targets,
+                x_is,
+            } => {
+                if let Some(x) = x_is {
+                    db[*source].x_is = *x;
+                }
+
+                let mut results = PendingResults::default();
+
+                if let Ability::Activated(ability) = ability {
+                    Log::activated(db, *source, *ability);
+                    db.turn.activated_abilities.insert(*ability);
+
+                    for (listener, trigger) in
+                        db.active_triggers_of_source(TriggerSource::AbilityActivated)
+                    {
+                        results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    }
+                }
+                results.extend(Stack::push_ability(
+                    db,
+                    *source,
+                    ability.clone(),
+                    targets.clone(),
+                ));
+
+                results
             }
             ActionResult::AddTriggerToStack {
                 source,
@@ -969,7 +1018,14 @@ impl Battlefields {
                         DynamicCounter::LeftBattlefieldThisTurn { restrictions } => {
                             let cards = CardId::left_battlefield_this_turn(db);
                             let x = cards
-                                .filter(|card| card.passes_restrictions(db, *source, restrictions))
+                                .filter(|card| {
+                                    card.passes_restrictions(
+                                        db,
+                                        LogId::current(db),
+                                        *source,
+                                        restrictions,
+                                    )
+                                })
                                 .count();
                             if x > 0 {
                                 *db[*target].counters.entry(*counter).or_default() += x;
@@ -1014,9 +1070,18 @@ impl Battlefields {
                 db.all_players[*player].lost = true;
                 PendingResults::default()
             }
-            ActionResult::CopyCardInStack(card, controller) => {
+            ActionResult::CopyCardInStack {
+                card,
+                controller,
+                targets,
+                x_is,
+                chosen_modes,
+            } => {
                 let copy = card.token_copy_of(db, *controller);
-                add_card_to_stack(db, copy, None, false)
+                if let Some(x_is) = x_is {
+                    db[copy].x_is = *x_is;
+                }
+                Stack::push_card(db, *card, targets.clone(), chosen_modes.clone())
             }
             ActionResult::CastCard {
                 card,
@@ -1041,7 +1106,12 @@ impl Battlefields {
                 card.apply_modifiers_layered(db);
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Cast) {
-                    if card.passes_restrictions(db, listener, &trigger.trigger.restrictions) {
+                    if card.passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        listener,
+                        &trigger.trigger.restrictions,
+                    ) {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
                 }
@@ -1085,7 +1155,12 @@ impl Battlefields {
                     .into_iter()
                     .filter_map(|player| {
                         Library::reveal_top(db, player).filter(|card| {
-                            card.passes_restrictions(db, *source, &reveal.for_each.restrictions)
+                            card.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                *source,
+                                &reveal.for_each.restrictions,
+                            )
                         })
                     })
                     .collect_vec();
@@ -1311,8 +1386,12 @@ impl Battlefields {
                     let listeners = db.active_triggers_of_source(TriggerSource::Attacks);
                     debug!("attack listeners {:?}", listeners);
                     for (listener, trigger) in listeners {
-                        if attacker.passes_restrictions(db, listener, &trigger.trigger.restrictions)
-                        {
+                        if attacker.passes_restrictions(
+                            db,
+                            LogId::current(db),
+                            listener,
+                            &trigger.trigger.restrictions,
+                        ) {
                             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                         }
                     }
@@ -1359,7 +1438,7 @@ impl Battlefields {
                     .flat_map(|b| b.iter())
                     .copied()
                     .filter(|card| {
-                        card.passes_restrictions(db, *source, restrictions)
+                        card.passes_restrictions(db, LogId::current(db), *source, restrictions)
                             && !card.indestructible(db)
                     })
                     .collect_vec();
@@ -1480,8 +1559,12 @@ impl Battlefields {
             if matches!(
                 trigger.trigger.from,
                 triggers::Location::Anywhere | triggers::Location::Battlefield
-            ) && target.passes_restrictions(db, listener, &trigger.trigger.restrictions)
-            {
+            ) && target.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }
@@ -1503,8 +1586,12 @@ impl Battlefields {
             if matches!(
                 trigger.trigger.from,
                 triggers::Location::Anywhere | triggers::Location::Library
-            ) && target.passes_restrictions(db, listener, &trigger.trigger.restrictions)
-            {
+            ) && target.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }
@@ -1565,7 +1652,12 @@ impl Battlefields {
 
         for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PutIntoGraveyard) {
             if matches!(trigger.trigger.from, triggers::Location::Library)
-                && target.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+                && target.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    listener,
+                    &trigger.trigger.restrictions,
+                )
             {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
@@ -1593,8 +1685,12 @@ impl Battlefields {
                 if matches!(
                     trigger.trigger.from,
                     triggers::Location::Anywhere | triggers::Location::Battlefield
-                ) && source.passes_restrictions(db, listener, &trigger.trigger.restrictions)
-                {
+                ) && source.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    listener,
+                    &trigger.trigger.restrictions,
+                ) {
                     results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
             }
@@ -1617,9 +1713,17 @@ pub(crate) fn create_token_copy_with_replacements(
     let mut replaced = false;
     if replacements.len() > 0 {
         while let Some((source, replacement)) = replacements.next() {
-            if !source.passes_restrictions(db, source, &source.faceup_face(db).restrictions)
-                || !copying.passes_restrictions(db, source, &replacement.restrictions)
-            {
+            if !source.passes_restrictions(
+                db,
+                LogId::current(db),
+                source,
+                &source.faceup_face(db).restrictions,
+            ) || !copying.passes_restrictions(
+                db,
+                LogId::current(db),
+                source,
+                &replacement.restrictions,
+            ) {
                 continue;
             }
 
@@ -1653,6 +1757,7 @@ pub(crate) fn create_token_copy_with_replacements(
                     restrictions: vec![],
                 },
             );
+            modifier.activate(&mut db.modifiers);
 
             token.apply_modifier(db, modifier);
         }
@@ -1671,8 +1776,12 @@ fn complete_add_from_library(
         if matches!(
             trigger.trigger.from,
             triggers::Location::Anywhere | triggers::Location::Library
-        ) && source_card_id.passes_restrictions(db, listener, &trigger.trigger.restrictions)
-        {
+        ) && source_card_id.passes_restrictions(
+            db,
+            LogId::current(db),
+            listener,
+            &trigger.trigger.restrictions,
+        ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
@@ -1689,7 +1798,12 @@ fn complete_add_from_exile(
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
         if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-            && source_card_id.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+            && source_card_id.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            )
         {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
@@ -1707,7 +1821,12 @@ fn complete_add_from_graveyard(
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
         if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-            && source_card_id.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+            && source_card_id.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            )
         {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
@@ -1725,7 +1844,12 @@ fn complete_add_from_stack_or_hand(
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
         if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-            && source_card_id.passes_restrictions(db, listener, &trigger.trigger.restrictions)
+            && source_card_id.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            )
         {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
@@ -1771,7 +1895,7 @@ fn move_card_to_battlefield(
         .iter()
         .any(|(ability, card)| match ability {
             StaticAbility::ForceEtbTapped(ForceEtbTapped { restrictions }) => {
-                source_card_id.passes_restrictions(db, *card, restrictions)
+                source_card_id.passes_restrictions(db, LogId::current(db), *card, restrictions)
             }
             _ => false,
         });

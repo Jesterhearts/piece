@@ -59,7 +59,7 @@ impl ModifierId {
             ModifierInPlay {
                 source,
                 temporary: true,
-                active: true,
+                active: false,
                 modifier,
                 modifying: Default::default(),
                 add_static_abilities,
