@@ -36,8 +36,9 @@ message Restriction {
     int32 count = 1;
     repeated Restriction restrictions = 2;
   }
+  message HasActivatedAbility {}
   message InGraveyard {}
-  message JustCast {}
+  message ControllerJustCast {}
   message LifeGainedThisTurn {
     int32 count = 1;
   }
@@ -74,6 +75,7 @@ message Restriction {
   }
   message Self {}
   message SourceCast {}
+  message SpellOrAbilityJustCast {}
   message Tapped {}
   message TargetedBy {}
   message Threshold {}
@@ -94,27 +96,29 @@ message Restriction {
     DescendedThisTurn descended_this_turn = 11;
     DuringControllersTurn during_controllers_turn = 12;
     EnteredBattlefieldThisTurn entered_battlefield_this_turn = 13;
-    InGraveyard in_graveyard = 14;
-    JustCast just_cast = 15;
-    LifeGainedThisTurn life_gained_this_turn = 16;
-    Locations location = 17;
-    ManaSpentFromSource mana_spent_from_source = 18;
-    NonToken non_token = 19;
-    NotChosen not_chosen = 20;
-    NotKeywords not_keywords = 21;
-    NotOfType not_of_type = 22;
-    NotSelf not_self = 23;
-    NumberOfCountersOnThis number_of_counters_on_this = 24;
-    OfColor of_color = 25;
-    OfType of_type = 26;
-    OnBattlefield on_battlefield = 27;
-    Power power = 28;
-    Self self = 29;
-    SourceCast source_cast = 30;
-    Tapped tapped = 31;
-    TargetedBy targeted_by = 32;
-    Threshold threshold = 33;
-    Toughness toughness = 34;
+    HasActivatedAbility has_activated_ability = 14;
+    InGraveyard in_graveyard = 15;
+    ControllerJustCast controller_just_cast = 16;
+    LifeGainedThisTurn life_gained_this_turn = 17;
+    Locations location = 18;
+    ManaSpentFromSource mana_spent_from_source = 19;
+    NonToken non_token = 20;
+    NotChosen not_chosen = 21;
+    NotKeywords not_keywords = 22;
+    NotOfType not_of_type = 23;
+    NotSelf not_self = 24;
+    NumberOfCountersOnThis number_of_counters_on_this = 25;
+    OfColor of_color = 26;
+    OfType of_type = 27;
+    OnBattlefield on_battlefield = 28;
+    Power power = 29;
+    Self self = 30;
+    SourceCast source_cast = 31;
+    SpellOrAbilityJustCast spell_or_ability_just_cast = 32;
+    Tapped tapped = 33;
+    TargetedBy targeted_by = 34;
+    Threshold threshold = 35;
+    Toughness toughness = 36;
   }
 }
 

@@ -4,7 +4,7 @@ use derive_more::{From, Into};
 
 use crate::{
     abilities::StaticAbility,
-    in_play::{CardId, Database, ModifierId, NEXT_STATIC_ABILITY_ID},
+    in_play::{CardId, Database, ModifierId, NEXT_ABILITY_ID},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
@@ -19,7 +19,7 @@ pub struct StaticAbilityInPlay {
 
 impl StaticAbilityId {
     pub(crate) fn new() -> Self {
-        Self(NEXT_STATIC_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
+        Self(NEXT_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
     }
 
     pub(crate) fn upload(db: &mut Database, source: CardId, ability: StaticAbility) -> Self {

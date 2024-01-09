@@ -74,9 +74,9 @@ impl Widget for Card<'_> {
         let has_triggers = !triggers.is_empty();
 
         let abilities = source
-            .abilities()
+            .abilities(self.db)
             .iter()
-            .map(|(_, ability)| ability.text())
+            .map(|(_, ability)| ability.text(self.db))
             .filter(|text| !text.is_empty())
             .collect_vec();
         let has_abilities = !abilities.is_empty();
@@ -415,7 +415,7 @@ impl Widget for Actions<'_, '_, '_> {
                     .into_iter()
                     .chain(
                         self.db[card]
-                            .abilities()
+                            .abilities(self.db)
                             .into_iter()
                             .enumerate()
                             .filter_map(|(idx, (_, ability))| {
@@ -425,7 +425,7 @@ impl Widget for Actions<'_, '_, '_> {
                                     self.player,
                                     self.pending,
                                 ) {
-                                    Some((idx + 1, ability.text()))
+                                    Some((idx + 1, ability.text(self.db)))
                                 } else {
                                     None
                                 }
@@ -434,12 +434,12 @@ impl Widget for Actions<'_, '_, '_> {
                     .collect_vec()
             } else {
                 self.db[card]
-                    .abilities()
+                    .abilities(self.db)
                     .into_iter()
                     .enumerate()
                     .filter_map(|(idx, (_, ability))| {
                         if ability.can_be_activated(self.db, card, self.player, self.pending) {
-                            Some((idx, ability.text()))
+                            Some((idx, ability.text(self.db)))
                         } else {
                             None
                         }

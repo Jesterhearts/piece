@@ -7,8 +7,10 @@ use crate::{
     battlefield::ActionResult,
     effects::EffectBehaviors,
     in_play::{CardId, Database},
+    log::Log,
     pending_results::{Pending, PendingResult, TargetSource},
-    stack::ActiveTarget,
+    stack::{ActiveTarget, Stack},
+    triggers::TriggerSource,
 };
 
 #[derive(Debug, Clone)]
@@ -154,6 +156,28 @@ impl PendingResult for ChooseTargets {
                 results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {
                     let player = db[self.card].controller;
+
+                    for target in choices.iter() {
+                        if let ActiveTarget::Battlefield { id } = target {
+                            Log::targetted(db, self.card, *id);
+                            for (listener, trigger) in
+                                db.active_triggers_of_source(TriggerSource::Targeted)
+                            {
+                                if listener == *id
+                                    && self.card.passes_restrictions(
+                                        db,
+                                        listener,
+                                        &trigger.trigger.restrictions,
+                                    )
+                                {
+                                    results.extend(Stack::move_trigger_to_stack(
+                                        db, listener, trigger,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+
                     match effect_or_aura {
                         TargetSource::Effect(effect) => {
                             effect.push_behavior_with_targets(

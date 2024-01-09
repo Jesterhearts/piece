@@ -18,6 +18,7 @@ message Location {
 }
 
 message TriggerSource {
+  message AbilityActivated {}
   message Attacks {}
   message Cast {}
   message EndStep {}
@@ -31,17 +32,18 @@ message TriggerSource {
   message Targeted {}
 
   oneof trigger {
-    Attacks attacks = 1;
-    Cast cast = 2;
-    EndStep end_step = 3;
-    EntersTheBattlefield enters_the_battlefield = 4;
-    ExiledDuringCraft exiled_during_craft = 5;
-    OneOrMoreTapped one_or_more_tapped = 6;
-    PreCombatMainPhase pre_combat_main_phase = 7;
-    PutIntoGraveyard put_into_graveyard = 8;
-    StartOfCombat start_of_combat = 9;
-    Tapped tapped = 10;
-    Targeted targeted = 11;
+    AbilityActivated ability_activated = 1;
+    Attacks attacks = 2;
+    Cast cast = 3;
+    EndStep end_step = 4;
+    EntersTheBattlefield enters_the_battlefield = 5;
+    ExiledDuringCraft exiled_during_craft = 6;
+    OneOrMoreTapped one_or_more_tapped = 7;
+    PreCombatMainPhase pre_combat_main_phase = 8;
+    PutIntoGraveyard put_into_graveyard = 9;
+    StartOfCombat start_of_combat = 10;
+    Tapped tapped = 11;
+    Targeted targeted = 12;
   }
 }
 

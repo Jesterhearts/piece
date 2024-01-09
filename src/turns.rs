@@ -264,6 +264,10 @@ impl Turn {
                 db.turn.life_gained_this_turn.clear();
                 db.turn.number_of_attackers_this_turn = 0;
 
+                for ability in db.gc_abilities.drain(..) {
+                    db.activated_abilities.remove(&ability);
+                }
+
                 db.turn.phase = Phase::Untap;
                 db.turn.active_player = (db.turn.active_player + 1) % db.turn.turn_order.len();
                 db.turn.priority_player = db.turn.active_player;

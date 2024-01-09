@@ -5,7 +5,7 @@ use tracing::Level;
 use crate::{
     counters::Counter,
     effects::EffectBehaviors,
-    in_play::{CardId, Database},
+    in_play::{ActivatedAbilityId, CardId, Database},
     player::{Controller, Owner},
     targets::Restriction,
 };
@@ -61,6 +61,10 @@ pub enum LogEntry {
     },
     Cast {
         card: CardId,
+    },
+    Activated {
+        card: CardId,
+        ability: ActivatedAbilityId,
     },
     Targeted {
         source: CardId,
@@ -184,6 +188,13 @@ impl Log {
         db.log.entries.push((id, entry));
     }
 
+    pub(crate) fn activated(db: &mut Database, card: CardId, ability: ActivatedAbilityId) {
+        let entry = LogEntry::Activated { card, ability };
+        let id = LogId::new(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
+    }
+
     pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: CardId) {
         let modified_by = card.modified_by(db);
         let entry = LogEntry::LeftBattlefield {
@@ -201,8 +212,10 @@ impl Log {
                 db[*card]
                     .modified_activated_abilities
                     .iter()
-                    .any(|(_, ability)| {
-                        ability
+                    .copied()
+                    .any(|ability| {
+                        db[ability]
+                            .ability
                             .effects
                             .iter()
                             .any(|effect| effect.effect.is_equip())

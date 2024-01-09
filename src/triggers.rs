@@ -34,6 +34,7 @@ impl From<&protogen::triggers::location::Location> for Location {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum TriggerSource {
+    AbilityActivated,
     Attacks,
     Cast,
     EndStep,
@@ -85,6 +86,9 @@ impl TryFrom<&protogen::triggers::TriggerSource> for TriggerSource {
 impl From<&protogen::triggers::trigger_source::Trigger> for TriggerSource {
     fn from(value: &protogen::triggers::trigger_source::Trigger) -> Self {
         match value {
+            protogen::triggers::trigger_source::Trigger::AbilityActivated(_) => {
+                Self::AbilityActivated
+            }
             protogen::triggers::trigger_source::Trigger::Attacks(_) => Self::Attacks,
             protogen::triggers::trigger_source::Trigger::Cast(_) => Self::Cast,
             protogen::triggers::trigger_source::Trigger::EndStep(_) => Self::EndStep,

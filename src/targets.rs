@@ -182,6 +182,7 @@ pub(crate) enum Restriction {
     Controller(ControllerRestriction),
     ControllerControlsBlackOrGreen,
     ControllerHandEmpty,
+    ControllerJustCast,
     Descend(usize),
     DescendedThisTurn,
     DuringControllersTurn,
@@ -189,11 +190,11 @@ pub(crate) enum Restriction {
         count: usize,
         restrictions: Vec<Restriction>,
     },
+    HasActivatedAbility,
     InGraveyard,
     InLocation {
         locations: Vec<Location>,
     },
-    JustCast,
     LifeGainedThisTurn(usize),
     ManaSpentFromSource(ManaSource),
     NonToken,
@@ -217,6 +218,7 @@ pub(crate) enum Restriction {
     Power(Comparison),
     Self_,
     SourceCast,
+    SpellOrAbilityJustCast,
     Tapped,
     TargetedBy,
     Threshold,
@@ -277,8 +279,13 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                         .collect::<anyhow::Result<_>>()?,
                 })
             }
+            protogen::targets::restriction::Restriction::HasActivatedAbility(_) => {
+                Ok(Self::HasActivatedAbility)
+            }
             protogen::targets::restriction::Restriction::InGraveyard(_) => Ok(Self::InGraveyard),
-            protogen::targets::restriction::Restriction::JustCast(_) => Ok(Self::JustCast),
+            protogen::targets::restriction::Restriction::ControllerJustCast(_) => {
+                Ok(Self::ControllerJustCast)
+            }
             protogen::targets::restriction::Restriction::LifeGainedThisTurn(value) => {
                 Ok(Self::LifeGainedThisTurn(usize::try_from(value.count)?))
             }
@@ -347,6 +354,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             }
             protogen::targets::restriction::Restriction::Self_(_) => Ok(Self::Self_),
             protogen::targets::restriction::Restriction::SourceCast(_) => Ok(Self::SourceCast),
+            protogen::targets::restriction::Restriction::SpellOrAbilityJustCast(_) => {
+                Ok(Self::SpellOrAbilityJustCast)
+            }
             protogen::targets::restriction::Restriction::Tapped(_) => Ok(Self::Tapped),
             protogen::targets::restriction::Restriction::TargetedBy(_) => Ok(Self::TargetedBy),
             protogen::targets::restriction::Restriction::Threshold(_) => Ok(Self::Threshold),

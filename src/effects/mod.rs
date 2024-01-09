@@ -7,6 +7,7 @@ pub(crate) mod controller_discards;
 pub(crate) mod controller_draws_cards;
 pub(crate) mod controller_loses_life;
 pub(crate) mod copy_of_any_creature_non_targeting;
+pub(crate) mod copy_spell_or_ability;
 pub(crate) mod counter_spell;
 pub(crate) mod counter_spell_unless_pay;
 pub(crate) mod create_token;
@@ -68,11 +69,11 @@ use crate::{
         controller_discards::ControllerDiscards, controller_draws_cards::ControllerDrawsCards,
         controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
-        counter_spell::CounterSpellOrAbility, counter_spell_unless_pay::CounterSpellUnlessPay,
-        create_token::CreateToken, create_token_copy::CreateTokenCopy, cycling::Cycling,
-        deal_damage::DealDamage, destroy_each::DestroyEach, destroy_target::DestroyTarget,
-        discover::Discover, equip::Equip, examine_top_cards::ExamineTopCards,
-        exile_target::ExileTarget,
+        copy_spell_or_ability::CopySpellOrAbility, counter_spell::CounterSpellOrAbility,
+        counter_spell_unless_pay::CounterSpellUnlessPay, create_token::CreateToken,
+        create_token_copy::CreateTokenCopy, cycling::Cycling, deal_damage::DealDamage,
+        destroy_each::DestroyEach, destroy_target::DestroyTarget, discover::Discover, equip::Equip,
+        examine_top_cards::ExamineTopCards, exile_target::ExileTarget,
         exile_target_creature_manifest_top_of_library::ExileTargetCreatureManifestTopOfLibrary,
         exile_target_graveyard::ExileTargetGraveyard,
         for_each_player_choose_then::ForEachPlayerChooseThen,
@@ -112,6 +113,7 @@ pub(crate) enum Effect {
     ControllerDrawsCards(ControllerDrawsCards),
     ControllerLosesLife(ControllerLosesLife),
     CopyOfAnyCreatureNonTargeting(CopyOfAnyCreatureNonTargeting),
+    CopySpellOrAbility(CopySpellOrAbility),
     CounterSpellOrAbility(CounterSpellOrAbility),
     CounterSpellUnlessPay(CounterSpellUnlessPay),
     CreateToken(CreateToken),
@@ -553,6 +555,9 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             }
             protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(_) => {
                 Ok(Self::from(CopyOfAnyCreatureNonTargeting))
+            }
+            protogen::effects::effect::Effect::CopySpellOrAbility(value) => {
+                Ok(Self::from(CopySpellOrAbility::try_from(value)?))
             }
             protogen::effects::effect::Effect::CounterSpell(value) => {
                 Ok(Self::from(CounterSpellOrAbility::try_from(value)?))

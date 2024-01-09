@@ -598,7 +598,7 @@ async fn main() -> anyhow::Result<()> {
                     }
 
                     if let Some(selected) = selected_ability {
-                        if selected < db[card].abilities().len() {
+                        if selected < db[card].abilities(&db).len() {
                             let mut pending = Battlefields::activate_ability(
                                 &mut db,
                                 &to_resolve,

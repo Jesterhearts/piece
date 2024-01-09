@@ -1,4 +1,6 @@
+mod activated_ability_id;
 mod card_id;
+mod gain_mana_ability_id;
 mod modifier_id;
 mod static_ability_id;
 
@@ -6,9 +8,11 @@ use std::sync::atomic::AtomicUsize;
 
 use indexmap::{IndexMap, IndexSet};
 
+pub use activated_ability_id::{ActivatedAbilityId, ActivatedAbilityInPlay};
 pub(crate) use card_id::target_from_location;
 pub use card_id::CardId;
 pub(crate) use card_id::CardInPlay;
+pub use gain_mana_ability_id::{GainManaAbilityId, GainManaAbilityInPlay};
 use itertools::Itertools;
 pub(crate) use modifier_id::{ModifierId, ModifierInPlay};
 pub(crate) use static_ability_id::{StaticAbilityId, StaticAbilityInPlay};
@@ -28,9 +32,9 @@ use crate::{
     turns::Turn,
 };
 
+static NEXT_ABILITY_ID: AtomicUsize = AtomicUsize::new(0);
 static NEXT_CARD_ID: AtomicUsize = AtomicUsize::new(0);
 static NEXT_MODIFIER_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_STATIC_ABILITY_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub(crate) enum CastFrom {
@@ -50,7 +54,11 @@ pub struct Database {
 
     pub(crate) cards: IndexMap<CardId, CardInPlay>,
     pub(crate) modifiers: IndexMap<ModifierId, ModifierInPlay>,
+    pub(crate) activated_abilities: IndexMap<ActivatedAbilityId, ActivatedAbilityInPlay>,
+    pub(crate) mana_abilities: IndexMap<GainManaAbilityId, GainManaAbilityInPlay>,
     pub(crate) static_abilities: IndexMap<StaticAbilityId, StaticAbilityInPlay>,
+
+    pub(crate) gc_abilities: Vec<ActivatedAbilityId>,
 
     pub battlefield: Battlefields,
     pub graveyard: Graveyards,
@@ -107,6 +115,34 @@ impl std::ops::IndexMut<StaticAbilityId> for Database {
     }
 }
 
+impl std::ops::Index<ActivatedAbilityId> for Database {
+    type Output = ActivatedAbilityInPlay;
+
+    fn index(&self, index: ActivatedAbilityId) -> &Self::Output {
+        self.activated_abilities.get(&index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<ActivatedAbilityId> for Database {
+    fn index_mut(&mut self, index: ActivatedAbilityId) -> &mut Self::Output {
+        self.activated_abilities.get_mut(&index).unwrap()
+    }
+}
+
+impl std::ops::Index<GainManaAbilityId> for Database {
+    type Output = GainManaAbilityInPlay;
+
+    fn index(&self, index: GainManaAbilityId) -> &Self::Output {
+        self.mana_abilities.get(&index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<GainManaAbilityId> for Database {
+    fn index_mut(&mut self, index: GainManaAbilityId) -> &mut Self::Output {
+        self.mana_abilities.get_mut(&index).unwrap()
+    }
+}
+
 impl Database {
     pub fn new(all_players: AllPlayers) -> Self {
         let mut battlefield = Battlefields::default();
@@ -131,7 +167,10 @@ impl Database {
             log: Default::default(),
             cards: Default::default(),
             modifiers: Default::default(),
+            activated_abilities: Default::default(),
+            mana_abilities: Default::default(),
             static_abilities: Default::default(),
+            gc_abilities: Default::default(),
             battlefield,
             graveyard,
             exile,

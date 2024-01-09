@@ -19,10 +19,10 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    abilities::{Ability, GainMana, GainManaAbility},
+    abilities::{Ability, GainMana},
     battlefield::{ActionResult, Battlefields},
     effects::{Destination, Effect, EffectBehaviors},
-    in_play::{CardId, CastFrom, Database},
+    in_play::{CardId, CastFrom, Database, GainManaAbilityId},
     pending_results::{
         choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
         choose_targets::ChooseTargets, choosing_cast::ChoosingCast,
@@ -67,7 +67,7 @@ impl Source {
                 .collect_vec(),
             Source::Ability { ability, .. } => {
                 if let Ability::Mana(gain) = ability {
-                    match &gain.gain {
+                    match &db[*gain].ability.gain {
                         GainMana::Specific { .. } => vec![],
                         GainMana::Choice { choices } => {
                             let mut result = vec![];
@@ -187,7 +187,7 @@ pub struct PendingResults {
     settled_effects: Vec<ActionResult>,
 
     apply_in_stages: bool,
-    gain_mana: Option<(CardId, GainManaAbility)>,
+    gain_mana: Option<(CardId, GainManaAbilityId)>,
     add_to_stack: Option<Source>,
     cast_from: Option<CastFrom>,
 
@@ -197,7 +197,7 @@ pub struct PendingResults {
 }
 
 impl PendingResults {
-    pub(crate) fn add_gain_mana(&mut self, source: CardId, gain: GainManaAbility) {
+    pub(crate) fn add_gain_mana(&mut self, source: CardId, gain: GainManaAbilityId) {
         self.gain_mana = Some((source, gain));
     }
 
@@ -205,13 +205,13 @@ impl PendingResults {
         self.add_to_stack = Some(Source::Ability { source, ability });
     }
 
-    pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: CastFrom) {
+    pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: Option<CastFrom>) {
         self.add_to_stack = Some(Source::Card(source));
         self.cast_from(from);
     }
 
-    pub(crate) fn cast_from(&mut self, from: CastFrom) {
-        self.cast_from = Some(from);
+    pub(crate) fn cast_from(&mut self, from: Option<CastFrom>) {
+        self.cast_from = from;
     }
 
     pub(crate) fn apply_in_stages(&mut self) {
@@ -405,12 +405,12 @@ impl PendingResults {
                 }
             } else if let Some((source, gain)) = self.gain_mana.take() {
                 let target = db[source].controller;
-                let source = gain.mana_source.unwrap_or_default();
-                let restriction = gain.mana_restriction;
-                match gain.gain {
+                let source = db[gain].ability.mana_source.unwrap_or_default();
+                let restriction = db[gain].ability.mana_restriction;
+                match &db[gain].ability.gain {
                     GainMana::Specific { gains } => {
                         self.settled_effects.push(ActionResult::GainMana {
-                            gain: gains,
+                            gain: gains.clone(),
                             target,
                             source,
                             restriction,

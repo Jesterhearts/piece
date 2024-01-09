@@ -9,12 +9,12 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{Ability, TriggeredAbility},
-    battlefield::ActionResult,
-    card::Keyword,
+    battlefield::{ActionResult, Battlefields},
+    card::{Color, Keyword},
     cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
-    log::Log,
+    log::{Log, LogEntry},
     pending_results::{
         choose_targets::ChooseTargets,
         pay_costs::TapPermanent,
@@ -25,6 +25,7 @@ use crate::{
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
+    targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Location, Restriction},
     triggers::TriggerSource,
 };
 
@@ -127,9 +128,361 @@ impl StackEntry {
                 source: card_source,
                 ability,
             } => {
-                format!("{}: {}", db[*card_source].modified_name, ability.text())
+                format!("{}: {}", db[*card_source].modified_name, ability.text(db))
             }
         }
+    }
+
+    pub(crate) fn passes_restrictions(
+        &self,
+        db: &Database,
+        source: CardId,
+        restrictions: &[Restriction],
+    ) -> bool {
+        let spell_or_ability_controller = db[self.ty.source()].controller;
+
+        for restriction in restrictions.iter() {
+            match restriction {
+                Restriction::AttackedThisTurn => todo!(),
+                Restriction::Attacking => unreachable!(),
+                Restriction::AttackingOrBlocking => unreachable!(),
+                Restriction::CastFromHand => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if !matches!(db[*card].cast_from, Some(CastFrom::Hand)) {
+                        return false;
+                    }
+                }
+                Restriction::Cmc(cmc_test) => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+                    let cmc = db[*card].modified_cost.cmc() as i32;
+
+                    match cmc_test {
+                        Cmc::Comparison(comparison) => {
+                            let matches = match comparison {
+                                Comparison::LessThan(i) => cmc < *i,
+                                Comparison::LessThanOrEqual(i) => cmc <= *i,
+                                Comparison::GreaterThan(i) => cmc > *i,
+                                Comparison::GreaterThanOrEqual(i) => cmc >= *i,
+                            };
+                            if !matches {
+                                return false;
+                            }
+                        }
+                        Cmc::Dynamic(dy) => match dy {
+                            Dynamic::X => {
+                                if source.get_x(db) as i32 != cmc {
+                                    return false;
+                                }
+                            }
+                        },
+                    }
+                }
+                Restriction::Controller(controller_restriction) => {
+                    match controller_restriction {
+                        ControllerRestriction::Self_ => {
+                            if db[source].controller != spell_or_ability_controller {
+                                return false;
+                            }
+                        }
+                        ControllerRestriction::Opponent => {
+                            if db[source].controller == spell_or_ability_controller {
+                                return false;
+                            }
+                        }
+                    };
+                }
+                Restriction::ControllerControlsBlackOrGreen => {
+                    let colors = Battlefields::controlled_colors(db, spell_or_ability_controller);
+                    if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
+                        return false;
+                    }
+                }
+                Restriction::ControllerHandEmpty => {
+                    if spell_or_ability_controller.has_cards(db, Location::Hand) {
+                        return false;
+                    }
+                }
+                Restriction::ControllerJustCast => {
+                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                        let LogEntry::Cast { card } = entry else {
+                            return false;
+                        };
+                        db[*card].controller == spell_or_ability_controller
+                    }) {
+                        return false;
+                    }
+                }
+                Restriction::Descend(count) => {
+                    let cards = db.graveyard[spell_or_ability_controller]
+                        .iter()
+                        .filter(|card| card.is_permanent(db))
+                        .count();
+                    if cards < *count {
+                        return false;
+                    }
+                }
+                Restriction::DescendedThisTurn => {
+                    let descended = db
+                        .graveyard
+                        .descended_this_turn
+                        .get(&Owner::from(spell_or_ability_controller))
+                        .copied()
+                        .unwrap_or_default();
+                    if descended < 1 {
+                        return false;
+                    }
+                }
+                Restriction::DuringControllersTurn => {
+                    if spell_or_ability_controller != db.turn.active_player() {
+                        return false;
+                    }
+                }
+                Restriction::EnteredTheBattlefieldThisTurn {
+                    count,
+                    restrictions,
+                } => {
+                    let entered_this_turn = CardId::entered_battlefield_this_turn(db)
+                        .filter(|card| card.passes_restrictions(db, source, restrictions))
+                        .count();
+                    if entered_this_turn < *count {
+                        return false;
+                    }
+                }
+                Restriction::HasActivatedAbility => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if db[*card].modified_activated_abilities.is_empty() {
+                        return false;
+                    }
+                }
+                Restriction::InGraveyard => {
+                    return false;
+                }
+                Restriction::InLocation { locations } => {
+                    if locations
+                        .iter()
+                        .any(|location| !matches!(location, Location::Stack))
+                    {
+                        return false;
+                    }
+                }
+                Restriction::LifeGainedThisTurn(count) => {
+                    let gained_this_turn = db
+                        .turn
+                        .life_gained_this_turn
+                        .get(&Owner::from(spell_or_ability_controller))
+                        .copied()
+                        .unwrap_or_default();
+                    if gained_this_turn < *count {
+                        return false;
+                    }
+                }
+                Restriction::ManaSpentFromSource(source) => {
+                    let Entry::Card(card) = &self.ty else {
+                        // TODO: Pretty sure there are some mana sources that copy abilities if used.
+                        return false;
+                    };
+
+                    if !db[*card].sourced_mana.contains_key(source) {
+                        return false;
+                    }
+                }
+                Restriction::NonToken => {
+                    if !matches!(self.ty, Entry::Card(_)) {
+                        return false;
+                    }
+                }
+                Restriction::NotChosen => {
+                    let Entry::Card(candidate) = &self.ty else {
+                        return false;
+                    };
+
+                    if Log::current_session(db).iter().any(|(_, entry)| {
+                        let LogEntry::CardChosen { card } = entry else {
+                            return false;
+                        };
+                        *card == *candidate
+                    }) {
+                        return false;
+                    }
+                }
+                Restriction::NotKeywords(not_keywords) => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if db[*card]
+                        .modified_keywords
+                        .keys()
+                        .any(|keyword| not_keywords.contains(keyword))
+                    {
+                        return false;
+                    }
+                }
+                Restriction::NotOfType { types, subtypes } => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if !types.is_empty() && !db[*card].modified_types.is_disjoint(types) {
+                        return false;
+                    }
+                    if !subtypes.is_empty() && !db[*card].modified_subtypes.is_disjoint(subtypes) {
+                        return false;
+                    }
+                }
+                Restriction::NotSelf => {
+                    let Entry::Card(card) = &self.ty else {
+                        continue;
+                    };
+
+                    if source == *card {
+                        return false;
+                    }
+                }
+                Restriction::NumberOfCountersOnThis { .. } => {
+                    return false;
+                }
+                Restriction::OfColor(of_colors) => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if db[*card].modified_colors.is_disjoint(of_colors) {
+                        return false;
+                    }
+                }
+                Restriction::OfType { types, subtypes } => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if !types.is_empty() && db[*card].modified_types.is_disjoint(types) {
+                        return false;
+                    }
+                    if !subtypes.is_empty() && db[*card].modified_subtypes.is_disjoint(subtypes) {
+                        return false;
+                    }
+                }
+                Restriction::OnBattlefield => {
+                    return false;
+                }
+                Restriction::Power(comparison) => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if let Some(power) = card.power(db) {
+                        if !match comparison {
+                            Comparison::LessThan(target) => power < *target,
+                            Comparison::LessThanOrEqual(target) => power <= *target,
+                            Comparison::GreaterThan(target) => power > *target,
+                            Comparison::GreaterThanOrEqual(target) => power >= *target,
+                        } {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                Restriction::Self_ => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if *card != source {
+                        return false;
+                    }
+                }
+                Restriction::SourceCast => {
+                    if db[source].cast_from.is_none() {
+                        return false;
+                    }
+                }
+                Restriction::SpellOrAbilityJustCast => {
+                    match &self.ty {
+                        Entry::Card(candidate) => {
+                            if !Log::current_session(db).iter().any(|(_, entry)| {
+                                if let LogEntry::Cast { card } = entry {
+                                    *card == *candidate
+                                } else {
+                                    false
+                                }
+                            }) {
+                                return false;
+                            }
+                        }
+                        Entry::Ability {
+                            source,
+                            ability: Ability::Activated(candidate),
+                        } => {
+                            if !Log::current_session(db).iter().any(|(_, entry)| {
+                                if let LogEntry::Activated { card, ability } = entry {
+                                    *card == *source && *ability == *candidate
+                                } else {
+                                    false
+                                }
+                            }) {
+                                return false;
+                            }
+                        }
+                        _ => {
+                            return false;
+                        }
+                    };
+                }
+                Restriction::Tapped => {
+                    return false;
+                }
+                Restriction::TargetedBy => {
+                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                        if let LogEntry::Targeted {
+                            source: targeting,
+                            target,
+                        } = entry
+                        {
+                            self.ty.source() == *targeting && *target == source
+                        } else {
+                            false
+                        }
+                    }) {
+                        return false;
+                    }
+                }
+                Restriction::Threshold => {
+                    if db.graveyard[spell_or_ability_controller].len() < 7 {
+                        return false;
+                    }
+                }
+                Restriction::Toughness(comparison) => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if let Some(toughness) = card.toughness(db) {
+                        if !match comparison {
+                            Comparison::LessThan(target) => toughness < *target,
+                            Comparison::LessThanOrEqual(target) => toughness <= *target,
+                            Comparison::GreaterThan(target) => toughness > *target,
+                            Comparison::GreaterThanOrEqual(target) => toughness >= *target,
+                        } {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
     }
 }
 
@@ -223,8 +576,8 @@ impl Stack {
                 )
             }
             Entry::Ability { source, ability } => (
-                ability.apply_to_self(),
-                ability.effects(),
+                ability.apply_to_self(db),
+                ability.effects(db),
                 db[source].controller,
                 None,
                 source,
@@ -358,7 +711,7 @@ impl Stack {
         card: CardId,
         paying_costs: bool,
     ) -> PendingResults {
-        add_card_to_stack(card, db, CastFrom::Hand, paying_costs)
+        add_card_to_stack(db, card, Some(CastFrom::Hand), paying_costs)
     }
 
     pub(crate) fn move_card_to_stack_from_exile(
@@ -366,7 +719,7 @@ impl Stack {
         card: CardId,
         paying_costs: bool,
     ) -> PendingResults {
-        add_card_to_stack(card, db, CastFrom::Exile, paying_costs)
+        add_card_to_stack(db, card, Some(CastFrom::Exile), paying_costs)
     }
 
     pub(crate) fn push_card(
@@ -436,15 +789,15 @@ impl Stack {
     }
 }
 
-fn add_card_to_stack(
-    card: CardId,
+pub(crate) fn add_card_to_stack(
     db: &mut Database,
-    from: CastFrom,
+    card: CardId,
+    from: Option<CastFrom>,
     paying_costs: bool,
 ) -> PendingResults {
     let mut results = PendingResults::default();
 
-    db[card].cast_from = Some(from);
+    db[card].cast_from = from;
     card.apply_modifiers_layered(db);
 
     if card.has_modes(db) {

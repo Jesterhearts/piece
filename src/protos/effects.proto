@@ -39,113 +39,115 @@ message Effect {
     // targetted (i.e. ignore hexproof and shroud). This is used to implement
     // e.g. Clone.
     CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 9;
+    // Copy a spell or ability on the stack
+    CopySpellOrAbility copy_spell_or_ability = 10;
     // Counter a spell.
-    CounterSpell counter_spell = 10;
+    CounterSpell counter_spell = 11;
     // Counter spell unless the spell's controller pays some cost.
-    CounterSpellUnlessPay counter_spell_unless_pay = 11;
+    CounterSpellUnlessPay counter_spell_unless_pay = 12;
     // Create a token.
-    CreateToken create_token = 12;
+    CreateToken create_token = 13;
     // The controller of something targetted by another effect gets a token.
-    CreateToken target_controller_gains_tokens = 13;
+    CreateToken target_controller_gains_tokens = 14;
     // Create a token copy of another permanent with some modifiers applied.
-    CreateTokenCopy create_token_copy = 14;
+    CreateTokenCopy create_token_copy = 15;
     // Implement the cycling keyword. If there are restrictions listed for the
     // effect, it will act as a tutor for matching cards. If no restrictions are
     // specified, it will default to drawing a card.
-    Cycling cycling = 15;
+    Cycling cycling = 16;
     // Deal some amount of damage to any target, narrowed by restrictions.
-    DealDamage deal_damage = 16;
+    DealDamage deal_damage = 17;
     // Destroy each permanent matching some set of restrictions.
-    DestroyEach destroy_each = 17;
+    DestroyEach destroy_each = 18;
     // Destroy a target permanent from a target list narrowed by restrictions.
-    DestroyTarget destroy_target = 18;
+    DestroyTarget destroy_target = 19;
     // Implement the Discover keyword.
-    Discover discover = 19;
+    Discover discover = 20;
     // Apply modifiers to a target using the Equip mechanics.
-    Equip equip = 20;
+    Equip equip = 21;
     // Examine the top N cards of the effect controller's library and give the
     // player a choice of where to move the cards to. This is used to implement
     // e.g. Confounding Riddle's effect.
-    ExamineTopCards examine_top_cards = 21;
+    ExamineTopCards examine_top_cards = 22;
     // Exile a target from a list narrowed by a set of restrictions.
-    ExileTarget exile_target = 22;
+    ExileTarget exile_target = 23;
     // TODO: This should probably be split into two separate effects. It is
     // currently used to implement just Reality Shift.
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 23;
+        exile_target_creature_manifest_top_of_library = 24;
     // Exile the graveyard of target player.
-    ExileTargetGraveyard exile_target_graveyard = 24;
+    ExileTargetGraveyard exile_target_graveyard = 25;
     // The card with the associated effect explores.
-    Explore self_explores = 25;
+    Explore self_explores = 26;
     // The targetted creature explores. This automatically narrows the list of
     // valid targets to creatures on the battlefield.
-    Explore target_explores = 26;
+    Explore target_explores = 27;
     // For each mana from a particular source (e.g. cave or treasure) spent on
     // casting this effect's card, apply some effects.
-    ForEachManaOfSource for_each_mana_of_source = 27;
+    ForEachManaOfSource for_each_mana_of_source = 28;
     // Choose a permanent matching some list of restrictions for each player,
     // then apply some effects.
-    ForEachPlayerChooseThen for_each_player_choose_then = 28;
+    ForEachPlayerChooseThen for_each_player_choose_then = 29;
     // Place some number of counters on a target, narrowed by a list of
     // restrictions.
-    GainCounter target_gains_counters = 29;
+    GainCounter target_gains_counters = 30;
     // The controller of this effect gains life.
-    GainLife gain_life = 30;
+    GainLife gain_life = 31;
     // If the source of this effect passes some restrictions, apply some
     // effects. Otherwise, apply a different set of effects. This is used to
     // implement e.g. threshold.
-    IfThenElse if_then_else = 31;
+    IfThenElse if_then_else = 32;
     // Mill some number of cards for a target player.
-    Mill mill = 32;
+    Mill mill = 33;
     // Offer the controller of this effect a choice between several modes, then
     // apply the chosen effects.
-    Modes modal = 33;
+    Modes modal = 34;
     // Multiply the number of tokens created. This is only applied as a
     // replacement effect.
-    MultiplyTokens multiply_tokens = 34;
+    MultiplyTokens multiply_tokens = 35;
     // Ask the controller of this effect to pay some cost, then apply some
     // effects if they paid the cost.
-    PayCostThen pay_cost_then = 35;
+    PayCostThen pay_cost_then = 36;
     // Return a card from the graveyard to the battlefield.
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 36;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 37;
     // Return a card from the graveyard to the hand. TODO: This should probably
     // be merged with ReturnTargetToHand.
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 37;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 38;
     // Return a card from the graveyard to the library. TODO: This should
     // probably be merged with TargetToTopOfLibrary.
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 38;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 39;
     // Return the card associated with this effect to hand.
-    ReturnSelfToHand return_self_to_hand = 39;
+    ReturnSelfToHand return_self_to_hand = 40;
     // Return target card to the hand.
-    ReturnTargetToHand return_target_to_hand = 40;
+    ReturnTargetToHand return_target_to_hand = 41;
     // Return a card from exile or graveyard to the battlefield transformed.
-    ReturnTransformed return_transformed = 41;
+    ReturnTransformed return_transformed = 42;
     // Reveal the top card of each player's library, then apply some effects
     // depending on the revealed cards.
-    RevealEachTopOfLibrary reveal_each_top_of_library = 42;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 43;
     // Scry some number of cards.
-    Scry scry = 43;
+    Scry scry = 44;
     // Tap a target permanent. This automatically narrows the list of targets to
     // targets on the battlefield.
-    TapTarget tap_target = 44;
+    TapTarget tap_target = 45;
     // Tap the card associated with this effect.
-    TapThis tap_this = 45;
+    TapThis tap_this = 46;
     // Return target to the top of its owner's library.
-    TargetToTopOfLibrary target_to_top_of_library = 46;
+    TargetToTopOfLibrary target_to_top_of_library = 47;
     // Transform in place on the battlefield. This will preserve equipment and
     // auras attached to the transformed card.
-    Transform transform = 47;
+    Transform transform = 48;
     // Search the library for cards matching some set of restrictions and allow
     // the player to move it to a location.
-    TutorLibrary tutor_library = 48;
+    TutorLibrary tutor_library = 49;
     // Untap the card associated with this effect.
-    UntapThis untap_this = 49;
+    UntapThis untap_this = 50;
     // Untap a target permanent. THis automatically narrows the list of targets
     // to targets on the battlefield.
-    UntapTarget untap_target = 50;
+    UntapTarget untap_target = 51;
   }
 
-  string oracle_text = 51;
+  string oracle_text = 52;
 }
 
 message ActivatedAbility {
@@ -201,6 +203,10 @@ message ControllerLosesLife {
 }
 
 message CopyOfAnyCreatureNonTargeting {}
+
+message CopySpellOrAbility {
+  repeated targets.Restriction restrictions = 1;
+}
 
 message CounterSpell {
   repeated targets.Restriction restrictions = 1;
@@ -491,6 +497,9 @@ message StaticAbility {
     string keywords = 1;
     repeated targets.Restriction restrictions = 2;
   }
+  message AllAbilitiesOfExiledWith {
+    repeated cost.AbilityRestriction activation_restrictions = 1;
+  }
   message CantCastIfAttacked {}
   message ForceEtbTapped {
     repeated targets.Restriction restrictions = 1;
@@ -505,15 +514,16 @@ message StaticAbility {
 
   oneof ability {
     AddKeywordsIf add_keywords_if = 1;
-    BattlefieldModifier battlefield_modifier = 2;
-    CantCastIfAttacked cant_cast_if_attacked = 3;
-    ExtraLandsPerTurn extra_lands_per_turn = 4;
-    ForceEtbTapped force_etb_tapped = 5;
-    GreenCannotBeCountered green_cannot_be_countered = 6;
-    PreventAttacks prevent_attacks = 7;
-    PreventBlocks prevent_blocks = 8;
-    PreventAbilityActivation prevent_ability_activation = 9;
-    UntapEachUntapStep untap_each_untap_step = 10;
+    AllAbilitiesOfExiledWith all_abilities_of_exiled_with = 2;
+    BattlefieldModifier battlefield_modifier = 3;
+    CantCastIfAttacked cant_cast_if_attacked = 4;
+    ExtraLandsPerTurn extra_lands_per_turn = 5;
+    ForceEtbTapped force_etb_tapped = 6;
+    GreenCannotBeCountered green_cannot_be_countered = 7;
+    PreventAttacks prevent_attacks = 8;
+    PreventBlocks prevent_blocks = 9;
+    PreventAbilityActivation prevent_ability_activation = 10;
+    UntapEachUntapStep untap_each_untap_step = 11;
   }
 }
 

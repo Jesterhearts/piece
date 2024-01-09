@@ -9,7 +9,7 @@ use crate::{
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
     counters::Counter,
     effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
-    in_play::{CardId, Database},
+    in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{
@@ -77,11 +77,16 @@ pub(crate) struct ForceEtbTapped {
 #[derive(Debug, Clone)]
 pub(crate) enum StaticAbility {
     AddKeywordsIf(AddKeywordsIf),
+    AllAbilitiesOfExiledWith {
+        ability_restriction: Vec<AbilityRestriction>,
+    },
     BattlefieldModifier(Box<BattlefieldModifier>),
     CantCastIfAttacked,
     ExtraLandsPerTurn(usize),
     ForceEtbTapped(ForceEtbTapped),
-    GreenCannotBeCountered { restrictions: Vec<Restriction> },
+    GreenCannotBeCountered {
+        restrictions: Vec<Restriction>,
+    },
     PreventAttacks,
     PreventBlocks,
     PreventAbilityActivation,
@@ -107,6 +112,15 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
         match value {
             protogen::effects::static_ability::Ability::AddKeywordsIf(value) => {
                 Ok(Self::AddKeywordsIf(value.try_into()?))
+            }
+            protogen::effects::static_ability::Ability::AllAbilitiesOfExiledWith(value) => {
+                Ok(Self::AllAbilitiesOfExiledWith {
+                    ability_restriction: value
+                        .activation_restrictions
+                        .iter()
+                        .map(AbilityRestriction::try_from)
+                        .collect::<anyhow::Result<_>>()?,
+                })
             }
             protogen::effects::static_ability::Ability::CantCastIfAttacked(_) => {
                 Ok(Self::CantCastIfAttacked)
@@ -378,40 +392,40 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
 
 #[derive(Debug, Clone)]
 pub enum Ability {
-    Activated(ActivatedAbility),
-    Mana(GainManaAbility),
+    Activated(ActivatedAbilityId),
+    Mana(GainManaAbilityId),
     EtbOrTriggered(Vec<AnyEffect>),
 }
 
 impl Ability {
-    pub(crate) fn cost(&self) -> Option<&AbilityCost> {
+    pub(crate) fn cost<'db>(&self, db: &'db Database) -> Option<&'db AbilityCost> {
         match self {
-            Ability::Activated(ActivatedAbility { cost, .. })
-            | Ability::Mana(GainManaAbility { cost, .. }) => Some(cost),
+            Ability::Activated(id) => Some(&db[*id].ability.cost),
+            Ability::Mana(id) => Some(&db[*id].ability.cost),
             Ability::EtbOrTriggered(_) => None,
         }
     }
 
-    pub(crate) fn apply_to_self(&self) -> bool {
+    pub(crate) fn apply_to_self(&self, db: &Database) -> bool {
         match self {
-            Ability::Activated(ActivatedAbility { apply_to_self, .. }) => *apply_to_self,
+            Ability::Activated(id) => db[*id].ability.apply_to_self,
             Ability::Mana(_) => false,
             Ability::EtbOrTriggered(_) => false,
         }
     }
 
-    pub(crate) fn effects(&self) -> Vec<AnyEffect> {
+    pub(crate) fn effects(&self, db: &Database) -> Vec<AnyEffect> {
         match self {
-            Ability::Activated(ActivatedAbility { effects, .. }) => effects.clone(),
+            Ability::Activated(id) => db[*id].ability.effects.clone(),
             Ability::Mana(_) => vec![],
             Ability::EtbOrTriggered(effects) => effects.clone(),
         }
     }
 
-    pub(crate) fn text(&self) -> String {
+    pub(crate) fn text(&self, db: &Database) -> String {
         match self {
-            Ability::Activated(ActivatedAbility { oracle_text, .. })
-            | Ability::Mana(GainManaAbility { oracle_text, .. }) => oracle_text.clone(),
+            Ability::Activated(id) => db[*id].ability.oracle_text.clone(),
+            Ability::Mana(id) => db[*id].ability.oracle_text.clone(),
             Ability::EtbOrTriggered(effects) => {
                 effects.iter().map(|effect| &effect.oracle_text).join("\n")
             }
@@ -427,19 +441,24 @@ impl Ability {
     ) -> bool {
         match self {
             Ability::Activated(activated) => {
-                if !activated.can_be_activated(db, source, activator, pending) {
+                if !db[*activated]
+                    .ability
+                    .can_be_activated(db, source, activator, pending)
+                {
                     return false;
                 }
 
                 let targets = source.targets_for_ability(db, self, &HashSet::default());
 
-                self.effects()
+                db[*activated]
+                    .ability
+                    .effects
                     .iter()
                     .map(|effect| effect.effect.needs_targets(db, source))
                     .zip(targets)
                     .all(|(needs, has)| has.len() >= needs)
             }
-            Ability::Mana(mana) => mana.can_be_activated(db, source, activator),
+            Ability::Mana(id) => db[*id].ability.can_be_activated(db, source, activator),
             Ability::EtbOrTriggered(_) => false,
         }
     }
@@ -535,6 +554,7 @@ pub(crate) fn can_pay_costs(db: &Database, cost: &AbilityCost, source: CardId) -
                     return false;
                 }
             }
+            AbilityRestriction::OncePerTurn => todo!(),
         }
     }
 

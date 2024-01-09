@@ -35,7 +35,7 @@ use crate::{
         mana_pool::{ManaSource, SpendReason},
         Controller, Owner, Player,
     },
-    stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
+    stack::{add_card_to_stack, ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Location, Restriction},
     triggers::{self, Trigger, TriggerSource},
     types::Type,
@@ -104,6 +104,7 @@ pub(crate) enum ActionResult {
         source: CardId,
         target: ActiveTarget,
     },
+    CopyCardInStack(CardId, Controller),
     CreateToken {
         source: CardId,
         token: Token,
@@ -375,7 +376,6 @@ impl Battlefields {
                     .push_pending_behavior(db, source, controller, &mut results);
             }
 
-            source_card_id.apply_modifiers_layered(db);
             results.push_settled(construct_skip_replacement(source_card_id, enters_tapped));
         }
 
@@ -456,7 +456,7 @@ impl Battlefields {
             .collect_vec();
 
         for modifier in all_modifiers {
-            modifier.deactivate(&mut db.modifiers);
+            modifier.deactivate(db);
         }
 
         for card in db.cards.keys().copied().collect_vec() {
@@ -510,7 +510,7 @@ impl Battlefields {
             return PendingResults::default();
         }
 
-        let (ability_source, ability) = db[source].abilities().into_iter().nth(index).unwrap();
+        let (ability_source, ability) = db[source].abilities(db).into_iter().nth(index).unwrap();
 
         if !ability.can_be_activated(db, source, activator, pending) {
             debug!("Can't activate ability (can't meet costs)");
@@ -518,7 +518,7 @@ impl Battlefields {
         }
 
         let mut results = PendingResults::default();
-        if let Some(cost) = ability.cost() {
+        if let Some(cost) = ability.cost(db) {
             if cost.tap {
                 if source.tapped(db) {
                     unreachable!()
@@ -529,7 +529,7 @@ impl Battlefields {
 
             let exile_reason = match &ability {
                 Ability::Activated(activated) => {
-                    if activated.craft {
+                    if db[*activated].ability.craft {
                         Some(ExileReason::Craft)
                     } else {
                         None
@@ -637,10 +637,10 @@ impl Battlefields {
         }
 
         if let Ability::Mana(gain) = ability {
-            if let GainMana::Choice { .. } = &gain.gain {
+            if let GainMana::Choice { .. } = &db[gain].ability.gain {
                 results.push_choose_mode(Source::Ability {
                     source,
-                    ability: Ability::Mana(gain.clone()),
+                    ability: Ability::Mana(gain),
                 });
             }
             results.add_gain_mana(source, gain);
@@ -648,7 +648,7 @@ impl Battlefields {
             results.add_ability_to_stack(source, ability.clone());
             let controller = db[source].controller;
 
-            for effect in ability.effects() {
+            for effect in ability.effects(db) {
                 let effect = effect.effect;
                 let valid_targets =
                     effect.valid_targets(db, source, controller, results.all_currently_targeted());
@@ -663,6 +663,16 @@ impl Battlefields {
                         valid_targets,
                         source,
                     ));
+                }
+            }
+
+            if let Ability::Activated(ability) = ability {
+                Log::activated(db, source, ability);
+
+                for (listener, trigger) in
+                    db.active_triggers_of_source(TriggerSource::AbilityActivated)
+                {
+                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
             }
         }
@@ -1004,6 +1014,10 @@ impl Battlefields {
                 db.all_players[*player].lost = true;
                 PendingResults::default()
             }
+            ActionResult::CopyCardInStack(card, controller) => {
+                let copy = card.token_copy_of(db, *controller);
+                add_card_to_stack(db, copy, None, false)
+            }
             ActionResult::CastCard {
                 card,
                 targets,
@@ -1193,7 +1207,7 @@ impl Battlefields {
                 player,
             } => {
                 let mut results = PendingResults::default();
-                results.cast_from(CastFrom::Exile);
+                results.cast_from(Some(CastFrom::Exile));
 
                 while let Some(card) = Library::exile_top_card(
                     db,
@@ -1217,7 +1231,7 @@ impl Battlefields {
                 player,
             } => {
                 let mut results = PendingResults::default();
-                results.cast_from(CastFrom::Exile);
+                results.cast_from(Some(CastFrom::Exile));
 
                 while let Some(card) = Library::exile_top_card(
                     db,
@@ -1500,18 +1514,15 @@ impl Battlefields {
     pub(crate) fn leave_battlefield(db: &mut Database, target: CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
-        for card in db
-            .exile
-            .exile_zones
-            .values()
-            .flat_map(|e| e.iter())
+        for card in db[target]
+            .exiling
+            .iter()
             .copied()
             .filter(|card| {
-                db[*card].exiled_with == Some(target)
-                    && matches!(
-                        db[*card].exile_duration,
-                        Some(EffectDuration::UntilSourceLeavesBattlefield)
-                    )
+                matches!(
+                    db[*card].exile_duration,
+                    Some(EffectDuration::UntilSourceLeavesBattlefield)
+                )
             })
             .collect_vec()
         {
@@ -1538,7 +1549,7 @@ impl Battlefields {
             })
             .collect_vec()
         {
-            modifier.deactivate(&mut db.modifiers);
+            modifier.deactivate(db);
         }
 
         db[target].left_battlefield_turn = Some(db.turn.turn_count);

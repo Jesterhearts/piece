@@ -165,7 +165,7 @@ impl Owner {
                         return false;
                     }
                 }
-                Restriction::JustCast => {
+                Restriction::ControllerJustCast => {
                     if !Log::current_session(db).iter().any(|(_, entry)| {
                         if let LogEntry::Cast { card } = entry {
                             db[*card].controller == self
@@ -218,6 +218,12 @@ impl Owner {
                 }
                 Restriction::TargetedBy => {
                     // TODO
+                    return false;
+                }
+                Restriction::HasActivatedAbility => {
+                    return false;
+                }
+                Restriction::SpellOrAbilityJustCast => {
                     return false;
                 }
             }

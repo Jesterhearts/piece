@@ -6,7 +6,9 @@ use tracing::Level;
 
 use crate::{
     effects::BattlefieldModifier,
-    in_play::{CardId, Database, StaticAbilityId, NEXT_MODIFIER_ID},
+    in_play::{
+        ActivatedAbilityId, CardId, Database, GainManaAbilityId, StaticAbilityId, NEXT_MODIFIER_ID,
+    },
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
@@ -19,7 +21,10 @@ pub struct ModifierInPlay {
     pub(crate) active: bool,
     pub(crate) modifier: BattlefieldModifier,
     pub(crate) modifying: HashSet<CardId>,
+
     pub(crate) add_static_abilities: HashSet<StaticAbilityId>,
+    pub(crate) add_activated_abilities: HashSet<ActivatedAbilityId>,
+    pub(crate) add_mana_abilities: HashSet<GainManaAbilityId>,
 }
 
 impl ModifierId {
@@ -39,6 +44,16 @@ impl ModifierId {
             add_static_abilities.insert(StaticAbilityId::upload(db, source, ability.clone()));
         }
 
+        let mut add_activated_abilities = HashSet::default();
+        if let Some(add) = modifier.modifier.add_ability.as_ref() {
+            add_activated_abilities.insert(ActivatedAbilityId::upload(db, source, add.clone()));
+        }
+
+        let mut add_mana_abilities = HashSet::default();
+        if let Some(add) = modifier.modifier.mana_ability.as_ref() {
+            add_mana_abilities.insert(GainManaAbilityId::upload(db, source, add.clone()));
+        }
+
         db.modifiers.insert(
             id,
             ModifierInPlay {
@@ -48,6 +63,8 @@ impl ModifierId {
                 modifier,
                 modifying: Default::default(),
                 add_static_abilities,
+                add_activated_abilities,
+                add_mana_abilities,
             },
         );
 
@@ -59,12 +76,24 @@ impl ModifierId {
         modifiers.get_mut(&self).unwrap().active = true;
     }
 
-    #[instrument(level = Level::DEBUG)]
-    pub(crate) fn deactivate(self, modifiers: &mut IndexMap<ModifierId, ModifierInPlay>) {
-        let modifier = modifiers.get_mut(&self).unwrap();
+    #[instrument(level = Level::DEBUG, skip(db))]
+    pub(crate) fn deactivate(self, db: &mut Database) {
+        let modifier = db.modifiers.get_mut(&self).unwrap();
 
-        if modifier.temporary && modifier.modifying.is_empty() {
-            modifiers.remove(&self);
+        if modifier.temporary {
+            for id in modifier.add_activated_abilities.iter() {
+                db.gc_abilities.push(*id);
+            }
+
+            for id in modifier.add_static_abilities.iter() {
+                db.static_abilities.remove(id);
+            }
+
+            for id in modifier.add_mana_abilities.iter() {
+                db.mana_abilities.remove(id);
+            }
+
+            db.modifiers.remove(&self);
         } else {
             modifier.active = false;
             modifier.modifying.clear();

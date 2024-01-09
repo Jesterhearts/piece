@@ -73,9 +73,11 @@ message AbilityRestriction {
   message AttackedWithXOrMoreCreatures {
     int32 x_is = 1;
   }
+  message OncePerTurn {}
 
   oneof restriction {
-    AttackedWithXOrMoreCreatures attacked_with_x_or_more_creatures = 2;
+    AttackedWithXOrMoreCreatures attacked_with_x_or_more_creatures = 1;
+    OncePerTurn once_per_turn = 2;
   }
 }
 

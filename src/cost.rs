@@ -194,6 +194,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum AbilityRestriction {
     AttackedWithXOrMoreCreatures(usize),
+    OncePerTurn,
 }
 
 impl TryFrom<&protogen::cost::AbilityRestriction> for AbilityRestriction {
@@ -220,6 +221,9 @@ impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestr
             ) => Ok(Self::AttackedWithXOrMoreCreatures(usize::try_from(
                 value.x_is,
             )?)),
+            protogen::cost::ability_restriction::Restriction::OncePerTurn(_) => {
+                Ok(Self::OncePerTurn)
+            }
         }
     }
 }
