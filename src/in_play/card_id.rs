@@ -1450,7 +1450,6 @@ impl CardId {
     #[allow(unused)]
     pub(crate) fn needs_targets(self, db: &mut Database) -> Vec<usize> {
         let effects = &self.faceup_face(db).effects;
-        let controller = db[self].controller;
         let aura_targets = self.faceup_face(db).enchant.as_ref().map(|_| 1);
         std::iter::once(())
             .filter_map(|()| aura_targets)

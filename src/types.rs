@@ -1,11 +1,10 @@
-use std::collections::HashSet;
-
 use derive_more::{Deref, DerefMut};
+use indexmap::IndexSet;
 
 use crate::protogen::types::{Subtype, Type};
 
 #[derive(Debug, Clone, Deref, DerefMut, PartialEq, Eq, Default)]
-pub struct TypeSet(HashSet<Type>);
+pub struct TypeSet(IndexSet<Type>);
 
 impl From<&Vec<Type>> for TypeSet {
     fn from(values: &Vec<Type>) -> Self {
@@ -38,7 +37,7 @@ impl<const C: usize> From<[Type; C]> for TypeSet {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut, PartialEq, Eq, Default)]
-pub struct SubtypeSet(HashSet<Subtype>);
+pub struct SubtypeSet(IndexSet<Subtype>);
 
 impl From<&Vec<Subtype>> for SubtypeSet {
     fn from(values: &Vec<Subtype>) -> Self {
