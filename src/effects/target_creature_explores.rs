@@ -1,12 +1,12 @@
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::types::type_::TypeDiscriminants,
     stack::ActiveTarget,
-    types::Type,
+    types::TypeSet,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,7 +40,7 @@ impl EffectBehaviors for TargetCreatureExplores {
         db.battlefield[controller]
             .iter()
             .filter(|card| {
-                card.types_intersect(db, &IndexSet::from([Type::Creature]))
+                card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
                     && card.can_be_targeted(db, controller)
             })
             .map(|card| ActiveTarget::Battlefield { id: *card })

@@ -10,8 +10,9 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::types::{subtype::Subtype, type_::Type},
     stack::Stack,
-    types::{Subtype, Type},
+    types::{SubtypeSet, TypeSet},
 };
 
 #[test]
@@ -78,11 +79,18 @@ fn cascades() -> anyhow::Result<()> {
 
     assert_eq!(
         db[zhul].modified_types,
-        IndexSet::from([Type::Artifact, Type::Creature, Type::Legendary])
+        TypeSet::from([
+            Type::Artifact(Default::default()),
+            Type::Creature(Default::default()),
+            Type::Legendary(Default::default())
+        ])
     );
     assert_eq!(
         db[zhul].modified_subtypes,
-        IndexSet::from([Subtype::Eldrazi, Subtype::Angel])
+        SubtypeSet::from([
+            Subtype::Eldrazi(Default::default()),
+            Subtype::Angel(Default::default())
+        ])
     );
 
     // Resolve the first cascade

@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
@@ -7,8 +6,9 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::types::{subtype::Subtype, type_::Type},
     stack::Stack,
-    types::{Subtype, Type},
+    types::{SubtypeSet, TypeSet},
 };
 
 #[test]
@@ -71,11 +71,14 @@ fn x_is_zero() -> anyhow::Result<()> {
     assert_eq!(target.toughness(&db), Some(1));
     assert_eq!(
         db[target].modified_types,
-        IndexSet::from([Type::Creature, Type::Artifact])
+        TypeSet::from([
+            Type::Creature(Default::default()),
+            Type::Artifact(Default::default())
+        ])
     );
     assert_eq!(
         db[target].modified_subtypes,
-        IndexSet::from([Subtype::Spirit])
+        SubtypeSet::from([Subtype::Spirit(Default::default())])
     );
 
     Ok(())
@@ -147,11 +150,14 @@ fn x_is_two() -> anyhow::Result<()> {
     assert_eq!(target.toughness(&db), Some(3));
     assert_eq!(
         db[target].modified_types,
-        IndexSet::from([Type::Creature, Type::Artifact])
+        TypeSet::from([
+            Type::Creature(Default::default()),
+            Type::Artifact(Default::default())
+        ])
     );
     assert_eq!(
         db[target].modified_subtypes,
-        IndexSet::from([Subtype::Spirit])
+        SubtypeSet::from([Subtype::Spirit(Default::default())])
     );
 
     Ok(())

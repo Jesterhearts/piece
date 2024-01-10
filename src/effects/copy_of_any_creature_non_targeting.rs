@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use indexmap::IndexSet;
 use itertools::Itertools;
 use tracing::Level;
 
@@ -8,9 +7,10 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::types::type_::TypeDiscriminants,
     stack::ActiveTarget,
     targets::Location,
-    types::Type,
+    types::TypeSet,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -45,7 +45,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         for creature in db.cards.keys().filter(|card| {
             card.passes_restrictions(db, log_session, source, &card.faceup_face(db).restrictions)
                 && card.is_in_location(db, Location::Battlefield)
-                && card.types_intersect(db, &IndexSet::from([Type::Creature]))
+                && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
         }) {
             let target = ActiveTarget::Battlefield { id: *creature };
             if already_chosen.contains(&target) {

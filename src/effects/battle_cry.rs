@@ -4,9 +4,8 @@ use crate::{
     battlefield::ActionResult,
     effects::{BattlefieldModifier, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
-    protogen::empty::Empty,
+    protogen::{empty::Empty, types::type_::TypeDiscriminants},
     targets::{ControllerRestriction, Restriction},
-    types::Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,7 +51,7 @@ impl EffectBehaviors for BattleCry {
                     Restriction::NotSelf,
                     Restriction::OfType {
                         types: HashMap::from([(
-                            Type::Creature.as_ref().to_string(),
+                            TypeDiscriminants::Creature.as_ref().to_string(),
                             Empty::default(),
                         )]),
                         subtypes: Default::default(),

@@ -1,11 +1,10 @@
-use indexmap::IndexSet;
-
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors, EffectDuration},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::types::type_::TypeDiscriminants,
     stack::ActiveTarget,
-    types::Type,
+    types::TypeSet,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -43,7 +42,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                 log_session,
                 source,
                 &source.faceup_face(db).restrictions,
-            ) && card.types_intersect(db, &IndexSet::from([Type::Creature]))
+            ) && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
             {
                 let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {

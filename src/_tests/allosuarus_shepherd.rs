@@ -1,11 +1,10 @@
-use indexmap::IndexSet;
 use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
-    types::Subtype,
+    pending_results::ResolutionResult, player::AllPlayers, protogen::types::subtype::Subtype,
+    stack::Stack, turns::Phase, types::SubtypeSet,
 };
 
 #[test]
@@ -56,7 +55,11 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.toughness(&db), Some(5));
     assert_eq!(
         db[card].modified_subtypes,
-        IndexSet::from([Subtype::Elf, Subtype::Shaman, Subtype::Dinosaur])
+        SubtypeSet::from([
+            Subtype::Elf(Default::default()),
+            Subtype::Shaman(Default::default()),
+            Subtype::Dinosaur(Default::default())
+        ])
     );
 
     let mut results = Battlefields::end_turn(&mut db);
@@ -67,7 +70,10 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.toughness(&db), Some(1));
     assert_eq!(
         db[card].modified_subtypes,
-        IndexSet::from([Subtype::Elf, Subtype::Shaman])
+        SubtypeSet::from([
+            Subtype::Elf(Default::default()),
+            Subtype::Shaman(Default::default())
+        ])
     );
 
     Ok(())

@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -8,7 +7,8 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::{AllPlayers, Player},
-    types::Subtype,
+    protogen::types::subtype::Subtype,
+    types::SubtypeSet,
 };
 
 #[test]
@@ -46,12 +46,12 @@ fn adds_land_types() -> anyhow::Result<()> {
 
     assert_eq!(
         db[land].modified_subtypes,
-        IndexSet::from([
-            Subtype::Plains,
-            Subtype::Island,
-            Subtype::Swamp,
-            Subtype::Mountain,
-            Subtype::Forest
+        SubtypeSet::from([
+            Subtype::Plains(Default::default()),
+            Subtype::Island(Default::default()),
+            Subtype::Swamp(Default::default()),
+            Subtype::Mountain(Default::default()),
+            Subtype::Forest(Default::default()),
         ])
     );
 

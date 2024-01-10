@@ -57,6 +57,7 @@ message Subtype {
   message Archer {}
   message Archon {}
   message Arlinn {}
+  message Army {}
   message Artificer {}
   message Ashiok {}
   message Assassin {}
@@ -71,6 +72,7 @@ message Subtype {
   message Background {}
   message Badger {}
   message Bahamut {}
+  message Balloon {}
   message Barbarian {}
   message Bard {}
   message Basilisk {}
@@ -82,13 +84,16 @@ message Subtype {
   message Beholder {}
   message Berserker {}
   message Bird {}
+  message Blinkmoth {}
   message Boar {}
   message Bolas {}
   message Bringer {}
   message Brushwagg {}
   message Calix {}
+  message Camarid {}
   message Camel {}
   message Capybara {}
+  message Caribou {}
   message Carrier {}
   message Cartouche {}
   message Cat {}
@@ -123,6 +128,7 @@ message Subtype {
   message Demigod {}
   message Demon {}
   message Desert {}
+  message Deserter {}
   message Detective {}
   message Devil {}
   message Dihada {}
@@ -170,6 +176,7 @@ message Subtype {
   message Gargoyle {}
   message Garruk {}
   message Gate {}
+  message Germ {}
   message Giant {}
   message Gideon {}
   message Gith {}
@@ -180,6 +187,7 @@ message Subtype {
   message God {}
   message Golem {}
   message Gorgon {}
+  message Graveborn {}
   message Gremlin {}
   message Griffin {}
   message Grist {}
@@ -187,6 +195,7 @@ message Subtype {
   message Guff {}
   message Hag {}
   message Halfling {}
+  message Hamster {}
   message Harpy {}
   message Hellion {}
   message Hippo {}
@@ -202,6 +211,7 @@ message Subtype {
   message Illusion {}
   message Imp {}
   message Incarnation {}
+  message Inkling {}
   message Inquisitor {}
   message Insect {}
   message Island {}
@@ -281,6 +291,7 @@ message Subtype {
   message Ogre {}
   message Oko {}
   message Ooze {}
+  message Orb {}
   message Orc {}
   message Orgg {}
   message Otter {}
@@ -290,12 +301,14 @@ message Subtype {
   message Pangolin {}
   message Peasant {}
   message Pegasus {}
+  message Pentavite {}
   message Performer {}
   message Pest {}
   message Phelddagrif {}
   message Phoenix {}
   message Phyrexian {}
   message Pilot {}
+  message Pincher {}
   message Pirate {}
   message Plains {}
   message Plant {}
@@ -303,6 +316,7 @@ message Subtype {
   message Powerstone {}
   message Praetor {}
   message Primarch {}
+  message Prism {}
   message Processor {}
   message Quintorius {}
   message Rabbit {}
@@ -311,6 +325,7 @@ message Subtype {
   message Ranger {}
   message Rat {}
   message Rebel {}
+  message Reflection {}
   message Rhino {}
   message Rigger {}
   message Robot {}
@@ -322,14 +337,20 @@ message Subtype {
   message Saheeli {}
   message Salamander {}
   message Samurai {}
+  message Sand {}
+  message Saproling {}
   message Samut {}
   message Sarkhan {}
   message Satyr {}
   message Scarecrow {}
   message Scientist {}
+  message Scion {}
   message Scorpion {}
   message Scout {}
+  message Sculpture {}
+  message Serf {}
   message Serpent {}
+  message Servo {}
   message Serra {}
   message Shade {}
   message Shaman {}
@@ -357,16 +378,20 @@ message Subtype {
   message Spider {}
   message Spike {}
   message Spirit {}
+  message Splinter {}
   message Sponge {}
   message Squid {}
   message Squirrel {}
   message Starfish {}
   message Surrakar {}
+  message Survivor {}
   message Swamp {}
   message Szat {}
   message Tamiyo {}
   message Tasha {}
   message Teferi {}
+  message Tentacle {}
+  message Tetravite {}
   message Teyo {}
   message Tezzeret {}
   message Thalakos {}
@@ -380,6 +405,7 @@ message Subtype {
   message Treasure {}
   message Treefolk {}
   message Trilobite {}
+  message Triskelavite {}
   message Troll {}
   message Turtle {}
   message Tyranid {}
@@ -438,369 +464,395 @@ message Subtype {
     Archer archer = 13;
     Archon archon = 14;
     Arlinn arlinn = 15;
-    Artificer artificer = 16;
-    Ashiok ashiok = 17;
-    Assassin assassin = 18;
-    AssemblyWorker assemblyWorker = 19;
-    Astartes astartes = 20;
-    Atog atog = 21;
-    Attraction attraction = 22;
-    Aura aura = 23;
-    Aurochs aurochs = 24;
-    Avatar avatar = 25;
-    Azra azra = 26;
-    Background background = 27;
-    Badger badger = 28;
-    Bahamut bahamut = 29;
-    Barbarian barbarian = 30;
-    Bard bard = 31;
-    Basilisk basilisk = 32;
-    Basri basri = 33;
-    Bat bat = 34;
-    Bear bear = 35;
-    Beast beast = 36;
-    Beeble beeble = 37;
-    Beholder beholder = 38;
-    Berserker berserker = 39;
-    Bird bird = 40;
-    Boar boar = 41;
-    Bolas bolas = 42;
-    Bringer bringer = 43;
-    Brushwagg brushwagg = 44;
-    Calix calix = 45;
-    Camel camel = 46;
-    Capybara capybara = 47;
-    Carrier carrier = 48;
-    Cartouche cartouche = 49;
-    Cat cat = 50;
-    Cave cave = 51;
-    Centaur centaur = 52;
-    Cephalid cephalid = 53;
-    Chandra chandra = 54;
-    Child child = 55;
-    Chimera chimera = 56;
-    Citizen citizen = 57;
-    Class class = 58;
-    Cleric cleric = 59;
-    Clown clown = 60;
-    Clue clue = 61;
-    Cockatrice cockatrice = 62;
-    Comet comet = 63;
-    Construct construct = 64;
-    Coward coward = 65;
-    Crab crab = 66;
-    Crocodile crocodile = 67;
-    Ctan ctan = 68;
-    Curse curse = 69;
-    Custodes custodes = 70;
-    Cyberman cyberman = 71;
-    Cyclops cyclops = 72;
-    Dack dack = 73;
-    Dakkon dakkon = 74;
-    Dalek dalek = 75;
-    Daretti daretti = 76;
-    Dauthi dauthi = 77;
-    Davriel davriel = 78;
-    Demigod demigod = 79;
-    Demon demon = 80;
-    Desert desert = 81;
-    Detective detective = 82;
-    Devil devil = 83;
-    Dihada dihada = 84;
-    Dinosaur dinosaur = 85;
-    Djinn djinn = 86;
-    Doctor doctor = 87;
-    Dog dog = 88;
-    Domri domri = 89;
-    Dovin dovin = 90;
-    Dragon dragon = 91;
-    Drake drake = 92;
-    Dreadnought dreadnought = 93;
-    Drone drone = 94;
-    Druid druid = 95;
-    Dryad dryad = 96;
-    Dwarf dwarf = 97;
-    Efreet efreet = 98;
-    Egg egg = 99;
-    Elder elder = 100;
-    Eldrazi eldrazi = 101;
-    Elemental elemental = 102;
-    Elephant elephant = 103;
-    Elf elf = 104;
-    Elk elk = 105;
-    Ellywick ellywick = 106;
-    Elminster elminster = 107;
-    Elspeth elspeth = 108;
-    Employee employee = 109;
-    Equipment equipment = 110;
-    Estrid estrid = 111;
-    Eye eye = 112;
-    Faerie faerie = 113;
-    Ferret ferret = 114;
-    Fish fish = 115;
-    Flagbearer flagbearer = 116;
-    Food food = 117;
-    Forest forest = 118;
-    Fortification fortification = 119;
-    Fox fox = 120;
-    Fractal fractal = 121;
-    Freyalise freyalise = 122;
-    Frog frog = 123;
-    Fungus fungus = 124;
-    Gamer gamer = 125;
-    Gargoyle gargoyle = 126;
-    Garruk garruk = 127;
-    Gate gate = 128;
-    Giant giant = 129;
-    Gideon gideon = 130;
-    Gith gith = 131;
-    Gnoll gnoll = 132;
-    Gnome gnome = 133;
-    Goat goat = 134;
-    Goblin goblin = 135;
-    God god = 136;
-    Golem golem = 137;
-    Gorgon gorgon = 138;
-    Gremlin gremlin = 139;
-    Griffin griffin = 140;
-    Grist grist = 141;
-    Guest guest = 142;
-    Guff guff = 143;
-    Hag hag = 144;
-    Halfling halfling = 145;
-    Harpy harpy = 146;
-    Hellion hellion = 147;
-    Hippo hippo = 148;
-    Hippogriff hippogriff = 149;
-    Homarid homarid = 150;
-    Homunculus homunculus = 151;
-    Horror horror = 152;
-    Horse horse = 153;
-    Huatli huatli = 154;
-    Human human = 155;
-    Hydra hydra = 156;
-    Hyena hyena = 157;
-    Illusion illusion = 158;
-    Imp imp = 159;
-    Incarnation incarnation = 160;
-    Inquisitor inquisitor = 161;
-    Insect insect = 162;
-    Island island = 163;
-    Jace jace = 164;
-    Jackal jackal = 165;
-    Jared jared = 166;
-    Jaya jaya = 167;
-    Jellyfish jellyfish = 168;
-    Jeska jeska = 169;
-    Juggernaut juggernaut = 170;
-    Kaito kaito = 171;
-    Karn karn = 172;
-    Kasmina kasmina = 173;
-    Kavu kavu = 174;
-    Kaya kaya = 175;
-    Kiora kiora = 176;
-    Kirin kirin = 177;
-    Kithkin kithkin = 178;
-    Knight knight = 179;
-    Kobold kobold = 180;
-    Kor kor = 181;
-    Koth koth = 182;
-    Kraken kraken = 183;
-    Lair lair = 184;
-    Lamia lamia = 185;
-    Lammasu lammasu = 186;
-    Leech leech = 187;
-    Lesson lesson = 188;
-    Leviathan leviathan = 189;
-    Lhurgoyf lhurgoyf = 190;
-    Licid licid = 191;
-    Liliana liliana = 192;
-    Lizard lizard = 193;
-    Locus locus = 194;
-    Lolth lolth = 195;
-    Lord lord = 196;
-    Lukka lukka = 197;
-    Manticore manticore = 198;
-    Masticore masticore = 199;
-    Mercenary mercenary = 200;
-    Merfolk merfolk = 201;
-    Metathran metathran = 202;
-    Mine mine = 203;
-    Minion minion = 204;
-    Minotaur minotaur = 205;
-    Minsc minsc = 206;
-    Mite mite = 207;
-    Mole mole = 208;
-    Monger monger = 209;
-    Mongoose mongoose = 210;
-    Monk monk = 211;
-    Monkey monkey = 212;
-    Moonfolk moonfolk = 213;
-    Mordenkainen mordenkainen = 214;
-    Mountain mountain = 215;
-    Mouse mouse = 216;
-    Mutant mutant = 217;
-    Myr myr = 218;
-    Mystic mystic = 219;
-    Naga naga = 220;
-    Nahiri nahiri = 221;
-    Narset narset = 222;
-    Nautilus nautilus = 223;
-    Necron necron = 224;
-    Nephilim nephilim = 225;
-    Nightmare nightmare = 226;
-    Nightstalker nightstalker = 227;
-    Niko niko = 228;
-    Ninja ninja = 229;
-    Nissa nissa = 230;
-    Nixilis nixilis = 231;
-    Noble noble = 232;
-    Noggle noggle = 233;
-    Nomad nomad = 234;
-    Nymph nymph = 235;
-    Octopus octopus = 236;
-    Ogre ogre = 237;
-    Oko oko = 238;
-    Ooze ooze = 239;
-    Orc orc = 240;
-    Orgg orgg = 241;
-    Otter otter = 242;
-    Ouphe ouphe = 243;
-    Ox ox = 244;
-    Oyster oyster = 245;
-    Pangolin pangolin = 246;
-    Peasant peasant = 247;
-    Pegasus pegasus = 248;
-    Performer performer = 249;
-    Pest pest = 250;
-    Phelddagrif phelddagrif = 251;
-    Phoenix phoenix = 252;
-    Phyrexian phyrexian = 253;
-    Pilot pilot = 254;
-    Pirate pirate = 255;
-    Plains plains = 256;
-    Plant plant = 257;
-    PowerPlant powerPlant = 258;
-    Powerstone powerstone = 259;
-    Praetor praetor = 260;
-    Primarch primarch = 261;
-    Processor processor = 262;
-    Quintorius quintorius = 263;
-    Rabbit rabbit = 264;
-    Raccoon raccoon = 265;
-    Ral ral = 266;
-    Ranger ranger = 267;
-    Rat rat = 268;
-    Rebel rebel = 269;
-    Rhino rhino = 270;
-    Rigger rigger = 271;
-    Robot robot = 272;
-    Rogue rogue = 273;
-    Rowan rowan = 274;
-    Rune rune = 275;
-    Sable sable = 276;
-    Saga saga = 277;
-    Saheeli saheeli = 278;
-    Salamander salamander = 279;
-    Samurai samurai = 280;
-    Samut samut = 281;
-    Sarkhan sarkhan = 282;
-    Satyr satyr = 283;
-    Scarecrow scarecrow = 284;
-    Scientist scientist = 285;
-    Scorpion scorpion = 286;
-    Scout scout = 287;
-    Serpent serpent = 288;
-    Serra serra = 289;
-    Shade shade = 290;
-    Shaman shaman = 291;
-    Shapeshifter shapeshifter = 292;
-    Shark shark = 293;
-    Sheep sheep = 294;
-    Shrine shrine = 295;
-    Siege siege = 296;
-    Siren siren = 297;
-    Sivitri sivitri = 298;
-    Skeleton skeleton = 299;
-    Slith slith = 300;
-    Sliver sliver = 301;
-    Slug slug = 302;
-    Snail snail = 303;
-    Snake snake = 304;
-    Soldier soldier = 305;
-    Soltari soltari = 306;
-    Sorin sorin = 307;
-    Spawn spawn = 308;
-    Specter specter = 309;
-    Spellshaper spellshaper = 310;
-    Sphere sphere = 311;
-    Sphinx sphinx = 312;
-    Spider spider = 313;
-    Spike spike = 314;
-    Spirit spirit = 315;
-    Sponge sponge = 316;
-    Squid squid = 317;
-    Squirrel squirrel = 318;
-    Starfish starfish = 319;
-    Surrakar surrakar = 320;
-    Swamp swamp = 321;
-    Szat szat = 322;
-    Tamiyo tamiyo = 323;
-    Tasha tasha = 324;
-    Teferi teferi = 325;
-    Teyo teyo = 326;
-    Tezzeret tezzeret = 327;
-    Thalakos thalakos = 328;
-    Thopter thopter = 329;
-    Thrull thrull = 330;
-    Tibalt tibalt = 331;
-    Tiefling tiefling = 332;
-    Time time = 333;
-    Tower tower = 334;
-    Trap trap = 335;
-    Treasure treasure = 336;
-    Treefolk treefolk = 337;
-    Trilobite trilobite = 338;
-    Troll troll = 339;
-    Turtle turtle = 340;
-    Tyranid tyranid = 341;
-    Tyvar tyvar = 342;
-    Ugin ugin = 343;
-    Unicorn unicorn = 344;
-    Urza urza = 345;
-    Urzas urzas = 346;
-    Vampire vampire = 347;
-    Vedalken vedalken = 348;
-    Vehicle vehicle = 349;
-    Venser venser = 350;
-    Viashino viashino = 351;
-    Vivien vivien = 352;
-    Volver volver = 353;
-    Vraska vraska = 354;
-    Vronos vronos = 355;
-    Wall wall = 356;
-    Walrus walrus = 357;
-    Warlock warlock = 358;
-    Warrior warrior = 359;
-    Weird weird = 360;
-    Werewolf werewolf = 361;
-    Whale whale = 362;
-    Will will = 363;
-    Windgrace windgrace = 364;
-    Wizard wizard = 365;
-    Wolf wolf = 366;
-    Wolverine wolverine = 367;
-    Wombat wombat = 368;
-    Worm worm = 369;
-    Wraith wraith = 370;
-    Wrenn wrenn = 371;
-    Wurm wurm = 372;
-    Xenagos xenagos = 373;
-    Yanggu yanggu = 374;
-    Yanling yanling = 375;
-    Yeti yeti = 376;
-    Zariel zariel = 377;
-    Zombie zombie = 378;
-    Zubera zubera = 379;
+    Army army = 16;
+    Artificer artificer = 17;
+    Ashiok ashiok = 18;
+    Assassin assassin = 19;
+    AssemblyWorker assembly_worker = 20;
+    Astartes astartes = 21;
+    Atog atog = 22;
+    Attraction attraction = 23;
+    Aura aura = 24;
+    Aurochs aurochs = 25;
+    Avatar avatar = 26;
+    Azra azra = 27;
+    Background background = 28;
+    Badger badger = 29;
+    Bahamut bahamut = 30;
+    Balloon balloon = 31;
+    Barbarian barbarian = 32;
+    Bard bard = 33;
+    Basilisk basilisk = 34;
+    Basri basri = 35;
+    Bat bat = 36;
+    Bear bear = 37;
+    Beast beast = 38;
+    Beeble beeble = 39;
+    Beholder beholder = 40;
+    Berserker berserker = 41;
+    Bird bird = 42;
+    Blinkmoth blinkmoth = 43;
+    Boar boar = 44;
+    Bolas bolas = 45;
+    Bringer bringer = 46;
+    Brushwagg brushwagg = 47;
+    Calix calix = 48;
+    Camarid camarid = 49;
+    Camel camel = 50;
+    Capybara capybara = 51;
+    Caribou caribou = 52;
+    Carrier carrier = 53;
+    Cartouche cartouche = 54;
+    Cat cat = 55;
+    Cave cave = 56;
+    Centaur centaur = 57;
+    Cephalid cephalid = 58;
+    Chandra chandra = 59;
+    Child child = 60;
+    Chimera chimera = 61;
+    Citizen citizen = 62;
+    Class class = 63;
+    Cleric cleric = 64;
+    Clown clown = 65;
+    Clue clue = 66;
+    Cockatrice cockatrice = 67;
+    Comet comet = 68;
+    Construct construct = 69;
+    Coward coward = 70;
+    Crab crab = 71;
+    Crocodile crocodile = 72;
+    Ctan ctan = 73;
+    Curse curse = 74;
+    Custodes custodes = 75;
+    Cyberman cyberman = 76;
+    Cyclops cyclops = 77;
+    Dack dack = 78;
+    Dakkon dakkon = 79;
+    Dalek dalek = 80;
+    Daretti daretti = 81;
+    Dauthi dauthi = 82;
+    Davriel davriel = 83;
+    Demigod demigod = 84;
+    Demon demon = 85;
+    Desert desert = 86;
+    Deserter deserter = 87;
+    Detective detective = 88;
+    Devil devil = 89;
+    Dihada dihada = 90;
+    Dinosaur dinosaur = 91;
+    Djinn djinn = 92;
+    Doctor doctor = 93;
+    Dog dog = 94;
+    Domri domri = 95;
+    Dovin dovin = 96;
+    Dragon dragon = 97;
+    Drake drake = 98;
+    Dreadnought dreadnought = 99;
+    Drone drone = 100;
+    Druid druid = 101;
+    Dryad dryad = 102;
+    Dwarf dwarf = 103;
+    Efreet efreet = 104;
+    Egg egg = 105;
+    Elder elder = 106;
+    Eldrazi eldrazi = 107;
+    Elemental elemental = 108;
+    Elephant elephant = 109;
+    Elf elf = 110;
+    Elk elk = 111;
+    Ellywick ellywick = 112;
+    Elminster elminster = 113;
+    Elspeth elspeth = 114;
+    Employee employee = 115;
+    Equipment equipment = 116;
+    Estrid estrid = 117;
+    Eye eye = 118;
+    Faerie faerie = 119;
+    Ferret ferret = 120;
+    Fish fish = 121;
+    Flagbearer flagbearer = 122;
+    Food food = 123;
+    Forest forest = 124;
+    Fortification fortification = 125;
+    Fox fox = 126;
+    Fractal fractal = 127;
+    Freyalise freyalise = 128;
+    Frog frog = 129;
+    Fungus fungus = 130;
+    Gamer gamer = 131;
+    Gargoyle gargoyle = 132;
+    Garruk garruk = 133;
+    Gate gate = 134;
+    Germ germ = 135;
+    Giant giant = 136;
+    Gideon gideon = 137;
+    Gith gith = 138;
+    Gnoll gnoll = 139;
+    Gnome gnome = 140;
+    Goat goat = 141;
+    Goblin goblin = 142;
+    God god = 143;
+    Golem golem = 144;
+    Gorgon gorgon = 145;
+    Graveborn graveborn = 146;
+    Gremlin gremlin = 147;
+    Griffin griffin = 148;
+    Grist grist = 149;
+    Guest guest = 150;
+    Guff guff = 151;
+    Hag hag = 152;
+    Halfling halfling = 153;
+    Hamster hamster = 154;
+    Harpy harpy = 155;
+    Hellion hellion = 156;
+    Hippo hippo = 157;
+    Hippogriff hippogriff = 158;
+    Homarid homarid = 159;
+    Homunculus homunculus = 160;
+    Horror horror = 161;
+    Horse horse = 162;
+    Huatli huatli = 163;
+    Human human = 164;
+    Hydra hydra = 165;
+    Hyena hyena = 166;
+    Illusion illusion = 167;
+    Imp imp = 168;
+    Incarnation incarnation = 169;
+    Inkling inkling = 170;
+    Inquisitor inquisitor = 171;
+    Insect insect = 172;
+    Island island = 173;
+    Jace jace = 174;
+    Jackal jackal = 175;
+    Jared jared = 176;
+    Jaya jaya = 177;
+    Jellyfish jellyfish = 178;
+    Jeska jeska = 179;
+    Juggernaut juggernaut = 180;
+    Kaito kaito = 181;
+    Karn karn = 182;
+    Kasmina kasmina = 183;
+    Kavu kavu = 184;
+    Kaya kaya = 185;
+    Kiora kiora = 186;
+    Kirin kirin = 187;
+    Kithkin kithkin = 188;
+    Knight knight = 189;
+    Kobold kobold = 190;
+    Kor kor = 191;
+    Koth koth = 192;
+    Kraken kraken = 193;
+    Lair lair = 194;
+    Lamia lamia = 195;
+    Lammasu lammasu = 196;
+    Leech leech = 197;
+    Lesson lesson = 198;
+    Leviathan leviathan = 199;
+    Lhurgoyf lhurgoyf = 200;
+    Licid licid = 201;
+    Liliana liliana = 202;
+    Lizard lizard = 203;
+    Locus locus = 204;
+    Lolth lolth = 205;
+    Lord lord = 206;
+    Lukka lukka = 207;
+    Manticore manticore = 208;
+    Masticore masticore = 209;
+    Mercenary mercenary = 210;
+    Merfolk merfolk = 211;
+    Metathran metathran = 212;
+    Mine mine = 213;
+    Minion minion = 214;
+    Minotaur minotaur = 215;
+    Minsc minsc = 216;
+    Mite mite = 217;
+    Mole mole = 218;
+    Monger monger = 219;
+    Mongoose mongoose = 220;
+    Monk monk = 221;
+    Monkey monkey = 222;
+    Moonfolk moonfolk = 223;
+    Mordenkainen mordenkainen = 224;
+    Mountain mountain = 225;
+    Mouse mouse = 226;
+    Mutant mutant = 227;
+    Myr myr = 228;
+    Mystic mystic = 229;
+    Naga naga = 230;
+    Nahiri nahiri = 231;
+    Narset narset = 232;
+    Nautilus nautilus = 233;
+    Necron necron = 234;
+    Nephilim nephilim = 235;
+    Nightmare nightmare = 236;
+    Nightstalker nightstalker = 237;
+    Niko niko = 238;
+    Ninja ninja = 239;
+    Nissa nissa = 240;
+    Nixilis nixilis = 241;
+    Noble noble = 242;
+    Noggle noggle = 243;
+    Nomad nomad = 244;
+    Nymph nymph = 245;
+    Octopus octopus = 246;
+    Ogre ogre = 247;
+    Oko oko = 248;
+    Ooze ooze = 249;
+    Orb orb = 250;
+    Orc orc = 251;
+    Orgg orgg = 252;
+    Otter otter = 253;
+    Ouphe ouphe = 254;
+    Ox ox = 255;
+    Oyster oyster = 256;
+    Pangolin pangolin = 257;
+    Peasant peasant = 258;
+    Pegasus pegasus = 259;
+    Pentavite pentavite = 260;
+    Performer performer = 261;
+    Pest pest = 262;
+    Phelddagrif phelddagrif = 263;
+    Phoenix phoenix = 264;
+    Phyrexian phyrexian = 265;
+    Pilot pilot = 266;
+    Pincher pincher = 267;
+    Pirate pirate = 268;
+    Plains plains = 269;
+    Plant plant = 270;
+    PowerPlant power_plant = 271;
+    Powerstone powerstone = 272;
+    Praetor praetor = 273;
+    Primarch primarch = 274;
+    Prism prism = 275;
+    Processor processor = 276;
+    Quintorius quintorius = 277;
+    Rabbit rabbit = 278;
+    Raccoon raccoon = 279;
+    Ral ral = 280;
+    Ranger ranger = 281;
+    Rat rat = 282;
+    Rebel rebel = 283;
+    Reflection reflection = 284;
+    Rhino rhino = 285;
+    Rigger rigger = 286;
+    Robot robot = 287;
+    Rogue rogue = 288;
+    Rowan rowan = 289;
+    Rune rune = 290;
+    Sable sable = 291;
+    Saga saga = 292;
+    Saheeli saheeli = 293;
+    Salamander salamander = 294;
+    Samurai samurai = 295;
+    Sand sand = 296;
+    Saproling saproling = 297;
+    Samut samut = 298;
+    Sarkhan sarkhan = 299;
+    Satyr satyr = 300;
+    Scarecrow scarecrow = 301;
+    Scientist scientist = 302;
+    Scion scion = 303;
+    Scorpion scorpion = 304;
+    Scout scout = 305;
+    Sculpture sculpture = 306;
+    Serf serf = 307;
+    Serpent serpent = 308;
+    Servo servo = 309;
+    Serra serra = 310;
+    Shade shade = 311;
+    Shaman shaman = 312;
+    Shapeshifter shapeshifter = 313;
+    Shark shark = 314;
+    Sheep sheep = 315;
+    Shrine shrine = 316;
+    Siege siege = 317;
+    Siren siren = 318;
+    Sivitri sivitri = 319;
+    Skeleton skeleton = 320;
+    Slith slith = 321;
+    Sliver sliver = 322;
+    Slug slug = 323;
+    Snail snail = 324;
+    Snake snake = 325;
+    Soldier soldier = 326;
+    Soltari soltari = 327;
+    Sorin sorin = 328;
+    Spawn spawn = 329;
+    Specter specter = 330;
+    Spellshaper spellshaper = 331;
+    Sphere sphere = 332;
+    Sphinx sphinx = 333;
+    Spider spider = 334;
+    Spike spike = 335;
+    Spirit spirit = 336;
+    Splinter splinter = 337;
+    Sponge sponge = 338;
+    Squid squid = 339;
+    Squirrel squirrel = 340;
+    Starfish starfish = 341;
+    Surrakar surrakar = 342;
+    Survivor survivor = 343;
+    Swamp swamp = 344;
+    Szat szat = 345;
+    Tamiyo tamiyo = 346;
+    Tasha tasha = 347;
+    Teferi teferi = 348;
+    Tentacle tentacle = 349;
+    Tetravite tetravite = 350;
+    Teyo teyo = 351;
+    Tezzeret tezzeret = 352;
+    Thalakos thalakos = 353;
+    Thopter thopter = 354;
+    Thrull thrull = 355;
+    Tibalt tibalt = 356;
+    Tiefling tiefling = 357;
+    Time time = 358;
+    Tower tower = 359;
+    Trap trap = 360;
+    Treasure treasure = 361;
+    Treefolk treefolk = 362;
+    Trilobite trilobite = 363;
+    Triskelavite triskelavite = 364;
+    Troll troll = 365;
+    Turtle turtle = 366;
+    Tyranid tyranid = 367;
+    Tyvar tyvar = 368;
+    Ugin ugin = 369;
+    Unicorn unicorn = 370;
+    Urza urza = 371;
+    Urzas urzas = 372;
+    Vampire vampire = 373;
+    Vedalken vedalken = 374;
+    Vehicle vehicle = 375;
+    Venser venser = 376;
+    Viashino viashino = 377;
+    Vivien vivien = 378;
+    Volver volver = 379;
+    Vraska vraska = 380;
+    Vronos vronos = 381;
+    Wall wall = 382;
+    Walrus walrus = 383;
+    Warlock warlock = 384;
+    Warrior warrior = 385;
+    Weird weird = 386;
+    Werewolf werewolf = 387;
+    Whale whale = 388;
+    Will will = 389;
+    Windgrace windgrace = 390;
+    Wizard wizard = 391;
+    Wolf wolf = 392;
+    Wolverine wolverine = 393;
+    Wombat wombat = 394;
+    Worm worm = 395;
+    Wraith wraith = 396;
+    Wrenn wrenn = 397;
+    Wurm wurm = 398;
+    Xenagos xenagos = 399;
+    Yanggu yanggu = 400;
+    Yanling yanling = 401;
+    Yeti yeti = 402;
+    Zariel zariel = 403;
+    Zombie zombie = 404;
+    Zubera zubera = 405;
   }
 }

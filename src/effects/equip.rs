@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -8,10 +7,10 @@ use crate::{
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, empty::Empty},
+    protogen::{self, empty::Empty, types::type_::TypeDiscriminants},
     stack::ActiveTarget,
     targets::{ControllerRestriction, Restriction},
-    types::Type,
+    types::TypeSet,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,7 +72,7 @@ impl EffectBehaviors for Equip {
                 log_session,
                 source,
                 &source.faceup_face(db).restrictions,
-            ) && card.types_intersect(db, &IndexSet::from([Type::Creature]))
+            ) && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
             {
                 let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {
@@ -146,7 +145,7 @@ impl EffectBehaviors for Equip {
                         Restriction::Controller(ControllerRestriction::Self_),
                         Restriction::OfType {
                             types: HashMap::from([(
-                                Type::Creature.as_ref().to_string(),
+                                TypeDiscriminants::Creature.as_ref().to_string(),
                                 Empty::default(),
                             )]),
                             subtypes: Default::default(),

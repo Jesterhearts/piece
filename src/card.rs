@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use aho_corasick::AhoCorasick;
 use anyhow::anyhow;
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -13,9 +12,11 @@ use crate::{
         Mode, ReplacementAbility, Token, TokenCreature,
     },
     mana::ManaCost,
-    protogen,
+    protogen::{
+        self,
+        types::{type_::Artifact, Subtype, Type},
+    },
     targets::Restriction,
-    types::{Subtype, Type},
 };
 
 #[derive(
@@ -429,8 +430,8 @@ pub(crate) enum BaseToughnessType {
 #[derive(Debug, Clone, Default)]
 pub struct Card {
     pub name: String,
-    pub types: IndexSet<Type>,
-    pub subtypes: IndexSet<Subtype>,
+    pub types: Vec<Type>,
+    pub subtypes: Vec<Subtype>,
 
     pub cost: CastingCost,
     pub(crate) reducer: Option<CostReducer>,
@@ -499,18 +500,8 @@ impl TryFrom<&protogen::card::Card> for Card {
     fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
         let mut this = Self {
             name: value.name.clone(),
-            types: value
-                .typeline
-                .types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            subtypes: value
-                .typeline
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            types: value.typeline.types.clone(),
+            subtypes: value.typeline.subtypes.clone(),
             cost: value.cost.get_or_default().try_into()?,
             reducer: value
                 .cost_reducer
@@ -628,28 +619,34 @@ impl From<Token> for Card {
                     ..Default::default()
                 }
             }
-            Token::Map => Self {
-                name: "Map".to_string(),
-                types: IndexSet::from([Type::Artifact]),
-                activated_abilities: vec![ActivatedAbility {
-                    cost: AbilityCost {
-                        mana_cost: vec![ManaCost::Generic(1)],
-                        tap: true,
-                        additional_cost: vec![AdditionalCost::SacrificeSource],
-                        restrictions: vec![],
-                    },
-                    effects: vec![AnyEffect {
-                        effect: Effect::from(TargetCreatureExplores),
-                        oracle_text: String::default(),
+            Token::Map => {
+                let mut type_ = Type::default();
+                type_.set_artifact(Artifact::default());
+
+                Self {
+                    name: "Map".to_string(),
+                    types: vec![type_],
+                    activated_abilities: vec![ActivatedAbility {
+                        cost: AbilityCost {
+                            mana_cost: vec![ManaCost::Generic(1)],
+                            tap: true,
+                            additional_cost: vec![AdditionalCost::SacrificeSource],
+                            restrictions: vec![],
+                        },
+                        effects: vec![AnyEffect {
+                            effect: Effect::from(TargetCreatureExplores),
+                            oracle_text: String::default(),
+                        }],
+                        apply_to_self: false,
+                        oracle_text:
+                            "Target creature you control explores. Activate only as sorcery"
+                                .to_string(),
+                        sorcery_speed: true,
+                        craft: false,
                     }],
-                    apply_to_self: false,
-                    oracle_text: "Target creature you control explores. Activate only as sorcery"
-                        .to_string(),
-                    sorcery_speed: true,
-                    craft: false,
-                }],
-                ..Default::default()
-            },
+                    ..Default::default()
+                }
+            }
         }
     }
 }

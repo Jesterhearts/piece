@@ -9,8 +9,9 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::types::subtype::Subtype,
     stack::{ActiveTarget, Stack},
-    types::Subtype,
+    types::SubtypeSet,
 };
 
 #[test]
@@ -65,11 +66,14 @@ fn resolves_shift() -> anyhow::Result<()> {
 
     assert_eq!(bear2.power(&db), Some(4));
     assert_eq!(bear2.toughness(&db), Some(2));
-    assert_eq!(db[bear2].modified_subtypes, IndexSet::from([Subtype::Bear]));
+    assert_eq!(
+        db[bear2].modified_subtypes,
+        SubtypeSet::from([Subtype::Bear(Default::default())])
+    );
 
     assert_eq!(bear3.power(&db), Some(2));
     assert_eq!(bear3.toughness(&db), Some(2));
-    assert_eq!(db[bear3].modified_subtypes, IndexSet::from([]));
+    assert_eq!(db[bear3].modified_subtypes, SubtypeSet::from([]));
 
     Ok(())
 }

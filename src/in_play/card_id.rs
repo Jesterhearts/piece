@@ -7,7 +7,6 @@ use std::{
 };
 
 use derive_more::From;
-use indexmap::IndexSet;
 use itertools::Itertools;
 use strum::IntoEnumIterator;
 use tracing::Level;
@@ -32,23 +31,24 @@ use crate::{
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{mana_pool::ManaSource, Controller, Owner},
+    protogen::types::{subtype, type_::TypeDiscriminants, Subtype},
     stack::{ActiveTarget, Stack},
     targets::{self, Cmc, Comparison, Dynamic, Location, Restriction},
     triggers::TriggerSource,
-    types::{Subtype, Type},
+    types::{SubtypeSet, TypeSet},
     Cards,
 };
 
 type MakeLandAbility = Rc<dyn Fn(&mut Database, CardId) -> GainManaAbilityId>;
 
 thread_local! {
-    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, MakeLandAbility>> = OnceCell::new();
+    static INIT_LAND_ABILITIES: OnceCell<HashMap<String, MakeLandAbility>> = OnceCell::new();
 }
 
-fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
+fn land_abilities() -> HashMap<String, MakeLandAbility> {
     INIT_LAND_ABILITIES.with(|init| {
         init.get_or_init(|| {
-            let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
+            let mut abilities: HashMap<String, MakeLandAbility> = HashMap::new();
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -70,7 +70,12 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(Subtype::Plains, add);
+            abilities.insert(
+                subtype::Subtype::Plains(Default::default())
+                    .as_ref()
+                    .to_string(),
+                add,
+            );
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -92,7 +97,12 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(Subtype::Island, add);
+            abilities.insert(
+                subtype::Subtype::Island(Default::default())
+                    .as_ref()
+                    .to_string(),
+                add,
+            );
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -114,7 +124,12 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(Subtype::Swamp, add);
+            abilities.insert(
+                subtype::Subtype::Swamp(Default::default())
+                    .as_ref()
+                    .to_string(),
+                add,
+            );
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -136,7 +151,12 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(Subtype::Mountain, add);
+            abilities.insert(
+                subtype::Subtype::Mountain(Default::default())
+                    .as_ref()
+                    .to_string(),
+                add,
+            );
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -158,7 +178,12 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(Subtype::Forest, add);
+            abilities.insert(
+                subtype::Subtype::Forest(Default::default())
+                    .as_ref()
+                    .to_string(),
+                add,
+            );
 
             abilities
         })
@@ -218,8 +243,8 @@ pub struct CardInPlay {
     pub(crate) modified_base_toughness: Option<BaseToughnessType>,
     pub(crate) add_power: i32,
     pub(crate) add_toughness: i32,
-    pub(crate) modified_types: IndexSet<Type>,
-    pub(crate) modified_subtypes: IndexSet<Subtype>,
+    pub(crate) modified_types: TypeSet,
+    pub(crate) modified_subtypes: SubtypeSet,
     pub(crate) modified_colors: HashSet<Color>,
     pub(crate) modified_keywords: HashMap<String, u32>,
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
@@ -732,15 +757,15 @@ impl CardId {
         };
 
         let mut types = if facedown {
-            IndexSet::from([Type::Creature])
+            TypeSet::from([TypeDiscriminants::Creature])
         } else {
-            source.types.clone()
+            TypeSet::from(&source.types)
         };
 
         let mut subtypes = if facedown {
-            Default::default()
+            SubtypeSet::default()
         } else {
-            source.subtypes.clone()
+            SubtypeSet::from(&source.subtypes)
         };
 
         let mut keywords = if facedown {
@@ -867,37 +892,17 @@ impl CardId {
 
             if !modifier.modifier.modifier.add_types.is_empty() {
                 applied_modifiers.insert(id);
-                types.extend(
-                    modifier
-                        .modifier
-                        .modifier
-                        .add_types
-                        .keys()
-                        .map(|ty| Type::from_str(ty).unwrap()),
-                );
+                types.extend(modifier.modifier.modifier.add_types.keys().cloned());
             }
 
             if !modifier.modifier.modifier.add_subtypes.is_empty() {
                 applied_modifiers.insert(id);
-                subtypes.extend(
-                    modifier
-                        .modifier
-                        .modifier
-                        .add_subtypes
-                        .keys()
-                        .map(|ty| Subtype::from_str(ty).unwrap()),
-                );
+                subtypes.extend(modifier.modifier.modifier.add_subtypes.keys().cloned());
             }
 
             if !modifier.modifier.modifier.remove_types.is_empty() {
                 applied_modifiers.insert(id);
-                types.retain(|ty| {
-                    !modifier
-                        .modifier
-                        .modifier
-                        .remove_types
-                        .contains_key(ty.as_ref())
-                });
+                types.retain(|ty| !modifier.modifier.modifier.remove_types.contains_key(ty));
             }
 
             if modifier.modifier.modifier.remove_all_types {
@@ -907,18 +912,12 @@ impl CardId {
 
             if !modifier.modifier.modifier.remove_subtypes.is_empty() {
                 applied_modifiers.insert(id);
-                subtypes.retain(|ty| {
-                    !modifier
-                        .modifier
-                        .modifier
-                        .remove_subtypes
-                        .contains_key(ty.as_ref())
-                });
+                subtypes.retain(|ty| !modifier.modifier.modifier.remove_subtypes.contains_key(ty));
             }
 
             if modifier.modifier.modifier.remove_all_creature_types {
                 applied_modifiers.insert(id);
-                subtypes.retain(|ty| !ty.is_creature_type());
+                subtypes.retain(|ty| !Subtype::from_str(ty).unwrap().is_creature_type());
             }
         }
 
@@ -1387,8 +1386,8 @@ impl CardId {
         dynamic: &DynamicPowerToughness,
         source: CardId,
         self_controller: Controller,
-        self_types: &IndexSet<Type>,
-        self_subtypes: &IndexSet<Subtype>,
+        self_types: &TypeSet,
+        self_subtypes: &SubtypeSet,
         self_keywords: &HashMap<String, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &HashSet<ActivatedAbilityId>,
@@ -1505,8 +1504,8 @@ impl CardId {
         source: CardId,
         self_controller: Controller,
         restrictions: &[Restriction],
-        self_types: &IndexSet<Type>,
-        self_subtypes: &IndexSet<Subtype>,
+        self_types: &TypeSet,
+        self_subtypes: &SubtypeSet,
         self_keywords: &HashMap<String, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &HashSet<ActivatedAbilityId>,
@@ -1698,15 +1697,13 @@ impl CardId {
                     }
                 }
                 Restriction::NotOfType { types, subtypes } => {
-                    if !types.is_empty()
-                        && self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
-                    {
+                    if !types.is_empty() && self_types.iter().any(|ty| types.contains_key(ty)) {
                         return false;
                     }
                     if !subtypes.is_empty()
                         && self_subtypes
                             .iter()
-                            .any(|subtype| subtypes.contains_key(subtype.as_ref()))
+                            .any(|subtype| subtypes.contains_key(subtype))
                     {
                         return false;
                     }
@@ -1741,15 +1738,11 @@ impl CardId {
                     }
                 }
                 Restriction::OfType { types, subtypes } => {
-                    if !types.is_empty()
-                        && !self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
-                    {
+                    if !types.is_empty() && !self_types.iter().any(|ty| types.contains_key(ty)) {
                         return false;
                     }
                     if !subtypes.is_empty()
-                        && !self_subtypes
-                            .iter()
-                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                        && !self_subtypes.iter().any(|ty| subtypes.contains_key(ty))
                     {
                         return false;
                     }
@@ -1898,13 +1891,21 @@ impl CardId {
         }
     }
 
-    pub(crate) fn types_intersect(self, db: &Database, types: &IndexSet<Type>) -> bool {
-        types.is_empty() || !db[self].modified_types.is_disjoint(types)
+    pub(crate) fn types_intersect(self, db: &Database, types: &TypeSet) -> bool {
+        types.is_empty()
+            || db[self]
+                .modified_types
+                .iter()
+                .any(|type_| types.contains(type_))
     }
 
     #[allow(unused)]
-    pub(crate) fn subtypes_intersect(self, db: &Database, types: &IndexSet<Subtype>) -> bool {
-        types.is_empty() || !db[self].modified_subtypes.is_disjoint(types)
+    pub(crate) fn subtypes_intersect(self, db: &Database, subtypes: &SubtypeSet) -> bool {
+        subtypes.is_empty()
+            || db[self]
+                .modified_subtypes
+                .iter()
+                .any(|subtype| subtypes.contains(subtype))
     }
 
     pub(crate) fn targets_for_ability(
@@ -2077,11 +2078,14 @@ impl CardId {
     }
 
     pub(crate) fn is_land(self, db: &Database) -> bool {
-        self.types_intersect(db, &IndexSet::from([Type::Land]))
+        self.types_intersect(db, &TypeSet::from([TypeDiscriminants::Land]))
     }
 
     pub(crate) fn is_permanent(self, db: &Database) -> bool {
-        !self.types_intersect(db, &IndexSet::from([Type::Instant, Type::Sorcery]))
+        !self.types_intersect(
+            db,
+            &TypeSet::from([TypeDiscriminants::Instant, TypeDiscriminants::Sorcery]),
+        )
     }
 
     pub(crate) fn shroud(self, db: &Database) -> bool {
@@ -2190,7 +2194,7 @@ impl CardId {
     }
 
     pub(crate) fn can_attack(self, db: &Database) -> bool {
-        self.types_intersect(db, &IndexSet::from([Type::Creature]))
+        self.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
             && !db[self]
                 .modified_static_abilities
                 .iter()

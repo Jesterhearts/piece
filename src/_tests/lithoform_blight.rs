@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -7,6 +6,7 @@ use crate::{
     pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
+    types::SubtypeSet,
 };
 
 #[test]
@@ -43,7 +43,7 @@ fn works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db[land].modified_subtypes, IndexSet::from([]));
+    assert_eq!(db[land].modified_subtypes, SubtypeSet::from([]));
 
     Ok(())
 }

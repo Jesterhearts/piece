@@ -26,19 +26,12 @@ impl Widget for Card<'_> {
         }
 
         let source = &self.db[self.card];
-        let typeline =
-            std::iter::once(source.modified_types.iter().map(|ty| ty.as_ref()).join(" "))
-                .chain(
-                    std::iter::once(
-                        source
-                            .modified_subtypes
-                            .iter()
-                            .map(|ty| ty.as_ref())
-                            .join(" "),
-                    )
+        let typeline = std::iter::once(source.modified_types.iter().join(" "))
+            .chain(
+                std::iter::once(source.modified_subtypes.iter().join(" "))
                     .filter(|s| !s.is_empty()),
-                )
-                .join(" - ");
+            )
+            .join(" - ");
 
         let oracle_text = self.card.faceup_face(self.db).oracle_text.clone();
         let has_oracle_text = !oracle_text.is_empty();
@@ -335,12 +328,12 @@ impl Widget for Battlefield<'_, '_> {
                     |ui| {
                         self.cards.sort_by_cached_key(|(_, card)| {
                             let mut types =
-                                self.db[*card].modified_types.iter().copied().collect_vec();
+                                self.db[*card].modified_types.iter().cloned().collect_vec();
                             types.sort();
                             let mut subtypes = self.db[*card]
                                 .modified_subtypes
                                 .iter()
-                                .copied()
+                                .cloned()
                                 .collect_vec();
                             subtypes.sort();
                             (types, subtypes)

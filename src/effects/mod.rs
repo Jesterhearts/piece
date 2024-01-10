@@ -60,7 +60,6 @@ use std::{
 use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 use enum_dispatch::enum_dispatch;
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -100,10 +99,13 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::{Controller, Owner},
-    protogen::{self, empty::Empty},
+    protogen::{
+        self,
+        empty::Empty,
+        types::{Subtype, Type},
+    },
     stack::ActiveTarget,
     targets::Restriction,
-    types::{Subtype, Type},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -682,8 +684,8 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TokenCreature {
     pub(crate) name: String,
-    pub(crate) types: IndexSet<Type>,
-    pub(crate) subtypes: IndexSet<Subtype>,
+    pub(crate) types: Vec<Type>,
+    pub(crate) subtypes: Vec<Subtype>,
     pub(crate) colors: HashSet<Color>,
     pub(crate) keywords: HashMap<String, u32>,
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
@@ -697,18 +699,8 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
     fn try_from(value: &protogen::effects::create_token::Creature) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.clone(),
-            types: value
-                .typeline
-                .types
-                .iter()
-                .map(Type::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            subtypes: value
-                .typeline
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            types: value.typeline.types.clone(),
+            subtypes: value.typeline.subtypes.clone(),
             colors: value
                 .colors
                 .iter()

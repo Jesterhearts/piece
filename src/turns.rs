@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -9,9 +8,10 @@ use crate::{
     log::{Log, LogId},
     pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
+    protogen::types::type_::TypeDiscriminants,
     stack::Stack,
     triggers::TriggerSource,
-    types::Type,
+    types::TypeSet,
 };
 
 #[derive(Debug, Default, strum::AsRefStr)]
@@ -288,8 +288,9 @@ impl Turn {
     }
 
     pub fn can_cast(db: &Database, card: CardId) -> bool {
-        let instant_or_flash =
-            card.types_intersect(db, &IndexSet::from([Type::Instant])) || card.has_flash(db);
+        let instant_or_flash = card
+            .types_intersect(db, &TypeSet::from([TypeDiscriminants::Instant]))
+            || card.has_flash(db);
         // TODO teferi like effects.
         if instant_or_flash && !db.stack.split_second(db) {
             return true;

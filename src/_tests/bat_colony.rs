@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -7,9 +6,10 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::types::type_::Type,
     stack::Stack,
     turns::Phase,
-    types::Type,
+    types::TypeSet,
 };
 
 #[test]
@@ -81,7 +81,8 @@ fn spawns_bats() -> anyhow::Result<()> {
             .values()
             .flat_map(|b| b.iter())
             .copied()
-            .filter(|card| card.types_intersect(&db, &IndexSet::from([Type::Creature])))
+            .filter(|card| card
+                .types_intersect(&db, &TypeSet::from([Type::Creature(Default::default())])))
             .count(),
         3
     );

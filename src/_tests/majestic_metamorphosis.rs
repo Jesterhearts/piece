@@ -1,4 +1,3 @@
-use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -7,8 +6,9 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::types::{subtype::Subtype, type_::Type},
     stack::{ActiveTarget, Stack},
-    types::{Subtype, Type},
+    types::{SubtypeSet, TypeSet},
 };
 
 #[test]
@@ -55,11 +55,17 @@ fn metamorphosis() -> anyhow::Result<()> {
     assert_eq!(mantle.toughness(&db), Some(4));
     assert_eq!(
         db[mantle].modified_subtypes,
-        IndexSet::from([Subtype::Equipment, Subtype::Angel])
+        SubtypeSet::from([
+            Subtype::Equipment(Default::default()),
+            Subtype::Angel(Default::default())
+        ])
     );
     assert_eq!(
         db[mantle].modified_types,
-        IndexSet::from([Type::Artifact, Type::Creature])
+        TypeSet::from([
+            Type::Artifact(Default::default()),
+            Type::Creature(Default::default())
+        ])
     );
     assert!(mantle.flying(&db));
 
@@ -110,11 +116,17 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     assert_eq!(bear.toughness(&db), Some(4));
     assert_eq!(
         db[bear].modified_subtypes,
-        IndexSet::from([Subtype::Bear, Subtype::Angel])
+        SubtypeSet::from([
+            Subtype::Bear(Default::default()),
+            Subtype::Angel(Default::default())
+        ])
     );
     assert_eq!(
         db[bear].modified_types,
-        IndexSet::from([Type::Artifact, Type::Creature])
+        TypeSet::from([
+            Type::Artifact(Default::default()),
+            Type::Creature(Default::default())
+        ])
     );
     assert!(bear.flying(&db));
 

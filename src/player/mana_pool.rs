@@ -2,14 +2,13 @@ use std::collections::{BTreeMap, HashMap};
 
 use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
-use indexmap::IndexSet;
 use strum::IntoEnumIterator;
 
 use crate::{
     in_play::{CardId, Database},
     mana::{Mana, ManaCost, ManaRestriction},
-    protogen,
-    types::Type,
+    protogen::{self, types::type_::TypeDiscriminants},
+    types::TypeSet,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
@@ -181,7 +180,7 @@ impl ManaPool {
             }
 
             let card = card.unwrap();
-            if card.types_intersect(db, &IndexSet::from([Type::Artifact])) {
+            if card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Artifact])) {
                 let restricted = if let Some(restricted) =
                     sourced.get_mut(&ManaRestriction::ArtifactSpellOrAbility)
                 {
@@ -326,7 +325,7 @@ impl ManaPool {
                 }
 
                 if let Some(card) = reason.card() {
-                    card.types_intersect(db, &IndexSet::from([Type::Artifact]))
+                    card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Artifact]))
                 } else {
                     false
                 }
@@ -359,7 +358,7 @@ fn has_available_mana(
             if *restriction == ManaRestriction::None {
                 Some(count)
             } else if let Some(card) = reason.card() {
-                if card.types_intersect(db, &IndexSet::from([Type::Artifact])) {
+                if card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Artifact])) {
                     Some(count)
                 } else {
                     None

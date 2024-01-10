@@ -35,10 +35,11 @@ use crate::{
         mana_pool::{ManaSource, SpendReason},
         Controller, Owner, Player,
     },
+    protogen::types::type_::TypeDiscriminants,
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Location, Restriction},
     triggers::{self, Trigger, TriggerSource},
-    types::Type,
+    types::TypeSet,
 };
 
 #[must_use]
@@ -1462,7 +1463,7 @@ impl Battlefields {
                 let controller = db[explorer].controller;
                 if let Some(card) = db.all_players[controller].library.draw() {
                     db[card].revealed = true;
-                    if card.types_intersect(db, &IndexSet::from([Type::Land])) {
+                    if card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Land])) {
                         card.move_to_hand(db);
                         PendingResults::default()
                     } else {
