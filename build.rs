@@ -107,7 +107,7 @@ fn main() {
                         skip_serializing_if="::std::collections::HashMap::is_empty"
                     )]"#,
                 )
-            } else if field.name() == "reduction" {
+            } else if field.name() == "reduction" || field.name() == "mana_cost" {
                 Customize::default().before(
                     r#"#[serde(
                         default,

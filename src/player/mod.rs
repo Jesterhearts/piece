@@ -451,7 +451,7 @@ impl Player {
     pub(crate) fn can_meet_cost(
         &self,
         db: &Database,
-        mana: &[ManaCost],
+        mana: &[protobuf::EnumOrUnknown<ManaCost>],
         sources: &[ManaSource],
         reason: SpendReason,
     ) -> bool {
@@ -461,7 +461,10 @@ impl Player {
                 .copied()
                 .chain(std::iter::repeat(ManaSource::ANY)),
         ) {
-            if !self.mana_pool.can_spend(db, cost, source, reason) {
+            if !self
+                .mana_pool
+                .can_spend(db, cost.enum_value().unwrap(), source, reason)
+            {
                 return false;
             }
         }

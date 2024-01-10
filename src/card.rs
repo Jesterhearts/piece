@@ -79,9 +79,10 @@ pub struct Card {
 
 impl Card {
     pub fn document(&self) -> String {
+        let cost_text = self.cost.text();
         [
             std::iter::once(self.name.as_str())
-                .chain(std::iter::once(self.cost.cost_string.as_str()))
+                .chain(std::iter::once(cost_text.as_str()))
                 .chain(self.keywords.keys().map(String::as_str))
                 .chain(std::iter::once(self.oracle_text.as_str()))
                 .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
@@ -232,7 +233,7 @@ impl From<Token> for Card {
                 types: vec![Type::ARTIFACT.into()],
                 activated_abilities: vec![ActivatedAbility {
                     cost: AbilityCost {
-                        mana_cost: vec![ManaCost::GENERIC],
+                        mana_cost: vec![ManaCost::GENERIC.into()],
                         tap: true,
                         additional_cost: vec![AdditionalCost::SacrificeSource],
                         restrictions: vec![],

@@ -80,16 +80,16 @@ message AbilityRestriction {
 }
 
 message Ward {
-  string mana_cost = 1;
+  repeated ManaCost mana_cost = 1;
 }
 
 message CastingCost {
-  string mana_cost = 1;
+  repeated ManaCost mana_cost = 1;
   repeated AdditionalCost additional_costs = 2;
 }
 
 message AbilityCost {
-  string mana_cost = 1;
+  repeated ManaCost mana_cost = 1;
   optional bool tap = 2;
   repeated AdditionalCost additional_costs = 3;
   repeated AbilityRestriction restrictions = 4;

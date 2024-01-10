@@ -1,8 +1,6 @@
 use anyhow::anyhow;
-use itertools::Itertools;
 
 use crate::{
-    card::replace_symbols,
     counters::Counter,
     protogen::{self, color::Color, cost::ManaCost},
     targets::Restriction,
@@ -10,14 +8,16 @@ use crate::{
 
 #[derive(Debug, Clone, Default)]
 pub struct CastingCost {
-    pub cost_string: String,
-    pub(crate) mana_cost: Vec<ManaCost>,
+    pub(crate) mana_cost: Vec<protobuf::EnumOrUnknown<ManaCost>>,
     pub(crate) additional_cost: Vec<AdditionalCost>,
 }
 
 impl CastingCost {
     pub(crate) fn colors(&self) -> Vec<Color> {
-        self.mana_cost.iter().map(|mana| mana.color()).collect()
+        self.mana_cost
+            .iter()
+            .map(|mana| mana.enum_value().unwrap().color())
+            .collect()
     }
 
     pub fn text(&self) -> String {
@@ -26,12 +26,12 @@ impl CastingCost {
         let generic = self
             .mana_cost
             .iter()
-            .filter(|cost| matches!(cost, ManaCost::GENERIC))
+            .filter(|cost| matches!(cost.enum_value().unwrap(), ManaCost::GENERIC))
             .count();
 
         let mut pushed_generic = false;
         for mana in self.mana_cost.iter() {
-            match mana {
+            match mana.enum_value().unwrap() {
                 ManaCost::WHITE => result.push('\u{e600}'),
                 ManaCost::BLUE => result.push('\u{e601}'),
                 ManaCost::BLACK => result.push('\u{e602}'),
@@ -85,8 +85,7 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 
     fn try_from(value: &protogen::cost::CastingCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            cost_string: replace_symbols(&value.mana_cost),
-            mana_cost: parse_mana_cost(&value.mana_cost)?,
+            mana_cost: value.mana_cost.clone(),
             additional_cost: value
                 .additional_costs
                 .iter()
@@ -266,7 +265,7 @@ impl TryFrom<&protogen::cost::ability_restriction::Restriction> for AbilityRestr
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AbilityCost {
-    pub(crate) mana_cost: Vec<ManaCost>,
+    pub(crate) mana_cost: Vec<protobuf::EnumOrUnknown<ManaCost>>,
     pub(crate) tap: bool,
     pub(crate) additional_cost: Vec<AdditionalCost>,
     pub(crate) restrictions: Vec<AbilityRestriction>,
@@ -277,7 +276,7 @@ impl TryFrom<&protogen::cost::AbilityCost> for AbilityCost {
 
     fn try_from(value: &protogen::cost::AbilityCost) -> Result<Self, Self::Error> {
         Ok(Self {
-            mana_cost: parse_mana_cost(&value.mana_cost)?,
+            mana_cost: value.mana_cost.clone(),
             tap: value.tap.unwrap_or_default(),
             additional_cost: value
                 .additional_costs
@@ -352,43 +351,4 @@ impl TryFrom<&protogen::cost::CostReducer> for CostReducer {
             reduction: value.reduction.clone(),
         })
     }
-}
-
-pub(crate) fn parse_mana_cost(s: &str) -> anyhow::Result<Vec<ManaCost>> {
-    let split = s
-        .split('}')
-        .map(|s| s.trim_start_matches('{'))
-        .filter(|s| !s.is_empty())
-        .collect_vec();
-
-    let mut results = vec![];
-    for symbol in split {
-        if let Ok(count) = symbol.parse::<usize>() {
-            for _ in 0..count {
-                results.push(ManaCost::GENERIC);
-            }
-        } else {
-            let cost = match symbol {
-                "W" => ManaCost::WHITE,
-                "U" => ManaCost::BLUE,
-                "B" => ManaCost::BLACK,
-                "R" => ManaCost::RED,
-                "G" => ManaCost::GREEN,
-                "X" => ManaCost::X,
-                "C" => ManaCost::COLORLESS,
-                s => {
-                    return Err(anyhow!("Invalid mana cost {}", s));
-                }
-            };
-
-            if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
-                results.pop();
-                results.push(ManaCost::TWO_X);
-            } else {
-                results.push(cost);
-            }
-        }
-    }
-
-    Ok(results)
 }

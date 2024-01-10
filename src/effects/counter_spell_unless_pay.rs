@@ -162,7 +162,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                     results.push_pay_costs(PayCost::new_or_else(
                         db.stack.entries.get(id).unwrap().ty.source(),
                         pay_costs::Cost::SpendMana(SpendMana::new(
-                            std::iter::repeat(ManaCost::GENERIC)
+                            std::iter::repeat(ManaCost::GENERIC.into())
                                 .take(count)
                                 .collect_vec(),
                             SpendReason::Other,

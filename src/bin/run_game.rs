@@ -61,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
         index.add_document(
             &[
                 |card: &Card| vec![card.name.as_str()],
-                |card: &Card| vec![card.cost.cost_string.as_str()],
+                |card: &Card| vec![&*String::leak(card.cost.text())],
                 |card: &Card| card.keywords.keys().map(|k| k.as_ref()).collect_vec(),
                 |card: &Card| {
                     card.types
@@ -852,7 +852,7 @@ async fn main() -> anyhow::Result<()> {
                 egui::Window::new(format!(
                     "{} - {}",
                     inspecting.name(&db),
-                    inspecting.faceup_face(&db).cost.cost_string
+                    inspecting.faceup_face(&db).cost.text()
                 ))
                 .open(&mut open)
                 .show(ctx, |ui| {

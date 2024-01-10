@@ -144,12 +144,15 @@ pub(crate) struct SpendMana {
 }
 
 impl SpendMana {
-    pub(crate) fn new(mut mana: Vec<ManaCost>, reason: SpendReason) -> Self {
+    pub(crate) fn new(
+        mut mana: Vec<protobuf::EnumOrUnknown<ManaCost>>,
+        reason: SpendReason,
+    ) -> Self {
         mana.sort();
 
         let mut paying = IndexMap::default();
         for cost in mana {
-            *paying.entry(cost).or_default() += 1;
+            *paying.entry(cost.enum_value().unwrap()).or_default() += 1;
         }
         let mut paid = IndexMap::default();
         paid.entry(ManaCost::X).or_default();
