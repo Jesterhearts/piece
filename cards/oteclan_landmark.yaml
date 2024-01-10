@@ -31,10 +31,8 @@ back_face:
   colors: White
   triggered_abilities:
     - trigger:
-        source:
-          trigger: !Attacks {}
-        from:
-          location: !Battlefield {}
+        source: attacks
+        from: battlefield
         restrictions:
           - restriction: !Controller
               controller: !Self_ {}

@@ -6,7 +6,7 @@ etb_abilities:
   - oracle_text: When Bat Colony enters the battlefield, create a 1/1 black Bat creature
       token with flying for each mana from a Cave spent to cast it.
     effect: !ForEachManaOfSource
-      source: !CAVE
+      source: cave
       effect:
         effect: !CreateToken
           token: !Creature
@@ -17,10 +17,8 @@ etb_abilities:
             toughness: 1
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !EntersTheBattlefield {}
-      from:
-        location: !Anywhere {}
+      source: enters the battlefield
+      from: anywhere
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

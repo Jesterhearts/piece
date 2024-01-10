@@ -4,10 +4,8 @@ cost:
   mana_cost: '{1}{U}'
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !OneOrMoreTapped {}
-      from:
-        location: !Battlefield {}
+      source: one or more tapped
+      from: battlefield
       restrictions:
         - restriction: !OfType
             subtypes: Merfolk

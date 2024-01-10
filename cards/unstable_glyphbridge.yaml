@@ -50,10 +50,8 @@ back_face:
     - ability: !CantCastIfAttacked {}
   triggered_abilities:
     - trigger:
-        source:
-          trigger: !Cast {}
-        from:
-          location: !Anywhere {}
+        source: cast
+        from: anywhere
         restrictions:
           - restriction: !Controller
               controller: !Opponent {}

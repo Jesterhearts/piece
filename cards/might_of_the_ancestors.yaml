@@ -4,10 +4,8 @@ cost:
   mana_cost: '{2}{W}'
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !StartOfCombat {}
-      from:
-        location: !Anywhere {}
+      source: start of combat
+      from: anywhere
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

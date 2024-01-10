@@ -229,7 +229,7 @@ impl From<Token> for Card {
             }
             Token::Map => Self {
                 name: "Map".to_string(),
-                types: vec![protobuf::EnumOrUnknown::new(Type::ARTIFACT)],
+                types: vec![Type::ARTIFACT.into()],
                 activated_abilities: vec![ActivatedAbility {
                     cost: AbilityCost {
                         mana_cost: vec![ManaCost::GENERIC],

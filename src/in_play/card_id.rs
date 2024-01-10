@@ -35,11 +35,11 @@ use crate::{
         keywords::Keyword,
         mana::{Mana, ManaRestriction},
         targets::{Location, ManaSource},
+        triggers::TriggerSource,
         types::{Subtype, Type},
     },
     stack::{ActiveTarget, Stack},
     targets::{self, Cmc, Comparison, Dynamic, Restriction},
-    triggers::TriggerSource,
     types::{SubtypeSet, TypeSet},
     Cards,
 };
@@ -67,9 +67,9 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![protobuf::EnumOrUnknown::new(Mana::WHITE)],
+                            gains: vec![Mana::WHITE.into()],
                         },
-                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {W}."),
                     },
@@ -89,9 +89,9 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![protobuf::EnumOrUnknown::new(Mana::BLUE)],
+                            gains: vec![Mana::BLUE.into()],
                         },
-                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {U}."),
                     },
@@ -111,9 +111,9 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![protobuf::EnumOrUnknown::new(Mana::BLACK)],
+                            gains: vec![Mana::BLACK.into()],
                         },
-                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {B}."),
                     },
@@ -133,9 +133,9 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![protobuf::EnumOrUnknown::new(Mana::RED)],
+                            gains: vec![Mana::RED.into()],
                         },
-                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {R}."),
                     },
@@ -155,9 +155,9 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![protobuf::EnumOrUnknown::new(Mana::GREEN)],
+                            gains: vec![Mana::GREEN.into()],
                         },
-                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {G}."),
                     },
@@ -771,7 +771,7 @@ impl CardId {
             let mut triggers: HashMap<TriggerSource, Vec<TriggeredAbility>> = Default::default();
             for ability in source.triggered_abilities.iter() {
                 triggers
-                    .entry(ability.trigger.trigger)
+                    .entry(ability.trigger.source.enum_value().unwrap())
                     .or_default()
                     .push(ability.clone());
             }
@@ -2048,7 +2048,7 @@ impl CardId {
         db[self].tapped = true;
 
         let mut pending = PendingResults::default();
-        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Tapped) {
+        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TAPPED) {
             if self.passes_restrictions(
                 db,
                 LogId::current(db),

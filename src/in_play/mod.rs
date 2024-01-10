@@ -27,8 +27,8 @@ use crate::{
     library::Library,
     log::Log,
     player::{AllPlayers, Controller, Owner},
+    protogen::triggers::TriggerSource,
     stack::Stack,
-    triggers::TriggerSource,
     turns::Turn,
 };
 

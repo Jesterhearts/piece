@@ -22,10 +22,8 @@ activated_abilities:
       gains lifelink.'
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !EndStep {}
-      from:
-        location: !Anywhere {}
+      source: end step
+      from: anywhere
       restrictions:
         - restriction: !LifeGainedThisTurn
             count: 5

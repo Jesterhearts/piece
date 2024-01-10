@@ -4,10 +4,8 @@ cost:
   mana_cost: '{W}'
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !PutIntoGraveyard {}
-      from:
-        location: !Battlefield {}
+      source: put into graveyard
+      from: battlefield
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

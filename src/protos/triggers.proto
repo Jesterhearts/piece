@@ -5,46 +5,26 @@ package triggers;
 import "targets.proto";
 import "types.proto";
 
-message Location {
-  message Anywhere {}
-  message Battlefield {}
-  message Library {}
-
-  oneof location {
-    Anywhere anywhere = 1;
-    Battlefield battlefield = 2;
-    Library library = 3;
-  }
+enum Location {
+  ANYWHERE = 0;
+  BATTLEFIELD = 1;
+  HAND = 2;
+  LIBRARY = 3;
 }
 
-message TriggerSource {
-  message AbilityActivated {}
-  message Attacks {}
-  message Cast {}
-  message EndStep {}
-  message EntersTheBattlefield {}
-  message ExiledDuringCraft {}
-  message OneOrMoreTapped {}
-  message PreCombatMainPhase {}
-  message PutIntoGraveyard {}
-  message StartOfCombat {}
-  message Tapped {}
-  message Targeted {}
-
-  oneof trigger {
-    AbilityActivated ability_activated = 1;
-    Attacks attacks = 2;
-    Cast cast = 3;
-    EndStep end_step = 4;
-    EntersTheBattlefield enters_the_battlefield = 5;
-    ExiledDuringCraft exiled_during_craft = 6;
-    OneOrMoreTapped one_or_more_tapped = 7;
-    PreCombatMainPhase pre_combat_main_phase = 8;
-    PutIntoGraveyard put_into_graveyard = 9;
-    StartOfCombat start_of_combat = 10;
-    Tapped tapped = 11;
-    Targeted targeted = 12;
-  }
+enum TriggerSource {
+  ABILITY_ACTIVATED = 0;
+  ATTACKS = 1;
+  CAST = 2;
+  END_STEP = 3;
+  ENTERS_THE_BATTLEFIELD = 4;
+  EXILED_DURING_CRAFT = 5;
+  ONE_OR_MORE_TAPPED = 6;
+  PRE_COMBAT_MAIN_PHASE = 7;
+  PUT_INTO_GRAVEYARD = 8;
+  START_OF_COMBAT = 9;
+  TAPPED = 10;
+  TARGETED = 11;
 }
 
 message Trigger {

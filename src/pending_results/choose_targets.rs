@@ -9,8 +9,8 @@ use crate::{
     in_play::{CardId, Database},
     log::{Log, LogId},
     pending_results::{Pending, PendingResult, TargetSource},
+    protogen::triggers::TriggerSource,
     stack::{ActiveTarget, Stack},
-    triggers::TriggerSource,
 };
 
 #[derive(Debug, Clone)]
@@ -170,7 +170,7 @@ impl PendingResult for ChooseTargets {
                         if let ActiveTarget::Battlefield { id } = target {
                             Log::targetted(db, self.card, *id);
                             for (listener, trigger) in
-                                db.active_triggers_of_source(TriggerSource::Targeted)
+                                db.active_triggers_of_source(TriggerSource::TARGETED)
                             {
                                 if listener == *id
                                     && self.card.passes_restrictions(

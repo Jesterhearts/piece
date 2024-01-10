@@ -7,10 +7,8 @@ oracle_text: |
   When Market Gnome is exiled from the battlefield while you're activating a craft ability, you gain 1 life and draw a card.
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !PutIntoGraveyard {}
-      from:
-        location: !Battlefield {}
+      source: PUT_INTO_GRAVEYARD
+      from: BATTLEFIELD
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}
@@ -22,10 +20,8 @@ triggered_abilities:
           count: !Fixed
             count: 1
   - trigger:
-      source:
-        trigger: !ExiledDuringCraft {}
-      from:
-        location: !Battlefield {}
+      source: exiled during craft
+      from: battlefield
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

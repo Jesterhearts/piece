@@ -6,10 +6,8 @@ oracle_text: If one or more creature tokens would be created under your control,
   times that many of those tokens are created instead.
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !PutIntoGraveyard {}
-      from:
-        location: !Battlefield {}
+      source: put into graveyard
+      from: battlefield
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

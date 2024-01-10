@@ -34,11 +34,12 @@ use crate::{
         color::Color,
         mana::{Mana, ManaRestriction},
         targets::{Location, ManaSource},
+        triggers::{self, TriggerSource},
         types::Type,
     },
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Restriction},
-    triggers::{self, Trigger, TriggerSource},
+    triggers::Trigger,
     types::TypeSet,
 };
 
@@ -724,7 +725,7 @@ impl Battlefields {
         }
 
         let entries = Log::current_session(db).to_vec();
-        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::OneOrMoreTapped) {
+        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ONE_OR_MORE_TAPPED) {
             if entries.iter().any(|entry| {
                 let (_, LogEntry::Tapped { card }) = entry else {
                     return false;
@@ -793,7 +794,7 @@ impl Battlefields {
                     db.turn.activated_abilities.insert(*ability);
 
                     for (listener, trigger) in
-                        db.active_triggers_of_source(TriggerSource::AbilityActivated)
+                        db.active_triggers_of_source(TriggerSource::ABILITY_ACTIVATED)
                     {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
@@ -1108,7 +1109,7 @@ impl Battlefields {
                 };
                 card.apply_modifiers_layered(db);
 
-                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Cast) {
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::CAST) {
                     if card.passes_restrictions(
                         db,
                         LogId::current(db),
@@ -1126,8 +1127,8 @@ impl Battlefields {
                         *card,
                         TriggeredAbility {
                             trigger: Trigger {
-                                trigger: TriggerSource::Cast,
-                                from: triggers::Location::Hand,
+                                source: TriggerSource::CAST.into(),
+                                from: triggers::Location::HAND.into(),
                                 restrictions: vec![Restriction::Controller(
                                     ControllerRestriction::Self_,
                                 )],
@@ -1387,7 +1388,7 @@ impl Battlefields {
                 for (attacker, target) in attackers.iter().zip(targets.iter()) {
                     db[*attacker].attacking = Some(*target);
 
-                    let listeners = db.active_triggers_of_source(TriggerSource::Attacks);
+                    let listeners = db.active_triggers_of_source(TriggerSource::ATTACKS);
                     debug!("attack listeners {:?}", listeners);
                     for (listener, trigger) in listeners {
                         if attacker.passes_restrictions(
@@ -1406,8 +1407,8 @@ impl Battlefields {
                             *attacker,
                             TriggeredAbility {
                                 trigger: Trigger {
-                                    trigger: TriggerSource::Attacks,
-                                    from: triggers::Location::Anywhere,
+                                    source: TriggerSource::ATTACKS.into(),
+                                    from: triggers::Location::ANYWHERE.into(),
                                     restrictions: vec![Restriction::Controller(
                                         ControllerRestriction::Self_,
                                     )],
@@ -1561,10 +1562,10 @@ impl Battlefields {
     pub(crate) fn permanent_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
-        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PutIntoGraveyard) {
+        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PUT_INTO_GRAVEYARD) {
             if matches!(
-                trigger.trigger.from,
-                triggers::Location::Anywhere | triggers::Location::Battlefield
+                trigger.trigger.from.enum_value().unwrap(),
+                triggers::Location::ANYWHERE | triggers::Location::BATTLEFIELD
             ) && target.passes_restrictions(
                 db,
                 LogId::current(db),
@@ -1588,10 +1589,10 @@ impl Battlefields {
     pub(crate) fn library_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
-        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PutIntoGraveyard) {
+        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PUT_INTO_GRAVEYARD) {
             if matches!(
-                trigger.trigger.from,
-                triggers::Location::Anywhere | triggers::Location::Library
+                trigger.trigger.from.enum_value().unwrap(),
+                triggers::Location::ANYWHERE | triggers::Location::LIBRARY
             ) && target.passes_restrictions(
                 db,
                 LogId::current(db),
@@ -1656,15 +1657,16 @@ impl Battlefields {
     pub(crate) fn stack_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
-        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PutIntoGraveyard) {
-            if matches!(trigger.trigger.from, triggers::Location::Library)
-                && target.passes_restrictions(
-                    db,
-                    LogId::current(db),
-                    listener,
-                    &trigger.trigger.restrictions,
-                )
-            {
+        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PUT_INTO_GRAVEYARD) {
+            if matches!(
+                trigger.trigger.from.enum_value().unwrap(),
+                triggers::Location::LIBRARY
+            ) && target.passes_restrictions(
+                db,
+                LogId::current(db),
+                listener,
+                &trigger.trigger.restrictions,
+            ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }
@@ -1686,11 +1688,11 @@ impl Battlefields {
         let mut results = PendingResults::default();
         if let Some(ExileReason::Craft) = reason {
             for (listener, trigger) in
-                db.active_triggers_of_source(TriggerSource::ExiledDuringCraft)
+                db.active_triggers_of_source(TriggerSource::EXILED_DURING_CRAFT)
             {
                 if matches!(
-                    trigger.trigger.from,
-                    triggers::Location::Anywhere | triggers::Location::Battlefield
+                    trigger.trigger.from.enum_value().unwrap(),
+                    triggers::Location::ANYWHERE | triggers::Location::BATTLEFIELD
                 ) && source.passes_restrictions(
                     db,
                     LogId::current(db),
@@ -1778,10 +1780,10 @@ fn complete_add_from_library(
     source_card_id: CardId,
     results: &mut PendingResults,
 ) {
-    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
+    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
         if matches!(
-            trigger.trigger.from,
-            triggers::Location::Anywhere | triggers::Location::Library
+            trigger.trigger.from.enum_value().unwrap(),
+            triggers::Location::ANYWHERE | triggers::Location::LIBRARY
         ) && source_card_id.passes_restrictions(
             db,
             LogId::current(db),
@@ -1802,15 +1804,16 @@ fn complete_add_from_exile(
     source_card_id: CardId,
     results: &mut PendingResults,
 ) {
-    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
-        if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-            && source_card_id.passes_restrictions(
-                db,
-                LogId::current(db),
-                listener,
-                &trigger.trigger.restrictions,
-            )
-        {
+    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
+        if matches!(
+            trigger.trigger.from.enum_value().unwrap(),
+            triggers::Location::ANYWHERE
+        ) && source_card_id.passes_restrictions(
+            db,
+            LogId::current(db),
+            listener,
+            &trigger.trigger.restrictions,
+        ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
@@ -1825,15 +1828,16 @@ fn complete_add_from_graveyard(
     source_card_id: CardId,
     results: &mut PendingResults,
 ) {
-    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
-        if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-            && source_card_id.passes_restrictions(
-                db,
-                LogId::current(db),
-                listener,
-                &trigger.trigger.restrictions,
-            )
-        {
+    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
+        if matches!(
+            trigger.trigger.from.enum_value().unwrap(),
+            triggers::Location::ANYWHERE
+        ) && source_card_id.passes_restrictions(
+            db,
+            LogId::current(db),
+            listener,
+            &trigger.trigger.restrictions,
+        ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
@@ -1848,15 +1852,16 @@ fn complete_add_from_stack_or_hand(
     source_card_id: CardId,
     results: &mut PendingResults,
 ) {
-    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EntersTheBattlefield) {
-        if matches!(trigger.trigger.from, triggers::Location::Anywhere)
-            && source_card_id.passes_restrictions(
-                db,
-                LogId::current(db),
-                listener,
-                &trigger.trigger.restrictions,
-            )
-        {
+    for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
+        if matches!(
+            trigger.trigger.from.enum_value().unwrap(),
+            triggers::Location::ANYWHERE
+        ) && source_card_id.passes_restrictions(
+            db,
+            LogId::current(db),
+            listener,
+            &trigger.trigger.restrictions,
+        ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }

@@ -8,9 +8,8 @@ use crate::{
     log::{Log, LogId},
     pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
-    protogen::types::Type,
+    protogen::{triggers::TriggerSource, types::Type},
     stack::Stack,
-    triggers::TriggerSource,
     types::TypeSet,
 };
 
@@ -120,7 +119,7 @@ impl Turn {
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in
-                    db.active_triggers_of_source(TriggerSource::PreCombatMainPhase)
+                    db.active_triggers_of_source(TriggerSource::PRE_COMBAT_MAIN_PHASE)
                 {
                     if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
@@ -144,7 +143,7 @@ impl Turn {
                 let mut results = PendingResults::default();
                 let player = db.turn.active_player();
                 for (listener, trigger) in
-                    db.active_triggers_of_source(TriggerSource::StartOfCombat)
+                    db.active_triggers_of_source(TriggerSource::START_OF_COMBAT)
                 {
                     if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
@@ -223,7 +222,7 @@ impl Turn {
                 let mut results = PendingResults::default();
                 let player = db.turn.active_player();
 
-                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::EndStep) {
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::END_STEP) {
                     if !Owner::from(db[listener].controller).passes_restrictions(
                         db,
                         LogId::current(db),

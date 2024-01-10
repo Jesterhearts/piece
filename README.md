@@ -55,8 +55,6 @@ fails.
 - The yaml tags are UpperCamelCase versions of the snake_case field names for oneofs in the proto
   definitions. E.g. `battlefield_modifier` is `!BattlefieldModifier` and `modify_target` is
   `!ModifyTarget` for the `effect` oneof field in the `Effects` proto.
-- Mana sources (e.g. cave, treasure) and mana restrictions (e.g. only spend on activated abilities)
-  are expressed in `SCREAMING_SNAKE_CASE`.
 
 
 ---

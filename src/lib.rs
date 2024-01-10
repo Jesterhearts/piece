@@ -725,13 +725,9 @@ fn serialize_enum<T, S>(
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
-    T: Serialize + Enum,
+    T: Serialize + Enum + AsRef<str>,
 {
-    if let Ok(value) = value.enum_value() {
-        value.serialize(serializer)
-    } else {
-        serializer.serialize_none()
-    }
+    serializer.serialize_str(value.enum_value().unwrap().as_ref())
 }
 
 fn deserialize_enum<'de, T, D>(deserializer: D) -> Result<::protobuf::EnumOrUnknown<T>, D::Error>
@@ -739,5 +735,30 @@ where
     D: Deserializer<'de>,
     T: Deserialize<'de> + Enum,
 {
-    Ok(protobuf::EnumOrUnknown::new(T::deserialize(deserializer)?))
+    #[derive(Default)]
+    struct Visit<T> {
+        _p: PhantomData<T>,
+    }
+
+    impl<'de, T> Visitor<'de> for Visit<T>
+    where
+        T: Enum,
+    {
+        type Value = protobuf::EnumOrUnknown<T>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of values")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            T::from_str(&v.to_case(Case::ScreamingSnake))
+                .map(protobuf::EnumOrUnknown::new)
+                .ok_or_else(|| E::custom(format!("Unknown variant: {}", v)))
+        }
+    }
+
+    deserializer.deserialize_str(Visit::<T>::default())
 }

@@ -17,5 +17,5 @@ mana_abilities:
     gain_mana:
       gain: !Specific
         gain: '{W}'
-    mana_source: !CAVE
+    mana_source: cave
 etb_tapped: true

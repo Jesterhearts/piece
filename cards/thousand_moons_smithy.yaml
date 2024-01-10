@@ -20,10 +20,8 @@ etb_abilities:
                   types: Artifact, Creature
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !PreCombatMainPhase {}
-      from:
-        location: !Anywhere {}
+      source: pre combat main phase
+      from: anywhere
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}
@@ -61,10 +59,8 @@ back_face:
   typeline: Legendary Artifact Land
   triggered_abilities:
     - trigger:
-        source:
-          trigger: !Cast {}
-        from:
-          location: !Anywhere {}
+        source: cast
+        from: anywhere
         restrictions:
           - restriction: !Controller
               controller: !Self_ {}
@@ -93,4 +89,4 @@ back_face:
       gain_mana:
         gain: !Specific
           gain: '{W}'
-      mana_source: !BARRACKS_OF_THE_THOUSAND
+      mana_source: barracks of the thousand

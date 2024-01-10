@@ -4,10 +4,8 @@ cost:
   mana_cost: '{2}{U}'
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !EndStep {}
-      from:
-        location: !Anywhere {}
+      source: end step
+      from: anywhere
       restrictions:
         - restriction: !EnteredBattlefieldThisTurn
             count: 1

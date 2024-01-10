@@ -10,7 +10,7 @@ mana_abilities:
     gain_mana:
       gain: !Specific
         gain: '{C}{C}'
-    mana_restriction: !ACTIVATE_ABILITY
+    mana_restriction: activate ability
     oracle_text: >-
       {T}: Add {C}{C}. Spend this mana only to activate abilities.
 activated_abilities:
@@ -44,10 +44,8 @@ back_face:
           - restriction: !OncePerTurn {}
   triggered_abilities:
     - trigger:
-        source:
-          trigger: !AbilityActivated {}
-        from:
-          location: !Anywhere {}
+        source: ability activated
+        from: anywhere
       effects:
         - effect: !CopySpellOrAbility
             restrictions:

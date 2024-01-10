@@ -10,10 +10,8 @@ cost:
 oracle_text: As an additional cost to cast this spell, sacrifice an artifact or creature.
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !Targeted {}
-      from:
-        location: !Anywhere {}
+      source: targeted
+      from: anywhere
       restrictions:
         - restriction: !TargetedBy {}
     effects:

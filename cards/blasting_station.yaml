@@ -17,10 +17,8 @@ activated_abilities:
       creature or player.'
 triggered_abilities:
   - trigger:
-      source:
-        trigger: !EntersTheBattlefield {}
-      from:
-        location: !Anywhere {}
+      source: enters the battlefield
+      from: anywhere
       restrictions:
         - restriction: !OfType
             types: Creature

@@ -25,9 +25,8 @@ use crate::{
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
-    protogen::{color::Color, keywords::Keyword, targets::Location},
+    protogen::{color::Color, keywords::Keyword, targets::Location, triggers::TriggerSource},
     targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Restriction},
-    triggers::TriggerSource,
 };
 
 static NEXT_STACK_ID: AtomicUsize = AtomicUsize::new(0);
@@ -786,7 +785,7 @@ impl Stack {
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
             if let ActiveTarget::Battlefield { id } = target {
                 Log::targetted(db, source, id);
-                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TARGETED) {
                     if listener == id
                         && source.passes_restrictions(
                             db,
@@ -824,7 +823,7 @@ impl Stack {
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
             if let ActiveTarget::Battlefield { id } = target {
                 Log::targetted(db, source, id);
-                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::Targeted) {
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TARGETED) {
                     if listener == id
                         && source.passes_restrictions(
                             db,

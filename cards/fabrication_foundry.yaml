@@ -31,6 +31,6 @@ mana_abilities:
     gain_mana:
       gain: !Specific
         gain: '{W}'
-    mana_restriction: !ARTIFACT_SPELL_OR_ABILITY
+    mana_restriction: artifact spell or ability
     oracle_text: '{T}: Add {W}. Spend this mana only to cast an artifact spell or
       activate an ability of an artifact source.'
