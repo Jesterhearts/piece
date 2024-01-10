@@ -51,7 +51,6 @@ back_face:
   triggered_abilities:
     - trigger:
         source: cast
-        from: anywhere
         restrictions:
           - restriction: !Controller
               controller: !Opponent {}

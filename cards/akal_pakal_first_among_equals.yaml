@@ -5,7 +5,6 @@ cost:
 triggered_abilities:
   - trigger:
       source: end step
-      from: anywhere
       restrictions:
         - restriction: !EnteredBattlefieldThisTurn
             count: 1

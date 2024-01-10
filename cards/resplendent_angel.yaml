@@ -23,7 +23,6 @@ activated_abilities:
 triggered_abilities:
   - trigger:
       source: end step
-      from: anywhere
       restrictions:
         - restriction: !LifeGainedThisTurn
             count: 5

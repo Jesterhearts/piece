@@ -5,7 +5,6 @@ cost:
 triggered_abilities:
   - trigger:
       source: start of combat
-      from: anywhere
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

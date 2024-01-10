@@ -21,7 +21,6 @@ etb_abilities:
 triggered_abilities:
   - trigger:
       source: pre combat main phase
-      from: anywhere
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}
@@ -60,7 +59,6 @@ back_face:
   triggered_abilities:
     - trigger:
         source: cast
-        from: anywhere
         restrictions:
           - restriction: !Controller
               controller: !Self_ {}

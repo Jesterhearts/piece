@@ -45,7 +45,6 @@ back_face:
   triggered_abilities:
     - trigger:
         source: ability activated
-        from: anywhere
       effects:
         - effect: !CopySpellOrAbility
             restrictions:

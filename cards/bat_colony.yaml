@@ -18,7 +18,6 @@ etb_abilities:
 triggered_abilities:
   - trigger:
       source: enters the battlefield
-      from: anywhere
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}
