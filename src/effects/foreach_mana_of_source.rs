@@ -1,7 +1,7 @@
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    protogen::{self, targets::ManaSource},
+    protogen::{self, mana::ManaSource},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

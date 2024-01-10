@@ -22,8 +22,8 @@ use crate::{
     protogen::{
         color::Color,
         cost::ManaCost,
-        mana::{Mana, ManaRestriction},
-        targets::{Location, ManaSource},
+        mana::{Mana, ManaRestriction, ManaSource},
+        targets::Location,
     },
     stack::Stack,
     targets::Restriction,

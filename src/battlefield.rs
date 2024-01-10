@@ -32,8 +32,8 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         color::Color,
-        mana::{Mana, ManaRestriction},
-        targets::{Location, ManaSource},
+        mana::{Mana, ManaRestriction, ManaSource},
+        targets::Location,
         triggers::{self, TriggerSource},
         types::Type,
     },

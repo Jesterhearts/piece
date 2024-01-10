@@ -5,12 +5,7 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     counters::Counter,
-    protogen::{
-        self,
-        color::Color,
-        empty::Empty,
-        targets::{Location, ManaSource},
-    },
+    protogen::{self, color::Color, empty::Empty, mana::ManaSource, targets::Location},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

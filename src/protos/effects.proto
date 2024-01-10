@@ -342,7 +342,7 @@ message ExtraLandsPerTurn {
 }
 
 message ForEachManaOfSource {
-  targets.ManaSource source = 1;
+  mana.ManaSource source = 1;
   Effect effect = 2;
 }
 
@@ -401,7 +401,7 @@ message GainMana {
 message GainManaAbility {
   cost.AbilityCost cost = 1;
   GainMana gain_mana = 2;
-  targets.ManaSource mana_source = 3;
+  mana.ManaSource mana_source = 3;
   mana.ManaRestriction mana_restriction = 4;
   string oracle_text = 5;
 }

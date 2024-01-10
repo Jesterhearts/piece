@@ -33,8 +33,8 @@ use crate::{
     protogen::{
         color::Color,
         keywords::Keyword,
-        mana::{Mana, ManaRestriction},
-        targets::{Location, ManaSource},
+        mana::{Mana, ManaRestriction, ManaSource},
+        targets::Location,
         triggers::TriggerSource,
         types::{Subtype, Type},
     },

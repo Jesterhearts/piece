@@ -10,8 +10,8 @@ use crate::{
     pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::{
+        mana::ManaSource,
         mana::{Mana, ManaRestriction},
-        targets::ManaSource,
     },
     stack::Stack,
     turns::Phase,

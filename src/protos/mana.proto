@@ -2,6 +2,13 @@ syntax = "proto3";
 
 package mana;
 
+enum ManaSource {
+  ANY = 0;
+  BARRACKS_OF_THE_THOUSAND = 1;
+  CAVE = 2;
+  TREASURE = 3;
+}
+
 enum Mana {
   WHITE = 0;
   BLUE = 1;

@@ -15,8 +15,8 @@ use crate::{
     player::{mana_pool::SpendReason, Owner},
     protogen::{
         self,
+        mana::ManaSource,
         mana::{Mana, ManaRestriction},
-        targets::ManaSource,
     },
     targets::Restriction,
     triggers::Trigger,

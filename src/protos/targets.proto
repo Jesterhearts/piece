@@ -4,6 +4,7 @@ package targets;
 
 import "color.proto";
 import "empty.proto";
+import "mana.proto";
 import "types.proto";
 
 message Restriction {
@@ -47,7 +48,7 @@ message Restriction {
     repeated Location locations = 1;
   }
   message ManaSpentFromSource {
-    ManaSource source = 1;
+    mana.ManaSource source = 1;
   }
   message NonToken {}
   message NotChosen {}
@@ -121,13 +122,6 @@ message Restriction {
     Threshold threshold = 35;
     Toughness toughness = 36;
   }
-}
-
-enum ManaSource {
-  ANY = 0;
-  BARRACKS_OF_THE_THOUSAND = 1;
-  CAVE = 2;
-  TREASURE = 3;
 }
 
 message Comparison {

@@ -6,8 +6,8 @@ use crate::{
     in_play::{CardId, Database},
     protogen::{
         cost::ManaCost,
+        mana::ManaSource,
         mana::{Mana, ManaRestriction},
-        targets::ManaSource,
         types::Type,
     },
     types::TypeSet,
