@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},

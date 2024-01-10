@@ -2,7 +2,7 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::choose_targets::ChooseTargets,
     protogen,

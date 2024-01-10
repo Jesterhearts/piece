@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{Destination, EffectBehaviors},
     protogen,
 };

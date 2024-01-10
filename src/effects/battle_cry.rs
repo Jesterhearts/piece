@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{BattlefieldModifier, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
     protogen::{empty::Empty, types::Type},

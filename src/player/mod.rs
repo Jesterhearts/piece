@@ -12,7 +12,8 @@ use strum::IntoEnumIterator;
 
 use crate::{
     abilities::StaticAbility,
-    battlefield::{ActionResult, Battlefields},
+    action_result::ActionResult,
+    battlefield::Battlefields,
     effects::{EffectBehaviors, ReplacementAbility, Replacing},
     in_play::{CardId, Database},
     library::Library,

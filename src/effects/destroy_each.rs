@@ -1,4 +1,6 @@
-use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen, targets::Restriction};
+use crate::{
+    action_result::ActionResult, effects::EffectBehaviors, protogen, targets::Restriction,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DestroyEach {

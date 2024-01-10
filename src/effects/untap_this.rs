@@ -1,4 +1,4 @@
-use crate::{battlefield::ActionResult, effects::EffectBehaviors};
+use crate::{action_result::ActionResult, effects::EffectBehaviors};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub(crate) struct UntapThis;

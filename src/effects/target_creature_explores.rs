@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::types::Type,

@@ -1,5 +1,5 @@
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{EffectBehaviors, Token},
     protogen,
 };

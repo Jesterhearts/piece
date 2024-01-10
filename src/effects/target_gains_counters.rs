@@ -3,7 +3,7 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     counters::Counter,
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,

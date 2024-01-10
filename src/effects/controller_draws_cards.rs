@@ -3,7 +3,7 @@ use std::vec::IntoIter;
 use anyhow::anyhow;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{EffectBehaviors, ReplacementAbility},
     in_play::Database,
     log::LogId,

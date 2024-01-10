@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},

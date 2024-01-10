@@ -1,4 +1,4 @@
-use crate::{battlefield::ActionResult, effects::EffectBehaviors, protogen};
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub(crate) struct Discover {

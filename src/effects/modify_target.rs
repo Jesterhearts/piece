@@ -2,7 +2,7 @@ use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
     in_play::{target_from_location, Database, ModifierId},
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},

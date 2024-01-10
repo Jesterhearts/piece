@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult, effects::EffectBehaviors, protogen, stack::ActiveTarget,
+    action_result::ActionResult, effects::EffectBehaviors, protogen, stack::ActiveTarget,
     targets::Restriction,
 };
 

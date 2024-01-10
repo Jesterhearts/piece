@@ -4,7 +4,7 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     cost::ReduceWhen,
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{target_from_location, CardId, Database, ExileReason},

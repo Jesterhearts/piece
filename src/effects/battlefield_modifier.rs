@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::{Database, ModifierId},
     pending_results::PendingResults,

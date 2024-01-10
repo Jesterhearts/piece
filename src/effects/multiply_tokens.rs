@@ -1,5 +1,5 @@
 use crate::{
-    battlefield::create_token_copy_with_replacements,
+    action_result::create_token_copy_with_replacements,
     effects::{EffectBehaviors, ReplacementAbility},
     protogen,
 };

@@ -1,7 +1,7 @@
 use std::vec::IntoIter;
 
 use crate::{
-    battlefield::ActionResult,
+    action_result::ActionResult,
     effects::{EffectBehaviors, ReplacementAbility},
     log::LogId,
     pending_results::PendingResults,

@@ -10,7 +10,8 @@ use tracing::Level;
 
 use crate::{
     abilities::{Ability, TriggeredAbility},
-    battlefield::{ActionResult, Battlefields},
+    action_result::ActionResult,
+    battlefield::Battlefields,
     cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
