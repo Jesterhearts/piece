@@ -7,7 +7,6 @@ use approx::ulps_eq;
 use convert_case::{Case, Casing};
 use egui::{Color32, Label, Layout, Sense, TextEdit};
 use itertools::Itertools;
-use macroquad::window::next_frame;
 use piece::{
     ai::AI,
     battlefield::Battlefields,
@@ -16,18 +15,78 @@ use piece::{
     library::DeckDefinition,
     load_cards,
     pending_results::{PendingResults, ResolutionResult},
-    player::{AllPlayers, Player},
+    player::{AllPlayers, Owner, Player},
     protogen::targets::Location,
     stack::Stack,
     turns::Turn,
     ui::{self, ManaDisplay},
-    FONT_DATA,
+    Cards, FONT_DATA,
 };
-use probly_search::{score::bm25, Index};
+use probly_search::{score::zero_to_one, Index};
 use taffy::prelude::*;
 
-#[macroquad::main("Piece MTG")]
-async fn main() -> anyhow::Result<()> {
+struct App {
+    cards: Cards,
+    database: Database,
+    ai: AI,
+    index: Index<usize>,
+
+    player1: Owner,
+    player2: Owner,
+
+    adding_card: Option<String>,
+    to_resolve: Option<PendingResults>,
+    organizing_stack: bool,
+
+    left_clicked: Option<usize>,
+    right_clicked: Option<usize>,
+    selected_card: Option<CardId>,
+    inspecting_card: Option<CardId>,
+}
+
+impl App {
+    fn new(
+        cc: &eframe::CreationContext,
+        cards: Cards,
+        database: Database,
+        ai: AI,
+        player1: Owner,
+        player2: Owner,
+        index: Index<usize>,
+    ) -> Self {
+        let mut fonts = egui::FontDefinitions::default();
+        fonts.font_data.insert(
+            "symbols".to_string(),
+            egui::FontData::from_static(FONT_DATA),
+        );
+
+        fonts
+            .families
+            .entry(egui::FontFamily::Proportional)
+            .or_default()
+            .insert(1, "symbols".to_string());
+
+        cc.egui_ctx.set_fonts(fonts);
+
+        Self {
+            cards,
+            database,
+            ai,
+            index,
+            player1,
+            player2,
+            adding_card: None,
+            to_resolve: None,
+            organizing_stack: false,
+            left_clicked: None,
+            right_clicked: None,
+            selected_card: None,
+            inspecting_card: None,
+        }
+    }
+}
+
+fn main() -> anyhow::Result<()> {
     let file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -53,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
     let player2 = all_players.new_player("Player 2".to_string(), 20);
     all_players[player1].infinite_mana();
 
-    let mut db = Database::new(all_players);
+    let mut database = Database::new(all_players);
     let ai = AI::new(player2);
 
     let mut index = Index::<usize>::new(6);
@@ -93,878 +152,941 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let land2 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let land3 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, land1, None);
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, land2, None);
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, land3, None);
+    let land1 = CardId::upload(&mut database, &cards, player1, "Forest");
+    let land2 = CardId::upload(&mut database, &cards, player1, "Forest");
+    let land3 = CardId::upload(&mut database, &cards, player1, "Forest");
+    let _ = Battlefields::add_from_stack_or_hand(&mut database, land1, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut database, land2, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut database, land3, None);
 
-    let card2 = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
-    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
+    let card2 = CardId::upload(&mut database, &cards, player1, "Alpine Grizzly");
+    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card2, None);
+    assert_eq!(
+        results.resolve(&mut database, None),
+        ResolutionResult::Complete
+    );
 
-    let card3 = CardId::upload(&mut db, &cards, player1, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card3, None);
-    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
+    let card3 = CardId::upload(&mut database, &cards, player1, "Elesh Norn, Grand Cenobite");
+    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card3, None);
+    assert_eq!(
+        results.resolve(&mut database, None),
+        ResolutionResult::Complete
+    );
 
-    let card8 = CardId::upload(&mut db, &cards, player1, "Might of the Ancestors");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card8, None);
-    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
+    let card8 = CardId::upload(&mut database, &cards, player1, "Might of the Ancestors");
+    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card8, None);
+    assert_eq!(
+        results.resolve(&mut database, None),
+        ResolutionResult::Complete
+    );
 
-    let card9 = CardId::upload(&mut db, &cards, player1, "Bat Colony");
-    card9.move_to_hand(&mut db);
+    let card9 = CardId::upload(&mut database, &cards, player1, "Bat Colony");
+    card9.move_to_hand(&mut database);
 
-    let card10 = CardId::upload(&mut db, &cards, player1, "Ojer Taq, Deepest Foundation");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card10, None);
-    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
+    let card10 = CardId::upload(
+        &mut database,
+        &cards,
+        player1,
+        "Ojer Taq, Deepest Foundation",
+    );
+    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card10, None);
+    assert_eq!(
+        results.resolve(&mut database, None),
+        ResolutionResult::Complete
+    );
 
-    let card11 = CardId::upload(&mut db, &cards, player1, "Abzan Banner");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card11, None);
-    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
+    let card11 = CardId::upload(&mut database, &cards, player1, "Abzan Banner");
+    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card11, None);
+    assert_eq!(
+        results.resolve(&mut database, None),
+        ResolutionResult::Complete
+    );
 
-    let card12 = CardId::upload(&mut db, &cards, player1, "Resplendent Angel");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card12, None);
-    assert_eq!(results.resolve(&mut db, None), ResolutionResult::Complete);
+    let card12 = CardId::upload(&mut database, &cards, player1, "Resplendent Angel");
+    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card12, None);
+    assert_eq!(
+        results.resolve(&mut database, None),
+        ResolutionResult::Complete
+    );
 
-    let card13 = CardId::upload(&mut db, &cards, player1, "Get Lost");
-    card13.move_to_hand(&mut db);
+    let card13 = CardId::upload(&mut database, &cards, player1, "Get Lost");
+    card13.move_to_hand(&mut database);
 
-    let card14 = CardId::upload(&mut db, &cards, player1, "Kutzil's Flanker");
-    card14.move_to_hand(&mut db);
+    let card14 = CardId::upload(&mut database, &cards, player1, "Kutzil's Flanker");
+    card14.move_to_hand(&mut database);
 
-    while !db.stack.is_empty() {
-        let mut results = Stack::resolve_1(&mut db);
-        while results.resolve(&mut db, None) != ResolutionResult::Complete {}
+    while !database.stack.is_empty() {
+        let mut results = Stack::resolve_1(&mut database);
+        while results.resolve(&mut database, None) != ResolutionResult::Complete {}
     }
 
     let mut def = DeckDefinition::default();
     for card in cards.keys() {
         def.add_card(card.clone(), 1);
     }
-    db.all_players[player1].library = def.build_deck(&mut db, &cards, player1);
+    database.all_players[player1].library = def.build_deck(&mut database, &cards, player1);
 
-    let mut tree = Taffy::default();
+    eframe::run_native(
+        "Piece MTG",
+        eframe::NativeOptions::default(),
+        Box::new(move |cc| Box::new(App::new(cc, cards, database, ai, player1, player2, index))),
+    )
+    .unwrap();
 
-    let player2_mana = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+    Ok(())
+}
 
-    let stack = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+impl eframe::App for App {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut tree = Taffy::default();
 
-    let player1_mana = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player2_mana = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let lhs_column = tree.new_with_children(
-        Style {
-            display: Display::Grid,
-            size: Size::percent(1.0),
-            grid_column: Line::from_span(1),
-            grid_row: Line::from_span(1),
-            grid_template_rows: vec![
-                TrackSizingFunction::from_percent(0.20),
-                TrackSizingFunction::from_percent(0.50),
-                TrackSizingFunction::from_percent(0.30),
-            ],
-            grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
-            ..Default::default()
-        },
-        &[player2_mana, stack, player1_mana],
-    )?;
+        let stack = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let player2_battlefield = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player1_mana = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let player1_battlefield = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let lhs_column = tree
+            .new_with_children(
+                Style {
+                    display: Display::Grid,
+                    size: Size::percent(1.0),
+                    grid_column: Line::from_span(1),
+                    grid_row: Line::from_span(1),
+                    grid_template_rows: vec![
+                        TrackSizingFunction::from_percent(0.20),
+                        TrackSizingFunction::from_percent(0.50),
+                        TrackSizingFunction::from_percent(0.30),
+                    ],
+                    grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
+                    ..Default::default()
+                },
+                &[player2_mana, stack, player1_mana],
+            )
+            .unwrap();
 
-    let player1_options = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player2_battlefield = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let player1_hand = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player1_battlefield = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let center_column = tree.new_with_children(
-        Style {
-            display: Display::Grid,
-            size: Size::percent(1.0),
-            grid_column: Line::from_span(1),
-            grid_row: Line::from_span(1),
-            grid_template_rows: vec![
-                TrackSizingFunction::from_percent(0.40),
-                TrackSizingFunction::from_percent(0.50),
-                TrackSizingFunction::from_percent(0.05),
-                TrackSizingFunction::from_percent(0.05),
-            ],
-            grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
-            ..Default::default()
-        },
-        &[
-            player2_battlefield,
-            player1_battlefield,
-            player1_options,
-            player1_hand,
-        ],
-    )?;
+        let player1_options = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let player2_exile = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player1_hand = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let player2_graveyard = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let center_column = tree
+            .new_with_children(
+                Style {
+                    display: Display::Grid,
+                    size: Size::percent(1.0),
+                    grid_column: Line::from_span(1),
+                    grid_row: Line::from_span(1),
+                    grid_template_rows: vec![
+                        TrackSizingFunction::from_percent(0.40),
+                        TrackSizingFunction::from_percent(0.50),
+                        TrackSizingFunction::from_percent(0.05),
+                        TrackSizingFunction::from_percent(0.05),
+                    ],
+                    grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
+                    ..Default::default()
+                },
+                &[
+                    player2_battlefield,
+                    player1_battlefield,
+                    player1_options,
+                    player1_hand,
+                ],
+            )
+            .unwrap();
 
-    let player1_graveyard = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player2_exile = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let player1_exile = tree.new_leaf(Style {
-        display: Display::Grid,
-        size: Size::percent(1.0),
-        grid_column: Line::from_span(1),
-        grid_row: Line::from_span(1),
-        ..Default::default()
-    })?;
+        let player2_graveyard = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let rhs_column = tree.new_with_children(
-        Style {
-            display: Display::Grid,
-            size: Size::percent(1.0),
-            grid_column: Line::from_span(1),
-            grid_row: Line::from_span(1),
-            grid_template_rows: vec![
-                TrackSizingFunction::from_percent(0.15),
-                TrackSizingFunction::from_percent(0.25),
-                TrackSizingFunction::from_percent(0.40),
-                TrackSizingFunction::from_percent(0.20),
-            ],
-            grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
-            ..Default::default()
-        },
-        &[
-            player2_exile,
-            player2_graveyard,
-            player1_graveyard,
-            player1_exile,
-        ],
-    )?;
+        let player1_graveyard = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let root = tree.new_with_children(
-        Style {
-            display: Display::Grid,
-            size: Size::percent(1.0),
-            grid_template_rows: vec![TrackSizingFunction::from_percent(1.0)],
-            grid_template_columns: vec![
-                TrackSizingFunction::from_percent(0.15),
-                TrackSizingFunction::from_percent(0.70),
-                TrackSizingFunction::from_percent(0.15),
-            ],
-            ..Default::default()
-        },
-        &[lhs_column, center_column, rhs_column],
-    )?;
+        let player1_exile = tree
+            .new_leaf(Style {
+                display: Display::Grid,
+                size: Size::percent(1.0),
+                grid_column: Line::from_span(1),
+                grid_row: Line::from_span(1),
+                ..Default::default()
+            })
+            .unwrap();
 
-    let mut adding_card = None;
-    let mut to_resolve = None;
-    let mut organizing_stack = false;
+        let rhs_column = tree
+            .new_with_children(
+                Style {
+                    display: Display::Grid,
+                    size: Size::percent(1.0),
+                    grid_column: Line::from_span(1),
+                    grid_row: Line::from_span(1),
+                    grid_template_rows: vec![
+                        TrackSizingFunction::from_percent(0.15),
+                        TrackSizingFunction::from_percent(0.25),
+                        TrackSizingFunction::from_percent(0.40),
+                        TrackSizingFunction::from_percent(0.20),
+                    ],
+                    grid_template_columns: vec![TrackSizingFunction::from_percent(1.0)],
+                    ..Default::default()
+                },
+                &[
+                    player2_exile,
+                    player2_graveyard,
+                    player1_graveyard,
+                    player1_exile,
+                ],
+            )
+            .unwrap();
 
-    let mut left_clicked = None;
-    let mut right_clicked = None;
-    let mut selected_card: Option<CardId> = None;
-    let mut inspecting_card = None;
+        let root = tree
+            .new_with_children(
+                Style {
+                    display: Display::Grid,
+                    size: Size::percent(1.0),
+                    grid_template_rows: vec![TrackSizingFunction::from_percent(1.0)],
+                    grid_template_columns: vec![
+                        TrackSizingFunction::from_percent(0.15),
+                        TrackSizingFunction::from_percent(0.70),
+                        TrackSizingFunction::from_percent(0.15),
+                    ],
+                    ..Default::default()
+                },
+                &[lhs_column, center_column, rhs_column],
+            )
+            .unwrap();
 
-    egui_macroquad::ui(|ctx| {
-        let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert(
-            "symbols".to_string(),
-            egui::FontData::from_static(FONT_DATA),
-        );
-
-        fonts
-            .families
-            .entry(egui::FontFamily::Proportional)
-            .or_default()
-            .insert(1, "symbols".to_string());
-
-        ctx.set_fonts(fonts)
-    });
-
-    loop {
-        if db.turn.priority_player() == player2 {
+        if self.database.turn.priority_player() == self.player2 {
             debug!("Giving ai priority");
-            let mut pending = ai.priority(&mut db, &mut PendingResults::default());
+            let mut pending = self
+                .ai
+                .priority(&mut self.database, &mut PendingResults::default());
 
-            while pending.only_immediate_results(&db) {
-                let result = pending.resolve(&mut db, None);
+            while pending.only_immediate_results(&self.database) {
+                let result = pending.resolve(&mut self.database, None);
                 if result == ResolutionResult::Complete {
                     break;
                 }
             }
 
-            maybe_organize_stack(&mut db, pending, &mut to_resolve, &mut organizing_stack);
+            maybe_organize_stack(
+                &mut self.database,
+                pending,
+                &mut self.to_resolve,
+                &mut self.organizing_stack,
+            );
         }
 
-        egui_macroquad::ui(|ctx| {
-            egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
-                ui.set_enabled(to_resolve.is_none() && adding_card.is_none());
-                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
-                    if ui.button("Pass").clicked()
-                        || (ui.is_enabled()
-                            && ctx.input(|input| input.key_released(egui::Key::Num1)))
-                    {
-                        debug!("Passing priority");
-                        assert_eq!(db.turn.priority_player(), player1);
-                        db.turn.pass_priority();
-
-                        if db.turn.passed_full_round() {
-                            let mut pending = Turn::step(&mut db);
-                            while pending.only_immediate_results(&db) {
-                                let result = pending.resolve(&mut db, None);
-                                if result == ResolutionResult::Complete {
-                                    break;
-                                }
-                            }
-
-                            maybe_organize_stack(
-                                &mut db,
-                                pending,
-                                &mut to_resolve,
-                                &mut organizing_stack,
-                            );
-                        }
-                    }
-
-                    if ui.button("(Debug) Untap all").clicked()
-                        || (ui.is_enabled()
-                            && ctx.input(|input| input.key_released(egui::Key::Num2)))
-                    {
-                        for card in db
-                            .battlefield
-                            .battlefields
-                            .values()
-                            .flat_map(|b| b.iter())
-                            .copied()
-                            .collect_vec()
-                        {
-                            card.untap(&mut db);
-                        }
-                    }
-
-                    if ui.button("(Debug) Infinite mana").clicked()
-                        || (ui.is_enabled()
-                            && ctx.input(|input| input.key_released(egui::Key::Num3)))
-                    {
-                        db.all_players[player1].infinite_mana();
-                    }
-
-                    if ui.button("(Debug) Draw").clicked()
-                        || (ui.is_enabled()
-                            && ctx.input(|input| input.key_released(egui::Key::Num4)))
-                    {
-                        let mut pending = Player::draw(&mut db, player1, 1);
-                        while pending.only_immediate_results(&db) {
-                            let result = pending.resolve(&mut db, None);
-                            if result == ResolutionResult::Complete {
-                                break;
-                            }
-                        }
-
-                        maybe_organize_stack(
-                            &mut db,
-                            pending,
-                            &mut to_resolve,
-                            &mut organizing_stack,
-                        );
-                    }
-
-                    if ui.button("(Debug) Add Card to Hand").clicked()
-                        || (ui.is_enabled()
-                            && ctx.input(|input| input.key_released(egui::Key::Num5)))
-                    {
-                        adding_card = Some(String::default());
-                    }
-                });
-
-                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
-                    ui.label(format!(
-                        "{} {}",
-                        db.all_players[db.turn.active_player()].name,
-                        db.turn.phase.as_ref()
-                    ));
-
-                    ui.separator();
-                    ui.label(format!(
-                        "{} ({})",
-                        db.all_players[player1].name, db.all_players[player1].life_total
-                    ));
-
-                    ui.separator();
-                    ui.label(format!(
-                        "{} ({})",
-                        db.all_players[player2].name, db.all_players[player2].life_total
-                    ));
-                })
-            });
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                let size = ui.max_rect();
-                tree.compute_layout(
-                    root,
-                    Size {
-                        width: AvailableSpace::from_points(size.width()),
-                        height: AvailableSpace::from_points(size.height()),
-                    },
-                )
-                .unwrap();
-
-                let row_offset = ui.next_widget_position().y;
-
-                let pos = tree.layout(player2_mana).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ManaDisplay {
-                        player: player2,
-                        items: db.all_players[player2].mana_pool.pools_display(),
-                    },
-                );
-
-                let pos = tree.layout(stack).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Stack {
-                        items: db
-                            .stack
-                            .entries()
-                            .iter()
-                            .rev()
-                            .enumerate()
-                            .map(|(idx, e)| format!("({}) {}", idx, e.display(&db)))
-                            .collect_vec(),
-                        left_clicked: &mut left_clicked,
-                    },
-                );
-
-                if to_resolve.is_none()
-                    && (left_clicked.take().is_some()
-                        || ctx.input(|input| input.key_released(egui::Key::Enter)))
+        egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
+            ui.set_enabled(self.to_resolve.is_none() && self.adding_card.is_none());
+            ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                if ui.button("Pass").clicked()
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num1)))
                 {
-                    cleanup_stack(&mut db, &mut to_resolve, &mut organizing_stack);
-                }
+                    debug!("Passing priority");
+                    assert_eq!(self.database.turn.priority_player(), self.player1);
+                    self.database.turn.pass_priority();
 
-                let pos = tree.layout(player1_mana).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ManaDisplay {
-                        player: player1,
-                        items: db.all_players[player1].mana_pool.pools_display(),
-                    },
-                );
-
-                let mut col_offset = tree.layout(lhs_column).unwrap().size.width;
-
-                let cards = db.battlefield[player2]
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .collect_vec();
-                let pos = tree.layout(player2_battlefield).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Battlefield {
-                        db: &mut db,
-                        player: player2,
-                        cards,
-                        left_clicked: &mut None,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.battlefield[player2][clicked]);
-                }
-
-                let cards = db.battlefield[player1]
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .collect_vec();
-                let pos = tree.layout(player1_battlefield).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Battlefield {
-                        db: &mut db,
-                        player: player1,
-                        cards,
-                        left_clicked: &mut left_clicked,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = left_clicked.take() {
-                    selected_card = Some(db.battlefield[player1][clicked]);
-                } else if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.battlefield[player1][clicked]);
-                }
-
-                let pos = tree.layout(player1_options).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Actions {
-                        db: &mut db,
-                        player: player1,
-                        card: selected_card,
-                        pending: &to_resolve,
-                        left_clicked: &mut left_clicked,
-                    },
-                );
-
-                if let Some(clicked) = left_clicked.take() {
-                    let card = selected_card.unwrap();
-                    let mut selected_ability = None;
-                    if card.is_in_location(&db, Location::IN_HAND)
-                        && clicked == 0
-                        && Turn::can_cast(&db, card)
-                    {
-                        let mut pending = Player::play_card(&mut db, player1, card);
-                        while pending.only_immediate_results(&db) {
-                            let result = pending.resolve(&mut db, None);
+                    if self.database.turn.passed_full_round() {
+                        let mut pending = Turn::step(&mut self.database);
+                        while pending.only_immediate_results(&self.database) {
+                            let result = pending.resolve(&mut self.database, None);
                             if result == ResolutionResult::Complete {
                                 break;
                             }
                         }
 
                         maybe_organize_stack(
-                            &mut db,
+                            &mut self.database,
                             pending,
-                            &mut to_resolve,
-                            &mut organizing_stack,
+                            &mut self.to_resolve,
+                            &mut self.organizing_stack,
                         );
-                    } else if card.is_in_location(&db, Location::IN_HAND)
-                        && Turn::can_cast(&db, card)
+                    }
+                }
+
+                if ui.button("(Debug) Untap all").clicked()
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num2)))
+                {
+                    for card in self
+                        .database
+                        .battlefield
+                        .battlefields
+                        .values()
+                        .flat_map(|b| b.iter())
+                        .copied()
+                        .collect_vec()
                     {
-                        selected_ability = Some(clicked - 1);
-                    } else {
-                        selected_ability = Some(clicked);
-                    }
-
-                    if let Some(selected) = selected_ability {
-                        if selected < db[card].abilities(&db).len() {
-                            let mut pending = Battlefields::activate_ability(
-                                &mut db,
-                                &to_resolve,
-                                player1,
-                                card,
-                                selected,
-                            );
-
-                            while pending.only_immediate_results(&db) {
-                                let result = pending.resolve(&mut db, None);
-                                if result == ResolutionResult::Complete {
-                                    break;
-                                }
-                            }
-
-                            if let Some(to_resolve) = to_resolve.take() {
-                                pending.extend(to_resolve);
-                            }
-
-                            maybe_organize_stack(
-                                &mut db,
-                                pending,
-                                &mut to_resolve,
-                                &mut organizing_stack,
-                            );
-                        }
+                        card.untap(&mut self.database);
                     }
                 }
 
-                let cards = db.hand[player1].iter().copied().collect_vec();
-                let pos = tree.layout(player1_hand).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Hand {
-                        db: &mut db,
-                        owner: player1,
-                        cards,
-                        left_clicked: &mut left_clicked,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = left_clicked.take() {
-                    selected_card = Some(db.hand[player1][clicked]);
-                } else if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.hand[player1][clicked]);
+                if ui.button("(Debug) Infinite mana").clicked()
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num3)))
+                {
+                    self.database.all_players[self.player1].infinite_mana();
                 }
 
-                col_offset += tree.layout(center_column).unwrap().size.width;
-
-                let cards = db.exile[player2]
-                    .iter()
-                    .map(|card| card.name(&db))
-                    .cloned()
-                    .collect_vec();
-                let pos = tree.layout(player2_exile).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Exile {
-                        player: player2,
-                        cards,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.exile[player2][clicked]);
-                }
-
-                let cards = db.graveyard[player2]
-                    .iter()
-                    .map(|card| card.name(&db))
-                    .cloned()
-                    .collect_vec();
-                let pos = tree.layout(player2_graveyard).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Graveyard {
-                        player: player2,
-                        cards,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.graveyard[player2][clicked]);
-                }
-
-                let cards = db.graveyard[player1]
-                    .iter()
-                    .map(|card| card.name(&db))
-                    .cloned()
-                    .collect_vec();
-                let pos = tree.layout(player1_graveyard).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Graveyard {
-                        player: player1,
-                        cards,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.graveyard[player1][clicked]);
-                }
-
-                let cards = db.exile[player1]
-                    .iter()
-                    .map(|card| card.name(&db))
-                    .cloned()
-                    .collect_vec();
-                let pos = tree.layout(player1_exile).unwrap();
-                ui.put(
-                    egui::Rect::from_min_size(
-                        egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
-                        egui::vec2(pos.size.width, pos.size.height),
-                    ),
-                    ui::Exile {
-                        player: player1,
-                        cards,
-                        right_clicked: &mut right_clicked,
-                    },
-                );
-
-                if let Some(clicked) = right_clicked.take() {
-                    inspecting_card = Some(db.exile[player1][clicked]);
-                }
-            });
-
-            let mut choice: Option<Option<usize>> = None;
-            if let Some(resolving) = to_resolve.as_mut() {
-                if resolving.priority(&db) == player2 {
-                    let mut pending = ai.priority(&mut db, resolving);
-
-                    while pending.only_immediate_results(&db) {
-                        let result = pending.resolve(&mut db, None);
+                if ui.button("(Debug) Draw").clicked()
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num4)))
+                {
+                    let mut pending = Player::draw(&mut self.database, self.player1, 1);
+                    while pending.only_immediate_results(&self.database) {
+                        let result = pending.resolve(&mut self.database, None);
                         if result == ResolutionResult::Complete {
                             break;
                         }
                     }
 
-                    maybe_organize_stack(&mut db, pending, &mut to_resolve, &mut organizing_stack);
-                } else {
-                    let mut open = true;
+                    maybe_organize_stack(
+                        &mut self.database,
+                        pending,
+                        &mut self.to_resolve,
+                        &mut self.organizing_stack,
+                    );
+                }
 
-                    egui::Window::new(resolving.description(&db))
-                        .open(&mut open)
-                        .show(ctx, |ui| {
-                            ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                                if resolving.choices_optional(&db) && ui.button("None").clicked() {
-                                    choice = Some(None);
-                                }
+                if ui.button("(Debug) Add Card to Hand").clicked()
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num5)))
+                {
+                    self.adding_card = Some(String::default());
+                }
+            });
 
-                                for (idx, option) in resolving.options(&mut db) {
-                                    if ui.button(option).clicked() {
-                                        choice = Some(Some(idx));
-                                    }
-                                }
-                            })
-                        });
+            ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                ui.label(format!(
+                    "{} {}",
+                    self.database.all_players[self.database.turn.active_player()].name,
+                    self.database.turn.phase.as_ref()
+                ));
 
-                    if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
-                        let can_cancel = resolving.can_cancel(&db);
-                        debug!("Can cancel {:?} = {}", resolving, can_cancel);
-                        if can_cancel {
-                            to_resolve = None;
+                ui.separator();
+                ui.label(format!(
+                    "{} ({})",
+                    self.database.all_players[self.player1].name,
+                    self.database.all_players[self.player1].life_total
+                ));
+
+                ui.separator();
+                ui.label(format!(
+                    "{} ({})",
+                    self.database.all_players[self.player2].name,
+                    self.database.all_players[self.player2].life_total
+                ));
+            })
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let size = ui.max_rect();
+            tree.compute_layout(
+                root,
+                Size {
+                    width: AvailableSpace::from_points(size.width()),
+                    height: AvailableSpace::from_points(size.height()),
+                },
+            )
+            .unwrap();
+
+            let row_offset = ui.next_widget_position().y;
+
+            let pos = tree.layout(player2_mana).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ManaDisplay {
+                    player: self.player2,
+                    items: self.database.all_players[self.player2]
+                        .mana_pool
+                        .pools_display(),
+                },
+            );
+
+            let pos = tree.layout(stack).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Stack {
+                    items: self
+                        .database
+                        .stack
+                        .entries()
+                        .iter()
+                        .rev()
+                        .enumerate()
+                        .map(|(idx, e)| format!("({}) {}", idx, e.display(&self.database)))
+                        .collect_vec(),
+                    left_clicked: &mut self.left_clicked,
+                },
+            );
+
+            if self.to_resolve.is_none()
+                && (self.left_clicked.take().is_some()
+                    || ctx.input(|input| input.key_released(egui::Key::Enter)))
+            {
+                cleanup_stack(
+                    &mut self.database,
+                    &mut self.to_resolve,
+                    &mut self.organizing_stack,
+                );
+            }
+
+            let pos = tree.layout(player1_mana).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ManaDisplay {
+                    player: self.player1,
+                    items: self.database.all_players[self.player1]
+                        .mana_pool
+                        .pools_display(),
+                },
+            );
+
+            let mut col_offset = tree.layout(lhs_column).unwrap().size.width;
+
+            let cards = self.database.battlefield[self.player2]
+                .iter()
+                .copied()
+                .enumerate()
+                .collect_vec();
+            let pos = tree.layout(player2_battlefield).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Battlefield {
+                    db: &mut self.database,
+                    player: self.player2,
+                    cards,
+                    left_clicked: &mut None,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.battlefield[self.player2][clicked]);
+            }
+
+            let cards = self.database.battlefield[self.player1]
+                .iter()
+                .copied()
+                .enumerate()
+                .collect_vec();
+            let pos = tree.layout(player1_battlefield).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Battlefield {
+                    db: &mut self.database,
+                    player: self.player1,
+                    cards,
+                    left_clicked: &mut self.left_clicked,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.left_clicked.take() {
+                self.selected_card = Some(self.database.battlefield[self.player1][clicked]);
+            } else if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.battlefield[self.player1][clicked]);
+            }
+
+            let pos = tree.layout(player1_options).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Actions {
+                    db: &mut self.database,
+                    player: self.player1,
+                    card: self.selected_card,
+                    pending: &self.to_resolve,
+                    left_clicked: &mut self.left_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.left_clicked.take() {
+                let card = self.selected_card.unwrap();
+                let mut selected_ability = None;
+                if card.is_in_location(&self.database, Location::IN_HAND)
+                    && clicked == 0
+                    && Turn::can_cast(&self.database, card)
+                {
+                    let mut pending = Player::play_card(&mut self.database, self.player1, card);
+                    while pending.only_immediate_results(&self.database) {
+                        let result = pending.resolve(&mut self.database, None);
+                        if result == ResolutionResult::Complete {
+                            break;
                         }
-                    } else if let Some(choice) = choice {
-                        loop {
-                            match resolving.resolve(&mut db, choice) {
-                                ResolutionResult::Complete => {
-                                    let mut pending = Battlefields::check_sba(&mut db);
-                                    while pending.only_immediate_results(&db) {
-                                        let result = pending.resolve(&mut db, None);
-                                        if result == ResolutionResult::Complete {
-                                            break;
-                                        }
-                                    }
+                    }
 
-                                    if pending.is_empty() {
-                                        let entries = db.stack.entries_unsettled();
-                                        if !organizing_stack && entries.len() > 1 {
-                                            resolving.set_organize_stack(&db, entries);
-                                            organizing_stack = true;
-                                        } else {
-                                            debug!("Stepping priority");
-                                            db.turn.step_priority();
-                                            assert_eq!(db.turn.priority_player(), player2);
-                                            debug!("Giving ai priority",);
-                                            let pending = ai
-                                                .priority(&mut db, &mut PendingResults::default());
-                                            maybe_organize_stack(
-                                                &mut db,
-                                                pending,
-                                                &mut to_resolve,
-                                                &mut organizing_stack,
-                                            );
-                                        }
-                                    } else {
-                                        to_resolve = Some(pending);
-                                    }
+                    maybe_organize_stack(
+                        &mut self.database,
+                        pending,
+                        &mut self.to_resolve,
+                        &mut self.organizing_stack,
+                    );
+                } else if card.is_in_location(&self.database, Location::IN_HAND)
+                    && Turn::can_cast(&self.database, card)
+                {
+                    selected_ability = Some(clicked - 1);
+                } else {
+                    selected_ability = Some(clicked);
+                }
 
-                                    break;
+                if let Some(selected) = selected_ability {
+                    if selected < self.database[card].abilities(&self.database).len() {
+                        let mut pending = Battlefields::activate_ability(
+                            &mut self.database,
+                            &self.to_resolve,
+                            self.player1,
+                            card,
+                            selected,
+                        );
+
+                        while pending.only_immediate_results(&self.database) {
+                            let result = pending.resolve(&mut self.database, None);
+                            if result == ResolutionResult::Complete {
+                                break;
+                            }
+                        }
+
+                        if let Some(to_resolve) = self.to_resolve.take() {
+                            pending.extend(to_resolve);
+                        }
+
+                        maybe_organize_stack(
+                            &mut self.database,
+                            pending,
+                            &mut self.to_resolve,
+                            &mut self.organizing_stack,
+                        );
+                    }
+                }
+            }
+
+            let cards = self.database.hand[self.player1]
+                .iter()
+                .copied()
+                .collect_vec();
+            let pos = tree.layout(player1_hand).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Hand {
+                    db: &mut self.database,
+                    owner: self.player1,
+                    cards,
+                    left_clicked: &mut self.left_clicked,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.left_clicked.take() {
+                self.selected_card = Some(self.database.hand[self.player1][clicked]);
+            } else if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.hand[self.player1][clicked]);
+            }
+
+            col_offset += tree.layout(center_column).unwrap().size.width;
+
+            let cards = self.database.exile[self.player2]
+                .iter()
+                .map(|card| card.name(&self.database))
+                .cloned()
+                .collect_vec();
+            let pos = tree.layout(player2_exile).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Exile {
+                    player: self.player2,
+                    cards,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.exile[self.player2][clicked]);
+            }
+
+            let cards = self.database.graveyard[self.player2]
+                .iter()
+                .map(|card| card.name(&self.database))
+                .cloned()
+                .collect_vec();
+            let pos = tree.layout(player2_graveyard).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Graveyard {
+                    player: self.player2,
+                    cards,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.graveyard[self.player2][clicked]);
+            }
+
+            let cards = self.database.graveyard[self.player1]
+                .iter()
+                .map(|card| card.name(&self.database))
+                .cloned()
+                .collect_vec();
+            let pos = tree.layout(player1_graveyard).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Graveyard {
+                    player: self.player1,
+                    cards,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.graveyard[self.player1][clicked]);
+            }
+
+            let cards = self.database.exile[self.player1]
+                .iter()
+                .map(|card| card.name(&self.database))
+                .cloned()
+                .collect_vec();
+            let pos = tree.layout(player1_exile).unwrap();
+            ui.put(
+                egui::Rect::from_min_size(
+                    egui::pos2(col_offset + pos.location.x, row_offset + pos.location.y),
+                    egui::vec2(pos.size.width, pos.size.height),
+                ),
+                ui::Exile {
+                    player: self.player1,
+                    cards,
+                    right_clicked: &mut self.right_clicked,
+                },
+            );
+
+            if let Some(clicked) = self.right_clicked.take() {
+                self.inspecting_card = Some(self.database.exile[self.player1][clicked]);
+            }
+        });
+
+        let mut choice: Option<Option<usize>> = None;
+        if let Some(resolving) = self.to_resolve.as_mut() {
+            if resolving.priority(&self.database) == self.player2 {
+                let mut pending = self.ai.priority(&mut self.database, resolving);
+
+                while pending.only_immediate_results(&self.database) {
+                    let result = pending.resolve(&mut self.database, None);
+                    if result == ResolutionResult::Complete {
+                        break;
+                    }
+                }
+
+                maybe_organize_stack(
+                    &mut self.database,
+                    pending,
+                    &mut self.to_resolve,
+                    &mut self.organizing_stack,
+                );
+            } else {
+                let mut open = true;
+
+                egui::Window::new(resolving.description(&self.database))
+                    .open(&mut open)
+                    .show(ctx, |ui| {
+                        ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                            if resolving.choices_optional(&self.database)
+                                && ui.button("None").clicked()
+                            {
+                                choice = Some(None);
+                            }
+
+                            for (idx, option) in resolving.options(&mut self.database) {
+                                if ui.button(option).clicked() {
+                                    choice = Some(Some(idx));
                                 }
-                                ResolutionResult::TryAgain => {
-                                    debug!("Trying again for {:#?}", resolving);
-                                    if !resolving.only_immediate_results(&db) {
+                            }
+                        })
+                    });
+
+                if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
+                    let can_cancel = resolving.can_cancel(&self.database);
+                    debug!("Can cancel {:?} = {}", resolving, can_cancel);
+                    if can_cancel {
+                        self.to_resolve = None;
+                    }
+                } else if let Some(choice) = choice {
+                    loop {
+                        match resolving.resolve(&mut self.database, choice) {
+                            ResolutionResult::Complete => {
+                                let mut pending = Battlefields::check_sba(&mut self.database);
+                                while pending.only_immediate_results(&self.database) {
+                                    let result = pending.resolve(&mut self.database, None);
+                                    if result == ResolutionResult::Complete {
                                         break;
                                     }
                                 }
-                                ResolutionResult::PendingChoice => {
+
+                                if pending.is_empty() {
+                                    let entries = self.database.stack.entries_unsettled();
+                                    if !self.organizing_stack && entries.len() > 1 {
+                                        resolving.set_organize_stack(&self.database, entries);
+                                        self.organizing_stack = true;
+                                    } else {
+                                        debug!("Stepping priority");
+                                        self.database.turn.step_priority();
+                                        assert_eq!(
+                                            self.database.turn.priority_player(),
+                                            self.player2
+                                        );
+                                        debug!("Giving ai priority",);
+                                        let pending = self.ai.priority(
+                                            &mut self.database,
+                                            &mut PendingResults::default(),
+                                        );
+                                        maybe_organize_stack(
+                                            &mut self.database,
+                                            pending,
+                                            &mut self.to_resolve,
+                                            &mut self.organizing_stack,
+                                        );
+                                    }
+                                } else {
+                                    self.to_resolve = Some(pending);
+                                }
+
+                                break;
+                            }
+                            ResolutionResult::TryAgain => {
+                                debug!("Trying again for {:#?}", resolving);
+                                if !resolving.only_immediate_results(&self.database) {
                                     break;
                                 }
+                            }
+                            ResolutionResult::PendingChoice => {
+                                break;
                             }
                         }
                     }
                 }
             }
+        }
 
-            if let Some(inspecting) = inspecting_card {
-                let mut open = true;
-                egui::Window::new(format!(
-                    "{} - {}",
-                    inspecting.name(&db),
-                    inspecting.faceup_face(&db).cost.text()
-                ))
+        if let Some(inspecting) = self.inspecting_card {
+            let mut open = true;
+            egui::Window::new(format!(
+                "{} - {}",
+                inspecting.name(&self.database),
+                inspecting.faceup_face(&self.database).cost.text()
+            ))
+            .open(&mut open)
+            .show(ctx, |ui| {
+                ui.add(ui::Card {
+                    db: &mut self.database,
+                    card: inspecting,
+                    title: None,
+                });
+            });
+
+            if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
+                self.inspecting_card = None;
+            }
+        }
+
+        if self.adding_card.is_some() {
+            let mut open = true;
+
+            egui::Window::new("Add card to hand")
                 .open(&mut open)
                 .show(ctx, |ui| {
-                    ui.add(ui::Card {
-                        db: &mut db,
-                        card: inspecting,
-                        title: None,
-                    });
+                    let adding = self.adding_card.as_mut().unwrap();
+
+                    let is_valid = self.cards.contains_key(adding);
+                    let edit = ui.add(
+                        TextEdit::singleline(adding)
+                            .hint_text("Card name")
+                            .text_color(if is_valid {
+                                Color32::GREEN
+                            } else {
+                                Color32::WHITE
+                            }),
+                    );
+                    if edit.changed() {
+                        *adding = replace_symbols(adding);
+                    }
+
+                    let search = self.index.query(
+                        adding,
+                        &mut zero_to_one::new(),
+                        |title| {
+                            title
+                                .split_whitespace()
+                                .map(str::to_ascii_lowercase)
+                                .map(Cow::from)
+                                .collect_vec()
+                        },
+                        &[1., 1., 0.25, 0.5, 0.5, 0.75],
+                    );
+                    let top = search.get(0).map(|result| result.key);
+
+                    let mut inspecting = None;
+                    let mut clicked = None;
+                    for result in search
+                        .into_iter()
+                        .take(10)
+                        .sorted_by(|l, r| {
+                            if ulps_eq!(l.score, r.score) {
+                                l.key.cmp(&r.key)
+                            } else {
+                                r.score.partial_cmp(&l.score).unwrap()
+                            }
+                        })
+                        .map(|result| result.key)
+                    {
+                        let label = ui.add(
+                            Label::new(format!("•\t{}", self.cards.get_index(result).unwrap().0))
+                                .sense(Sense::click()),
+                        );
+                        if label.clicked() {
+                            clicked = Some(result);
+                        } else if label.clicked_by(egui::PointerButton::Secondary) {
+                            inspecting = Some(result);
+                        }
+                    }
+
+                    if clicked.is_some()
+                        || (ui.input(|input| input.key_released(egui::Key::Enter))
+                            && (is_valid || top.is_some()))
+                    {
+                        let adding = if is_valid {
+                            &*adding
+                        } else if let Some(clicked) = clicked {
+                            self.cards.get_index(clicked).unwrap().0
+                        } else {
+                            self.cards.get_index(top.unwrap()).unwrap().0
+                        };
+
+                        let card =
+                            CardId::upload(&mut self.database, &self.cards, self.player1, adding);
+                        card.move_to_hand(&mut self.database);
+                        self.adding_card = None;
+                    } else if let Some(inspecting) = inspecting {
+                        let card = CardId::upload(
+                            &mut self.database,
+                            &self.cards,
+                            self.player1,
+                            self.cards.get_index(inspecting).unwrap().0,
+                        );
+                        self.inspecting_card = Some(card);
+                    }
+                    edit.request_focus();
                 });
 
-                if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
-                    inspecting_card = None;
-                }
+            if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
+                self.adding_card = None;
             }
-
-            if adding_card.is_some() {
-                let mut open = true;
-
-                egui::Window::new("Add card to hand")
-                    .open(&mut open)
-                    .show(ctx, |ui| {
-                        let adding = adding_card.as_mut().unwrap();
-
-                        let is_valid = cards.contains_key(adding);
-                        let edit = ui.add(
-                            TextEdit::singleline(adding)
-                                .hint_text("Card name")
-                                .text_color(if is_valid {
-                                    Color32::GREEN
-                                } else {
-                                    Color32::WHITE
-                                }),
-                        );
-                        if edit.changed() {
-                            *adding = replace_symbols(adding);
-                        }
-
-                        let search = index.query(
-                            adding,
-                            &mut bm25::new(),
-                            |title| {
-                                title
-                                    .split_whitespace()
-                                    .map(str::to_ascii_lowercase)
-                                    .map(Cow::from)
-                                    .collect_vec()
-                            },
-                            &[1., 1., 0.25, 0.5, 0.5, 0.75],
-                        );
-                        let top = search.get(0).map(|result| result.key);
-
-                        let mut inspecting = None;
-                        let mut clicked = None;
-                        for result in search
-                            .into_iter()
-                            .take(10)
-                            .sorted_by(|l, r| {
-                                if ulps_eq!(l.score, r.score) {
-                                    l.key.cmp(&r.key)
-                                } else {
-                                    r.score.partial_cmp(&l.score).unwrap()
-                                }
-                            })
-                            .map(|result| result.key)
-                        {
-                            let label = ui.add(
-                                Label::new(format!("•\t{}", cards.get_index(result).unwrap().0))
-                                    .sense(Sense::click()),
-                            );
-                            if label.clicked() {
-                                clicked = Some(result);
-                            } else if label.clicked_by(egui::PointerButton::Secondary) {
-                                inspecting = Some(result);
-                            }
-                        }
-
-                        if clicked.is_some()
-                            || (ui.input(|input| input.key_released(egui::Key::Enter))
-                                && (is_valid || top.is_some()))
-                        {
-                            let adding = if is_valid {
-                                &*adding
-                            } else if let Some(clicked) = clicked {
-                                cards.get_index(clicked).unwrap().0
-                            } else {
-                                cards.get_index(top.unwrap()).unwrap().0
-                            };
-
-                            let card = CardId::upload(&mut db, &cards, player1, adding);
-                            card.move_to_hand(&mut db);
-                            adding_card = None;
-                        } else if let Some(inspecting) = inspecting {
-                            let card = CardId::upload(
-                                &mut db,
-                                &cards,
-                                player1,
-                                cards.get_index(inspecting).unwrap().0,
-                            );
-                            inspecting_card = Some(card);
-                        }
-                        edit.request_focus();
-                    });
-
-                if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
-                    adding_card = None;
-                }
-            }
-        });
-
-        egui_macroquad::draw();
-
-        next_frame().await
+        }
     }
 }
 
