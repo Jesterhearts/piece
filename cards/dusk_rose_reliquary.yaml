@@ -32,8 +32,7 @@ etb_abilities:
         duration: !UntilSourceLeavesBattlefield {}
       restrictions:
         - restriction: !Location
-            locations:
-              - location: !OnBattlefield {}
+            locations: on battlefield
         - restriction: !OfType
             types: Artifact, Creature
         - restriction: !Controller

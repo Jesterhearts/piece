@@ -34,11 +34,11 @@ use crate::{
         color::Color,
         keywords::Keyword,
         mana::{Mana, ManaRestriction},
-        targets::ManaSource,
+        targets::{Location, ManaSource},
         types::{Subtype, Type},
     },
     stack::{ActiveTarget, Stack},
-    targets::{self, Cmc, Comparison, Dynamic, Location, Restriction},
+    targets::{self, Cmc, Comparison, Dynamic, Restriction},
     triggers::TriggerSource,
     types::{SubtypeSet, TypeSet},
     Cards,
@@ -362,12 +362,12 @@ impl CardId {
 
     pub fn is_in_location(self, db: &Database, location: Location) -> bool {
         match location {
-            Location::Battlefield => db.battlefield[db[self].controller].contains(&self),
-            Location::Graveyard => db.graveyard[db[self].owner].contains(&self),
-            Location::Exile => db.exile[db[self].owner].contains(&self),
-            Location::Library => db.all_players[db[self].owner].library.cards.contains(&self),
-            Location::Hand => db.hand[db[self].owner].contains(&self),
-            Location::Stack => db.stack.contains(self),
+            Location::ON_BATTLEFIELD => db.battlefield[db[self].controller].contains(&self),
+            Location::IN_GRAVEYARD => db.graveyard[db[self].owner].contains(&self),
+            Location::IN_EXILE => db.exile[db[self].owner].contains(&self),
+            Location::IN_LIBRARY => db.all_players[db[self].owner].library.cards.contains(&self),
+            Location::IN_HAND => db.hand[db[self].owner].contains(&self),
+            Location::IN_STACK => db.stack.contains(self),
         }
     }
 
@@ -428,7 +428,7 @@ impl CardId {
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
-        if self.is_in_location(db, Location::Battlefield) {
+        if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::ReturnedToHand, self);
         }
 
@@ -521,7 +521,7 @@ impl CardId {
     }
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
-        if self.is_in_location(db, Location::Battlefield) {
+        if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
         }
 
@@ -560,7 +560,7 @@ impl CardId {
     }
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
-        if self.is_in_location(db, Location::Battlefield) {
+        if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::ReturnedToLibrary, self);
         }
 
@@ -601,7 +601,7 @@ impl CardId {
         reason: Option<ExileReason>,
         duration: EffectDuration,
     ) {
-        if self.is_in_location(db, Location::Battlefield) {
+        if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::Exiled, self);
         }
 
@@ -679,7 +679,7 @@ impl CardId {
     }
 
     pub(crate) fn apply_modifiers_layered(self, db: &mut Database) {
-        let on_battlefield = self.is_in_location(db, Location::Battlefield);
+        let on_battlefield = self.is_in_location(db, Location::ON_BATTLEFIELD);
 
         let modifiers = db
             .modifiers
@@ -1592,7 +1592,7 @@ impl CardId {
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if self_controller.has_cards(db, Location::Hand) {
+                    if self_controller.has_cards(db, Location::IN_HAND) {
                         return false;
                     }
                 }
@@ -1650,12 +1650,15 @@ impl CardId {
                     }
                 }
                 Restriction::InGraveyard => {
-                    if !self.is_in_location(db, Location::Graveyard) {
+                    if !self.is_in_location(db, Location::IN_GRAVEYARD) {
                         return false;
                     }
                 }
                 Restriction::InLocation { locations } => {
-                    if !locations.iter().any(|loc| self.is_in_location(db, *loc)) {
+                    if !locations
+                        .iter()
+                        .any(|loc| self.is_in_location(db, loc.enum_value().unwrap()))
+                    {
                         return false;
                     }
                 }
@@ -1773,7 +1776,7 @@ impl CardId {
                     }
                 }
                 Restriction::OnBattlefield => {
-                    if !self.is_in_location(db, Location::Battlefield) {
+                    if !self.is_in_location(db, Location::ON_BATTLEFIELD) {
                         return false;
                     }
                 }

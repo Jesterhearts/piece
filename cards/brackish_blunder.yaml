@@ -12,8 +12,7 @@ effects:
               - restriction: !OfType
                   types: Creature
               - restriction: !Location
-                  locations:
-                    - location: !OnBattlefield {}
+                  locations: on battlefield
       then:
         if_was:
           - restriction: !Tapped {}

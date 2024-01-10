@@ -17,8 +17,8 @@ use piece::{
     load_cards,
     pending_results::{PendingResults, ResolutionResult},
     player::{AllPlayers, Player},
+    protogen::targets::Location,
     stack::Stack,
-    targets::Location,
     turns::Turn,
     ui::{self, ManaDisplay},
     FONT_DATA,
@@ -587,7 +587,7 @@ async fn main() -> anyhow::Result<()> {
                 if let Some(clicked) = left_clicked.take() {
                     let card = selected_card.unwrap();
                     let mut selected_ability = None;
-                    if card.is_in_location(&db, Location::Hand)
+                    if card.is_in_location(&db, Location::IN_HAND)
                         && clicked == 0
                         && Turn::can_cast(&db, card)
                     {
@@ -605,7 +605,8 @@ async fn main() -> anyhow::Result<()> {
                             &mut to_resolve,
                             &mut organizing_stack,
                         );
-                    } else if card.is_in_location(&db, Location::Hand) && Turn::can_cast(&db, card)
+                    } else if card.is_in_location(&db, Location::IN_HAND)
+                        && Turn::can_cast(&db, card)
                     {
                         selected_ability = Some(clicked - 1);
                     } else {

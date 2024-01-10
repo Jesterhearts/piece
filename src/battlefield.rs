@@ -33,11 +33,11 @@ use crate::{
     protogen::{
         color::Color,
         mana::{Mana, ManaRestriction},
-        targets::ManaSource,
+        targets::{Location, ManaSource},
         types::Type,
     },
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
-    targets::{ControllerRestriction, Location, Restriction},
+    targets::{ControllerRestriction, Restriction},
     triggers::{self, Trigger, TriggerSource},
     types::TypeSet,
 };
@@ -507,7 +507,7 @@ impl Battlefields {
             if enchanting.is_some()
                 && !enchanting
                     .unwrap()
-                    .is_in_location(db, Location::Battlefield)
+                    .is_in_location(db, Location::ON_BATTLEFIELD)
             {
                 result.push_settled(ActionResult::PermanentToGraveyard(card));
             }
@@ -752,7 +752,7 @@ impl Battlefields {
     fn apply_action_result(db: &mut Database, result: &ActionResult) -> PendingResults {
         match result {
             ActionResult::Discard(card) => {
-                assert!(card.is_in_location(db, Location::Hand));
+                assert!(card.is_in_location(db, Location::IN_HAND));
                 card.move_to_graveyard(db);
                 PendingResults::default()
             }
@@ -944,7 +944,7 @@ impl Battlefields {
                     unreachable!()
                 };
                 if let EffectDuration::UntilSourceLeavesBattlefield = *duration {
-                    if !source.is_in_location(db, Location::Battlefield) {
+                    if !source.is_in_location(db, Location::ON_BATTLEFIELD) {
                         return PendingResults::default();
                     }
                 }
@@ -1497,10 +1497,10 @@ impl Battlefields {
             } => {
                 target.transform(db);
                 let mut results = PendingResults::default();
-                let location = if target.is_in_location(db, Location::Exile) {
-                    Location::Exile
-                } else if target.is_in_location(db, Location::Graveyard) {
-                    Location::Graveyard
+                let location = if target.is_in_location(db, Location::IN_EXILE) {
+                    Location::IN_EXILE
+                } else if target.is_in_location(db, Location::IN_GRAVEYARD) {
+                    Location::IN_GRAVEYARD
                 } else {
                     unreachable!(
                         "unexpected location {:?}",
@@ -1509,8 +1509,10 @@ impl Battlefields {
                 };
                 move_card_to_battlefield(db, *target, *enters_tapped, &mut results, None);
                 match location {
-                    Location::Exile => complete_add_from_exile(db, *target, &mut results),
-                    Location::Graveyard => complete_add_from_graveyard(db, *target, &mut results),
+                    Location::IN_EXILE => complete_add_from_exile(db, *target, &mut results),
+                    Location::IN_GRAVEYARD => {
+                        complete_add_from_graveyard(db, *target, &mut results)
+                    }
                     _ => unreachable!(),
                 }
 

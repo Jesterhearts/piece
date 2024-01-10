@@ -23,9 +23,7 @@ activated_abilities:
               - restriction: !OfType
                   types: Artifact
               - restriction: !Location
-                  locations:
-                    - location: !OnBattlefield {}
-                    - location: !InGraveyard {}
+                  locations: on battlefield, in graveyard
               - restriction: !NotSelf {}
         - cost: !ExileCard
             restrictions:

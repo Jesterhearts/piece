@@ -9,8 +9,7 @@ etb_abilities:
     effect: !ReturnTargetToHand
       restrictions:
         - restriction: !Location
-            locations:
-              - location: !OnBattlefield {}
+            locations: on battlefield
         - restriction: !NotSelf {}
         - restriction: !Descend
             count: 4

@@ -7,8 +7,8 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::targets::Location,
     stack::Stack,
-    targets::Location,
     turns::Phase,
 };
 
@@ -91,8 +91,8 @@ fn tutors() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert!(forest.is_in_location(&db, Location::Battlefield));
-    assert!(plains.is_in_location(&db, Location::Battlefield));
+    assert!(forest.is_in_location(&db, Location::ON_BATTLEFIELD));
+    assert!(plains.is_in_location(&db, Location::ON_BATTLEFIELD));
 
     Ok(())
 }

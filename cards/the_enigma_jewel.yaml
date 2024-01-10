@@ -24,9 +24,7 @@ activated_abilities:
                   types: Land
               - restriction: !HasActivatedAbility {}
               - restriction: !Location
-                  locations:
-                    - location: !InGraveyard {}
-                    - location: !OnBattlefield {}
+                  locations: on battlefield, in graveyard
               - restriction: !NotSelf {}
         - cost: !ExileCard
             restrictions:

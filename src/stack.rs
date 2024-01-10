@@ -25,8 +25,8 @@ use crate::{
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
-    protogen::{color::Color, keywords::Keyword},
-    targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Location, Restriction},
+    protogen::{color::Color, keywords::Keyword, targets::Location},
+    targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Restriction},
     triggers::TriggerSource,
 };
 
@@ -205,7 +205,7 @@ impl StackEntry {
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if spell_or_ability_controller.has_cards(db, Location::Hand) {
+                    if spell_or_ability_controller.has_cards(db, Location::IN_HAND) {
                         return false;
                     }
                 }
@@ -270,10 +270,9 @@ impl StackEntry {
                     return false;
                 }
                 Restriction::InLocation { locations } => {
-                    if locations
-                        .iter()
-                        .any(|location| !matches!(location, Location::Stack))
-                    {
+                    if locations.iter().any(|location| {
+                        !matches!(location.enum_value().unwrap(), Location::IN_STACK)
+                    }) {
                         return false;
                     }
                 }

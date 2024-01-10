@@ -23,10 +23,10 @@ use crate::{
         color::Color,
         cost::ManaCost,
         mana::{Mana, ManaRestriction},
-        targets::ManaSource,
+        targets::{Location, ManaSource},
     },
     stack::Stack,
-    targets::{Location, Restriction},
+    targets::Restriction,
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
@@ -100,7 +100,7 @@ impl Owner {
                     }
                 }
                 Restriction::ControllerHandEmpty => {
-                    if controller.has_cards(db, Location::Hand) {
+                    if controller.has_cards(db, Location::IN_HAND) {
                         return false;
                     }
                 }
@@ -252,12 +252,12 @@ impl From<Owner> for Controller {
 impl Controller {
     pub(crate) fn has_cards(self, db: &Database, location: Location) -> bool {
         match location {
-            Location::Battlefield => !db.battlefield[self].is_empty(),
-            Location::Graveyard => !db.graveyard[self].is_empty(),
-            Location::Exile => !db.exile[self].is_empty(),
-            Location::Library => !db.all_players[self].library.is_empty(),
-            Location::Hand => !db.hand[self].is_empty(),
-            Location::Stack => unreachable!(),
+            Location::ON_BATTLEFIELD => !db.battlefield[self].is_empty(),
+            Location::IN_GRAVEYARD => !db.graveyard[self].is_empty(),
+            Location::IN_EXILE => !db.exile[self].is_empty(),
+            Location::IN_LIBRARY => !db.all_players[self].library.is_empty(),
+            Location::IN_HAND => !db.hand[self].is_empty(),
+            Location::IN_STACK => unreachable!(),
         }
     }
 }

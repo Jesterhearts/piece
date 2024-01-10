@@ -5,8 +5,8 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::targets::Location,
     stack::Stack,
-    targets::Location,
 };
 
 #[test]
@@ -59,7 +59,7 @@ fn cost_reducer() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert!(target.is_in_location(&db, Location::Exile));
+    assert!(target.is_in_location(&db, Location::IN_EXILE));
 
     Ok(())
 }

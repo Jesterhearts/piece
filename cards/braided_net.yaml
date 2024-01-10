@@ -33,9 +33,7 @@ activated_abilities:
               - restriction: !OfType
                   types: Artifact
               - restriction: !Location
-                  locations:
-                    - location: !OnBattlefield {}
-                    - location: !InGraveyard {}
+                  locations: on battlefield, in graveyard
               - restriction: !NotSelf {}
         - cost: !ExileCard
             restrictions:
@@ -49,8 +47,7 @@ restrictions:
   - restriction: !NotOfType
       types: Land
   - restriction: !Location
-      locations:
-        - location: !OnBattlefield {}
+      locations: on battlefield
 back_face:
   name: Braided Quipu
   typeline: Artifact
@@ -71,5 +68,5 @@ back_face:
             under_cards: 2
             restrictions:
               - restriction: !Self_ {}
-      oracle_text: '{3}{U}, {T}: Draw a card for each artifact you control, then put
-        Braided Quipu into its owner''s library third from the top.'
+      oracle_text: "{3}{U}, {T}: Draw a card for each artifact you control, then put
+        Braided Quipu into its owner's library third from the top."

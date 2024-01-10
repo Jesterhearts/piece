@@ -160,18 +160,11 @@ message Dynamic {
   }
 }
 
-message Location {
-  message OnBattlefield {}
-  message InGraveyard {}
-  message InLibrary {}
-  message InExile {}
-  message InStack {}
-
-  oneof location {
-    OnBattlefield on_battlefield = 1;
-    InGraveyard in_graveyard = 2;
-    InLibrary in_library = 3;
-    InExile in_exile = 4;
-    InStack in_stack = 5;
-  }
+enum Location {
+  ON_BATTLEFIELD = 0;
+  IN_HAND = 2;
+  IN_LIBRARY = 3;
+  IN_GRAVEYARD = 1;
+  IN_EXILE = 4;
+  IN_STACK = 5;
 }

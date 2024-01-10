@@ -8,7 +8,7 @@ use crate::{
     in_play::{CardId, Database},
     pending_results::PendingResults,
     player::Owner,
-    targets::Location,
+    protogen::targets::Location,
     turns::Turn,
 };
 
@@ -416,7 +416,7 @@ pub struct Actions<'db, 'p, 'clicked> {
 impl Widget for Actions<'_, '_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let abilities = if let Some(card) = self.card {
-            if card.is_in_location(self.db, Location::Hand) && Turn::can_cast(self.db, card) {
+            if card.is_in_location(self.db, Location::IN_HAND) && Turn::can_cast(self.db, card) {
                 [(0, format!("Play {}", card.name(self.db)))]
                     .into_iter()
                     .chain(

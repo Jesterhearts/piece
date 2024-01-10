@@ -5,42 +5,13 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     counters::Counter,
-    protogen::{self, color::Color, empty::Empty, targets::ManaSource},
+    protogen::{
+        self,
+        color::Color,
+        empty::Empty,
+        targets::{Location, ManaSource},
+    },
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
-pub enum Location {
-    Battlefield,
-    Graveyard,
-    Exile,
-    Library,
-    Hand,
-    Stack,
-}
-
-impl TryFrom<&protogen::targets::Location> for Location {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::targets::Location) -> Result<Self, Self::Error> {
-        value
-            .location
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected location to have a location set"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::targets::location::Location> for Location {
-    fn from(value: &protogen::targets::location::Location) -> Self {
-        match value {
-            protogen::targets::location::Location::OnBattlefield(_) => Self::Battlefield,
-            protogen::targets::location::Location::InGraveyard(_) => Self::Graveyard,
-            protogen::targets::location::Location::InLibrary(_) => Self::Library,
-            protogen::targets::location::Location::InExile(_) => Self::Exile,
-            protogen::targets::location::Location::InStack(_) => Self::Stack,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Comparison {
@@ -188,7 +159,7 @@ pub(crate) enum Restriction {
     HasActivatedAbility,
     InGraveyard,
     InLocation {
-        locations: Vec<Location>,
+        locations: Vec<protobuf::EnumOrUnknown<Location>>,
     },
     LifeGainedThisTurn(usize),
     ManaSpentFromSource(protobuf::EnumOrUnknown<ManaSource>),
@@ -285,11 +256,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                 Ok(Self::LifeGainedThisTurn(usize::try_from(value.count)?))
             }
             protogen::targets::restriction::Restriction::Location(value) => Ok(Self::InLocation {
-                locations: value
-                    .locations
-                    .iter()
-                    .map(Location::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                locations: value.locations.clone(),
             }),
             protogen::targets::restriction::Restriction::ManaSpentFromSource(spent) => {
                 Ok(Self::ManaSpentFromSource(spent.source))
