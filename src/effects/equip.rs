@@ -7,7 +7,7 @@ use crate::{
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, empty::Empty, types::type_::TypeDiscriminants},
+    protogen::{self, empty::Empty, types::Type},
     stack::ActiveTarget,
     targets::{ControllerRestriction, Restriction},
     types::TypeSet,
@@ -72,7 +72,7 @@ impl EffectBehaviors for Equip {
                 log_session,
                 source,
                 &source.faceup_face(db).restrictions,
-            ) && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
+            ) && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
             {
                 let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {
@@ -145,7 +145,7 @@ impl EffectBehaviors for Equip {
                         Restriction::Controller(ControllerRestriction::Self_),
                         Restriction::OfType {
                             types: HashMap::from([(
-                                TypeDiscriminants::Creature.as_ref().to_string(),
+                                Type::CREATURE.as_ref().to_string(),
                                 Empty::default(),
                             )]),
                             subtypes: Default::default(),

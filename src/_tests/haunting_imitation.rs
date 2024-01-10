@@ -8,7 +8,7 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::{subtype::Subtype, type_::Type},
+    protogen::types::{Subtype, Type},
     stack::Stack,
     types::{SubtypeSet, TypeSet},
 };
@@ -53,16 +53,10 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(on_battlefield.len(), 1);
     let token = on_battlefield.pop().unwrap();
 
-    assert_eq!(
-        db[token].modified_types,
-        TypeSet::from([Type::Creature(Default::default())])
-    );
+    assert_eq!(db[token].modified_types, TypeSet::from([Type::CREATURE]));
     assert_eq!(
         db[token].modified_subtypes,
-        SubtypeSet::from([
-            Subtype::Bear(Default::default()),
-            Subtype::Spirit(Default::default())
-        ])
+        SubtypeSet::from([Subtype::BEAR, Subtype::SPIRIT])
     );
     assert_eq!(token.power(&db), Some(1));
     assert_eq!(token.toughness(&db), Some(1));

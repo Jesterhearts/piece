@@ -7,7 +7,7 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::{AllPlayers, Player},
-    protogen::types::subtype::Subtype,
+    protogen::types::Subtype,
     types::SubtypeSet,
 };
 
@@ -47,11 +47,11 @@ fn adds_land_types() -> anyhow::Result<()> {
     assert_eq!(
         db[land].modified_subtypes,
         SubtypeSet::from([
-            Subtype::Plains(Default::default()),
-            Subtype::Island(Default::default()),
-            Subtype::Swamp(Default::default()),
-            Subtype::Mountain(Default::default()),
-            Subtype::Forest(Default::default()),
+            Subtype::PLAINS,
+            Subtype::ISLAND,
+            Subtype::SWAMP,
+            Subtype::MOUNTAIN,
+            Subtype::FOREST,
         ])
     );
 

@@ -2,7 +2,7 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors, EffectDuration},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::types::type_::TypeDiscriminants,
+    protogen::types::Type,
     stack::ActiveTarget,
     types::TypeSet,
 };
@@ -42,7 +42,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                 log_session,
                 source,
                 &source.faceup_face(db).restrictions,
-            ) && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
+            ) && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
             {
                 let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {

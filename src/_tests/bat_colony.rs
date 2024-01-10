@@ -6,7 +6,7 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::type_::Type,
+    protogen::types::Type,
     stack::Stack,
     turns::Phase,
     types::TypeSet,
@@ -81,8 +81,7 @@ fn spawns_bats() -> anyhow::Result<()> {
             .values()
             .flat_map(|b| b.iter())
             .copied()
-            .filter(|card| card
-                .types_intersect(&db, &TypeSet::from([Type::Creature(Default::default())])))
+            .filter(|card| card.types_intersect(&db, &TypeSet::from([Type::CREATURE])))
             .count(),
         3
     );

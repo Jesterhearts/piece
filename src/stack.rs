@@ -339,7 +339,7 @@ impl StackEntry {
                         && db[*card]
                             .modified_types
                             .iter()
-                            .any(|ty| types.contains_key(ty))
+                            .any(|ty| types.contains_key(ty.as_ref()))
                     {
                         return false;
                     }
@@ -347,7 +347,7 @@ impl StackEntry {
                         && db[*card]
                             .modified_subtypes
                             .iter()
-                            .any(|ty| subtypes.contains_key(ty))
+                            .any(|ty| subtypes.contains_key(ty.as_ref()))
                     {
                         return false;
                     }
@@ -382,7 +382,7 @@ impl StackEntry {
                         && !db[*card]
                             .modified_types
                             .iter()
-                            .any(|ty| types.contains_key(ty))
+                            .any(|ty| types.contains_key(ty.as_ref()))
                     {
                         return false;
                     }
@@ -390,7 +390,7 @@ impl StackEntry {
                         && !db[*card]
                             .modified_subtypes
                             .iter()
-                            .any(|ty| subtypes.contains_key(ty))
+                            .any(|ty| subtypes.contains_key(ty.as_ref()))
                     {
                         return false;
                     }

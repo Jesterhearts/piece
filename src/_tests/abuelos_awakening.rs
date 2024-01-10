@@ -6,7 +6,7 @@ use crate::{
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::{subtype::Subtype, type_::Type},
+    protogen::types::{Subtype, Type},
     stack::Stack,
     types::{SubtypeSet, TypeSet},
 };
@@ -71,14 +71,11 @@ fn x_is_zero() -> anyhow::Result<()> {
     assert_eq!(target.toughness(&db), Some(1));
     assert_eq!(
         db[target].modified_types,
-        TypeSet::from([
-            Type::Creature(Default::default()),
-            Type::Artifact(Default::default())
-        ])
+        TypeSet::from([Type::CREATURE, Type::ARTIFACT])
     );
     assert_eq!(
         db[target].modified_subtypes,
-        SubtypeSet::from([Subtype::Spirit(Default::default())])
+        SubtypeSet::from([Subtype::SPIRIT])
     );
 
     Ok(())
@@ -150,14 +147,11 @@ fn x_is_two() -> anyhow::Result<()> {
     assert_eq!(target.toughness(&db), Some(3));
     assert_eq!(
         db[target].modified_types,
-        TypeSet::from([
-            Type::Creature(Default::default()),
-            Type::Artifact(Default::default())
-        ])
+        TypeSet::from([Type::CREATURE, Type::ARTIFACT,])
     );
     assert_eq!(
         db[target].modified_subtypes,
-        SubtypeSet::from([Subtype::Spirit(Default::default())])
+        SubtypeSet::from([Subtype::SPIRIT])
     );
 
     Ok(())

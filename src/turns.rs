@@ -8,7 +8,7 @@ use crate::{
     log::{Log, LogId},
     pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
-    protogen::types::type_::TypeDiscriminants,
+    protogen::types::Type,
     stack::Stack,
     triggers::TriggerSource,
     types::TypeSet,
@@ -288,9 +288,8 @@ impl Turn {
     }
 
     pub fn can_cast(db: &Database, card: CardId) -> bool {
-        let instant_or_flash = card
-            .types_intersect(db, &TypeSet::from([TypeDiscriminants::Instant]))
-            || card.has_flash(db);
+        let instant_or_flash =
+            card.types_intersect(db, &TypeSet::from([Type::INSTANT])) || card.has_flash(db);
         // TODO teferi like effects.
         if instant_or_flash && !db.stack.split_second(db) {
             return true;

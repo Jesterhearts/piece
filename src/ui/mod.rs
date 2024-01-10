@@ -1,3 +1,4 @@
+use convert_case::{Case, Casing};
 use egui::{
     Color32, Frame, Label, Layout, PointerButton, RichText, ScrollArea, Sense, Stroke, Widget,
 };
@@ -26,12 +27,24 @@ impl Widget for Card<'_> {
         }
 
         let source = &self.db[self.card];
-        let typeline = std::iter::once(source.modified_types.iter().join(" "))
-            .chain(
-                std::iter::once(source.modified_subtypes.iter().join(" "))
-                    .filter(|s| !s.is_empty()),
+        let typeline = std::iter::once(
+            source
+                .modified_types
+                .iter()
+                .map(|ty| ty.as_ref().to_case(Case::Title))
+                .join(" "),
+        )
+        .chain(
+            std::iter::once(
+                source
+                    .modified_subtypes
+                    .iter()
+                    .map(|ty| ty.as_ref().to_case(Case::Title))
+                    .join(" "),
             )
-            .join(" - ");
+            .filter(|s| !s.is_empty()),
+        )
+        .join(" - ");
 
         let oracle_text = self.card.faceup_face(self.db).oracle_text.clone();
         let has_oracle_text = !oracle_text.is_empty();

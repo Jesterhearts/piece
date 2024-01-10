@@ -684,8 +684,8 @@ impl TryFrom<&protogen::effects::Effect> for AnyEffect {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TokenCreature {
     pub(crate) name: String,
-    pub(crate) types: Vec<Type>,
-    pub(crate) subtypes: Vec<Subtype>,
+    pub(crate) types: Vec<protobuf::EnumOrUnknown<Type>>,
+    pub(crate) subtypes: Vec<protobuf::EnumOrUnknown<Subtype>>,
     pub(crate) colors: HashSet<Color>,
     pub(crate) keywords: HashMap<String, u32>,
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,

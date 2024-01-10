@@ -4,6 +4,7 @@ extern crate tracing;
 use std::{borrow::Cow, fs::OpenOptions};
 
 use approx::ulps_eq;
+use convert_case::{Case, Casing};
 use egui::{Color32, Label, Layout, Sense, TextEdit};
 use itertools::Itertools;
 use macroquad::window::next_frame;
@@ -63,8 +64,15 @@ async fn main() -> anyhow::Result<()> {
                 |card: &Card| vec![card.cost.cost_string.as_str()],
                 |card: &Card| card.keywords.keys().map(|k| k.as_ref()).collect_vec(),
                 |card: &Card| card.types.iter().map(|t| t.as_ref()).collect_vec(),
-                |card: &Card| card.subtypes.iter().map(|t| t.as_ref()).collect_vec(),
-                |card: &Card| vec![card.full_text.as_str()],
+                |card: &Card| {
+                    card.subtypes
+                        .iter()
+                        .map(|t| {
+                            &*String::leak(t.enum_value().unwrap().as_ref().to_case(Case::Title))
+                        })
+                        .collect_vec()
+                },
+                |card: &Card| vec![&*String::leak(card.document())],
             ],
             |title| {
                 title

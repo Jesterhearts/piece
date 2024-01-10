@@ -3,15 +3,16 @@
 #[macro_use]
 extern crate tracing;
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, marker::PhantomData, str::FromStr};
 
 use anyhow::{anyhow, Context};
 
 use ariadne::{Label, Report, ReportKind, Source};
+use convert_case::{Case, Casing};
 use include_dir::{include_dir, Dir, File};
 use indexmap::IndexMap;
 use itertools::Itertools;
-use protobuf::{MessageDyn, MessageFull};
+use protobuf::{Enum, MessageDyn, MessageFull};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
@@ -22,7 +23,7 @@ use crate::{
         empty::Empty,
         keywords::keyword,
         mana::Mana,
-        types::{subtype, type_, Subtype, Type, Typeline},
+        types::{Subtype, Type, Typeline},
     },
 };
 
@@ -147,11 +148,11 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     Ok(cards)
 }
 
-pub fn is_default_value<T: Default + PartialEq>(t: &T) -> bool {
+fn is_default_value<T: Default + PartialEq>(t: &T) -> bool {
     *t == T::default()
 }
 
-pub fn deserialize_gain_mana<'de, D>(deserializer: D) -> Result<Vec<Mana>, D::Error>
+fn deserialize_gain_mana<'de, D>(deserializer: D) -> Result<Vec<Mana>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -228,9 +229,7 @@ fn mana_to_string(value: &[Mana]) -> String {
     result
 }
 
-pub fn deserialize_mana_choice<'de, D>(
-    deserializer: D,
-) -> Result<Vec<gain_mana::GainMana>, D::Error>
+fn deserialize_mana_choice<'de, D>(deserializer: D) -> Result<Vec<gain_mana::GainMana>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -274,7 +273,7 @@ where
             .join(", "),
     )
 }
-pub fn deserialize_typeline<'de, D>(
+fn deserialize_typeline<'de, D>(
     deserializer: D,
 ) -> Result<protobuf::MessageField<Typeline>, D::Error>
 where
@@ -306,26 +305,22 @@ where
             let types = types
                 .split(' ')
                 .filter(|ty| !ty.is_empty())
-                .map(|ty| type_::Type::from_str(ty).map_err(|e| E::custom(e.to_string())))
                 .map(|ty| {
-                    ty.map(|type_| Type {
-                        type_: Some(type_),
-                        ..Default::default()
-                    })
+                    Type::from_str(&ty.to_case(Case::ScreamingSnake))
+                        .map(protobuf::EnumOrUnknown::new)
+                        .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
-                .collect::<Result<Vec<Type>, E>>()?;
+                .collect::<Result<Vec<protobuf::EnumOrUnknown<Type>>, E>>()?;
 
             let subtypes = subtypes
                 .split(' ')
                 .filter(|ty| !ty.is_empty())
-                .map(|ty| subtype::Subtype::from_str(ty).map_err(|e| E::custom(e.to_string())))
                 .map(|ty| {
-                    ty.map(|subtype| Subtype {
-                        subtype: Some(subtype),
-                        ..Default::default()
-                    })
+                    Subtype::from_str(&ty.to_case(Case::ScreamingSnake))
+                        .map(protobuf::EnumOrUnknown::new)
+                        .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
-                .collect::<Result<Vec<Subtype>, E>>()?;
+                .collect::<Result<Vec<protobuf::EnumOrUnknown<Subtype>>, E>>()?;
 
             Ok(protobuf::MessageField::some(Typeline {
                 types,
@@ -338,24 +333,31 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_typeline<S>(value: &Typeline, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_typeline<S>(value: &Typeline, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let types = value
         .types
         .iter()
-        .map(|ty| ty.type_.as_ref().unwrap().as_ref())
+        .sorted()
+        .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::Title))
         .join(" ");
     let subtypes = value
         .subtypes
         .iter()
-        .map(|ty| ty.subtype.as_ref().unwrap().as_ref())
+        .sorted()
+        .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::Title))
         .join(" ");
-    serializer.serialize_str(&format!("{} - {}", types, subtypes))
+
+    if subtypes.is_empty() {
+        serializer.serialize_str(&types)
+    } else {
+        serializer.serialize_str(&format!("{} - {}", types, subtypes))
+    }
 }
 
-pub fn deserialize_types<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
+fn deserialize_types<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -373,7 +375,10 @@ where
         {
             v.split(',')
                 .map(|v| v.trim())
-                .map(type_::Type::from_str)
+                .map(|ty| {
+                    Type::from_str(&ty.to_case(Case::ScreamingSnake))
+                        .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
+                })
                 .map(|type_| {
                     type_
                         .map(|type_| (type_.as_ref().to_string(), Empty::default()))
@@ -386,14 +391,20 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_types<S>(value: &HashMap<String, Empty>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_types<S>(value: &HashMap<String, Empty>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(&value.keys().join(", "))
+    serializer.serialize_str(
+        &value
+            .keys()
+            .sorted()
+            .map(|ty| ty.to_case(Case::Title))
+            .join(", "),
+    )
 }
 
-pub fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
+fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -411,7 +422,10 @@ where
         {
             v.split(',')
                 .map(|v| v.trim())
-                .map(subtype::Subtype::from_str)
+                .map(|ty| {
+                    Subtype::from_str(&ty.to_case(Case::ScreamingSnake))
+                        .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
+                })
                 .map(|subtype| {
                     subtype
                         .map(|subtype| (subtype.as_ref().to_string(), Empty::default()))
@@ -424,17 +438,20 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_subtypes<S>(
-    value: &HashMap<String, Empty>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+fn serialize_subtypes<S>(value: &HashMap<String, Empty>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(&value.keys().join(", "))
+    serializer.serialize_str(
+        &value
+            .keys()
+            .sorted()
+            .map(|ty| ty.to_case(Case::Title))
+            .join(", "),
+    )
 }
 
-pub fn deserialize_keywords<'de, D>(deserializer: D) -> Result<HashMap<String, u32>, D::Error>
+fn deserialize_keywords<'de, D>(deserializer: D) -> Result<HashMap<String, u32>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -471,7 +488,7 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_keywords<S>(value: &HashMap<String, u32>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_keywords<S>(value: &HashMap<String, u32>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -479,11 +496,12 @@ where
         &value
             .iter()
             .flat_map(|(kw, count)| std::iter::repeat(kw).take((*count) as usize))
+            .sorted()
             .join(", "),
     )
 }
 
-pub fn deserialize_colors<'de, D>(deserializer: D) -> Result<Vec<Color>, D::Error>
+fn deserialize_colors<'de, D>(deserializer: D) -> Result<Vec<Color>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -515,7 +533,7 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_colors<S>(value: &[Color], serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_colors<S>(value: &[Color], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -523,11 +541,69 @@ where
         &value
             .iter()
             .map(|color| color.color.as_ref().unwrap().as_ref())
+            .sorted()
             .join(", "),
     )
 }
 
-pub fn serialize_message<T, S>(
+fn deserialize_enum_list<'de, T, D>(
+    deserializer: D,
+) -> Result<Vec<protobuf::EnumOrUnknown<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Enum,
+{
+    #[derive(Default)]
+    struct Visit<T> {
+        _p: PhantomData<T>,
+    }
+
+    impl<'de, T> Visitor<'de> for Visit<T>
+    where
+        T: Enum,
+    {
+        type Value = Vec<protobuf::EnumOrUnknown<T>>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of subtypes")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            v.split(',')
+                .map(|v| v.trim())
+                .map(|ty| {
+                    T::from_str(&ty.to_case(Case::ScreamingSnake))
+                        .map(protobuf::EnumOrUnknown::new)
+                        .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
+                })
+                .collect::<Result<Self::Value, E>>()
+        }
+    }
+
+    deserializer.deserialize_str(Visit::<T>::default())
+}
+
+fn serialize_enum_list<T, S>(
+    values: &[protobuf::EnumOrUnknown<T>],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Serialize + AsRef<str> + Enum + std::cmp::Ord,
+{
+    serializer.serialize_str(
+        &values
+            .iter()
+            .sorted()
+            .map(|v| v.enum_value().unwrap().as_ref().to_case(Case::Title))
+            .join(", "),
+    )
+}
+
+fn serialize_message<T, S>(
     value: &::protobuf::MessageField<T>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
@@ -542,9 +618,7 @@ where
     }
 }
 
-pub fn deserialize_message<'de, T, D>(
-    deserializer: D,
-) -> Result<::protobuf::MessageField<T>, D::Error>
+fn deserialize_message<'de, T, D>(deserializer: D) -> Result<::protobuf::MessageField<T>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de> + MessageFull,

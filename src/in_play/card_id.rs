@@ -2,12 +2,12 @@ use std::{
     cell::OnceCell,
     collections::{HashMap, HashSet},
     rc::Rc,
-    str::FromStr,
     sync::atomic::Ordering,
 };
 
 use derive_more::From;
 use itertools::Itertools;
+use protobuf::Enum;
 use strum::IntoEnumIterator;
 use tracing::Level;
 
@@ -31,7 +31,7 @@ use crate::{
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{mana_pool::ManaSource, Controller, Owner},
-    protogen::types::{subtype, type_::TypeDiscriminants, Subtype},
+    protogen::types::{Subtype, Type},
     stack::{ActiveTarget, Stack},
     targets::{self, Cmc, Comparison, Dynamic, Location, Restriction},
     triggers::TriggerSource,
@@ -42,13 +42,13 @@ use crate::{
 type MakeLandAbility = Rc<dyn Fn(&mut Database, CardId) -> GainManaAbilityId>;
 
 thread_local! {
-    static INIT_LAND_ABILITIES: OnceCell<HashMap<String, MakeLandAbility>> = OnceCell::new();
+    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, MakeLandAbility>> = OnceCell::new();
 }
 
-fn land_abilities() -> HashMap<String, MakeLandAbility> {
+fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
     INIT_LAND_ABILITIES.with(|init| {
         init.get_or_init(|| {
-            let mut abilities: HashMap<String, MakeLandAbility> = HashMap::new();
+            let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -70,12 +70,7 @@ fn land_abilities() -> HashMap<String, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(
-                subtype::Subtype::Plains(Default::default())
-                    .as_ref()
-                    .to_string(),
-                add,
-            );
+            abilities.insert(Subtype::PLAINS, add);
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -97,12 +92,7 @@ fn land_abilities() -> HashMap<String, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(
-                subtype::Subtype::Island(Default::default())
-                    .as_ref()
-                    .to_string(),
-                add,
-            );
+            abilities.insert(Subtype::ISLAND, add);
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -124,12 +114,7 @@ fn land_abilities() -> HashMap<String, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(
-                subtype::Subtype::Swamp(Default::default())
-                    .as_ref()
-                    .to_string(),
-                add,
-            );
+            abilities.insert(Subtype::SWAMP, add);
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -151,12 +136,7 @@ fn land_abilities() -> HashMap<String, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(
-                subtype::Subtype::Mountain(Default::default())
-                    .as_ref()
-                    .to_string(),
-                add,
-            );
+            abilities.insert(Subtype::MOUNTAIN, add);
 
             let add = Rc::new(|db: &mut _, source| {
                 GainManaAbilityId::upload_temporary_ability(
@@ -178,12 +158,7 @@ fn land_abilities() -> HashMap<String, MakeLandAbility> {
                     },
                 )
             });
-            abilities.insert(
-                subtype::Subtype::Forest(Default::default())
-                    .as_ref()
-                    .to_string(),
-                add,
-            );
+            abilities.insert(Subtype::FOREST, add);
 
             abilities
         })
@@ -757,7 +732,7 @@ impl CardId {
         };
 
         let mut types = if facedown {
-            TypeSet::from([TypeDiscriminants::Creature])
+            TypeSet::from([Type::CREATURE])
         } else {
             TypeSet::from(&source.types)
         };
@@ -892,17 +867,37 @@ impl CardId {
 
             if !modifier.modifier.modifier.add_types.is_empty() {
                 applied_modifiers.insert(id);
-                types.extend(modifier.modifier.modifier.add_types.keys().cloned());
+                types.extend(
+                    modifier
+                        .modifier
+                        .modifier
+                        .add_types
+                        .keys()
+                        .map(|ty| Type::from_str(ty).unwrap()),
+                );
             }
 
             if !modifier.modifier.modifier.add_subtypes.is_empty() {
                 applied_modifiers.insert(id);
-                subtypes.extend(modifier.modifier.modifier.add_subtypes.keys().cloned());
+                subtypes.extend(
+                    modifier
+                        .modifier
+                        .modifier
+                        .add_subtypes
+                        .keys()
+                        .map(|ty| Subtype::from_str(ty).unwrap()),
+                );
             }
 
             if !modifier.modifier.modifier.remove_types.is_empty() {
                 applied_modifiers.insert(id);
-                types.retain(|ty| !modifier.modifier.modifier.remove_types.contains_key(ty));
+                types.retain(|ty| {
+                    !modifier
+                        .modifier
+                        .modifier
+                        .remove_types
+                        .contains_key(ty.as_ref())
+                });
             }
 
             if modifier.modifier.modifier.remove_all_types {
@@ -912,12 +907,18 @@ impl CardId {
 
             if !modifier.modifier.modifier.remove_subtypes.is_empty() {
                 applied_modifiers.insert(id);
-                subtypes.retain(|ty| !modifier.modifier.modifier.remove_subtypes.contains_key(ty));
+                subtypes.retain(|ty| {
+                    !modifier
+                        .modifier
+                        .modifier
+                        .remove_subtypes
+                        .contains_key(ty.as_ref())
+                });
             }
 
             if modifier.modifier.modifier.remove_all_creature_types {
                 applied_modifiers.insert(id);
-                subtypes.retain(|ty| !Subtype::from_str(ty).unwrap().is_creature_type());
+                subtypes.retain(|ty| !ty.is_creature_type());
             }
         }
 
@@ -1697,13 +1698,15 @@ impl CardId {
                     }
                 }
                 Restriction::NotOfType { types, subtypes } => {
-                    if !types.is_empty() && self_types.iter().any(|ty| types.contains_key(ty)) {
+                    if !types.is_empty()
+                        && self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                     if !subtypes.is_empty()
                         && self_subtypes
                             .iter()
-                            .any(|subtype| subtypes.contains_key(subtype))
+                            .any(|subtype| subtypes.contains_key(subtype.as_ref()))
                     {
                         return false;
                     }
@@ -1738,11 +1741,15 @@ impl CardId {
                     }
                 }
                 Restriction::OfType { types, subtypes } => {
-                    if !types.is_empty() && !self_types.iter().any(|ty| types.contains_key(ty)) {
+                    if !types.is_empty()
+                        && !self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                     if !subtypes.is_empty()
-                        && !self_subtypes.iter().any(|ty| subtypes.contains_key(ty))
+                        && !self_subtypes
+                            .iter()
+                            .any(|ty| subtypes.contains_key(ty.as_ref()))
                     {
                         return false;
                     }
@@ -2078,14 +2085,11 @@ impl CardId {
     }
 
     pub(crate) fn is_land(self, db: &Database) -> bool {
-        self.types_intersect(db, &TypeSet::from([TypeDiscriminants::Land]))
+        self.types_intersect(db, &TypeSet::from([Type::LAND]))
     }
 
     pub(crate) fn is_permanent(self, db: &Database) -> bool {
-        !self.types_intersect(
-            db,
-            &TypeSet::from([TypeDiscriminants::Instant, TypeDiscriminants::Sorcery]),
-        )
+        !self.types_intersect(db, &TypeSet::from([Type::INSTANT, Type::SORCERY]))
     }
 
     pub(crate) fn shroud(self, db: &Database) -> bool {
@@ -2194,7 +2198,7 @@ impl CardId {
     }
 
     pub(crate) fn can_attack(self, db: &Database) -> bool {
-        self.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
+        self.types_intersect(db, &TypeSet::from([Type::CREATURE]))
             && !db[self]
                 .modified_static_abilities
                 .iter()
@@ -2226,7 +2230,6 @@ fn clone_card(db: &mut Database, cloning: CardId) -> Card {
         cannot_be_countered: false,
         colors: cloning.faceup_face(db).colors.clone(),
         oracle_text: String::default(),
-        full_text: String::default(),
         enchant: cloning.faceup_face(db).enchant.clone(),
         effects: cloning.faceup_face(db).effects.clone(),
         modes: cloning.faceup_face(db).modes.clone(),

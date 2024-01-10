@@ -4,7 +4,7 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::types::type_::TypeDiscriminants,
+    protogen::types::Type,
     stack::ActiveTarget,
     types::TypeSet,
 };
@@ -40,7 +40,7 @@ impl EffectBehaviors for TargetCreatureExplores {
         db.battlefield[controller]
             .iter()
             .filter(|card| {
-                card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
+                card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
                     && card.can_be_targeted(db, controller)
             })
             .map(|card| ActiveTarget::Battlefield { id: *card })

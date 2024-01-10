@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use aho_corasick::AhoCorasick;
 use anyhow::anyhow;
+use convert_case::{Case, Casing};
 use itertools::Itertools;
 
 use crate::{
@@ -14,7 +15,7 @@ use crate::{
     mana::ManaCost,
     protogen::{
         self,
-        types::{type_::Artifact, Subtype, Type},
+        types::{Subtype, Type},
     },
     targets::Restriction,
 };
@@ -430,8 +431,8 @@ pub(crate) enum BaseToughnessType {
 #[derive(Debug, Clone, Default)]
 pub struct Card {
     pub name: String,
-    pub types: Vec<Type>,
-    pub subtypes: Vec<Subtype>,
+    pub types: Vec<protobuf::EnumOrUnknown<Type>>,
+    pub subtypes: Vec<protobuf::EnumOrUnknown<Subtype>>,
 
     pub cost: CastingCost,
     pub(crate) reducer: Option<CostReducer>,
@@ -440,8 +441,6 @@ pub struct Card {
     pub(crate) colors: HashSet<Color>,
 
     pub(crate) oracle_text: String,
-
-    pub full_text: String,
 
     pub(crate) enchant: Option<Enchant>,
 
@@ -475,22 +474,36 @@ pub struct Card {
 }
 
 impl Card {
-    fn compute_full_text(&mut self) {
-        self.full_text = std::iter::once(self.oracle_text.as_str())
-            .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
-            .chain(
-                self.modes
-                    .iter()
-                    .flat_map(|m| m.effects.iter().map(|e| e.oracle_text.as_str())),
-            )
-            .chain(self.etb_abilities.iter().map(|e| e.oracle_text.as_str()))
-            .chain(
-                self.activated_abilities
-                    .iter()
-                    .map(|a| a.oracle_text.as_str()),
-            )
-            .filter(|t| !t.is_empty())
-            .join("\n");
+    pub fn document(&self) -> String {
+        [
+            std::iter::once(self.name.as_str())
+                .chain(std::iter::once(self.cost.cost_string.as_str()))
+                .chain(self.keywords.keys().map(String::as_str))
+                .chain(std::iter::once(self.oracle_text.as_str()))
+                .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
+                .chain(
+                    self.modes
+                        .iter()
+                        .flat_map(|m| m.effects.iter().map(|e| e.oracle_text.as_str())),
+                )
+                .chain(self.etb_abilities.iter().map(|e| e.oracle_text.as_str()))
+                .chain(
+                    self.activated_abilities
+                        .iter()
+                        .map(|a| a.oracle_text.as_str()),
+                )
+                .filter(|t| !t.is_empty())
+                .join("\n"),
+            self.types
+                .iter()
+                .map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Title))
+                .join(" "),
+            self.subtypes
+                .iter()
+                .map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Title))
+                .join(" "),
+        ]
+        .join("\n")
     }
 }
 
@@ -498,7 +511,7 @@ impl TryFrom<&protogen::card::Card> for Card {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::card::Card) -> Result<Self, Self::Error> {
-        let mut this = Self {
+        Ok(Self {
             name: value.name.clone(),
             types: value.typeline.types.clone(),
             subtypes: value.typeline.subtypes.clone(),
@@ -514,7 +527,6 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .map(Color::try_from)
                 .collect::<anyhow::Result<HashSet<_>>>()?,
             oracle_text: replace_symbols(&value.oracle_text),
-            full_text: Default::default(),
             enchant: value
                 .enchant
                 .as_ref()
@@ -584,11 +596,7 @@ impl TryFrom<&protogen::card::Card> for Card {
             back_face: value.back_face.as_ref().map_or(Ok(None), |back| {
                 Card::try_from(back).map(|card| Some(Box::new(card)))
             })?,
-        };
-
-        this.compute_full_text();
-
-        Ok(this)
+        })
     }
 }
 
@@ -619,34 +627,28 @@ impl From<Token> for Card {
                     ..Default::default()
                 }
             }
-            Token::Map => {
-                let mut type_ = Type::default();
-                type_.set_artifact(Artifact::default());
-
-                Self {
-                    name: "Map".to_string(),
-                    types: vec![type_],
-                    activated_abilities: vec![ActivatedAbility {
-                        cost: AbilityCost {
-                            mana_cost: vec![ManaCost::Generic(1)],
-                            tap: true,
-                            additional_cost: vec![AdditionalCost::SacrificeSource],
-                            restrictions: vec![],
-                        },
-                        effects: vec![AnyEffect {
-                            effect: Effect::from(TargetCreatureExplores),
-                            oracle_text: String::default(),
-                        }],
-                        apply_to_self: false,
-                        oracle_text:
-                            "Target creature you control explores. Activate only as sorcery"
-                                .to_string(),
-                        sorcery_speed: true,
-                        craft: false,
+            Token::Map => Self {
+                name: "Map".to_string(),
+                types: vec![protobuf::EnumOrUnknown::new(Type::ARTIFACT)],
+                activated_abilities: vec![ActivatedAbility {
+                    cost: AbilityCost {
+                        mana_cost: vec![ManaCost::Generic(1)],
+                        tap: true,
+                        additional_cost: vec![AdditionalCost::SacrificeSource],
+                        restrictions: vec![],
+                    },
+                    effects: vec![AnyEffect {
+                        effect: Effect::from(TargetCreatureExplores),
+                        oracle_text: String::default(),
                     }],
-                    ..Default::default()
-                }
-            }
+                    apply_to_self: false,
+                    oracle_text: "Target creature you control explores. Activate only as sorcery"
+                        .to_string(),
+                    sorcery_speed: true,
+                    craft: false,
+                }],
+                ..Default::default()
+            },
         }
     }
 }

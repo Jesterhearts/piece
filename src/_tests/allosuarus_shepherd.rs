@@ -3,8 +3,8 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, protogen::types::subtype::Subtype,
-    stack::Stack, turns::Phase, types::SubtypeSet,
+    pending_results::ResolutionResult, player::AllPlayers, protogen::types::Subtype, stack::Stack,
+    turns::Phase, types::SubtypeSet,
 };
 
 #[test]
@@ -55,11 +55,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.toughness(&db), Some(5));
     assert_eq!(
         db[card].modified_subtypes,
-        SubtypeSet::from([
-            Subtype::Elf(Default::default()),
-            Subtype::Shaman(Default::default()),
-            Subtype::Dinosaur(Default::default())
-        ])
+        SubtypeSet::from([Subtype::ELF, Subtype::SHAMAN, Subtype::DINOSAUR])
     );
 
     let mut results = Battlefields::end_turn(&mut db);
@@ -70,10 +66,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(card.toughness(&db), Some(1));
     assert_eq!(
         db[card].modified_subtypes,
-        SubtypeSet::from([
-            Subtype::Elf(Default::default()),
-            Subtype::Shaman(Default::default())
-        ])
+        SubtypeSet::from([Subtype::ELF, Subtype::SHAMAN])
     );
 
     Ok(())

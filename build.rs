@@ -10,6 +10,20 @@ fn main() {
     struct GenSerde;
 
     impl CustomizeCallback for GenSerde {
+        fn enumeration(&self, _enum_type: &protobuf::reflect::EnumDescriptor) -> Customize {
+            Customize::default().before(
+                r#"#[derive(
+                    ::serde::Serialize,
+                    ::serde::Deserialize,
+                    ::strum::EnumIter,
+                    ::strum::AsRefStr,
+                    PartialOrd,
+                    Ord,
+                )]
+                #[strum(ascii_case_insensitive)]"#,
+            )
+        }
+
         fn message(&self, _message: &MessageDescriptor) -> Customize {
             Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq)]\n#[serde(deny_unknown_fields)]")
         }
@@ -101,6 +115,15 @@ fn main() {
                         serialize_with="crate::serialize_keywords",
                         deserialize_with="crate::deserialize_keywords",
                         skip_serializing_if="::std::collections::HashMap::is_empty"
+                    )]"#,
+                )
+            } else if field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_enum_list",
+                        deserialize_with="crate::deserialize_enum_list",
+                        skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
             } else if field.is_repeated() {

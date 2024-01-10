@@ -2,7 +2,7 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, types::type_::TypeDiscriminants},
+    protogen::{self, types::Type},
     stack::ActiveTarget,
     targets::Restriction,
     types::TypeSet,
@@ -61,7 +61,7 @@ impl EffectBehaviors for DealDamage {
                 log_session,
                 source,
                 &source.faceup_face(db).restrictions,
-            ) && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
+            ) && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
                 && card.can_be_targeted(db, controller)
                 && card.passes_restrictions(db, log_session, source, &self.restrictions)
             {

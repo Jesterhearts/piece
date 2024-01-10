@@ -7,7 +7,7 @@ use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::types::type_::TypeDiscriminants,
+    protogen::types::Type,
     stack::ActiveTarget,
     targets::Location,
     types::TypeSet,
@@ -45,7 +45,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         for creature in db.cards.keys().filter(|card| {
             card.passes_restrictions(db, log_session, source, &card.faceup_face(db).restrictions)
                 && card.is_in_location(db, Location::Battlefield)
-                && card.types_intersect(db, &TypeSet::from([TypeDiscriminants::Creature]))
+                && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
         }) {
             let target = ActiveTarget::Battlefield { id: *creature };
             if already_chosen.contains(&target) {
