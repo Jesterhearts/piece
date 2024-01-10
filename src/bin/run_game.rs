@@ -63,7 +63,14 @@ async fn main() -> anyhow::Result<()> {
                 |card: &Card| vec![card.name.as_str()],
                 |card: &Card| vec![card.cost.cost_string.as_str()],
                 |card: &Card| card.keywords.keys().map(|k| k.as_ref()).collect_vec(),
-                |card: &Card| card.types.iter().map(|t| t.as_ref()).collect_vec(),
+                |card: &Card| {
+                    card.types
+                        .iter()
+                        .map(|t| {
+                            &*String::leak(t.enum_value().unwrap().as_ref().to_case(Case::Title))
+                        })
+                        .collect_vec()
+                },
                 |card: &Card| {
                     card.subtypes
                         .iter()
