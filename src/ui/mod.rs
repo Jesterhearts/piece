@@ -87,7 +87,11 @@ impl Widget for Card<'_> {
             .collect_vec();
         let has_abilities = !abilities.is_empty();
 
-        let keywords = source.modified_keywords.keys().join(", ");
+        let keywords = source
+            .modified_keywords
+            .keys()
+            .map(|k| k.to_case(Case::Title))
+            .join(", ");
         let has_keywords = !keywords.is_empty();
 
         let modified_by = self.card.modified_by_text(self.db);
