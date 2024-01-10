@@ -7,9 +7,10 @@ use crate::{
     in_play::{CardId, Database},
     library::Library,
     load_cards,
-    mana::{Mana, ManaRestriction},
+    mana::ManaRestriction,
     pending_results::ResolutionResult,
     player::{mana_pool::ManaSource, AllPlayers},
+    protogen::mana::Mana,
     stack::Stack,
     turns::Phase,
 };
@@ -103,12 +104,12 @@ fn add_mana() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (1, Mana::White, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Blue, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Black, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Red, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Green, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Colorless, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::RED, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None),
         ]
     );
 

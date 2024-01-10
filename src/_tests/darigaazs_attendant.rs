@@ -6,9 +6,10 @@ use crate::{
     in_play::CardId,
     in_play::Database,
     load_cards,
-    mana::{Mana, ManaRestriction},
+    mana::ManaRestriction,
     pending_results::ResolutionResult,
     player::{mana_pool::ManaSource, AllPlayers},
+    protogen::mana::Mana,
     turns::Phase,
 };
 
@@ -33,7 +34,7 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     *all_players[player]
         .mana_pool
         .sourced
-        .entry(Mana::Colorless)
+        .entry(Mana::COLORLESS)
         .or_default()
         .entry(ManaSource::Any)
         .or_default()
@@ -57,12 +58,12 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (0, Mana::White, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Blue, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::Black, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::Red, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::Green, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::Colorless, ManaSource::Any, ManaRestriction::None)
+            (0, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::RED, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None)
         ]
     );
 

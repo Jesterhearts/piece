@@ -1,13 +1,10 @@
-use std::collections::HashSet;
-
 use anyhow::anyhow;
 use itertools::Itertools;
 
 use crate::{
-    card::{replace_symbols, Color},
+    card::replace_symbols,
     counters::Counter,
-    mana::ManaCost,
-    protogen,
+    protogen::{self, color::Color, cost::ManaCost},
     targets::Restriction,
 };
 
@@ -19,28 +16,67 @@ pub struct CastingCost {
 }
 
 impl CastingCost {
-    pub(crate) fn colors(&self) -> HashSet<Color> {
+    pub(crate) fn colors(&self) -> Vec<Color> {
         self.mana_cost.iter().map(|mana| mana.color()).collect()
     }
 
     pub fn text(&self) -> String {
         let mut result = String::default();
 
+        let generic = self
+            .mana_cost
+            .iter()
+            .filter(|cost| matches!(cost, ManaCost::GENERIC))
+            .count();
+
+        let mut pushed_generic = false;
         for mana in self.mana_cost.iter() {
-            mana.push_mana_symbol(&mut result);
+            match mana {
+                ManaCost::WHITE => result.push('\u{e600}'),
+                ManaCost::BLUE => result.push('\u{e601}'),
+                ManaCost::BLACK => result.push('\u{e602}'),
+                ManaCost::RED => result.push('\u{e603}'),
+                ManaCost::GREEN => result.push('\u{e604}'),
+                ManaCost::COLORLESS => result.push('\u{e904}'),
+                ManaCost::GENERIC => {
+                    if !pushed_generic {
+                        match generic {
+                            0 => result.push('\u{e605}'),
+                            1 => result.push('\u{e606}'),
+                            2 => result.push('\u{e607}'),
+                            3 => result.push('\u{e608}'),
+                            4 => result.push('\u{e609}'),
+                            5 => result.push('\u{e60a}'),
+                            6 => result.push('\u{e60b}'),
+                            7 => result.push('\u{e60c}'),
+                            8 => result.push('\u{e60d}'),
+                            9 => result.push('\u{e60e}'),
+                            10 => result.push('\u{e60f}'),
+                            11 => result.push('\u{e610}'),
+                            12 => result.push('\u{e611}'),
+                            13 => result.push('\u{e612}'),
+                            14 => result.push('\u{e613}'),
+                            15 => result.push('\u{e614}'),
+                            16 => result.push('\u{e62a}'),
+                            17 => result.push('\u{e62b}'),
+                            18 => result.push('\u{e62c}'),
+                            19 => result.push('\u{e62d}'),
+                            20 => result.push('\u{e62e}'),
+                            _ => result.push_str(&format!("{}", generic)),
+                        }
+                        pushed_generic = true;
+                    }
+                }
+                ManaCost::X => result.push('\u{e615}'),
+                ManaCost::TWO_X => result.push_str("\u{e615}\u{e615}"),
+            }
         }
 
         result
     }
 
     pub(crate) fn cmc(&self) -> usize {
-        self.mana_cost
-            .iter()
-            .map(|mana| match mana {
-                &ManaCost::Generic(count) => count,
-                _ => 1,
-            })
-            .sum::<usize>()
+        self.mana_cost.len()
     }
 }
 
@@ -300,7 +336,7 @@ impl From<&protogen::cost::cost_reducer::When> for ReduceWhen {
 #[derive(Debug, Clone)]
 pub(crate) struct CostReducer {
     pub(crate) when: ReduceWhen,
-    pub(crate) reduction: ManaCost,
+    pub(crate) reduction: Vec<protobuf::EnumOrUnknown<ManaCost>>,
 }
 
 impl TryFrom<&protogen::cost::CostReducer> for CostReducer {
@@ -313,7 +349,7 @@ impl TryFrom<&protogen::cost::CostReducer> for CostReducer {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected reducer to have a when set"))
                 .map(ReduceWhen::from)?,
-            reduction: value.reduction.get_or_default().try_into()?,
+            reduction: value.reduction.clone(),
         })
     }
 }
@@ -327,29 +363,30 @@ pub(crate) fn parse_mana_cost(s: &str) -> anyhow::Result<Vec<ManaCost>> {
 
     let mut results = vec![];
     for symbol in split {
-        let cost;
         if let Ok(count) = symbol.parse::<usize>() {
-            cost = ManaCost::Generic(count);
+            for _ in 0..count {
+                results.push(ManaCost::GENERIC);
+            }
         } else {
-            match symbol {
-                "W" => cost = ManaCost::White,
-                "U" => cost = ManaCost::Blue,
-                "B" => cost = ManaCost::Black,
-                "R" => cost = ManaCost::Red,
-                "G" => cost = ManaCost::Green,
-                "X" => cost = ManaCost::X,
-                "C" => cost = ManaCost::Colorless,
+            let cost = match symbol {
+                "W" => ManaCost::WHITE,
+                "U" => ManaCost::BLUE,
+                "B" => ManaCost::BLACK,
+                "R" => ManaCost::RED,
+                "G" => ManaCost::GREEN,
+                "X" => ManaCost::X,
+                "C" => ManaCost::COLORLESS,
                 s => {
                     return Err(anyhow!("Invalid mana cost {}", s));
                 }
-            }
-        }
+            };
 
-        if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
-            results.pop();
-            results.push(ManaCost::TwoX);
-        } else {
-            results.push(cost);
+            if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
+                results.pop();
+                results.push(ManaCost::TWO_X);
+            } else {
+                results.push(cost);
+            }
         }
     }
 

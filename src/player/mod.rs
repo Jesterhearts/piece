@@ -13,14 +13,14 @@ use strum::IntoEnumIterator;
 use crate::{
     abilities::StaticAbility,
     battlefield::{ActionResult, Battlefields},
-    card::Color,
     effects::{EffectBehaviors, ReplacementAbility, Replacing},
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
-    mana::{Mana, ManaCost, ManaRestriction},
+    mana::ManaRestriction,
     pending_results::PendingResults,
     player::mana_pool::{ManaPool, ManaSource, SpendReason},
+    protogen::{color::Color, cost::ManaCost, mana::Mana},
     stack::Stack,
     targets::{Location, Restriction},
 };
@@ -91,7 +91,7 @@ impl Owner {
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
                     let colors = Battlefields::controlled_colors(db, controller);
-                    if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
+                    if !(colors.contains(&Color::GREEN) || colors.contains(&Color::BLACK)) {
                         return false;
                     }
                 }
@@ -451,9 +451,6 @@ impl Player {
         sources: &[ManaSource],
         reason: SpendReason,
     ) -> bool {
-        let mut mana = mana.to_vec();
-        mana.sort();
-
         for (cost, source) in mana.iter().copied().zip(
             sources
                 .iter()

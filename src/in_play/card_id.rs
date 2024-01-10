@@ -16,7 +16,7 @@ use crate::{
         Ability, AddKeywordsIf, GainMana, GainManaAbility, StaticAbility, TriggeredAbility,
     },
     battlefield::Battlefields,
-    card::{replace_symbols, BasePowerType, BaseToughnessType, Card, Color},
+    card::{replace_symbols, BasePowerType, BaseToughnessType, Card},
     cost::{AbilityCost, CastingCost},
     counters::Counter,
     effects::{
@@ -28,11 +28,13 @@ use crate::{
         StaticAbilityId, NEXT_CARD_ID,
     },
     log::{LeaveReason, Log, LogEntry, LogId},
-    mana::{Mana, ManaRestriction},
+    mana::ManaRestriction,
     pending_results::PendingResults,
     player::{mana_pool::ManaSource, Controller, Owner},
     protogen::{
+        color::Color,
         keywords::Keyword,
+        mana::Mana,
         types::{Subtype, Type},
     },
     stack::{ActiveTarget, Stack},
@@ -65,7 +67,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![Mana::White],
+                            gains: vec![protobuf::EnumOrUnknown::new(Mana::WHITE)],
                         },
                         mana_restriction: ManaRestriction::None,
                         mana_source: None,
@@ -87,7 +89,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![Mana::Blue],
+                            gains: vec![protobuf::EnumOrUnknown::new(Mana::BLUE)],
                         },
                         mana_restriction: ManaRestriction::None,
                         mana_source: None,
@@ -109,7 +111,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![Mana::Black],
+                            gains: vec![protobuf::EnumOrUnknown::new(Mana::BLACK)],
                         },
                         mana_restriction: ManaRestriction::None,
                         mana_source: None,
@@ -131,7 +133,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![Mana::Red],
+                            gains: vec![protobuf::EnumOrUnknown::new(Mana::RED)],
                         },
                         mana_restriction: ManaRestriction::None,
                         mana_source: None,
@@ -153,7 +155,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                             restrictions: vec![],
                         },
                         gain: GainMana::Specific {
-                            gains: vec![Mana::Green],
+                            gains: vec![protobuf::EnumOrUnknown::new(Mana::GREEN)],
                         },
                         mana_restriction: ManaRestriction::None,
                         mana_source: None,
@@ -757,8 +759,9 @@ impl CardId {
         } else {
             source
                 .colors
-                .union(&source.cost.colors())
-                .copied()
+                .iter()
+                .map(|c| c.enum_value().unwrap())
+                .chain(source.cost.colors())
                 .collect()
         };
 
@@ -984,7 +987,14 @@ impl CardId {
 
             if !modifier.modifier.modifier.add_colors.is_empty() {
                 applied_modifiers.insert(id);
-                colors.extend(modifier.modifier.modifier.add_colors.iter().copied());
+                colors.extend(
+                    modifier
+                        .modifier
+                        .modifier
+                        .add_colors
+                        .iter()
+                        .map(|c| c.enum_value().unwrap()),
+                );
             }
 
             if modifier.modifier.modifier.remove_all_colors {
@@ -994,7 +1004,7 @@ impl CardId {
         }
 
         if colors.len() != 1 {
-            colors.remove(&Color::Colorless);
+            colors.remove(&Color::COLORLESS);
         }
 
         let add_keywords = static_abilities
@@ -1577,7 +1587,7 @@ impl CardId {
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
                     let colors = Battlefields::controlled_colors(db, self_controller);
-                    if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
+                    if !(colors.contains(&Color::GREEN) || colors.contains(&Color::BLACK)) {
                         return false;
                     }
                 }
@@ -1738,7 +1748,10 @@ impl CardId {
                     }
                 }
                 Restriction::OfColor(ofcolors) => {
-                    if self_colors.is_disjoint(ofcolors) {
+                    if !ofcolors
+                        .iter()
+                        .any(|c| self_colors.contains(&c.enum_value().unwrap()))
+                    {
                         return false;
                     }
                 }
@@ -1987,7 +2000,7 @@ impl CardId {
         for (ability, _) in Battlefields::static_abilities(db) {
             match &ability {
                 StaticAbility::GreenCannotBeCountered { restrictions } => {
-                    if db[self].modified_colors.contains(&Color::Green)
+                    if db[self].modified_colors.contains(&Color::GREEN)
                         && self.passes_restrictions(db, log_session, source, restrictions)
                     {
                         return false;

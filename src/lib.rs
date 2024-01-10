@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::{collections::HashMap, marker::PhantomData, str::FromStr};
+use std::{collections::HashMap, marker::PhantomData};
 
 use anyhow::{anyhow, Context};
 
@@ -18,7 +18,7 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use crate::{
     card::Card,
     protogen::{
-        color::{color, Color},
+        cost::ManaCost,
         effects::gain_mana,
         empty::Empty,
         keywords::Keyword,
@@ -152,13 +152,15 @@ fn is_default_value<T: Default + PartialEq>(t: &T) -> bool {
     *t == T::default()
 }
 
-fn deserialize_gain_mana<'de, D>(deserializer: D) -> Result<Vec<Mana>, D::Error>
+fn deserialize_gain_mana<'de, D>(
+    deserializer: D,
+) -> Result<Vec<protobuf::EnumOrUnknown<Mana>>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visit;
     impl<'de> Visitor<'de> for Visit {
-        type Value = Vec<Mana>;
+        type Value = Vec<protobuf::EnumOrUnknown<Mana>>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("expected a sequence of {W}, {U}, {B}, {R}, {G}, or {C}")
@@ -175,7 +177,7 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-fn parse_mana_symbol<E>(v: &str) -> Result<Vec<Mana>, E>
+fn parse_mana_symbol<E>(v: &str) -> Result<Vec<protobuf::EnumOrUnknown<Mana>>, E>
 where
     E: serde::de::Error,
 {
@@ -187,25 +189,27 @@ where
 
     let mut results = vec![];
     for symbol in split {
-        let mut mana = Mana::default();
-        match symbol {
-            "W" => mana.set_white(Default::default()),
-            "U" => mana.set_blue(Default::default()),
-            "B" => mana.set_black(Default::default()),
-            "R" => mana.set_red(Default::default()),
-            "G" => mana.set_green(Default::default()),
-            "C" => mana.set_colorless(Default::default()),
+        let mana = match symbol {
+            "W" => Mana::WHITE,
+            "U" => Mana::BLUE,
+            "B" => Mana::BLACK,
+            "R" => Mana::RED,
+            "G" => Mana::GREEN,
+            "C" => Mana::COLORLESS,
             s => {
                 return Err(E::custom(format!("Invalid mana {}", s)));
             }
-        }
+        };
 
-        results.push(mana);
+        results.push(protobuf::EnumOrUnknown::new(mana));
     }
     Ok(results)
 }
 
-fn serialize_gain_mana<S>(value: &[Mana], serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_gain_mana<S>(
+    value: &[protobuf::EnumOrUnknown<Mana>],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -214,16 +218,16 @@ where
     serializer.serialize_str(&result)
 }
 
-fn mana_to_string(value: &[Mana]) -> String {
+fn mana_to_string(value: &[protobuf::EnumOrUnknown<Mana>]) -> String {
     let mut result = String::default();
     for mana in value.iter() {
-        match mana.mana.as_ref().unwrap() {
-            protogen::mana::mana::Mana::White(_) => result.push_str("{W}"),
-            protogen::mana::mana::Mana::Blue(_) => result.push_str("{U}"),
-            protogen::mana::mana::Mana::Black(_) => result.push_str("{B}"),
-            protogen::mana::mana::Mana::Red(_) => result.push_str("{R}"),
-            protogen::mana::mana::Mana::Green(_) => result.push_str("{G}"),
-            protogen::mana::mana::Mana::Colorless(_) => result.push_str("{C}"),
+        match mana.enum_value().unwrap() {
+            protogen::mana::Mana::WHITE => result.push_str("{W}"),
+            protogen::mana::Mana::BLUE => result.push_str("{U}"),
+            protogen::mana::Mana::BLACK => result.push_str("{B}"),
+            protogen::mana::Mana::RED => result.push_str("{R}"),
+            protogen::mana::Mana::GREEN => result.push_str("{G}"),
+            protogen::mana::Mana::COLORLESS => result.push_str("{C}"),
         }
     }
     result
@@ -272,6 +276,129 @@ where
             .map(|gain| mana_to_string(&gain.gains))
             .join(", "),
     )
+}
+
+fn deserialize_mana_cost<'de, D>(
+    deserializer: D,
+) -> Result<Vec<protobuf::EnumOrUnknown<ManaCost>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<protobuf::EnumOrUnknown<ManaCost>>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a sequence of {W}, {U}, {B}, {R}, {G}, {C}, or {#}")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            let split = v
+                .split('}')
+                .map(|s| s.trim_start_matches('{'))
+                .filter(|s| !s.is_empty())
+                .collect_vec();
+
+            let mut results = vec![];
+            for symbol in split {
+                if let Ok(count) = symbol.parse::<usize>() {
+                    for _ in 0..count {
+                        results.push(ManaCost::GENERIC);
+                    }
+                } else {
+                    let cost = match symbol {
+                        "W" => ManaCost::WHITE,
+                        "U" => ManaCost::BLUE,
+                        "B" => ManaCost::BLACK,
+                        "R" => ManaCost::RED,
+                        "G" => ManaCost::GREEN,
+                        "X" => ManaCost::X,
+                        "C" => ManaCost::COLORLESS,
+                        s => {
+                            return Err(E::custom(format!("Invalid mana cost {}", s)));
+                        }
+                    };
+
+                    if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
+                        results.pop();
+                        results.push(ManaCost::TWO_X);
+                    } else {
+                        results.push(cost);
+                    }
+                }
+            }
+
+            Ok(results
+                .into_iter()
+                .map(protobuf::EnumOrUnknown::new)
+                .collect_vec())
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+fn serialize_mana_cost<S>(
+    value: &[protobuf::EnumOrUnknown<ManaCost>],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut result = String::default();
+
+    let generic = value
+        .iter()
+        .filter(|cost| matches!(cost.enum_value().unwrap(), ManaCost::GENERIC))
+        .count();
+
+    let mut pushed_generic = false;
+    for mana in value.iter() {
+        match mana.enum_value().unwrap() {
+            ManaCost::WHITE => result.push_str("{W}"),
+            ManaCost::BLUE => result.push_str("{U}"),
+            ManaCost::BLACK => result.push_str("{B}"),
+            ManaCost::RED => result.push_str("{R}"),
+            ManaCost::GREEN => result.push_str("{G}"),
+            ManaCost::COLORLESS => result.push_str("{C}"),
+            ManaCost::GENERIC => {
+                if !pushed_generic {
+                    match generic {
+                        0 => result.push_str("{0}"),
+                        1 => result.push_str("{1}"),
+                        2 => result.push_str("{2}"),
+                        3 => result.push_str("{3}"),
+                        4 => result.push_str("{4}"),
+                        5 => result.push_str("{5}"),
+                        6 => result.push_str("{6}"),
+                        7 => result.push_str("{7}"),
+                        8 => result.push_str("{8}"),
+                        9 => result.push_str("{9}"),
+                        10 => result.push_str("{10}"),
+                        11 => result.push_str("{11}"),
+                        12 => result.push_str("{12}"),
+                        13 => result.push_str("{13}"),
+                        14 => result.push_str("{14}"),
+                        15 => result.push_str("{15}"),
+                        16 => result.push_str("{16}"),
+                        17 => result.push_str("{17}"),
+                        18 => result.push_str("{18}"),
+                        19 => result.push_str("{19}"),
+                        20 => result.push_str("{20}"),
+                        _ => result.push_str(&format!("{{{}}}", generic)),
+                    }
+                    pushed_generic = true;
+                }
+            }
+            ManaCost::X => result.push_str("{X}"),
+            ManaCost::TWO_X => result.push_str("{X}{X}"),
+        }
+    }
+
+    serializer.serialize_str(&result)
 }
 fn deserialize_typeline<'de, D>(
     deserializer: D,
@@ -491,51 +618,6 @@ where
             .flat_map(|(kw, count)| {
                 std::iter::repeat(kw.to_case(Case::Title)).take((*count) as usize)
             })
-            .sorted()
-            .join(", "),
-    )
-}
-
-fn deserialize_colors<'de, D>(deserializer: D) -> Result<Vec<Color>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct Visit;
-    impl<'de> Visitor<'de> for Visit {
-        type Value = Vec<Color>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("expected a comma separate sequence of colors")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            v.split(',')
-                .map(|v| v.trim())
-                .map(color::Color::from_str)
-                .map(|color| {
-                    Ok(Color {
-                        color: Some(color.map_err(|e| E::custom(e.to_string()))?),
-                        ..Default::default()
-                    })
-                })
-                .collect::<Result<Self::Value, E>>()
-        }
-    }
-
-    deserializer.deserialize_str(Visit)
-}
-
-fn serialize_colors<S>(value: &[Color], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(
-        &value
-            .iter()
-            .map(|color| color.color.as_ref().unwrap().as_ref())
             .sorted()
             .join(", "),
     )

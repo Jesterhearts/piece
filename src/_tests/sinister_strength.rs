@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, card::Color, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
+    pending_results::ResolutionResult, player::AllPlayers, protogen::color::Color,
 };
 
 #[test]
@@ -39,7 +39,7 @@ fn aura_works() -> anyhow::Result<()> {
 
     assert_eq!(creature.power(&db), Some(7));
     assert_eq!(creature.toughness(&db), Some(3));
-    assert_eq!(db[creature].modified_colors, HashSet::from([Color::Black]));
+    assert_eq!(db[creature].modified_colors, HashSet::from([Color::BLACK]));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
@@ -53,7 +53,7 @@ fn aura_works() -> anyhow::Result<()> {
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
-    assert_eq!(db[creature].modified_colors, HashSet::from([Color::Green]));
+    assert_eq!(db[creature].modified_colors, HashSet::from([Color::GREEN]));
 
     assert!(Battlefields::no_modifiers(&db));
 

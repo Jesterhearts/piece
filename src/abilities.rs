@@ -11,13 +11,13 @@ use crate::{
     effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
     log::LogId,
-    mana::{Mana, ManaRestriction},
+    mana::ManaRestriction,
     pending_results::PendingResults,
     player::{
         mana_pool::{ManaSource, SpendReason},
         Owner,
     },
-    protogen,
+    protogen::{self, mana::Mana},
     targets::Restriction,
     triggers::Trigger,
     turns::Phase,
@@ -296,8 +296,12 @@ impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum GainMana {
-    Specific { gains: Vec<Mana> },
-    Choice { choices: Vec<Vec<Mana>> },
+    Specific {
+        gains: Vec<protobuf::EnumOrUnknown<Mana>>,
+    },
+    Choice {
+        choices: Vec<protogen::effects::gain_mana::GainMana>,
+    },
 }
 
 impl TryFrom<&protogen::effects::GainMana> for GainMana {
@@ -318,24 +322,10 @@ impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
     fn try_from(value: &protogen::effects::gain_mana::Gain) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::gain_mana::Gain::Specific(specific) => Ok(Self::Specific {
-                gains: specific
-                    .gain
-                    .iter()
-                    .map(Mana::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                gains: specific.gain.clone(),
             }),
             protogen::effects::gain_mana::Gain::Choice(choice) => Ok(Self::Choice {
-                choices: choice
-                    .choices
-                    .iter()
-                    .map(|choice| {
-                        choice
-                            .gains
-                            .iter()
-                            .map(Mana::try_from)
-                            .collect::<anyhow::Result<Vec<_>>>()
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()?,
+                choices: choice.choices.clone(),
             }),
         }
     }

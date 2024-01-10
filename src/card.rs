@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use aho_corasick::AhoCorasick;
-use anyhow::anyhow;
 use convert_case::{Case, Casing};
 use itertools::Itertools;
 
@@ -12,48 +11,14 @@ use crate::{
         target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
         Mode, ReplacementAbility, Token, TokenCreature,
     },
-    mana::ManaCost,
     protogen::{
         self,
+        color::Color,
+        cost::ManaCost,
         types::{Subtype, Type},
     },
     targets::Restriction,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
-pub enum Color {
-    White,
-    Blue,
-    Black,
-    Red,
-    Green,
-    Colorless,
-}
-
-impl TryFrom<&protogen::color::Color> for Color {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::color::Color) -> Result<Self, Self::Error> {
-        value
-            .color
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected color to have a color set"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::color::color::Color> for Color {
-    fn from(value: &protogen::color::color::Color) -> Self {
-        match value {
-            protogen::color::color::Color::White(_) => Self::White,
-            protogen::color::color::Color::Blue(_) => Self::Blue,
-            protogen::color::color::Color::Black(_) => Self::Black,
-            protogen::color::color::Color::Red(_) => Self::Red,
-            protogen::color::color::Color::Green(_) => Self::Green,
-            protogen::color::color::Color::Colorless(_) => Self::Colorless,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub(crate) enum BasePowerType {
@@ -77,7 +42,7 @@ pub struct Card {
     pub(crate) reducer: Option<CostReducer>,
     pub(crate) cannot_be_countered: bool,
 
-    pub(crate) colors: HashSet<Color>,
+    pub(crate) colors: Vec<::protobuf::EnumOrUnknown<Color>>,
 
     pub(crate) oracle_text: String,
 
@@ -160,11 +125,7 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .as_ref()
                 .map_or(Ok(None), |reducer| reducer.try_into().map(Some))?,
             cannot_be_countered: value.cannot_be_countered,
-            colors: value
-                .colors
-                .iter()
-                .map(Color::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+            colors: value.colors.clone(),
             oracle_text: replace_symbols(&value.oracle_text),
             enchant: value
                 .enchant
@@ -271,7 +232,7 @@ impl From<Token> for Card {
                 types: vec![protobuf::EnumOrUnknown::new(Type::ARTIFACT)],
                 activated_abilities: vec![ActivatedAbility {
                     cost: AbilityCost {
-                        mana_cost: vec![ManaCost::Generic(1)],
+                        mana_cost: vec![ManaCost::GENERIC],
                         tap: true,
                         additional_cost: vec![AdditionalCost::SacrificeSource],
                         restrictions: vec![],

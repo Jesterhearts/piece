@@ -71,15 +71,6 @@ fn main() {
                         skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
-            } else if field.name() == "colors" || field.name() == "add_colors" {
-                Customize::default().before(
-                    r#"#[serde(
-                        default,
-                        serialize_with="crate::serialize_colors",
-                        deserialize_with="crate::deserialize_colors",
-                        skip_serializing_if="Vec::is_empty"
-                    )]"#,
-                )
             } else if (field.name() == "types" && field.containing_message().name() != "Typeline")
                 || field.name() == "add_types"
                 || field.name() == "remove_types"
@@ -115,6 +106,15 @@ fn main() {
                         serialize_with="crate::serialize_keywords",
                         deserialize_with="crate::deserialize_keywords",
                         skip_serializing_if="::std::collections::HashMap::is_empty"
+                    )]"#,
+                )
+            } else if field.name() == "reduction" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_mana_cost",
+                        deserialize_with="crate::deserialize_mana_cost",
+                        skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
             } else if field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {

@@ -2,35 +2,13 @@ syntax = "proto3";
 
 package mana;
 
-message White {}
-
-message Blue {}
-
-message Black {}
-
-message Red {}
-
-message Green {}
-
-message Colorless {}
-
-message Generic {
-  int32 count = 1;
-}
-
-message X {}
-
-message TwoX {}
-
-message Mana {
-  oneof mana {
-    White white = 1;
-    Blue blue = 2;
-    Black black = 3;
-    Red red = 4;
-    Green green = 5;
-    Colorless colorless = 6;
-  }
+enum Mana {
+  WHITE = 0;
+  BLUE = 1;
+  BLACK = 2;
+  RED = 3;
+  GREEN = 4;
+  COLORLESS = 5;
 }
 
 message ManaRestriction {

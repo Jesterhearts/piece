@@ -88,8 +88,8 @@ impl Source {
                             let mut result = vec![];
                             for (idx, choice) in choices.iter().enumerate() {
                                 let mut add = "Add ".to_string();
-                                for mana in choice {
-                                    mana.push_mana_symbol(&mut add);
+                                for mana in choice.gains.iter() {
+                                    mana.enum_value().unwrap().push_mana_symbol(&mut add);
                                 }
                                 result.push((idx, add))
                             }
@@ -465,7 +465,7 @@ impl PendingResults {
                         let option = self.chosen_modes.pop().unwrap();
                         self.chosen_modes.clear();
                         self.settled_effects.push(ActionResult::GainMana {
-                            gain: choices[option].clone(),
+                            gain: choices[option].gains.clone(),
                             target,
                             source,
                             restriction,

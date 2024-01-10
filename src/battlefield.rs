@@ -7,7 +7,6 @@ use tracing::Level;
 
 use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility, TriggeredAbility},
-    card::Color,
     cost::{AdditionalCost, PayLife},
     counters::Counter,
     effects::{
@@ -21,7 +20,7 @@ use crate::{
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry, LogId},
-    mana::{Mana, ManaRestriction},
+    mana::ManaRestriction,
     pending_results::{
         choose_targets::ChooseTargets,
         examine_top_cards::{self, ExamineCards},
@@ -35,7 +34,7 @@ use crate::{
         mana_pool::{ManaSource, SpendReason},
         Controller, Owner, Player,
     },
-    protogen::types::Type,
+    protogen::{color::Color, mana::Mana, types::Type},
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Location, Restriction},
     triggers::{self, Trigger, TriggerSource},
@@ -179,7 +178,7 @@ pub(crate) enum ActionResult {
         count: usize,
     },
     GainMana {
-        gain: Vec<Mana>,
+        gain: Vec<protobuf::EnumOrUnknown<Mana>>,
         target: Controller,
         source: ManaSource,
         restriction: ManaRestriction,
@@ -898,9 +897,11 @@ impl Battlefields {
                 restriction,
             } => {
                 for mana in gain {
-                    db.all_players[*target]
-                        .mana_pool
-                        .apply(*mana, *source, *restriction)
+                    db.all_players[*target].mana_pool.apply(
+                        mana.enum_value().unwrap(),
+                        *source,
+                        *restriction,
+                    )
                 }
                 PendingResults::default()
             }

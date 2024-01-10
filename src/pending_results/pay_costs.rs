@@ -9,9 +9,9 @@ use crate::{
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::{target_from_location, CardId, Database, ExileReason},
     log::LogId,
-    mana::{Mana, ManaCost},
     pending_results::{PendingResult, PendingResults},
     player::mana_pool::{ManaSource, SpendReason},
+    protogen::{cost::ManaCost, mana::Mana},
     stack::ActiveTarget,
     targets::Restriction,
 };
@@ -153,7 +153,7 @@ impl SpendMana {
         }
         let mut paid = IndexMap::default();
         paid.entry(ManaCost::X).or_default();
-        paid.entry(ManaCost::TwoX).or_default();
+        paid.entry(ManaCost::TWO_X).or_default();
 
         Self {
             paying,
@@ -169,9 +169,8 @@ impl SpendMana {
             .iter()
             .find(|(paying, required)| {
                 let required = match paying {
-                    ManaCost::Generic(count) => *count,
                     ManaCost::X => usize::MAX,
-                    ManaCost::TwoX => usize::MAX,
+                    ManaCost::TWO_X => usize::MAX,
                     _ => **required,
                 };
 
@@ -192,7 +191,7 @@ impl SpendMana {
 
     pub(crate) fn first_unpaid(&self) -> Option<ManaCost> {
         self.first_unpaid_x_always_unpaid()
-            .filter(|unpaid| !matches!(unpaid, ManaCost::X | ManaCost::TwoX))
+            .filter(|unpaid| !matches!(unpaid, ManaCost::X | ManaCost::TWO_X))
     }
 
     pub(crate) fn paid(&self) -> bool {
@@ -219,8 +218,8 @@ impl SpendMana {
     fn description(&self) -> String {
         if let Some(first_unpaid) = self.first_unpaid_x_always_unpaid() {
             match first_unpaid {
-                ManaCost::Generic(_) => "generic mana".to_string(),
-                ManaCost::X => "X".to_string(),
+                ManaCost::GENERIC => "generic mana".to_string(),
+                ManaCost::X | ManaCost::TWO_X => "X".to_string(),
                 _ => "paying mana".to_string(),
             }
         } else {
@@ -239,7 +238,7 @@ impl SpendMana {
             .filter(|paid| *paid != 0)
             .or_else(|| {
                 self.paid
-                    .get(&ManaCost::TwoX)
+                    .get(&ManaCost::TWO_X)
                     .map(|paid| {
                         paid.values()
                             .flat_map(|sourced| sourced.values())
@@ -381,35 +380,21 @@ impl Cost {
                                 .map(|target| target.id())
                             {
                                 if target.tapped(db) {
-                                    let (reducing, count) = spend
-                                        .paying
+                                    let reduction: ::counter::Counter<ManaCost> = reducer
+                                        .reduction
                                         .iter()
-                                        .find(|paying| {
-                                            std::mem::discriminant(paying.0)
-                                                == std::mem::discriminant(&reducer.reduction)
-                                        })
-                                        .map(|(cost, count)| (*cost, *count))
-                                        .unwrap();
+                                        .map(|r| r.enum_value().unwrap())
+                                        .collect();
 
-                                    spend.paying.remove(&reducing);
-
-                                    match reducing {
-                                        ManaCost::Generic(count) => {
-                                            let ManaCost::Generic(reduce) = reducer.reduction
-                                            else {
-                                                unreachable!()
-                                            };
-
-                                            if reduce < count {
-                                                spend
-                                                    .paying
-                                                    .insert(ManaCost::Generic(count - reduce), 1);
+                                    for (cost, count) in spend.paying.iter_mut() {
+                                        if let Some(reduction) = reduction.get(cost) {
+                                            *count = count.saturating_sub(*reduction);
+                                            if *count == 0 {
+                                                *count = 1;
                                             }
                                         }
-                                        _ => {
-                                            spend.paying.insert(reducing, count - 1);
-                                        }
                                     }
+
                                     spend.reduced = true;
                                     return true;
                                 }
@@ -621,7 +606,7 @@ impl Cost {
                 if choice.is_none() {
                     if spend
                         .paid
-                        .entry(ManaCost::TwoX)
+                        .entry(ManaCost::TWO_X)
                         .or_default()
                         .values()
                         .flat_map(|i| i.values())
@@ -642,14 +627,21 @@ impl Cost {
 
                     if pool_post_pay.can_spend(db, first_unpaid, ManaSource::Any, spend.reason) {
                         let mana = match first_unpaid {
-                            ManaCost::White => Mana::White,
-                            ManaCost::Blue => Mana::Blue,
-                            ManaCost::Black => Mana::Black,
-                            ManaCost::Red => Mana::Red,
-                            ManaCost::Green => Mana::Green,
-                            ManaCost::Colorless => Mana::Colorless,
-                            ManaCost::Generic(count) => {
-                                for _ in 0..count {
+                            ManaCost::WHITE => Mana::WHITE,
+                            ManaCost::BLUE => Mana::BLUE,
+                            ManaCost::BLACK => Mana::BLACK,
+                            ManaCost::RED => Mana::RED,
+                            ManaCost::GREEN => Mana::GREEN,
+                            ManaCost::COLORLESS => Mana::COLORLESS,
+                            ManaCost::GENERIC => {
+                                while matches!(spend.first_unpaid(), Some(ManaCost::GENERIC))
+                                    && pool_post_pay.can_spend(
+                                        db,
+                                        ManaCost::GENERIC,
+                                        ManaSource::Any,
+                                        spend.reason,
+                                    )
+                                {
                                     let max = pool_post_pay.max(db, spend.reason).unwrap();
                                     let (_, source) =
                                         pool_post_pay.spend(db, max, ManaSource::Any, spend.reason);
@@ -665,11 +657,11 @@ impl Cost {
 
                                 return !matches!(
                                     spend.first_unpaid_x_always_unpaid(),
-                                    Some(ManaCost::X)
+                                    Some(ManaCost::X | ManaCost::TWO_X)
                                 );
                             }
                             ManaCost::X => unreachable!(),
-                            ManaCost::TwoX => unreachable!(),
+                            ManaCost::TWO_X => unreachable!(),
                         };
                         let (_, source) =
                             pool_post_pay.spend(db, mana, ManaSource::Any, spend.reason);
@@ -684,7 +676,7 @@ impl Cost {
 
                         return !matches!(
                             spend.first_unpaid_x_always_unpaid(),
-                            Some(ManaCost::X | ManaCost::TwoX)
+                            Some(ManaCost::X | ManaCost::TWO_X)
                         );
                     } else {
                         return false;
@@ -717,7 +709,7 @@ impl Cost {
                     ) {
                         !matches!(
                             spend.first_unpaid_x_always_unpaid(),
-                            Some(ManaCost::X | ManaCost::TwoX)
+                            Some(ManaCost::X | ManaCost::TWO_X)
                         )
                     } else {
                         false
@@ -893,7 +885,7 @@ impl PayCost {
                     debug!("first unpaid {:?}", first_unpaid,);
                     let (mana, source) = spend.paying();
                     match first_unpaid {
-                        ManaCost::TwoX | ManaCost::X | ManaCost::Generic(_) => return false,
+                        ManaCost::TWO_X | ManaCost::X | ManaCost::GENERIC => return false,
                         unpaid => {
                             let pool_post_pay = db.all_players[db[self.source].controller]
                                 .pool_post_pay(db, &mana, &source, spend.reason)
@@ -931,10 +923,10 @@ impl PendingResult for PayCost {
                     return true;
                 }
 
-                if let Some(ManaCost::TwoX) = spend.first_unpaid_x_always_unpaid() {
+                if let Some(ManaCost::TWO_X) = spend.first_unpaid_x_always_unpaid() {
                     spend
                         .paid
-                        .get(&ManaCost::TwoX)
+                        .get(&ManaCost::TWO_X)
                         .iter()
                         .flat_map(|i| i.values())
                         .flat_map(|i| i.values())
@@ -989,7 +981,7 @@ impl PendingResult for PayCost {
                 let pool_post_paid = pool_post_paid.unwrap();
 
                 match spend.first_unpaid_x_always_unpaid() {
-                    Some(ManaCost::Generic(_) | ManaCost::X | ManaCost::TwoX) => pool_post_paid
+                    Some(ManaCost::GENERIC | ManaCost::X | ManaCost::TWO_X) => pool_post_paid
                         .available_pool_display()
                         .into_iter()
                         .enumerate()

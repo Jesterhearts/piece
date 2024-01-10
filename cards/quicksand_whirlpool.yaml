@@ -3,9 +3,7 @@ typeline: Instant
 cost:
   mana_cost: '{5}{W}'
 cost_reducer:
-  reduction:
-    cost: !Generic
-      count: 3
+  reduction: '{3}'
   when: !TargetTappedCreature {}
 oracle_text: |-
   This spell costs {3} less to cast if it targets a tapped creature

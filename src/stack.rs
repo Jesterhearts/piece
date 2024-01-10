@@ -11,7 +11,6 @@ use tracing::Level;
 use crate::{
     abilities::{Ability, TriggeredAbility},
     battlefield::{ActionResult, Battlefields},
-    card::Color,
     cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
@@ -26,7 +25,7 @@ use crate::{
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
-    protogen::keywords::Keyword,
+    protogen::{color::Color, keywords::Keyword},
     targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Location, Restriction},
     triggers::TriggerSource,
 };
@@ -201,7 +200,7 @@ impl StackEntry {
                 }
                 Restriction::ControllerControlsBlackOrGreen => {
                     let colors = Battlefields::controlled_colors(db, spell_or_ability_controller);
-                    if !(colors.contains(&Color::Green) || colors.contains(&Color::Black)) {
+                    if !(colors.contains(&Color::GREEN) || colors.contains(&Color::BLACK)) {
                         return false;
                     }
                 }
@@ -370,7 +369,11 @@ impl StackEntry {
                         return false;
                     };
 
-                    if db[*card].modified_colors.is_disjoint(of_colors) {
+                    if !of_colors.iter().any(|color| {
+                        db[*card]
+                            .modified_colors
+                            .contains(&color.enum_value().unwrap())
+                    }) {
                         return false;
                     }
                 }

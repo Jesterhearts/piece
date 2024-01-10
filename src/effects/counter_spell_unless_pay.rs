@@ -4,14 +4,13 @@ use tracing::Level;
 
 use crate::{
     effects::{counter_spell::CounterSpellOrAbility, Effect, EffectBehaviors},
-    mana::ManaCost,
     pending_results::{
         choose_targets::ChooseTargets,
         pay_costs::{self, PayCost, SpendMana},
         TargetSource,
     },
     player::mana_pool::SpendReason,
-    protogen,
+    protogen::{self, cost::ManaCost},
     stack::{ActiveTarget, Entry, StackEntry},
     targets::Restriction,
 };
@@ -163,7 +162,9 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                     results.push_pay_costs(PayCost::new_or_else(
                         db.stack.entries.get(id).unwrap().ty.source(),
                         pay_costs::Cost::SpendMana(SpendMana::new(
-                            vec![ManaCost::Generic(count)],
+                            std::iter::repeat(ManaCost::GENERIC)
+                                .take(count)
+                                .collect_vec(),
                             SpendReason::Other,
                         )),
                         vec![Effect::CounterSpellOrAbility(CounterSpellOrAbility {

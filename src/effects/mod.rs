@@ -64,7 +64,7 @@ use itertools::Itertools;
 
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
-    card::{replace_symbols, Color},
+    card::replace_symbols,
     counters::Counter,
     effects::{
         apply_then_if_was::ApplyThenIfWas, battle_cry::BattleCry,
@@ -101,6 +101,7 @@ use crate::{
     player::{Controller, Owner},
     protogen::{
         self,
+        color::Color,
         empty::Empty,
         types::{Subtype, Type},
     },
@@ -316,7 +317,7 @@ pub(crate) struct ModifyBattlefield {
     pub(crate) remove_types: HashMap<String, Empty>,
     pub(crate) remove_subtypes: HashMap<String, Empty>,
 
-    pub(crate) add_colors: HashSet<Color>,
+    pub(crate) add_colors: Vec<protobuf::EnumOrUnknown<Color>>,
 
     pub(crate) add_static_abilities: Vec<StaticAbility>,
     pub(crate) add_ability: Option<ActivatedAbility>,
@@ -349,11 +350,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .map_or(Ok(None), |pt| pt.try_into().map(Some))?,
             add_types: value.add_types.clone(),
             add_subtypes: value.add_subtypes.clone(),
-            add_colors: value
-                .add_colors
-                .iter()
-                .map(Color::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            add_colors: value.add_colors.clone(),
             remove_types: value.remove_types.clone(),
             remove_subtypes: value.remove_subtypes.clone(),
             add_static_abilities: value
@@ -686,7 +683,7 @@ pub(crate) struct TokenCreature {
     pub(crate) name: String,
     pub(crate) types: Vec<protobuf::EnumOrUnknown<Type>>,
     pub(crate) subtypes: Vec<protobuf::EnumOrUnknown<Subtype>>,
-    pub(crate) colors: HashSet<Color>,
+    pub(crate) colors: Vec<protobuf::EnumOrUnknown<Color>>,
     pub(crate) keywords: HashMap<String, u32>,
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
     pub(crate) power: usize,
@@ -701,11 +698,7 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
             name: value.name.clone(),
             types: value.typeline.types.clone(),
             subtypes: value.typeline.subtypes.clone(),
-            colors: value
-                .colors
-                .iter()
-                .map(Color::try_from)
-                .collect::<anyhow::Result<HashSet<_>>>()?,
+            colors: value.colors.clone(),
             keywords: value.keywords.clone(),
             dynamic_power_toughness: value
                 .dynamic_power_toughness

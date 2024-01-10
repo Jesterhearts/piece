@@ -6,18 +6,16 @@ import "mana.proto";
 import "targets.proto";
 import "types.proto";
 
-message ManaCost {
-  oneof cost {
-    mana.White white = 1;
-    mana.Blue blue = 2;
-    mana.Black black = 3;
-    mana.Red red = 4;
-    mana.Green green = 5;
-    mana.Colorless colorless = 6;
-    mana.Generic generic = 7;
-    mana.X x = 8;
-    mana.TwoX twox = 9;
-  }
+enum ManaCost {
+  WHITE = 0;
+  BLUE = 1;
+  BLACK = 2;
+  RED = 3;
+  GREEN = 4;
+  COLORLESS = 5;
+  GENERIC = 6;
+  X = 7;
+  TWO_X = 8;
 }
 
 message AdditionalCost {
@@ -55,17 +53,17 @@ message AdditionalCost {
   }
 
   oneof cost {
-    DiscardThis discard_this = 3;
-    ExileCard exile_card = 4;
-    ExileCardsCmcX exile_cards_cmc_x = 5;
-    ExileSharingCardType exile_sharing_card_type = 6;
-    ExileXOrMoreCards exile_x_or_more_cards = 7;
-    PayLife pay_life = 8;
-    RemoveCounters remove_counters = 9;
-    SacrificePermanent sacrifice_permanent = 10;
-    SacrificeSource sacrifice_source = 11;
-    TapPermanent tap_permanent = 12;
-    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 13;
+    DiscardThis discard_this = 1;
+    ExileCard exile_card = 2;
+    ExileCardsCmcX exile_cards_cmc_x = 3;
+    ExileSharingCardType exile_sharing_card_type = 4;
+    ExileXOrMoreCards exile_x_or_more_cards = 5;
+    PayLife pay_life = 6;
+    RemoveCounters remove_counters = 7;
+    SacrificePermanent sacrifice_permanent = 8;
+    SacrificeSource sacrifice_source = 9;
+    TapPermanent tap_permanent = 10;
+    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 11;
   }
 }
 
@@ -111,5 +109,5 @@ message CostReducer {
     TargetTappedCreature target_tapped_creature = 1;
   }
 
-  ManaCost reduction = 2;
+  repeated ManaCost reduction = 2;
 }

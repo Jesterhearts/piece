@@ -6,8 +6,8 @@ use strum::IntoEnumIterator;
 
 use crate::{
     in_play::{CardId, Database},
-    mana::{Mana, ManaCost, ManaRestriction},
-    protogen::{self, types::Type},
+    mana::ManaRestriction,
+    protogen::{self, cost::ManaCost, mana::Mana, types::Type},
     types::TypeSet,
 };
 
@@ -250,49 +250,47 @@ impl ManaPool {
     ) -> bool {
         let mut mana_pool = self.clone();
         match cost {
-            ManaCost::White => {
-                if let (false, _) = mana_pool.spend(db, Mana::White, source, reason) {
+            ManaCost::WHITE => {
+                if let (false, _) = mana_pool.spend(db, Mana::WHITE, source, reason) {
                     return false;
                 }
             }
-            ManaCost::Blue => {
-                if let (false, _) = mana_pool.spend(db, Mana::Blue, source, reason) {
+            ManaCost::BLUE => {
+                if let (false, _) = mana_pool.spend(db, Mana::BLUE, source, reason) {
                     return false;
                 }
             }
-            ManaCost::Black => {
-                if let (false, _) = mana_pool.spend(db, Mana::Black, source, reason) {
+            ManaCost::BLACK => {
+                if let (false, _) = mana_pool.spend(db, Mana::BLACK, source, reason) {
                     return false;
                 }
             }
-            ManaCost::Red => {
-                if let (false, _) = mana_pool.spend(db, Mana::Red, source, reason) {
+            ManaCost::RED => {
+                if let (false, _) = mana_pool.spend(db, Mana::RED, source, reason) {
                     return false;
                 }
             }
-            ManaCost::Green => {
-                if let (false, _) = mana_pool.spend(db, Mana::Green, source, reason) {
+            ManaCost::GREEN => {
+                if let (false, _) = mana_pool.spend(db, Mana::GREEN, source, reason) {
                     return false;
                 }
             }
-            ManaCost::Colorless => {
-                if let (false, _) = mana_pool.spend(db, Mana::Colorless, source, reason) {
+            ManaCost::COLORLESS => {
+                if let (false, _) = mana_pool.spend(db, Mana::COLORLESS, source, reason) {
                     return false;
                 }
             }
-            ManaCost::Generic(count) => {
-                for _ in 0..count {
-                    if let Some(max) = mana_pool.max(db, reason) {
-                        if let (false, _) = mana_pool.spend(db, max, source, reason) {
-                            return false;
-                        }
-                    } else {
+            ManaCost::GENERIC => {
+                if let Some(max) = mana_pool.max(db, reason) {
+                    if let (false, _) = mana_pool.spend(db, max, source, reason) {
                         return false;
                     }
+                } else {
+                    return false;
                 }
             }
             ManaCost::X => {}
-            ManaCost::TwoX => {}
+            ManaCost::TWO_X => {}
         }
 
         true

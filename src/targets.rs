@@ -1,13 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 
 use crate::{
-    card::Color,
     counters::Counter,
     player::mana_pool::ManaSource,
-    protogen::{self, empty::Empty},
+    protogen::{self, color::Color, empty::Empty},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
@@ -206,7 +205,7 @@ pub(crate) enum Restriction {
         comparison: Comparison,
         counter: Counter,
     },
-    OfColor(HashSet<Color>),
+    OfColor(Vec<protobuf::EnumOrUnknown<Color>>),
     OfType {
         types: HashMap<String, Empty>,
         subtypes: HashMap<String, Empty>,
@@ -312,13 +311,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     counter: (&value.counter).try_into()?,
                 })
             }
-            protogen::targets::restriction::Restriction::OfColor(colors) => Ok(Self::OfColor(
-                colors
-                    .colors
-                    .iter()
-                    .map(Color::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-            )),
+            protogen::targets::restriction::Restriction::OfColor(colors) => {
+                Ok(Self::OfColor(colors.colors.clone()))
+            }
             protogen::targets::restriction::Restriction::OfType(of_type) => Ok(Self::OfType {
                 types: of_type.types.clone(),
                 subtypes: of_type.subtypes.clone(),

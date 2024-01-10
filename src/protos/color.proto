@@ -2,20 +2,11 @@ syntax = "proto3";
 
 package color;
 
-message Color {
-  message White {}
-  message Blue {}
-  message Black {}
-  message Red {}
-  message Green {}
-  message Colorless {}
-
-  oneof color {
-    White white = 1;
-    Blue blue = 2;
-    Black black = 3;
-    Red red = 4;
-    Green green = 5;
-    Colorless colorless = 6;
-  }
+enum Color {
+  WHITE = 0;
+  BLUE = 1;
+  BLACK = 2;
+  RED = 3;
+  GREEN = 4;
+  COLORLESS = 5;
 }
