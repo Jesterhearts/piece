@@ -309,10 +309,10 @@ pub(crate) struct ModifyBattlefield {
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
 
     pub(crate) add_types: HashMap<String, Empty>,
-    pub(crate) add_subtypes: IndexSet<Subtype>,
+    pub(crate) add_subtypes: HashMap<String, Empty>,
 
     pub(crate) remove_types: HashMap<String, Empty>,
-    pub(crate) remove_subtypes: IndexSet<Subtype>,
+    pub(crate) remove_subtypes: HashMap<String, Empty>,
 
     pub(crate) add_colors: HashSet<Color>,
 
@@ -346,22 +346,14 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
                 .as_ref()
                 .map_or(Ok(None), |pt| pt.try_into().map(Some))?,
             add_types: value.add_types.clone(),
-            add_subtypes: value
-                .add_subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            add_subtypes: value.add_subtypes.clone(),
             add_colors: value
                 .add_colors
                 .iter()
                 .map(Color::try_from)
                 .collect::<anyhow::Result<_>>()?,
             remove_types: value.remove_types.clone(),
-            remove_subtypes: value
-                .remove_subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            remove_subtypes: value.remove_subtypes.clone(),
             add_static_abilities: value
                 .add_static_abilities
                 .iter()

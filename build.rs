@@ -76,7 +76,8 @@ fn main() {
                         skip_serializing_if="::std::collections::HashMap::is_empty"
                     )]"#,
                 )
-            } else if field.name() == "subtypes"
+            } else if (field.name() == "subtypes"
+                && field.containing_message().name() != "Typeline")
                 || field.name() == "add_subtypes"
                 || field.name() == "remove_subtypes"
             {
@@ -85,7 +86,7 @@ fn main() {
                         default,
                         serialize_with="crate::serialize_subtypes",
                         deserialize_with="crate::deserialize_subtypes",
-                        skip_serializing_if="Vec::is_empty"
+                        skip_serializing_if="::std::collections::HashMap::is_empty"
                     )]"#,
                 )
             } else if field.name() == "keywords"

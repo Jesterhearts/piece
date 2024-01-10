@@ -879,7 +879,14 @@ impl CardId {
 
             if !modifier.modifier.modifier.add_subtypes.is_empty() {
                 applied_modifiers.insert(id);
-                subtypes.extend(modifier.modifier.modifier.add_subtypes.iter().copied());
+                subtypes.extend(
+                    modifier
+                        .modifier
+                        .modifier
+                        .add_subtypes
+                        .keys()
+                        .map(|ty| Subtype::from_str(ty).unwrap()),
+                );
             }
 
             if !modifier.modifier.modifier.remove_types.is_empty() {
@@ -900,7 +907,13 @@ impl CardId {
 
             if !modifier.modifier.modifier.remove_subtypes.is_empty() {
                 applied_modifiers.insert(id);
-                subtypes.retain(|ty| !modifier.modifier.modifier.remove_subtypes.contains(ty));
+                subtypes.retain(|ty| {
+                    !modifier
+                        .modifier
+                        .modifier
+                        .remove_subtypes
+                        .contains_key(ty.as_ref())
+                });
             }
 
             if modifier.modifier.modifier.remove_all_creature_types {
@@ -1690,7 +1703,11 @@ impl CardId {
                     {
                         return false;
                     }
-                    if !subtypes.is_empty() && !self_subtypes.is_disjoint(subtypes) {
+                    if !subtypes.is_empty()
+                        && self_subtypes
+                            .iter()
+                            .any(|subtype| subtypes.contains_key(subtype.as_ref()))
+                    {
                         return false;
                     }
                 }
@@ -1729,7 +1746,11 @@ impl CardId {
                     {
                         return false;
                     }
-                    if !subtypes.is_empty() && self_subtypes.is_disjoint(subtypes) {
+                    if !subtypes.is_empty()
+                        && !self_subtypes
+                            .iter()
+                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                 }

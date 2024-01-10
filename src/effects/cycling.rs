@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
@@ -10,13 +9,12 @@ use crate::{
     protogen::{self, empty::Empty},
     stack::ActiveTarget,
     targets::Restriction,
-    types::Subtype,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Cycling {
     types: HashMap<String, Empty>,
-    subtypes: IndexSet<Subtype>,
+    subtypes: HashMap<String, Empty>,
 }
 
 impl TryFrom<&protogen::effects::Cycling> for Cycling {
@@ -25,11 +23,7 @@ impl TryFrom<&protogen::effects::Cycling> for Cycling {
     fn try_from(value: &protogen::effects::Cycling) -> Result<Self, Self::Error> {
         Ok(Self {
             types: value.types.clone(),
-            subtypes: value
-                .subtypes
-                .iter()
-                .map(Subtype::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            subtypes: value.subtypes.clone(),
         })
     }
 }

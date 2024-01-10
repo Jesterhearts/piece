@@ -393,16 +393,16 @@ where
     serializer.serialize_str(&value.keys().join(", "))
 }
 
-pub fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<Vec<Subtype>, D::Error>
+pub fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visit;
     impl<'de> Visitor<'de> for Visit {
-        type Value = Vec<Subtype>;
+        type Value = HashMap<String, Empty>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("expected a comma separate sequence of types")
+            formatter.write_str("expected a comma separate sequence of subtypes")
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -413,10 +413,9 @@ where
                 .map(|v| v.trim())
                 .map(subtype::Subtype::from_str)
                 .map(|subtype| {
-                    Ok(Subtype {
-                        subtype: Some(subtype.map_err(|e| E::custom(e.to_string()))?),
-                        ..Default::default()
-                    })
+                    subtype
+                        .map(|subtype| (subtype.as_ref().to_string(), Empty::default()))
+                        .map_err(|e| E::custom(e.to_string()))
                 })
                 .collect::<Result<Self::Value, E>>()
         }
@@ -425,16 +424,14 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-pub fn serialize_subtypes<S>(value: &[Subtype], serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize_subtypes<S>(
+    value: &HashMap<String, Empty>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(
-        &value
-            .iter()
-            .map(|ty| ty.subtype.as_ref().unwrap().as_ref())
-            .join(", "),
-    )
+    serializer.serialize_str(&value.keys().join(", "))
 }
 
 pub fn deserialize_keywords<'de, D>(deserializer: D) -> Result<HashMap<String, u32>, D::Error>

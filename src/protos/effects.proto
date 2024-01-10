@@ -249,7 +249,7 @@ message CreateTokenCopy {
 
 message Cycling {
   map<string, empty.Empty> types = 1;
-  repeated types.Subtype subtypes = 2;
+  map<string, empty.Empty> subtypes = 2;
 }
 
 message DealDamage {
@@ -422,9 +422,9 @@ message ModifyBattlefield {
   optional int32 base_toughness = 2;
   optional DynamicPowerToughness add_dynamic_power_toughness = 3;
   map<string, empty.Empty> add_types = 4;
-  repeated types.Subtype add_subtypes = 5;
+  map<string, empty.Empty> add_subtypes = 5;
   map<string, empty.Empty> remove_types = 6;
-  repeated types.Subtype remove_subtypes = 7;
+  map<string, empty.Empty> remove_subtypes = 7;
   repeated color.Color add_colors = 8;
   optional int32 add_power = 9;
   optional int32 add_toughness = 10;

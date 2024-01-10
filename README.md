@@ -21,17 +21,9 @@ fails.
 ## Quirks to be aware of
 - Assume most effects are pulling targets from anywhere (battlefield, graveyard, exile, etc) and use
   restrictions to narrow down the target list appropriately.
-- Type, subtype, and color list fields must be written as a comma separated list of values. The parser
-  automatically converts these to a list of the appropriate type. This means that instead of
-  writing:
-  ```yaml
-  types:
-    - type_: !Artifact {}
-    - type_: !Creature {}
-  colors:
-    - color: !Blue {}
-  ```
-  instead you write:
+- Type, subtype, keyword, and color list fields must be written as a comma separated list of values.
+  The parser automatically converts these to a list of the appropriate type. This means that you
+  write:
   ```yaml
   types: Artifact, Creature
   colors: Blue

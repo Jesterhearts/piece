@@ -343,7 +343,12 @@ impl StackEntry {
                     {
                         return false;
                     }
-                    if !subtypes.is_empty() && !db[*card].modified_subtypes.is_disjoint(subtypes) {
+                    if !subtypes.is_empty()
+                        && db[*card]
+                            .modified_subtypes
+                            .iter()
+                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                 }
@@ -381,7 +386,12 @@ impl StackEntry {
                     {
                         return false;
                     }
-                    if !subtypes.is_empty() && db[*card].modified_subtypes.is_disjoint(subtypes) {
+                    if !subtypes.is_empty()
+                        && !db[*card]
+                            .modified_subtypes
+                            .iter()
+                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                    {
                         return false;
                     }
                 }

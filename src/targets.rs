@@ -2,14 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
-use indexmap::IndexSet;
 
 use crate::{
     card::Color,
     counters::Counter,
     player::mana_pool::ManaSource,
     protogen::{self, empty::Empty},
-    types::Subtype,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
@@ -201,7 +199,7 @@ pub(crate) enum Restriction {
     NotKeywords(HashMap<String, u32>),
     NotOfType {
         types: HashMap<String, Empty>,
-        subtypes: IndexSet<Subtype>,
+        subtypes: HashMap<String, Empty>,
     },
     NotSelf,
     NumberOfCountersOnThis {
@@ -211,7 +209,7 @@ pub(crate) enum Restriction {
     OfColor(HashSet<Color>),
     OfType {
         types: HashMap<String, Empty>,
-        subtypes: IndexSet<Subtype>,
+        subtypes: HashMap<String, Empty>,
     },
     OnBattlefield,
     Power(Comparison),
@@ -305,11 +303,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             }
             protogen::targets::restriction::Restriction::NotOfType(not) => Ok(Self::NotOfType {
                 types: not.types.clone(),
-                subtypes: not
-                    .subtypes
-                    .iter()
-                    .map(Subtype::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                subtypes: not.subtypes.clone(),
             }),
             protogen::targets::restriction::Restriction::NotSelf(_) => Ok(Self::NotSelf),
             protogen::targets::restriction::Restriction::NumberOfCountersOnThis(value) => {
@@ -327,11 +321,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             )),
             protogen::targets::restriction::Restriction::OfType(of_type) => Ok(Self::OfType {
                 types: of_type.types.clone(),
-                subtypes: of_type
-                    .subtypes
-                    .iter()
-                    .map(Subtype::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                subtypes: of_type.subtypes.clone(),
             }),
             protogen::targets::restriction::Restriction::OnBattlefield(_) => {
                 Ok(Self::OnBattlefield)
