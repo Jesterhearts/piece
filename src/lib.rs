@@ -642,7 +642,7 @@ where
         type Value = Vec<protobuf::EnumOrUnknown<T>>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("expected a comma separate sequence of subtypes")
+            formatter.write_str("expected a comma separate sequence of values")
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
