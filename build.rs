@@ -35,11 +35,9 @@ fn main() {
                     ::strum::EnumIter,
                     ::strum::EnumString,
                     ::strum::AsRefStr,
-                    ::strum::EnumDiscriminants,
                     Eq,
                 )]
-                #[strum(ascii_case_insensitive)]
-                #[strum_discriminants(derive(::strum::EnumString, ::strum::AsRefStr))]"#,
+                #[strum(ascii_case_insensitive)]"#,
             )
         }
 
