@@ -11,7 +11,7 @@ use tracing::Level;
 use crate::{
     abilities::{Ability, TriggeredAbility},
     battlefield::{ActionResult, Battlefields},
-    card::{Color, Keyword},
+    card::Color,
     cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
@@ -26,6 +26,7 @@ use crate::{
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
+    protogen::keywords::Keyword,
     targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Location, Restriction},
     triggers::TriggerSource,
 };
@@ -534,7 +535,7 @@ impl Stack {
         {
             db[*card]
                 .modified_keywords
-                .contains_key(Keyword::SplitSecond.as_ref())
+                .contains_key(Keyword::SPLIT_SECOND.as_ref())
         } else {
             false
         }

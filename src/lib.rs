@@ -21,7 +21,7 @@ use crate::{
         color::{color, Color},
         effects::gain_mana,
         empty::Empty,
-        keywords::keyword,
+        keywords::Keyword,
         mana::Mana,
         types::{Subtype, Type, Typeline},
     },
@@ -379,11 +379,7 @@ where
                     Type::from_str(&ty.to_case(Case::ScreamingSnake))
                         .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
-                .map(|type_| {
-                    type_
-                        .map(|type_| (type_.as_ref().to_string(), Empty::default()))
-                        .map_err(|e| E::custom(e.to_string()))
-                })
+                .map(|type_| type_.map(|type_| (type_.as_ref().to_string(), Empty::default())))
                 .collect::<Result<Self::Value, E>>()
         }
     }
@@ -427,9 +423,7 @@ where
                         .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
                 .map(|subtype| {
-                    subtype
-                        .map(|subtype| (subtype.as_ref().to_string(), Empty::default()))
-                        .map_err(|e| E::custom(e.to_string()))
+                    subtype.map(|subtype| (subtype.as_ref().to_string(), Empty::default()))
                 })
                 .collect::<Result<Self::Value, E>>()
         }
@@ -471,12 +465,11 @@ where
             for kw in v
                 .split(',')
                 .map(|v| v.trim())
-                .map(keyword::Keyword::from_str)
-                .map(|keyword| {
-                    keyword
-                        .map(|kw| kw.as_ref().to_string())
-                        .map_err(|e| E::custom(e.to_string()))
+                .map(|ty| {
+                    Keyword::from_str(&ty.to_case(Case::ScreamingSnake))
+                        .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
+                .map(|keyword| keyword.map(|keyword| keyword.as_ref().to_string()))
             {
                 *result.entry(kw?).or_default() += 1;
             }
@@ -495,7 +488,9 @@ where
     serializer.serialize_str(
         &value
             .iter()
-            .flat_map(|(kw, count)| std::iter::repeat(kw).take((*count) as usize))
+            .flat_map(|(kw, count)| {
+                std::iter::repeat(kw.to_case(Case::Title)).take((*count) as usize)
+            })
             .sorted()
             .join(", "),
     )

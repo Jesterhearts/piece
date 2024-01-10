@@ -16,7 +16,7 @@ use crate::{
         Ability, AddKeywordsIf, GainMana, GainManaAbility, StaticAbility, TriggeredAbility,
     },
     battlefield::Battlefields,
-    card::{replace_symbols, BasePowerType, BaseToughnessType, Card, Color, Keyword},
+    card::{replace_symbols, BasePowerType, BaseToughnessType, Card, Color},
     cost::{AbilityCost, CastingCost},
     counters::Counter,
     effects::{
@@ -31,7 +31,10 @@ use crate::{
     mana::{Mana, ManaRestriction},
     pending_results::PendingResults,
     player::{mana_pool::ManaSource, Controller, Owner},
-    protogen::types::{Subtype, Type},
+    protogen::{
+        keywords::Keyword,
+        types::{Subtype, Type},
+    },
     stack::{ActiveTarget, Stack},
     targets::{self, Cmc, Comparison, Dynamic, Location, Restriction},
     triggers::TriggerSource,
@@ -2095,32 +2098,32 @@ impl CardId {
     pub(crate) fn shroud(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::Shroud.as_ref())
+            .contains_key(Keyword::SHROUD.as_ref())
     }
 
     pub(crate) fn hexproof(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::Hexproof.as_ref())
+            .contains_key(Keyword::HEXPROOF.as_ref())
     }
 
     #[allow(unused)]
     pub(crate) fn flying(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::Flying.as_ref())
+            .contains_key(Keyword::FLYING.as_ref())
     }
 
     pub(crate) fn indestructible(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::Indestructible.as_ref())
+            .contains_key(Keyword::INDESTRUCTIBLE.as_ref())
     }
 
     pub(crate) fn vigilance(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::Vigilance.as_ref())
+            .contains_key(Keyword::VIGILANCE.as_ref())
     }
 
     pub fn name(self, db: &Database) -> &String {
@@ -2130,7 +2133,7 @@ impl CardId {
     pub(crate) fn has_flash(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::Flash.as_ref())
+            .contains_key(Keyword::FLASH.as_ref())
     }
 
     pub fn pt_text(&self, db: &Database) -> Option<String> {
@@ -2169,7 +2172,7 @@ impl CardId {
     pub(crate) fn cascade(self, db: &mut Database) -> u32 {
         db[self]
             .modified_keywords
-            .get(Keyword::Cascade.as_ref())
+            .get(Keyword::CASCADE.as_ref())
             .copied()
             .unwrap_or_default()
     }
@@ -2208,7 +2211,7 @@ impl CardId {
     pub(crate) fn battle_cry(self, db: &Database) -> u32 {
         db[self]
             .modified_keywords
-            .get(Keyword::BattleCry.as_ref())
+            .get(Keyword::BATTLE_CRY.as_ref())
             .copied()
             .unwrap_or_default()
     }

@@ -2,13 +2,15 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    card::Keyword,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::{Subtype, Type},
+    protogen::{
+        keywords::Keyword,
+        types::{Subtype, Type},
+    },
     stack::Stack,
     types::{SubtypeSet, TypeSet},
 };
@@ -62,7 +64,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(token.toughness(&db), Some(1));
     assert_eq!(
         db[token].modified_keywords,
-        [(Keyword::Flying.as_ref().to_string(), 1)]
+        [(Keyword::FLYING.as_ref().to_string(), 1)]
             .into_iter()
             .collect()
     );
