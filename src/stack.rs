@@ -294,7 +294,10 @@ impl StackEntry {
                         return false;
                     };
 
-                    if !db[*card].sourced_mana.contains_key(source) {
+                    if !db[*card]
+                        .sourced_mana
+                        .contains_key(&source.enum_value().unwrap())
+                    {
                         return false;
                     }
                 }

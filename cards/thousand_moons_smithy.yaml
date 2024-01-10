@@ -93,5 +93,4 @@ back_face:
       gain_mana:
         gain: !Specific
           gain: '{W}'
-      mana_source:
-        source: !BarracksOfTheThousand {}
+      mana_source: !BARRACKS_OF_THE_THOUSAND

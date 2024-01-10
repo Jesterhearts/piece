@@ -402,7 +402,7 @@ message GainManaAbility {
   cost.AbilityCost cost = 1;
   GainMana gain_mana = 2;
   targets.ManaSource mana_source = 3;
-  optional mana.ManaRestriction mana_restriction = 4;
+  mana.ManaRestriction mana_restriction = 4;
   string oracle_text = 5;
 }
 

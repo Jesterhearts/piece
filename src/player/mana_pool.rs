@@ -1,39 +1,17 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
-use anyhow::anyhow;
-use derive_more::{Deref, DerefMut};
 use strum::IntoEnumIterator;
 
 use crate::{
     in_play::{CardId, Database},
-    mana::ManaRestriction,
-    protogen::{self, cost::ManaCost, mana::Mana, types::Type},
+    protogen::{
+        cost::ManaCost,
+        mana::{Mana, ManaRestriction},
+        targets::ManaSource,
+        types::Type,
+    },
     types::TypeSet,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
-pub(crate) struct SourcedMana(pub(crate) HashMap<ManaSource, usize>);
-
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    strum::AsRefStr,
-    strum::EnumIter,
-    Default,
-)]
-pub(crate) enum ManaSource {
-    #[default]
-    Any,
-    BarracksOfTheThousand,
-    Treasure,
-    Cave,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SpendReason {
@@ -52,30 +30,6 @@ impl SpendReason {
     }
 }
 
-impl TryFrom<&protogen::targets::ManaSource> for ManaSource {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::targets::ManaSource) -> Result<Self, Self::Error> {
-        value
-            .source
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected source to have a source set"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::targets::mana_source::Source> for ManaSource {
-    fn from(value: &protogen::targets::mana_source::Source) -> Self {
-        match value {
-            protogen::targets::mana_source::Source::BarracksOfTheThousand(_) => {
-                Self::BarracksOfTheThousand
-            }
-            protogen::targets::mana_source::Source::Cave(_) => Self::Cave,
-            protogen::targets::mana_source::Source::Treasure(_) => Self::Treasure,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ManaPool {
     pub(crate) sourced: BTreeMap<Mana, BTreeMap<ManaSource, BTreeMap<ManaRestriction, usize>>>,
@@ -90,9 +44,9 @@ impl Default for ManaPool {
             *sourced
                 .entry(mana)
                 .or_default()
-                .entry(ManaSource::Any)
+                .entry(ManaSource::ANY)
                 .or_default()
-                .entry(ManaRestriction::None)
+                .entry(ManaRestriction::NONE)
                 .or_default() = 0;
         }
 
@@ -108,9 +62,9 @@ impl ManaPool {
                 .sourced
                 .entry(mana)
                 .or_default()
-                .entry(ManaSource::Any)
+                .entry(ManaSource::ANY)
                 .or_default()
-                .entry(ManaRestriction::None)
+                .entry(ManaRestriction::NONE)
                 .or_default() = 0;
         }
     }
@@ -140,7 +94,7 @@ impl ManaPool {
             .get_mut(&source)
             .filter(|sourced| has_available_mana(sourced, reason, db));
         if sourced.is_none() {
-            sourced = if let ManaSource::Any = source {
+            sourced = if let ManaSource::ANY = source {
                 // I know it never loops, I just want my break value.
                 #[allow(clippy::never_loop)]
                 let alt = 'outer: loop {
@@ -166,78 +120,78 @@ impl ManaPool {
             let card = reason.card();
 
             if card.is_none() {
-                let restricted = sourced.get_mut(&ManaRestriction::None);
+                let restricted = sourced.get_mut(&ManaRestriction::NONE);
                 if let Some(restricted) = restricted {
                     let Some(mana) = restricted.checked_sub(1) else {
-                        return (false, ManaSource::Any);
+                        return (false, ManaSource::ANY);
                     };
 
                     *restricted = mana;
                     return (true, ultimate_source);
                 } else {
-                    return (false, ManaSource::Any);
+                    return (false, ManaSource::ANY);
                 }
             }
 
             let card = card.unwrap();
             if card.types_intersect(db, &TypeSet::from([Type::ARTIFACT])) {
                 let restricted = if let Some(restricted) =
-                    sourced.get_mut(&ManaRestriction::ArtifactSpellOrAbility)
+                    sourced.get_mut(&ManaRestriction::ARTIFACT_SPELL_OR_ABILITY)
                 {
                     Some(restricted)
                 } else if matches!(reason, SpendReason::Activating(_)) {
-                    if let Some(restricted) = sourced.get_mut(&ManaRestriction::ActivateAbility) {
+                    if let Some(restricted) = sourced.get_mut(&ManaRestriction::ACTIVATE_ABILITY) {
                         Some(restricted)
                     } else {
-                        sourced.get_mut(&ManaRestriction::None)
+                        sourced.get_mut(&ManaRestriction::NONE)
                     }
                 } else {
-                    sourced.get_mut(&ManaRestriction::None)
+                    sourced.get_mut(&ManaRestriction::NONE)
                 };
 
                 if let Some(restricted) = restricted {
                     let Some(mana) = restricted.checked_sub(1) else {
-                        return (false, ManaSource::Any);
+                        return (false, ManaSource::ANY);
                     };
 
                     *restricted = mana;
                     (true, ultimate_source)
                 } else {
-                    (false, ManaSource::Any)
+                    (false, ManaSource::ANY)
                 }
             } else if matches!(reason, SpendReason::Activating(_)) {
                 let restricted =
-                    if let Some(restricted) = sourced.get_mut(&ManaRestriction::ActivateAbility) {
+                    if let Some(restricted) = sourced.get_mut(&ManaRestriction::ACTIVATE_ABILITY) {
                         Some(restricted)
                     } else {
-                        sourced.get_mut(&ManaRestriction::None)
+                        sourced.get_mut(&ManaRestriction::NONE)
                     };
 
                 if let Some(restricted) = restricted {
                     let Some(mana) = restricted.checked_sub(1) else {
-                        return (false, ManaSource::Any);
+                        return (false, ManaSource::ANY);
                     };
 
                     *restricted = mana;
                     (true, ultimate_source)
                 } else {
-                    (false, ManaSource::Any)
+                    (false, ManaSource::ANY)
                 }
             } else {
-                let restricted = sourced.get_mut(&ManaRestriction::None);
+                let restricted = sourced.get_mut(&ManaRestriction::NONE);
                 if let Some(restricted) = restricted {
                     let Some(mana) = restricted.checked_sub(1) else {
-                        return (false, ManaSource::Any);
+                        return (false, ManaSource::ANY);
                     };
 
                     *restricted = mana;
                     (true, ultimate_source)
                 } else {
-                    (false, ManaSource::Any)
+                    (false, ManaSource::ANY)
                 }
             }
         } else {
-            (false, ManaSource::Any)
+            (false, ManaSource::ANY)
         }
     }
 
@@ -318,7 +272,7 @@ impl ManaPool {
     pub(crate) fn max(&self, db: &Database, reason: SpendReason) -> Option<Mana> {
         self.available_mana()
             .filter(|(_, _, _, restriction)| {
-                if *restriction == ManaRestriction::None {
+                if *restriction == ManaRestriction::NONE {
                     return true;
                 }
 
@@ -353,7 +307,7 @@ fn has_available_mana(
     sourced
         .iter()
         .filter_map(|(restriction, count)| {
-            if *restriction == ManaRestriction::None {
+            if *restriction == ManaRestriction::NONE {
                 Some(count)
             } else if let Some(card) = reason.card() {
                 if card.types_intersect(db, &TypeSet::from([Type::ARTIFACT])) {
@@ -376,13 +330,13 @@ fn display(
     for (amount, symbol, source, restriction) in available {
         let mut result = String::default();
         symbol.push_mana_symbol(&mut result);
-        if let ManaRestriction::None = restriction {
-            if source != ManaSource::Any {
+        if let ManaRestriction::NONE = restriction {
+            if source != ManaSource::ANY {
                 result.push_str(&format!(" ({}): {}", source.as_ref(), amount));
             } else {
                 result.push_str(&format!(": {}", amount));
             }
-        } else if source != ManaSource::Any {
+        } else if source != ManaSource::ANY {
             result.push_str(&format!(
                 " ({}) ({}): {}",
                 source.as_ref(),

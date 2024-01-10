@@ -1,13 +1,12 @@
 use crate::{
     battlefield::ActionResult,
     effects::{Effect, EffectBehaviors},
-    player::mana_pool::ManaSource,
-    protogen,
+    protogen::{self, targets::ManaSource},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ForEachManaOfSource {
-    pub(crate) source: ManaSource,
+    pub(crate) source: protobuf::EnumOrUnknown<ManaSource>,
     pub(crate) effect: Box<Effect>,
 }
 
@@ -16,7 +15,7 @@ impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {
 
     fn try_from(value: &protogen::effects::ForEachManaOfSource) -> Result<Self, Self::Error> {
         Ok(Self {
-            source: value.source.get_or_default().try_into()?,
+            source: value.source,
             effect: Box::new(value.effect.get_or_default().try_into()?),
         })
     }

@@ -10,8 +10,8 @@ use crate::{
     in_play::{target_from_location, CardId, Database, ExileReason},
     log::LogId,
     pending_results::{PendingResult, PendingResults},
-    player::mana_pool::{ManaSource, SpendReason},
-    protogen::{cost::ManaCost, mana::Mana},
+    player::mana_pool::SpendReason,
+    protogen::{cost::ManaCost, mana::Mana, targets::ManaSource},
     stack::ActiveTarget,
     targets::Restriction,
 };
@@ -625,7 +625,7 @@ impl Cost {
                         return true;
                     };
 
-                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::Any, spend.reason) {
+                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::ANY, spend.reason) {
                         let mana = match first_unpaid {
                             ManaCost::WHITE => Mana::WHITE,
                             ManaCost::BLUE => Mana::BLUE,
@@ -638,13 +638,13 @@ impl Cost {
                                     && pool_post_pay.can_spend(
                                         db,
                                         ManaCost::GENERIC,
-                                        ManaSource::Any,
+                                        ManaSource::ANY,
                                         spend.reason,
                                     )
                                 {
                                     let max = pool_post_pay.max(db, spend.reason).unwrap();
                                     let (_, source) =
-                                        pool_post_pay.spend(db, max, ManaSource::Any, spend.reason);
+                                        pool_post_pay.spend(db, max, ManaSource::ANY, spend.reason);
                                     *spend
                                         .paid
                                         .entry(first_unpaid)
@@ -664,7 +664,7 @@ impl Cost {
                             ManaCost::TWO_X => unreachable!(),
                         };
                         let (_, source) =
-                            pool_post_pay.spend(db, mana, ManaSource::Any, spend.reason);
+                            pool_post_pay.spend(db, mana, ManaSource::ANY, spend.reason);
                         *spend
                             .paid
                             .entry(first_unpaid)
@@ -890,7 +890,7 @@ impl PayCost {
                             let pool_post_pay = db.all_players[db[self.source].controller]
                                 .pool_post_pay(db, &mana, &source, spend.reason)
                                 .unwrap();
-                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::Any, spend.reason) {
+                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::ANY, spend.reason) {
                                 return false;
                             }
                         }

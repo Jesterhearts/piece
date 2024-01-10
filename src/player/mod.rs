@@ -17,10 +17,14 @@ use crate::{
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
-    mana::ManaRestriction,
     pending_results::PendingResults,
-    player::mana_pool::{ManaPool, ManaSource, SpendReason},
-    protogen::{color::Color, cost::ManaCost, mana::Mana},
+    player::mana_pool::{ManaPool, SpendReason},
+    protogen::{
+        color::Color,
+        cost::ManaCost,
+        mana::{Mana, ManaRestriction},
+        targets::ManaSource,
+    },
     stack::Stack,
     targets::{Location, Restriction},
 };
@@ -346,9 +350,9 @@ impl Player {
                 .sourced
                 .entry(mana)
                 .or_default()
-                .entry(ManaSource::Any)
+                .entry(ManaSource::ANY)
                 .or_default()
-                .entry(ManaRestriction::None)
+                .entry(ManaRestriction::NONE)
                 .or_default() = usize::MAX;
         }
     }
@@ -455,7 +459,7 @@ impl Player {
             sources
                 .iter()
                 .copied()
-                .chain(std::iter::repeat(ManaSource::Any)),
+                .chain(std::iter::repeat(ManaSource::ANY)),
         ) {
             if !self.mana_pool.can_spend(db, cost, source, reason) {
                 return false;
@@ -478,7 +482,7 @@ impl Player {
             sources
                 .iter()
                 .copied()
-                .chain(std::iter::repeat(ManaSource::Any)),
+                .chain(std::iter::repeat(ManaSource::ANY)),
         ) {
             if let (false, _) = mana_pool.spend(db, mana, source, reason) {
                 return None;
@@ -511,7 +515,7 @@ impl Player {
             sources
                 .iter()
                 .copied()
-                .chain(std::iter::repeat(ManaSource::Any)),
+                .chain(std::iter::repeat(ManaSource::ANY)),
         ) {
             if let (false, _) = mana_pool.spend(db, mana, source, reason) {
                 return false;

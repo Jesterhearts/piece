@@ -123,15 +123,11 @@ message Restriction {
   }
 }
 
-message ManaSource {
-  message BarracksOfTheThousand {}
-  message Cave {}
-  message Treasure {}
-  oneof source {
-    BarracksOfTheThousand barracks_of_the_thousand = 1;
-    Cave cave = 2;
-    Treasure treasure = 3;
-  }
+enum ManaSource {
+  ANY = 0;
+  BARRACKS_OF_THE_THOUSAND = 1;
+  CAVE = 2;
+  TREASURE = 3;
 }
 
 message Comparison {

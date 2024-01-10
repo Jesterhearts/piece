@@ -20,7 +20,6 @@ use crate::{
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry, LogId},
-    mana::ManaRestriction,
     pending_results::{
         choose_targets::ChooseTargets,
         examine_top_cards::{self, ExamineCards},
@@ -30,11 +29,13 @@ use crate::{
         },
         PendingResults, Source, TargetSource,
     },
-    player::{
-        mana_pool::{ManaSource, SpendReason},
-        Controller, Owner, Player,
+    player::{mana_pool::SpendReason, Controller, Owner, Player},
+    protogen::{
+        color::Color,
+        mana::{Mana, ManaRestriction},
+        targets::ManaSource,
+        types::Type,
     },
-    protogen::{color::Color, mana::Mana, types::Type},
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     targets::{ControllerRestriction, Location, Restriction},
     triggers::{self, Trigger, TriggerSource},
@@ -170,7 +171,7 @@ pub(crate) enum ActionResult {
     },
     ForEachManaOfSource {
         card: CardId,
-        source: ManaSource,
+        source: protobuf::EnumOrUnknown<ManaSource>,
         effect: Effect,
     },
     GainLife {
@@ -180,8 +181,8 @@ pub(crate) enum ActionResult {
     GainMana {
         gain: Vec<protobuf::EnumOrUnknown<Mana>>,
         target: Controller,
-        source: ManaSource,
-        restriction: ManaRestriction,
+        source: protobuf::EnumOrUnknown<ManaSource>,
+        restriction: protobuf::EnumOrUnknown<ManaRestriction>,
     },
     HandFromBattlefield(CardId),
     IfWasThen {
@@ -899,8 +900,8 @@ impl Battlefields {
                 for mana in gain {
                     db.all_players[*target].mana_pool.apply(
                         mana.enum_value().unwrap(),
-                        *source,
-                        *restriction,
+                        source.enum_value().unwrap(),
+                        restriction.enum_value().unwrap(),
                     )
                 }
                 PendingResults::default()
@@ -1194,7 +1195,8 @@ impl Battlefields {
                 effect,
             } => {
                 let mut results = PendingResults::default();
-                if let Some(from_source) = db[*card].sourced_mana.get(source) {
+                if let Some(from_source) = db[*card].sourced_mana.get(&source.enum_value().unwrap())
+                {
                     for _ in 0..*from_source {
                         effect.push_pending_behavior(db, *card, db[*card].controller, &mut results);
                     }

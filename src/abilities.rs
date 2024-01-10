@@ -11,13 +11,13 @@ use crate::{
     effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
     log::LogId,
-    mana::ManaRestriction,
     pending_results::PendingResults,
-    player::{
-        mana_pool::{ManaSource, SpendReason},
-        Owner,
+    player::{mana_pool::SpendReason, Owner},
+    protogen::{
+        self,
+        mana::{Mana, ManaRestriction},
+        targets::ManaSource,
     },
-    protogen::{self, mana::Mana},
     targets::Restriction,
     triggers::Trigger,
     turns::Phase,
@@ -338,8 +338,8 @@ pub(crate) struct GainManaAbilities(pub(crate) Vec<GainManaAbility>);
 pub struct GainManaAbility {
     pub(crate) cost: AbilityCost,
     pub(crate) gain: GainMana,
-    pub(crate) mana_source: Option<ManaSource>,
-    pub(crate) mana_restriction: ManaRestriction,
+    pub(crate) mana_source: protobuf::EnumOrUnknown<ManaSource>,
+    pub(crate) mana_restriction: protobuf::EnumOrUnknown<ManaRestriction>,
     pub(crate) oracle_text: String,
 }
 
@@ -370,11 +370,8 @@ impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
         Ok(Self {
             cost: value.cost.get_or_default().try_into()?,
             gain: value.gain_mana.get_or_default().try_into()?,
-            mana_source: value
-                .mana_source
-                .as_ref()
-                .map_or(Ok(None), |value| value.try_into().map(Some))?,
-            mana_restriction: value.mana_restriction.get_or_default().into(),
+            mana_source: value.mana_source,
+            mana_restriction: value.mana_restriction,
             oracle_text: replace_symbols(&value.oracle_text),
         })
     }

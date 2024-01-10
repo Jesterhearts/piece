@@ -28,13 +28,13 @@ use crate::{
         StaticAbilityId, NEXT_CARD_ID,
     },
     log::{LeaveReason, Log, LogEntry, LogId},
-    mana::ManaRestriction,
     pending_results::PendingResults,
-    player::{mana_pool::ManaSource, Controller, Owner},
+    player::{Controller, Owner},
     protogen::{
         color::Color,
         keywords::Keyword,
-        mana::Mana,
+        mana::{Mana, ManaRestriction},
+        targets::ManaSource,
         types::{Subtype, Type},
     },
     stack::{ActiveTarget, Stack},
@@ -69,8 +69,8 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         gain: GainMana::Specific {
                             gains: vec![protobuf::EnumOrUnknown::new(Mana::WHITE)],
                         },
-                        mana_restriction: ManaRestriction::None,
-                        mana_source: None,
+                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {W}."),
                     },
                 )
@@ -91,8 +91,8 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         gain: GainMana::Specific {
                             gains: vec![protobuf::EnumOrUnknown::new(Mana::BLUE)],
                         },
-                        mana_restriction: ManaRestriction::None,
-                        mana_source: None,
+                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {U}."),
                     },
                 )
@@ -113,8 +113,8 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         gain: GainMana::Specific {
                             gains: vec![protobuf::EnumOrUnknown::new(Mana::BLACK)],
                         },
-                        mana_restriction: ManaRestriction::None,
-                        mana_source: None,
+                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {B}."),
                     },
                 )
@@ -135,8 +135,8 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         gain: GainMana::Specific {
                             gains: vec![protobuf::EnumOrUnknown::new(Mana::RED)],
                         },
-                        mana_restriction: ManaRestriction::None,
-                        mana_source: None,
+                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {R}."),
                     },
                 )
@@ -157,8 +157,8 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         gain: GainMana::Specific {
                             gains: vec![protobuf::EnumOrUnknown::new(Mana::GREEN)],
                         },
-                        mana_restriction: ManaRestriction::None,
-                        mana_source: None,
+                        mana_restriction: protobuf::EnumOrUnknown::new(ManaRestriction::NONE),
+                        mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {G}."),
                     },
                 )
@@ -1682,7 +1682,10 @@ impl CardId {
                     }
                 }
                 Restriction::ManaSpentFromSource(source) => {
-                    if !db[self].sourced_mana.contains_key(source) {
+                    if !db[self]
+                        .sourced_mana
+                        .contains_key(&source.enum_value().unwrap())
+                    {
                         return false;
                     }
                 }

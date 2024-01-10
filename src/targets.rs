@@ -5,8 +5,7 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     counters::Counter,
-    player::mana_pool::ManaSource,
-    protogen::{self, color::Color, empty::Empty},
+    protogen::{self, color::Color, empty::Empty, targets::ManaSource},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
@@ -192,7 +191,7 @@ pub(crate) enum Restriction {
         locations: Vec<Location>,
     },
     LifeGainedThisTurn(usize),
-    ManaSpentFromSource(ManaSource),
+    ManaSpentFromSource(protobuf::EnumOrUnknown<ManaSource>),
     NonToken,
     NotChosen,
     NotKeywords(HashMap<String, u32>),
@@ -292,9 +291,9 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
                     .map(Location::try_from)
                     .collect::<anyhow::Result<_>>()?,
             }),
-            protogen::targets::restriction::Restriction::ManaSpentFromSource(spent) => Ok(
-                Self::ManaSpentFromSource(spent.source.get_or_default().try_into()?),
-            ),
+            protogen::targets::restriction::Restriction::ManaSpentFromSource(spent) => {
+                Ok(Self::ManaSpentFromSource(spent.source))
+            }
             protogen::targets::restriction::Restriction::NonToken(_) => Ok(Self::NonToken),
             protogen::targets::restriction::Restriction::NotChosen(_) => Ok(Self::NotChosen),
             protogen::targets::restriction::Restriction::NotKeywords(not) => {

@@ -11,11 +11,8 @@ enum Mana {
   COLORLESS = 5;
 }
 
-message ManaRestriction {
-  message ActivateAbility {}
-  message ArtifactSpellOrAbility {}
-  oneof restriction {
-    ActivateAbility activate_ability = 1;
-    ArtifactSpellOrAbility artifact_spell_or_ability = 2;
-  }
+enum ManaRestriction {
+  NONE = 0;
+  ACTIVATE_ABILITY = 1;
+  ARTIFACT_SPELL_OR_ABILITY = 2;
 }

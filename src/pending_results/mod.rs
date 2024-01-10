@@ -450,7 +450,7 @@ impl PendingResults {
                 }
             } else if let Some((source, gain)) = self.gain_mana.take() {
                 let target = db[source].controller;
-                let source = db[gain].ability.mana_source.unwrap_or_default();
+                let source = db[gain].ability.mana_source;
                 let restriction = db[gain].ability.mana_restriction;
                 match &db[gain].ability.gain {
                     GainMana::Specific { gains } => {

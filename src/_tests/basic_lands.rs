@@ -6,10 +6,12 @@ use crate::{
     in_play::CardId,
     in_play::Database,
     load_cards,
-    mana::ManaRestriction,
     pending_results::ResolutionResult,
-    player::{mana_pool::ManaSource, AllPlayers},
-    protogen::mana::Mana,
+    player::AllPlayers,
+    protogen::{
+        mana::{Mana, ManaRestriction},
+        targets::ManaSource,
+    },
     turns::Phase,
 };
 
@@ -46,12 +48,12 @@ fn plains() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (1, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::RED, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None),
+            (1, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLACK, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::RED, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::GREEN, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::COLORLESS, ManaSource::ANY, ManaRestriction::NONE),
         ]
     );
 
@@ -90,12 +92,12 @@ fn island() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (0, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::RED, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
+            (1, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLACK, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::RED, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::GREEN, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::COLORLESS, ManaSource::ANY, ManaRestriction::NONE),
         ]
     );
 
@@ -135,12 +137,12 @@ fn swamp() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (0, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::RED, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
+            (1, Mana::BLACK, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::RED, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::GREEN, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::COLORLESS, ManaSource::ANY, ManaRestriction::NONE),
         ]
     );
 
@@ -179,12 +181,12 @@ fn mountain() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (0, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::RED, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLACK, ManaSource::ANY, ManaRestriction::NONE),
+            (1, Mana::RED, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::GREEN, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::COLORLESS, ManaSource::ANY, ManaRestriction::NONE),
         ]
     );
 
@@ -223,12 +225,12 @@ fn forest() -> anyhow::Result<()> {
     assert_eq!(
         db.all_players[player].mana_pool.all_mana().collect_vec(),
         [
-            (0, Mana::WHITE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLUE, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::BLACK, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::RED, ManaSource::Any, ManaRestriction::None),
-            (1, Mana::GREEN, ManaSource::Any, ManaRestriction::None),
-            (0, Mana::COLORLESS, ManaSource::Any, ManaRestriction::None),
+            (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::BLACK, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::RED, ManaSource::ANY, ManaRestriction::NONE),
+            (1, Mana::GREEN, ManaSource::ANY, ManaRestriction::NONE),
+            (0, Mana::COLORLESS, ManaSource::ANY, ManaRestriction::NONE),
         ]
     );
 

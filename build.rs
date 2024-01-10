@@ -19,8 +19,7 @@ fn main() {
                     ::strum::AsRefStr,
                     PartialOrd,
                     Ord,
-                )]
-                #[strum(ascii_case_insensitive)]"#,
+                )]"#,
             )
         }
 
@@ -136,6 +135,14 @@ fn main() {
                         deserialize_with = "crate::deserialize_message",
                         default,
                         skip_serializing_if="::protobuf::MessageField::is_none"
+                    )]"#,
+                )
+            } else if !field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {
+                Customize::default().before(
+                    r#"#[serde(
+                        serialize_with = "crate::serialize_enum",
+                        deserialize_with = "crate::deserialize_enum",
+                        default,
                     )]"#,
                 )
             } else {

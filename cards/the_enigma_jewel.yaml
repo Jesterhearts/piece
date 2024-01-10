@@ -10,8 +10,7 @@ mana_abilities:
     gain_mana:
       gain: !Specific
         gain: '{C}{C}'
-    mana_restriction:
-      restriction: !ActivateAbility {}
+    mana_restriction: !ACTIVATE_ABILITY
     oracle_text: >-
       {T}: Add {C}{C}. Spend this mana only to activate abilities.
 activated_abilities:

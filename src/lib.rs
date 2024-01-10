@@ -718,3 +718,26 @@ where
         Ok(message)
     })
 }
+
+fn serialize_enum<T, S>(
+    value: &::protobuf::EnumOrUnknown<T>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Serialize + Enum,
+{
+    if let Ok(value) = value.enum_value() {
+        value.serialize(serializer)
+    } else {
+        serializer.serialize_none()
+    }
+}
+
+fn deserialize_enum<'de, T, D>(deserializer: D) -> Result<::protobuf::EnumOrUnknown<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Enum,
+{
+    Ok(protobuf::EnumOrUnknown::new(T::deserialize(deserializer)?))
+}
