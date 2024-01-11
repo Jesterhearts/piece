@@ -118,8 +118,15 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
 
 pub fn load_cards() -> anyhow::Result<Cards> {
     let timer = std::time::Instant::now();
-    let mut cards = Cards::default();
     let protos = load_protos()?;
+    info!(
+        "Loaded {} cards in {}ms",
+        protos.len(),
+        timer.elapsed().as_millis()
+    );
+
+    let timer = std::time::Instant::now();
+    let mut cards = Cards::with_capacity(protos.len());
     for (card, card_file) in protos {
         if cards
             .insert(
@@ -135,7 +142,7 @@ pub fn load_cards() -> anyhow::Result<Cards> {
     }
 
     info!(
-        "Loaded {} cards in {}ms",
+        "Converted {} cards in {}ms",
         cards.len(),
         timer.elapsed().as_millis()
     );

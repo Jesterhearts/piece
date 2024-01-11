@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::OnceLock};
 
 use aho_corasick::AhoCorasick;
 use convert_case::{Case, Casing};
@@ -256,7 +256,7 @@ impl From<Token> for Card {
 
 pub fn replace_symbols(result: &str) -> String {
     #[rustfmt::skip]
-    let patterns = &[
+    const PATTERNS: &[&str] = &[
         "{W}",
         "{U}",
         "{B}",
@@ -290,7 +290,7 @@ pub fn replace_symbols(result: &str) -> String {
     ];
 
     #[rustfmt::skip]
-    let replace_with = &[
+    const REPLACE_WITH: &[&str] = &[
         "\u{e600}",
         "\u{e601}",
         "\u{e602}",
@@ -323,6 +323,7 @@ pub fn replace_symbols(result: &str) -> String {
         "\u{e61b}",
     ];
 
-    let ac = AhoCorasick::new(patterns).unwrap();
-    ac.replace_all(result, replace_with)
+    static AC: OnceLock<AhoCorasick> = OnceLock::new();
+    AC.get_or_init(|| AhoCorasick::new(PATTERNS).unwrap())
+        .replace_all(result, REPLACE_WITH)
 }
