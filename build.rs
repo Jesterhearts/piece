@@ -154,6 +154,8 @@ fn main() {
         }
     }
 
+    std::fs::create_dir_all("src/protogen").expect("Failed to create protogen directory");
+
     protobuf_codegen::Codegen::new()
         .pure()
         // All inputs and imports from the inputs must reside in `includes` directories.
