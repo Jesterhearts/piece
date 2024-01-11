@@ -738,7 +738,7 @@ where
     S: Serializer,
     T: Serialize + Enum + AsRef<str>,
 {
-    serializer.serialize_str(value.enum_value().unwrap().as_ref())
+    serializer.serialize_str(&value.enum_value().unwrap().as_ref().to_case(Case::Lower))
 }
 
 fn deserialize_enum<'de, T, D>(deserializer: D) -> Result<::protobuf::EnumOrUnknown<T>, D::Error>
