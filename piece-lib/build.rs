@@ -27,9 +27,10 @@ fn main() {
             Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq)]\n#[serde(deny_unknown_fields)]")
         }
 
-        fn oneof(&self, _oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
-            Customize::default().before(
-                r#"#[derive(
+        fn oneof(&self, oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
+            if oneof.name() == "effect" {
+                Customize::default().before(
+                    r#"#[derive(
                     ::serde::Serialize,
                     ::serde::Deserialize,
                     ::strum::EnumIter,
@@ -38,7 +39,21 @@ fn main() {
                     Eq,
                 )]
                 #[strum(ascii_case_insensitive)]"#,
-            )
+                )
+            } else {
+                Customize::default().before(
+                    r#"#[derive(
+                    ::serde::Serialize,
+                    ::serde::Deserialize,
+                    ::strum::EnumIter,
+                    ::strum::EnumString,
+                    ::strum::AsRefStr,
+                    ::derive_more::From,
+                    Eq,
+                )]
+                #[strum(ascii_case_insensitive)]"#,
+                )
+            }
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {

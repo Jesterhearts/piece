@@ -2,9 +2,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::targets::Restriction,
     protogen::{self, types::Type},
     stack::ActiveTarget,
-    targets::Restriction,
     types::TypeSet,
 };
 
@@ -20,11 +20,7 @@ impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
     fn try_from(value: &protogen::effects::DealDamage) -> Result<Self, Self::Error> {
         Ok(Self {
             quantity: usize::try_from(value.quantity)?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

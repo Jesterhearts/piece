@@ -6,8 +6,10 @@ use crate::{
     effects::EffectBehaviors,
     in_play::{ActivatedAbilityId, CardId, Database},
     player::{Controller, Owner},
-    protogen::counters::Counter,
-    targets::Restriction,
+    protogen::{
+        counters::Counter,
+        targets::{restriction, Restriction},
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,13 +89,13 @@ impl LogEntry {
                 ..
             } => {
                 for restriction in restrictions.iter() {
-                    match restriction {
-                        Restriction::Attacking => {
+                    match restriction.restriction.as_ref().unwrap() {
+                        restriction::Restriction::Attacking(_) => {
                             if !was_attacking {
                                 return false;
                             }
                         }
-                        Restriction::Tapped => {
+                        restriction::Restriction::Tapped(_) => {
                             if !was_tapped {
                                 return false;
                             }

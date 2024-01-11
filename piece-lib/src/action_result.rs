@@ -30,12 +30,11 @@ use crate::{
     protogen::{
         counters::Counter,
         mana::{Mana, ManaRestriction, ManaSource},
-        targets::Location,
+        targets::{restriction, Location, Restriction},
         triggers::{self, TriggerSource},
         types::Type,
     },
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
-    targets::{ControllerRestriction, Restriction},
     triggers::Trigger,
     types::TypeSet,
 };
@@ -677,9 +676,19 @@ impl ActionResult {
                             trigger: Trigger {
                                 source: TriggerSource::CAST.into(),
                                 from: triggers::Location::HAND.into(),
-                                restrictions: vec![Restriction::Controller(
-                                    ControllerRestriction::Self_,
-                                )],
+                                restrictions: vec![Restriction {
+                                    restriction: Some(restriction::Restriction::from(
+                                        restriction::Controller {
+                                            controller: Some(
+                                                restriction::controller::Controller::Self_(
+                                                    Default::default(),
+                                                ),
+                                            ),
+                                            ..Default::default()
+                                        },
+                                    )),
+                                    ..Default::default()
+                                }],
                             },
                             effects: vec![AnyEffect {
                                 effect: Effect::from(Cascade),
@@ -959,9 +968,19 @@ impl ActionResult {
                                 trigger: Trigger {
                                     source: TriggerSource::ATTACKS.into(),
                                     from: triggers::Location::ANYWHERE.into(),
-                                    restrictions: vec![Restriction::Controller(
-                                        ControllerRestriction::Self_,
-                                    )],
+                                    restrictions: vec![Restriction {
+                                        restriction: Some(restriction::Restriction::from(
+                                            restriction::Controller {
+                                                controller: Some(
+                                                    restriction::controller::Controller::Self_(
+                                                        Default::default(),
+                                                    ),
+                                                ),
+                                                ..Default::default()
+                                            },
+                                        )),
+                                        ..Default::default()
+                                    }],
                                 },
                                 effects: vec![AnyEffect {
                                     effect: Effect::from(BattleCry),

@@ -10,9 +10,9 @@ use crate::{
         TargetSource,
     },
     player::mana_pool::SpendReason,
+    protogen::targets::Restriction,
     protogen::{self, cost::ManaCost},
     stack::{ActiveTarget, Entry, StackEntry},
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,11 +50,7 @@ impl TryFrom<&protogen::effects::CounterSpellUnlessPay> for CounterSpellUnlessPa
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
                 .and_then(Cost::try_from)?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

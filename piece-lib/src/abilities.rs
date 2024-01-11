@@ -12,13 +12,13 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::{mana_pool::SpendReason, Owner},
+    protogen::targets::Restriction,
     protogen::{
         self,
         counters::Counter,
         mana::ManaSource,
         mana::{Mana, ManaRestriction},
     },
-    targets::Restriction,
     triggers::Trigger,
     turns::Phase,
 };
@@ -56,11 +56,7 @@ impl TryFrom<&protogen::effects::static_ability::AddKeywordsIf> for AddKeywordsI
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             keywords: value.keywords.clone(),
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }
@@ -129,20 +125,12 @@ impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
             }
             protogen::effects::static_ability::Ability::ForceEtbTapped(force) => {
                 Ok(Self::ForceEtbTapped(ForceEtbTapped {
-                    restrictions: force
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
+                    restrictions: force.restrictions.clone(),
                 }))
             }
             protogen::effects::static_ability::Ability::GreenCannotBeCountered(ability) => {
                 Ok(Self::GreenCannotBeCountered {
-                    restrictions: ability
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
+                    restrictions: ability.restrictions.clone(),
                 })
             }
             protogen::effects::static_ability::Ability::PreventAttacks(_) => {

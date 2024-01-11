@@ -2,9 +2,8 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::{self, targets::Restriction},
     stack::{ActiveTarget, Entry, StackEntry},
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,11 +16,7 @@ impl TryFrom<&protogen::effects::CounterSpell> for CounterSpellOrAbility {
 
     fn try_from(value: &protogen::effects::CounterSpell) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

@@ -1,8 +1,7 @@
 use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
-    protogen,
-    targets::Restriction,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,11 +18,7 @@ impl TryFrom<&protogen::effects::reveal_each_top_of_library::ForEach> for ForEac
         value: &protogen::effects::reveal_each_top_of_library::ForEach,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
             effects: value
                 .effects
                 .iter()

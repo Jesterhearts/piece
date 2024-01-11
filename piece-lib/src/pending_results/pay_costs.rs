@@ -11,9 +11,9 @@ use crate::{
     log::LogId,
     pending_results::{PendingResult, PendingResults},
     player::mana_pool::SpendReason,
+    protogen::targets::Restriction,
     protogen::{cost::ManaCost, mana::Mana, mana::ManaSource},
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug)]

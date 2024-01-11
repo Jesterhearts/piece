@@ -4,9 +4,8 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::{self, targets::Restriction},
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,11 +19,7 @@ impl TryFrom<&protogen::effects::TargetToTopOfLibrary> for TargetToTopOfLibrary 
 
     fn try_from(value: &protogen::effects::TargetToTopOfLibrary) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
             under_cards: usize::try_from(value.under_cards)?,
         })
     }

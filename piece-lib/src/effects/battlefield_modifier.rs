@@ -6,9 +6,8 @@ use crate::{
     in_play::{Database, ModifierId},
     pending_results::PendingResults,
     player::Controller,
-    protogen,
+    protogen::{self, targets::Restriction},
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -30,11 +29,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
                 .map(EffectDuration::from)?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

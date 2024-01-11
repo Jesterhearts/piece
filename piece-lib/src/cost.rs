@@ -1,8 +1,7 @@
 use anyhow::anyhow;
 
-use crate::{
-    protogen::{self, color::Color, cost::ManaCost, counters::Counter},
-    targets::Restriction,
+use crate::protogen::{
+    self, color::Color, cost::ManaCost, counters::Counter, targets::Restriction,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -160,45 +159,22 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
                 Ok(Self::PayLife(pay.try_into()?))
             }
             protogen::cost::additional_cost::Cost::SacrificePermanent(sacrifice) => {
-                Ok(Self::SacrificePermanent(
-                    sacrifice
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
-                ))
+                Ok(Self::SacrificePermanent(sacrifice.restrictions.clone()))
             }
-            protogen::cost::additional_cost::Cost::TapPermanent(tap) => Ok(Self::TapPermanent(
-                tap.restrictions
-                    .iter()
-                    .map(Restriction::try_from)
-                    .collect::<anyhow::Result<_>>()?,
-            )),
+            protogen::cost::additional_cost::Cost::TapPermanent(tap) => {
+                Ok(Self::TapPermanent(tap.restrictions.clone()))
+            }
             protogen::cost::additional_cost::Cost::TapPermanentsPowerXOrMore(tap) => {
                 Ok(Self::TapPermanentsPowerXOrMore {
                     x_is: usize::try_from(tap.x_is)?,
-                    restrictions: tap
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
+                    restrictions: tap.restrictions.clone(),
                 })
             }
             protogen::cost::additional_cost::Cost::ExileCardsCmcX(value) => {
-                Ok(Self::ExileCardsCmcX(
-                    value
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
-                ))
+                Ok(Self::ExileCardsCmcX(value.restrictions.clone()))
             }
             protogen::cost::additional_cost::Cost::ExileCard(value) => Ok(Self::ExileCard {
-                restrictions: value
-                    .restrictions
-                    .iter()
-                    .map(Restriction::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                restrictions: value.restrictions.clone(),
             }),
             protogen::cost::additional_cost::Cost::ExileSharingCardType(value) => {
                 Ok(Self::ExileSharingCardType {
@@ -208,11 +184,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
             protogen::cost::additional_cost::Cost::ExileXOrMoreCards(value) => {
                 Ok(Self::ExileXOrMoreCards {
                     minimum: usize::try_from(value.minimum)?,
-                    restrictions: value
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
+                    restrictions: value.restrictions.clone(),
                 })
             }
             protogen::cost::additional_cost::Cost::RemoveCounters(value) => {

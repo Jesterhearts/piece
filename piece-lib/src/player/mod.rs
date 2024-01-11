@@ -20,6 +20,10 @@ use crate::{
     log::{Log, LogEntry, LogId},
     pending_results::PendingResults,
     player::mana_pool::{ManaPool, SpendReason},
+    protogen::targets::{
+        restriction::{self, EnteredBattlefieldThisTurn},
+        Restriction,
+    },
     protogen::{
         color::Color,
         cost::ManaCost,
@@ -27,7 +31,6 @@ use crate::{
         targets::Location,
     },
     stack::Stack,
-    targets::Restriction,
 };
 
 static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
@@ -62,85 +65,85 @@ impl Owner {
         restrictions: &[Restriction],
     ) -> bool {
         for restriction in restrictions {
-            match restriction {
-                Restriction::AttackingOrBlocking => {
+            match restriction.restriction.as_ref().unwrap() {
+                restriction::Restriction::AttackingOrBlocking(_) => {
                     return false;
                 }
-                Restriction::NotSelf => {
+                restriction::Restriction::NotSelf(_) => {
                     if self == controller {
                         return false;
                     }
                 }
-                Restriction::Self_ => {
+                restriction::Restriction::Self_(_) => {
                     if self != controller {
                         return false;
                     }
                 }
-                Restriction::OfColor(_) => {
+                restriction::Restriction::OfColor(_) => {
                     return false;
                 }
-                Restriction::OfType { .. } => {
+                restriction::Restriction::OfType(_) => {
                     return false;
                 }
-                Restriction::NotOfType { .. } => {
+                restriction::Restriction::NotOfType(_) => {
                     return false;
                 }
-                Restriction::CastFromHand => {
+                restriction::Restriction::CastFromHand(_) => {
                     return false;
                 }
-                Restriction::Cmc(_) => {
+                restriction::Restriction::Cmc(_) => {
                     return false;
                 }
-                Restriction::Toughness(_) => {
+                restriction::Restriction::Toughness(_) => {
                     return false;
                 }
-                Restriction::ControllerControlsBlackOrGreen => {
+                restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
                     let colors = Battlefields::controlled_colors(db, controller);
                     if !(colors.contains(&Color::GREEN) || colors.contains(&Color::BLACK)) {
                         return false;
                     }
                 }
-                Restriction::ControllerHandEmpty => {
+                restriction::Restriction::ControllerHandEmpty(_) => {
                     if controller.has_cards(db, Location::IN_HAND) {
                         return false;
                     }
                 }
-                Restriction::InGraveyard => {
+                restriction::Restriction::InGraveyard(_) => {
                     return false;
                 }
-                Restriction::OnBattlefield => {
+                restriction::Restriction::OnBattlefield(_) => {
                     return false;
                 }
-                Restriction::InLocation { .. } => {
+                restriction::Restriction::Location(_) => {
                     return false;
                 }
-                Restriction::Attacking => {
+                restriction::Restriction::Attacking(_) => {
                     return false;
                 }
-                Restriction::NotKeywords(_) => {
+                restriction::Restriction::NotKeywords(_) => {
                     return false;
                 }
-                Restriction::LifeGainedThisTurn(count) => {
+                restriction::Restriction::LifeGainedThisTurn(count) => {
                     let life_gained = db
                         .turn
                         .life_gained_this_turn
                         .get(&self)
                         .copied()
-                        .unwrap_or_default();
-                    if life_gained < *count {
+                        .unwrap_or_default() as i32;
+                    if life_gained < count.count {
                         return false;
                     }
                 }
-                Restriction::Descend(count) => {
+                restriction::Restriction::Descend(count) => {
                     let cards = db.graveyard[self]
                         .iter()
                         .filter(|card| card.is_permanent(db))
-                        .count();
-                    if cards < *count {
+                        .count() as i32;
+                    if cards < count.count {
                         return false;
                     }
                 }
-                Restriction::DescendedThisTurn => {
+                restriction::Restriction::DescendedThisTurn(_) => {
                     let descended = db
                         .graveyard
                         .descended_this_turn
@@ -151,27 +154,27 @@ impl Owner {
                         return false;
                     }
                 }
-                Restriction::Tapped => {
+                restriction::Restriction::Tapped(_) => {
                     return false;
                 }
-                Restriction::ManaSpentFromSource(_) => {
+                restriction::Restriction::ManaSpentFromSource(_) => {
                     return false;
                 }
-                Restriction::Power(_) => {
+                restriction::Restriction::Power(_) => {
                     return false;
                 }
-                Restriction::NotChosen => {
+                restriction::Restriction::NotChosen(_) => {
                     return false;
                 }
-                Restriction::SourceCast => {
+                restriction::Restriction::SourceCast(_) => {
                     return false;
                 }
-                Restriction::DuringControllersTurn => {
+                restriction::Restriction::DuringControllersTurn(_) => {
                     if self != db.turn.active_player() {
                         return false;
                     }
                 }
-                Restriction::ControllerJustCast => {
+                restriction::Restriction::ControllerJustCast(_) => {
                     if !Log::current_session(db).iter().any(|(_, entry)| {
                         if let LogEntry::Cast { card } = entry {
                             db[*card].controller == self
@@ -182,56 +185,61 @@ impl Owner {
                         return false;
                     }
                 }
-                Restriction::Controller(controller_restriction) => match controller_restriction {
-                    crate::targets::ControllerRestriction::Self_ => {
-                        if self != controller {
-                            return false;
+                restriction::Restriction::Controller(controller_restriction) => {
+                    match controller_restriction.controller.as_ref().unwrap() {
+                        restriction::controller::Controller::Self_(_) => {
+                            if self != controller {
+                                return false;
+                            }
+                        }
+                        restriction::controller::Controller::Opponent(_) => {
+                            if self == controller {
+                                return false;
+                            }
                         }
                     }
-                    crate::targets::ControllerRestriction::Opponent => {
-                        if self == controller {
-                            return false;
-                        }
-                    }
-                },
-                Restriction::NumberOfCountersOnThis { .. } => {
+                }
+                restriction::Restriction::NumberOfCountersOnThis(_) => {
                     // TODO: Poison counters
                     return false;
                 }
-                Restriction::EnteredTheBattlefieldThisTurn {
-                    count,
-                    restrictions,
-                } => {
+                restriction::Restriction::EnteredBattlefieldThisTurn(
+                    EnteredBattlefieldThisTurn {
+                        count,
+                        restrictions,
+                        ..
+                    },
+                ) => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
                         .filter(|card| {
                             card.passes_restrictions(db, log_session, *card, restrictions)
                         })
-                        .count();
+                        .count() as i32;
                     if entered_this_turn < *count {
                         return false;
                     }
                 }
-                Restriction::AttackedThisTurn => {
+                restriction::Restriction::AttackedThisTurn(_) => {
                     if db.turn.number_of_attackers_this_turn < 1 {
                         return false;
                     }
                 }
-                Restriction::Threshold => {
+                restriction::Restriction::Threshold(_) => {
                     if db.graveyard[self].len() < 7 {
                         return false;
                     }
                 }
-                Restriction::NonToken => {
+                restriction::Restriction::NonToken(_) => {
                     return false;
                 }
-                Restriction::TargetedBy => {
+                restriction::Restriction::TargetedBy(_) => {
                     // TODO
                     return false;
                 }
-                Restriction::HasActivatedAbility => {
+                restriction::Restriction::HasActivatedAbility(_) => {
                     return false;
                 }
-                Restriction::SpellOrAbilityJustCast => {
+                restriction::Restriction::SpellOrAbilityJustCast(_) => {
                     return false;
                 }
             }

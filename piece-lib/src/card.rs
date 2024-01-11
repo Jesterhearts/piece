@@ -12,6 +12,7 @@ use crate::{
         target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
         Mode, ReplacementAbility, Token, TokenCreature,
     },
+    protogen::targets::Restriction,
     protogen::{
         self,
         color::Color,
@@ -19,7 +20,6 @@ use crate::{
         keywords::Keyword,
         types::{Subtype, Type},
     },
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone)]
@@ -197,11 +197,7 @@ impl TryFrom<&protogen::card::Card> for Card {
                     Ok(usize::try_from(v).map(Some)?)
                 })?,
             keywords: value.keywords.clone(),
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
             back_face: value.back_face.as_ref().map_or(Ok(None), |back| {
                 Card::try_from(back).map(|card| Some(Box::new(card)))
             })?,

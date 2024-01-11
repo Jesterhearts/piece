@@ -1,8 +1,7 @@
 use crate::{
     effects::{Effect, EffectBehaviors},
     log::LogId,
-    protogen,
-    targets::Restriction,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,11 +16,7 @@ impl TryFrom<&protogen::effects::IfThenElse> for IfThenElse {
 
     fn try_from(value: &protogen::effects::IfThenElse) -> Result<Self, Self::Error> {
         Ok(Self {
-            if_: value
-                .if_
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            if_: value.if_.clone(),
             then: Box::new(value.then.get_or_default().try_into()?),
             else_: Box::new(value.else_.get_or_default().try_into()?),
         })

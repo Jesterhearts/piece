@@ -1,5 +1,5 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen, targets::Restriction,
+    action_result::ActionResult, effects::EffectBehaviors, protogen, protogen::targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,11 +12,7 @@ impl TryFrom<&protogen::effects::DestroyEach> for DestroyEach {
 
     fn try_from(value: &protogen::effects::DestroyEach) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

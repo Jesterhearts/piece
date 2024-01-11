@@ -7,9 +7,8 @@ use crate::{
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, counters::Counter},
+    protogen::{self, counters::Counter, targets::Restriction},
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,11 +38,7 @@ impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCoun
         match value {
             protogen::effects::gain_counter::dynamic::Dynamic::LeftBattlefieldThisTurn(value) => {
                 Ok(Self::LeftBattlefieldThisTurn {
-                    restrictions: value
-                        .restrictions
-                        .iter()
-                        .map(Restriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
+                    restrictions: value.restrictions.clone(),
                 })
             }
             protogen::effects::gain_counter::dynamic::Dynamic::X(_) => Ok(Self::X),
@@ -92,11 +87,7 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
                 .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
                 .and_then(GainCount::try_from)?,
             counter: value.counter,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

@@ -27,8 +27,20 @@ use crate::{
         PendingResults, Source, TargetSource,
     },
     player::{mana_pool::SpendReason, Owner},
-    protogen::{color::Color, keywords::Keyword, targets::Location, triggers::TriggerSource},
-    targets::{Cmc, Comparison, ControllerRestriction, Dynamic, Restriction},
+    protogen::{
+        color::Color,
+        keywords::Keyword,
+        targets::{
+            comparison,
+            dynamic::Dynamic,
+            restriction::{
+                self, cmc::Cmc, EnteredBattlefieldThisTurn, Locations, NotKeywords, NotOfType,
+                OfColor, OfType,
+            },
+            Location, Restriction,
+        },
+        triggers::TriggerSource,
+    },
 };
 
 static NEXT_STACK_ID: AtomicUsize = AtomicUsize::new(0);
@@ -145,11 +157,11 @@ impl StackEntry {
         let spell_or_ability_controller = db[self.ty.source()].controller;
 
         for restriction in restrictions.iter() {
-            match restriction {
-                Restriction::AttackedThisTurn => todo!(),
-                Restriction::Attacking => unreachable!(),
-                Restriction::AttackingOrBlocking => unreachable!(),
-                Restriction::CastFromHand => {
+            match restriction.restriction.as_ref().unwrap() {
+                restriction::Restriction::AttackedThisTurn(_) => todo!(),
+                restriction::Restriction::Attacking(_) => unreachable!(),
+                restriction::Restriction::AttackingOrBlocking(_) => unreachable!(),
+                restriction::Restriction::CastFromHand(_) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
@@ -158,26 +170,26 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::Cmc(cmc_test) => {
+                restriction::Restriction::Cmc(cmc_test) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
                     let cmc = db[*card].modified_cost.cmc() as i32;
 
-                    match cmc_test {
+                    match cmc_test.cmc.as_ref().unwrap() {
                         Cmc::Comparison(comparison) => {
-                            let matches = match comparison {
-                                Comparison::LessThan(i) => cmc < *i,
-                                Comparison::LessThanOrEqual(i) => cmc <= *i,
-                                Comparison::GreaterThan(i) => cmc > *i,
-                                Comparison::GreaterThanOrEqual(i) => cmc >= *i,
+                            let matches = match comparison.value.as_ref().unwrap() {
+                                comparison::Value::LessThan(i) => cmc < i.value,
+                                comparison::Value::LessThanOrEqual(i) => cmc <= i.value,
+                                comparison::Value::GreaterThan(i) => cmc > i.value,
+                                comparison::Value::GreaterThanOrEqual(i) => cmc >= i.value,
                             };
                             if !matches {
                                 return false;
                             }
                         }
-                        Cmc::Dynamic(dy) => match dy {
-                            Dynamic::X => {
+                        Cmc::Dynamic(dy) => match dy.dynamic.as_ref().unwrap() {
+                            Dynamic::X(_) => {
                                 if source.get_x(db) as i32 != cmc {
                                     return false;
                                 }
@@ -185,32 +197,32 @@ impl StackEntry {
                         },
                     }
                 }
-                Restriction::Controller(controller_restriction) => {
-                    match controller_restriction {
-                        ControllerRestriction::Self_ => {
+                restriction::Restriction::Controller(controller_restriction) => {
+                    match controller_restriction.controller.as_ref().unwrap() {
+                        restriction::controller::Controller::Self_(_) => {
                             if db[source].controller != spell_or_ability_controller {
                                 return false;
                             }
                         }
-                        ControllerRestriction::Opponent => {
+                        restriction::controller::Controller::Opponent(_) => {
                             if db[source].controller == spell_or_ability_controller {
                                 return false;
                             }
                         }
                     };
                 }
-                Restriction::ControllerControlsBlackOrGreen => {
+                restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
                     let colors = Battlefields::controlled_colors(db, spell_or_ability_controller);
                     if !(colors.contains(&Color::GREEN) || colors.contains(&Color::BLACK)) {
                         return false;
                     }
                 }
-                Restriction::ControllerHandEmpty => {
+                restriction::Restriction::ControllerHandEmpty(_) => {
                     if spell_or_ability_controller.has_cards(db, Location::IN_HAND) {
                         return false;
                     }
                 }
-                Restriction::ControllerJustCast => {
+                restriction::Restriction::ControllerJustCast(_) => {
                     if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         let LogEntry::Cast { card } = entry else {
                             return false;
@@ -220,16 +232,16 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::Descend(count) => {
+                restriction::Restriction::Descend(count) => {
                     let cards = db.graveyard[spell_or_ability_controller]
                         .iter()
                         .filter(|card| card.is_permanent(db))
-                        .count();
-                    if cards < *count {
+                        .count() as i32;
+                    if cards < count.count {
                         return false;
                     }
                 }
-                Restriction::DescendedThisTurn => {
+                restriction::Restriction::DescendedThisTurn(_) => {
                     let descended = db
                         .graveyard
                         .descended_this_turn
@@ -240,25 +252,28 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::DuringControllersTurn => {
+                restriction::Restriction::DuringControllersTurn(_) => {
                     if spell_or_ability_controller != db.turn.active_player() {
                         return false;
                     }
                 }
-                Restriction::EnteredTheBattlefieldThisTurn {
-                    count,
-                    restrictions,
-                } => {
+                restriction::Restriction::EnteredBattlefieldThisTurn(
+                    EnteredBattlefieldThisTurn {
+                        count,
+                        restrictions,
+                        ..
+                    },
+                ) => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
                         .filter(|card| {
                             card.passes_restrictions(db, log_session, source, restrictions)
                         })
-                        .count();
+                        .count() as i32;
                     if entered_this_turn < *count {
                         return false;
                     }
                 }
-                Restriction::HasActivatedAbility => {
+                restriction::Restriction::HasActivatedAbility(_) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
@@ -267,28 +282,28 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::InGraveyard => {
+                restriction::Restriction::InGraveyard(_) => {
                     return false;
                 }
-                Restriction::InLocation { locations } => {
+                restriction::Restriction::Location(Locations { locations, .. }) => {
                     if locations.iter().any(|location| {
                         !matches!(location.enum_value().unwrap(), Location::IN_STACK)
                     }) {
                         return false;
                     }
                 }
-                Restriction::LifeGainedThisTurn(count) => {
+                restriction::Restriction::LifeGainedThisTurn(count) => {
                     let gained_this_turn = db
                         .turn
                         .life_gained_this_turn
                         .get(&Owner::from(spell_or_ability_controller))
                         .copied()
-                        .unwrap_or_default();
-                    if gained_this_turn < *count {
+                        .unwrap_or_default() as i32;
+                    if gained_this_turn < count.count {
                         return false;
                     }
                 }
-                Restriction::ManaSpentFromSource(source) => {
+                restriction::Restriction::ManaSpentFromSource(source) => {
                     let Entry::Card(card) = &self.ty else {
                         // TODO: Pretty sure there are some mana sources that copy abilities if used.
                         return false;
@@ -296,17 +311,17 @@ impl StackEntry {
 
                     if !db[*card]
                         .sourced_mana
-                        .contains_key(&source.enum_value().unwrap())
+                        .contains_key(&source.source.enum_value().unwrap())
                     {
                         return false;
                     }
                 }
-                Restriction::NonToken => {
+                restriction::Restriction::NonToken(_) => {
                     if !matches!(self.ty, Entry::Card(_)) {
                         return false;
                     }
                 }
-                Restriction::NotChosen => {
+                restriction::Restriction::NotChosen(_) => {
                     let Entry::Card(candidate) = &self.ty else {
                         return false;
                     };
@@ -320,7 +335,7 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::NotKeywords(not_keywords) => {
+                restriction::Restriction::NotKeywords(NotKeywords { keywords, .. }) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
@@ -328,12 +343,14 @@ impl StackEntry {
                     if db[*card]
                         .modified_keywords
                         .keys()
-                        .any(|keyword| not_keywords.contains_key(keyword))
+                        .any(|keyword| keywords.contains_key(keyword))
                     {
                         return false;
                     }
                 }
-                Restriction::NotOfType { types, subtypes } => {
+                restriction::Restriction::NotOfType(NotOfType {
+                    types, subtypes, ..
+                }) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
@@ -355,7 +372,7 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::NotSelf => {
+                restriction::Restriction::NotSelf(_) => {
                     let Entry::Card(card) = &self.ty else {
                         continue;
                     };
@@ -364,15 +381,15 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::NumberOfCountersOnThis { .. } => {
+                restriction::Restriction::NumberOfCountersOnThis { .. } => {
                     return false;
                 }
-                Restriction::OfColor(of_colors) => {
+                restriction::Restriction::OfColor(OfColor { colors, .. }) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
 
-                    if !of_colors.iter().any(|color| {
+                    if !colors.iter().any(|color| {
                         db[*card]
                             .modified_colors
                             .contains(&color.enum_value().unwrap())
@@ -380,7 +397,9 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::OfType { types, subtypes } => {
+                restriction::Restriction::OfType(OfType {
+                    types, subtypes, ..
+                }) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
@@ -402,20 +421,20 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::OnBattlefield => {
+                restriction::Restriction::OnBattlefield(_) => {
                     return false;
                 }
-                Restriction::Power(comparison) => {
+                restriction::Restriction::Power(comparison) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
 
                     if let Some(power) = card.power(db) {
-                        if !match comparison {
-                            Comparison::LessThan(target) => power < *target,
-                            Comparison::LessThanOrEqual(target) => power <= *target,
-                            Comparison::GreaterThan(target) => power > *target,
-                            Comparison::GreaterThanOrEqual(target) => power >= *target,
+                        if !match comparison.comparison.value.as_ref().unwrap() {
+                            comparison::Value::LessThan(target) => power < target.value,
+                            comparison::Value::LessThanOrEqual(target) => power <= target.value,
+                            comparison::Value::GreaterThan(target) => power > target.value,
+                            comparison::Value::GreaterThanOrEqual(target) => power >= target.value,
                         } {
                             return false;
                         }
@@ -423,7 +442,7 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::Self_ => {
+                restriction::Restriction::Self_(_) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
@@ -432,12 +451,12 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::SourceCast => {
+                restriction::Restriction::SourceCast(_) => {
                     if db[source].cast_from.is_none() {
                         return false;
                     }
                 }
-                Restriction::SpellOrAbilityJustCast => {
+                restriction::Restriction::SpellOrAbilityJustCast(_) => {
                     match &self.ty {
                         Entry::Card(candidate) => {
                             if !Log::session(db, log_session).iter().any(|(_, entry)| {
@@ -470,10 +489,10 @@ impl StackEntry {
                         }
                     };
                 }
-                Restriction::Tapped => {
+                restriction::Restriction::Tapped(_) => {
                     return false;
                 }
-                Restriction::TargetedBy => {
+                restriction::Restriction::TargetedBy(_) => {
                     if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Targeted {
                             source: targeting,
@@ -488,22 +507,24 @@ impl StackEntry {
                         return false;
                     }
                 }
-                Restriction::Threshold => {
+                restriction::Restriction::Threshold(_) => {
                     if db.graveyard[spell_or_ability_controller].len() < 7 {
                         return false;
                     }
                 }
-                Restriction::Toughness(comparison) => {
+                restriction::Restriction::Toughness(comparison) => {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
 
                     if let Some(toughness) = card.toughness(db) {
-                        if !match comparison {
-                            Comparison::LessThan(target) => toughness < *target,
-                            Comparison::LessThanOrEqual(target) => toughness <= *target,
-                            Comparison::GreaterThan(target) => toughness > *target,
-                            Comparison::GreaterThanOrEqual(target) => toughness >= *target,
+                        if !match comparison.comparison.value.as_ref().unwrap() {
+                            comparison::Value::LessThan(target) => toughness < target.value,
+                            comparison::Value::LessThanOrEqual(target) => toughness <= target.value,
+                            comparison::Value::GreaterThan(target) => toughness > target.value,
+                            comparison::Value::GreaterThanOrEqual(target) => {
+                                toughness >= target.value
+                            }
                         } {
                             return false;
                         }

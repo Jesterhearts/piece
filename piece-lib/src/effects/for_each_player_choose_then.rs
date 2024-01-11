@@ -7,8 +7,7 @@ use crate::{
     in_play::{target_from_location, Database},
     log::Log,
     pending_results::choose_for_each_player::ChooseForEachPlayer,
-    protogen,
-    targets::Restriction,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,11 +21,7 @@ impl TryFrom<&protogen::effects::ForEachPlayerChooseThen> for ForEachPlayerChoos
 
     fn try_from(value: &protogen::effects::ForEachPlayerChooseThen) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
             effects: value
                 .effects
                 .iter()

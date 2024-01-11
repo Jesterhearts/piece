@@ -1,8 +1,10 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen, stack::ActiveTarget,
-    targets::Restriction,
+    action_result::ActionResult,
+    effects::EffectBehaviors,
+    protogen::{self, targets::Restriction},
+    stack::ActiveTarget,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,11 +17,7 @@ impl TryFrom<&protogen::effects::CantAttackThisTurn> for CantAttackThisTurn {
 
     fn try_from(value: &protogen::effects::CantAttackThisTurn) -> Result<Self, Self::Error> {
         Ok(Self {
-            retrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            retrictions: value.restrictions.clone(),
         })
     }
 }

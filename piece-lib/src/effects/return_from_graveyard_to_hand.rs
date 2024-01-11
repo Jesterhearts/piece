@@ -4,9 +4,8 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::{self, targets::Restriction},
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,11 +20,7 @@ impl TryFrom<&protogen::effects::ReturnFromGraveyardToHand> for ReturnFromGravey
     fn try_from(value: &protogen::effects::ReturnFromGraveyardToHand) -> Result<Self, Self::Error> {
         Ok(Self {
             count: usize::try_from(value.count)?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

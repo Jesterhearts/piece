@@ -6,9 +6,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::targets::{restriction, Restriction},
     protogen::{self, empty::Empty},
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,9 +65,13 @@ impl EffectBehaviors for Cycling {
             return vec![];
         }
 
-        let restrictions = [Restriction::OfType {
-            types: self.types.clone(),
-            subtypes: self.subtypes.clone(),
+        let restrictions = [Restriction {
+            restriction: Some(restriction::Restriction::from(restriction::OfType {
+                types: self.types.clone(),
+                subtypes: self.subtypes.clone(),
+                ..Default::default()
+            })),
+            ..Default::default()
         }];
 
         db.all_players[controller]

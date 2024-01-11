@@ -9,8 +9,7 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::Player,
-    protogen,
-    targets::Restriction,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,11 +31,7 @@ impl TryFrom<&protogen::effects::controller_draw_cards::Count> for Count {
             protogen::effects::controller_draw_cards::Count::NumberOfPermanentsMatching(
                 matching,
             ) => Ok(Self::NumberOfPermanentsMatching(
-                matching
-                    .restrictions
-                    .iter()
-                    .map(Restriction::try_from)
-                    .collect::<anyhow::Result<_>>()?,
+                matching.restrictions.clone(),
             )),
         }
     }

@@ -49,7 +49,6 @@ pub mod pending_results;
 pub mod player;
 pub mod protogen;
 pub mod stack;
-pub mod targets;
 pub mod triggers;
 pub mod turns;
 pub mod types;
@@ -794,7 +793,6 @@ fn deserialize_counter<'de, D>(
 where
     D: Deserializer<'de>,
 {
-    #[derive(Default)]
     struct Visit;
 
     impl<'de> Visitor<'de> for Visit {
@@ -818,5 +816,5 @@ where
         }
     }
 
-    deserializer.deserialize_str(Visit::default())
+    deserializer.deserialize_str(Visit)
 }

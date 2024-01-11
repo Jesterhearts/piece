@@ -2,8 +2,7 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     log::LogId,
-    protogen,
-    targets::Restriction,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,13 +22,7 @@ impl TryFrom<&protogen::effects::ApplyThenIfWas> for ApplyThenIfWas {
                 .iter()
                 .map(Effect::try_from)
                 .collect::<anyhow::Result<_>>()?,
-            then_if_was: value
-                .then
-                .get_or_default()
-                .if_was
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            then_if_was: value.then.get_or_default().if_was.clone(),
             then_apply: value
                 .then
                 .get_or_default()

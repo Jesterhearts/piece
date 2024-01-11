@@ -8,9 +8,13 @@ use crate::{
     effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, empty::Empty, types::Type},
+    protogen::{
+        self,
+        empty::Empty,
+        targets::{restriction, Restriction},
+        types::Type,
+    },
     stack::ActiveTarget,
-    targets::{ControllerRestriction, Restriction},
     types::TypeSet,
 };
 
@@ -143,10 +147,28 @@ impl EffectBehaviors for Equip {
                     modifier: modifier.clone(),
                     duration: EffectDuration::UntilSourceLeavesBattlefield,
                     restrictions: vec![
-                        Restriction::Controller(ControllerRestriction::Self_),
-                        Restriction::OfType {
-                            types: HashMap::from([(Type::CREATURE.value(), Empty::default())]),
-                            subtypes: Default::default(),
+                        Restriction {
+                            restriction: Some(restriction::Restriction::from(
+                                restriction::Controller {
+                                    controller: Some(restriction::controller::Controller::Self_(
+                                        Default::default(),
+                                    )),
+                                    ..Default::default()
+                                },
+                            )),
+                            ..Default::default()
+                        },
+                        Restriction {
+                            restriction: Some(restriction::Restriction::from(
+                                restriction::OfType {
+                                    types: HashMap::from([(
+                                        Type::CREATURE.value(),
+                                        Empty::default(),
+                                    )]),
+                                    ..Default::default()
+                                },
+                            )),
+                            ..Default::default()
                         },
                     ],
                 },

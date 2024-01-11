@@ -8,9 +8,8 @@ use crate::{
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen,
+    protogen::{self, targets::Restriction},
     stack::{ActiveTarget, Entry},
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,11 +22,7 @@ impl TryFrom<&protogen::effects::CopySpellOrAbility> for CopySpellOrAbility {
 
     fn try_from(value: &protogen::effects::CopySpellOrAbility) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

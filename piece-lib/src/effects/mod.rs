@@ -98,6 +98,7 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::{Controller, Owner},
+    protogen::targets::Restriction,
     protogen::{
         self,
         color::Color,
@@ -106,7 +107,6 @@ use crate::{
         types::{Subtype, Type},
     },
     stack::ActiveTarget,
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -257,11 +257,7 @@ impl TryFrom<&protogen::effects::NumberOfPermanentsMatching> for NumberOfPermane
         value: &protogen::effects::NumberOfPermanentsMatching,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }
@@ -779,11 +775,7 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementAbility {
                     anyhow!("Expected replacement effect to have a replacement specified")
                 })
                 .map(Replacing::from)?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
             effects: value
                 .effects
                 .iter()

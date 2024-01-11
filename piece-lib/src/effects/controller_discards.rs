@@ -1,6 +1,9 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, log::LogId, player::Owner, protogen,
-    targets::Restriction,
+    action_result::ActionResult,
+    effects::EffectBehaviors,
+    log::LogId,
+    player::Owner,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,11 +18,7 @@ impl TryFrom<&protogen::effects::ControllerDiscards> for ControllerDiscards {
     fn try_from(value: &protogen::effects::ControllerDiscards) -> Result<Self, Self::Error> {
         Ok(Self {
             count: usize::try_from(value.count)?,
-            unless: value
-                .unless
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            unless: value.unless.clone(),
         })
     }
 }

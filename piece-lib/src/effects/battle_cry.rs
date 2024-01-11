@@ -6,8 +6,11 @@ use crate::{
     action_result::ActionResult,
     effects::{BattlefieldModifier, EffectBehaviors, EffectDuration, ModifyBattlefield},
     in_play::ModifierId,
-    protogen::{empty::Empty, types::Type},
-    targets::{ControllerRestriction, Restriction},
+    protogen::{
+        empty::Empty,
+        targets::{restriction, Restriction},
+        types::Type,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,12 +51,35 @@ impl EffectBehaviors for BattleCry {
                 },
                 duration: EffectDuration::UntilEndOfTurn,
                 restrictions: vec![
-                    Restriction::Controller(ControllerRestriction::Self_),
-                    Restriction::Attacking,
-                    Restriction::NotSelf,
-                    Restriction::OfType {
-                        types: HashMap::from([(Type::CREATURE.value(), Empty::default())]),
-                        subtypes: Default::default(),
+                    Restriction {
+                        restriction: Some(restriction::Restriction::from(
+                            restriction::Controller {
+                                controller: Some(restriction::controller::Controller::Self_(
+                                    Default::default(),
+                                )),
+                                ..Default::default()
+                            },
+                        )),
+                        ..Default::default()
+                    },
+                    Restriction {
+                        restriction: Some(restriction::Restriction::from(
+                            restriction::Attacking::default(),
+                        )),
+                        ..Default::default()
+                    },
+                    Restriction {
+                        restriction: Some(restriction::Restriction::from(
+                            restriction::NotSelf::default(),
+                        )),
+                        ..Default::default()
+                    },
+                    Restriction {
+                        restriction: Some(restriction::Restriction::from(restriction::OfType {
+                            types: HashMap::from([(Type::CREATURE.value(), Empty::default())]),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
                     },
                 ],
             },

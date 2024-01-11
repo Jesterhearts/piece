@@ -3,8 +3,7 @@ use crate::{
     effects::{Effect, EffectBehaviors, EffectDuration},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
-    targets::Restriction,
+    protogen::{self, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,11 +18,7 @@ impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
     fn try_from(value: &protogen::effects::ExileTarget) -> Result<Self, Self::Error> {
         Ok(Self {
             duration: value.duration.get_or_default().try_into()?,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }

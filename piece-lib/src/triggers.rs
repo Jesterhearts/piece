@@ -1,9 +1,9 @@
 use crate::{
+    protogen::targets::Restriction,
     protogen::{
         self,
         triggers::{Location, TriggerSource},
     },
-    targets::Restriction,
 };
 
 #[derive(Debug, Clone)]
@@ -20,11 +20,7 @@ impl TryFrom<&protogen::triggers::Trigger> for Trigger {
         Ok(Self {
             source: value.source,
             from: value.from,
-            restrictions: value
-                .restrictions
-                .iter()
-                .map(Restriction::try_from)
-                .collect::<anyhow::Result<_>>()?,
+            restrictions: value.restrictions.clone(),
         })
     }
 }
