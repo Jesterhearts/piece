@@ -76,7 +76,6 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
         results
     }
 
-    let mut total_lines = 0;
     let mut results = vec![];
     for card_file in CARD_DEFINITIONS
         .entries()
@@ -86,11 +85,9 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
             include_dir::DirEntry::File(file) => vec![file].into_iter(),
         })
     {
-        let contents = card_file
-            .contents_utf8()
-            .ok_or_else(|| anyhow!("Non utf-8 text proto"))?;
-        total_lines += contents.lines().count();
-        let card: protogen::card::Card = serde_yaml::from_str(contents)
+        let contents = card_file.contents();
+
+        let card: protogen::card::Card = serde_yaml::from_slice(contents)
             .map_err(|e| {
                 let location = e.location().unwrap();
                 Report::build(
@@ -106,7 +103,7 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
                 .finish()
                 .eprint((
                     card_file.path().display().to_string(),
-                    Source::from(contents),
+                    Source::from(std::str::from_utf8(contents).expect("Invalid utf8")),
                 ))
                 .unwrap();
 
@@ -116,8 +113,6 @@ pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<
 
         results.push((card, card_file));
     }
-
-    debug!("Loaded {} lines", total_lines);
 
     Ok(results)
 }
