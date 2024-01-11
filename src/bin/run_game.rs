@@ -1,16 +1,15 @@
 #[macro_use]
 extern crate tracing;
 
-use std::{borrow::Cow, fs::OpenOptions};
+use std::fs::OpenOptions;
 
-use approx::ulps_eq;
 use convert_case::{Case, Casing};
 use egui::{Color32, Label, Layout, Sense, TextEdit};
 use itertools::Itertools;
 use piece::{
     ai::AI,
     battlefield::Battlefields,
-    card::{replace_symbols, Card},
+    card::replace_symbols,
     in_play::{CardId, Database},
     library::DeckDefinition,
     load_cards,
@@ -22,17 +21,27 @@ use piece::{
     ui::{self, ManaDisplay},
     Cards, FONT_DATA,
 };
-use probly_search::{score::zero_to_one, Index};
 use taffy::prelude::*;
+use tantivy::{
+    collector::TopDocs,
+    doc,
+    query::QueryParser,
+    schema::{Field, SchemaBuilder, TextFieldIndexing, TextOptions, STORED, TEXT},
+    tokenizer::RegexTokenizer,
+    Index, Searcher,
+};
 
 struct App {
     cards: Cards,
     database: Database,
     ai: AI,
-    index: Index<usize>,
 
     player1: Owner,
     player2: Owner,
+
+    searcher: Searcher,
+    parser: QueryParser,
+    name: Field,
 
     adding_card: Option<String>,
     to_resolve: Option<PendingResults>,
@@ -45,6 +54,7 @@ struct App {
 }
 
 impl App {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         cc: &eframe::CreationContext,
         cards: Cards,
@@ -52,7 +62,9 @@ impl App {
         ai: AI,
         player1: Owner,
         player2: Owner,
-        index: Index<usize>,
+        searcher: Searcher,
+        parser: QueryParser,
+        name: Field,
     ) -> Self {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
@@ -72,9 +84,11 @@ impl App {
             cards,
             database,
             ai,
-            index,
             player1,
             player2,
+            searcher,
+            parser,
+            name,
             adding_card: None,
             to_resolve: None,
             organizing_stack: false,
@@ -115,42 +129,44 @@ fn main() -> anyhow::Result<()> {
     let mut database = Database::new(all_players);
     let ai = AI::new(player2);
 
-    let mut index = Index::<usize>::new(6);
-    for (idx, card) in cards.values().enumerate() {
-        index.add_document(
-            &[
-                |card: &Card| vec![card.name.as_str()],
-                |card: &Card| vec![&*String::leak(card.cost.text())],
-                |card: &Card| card.keywords.keys().map(|k| k.as_ref()).collect_vec(),
-                |card: &Card| {
-                    card.types
-                        .iter()
-                        .map(|t| {
-                            &*String::leak(t.enum_value().unwrap().as_ref().to_case(Case::Title))
-                        })
-                        .collect_vec()
-                },
-                |card: &Card| {
-                    card.subtypes
-                        .iter()
-                        .map(|t| {
-                            &*String::leak(t.enum_value().unwrap().as_ref().to_case(Case::Title))
-                        })
-                        .collect_vec()
-                },
-                |card: &Card| vec![&*String::leak(card.document())],
-            ],
-            |title| {
-                title
-                    .split_whitespace()
-                    .map(str::to_ascii_lowercase)
-                    .map(Cow::from)
-                    .collect_vec()
-            },
-            idx,
-            card,
-        );
+    let cost_tokenizer = TextFieldIndexing::default().set_tokenizer("cost");
+    let cost_options = TextOptions::default().set_indexing_options(cost_tokenizer);
+
+    let oracle_tokenizer = TextFieldIndexing::default().set_tokenizer("oracle_text");
+    let oracle_options = TextOptions::default().set_indexing_options(oracle_tokenizer);
+
+    let mut schema = SchemaBuilder::new();
+    let name = schema.add_text_field("name", TEXT | STORED);
+    let cost = schema.add_text_field("cost", cost_options);
+    let keywords = schema.add_text_field("keywords", TEXT);
+    let types = schema.add_text_field("types", TEXT);
+    let subtypes = schema.add_text_field("subtypes", TEXT);
+    let oracle_text = schema.add_text_field("oracle_text", oracle_options);
+
+    let schema = schema.build();
+
+    let index = Index::create_in_ram(schema);
+    index
+        .tokenizers()
+        .register("cost", RegexTokenizer::new(r"[^\w\s]+")?);
+    index
+        .tokenizers()
+        .register("oracle_text", RegexTokenizer::new(r"[^\w\s]+|\w+")?);
+
+    let mut index_writer = index.writer(15_000_000)?;
+
+    for card in cards.values() {
+        index_writer.add_document(doc!(
+            name => card.name.as_str(),
+            cost => card.cost.text(),
+            keywords => card.keywords.keys().map(|k| k.to_case(Case::Lower)).join(", "),
+            types => card.types.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
+            subtypes => card.subtypes.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
+            oracle_text => card.document(),
+        ))?;
     }
+
+    index_writer.commit()?;
 
     let land1 = CardId::upload(&mut database, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut database, &cards, player1, "Forest");
@@ -226,10 +242,26 @@ fn main() -> anyhow::Result<()> {
     }
     database.all_players[player1].library = def.build_deck(&mut database, &cards, player1);
 
+    let reader = index.reader()?;
+    let searcher = reader.searcher();
+    let mut parser = QueryParser::for_index(
+        &index,
+        vec![name, cost, keywords, types, subtypes, oracle_text],
+    );
+    parser.set_field_boost(name, 10.0);
+    parser.set_field_boost(cost, 10.0);
+    parser.set_field_fuzzy(name, true, 1, false);
+    parser.set_field_fuzzy(cost, true, 0, false);
+    parser.set_field_fuzzy(oracle_text, true, 1, false);
+
     eframe::run_native(
         "Piece MTG",
         eframe::NativeOptions::default(),
-        Box::new(move |cc| Box::new(App::new(cc, cards, database, ai, player1, player2, index))),
+        Box::new(move |cc| {
+            Box::new(App::new(
+                cc, cards, database, ai, player1, player2, searcher, parser, name,
+            ))
+        }),
     )
     .unwrap();
 
@@ -1016,38 +1048,37 @@ impl eframe::App for App {
                         *adding = replace_symbols(adding);
                     }
 
-                    let search = self.index.query(
-                        adding,
-                        &mut zero_to_one::new(),
-                        |title| {
-                            title
-                                .split_whitespace()
-                                .map(str::to_ascii_lowercase)
-                                .map(Cow::from)
-                                .collect_vec()
-                        },
-                        &[1., 1., 0.25, 0.5, 0.5, 0.75],
-                    );
-                    let top = search.get(0).map(|result| result.key);
+                    let query = self.parser.parse_query_lenient(adding).0;
+                    let top_docs = self
+                        .searcher
+                        .search(&query, &TopDocs::with_limit(10))
+                        .unwrap();
+
+                    let top = top_docs.get(0).map(|(_, addr)| {
+                        self.searcher
+                            .doc(*addr)
+                            .unwrap()
+                            .get_first(self.name)
+                            .unwrap()
+                            .as_text()
+                            .unwrap()
+                            .to_owned()
+                    });
 
                     let mut inspecting = None;
                     let mut clicked = None;
-                    for result in search
-                        .into_iter()
-                        .take(10)
-                        .sorted_by(|l, r| {
-                            if ulps_eq!(l.score, r.score) {
-                                l.key.cmp(&r.key)
-                            } else {
-                                r.score.partial_cmp(&l.score).unwrap()
-                            }
-                        })
-                        .map(|result| result.key)
-                    {
-                        let label = ui.add(
-                            Label::new(format!("•\t{}", self.cards.get_index(result).unwrap().0))
-                                .sense(Sense::click()),
-                        );
+                    for result in top_docs.into_iter().map(|(_, addr)| {
+                        self.searcher
+                            .doc(addr)
+                            .unwrap()
+                            .get_first(self.name)
+                            .unwrap()
+                            .as_text()
+                            .unwrap()
+                            .to_owned()
+                    }) {
+                        let label =
+                            ui.add(Label::new(format!("•\t{}", result)).sense(Sense::click()));
                         if label.clicked() {
                             clicked = Some(result);
                         } else if label.clicked_by(egui::PointerButton::Secondary) {
@@ -1061,10 +1092,10 @@ impl eframe::App for App {
                     {
                         let adding = if is_valid {
                             &*adding
-                        } else if let Some(clicked) = clicked {
-                            self.cards.get_index(clicked).unwrap().0
+                        } else if let Some(clicked) = clicked.as_ref() {
+                            clicked
                         } else {
-                            self.cards.get_index(top.unwrap()).unwrap().0
+                            top.as_ref().unwrap()
                         };
 
                         let card =
@@ -1076,7 +1107,7 @@ impl eframe::App for App {
                             &mut self.database,
                             &self.cards,
                             self.player1,
-                            self.cards.get_index(inspecting).unwrap().0,
+                            &inspecting,
                         );
                         self.inspecting_card = Some(card);
                     }
