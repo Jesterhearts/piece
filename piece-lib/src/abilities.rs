@@ -44,7 +44,7 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AddKeywordsIf {
-    pub(crate) keywords: HashMap<String, u32>,
+    pub(crate) keywords: HashMap<i32, u32>,
     pub(crate) restrictions: Vec<Restriction>,
 }
 

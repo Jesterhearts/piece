@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use protobuf::Enum;
+
 use crate::{
     action_result::ActionResult,
     effects::{BattlefieldModifier, EffectBehaviors, EffectDuration, ModifyBattlefield},
@@ -50,10 +52,7 @@ impl EffectBehaviors for BattleCry {
                     Restriction::Attacking,
                     Restriction::NotSelf,
                     Restriction::OfType {
-                        types: HashMap::from([(
-                            Type::CREATURE.as_ref().to_string(),
-                            Empty::default(),
-                        )]),
+                        types: HashMap::from([(Type::CREATURE.value(), Empty::default())]),
                         subtypes: Default::default(),
                     },
                 ],

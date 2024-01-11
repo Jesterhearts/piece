@@ -311,11 +311,11 @@ pub(crate) struct ModifyBattlefield {
 
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
 
-    pub(crate) add_types: HashMap<String, Empty>,
-    pub(crate) add_subtypes: HashMap<String, Empty>,
+    pub(crate) add_types: HashMap<i32, Empty>,
+    pub(crate) add_subtypes: HashMap<i32, Empty>,
 
-    pub(crate) remove_types: HashMap<String, Empty>,
-    pub(crate) remove_subtypes: HashMap<String, Empty>,
+    pub(crate) remove_types: HashMap<i32, Empty>,
+    pub(crate) remove_subtypes: HashMap<i32, Empty>,
 
     pub(crate) add_colors: Vec<protobuf::EnumOrUnknown<Color>>,
 
@@ -331,8 +331,8 @@ pub(crate) struct ModifyBattlefield {
     pub(crate) entire_battlefield: bool,
     pub(crate) global: bool,
 
-    pub(crate) add_keywords: HashMap<String, u32>,
-    pub(crate) remove_keywords: HashMap<String, u32>,
+    pub(crate) add_keywords: HashMap<i32, u32>,
+    pub(crate) remove_keywords: HashMap<i32, u32>,
 }
 
 impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
@@ -684,7 +684,7 @@ pub(crate) struct TokenCreature {
     pub(crate) types: Vec<protobuf::EnumOrUnknown<Type>>,
     pub(crate) subtypes: Vec<protobuf::EnumOrUnknown<Subtype>>,
     pub(crate) colors: Vec<protobuf::EnumOrUnknown<Color>>,
-    pub(crate) keywords: HashMap<String, u32>,
+    pub(crate) keywords: HashMap<i32, u32>,
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
     pub(crate) power: usize,
     pub(crate) toughness: usize,

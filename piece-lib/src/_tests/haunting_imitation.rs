@@ -1,5 +1,6 @@
 use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
+use protobuf::Enum;
 
 use crate::{
     in_play::{CardId, Database},
@@ -64,9 +65,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(token.toughness(&db), Some(1));
     assert_eq!(
         db[token].modified_keywords,
-        [(Keyword::FLYING.as_ref().to_string(), 1)]
-            .into_iter()
-            .collect()
+        [(Keyword::FLYING.value(), 1)].into_iter().collect()
     );
 
     Ok(())

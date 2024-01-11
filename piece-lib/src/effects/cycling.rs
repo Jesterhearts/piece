@@ -13,8 +13,8 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Cycling {
-    types: HashMap<String, Empty>,
-    subtypes: HashMap<String, Empty>,
+    types: HashMap<i32, Empty>,
+    subtypes: HashMap<i32, Empty>,
 }
 
 impl TryFrom<&protogen::effects::Cycling> for Cycling {

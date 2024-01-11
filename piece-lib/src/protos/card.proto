@@ -40,7 +40,7 @@ message Card {
   optional int32 toughness = 20;
   bool etb_tapped = 21;
 
-  map<string, uint32> keywords = 22;
+  map<int32, uint32> keywords = 22;
 
   repeated targets.Restriction restrictions = 23;
 

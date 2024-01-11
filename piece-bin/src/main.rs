@@ -17,11 +17,12 @@ use piece_lib::{
     library::DeckDefinition,
     pending_results::{PendingResults, ResolutionResult},
     player::{AllPlayers, Owner, Player},
-    protogen::targets::Location,
+    protogen::{keywords::Keyword, targets::Location},
     stack::Stack,
     turns::Turn,
     Cards, FONT_DATA,
 };
+use protobuf::Enum;
 use taffy::prelude::*;
 use tantivy::{
     collector::TopDocs,
@@ -166,7 +167,7 @@ fn main() -> anyhow::Result<()> {
         index_writer.add_document(doc!(
             name => card.name.as_str(),
             cost => card.cost.text(),
-            keywords => card.keywords.keys().map(|k| k.to_case(Case::Lower)).join(", "),
+            keywords => card.keywords.keys().map(|k| Keyword::from_i32(*k).unwrap().as_ref().to_case(Case::Lower)).join(", "),
             types => card.types.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
             subtypes => card.subtypes.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
             oracle_text => card.document(),

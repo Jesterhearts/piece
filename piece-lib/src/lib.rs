@@ -486,13 +486,13 @@ where
     }
 }
 
-fn deserialize_types<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
+fn deserialize_types<'de, D>(deserializer: D) -> Result<HashMap<i32, Empty>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visit;
     impl<'de> Visitor<'de> for Visit {
-        type Value = HashMap<String, Empty>;
+        type Value = HashMap<i32, Empty>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("expected a comma separate sequence of types")
@@ -508,7 +508,7 @@ where
                     Type::from_str(&ty.to_case(Case::ScreamingSnake))
                         .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
-                .map(|type_| type_.map(|type_| (type_.as_ref().to_string(), Empty::default())))
+                .map(|type_| type_.map(|type_| (type_.value(), Empty::default())))
                 .collect::<Result<Self::Value, E>>()
         }
     }
@@ -516,7 +516,7 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-fn serialize_types<S>(value: &HashMap<String, Empty>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_types<S>(value: &HashMap<i32, Empty>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -524,18 +524,18 @@ where
         &value
             .keys()
             .sorted()
-            .map(|ty| ty.to_case(Case::Title))
+            .map(|ty| Type::from_i32(*ty).unwrap().as_ref().to_case(Case::Title))
             .join(", "),
     )
 }
 
-fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<HashMap<String, Empty>, D::Error>
+fn deserialize_subtypes<'de, D>(deserializer: D) -> Result<HashMap<i32, Empty>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visit;
     impl<'de> Visitor<'de> for Visit {
-        type Value = HashMap<String, Empty>;
+        type Value = HashMap<i32, Empty>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("expected a comma separate sequence of subtypes")
@@ -551,9 +551,7 @@ where
                     Subtype::from_str(&ty.to_case(Case::ScreamingSnake))
                         .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
-                .map(|subtype| {
-                    subtype.map(|subtype| (subtype.as_ref().to_string(), Empty::default()))
-                })
+                .map(|subtype| subtype.map(|subtype| (subtype.value(), Empty::default())))
                 .collect::<Result<Self::Value, E>>()
         }
     }
@@ -561,7 +559,7 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-fn serialize_subtypes<S>(value: &HashMap<String, Empty>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_subtypes<S>(value: &HashMap<i32, Empty>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -569,18 +567,23 @@ where
         &value
             .keys()
             .sorted()
-            .map(|ty| ty.to_case(Case::Title))
+            .map(|ty| {
+                Subtype::from_i32(*ty)
+                    .unwrap()
+                    .as_ref()
+                    .to_case(Case::Title)
+            })
             .join(", "),
     )
 }
 
-fn deserialize_keywords<'de, D>(deserializer: D) -> Result<HashMap<String, u32>, D::Error>
+fn deserialize_keywords<'de, D>(deserializer: D) -> Result<HashMap<i32, u32>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visit;
     impl<'de> Visitor<'de> for Visit {
-        type Value = HashMap<String, u32>;
+        type Value = HashMap<i32, u32>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("expected a comma separate sequence of keywords")
@@ -598,7 +601,7 @@ where
                     Keyword::from_str(&ty.to_case(Case::ScreamingSnake))
                         .ok_or_else(|| E::custom(format!("Unknown variant: {}", ty)))
                 })
-                .map(|keyword| keyword.map(|keyword| keyword.as_ref().to_string()))
+                .map(|keyword| keyword.map(|keyword| keyword.value()))
             {
                 *result.entry(kw?).or_default() += 1;
             }
@@ -610,7 +613,7 @@ where
     deserializer.deserialize_str(Visit)
 }
 
-fn serialize_keywords<S>(value: &HashMap<String, u32>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_keywords<S>(value: &HashMap<i32, u32>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -618,7 +621,13 @@ where
         &value
             .iter()
             .flat_map(|(kw, count)| {
-                std::iter::repeat(kw.to_case(Case::Title)).take((*count) as usize)
+                std::iter::repeat(
+                    Keyword::from_i32(*kw)
+                        .unwrap()
+                        .as_ref()
+                        .to_case(Case::Title),
+                )
+                .take((*count) as usize)
             })
             .sorted()
             .join(", "),

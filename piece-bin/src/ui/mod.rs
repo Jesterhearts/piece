@@ -8,9 +8,10 @@ use piece_lib::{
     in_play::{CardId, Database},
     pending_results::PendingResults,
     player::Owner,
-    protogen::targets::Location,
+    protogen::{keywords::Keyword, targets::Location},
     turns::Turn,
 };
+use protobuf::Enum;
 
 pub struct Card<'db> {
     pub db: &'db Database,
@@ -90,7 +91,7 @@ impl Widget for Card<'_> {
         let keywords = source
             .modified_keywords
             .keys()
-            .map(|k| k.to_case(Case::Title))
+            .map(|k| Keyword::from_i32(*k).unwrap().as_ref().to_case(Case::Title))
             .join(", ");
         let has_keywords = !keywords.is_empty();
 

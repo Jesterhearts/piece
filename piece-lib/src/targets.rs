@@ -160,10 +160,10 @@ pub(crate) enum Restriction {
     ManaSpentFromSource(protobuf::EnumOrUnknown<ManaSource>),
     NonToken,
     NotChosen,
-    NotKeywords(HashMap<String, u32>),
+    NotKeywords(HashMap<i32, u32>),
     NotOfType {
-        types: HashMap<String, Empty>,
-        subtypes: HashMap<String, Empty>,
+        types: HashMap<i32, Empty>,
+        subtypes: HashMap<i32, Empty>,
     },
     NotSelf,
     NumberOfCountersOnThis {
@@ -172,8 +172,8 @@ pub(crate) enum Restriction {
     },
     OfColor(Vec<protobuf::EnumOrUnknown<Color>>),
     OfType {
-        types: HashMap<String, Empty>,
-        subtypes: HashMap<String, Empty>,
+        types: HashMap<i32, Empty>,
+        subtypes: HashMap<i32, Empty>,
     },
     OnBattlefield,
     Power(Comparison),

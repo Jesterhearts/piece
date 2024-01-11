@@ -6,6 +6,7 @@ use std::{
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexMap;
 use itertools::Itertools;
+use protobuf::Enum;
 use tracing::Level;
 
 use crate::{
@@ -341,7 +342,7 @@ impl StackEntry {
                         && db[*card]
                             .modified_types
                             .iter()
-                            .any(|ty| types.contains_key(ty.as_ref()))
+                            .any(|ty| types.contains_key(&ty.value()))
                     {
                         return false;
                     }
@@ -349,7 +350,7 @@ impl StackEntry {
                         && db[*card]
                             .modified_subtypes
                             .iter()
-                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                            .any(|ty| subtypes.contains_key(&ty.value()))
                     {
                         return false;
                     }
@@ -388,7 +389,7 @@ impl StackEntry {
                         && !db[*card]
                             .modified_types
                             .iter()
-                            .any(|ty| types.contains_key(ty.as_ref()))
+                            .any(|ty| types.contains_key(&ty.value()))
                     {
                         return false;
                     }
@@ -396,7 +397,7 @@ impl StackEntry {
                         && !db[*card]
                             .modified_subtypes
                             .iter()
-                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                            .any(|ty| subtypes.contains_key(&ty.value()))
                     {
                         return false;
                     }
@@ -540,7 +541,7 @@ impl Stack {
         {
             db[*card]
                 .modified_keywords
-                .contains_key(Keyword::SPLIT_SECOND.as_ref())
+                .contains_key(&Keyword::SPLIT_SECOND.value())
         } else {
             false
         }

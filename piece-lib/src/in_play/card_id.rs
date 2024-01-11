@@ -226,7 +226,7 @@ pub struct CardInPlay {
     pub modified_types: TypeSet,
     pub modified_subtypes: SubtypeSet,
     pub(crate) modified_colors: HashSet<Color>,
-    pub modified_keywords: HashMap<String, u32>,
+    pub modified_keywords: HashMap<i32, u32>,
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
     pub modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
     pub modified_etb_abilities: Vec<AnyEffect>,
@@ -880,7 +880,7 @@ impl CardId {
                         .modifier
                         .add_types
                         .keys()
-                        .map(|ty| Type::from_str(ty).unwrap()),
+                        .map(|ty| Type::from_i32(*ty).unwrap()),
                 );
             }
 
@@ -892,7 +892,7 @@ impl CardId {
                         .modifier
                         .add_subtypes
                         .keys()
-                        .map(|ty| Subtype::from_str(ty).unwrap()),
+                        .map(|ty| Subtype::from_i32(*ty).unwrap()),
                 );
             }
 
@@ -903,7 +903,7 @@ impl CardId {
                         .modifier
                         .modifier
                         .remove_types
-                        .contains_key(ty.as_ref())
+                        .contains_key(&ty.value())
                 });
             }
 
@@ -919,7 +919,7 @@ impl CardId {
                         .modifier
                         .modifier
                         .remove_subtypes
-                        .contains_key(ty.as_ref())
+                        .contains_key(&ty.value())
                 });
             }
 
@@ -1073,7 +1073,7 @@ impl CardId {
 
         for add in add_keywords {
             for (kw, count) in add.iter() {
-                *keywords.entry(kw.clone()).or_default() += count;
+                *keywords.entry(*kw).or_default() += count;
             }
         }
 
@@ -1403,7 +1403,7 @@ impl CardId {
         self_controller: Controller,
         self_types: &TypeSet,
         self_subtypes: &SubtypeSet,
-        self_keywords: &HashMap<String, u32>,
+        self_keywords: &HashMap<i32, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &HashSet<ActivatedAbilityId>,
     ) -> usize {
@@ -1520,7 +1520,7 @@ impl CardId {
         restrictions: &[Restriction],
         self_types: &TypeSet,
         self_subtypes: &SubtypeSet,
-        self_keywords: &HashMap<String, u32>,
+        self_keywords: &HashMap<i32, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &HashSet<ActivatedAbilityId>,
         self_power: Option<i32>,
@@ -1718,14 +1718,14 @@ impl CardId {
                 }
                 Restriction::NotOfType { types, subtypes } => {
                     if !types.is_empty()
-                        && self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
+                        && self_types.iter().any(|ty| types.contains_key(&ty.value()))
                     {
                         return false;
                     }
                     if !subtypes.is_empty()
                         && self_subtypes
                             .iter()
-                            .any(|subtype| subtypes.contains_key(subtype.as_ref()))
+                            .any(|subtype| subtypes.contains_key(&subtype.value()))
                     {
                         return false;
                     }
@@ -1764,14 +1764,14 @@ impl CardId {
                 }
                 Restriction::OfType { types, subtypes } => {
                     if !types.is_empty()
-                        && !self_types.iter().any(|ty| types.contains_key(ty.as_ref()))
+                        && !self_types.iter().any(|ty| types.contains_key(&ty.value()))
                     {
                         return false;
                     }
                     if !subtypes.is_empty()
                         && !self_subtypes
                             .iter()
-                            .any(|ty| subtypes.contains_key(ty.as_ref()))
+                            .any(|ty| subtypes.contains_key(&ty.value()))
                     {
                         return false;
                     }
@@ -2117,32 +2117,32 @@ impl CardId {
     pub(crate) fn shroud(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::SHROUD.as_ref())
+            .contains_key(&Keyword::SHROUD.value())
     }
 
     pub(crate) fn hexproof(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::HEXPROOF.as_ref())
+            .contains_key(&Keyword::HEXPROOF.value())
     }
 
     #[allow(unused)]
     pub(crate) fn flying(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::FLYING.as_ref())
+            .contains_key(&Keyword::FLYING.value())
     }
 
     pub(crate) fn indestructible(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::INDESTRUCTIBLE.as_ref())
+            .contains_key(&Keyword::INDESTRUCTIBLE.value())
     }
 
     pub(crate) fn vigilance(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::VIGILANCE.as_ref())
+            .contains_key(&Keyword::VIGILANCE.value())
     }
 
     pub fn name(self, db: &Database) -> &String {
@@ -2152,7 +2152,7 @@ impl CardId {
     pub(crate) fn has_flash(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
-            .contains_key(Keyword::FLASH.as_ref())
+            .contains_key(&Keyword::FLASH.value())
     }
 
     pub fn pt_text(&self, db: &Database) -> Option<String> {
@@ -2191,7 +2191,7 @@ impl CardId {
     pub(crate) fn cascade(self, db: &mut Database) -> u32 {
         db[self]
             .modified_keywords
-            .get(Keyword::CASCADE.as_ref())
+            .get(&Keyword::CASCADE.value())
             .copied()
             .unwrap_or_default()
     }
@@ -2230,7 +2230,7 @@ impl CardId {
     pub(crate) fn battle_cry(self, db: &Database) -> u32 {
         db[self]
             .modified_keywords
-            .get(Keyword::BATTLE_CRY.as_ref())
+            .get(&Keyword::BATTLE_CRY.value())
             .copied()
             .unwrap_or_default()
     }

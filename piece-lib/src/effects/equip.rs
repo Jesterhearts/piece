@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
+use protobuf::Enum;
 
 use crate::{
     action_result::ActionResult,
@@ -144,10 +145,7 @@ impl EffectBehaviors for Equip {
                     restrictions: vec![
                         Restriction::Controller(ControllerRestriction::Self_),
                         Restriction::OfType {
-                            types: HashMap::from([(
-                                Type::CREATURE.as_ref().to_string(),
-                                Empty::default(),
-                            )]),
+                            types: HashMap::from([(Type::CREATURE.value(), Empty::default())]),
                             subtypes: Default::default(),
                         },
                     ],

@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::OnceLock};
 use aho_corasick::AhoCorasick;
 use convert_case::{Case, Casing};
 use itertools::Itertools;
+use protobuf::Enum;
 
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
@@ -15,6 +16,7 @@ use crate::{
         self,
         color::Color,
         cost::ManaCost,
+        keywords::Keyword,
         types::{Subtype, Type},
     },
     targets::Restriction,
@@ -70,7 +72,7 @@ pub struct Card {
 
     pub(crate) etb_tapped: bool,
 
-    pub keywords: HashMap<String, u32>,
+    pub keywords: HashMap<i32, u32>,
 
     pub(crate) restrictions: Vec<Restriction>,
 
@@ -80,10 +82,16 @@ pub struct Card {
 impl Card {
     pub fn document(&self) -> String {
         let cost_text = self.cost.text();
+        let keywords = self
+            .keywords
+            .keys()
+            .map(|k| Keyword::from_i32(*k).unwrap())
+            .collect_vec();
+
         [
             std::iter::once(self.name.as_str())
                 .chain(std::iter::once(cost_text.as_str()))
-                .chain(self.keywords.keys().map(String::as_str))
+                .chain(keywords.iter().map(|kw| kw.as_ref()))
                 .chain(std::iter::once(self.oracle_text.as_str()))
                 .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
                 .chain(

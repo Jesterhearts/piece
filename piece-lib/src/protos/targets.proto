@@ -53,11 +53,11 @@ message Restriction {
   message NonToken {}
   message NotChosen {}
   message NotKeywords {
-    map<string, uint32> keywords = 1;
+    map<int32, uint32> keywords = 1;
   }
   message NotOfType {
-    map<string, empty.Empty> types = 1;
-    map<string, empty.Empty> subtypes = 2;
+    map<int32, empty.Empty> types = 1;
+    map<int32, empty.Empty> subtypes = 2;
   }
   message NotSelf {}
   message NumberOfCountersOnThis {
@@ -68,8 +68,8 @@ message Restriction {
     repeated color.Color colors = 1;
   }
   message OfType {
-    map<string, empty.Empty> types = 1;
-    map<string, empty.Empty> subtypes = 2;
+    map<int32, empty.Empty> types = 1;
+    map<int32, empty.Empty> subtypes = 2;
   }
   message OnBattlefield {}
   message Power {
