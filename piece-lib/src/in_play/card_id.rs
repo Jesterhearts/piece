@@ -18,7 +18,6 @@ use crate::{
     battlefield::Battlefields,
     card::{replace_symbols, BasePowerType, BaseToughnessType, Card},
     cost::{AbilityCost, CastingCost},
-    counters::Counter,
     effects::{
         AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, ReplacementAbility,
         Replacing, Token,
@@ -32,6 +31,7 @@ use crate::{
     player::{Controller, Owner},
     protogen::{
         color::Color,
+        counters::Counter,
         keywords::Keyword,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::Location,
@@ -290,11 +290,11 @@ impl CardInPlay {
             let amount = self.counters.get(&counter).copied().unwrap_or_default();
             if amount > 0 {
                 results.push(match counter {
-                    Counter::Charge => format!("Charge x{}", amount),
-                    Counter::Net => format!("Net x{}", amount),
+                    Counter::CHARGE => format!("Charge x{}", amount),
+                    Counter::NET => format!("Net x{}", amount),
                     Counter::P1P1 => format!("+1/+1 x{}", amount),
                     Counter::M1M1 => format!("-1/-1 x{}", amount),
-                    Counter::Any => format!("{} total counters", amount),
+                    Counter::ANY => format!("{} total counters", amount),
                 });
             }
         }
@@ -1409,12 +1409,12 @@ impl CardId {
     ) -> usize {
         match dynamic {
             DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
-                if let Counter::Any = counter {
+                if let Counter::ANY = counter.enum_value().unwrap() {
                     db[source].counters.values().sum::<usize>()
                 } else {
                     db[source]
                         .counters
-                        .get(counter)
+                        .get(&counter.enum_value().unwrap())
                         .copied()
                         .unwrap_or_default()
                 }
@@ -1739,10 +1739,14 @@ impl CardId {
                     comparison,
                     counter,
                 } => {
-                    let count = if let Counter::Any = counter {
+                    let count = if let Counter::ANY = counter.enum_value().unwrap() {
                         db[self].counters.values().sum::<usize>()
                     } else {
-                        db[self].counters.get(counter).copied().unwrap_or_default()
+                        db[self]
+                            .counters
+                            .get(&counter.enum_value().unwrap())
+                            .copied()
+                            .unwrap_or_default()
                     } as i32;
                     let matched = match comparison {
                         Comparison::LessThan(value) => count < *value,
@@ -1902,10 +1906,14 @@ impl CardId {
     fn dynamic_power_toughness(self, db: &Database, dynamic: &DynamicPowerToughness) -> usize {
         match dynamic {
             DynamicPowerToughness::NumberOfCountersOnThis(counter) => {
-                if let Counter::Any = counter {
+                if let Counter::ANY = counter.enum_value().unwrap() {
                     db[self].counters.values().sum::<usize>()
                 } else {
-                    db[self].counters.get(counter).copied().unwrap_or_default()
+                    db[self]
+                        .counters
+                        .get(&counter.enum_value().unwrap())
+                        .copied()
+                        .unwrap_or_default()
                 }
             }
             DynamicPowerToughness::NumberOfPermanentsMatching(matching) => db

@@ -1,8 +1,7 @@
 use anyhow::anyhow;
 
 use crate::{
-    counters::Counter,
-    protogen::{self, color::Color, cost::ManaCost},
+    protogen::{self, color::Color, cost::ManaCost, counters::Counter},
     targets::Restriction,
 };
 
@@ -127,7 +126,7 @@ pub(crate) enum AdditionalCost {
     SacrificeSource,
     PayLife(PayLife),
     RemoveCounter {
-        counter: Counter,
+        counter: protobuf::EnumOrUnknown<Counter>,
         count: usize,
     },
     SacrificePermanent(Vec<Restriction>),
@@ -218,7 +217,7 @@ impl TryFrom<&protogen::cost::additional_cost::Cost> for AdditionalCost {
             }
             protogen::cost::additional_cost::Cost::RemoveCounters(value) => {
                 Ok(Self::RemoveCounter {
-                    counter: (&value.counter).try_into()?,
+                    counter: value.counter,
                     count: usize::try_from(value.count)?,
                 })
             }

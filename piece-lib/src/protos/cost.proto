@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package cost;
 
+import "counters.proto";
 import "mana.proto";
 import "targets.proto";
 import "types.proto";
@@ -37,7 +38,7 @@ message AdditionalCost {
     int32 count = 1;
   }
   message RemoveCounters {
-    string counter = 1;
+    counters.Counter counter = 1;
     int32 count = 2;
   }
   message SacrificePermanent {

@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use tracing::Level;
 
 use crate::{
-    counters::Counter,
     effects::EffectBehaviors,
     in_play::{ActivatedAbilityId, CardId, Database},
     player::{Controller, Owner},
+    protogen::counters::Counter,
     targets::Restriction,
 };
 

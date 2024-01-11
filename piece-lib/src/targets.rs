@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
 
-use crate::{
-    counters::Counter,
-    protogen::{self, color::Color, empty::Empty, mana::ManaSource, targets::Location},
+use crate::protogen::{
+    self, color::Color, counters::Counter, empty::Empty, mana::ManaSource, targets::Location,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -168,7 +167,7 @@ pub(crate) enum Restriction {
     NotSelf,
     NumberOfCountersOnThis {
         comparison: Comparison,
-        counter: Counter,
+        counter: protobuf::EnumOrUnknown<Counter>,
     },
     OfColor(Vec<protobuf::EnumOrUnknown<Color>>),
     OfType {
@@ -269,7 +268,7 @@ impl TryFrom<&protogen::targets::restriction::Restriction> for Restriction {
             protogen::targets::restriction::Restriction::NumberOfCountersOnThis(value) => {
                 Ok(Self::NumberOfCountersOnThis {
                     comparison: value.comparison.get_or_default().try_into()?,
-                    counter: (&value.counter).try_into()?,
+                    counter: value.counter,
                 })
             }
             protogen::targets::restriction::Restriction::OfColor(colors) => {

@@ -42,7 +42,15 @@ fn main() {
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {
-            if field.name() == "typeline" {
+            if field.name() == "counter" && field.proto().type_() == Type::TYPE_ENUM {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_counter",
+                        deserialize_with="crate::deserialize_counter",
+                    )]"#,
+                )
+            } else if field.name() == "typeline" {
                 Customize::default().before(
                     r#"#[serde(
                         default,

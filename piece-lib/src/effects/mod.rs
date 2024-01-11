@@ -65,7 +65,6 @@ use itertools::Itertools;
 use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
     card::replace_symbols,
-    counters::Counter,
     effects::{
         apply_then_if_was::ApplyThenIfWas, battle_cry::BattleCry,
         cant_attack_this_turn::CantAttackThisTurn, cascade::Cascade,
@@ -102,6 +101,7 @@ use crate::{
     protogen::{
         self,
         color::Color,
+        counters::Counter,
         empty::Empty,
         types::{Subtype, Type},
     },
@@ -268,7 +268,7 @@ impl TryFrom<&protogen::effects::NumberOfPermanentsMatching> for NumberOfPermane
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DynamicPowerToughness {
-    NumberOfCountersOnThis(Counter),
+    NumberOfCountersOnThis(protobuf::EnumOrUnknown<Counter>),
     NumberOfPermanentsMatching(NumberOfPermanentsMatching),
 }
 
@@ -292,7 +292,7 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPow
     ) -> Result<Self, Self::Error> {
         match value {
             protogen::effects::dynamic_power_toughness::Source::NumberOfCountersOnThis(counter) => {
-                Ok(Self::NumberOfCountersOnThis((&counter.counter).try_into()?))
+                Ok(Self::NumberOfCountersOnThis(counter.counter))
             }
             protogen::effects::dynamic_power_toughness::Source::NumberOfPermanentsMatching(
                 value,

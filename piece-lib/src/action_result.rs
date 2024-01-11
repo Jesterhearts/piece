@@ -11,7 +11,6 @@ use crate::{
         complete_add_from_exile, complete_add_from_graveyard, complete_add_from_library,
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
-    counters::Counter,
     effects::{
         battle_cry::BattleCry,
         cascade::Cascade,
@@ -29,6 +28,7 @@ use crate::{
     },
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
+        counters::Counter,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::Location,
         triggers::{self, TriggerSource},
@@ -52,7 +52,7 @@ pub(crate) enum ActionResult {
         source: CardId,
         target: CardId,
         count: GainCount,
-        counter: Counter,
+        counter: protobuf::EnumOrUnknown<Counter>,
     },
     AddModifier {
         modifier: ModifierId,
@@ -203,7 +203,7 @@ pub(crate) enum ActionResult {
     PlayerLoses(Owner),
     RemoveCounters {
         target: CardId,
-        counter: Counter,
+        counter: protobuf::EnumOrUnknown<Counter>,
         count: usize,
     },
     ReturnFromBattlefieldToLibrary {
@@ -525,9 +525,12 @@ impl ActionResult {
                 counter,
                 count,
             } => {
-                *db[*target].counters.entry(*counter).or_default() = db[*target]
+                *db[*target]
                     .counters
-                    .entry(*counter)
+                    .entry(counter.enum_value().unwrap())
+                    .or_default() = db[*target]
+                    .counters
+                    .entry(counter.enum_value().unwrap())
                     .or_default()
                     .saturating_sub(*count);
                 PendingResults::default()
@@ -540,16 +543,25 @@ impl ActionResult {
             } => {
                 match count {
                     GainCount::Single => {
-                        *db[*target].counters.entry(*counter).or_default() += 1;
+                        *db[*target]
+                            .counters
+                            .entry(counter.enum_value().unwrap())
+                            .or_default() += 1;
                     }
                     GainCount::Multiple(count) => {
-                        *db[*target].counters.entry(*counter).or_default() += *count;
+                        *db[*target]
+                            .counters
+                            .entry(counter.enum_value().unwrap())
+                            .or_default() += *count;
                     }
                     GainCount::Dynamic(dynamic) => match dynamic {
                         DynamicCounter::X => {
                             let x = source.get_x(db);
                             if x > 0 {
-                                *db[*target].counters.entry(*counter).or_default() += x;
+                                *db[*target]
+                                    .counters
+                                    .entry(counter.enum_value().unwrap())
+                                    .or_default() += x;
                             }
                         }
                         DynamicCounter::LeftBattlefieldThisTurn { restrictions } => {
@@ -565,7 +577,10 @@ impl ActionResult {
                                 })
                                 .count();
                             if x > 0 {
-                                *db[*target].counters.entry(*counter).or_default() += x;
+                                *db[*target]
+                                    .counters
+                                    .entry(counter.enum_value().unwrap())
+                                    .or_default() += x;
                             }
                         }
                     },

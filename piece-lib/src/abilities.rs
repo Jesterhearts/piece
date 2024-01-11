@@ -7,7 +7,6 @@ use itertools::Itertools;
 use crate::{
     card::replace_symbols,
     cost::{AbilityCost, AbilityRestriction, AdditionalCost},
-    counters::Counter,
     effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
     log::LogId,
@@ -15,6 +14,7 @@ use crate::{
     player::{mana_pool::SpendReason, Owner},
     protogen::{
         self,
+        counters::Counter,
         mana::ManaSource,
         mana::{Mana, ManaRestriction},
     },
@@ -521,12 +521,12 @@ pub(crate) fn can_pay_costs(
                 }
             }
             AdditionalCost::RemoveCounter { counter, count } => {
-                let counters = if let Counter::Any = counter {
+                let counters = if let Counter::ANY = counter.enum_value().unwrap() {
                     db[source].counters.values().sum::<usize>()
                 } else {
                     db[source]
                         .counters
-                        .get(counter)
+                        .get(&counter.enum_value().unwrap())
                         .copied()
                         .unwrap_or_default()
                 };

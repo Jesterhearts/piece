@@ -4,11 +4,10 @@ use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
-    counters::Counter,
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::{self, counters::Counter},
     stack::ActiveTarget,
     targets::Restriction,
 };
@@ -78,7 +77,7 @@ impl TryFrom<&protogen::effects::gain_counter::Count> for GainCount {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TargetGainsCounters {
     count: GainCount,
-    counter: Counter,
+    counter: protobuf::EnumOrUnknown<Counter>,
     restrictions: Vec<Restriction>,
 }
 
@@ -92,7 +91,7 @@ impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
                 .as_ref()
                 .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
                 .and_then(GainCount::try_from)?,
-            counter: (&value.counter).try_into()?,
+            counter: value.counter,
             restrictions: value
                 .restrictions
                 .iter()

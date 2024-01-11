@@ -3,6 +3,7 @@ syntax = "proto3";
 package targets;
 
 import "color.proto";
+import "counters.proto";
 import "empty.proto";
 import "mana.proto";
 import "types.proto";
@@ -61,7 +62,7 @@ message Restriction {
   }
   message NotSelf {}
   message NumberOfCountersOnThis {
-    string counter = 1;
+    counters.Counter counter = 1;
     Comparison comparison = 2;
   }
   message OfColor {

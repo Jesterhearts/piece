@@ -19,6 +19,7 @@ use crate::{
     card::Card,
     protogen::{
         cost::ManaCost,
+        counters::Counter,
         effects::gain_mana,
         empty::Empty,
         keywords::Keyword,
@@ -36,7 +37,6 @@ pub mod ai;
 pub mod battlefield;
 pub mod card;
 pub mod cost;
-pub mod counters;
 pub mod effects;
 pub mod exile;
 pub mod graveyard;
@@ -772,4 +772,51 @@ where
     }
 
     deserializer.deserialize_str(Visit::<T>::default())
+}
+
+fn serialize_counter<S>(
+    value: &::protobuf::EnumOrUnknown<Counter>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value.enum_value().unwrap() {
+        Counter::P1P1 => serializer.serialize_str("+1/+1"),
+        Counter::M1M1 => serializer.serialize_str("-1/-1"),
+        value => serializer.serialize_str(&value.as_ref().to_case(Case::Lower)),
+    }
+}
+
+fn deserialize_counter<'de, D>(
+    deserializer: D,
+) -> Result<::protobuf::EnumOrUnknown<Counter>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Default)]
+    struct Visit;
+
+    impl<'de> Visitor<'de> for Visit {
+        type Value = protobuf::EnumOrUnknown<Counter>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of values")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            match v.trim() {
+                "+1/+1" => Ok(protobuf::EnumOrUnknown::new(Counter::P1P1)),
+                "-1/-1" => Ok(protobuf::EnumOrUnknown::new(Counter::M1M1)),
+                v => Counter::from_str(&v.to_case(Case::ScreamingSnake))
+                    .map(protobuf::EnumOrUnknown::new)
+                    .ok_or_else(|| E::custom(format!("Unknown variant: {}", v))),
+            }
+        }
+    }
+
+    deserializer.deserialize_str(Visit::default())
 }

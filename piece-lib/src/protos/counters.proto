@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package counters;
+
+enum Counter {
+  ANY = 0;
+  CHARGE = 1;
+  NET = 2;
+  P1P1 = 3;
+  M1M1 = 4;
+}
