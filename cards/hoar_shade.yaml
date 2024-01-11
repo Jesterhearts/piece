@@ -10,8 +10,7 @@ activated_abilities:
           modifier:
             add_power: 1
             add_toughness: 1
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}

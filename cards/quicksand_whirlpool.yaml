@@ -11,8 +11,7 @@ oracle_text: |-
 effects:
   - oracle_text: Exile target creature.
     effect: !ExileTarget
-      duration:
-        duration: !Permanently {}
+      duration: permanently
       restrictions:
         - restriction: !OfType
             types: Creature

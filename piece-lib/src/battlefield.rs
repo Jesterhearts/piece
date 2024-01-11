@@ -7,7 +7,7 @@ use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility},
     action_result::ActionResult,
     cost::{AdditionalCost, PayLife},
-    effects::{EffectBehaviors, EffectDuration, Replacing},
+    effects::{EffectBehaviors, Replacing},
     in_play::{CardId, Database, ExileReason},
     log::LogId,
     pending_results::{
@@ -21,6 +21,7 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner},
     protogen::{
         color::Color,
+        effects::Duration,
         targets::Location,
         triggers::{self, TriggerSource},
     },
@@ -232,7 +233,7 @@ impl Battlefields {
             .values()
             .flat_map(|e| e.iter())
             .copied()
-            .filter(|card| db[*card].exile_duration == Some(EffectDuration::UntilEndOfTurn))
+            .filter(|card| db[*card].exile_duration == Some(Duration::UNTIL_END_OF_TURN))
             .collect_vec()
         {
             results.extend(Battlefields::add_from_exile(db, card, false, None));
@@ -243,7 +244,10 @@ impl Battlefields {
             .iter()
             .filter_map(|(id, modifier)| {
                 if modifier.active
-                    && matches!(modifier.modifier.duration, EffectDuration::UntilEndOfTurn)
+                    && matches!(
+                        modifier.modifier.duration.enum_value().unwrap(),
+                        Duration::UNTIL_END_OF_TURN
+                    )
                 {
                     Some(id)
                 } else {
@@ -560,7 +564,7 @@ impl Battlefields {
             .filter(|card| {
                 matches!(
                     db[*card].exile_duration,
-                    Some(EffectDuration::UntilSourceLeavesBattlefield)
+                    Some(Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD)
                 )
             })
             .collect_vec()
@@ -573,12 +577,12 @@ impl Battlefields {
             .iter()
             .filter_map(|(id, modifier)| {
                 if (matches!(
-                    modifier.modifier.duration,
-                    EffectDuration::UntilSourceLeavesBattlefield
+                    modifier.modifier.duration.enum_value().unwrap(),
+                    Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD
                 ) && modifier.source == target)
                     || (matches!(
-                        modifier.modifier.duration,
-                        EffectDuration::UntilTargetLeavesBattlefield
+                        modifier.modifier.duration.enum_value().unwrap(),
+                        Duration::UNTIL_TARGET_LEAVES_BATTLEFIELD
                     ) && modifier.modifying.contains(&target))
                 {
                     Some(*id)
@@ -623,7 +627,7 @@ impl Battlefields {
         source: CardId,
         target: CardId,
         reason: Option<ExileReason>,
-        duration: EffectDuration,
+        duration: Duration,
     ) -> PendingResults {
         target.move_to_exile(db, source, reason, duration);
 

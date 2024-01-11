@@ -287,19 +287,12 @@ message Discover {
   int32 count = 1;
 }
 
-message Duration {
-  message Permanently {}
-  message UntilEndOfTurn {}
-  message UntilSourceLeavesBattlefield {}
-  message UntilTargetLeavesBattlefield {}
-  message UntilUntapped {}
-  oneof duration {
-    Permanently permanently = 1;
-    UntilEndOfTurn until_end_of_turn = 2;
-    UntilSourceLeavesBattlefield until_source_leaves_battlefield = 3;
-    UntilTargetLeavesBattlefield until_target_leaves_battlefield = 4;
-    UntilUntapped until_untapped = 5;
-  }
+enum Duration {
+  PERMANENTLY = 0;
+  UNTIL_END_OF_TURN = 1;
+  UNTIL_SOURCE_LEAVES_BATTLEFIELD = 2;
+  UNTIL_TARGET_LEAVES_BATTLEFIELD = 3;
+  UNTIL_UNTAPPED = 4;
 }
 
 message DynamicPowerToughness {

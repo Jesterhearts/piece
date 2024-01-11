@@ -14,8 +14,7 @@ activated_abilities:
       - effect: !BattlefieldModifier
           modifier:
             add_keywords: Indestructible
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}

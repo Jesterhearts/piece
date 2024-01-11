@@ -13,8 +13,7 @@ triggered_abilities:
           modifier:
             add_power: 2
             add_keywords: Vigilance
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}

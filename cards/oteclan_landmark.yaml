@@ -41,8 +41,7 @@ back_face:
         - effect: !ModifyTarget
             modifier:
               add_keywords: Flying
-            duration:
-              duration: !UntilEndOfTurn {}
+            duration: until end of turn
             restrictions:
               - restriction: !Controller
                   controller: !Self_ {}

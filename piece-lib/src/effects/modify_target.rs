@@ -3,11 +3,11 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration},
+    effects::{BattlefieldModifier, Effect, EffectBehaviors},
     in_play::{target_from_location, Database, ModifierId},
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen,
+    protogen::{self, effects::Duration},
     stack::ActiveTarget,
 };
 
@@ -112,8 +112,8 @@ impl EffectBehaviors for ModifyTarget {
             }
         }
 
-        let modifier = match self.duration {
-            EffectDuration::UntilTargetLeavesBattlefield => ModifierId::upload_temporary_modifier(
+        let modifier = match self.duration.enum_value().unwrap() {
+            Duration::UNTIL_TARGET_LEAVES_BATTLEFIELD => ModifierId::upload_temporary_modifier(
                 db,
                 final_targets.iter().exactly_one().unwrap().id().unwrap(),
                 BattlefieldModifier {

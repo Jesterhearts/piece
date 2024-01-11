@@ -3,9 +3,9 @@ use std::collections::{HashMap, VecDeque};
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    effects::EffectDuration,
     in_play::{CardId, Database, ExileReason},
     player::Owner,
+    protogen::effects::Duration,
     Cards,
 };
 
@@ -78,7 +78,7 @@ impl Library {
         reason: Option<ExileReason>,
     ) -> Option<CardId> {
         if let Some(card) = db.all_players[player].library.cards.pop_back() {
-            card.move_to_exile(db, source, reason, EffectDuration::Permanently);
+            card.move_to_exile(db, source, reason, Duration::PERMANENTLY);
             Some(card)
         } else {
             None

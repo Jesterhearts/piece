@@ -9,8 +9,7 @@ effects:
         add_power: 1
         add_toughness: 3
         add_keywords: Flying
-      duration:
-        duration: !UntilEndOfTurn {}
+      duration: until end of turn
   - effect: !UntapTarget {}
 restrictions:
   - restriction: !OfType

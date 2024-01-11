@@ -12,8 +12,7 @@ effects:
         add_types: Creature, Artifact
         add_subtypes: Angel
         add_keywords: Flying
-      duration:
-        duration: !UntilEndOfTurn {}
+      duration: until end of turn
       restrictions:
         - restriction: !OfType
             types: Creature, Artifact

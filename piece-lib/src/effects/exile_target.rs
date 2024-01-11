@@ -1,14 +1,14 @@
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors, EffectDuration},
+    effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::{self, effects::Duration, targets::Restriction},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExileTarget {
-    duration: EffectDuration,
+    duration: protobuf::EnumOrUnknown<Duration>,
     restrictions: Vec<Restriction>,
 }
 
@@ -17,7 +17,7 @@ impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
 
     fn try_from(value: &protogen::effects::ExileTarget) -> Result<Self, Self::Error> {
         Ok(Self {
-            duration: value.duration.get_or_default().try_into()?,
+            duration: value.duration,
             restrictions: value.restrictions.clone(),
         })
     }

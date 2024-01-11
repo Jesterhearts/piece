@@ -25,8 +25,7 @@ etb_abilities:
   - oracle_text: When Dusk Rose Reliquary enters the battlefield, exile target artifact
       or creature an opponent controls until Dusk Rose Reliquary leaves the battlefield.
     effect: !ExileTarget
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
+      duration: until source leaves battlefield
       restrictions:
         - restriction: !Location
             locations: on battlefield

@@ -8,8 +8,7 @@ etb_abilities:
     effect: !ModifyTarget
       modifier:
         add_power: -2
-      duration:
-        duration: !UntilEndOfTurn {}
+      duration: until end of turn
       restrictions:
         - restriction: !Controller
             controller: !Opponent {}

@@ -10,8 +10,7 @@ modes:
             add_power: 1
             add_toughness: 1
             entire_battlefield: true
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}
@@ -23,8 +22,7 @@ modes:
           modifier:
             entire_battlefield: true
             add_keywords: Hexproof
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}

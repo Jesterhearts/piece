@@ -11,8 +11,7 @@ activated_abilities:
             add_power: 2
             add_toughness: 2
             add_keywords: Lifelink
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}

@@ -19,8 +19,7 @@ use crate::{
     card::{replace_symbols, BasePowerType, BaseToughnessType, Card},
     cost::{AbilityCost, CastingCost},
     effects::{
-        AnyEffect, DynamicPowerToughness, EffectBehaviors, EffectDuration, ReplacementAbility,
-        Replacing, Token,
+        AnyEffect, DynamicPowerToughness, EffectBehaviors, ReplacementAbility, Replacing, Token,
     },
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
@@ -32,6 +31,7 @@ use crate::{
     protogen::{
         color::Color,
         counters::Counter,
+        effects::Duration,
         keywords::Keyword,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{
@@ -207,7 +207,7 @@ pub struct CardInPlay {
 
     pub(crate) exiling: HashSet<CardId>,
     pub(crate) exile_reason: Option<ExileReason>,
-    pub(crate) exile_duration: Option<EffectDuration>,
+    pub(crate) exile_duration: Option<Duration>,
 
     pub(crate) sourced_mana: HashMap<ManaSource, usize>,
 
@@ -607,7 +607,7 @@ impl CardId {
         db: &mut Database,
         source: CardId,
         reason: Option<ExileReason>,
-        duration: EffectDuration,
+        duration: Duration,
     ) {
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::Exiled, self);
@@ -1648,7 +1648,7 @@ impl CardId {
                 ) => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
                         .filter(|card| {
-                            card.passes_restrictions(db, log_session, source, &restrictions)
+                            card.passes_restrictions(db, log_session, source, restrictions)
                         })
                         .count() as i32;
                     if entered_this_turn < *count {
@@ -2095,7 +2095,10 @@ impl CardId {
         let mut entities = vec![];
 
         for (id, modifier) in db.modifiers.iter_mut().filter(|(_, modifier)| {
-            matches!(modifier.modifier.duration, EffectDuration::UntilUntapped)
+            matches!(
+                modifier.modifier.duration.enum_value().unwrap(),
+                Duration::UNTIL_UNTAPPED
+            )
         }) {
             modifier.modifying.remove(&self);
             if modifier.modifying.is_empty() {

@@ -10,8 +10,7 @@ static_abilities:
       modifier:
         add_subtypes: Plains, Island, Swamp, Mountain, Forest
         entire_battlefield: true
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
+      duration: until source leaves battlefield
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

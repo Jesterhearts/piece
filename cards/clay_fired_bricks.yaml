@@ -61,8 +61,7 @@ back_face:
           add_power: 1
           add_toughness: 1
           entire_battlefield: true
-        duration:
-          duration: !UntilSourceLeavesBattlefield {}
+        duration: until source leaves battlefield
         restrictions:
           - restriction: !Controller
               controller: !Self_ {}

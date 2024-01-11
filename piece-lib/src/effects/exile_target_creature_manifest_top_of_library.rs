@@ -1,8 +1,8 @@
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors, EffectDuration},
+    effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::types::Type,
+    protogen::{effects::Duration, types::Type},
     stack::ActiveTarget,
     types::TypeSet,
 };
@@ -91,7 +91,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
             results.push_settled(ActionResult::ExileTarget {
                 source,
                 target,
-                duration: EffectDuration::Permanently,
+                duration: Duration::PERMANENTLY.into(),
                 reason: None,
             });
             results.push_settled(ActionResult::ManifestTopOfLibrary(

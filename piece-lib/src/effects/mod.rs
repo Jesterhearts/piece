@@ -207,44 +207,6 @@ impl From<&protogen::effects::destination::Destination> for Destination {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
-pub(crate) enum EffectDuration {
-    #[default]
-    Permanently,
-    UntilEndOfTurn,
-    UntilSourceLeavesBattlefield,
-    UntilTargetLeavesBattlefield,
-    UntilUntapped,
-}
-
-impl TryFrom<&protogen::effects::Duration> for EffectDuration {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Duration) -> Result<Self, Self::Error> {
-        value
-            .duration
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected duration to have a duration set"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::effects::duration::Duration> for EffectDuration {
-    fn from(value: &protogen::effects::duration::Duration) -> Self {
-        match value {
-            protogen::effects::duration::Duration::UntilEndOfTurn(_) => Self::UntilEndOfTurn,
-            protogen::effects::duration::Duration::UntilSourceLeavesBattlefield(_) => {
-                Self::UntilSourceLeavesBattlefield
-            }
-            protogen::effects::duration::Duration::UntilTargetLeavesBattlefield(_) => {
-                Self::UntilTargetLeavesBattlefield
-            }
-            protogen::effects::duration::Duration::UntilUntapped(_) => Self::UntilUntapped,
-            protogen::effects::duration::Duration::Permanently(_) => Self::Permanently,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NumberOfPermanentsMatching {
     pub(crate) restrictions: Vec<Restriction>,

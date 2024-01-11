@@ -12,8 +12,7 @@ enchant:
           - ability: !PreventAttacks {}
           - ability: !PreventBlocks {}
           - ability: !PreventAbilityActivation {}
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
+      duration: until source leaves battlefield
 restrictions:
   - restriction: !OfType
       types: Creature, Artifact

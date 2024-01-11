@@ -21,8 +21,7 @@ activated_abilities:
             base_toughness: 5
             add_subtypes: Dinosaur
             entire_battlefield: true
-          duration:
-            duration: !UntilEndOfTurn {}
+          duration: until end of turn
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}

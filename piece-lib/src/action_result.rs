@@ -16,8 +16,8 @@ use crate::{
         cascade::Cascade,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, EffectDuration,
-        ModifyBattlefield, ReplacementAbility, Replacing, Token,
+        AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, ModifyBattlefield,
+        ReplacementAbility, Replacing, Token,
     },
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
@@ -29,6 +29,7 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         counters::Counter,
+        effects::Duration,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, TriggerSource},
@@ -153,7 +154,7 @@ pub(crate) enum ActionResult {
     ExileTarget {
         source: CardId,
         target: ActiveTarget,
-        duration: EffectDuration,
+        duration: protobuf::EnumOrUnknown<Duration>,
         reason: Option<ExileReason>,
     },
     Explore {
@@ -476,13 +477,13 @@ impl ActionResult {
                 let Some(target) = target.id() else {
                     unreachable!()
                 };
-                if let EffectDuration::UntilSourceLeavesBattlefield = *duration {
+                if let Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD = duration.enum_value().unwrap() {
                     if !source.is_in_location(db, Location::ON_BATTLEFIELD) {
                         return PendingResults::default();
                     }
                 }
 
-                Battlefields::exile(db, *source, target, *reason, *duration)
+                Battlefields::exile(db, *source, target, *reason, duration.enum_value().unwrap())
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -1056,7 +1057,7 @@ impl ActionResult {
                 };
 
                 for card in db.graveyard[*id].iter().copied().collect_vec() {
-                    card.move_to_exile(db, *source, None, EffectDuration::Permanently)
+                    card.move_to_exile(db, *source, None, Duration::PERMANENTLY)
                 }
 
                 PendingResults::default()
@@ -1172,7 +1173,7 @@ pub(crate) fn create_token_copy_with_replacements(
                 token,
                 BattlefieldModifier {
                     modifier: modifier.clone(),
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
                     restrictions: vec![],
                 },
             );

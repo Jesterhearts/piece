@@ -14,13 +14,11 @@ enchant:
         remove_all_creature_types: true
         remove_all_types: true
         remove_all_abilities: true
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
+      duration: until source leaves battlefield
     - modifier:
         add_types: Creature
         add_subtypes: Skeleton
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
+      duration: until source leaves battlefield
 keywords: Flash
 restrictions:
   - restriction: !OfType

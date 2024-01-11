@@ -23,8 +23,7 @@ activated_abilities:
           modifier:
             add_static_abilities:
               - ability: !PreventAbilityActivation {}
-          duration:
-            duration: !UntilUntapped {}
+          duration: until untapped
   - cost:
       mana_cost: '{1}{U}'
       additional_costs:

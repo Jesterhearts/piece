@@ -9,8 +9,7 @@ static_abilities:
       modifier:
         global: true
         add_keywords: Cascade, Cascade
-      duration:
-        duration: !UntilSourceLeavesBattlefield {}
+      duration: until source leaves battlefield
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}

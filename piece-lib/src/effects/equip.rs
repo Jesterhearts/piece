@@ -5,11 +5,12 @@ use protobuf::Enum;
 
 use crate::{
     action_result::ActionResult,
-    effects::{BattlefieldModifier, Effect, EffectBehaviors, EffectDuration, ModifyBattlefield},
+    effects::{BattlefieldModifier, Effect, EffectBehaviors, ModifyBattlefield},
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
         self,
+        effects::Duration,
         empty::Empty,
         targets::{restriction, Restriction},
         types::Type,
@@ -145,7 +146,7 @@ impl EffectBehaviors for Equip {
                 source,
                 BattlefieldModifier {
                     modifier: modifier.clone(),
-                    duration: EffectDuration::UntilSourceLeavesBattlefield,
+                    duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
                     restrictions: vec![
                         Restriction {
                             restriction: Some(restriction::Restriction::from(

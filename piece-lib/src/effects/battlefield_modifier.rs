@@ -1,19 +1,17 @@
-use anyhow::anyhow;
-
 use crate::{
     action_result::ActionResult,
-    effects::{EffectBehaviors, EffectDuration, ModifyBattlefield},
+    effects::{EffectBehaviors, ModifyBattlefield},
     in_play::{Database, ModifierId},
     pending_results::PendingResults,
     player::Controller,
-    protogen::{self, targets::Restriction},
+    protogen::{self, effects::Duration, targets::Restriction},
     stack::ActiveTarget,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct BattlefieldModifier {
     pub(crate) modifier: ModifyBattlefield,
-    pub(crate) duration: EffectDuration,
+    pub(crate) duration: protobuf::EnumOrUnknown<Duration>,
     pub(crate) restrictions: Vec<Restriction>,
 }
 
@@ -23,12 +21,7 @@ impl TryFrom<&protogen::effects::BattlefieldModifier> for BattlefieldModifier {
     fn try_from(value: &protogen::effects::BattlefieldModifier) -> Result<Self, Self::Error> {
         Ok(Self {
             modifier: value.modifier.get_or_default().try_into()?,
-            duration: value
-                .duration
-                .duration
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected duration to have a duration specified"))
-                .map(EffectDuration::from)?,
+            duration: value.duration,
             restrictions: value.restrictions.clone(),
         })
     }

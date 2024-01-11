@@ -22,8 +22,7 @@ effects:
         add_types: Creature
         add_subtypes: Spirit
         add_keywords: Flying
-      duration:
-        duration: !UntilTargetLeavesBattlefield {}
+      duration: until target leaves battlefield
 restrictions:
   - restriction: !OfType
       types: Artifact, Enchantment

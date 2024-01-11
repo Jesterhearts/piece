@@ -6,13 +6,13 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     cost::ReduceWhen,
-    effects::{Effect, EffectBehaviors, EffectDuration},
+    effects::{Effect, EffectBehaviors},
     in_play::{target_from_location, CardId, Database, ExileReason},
     log::LogId,
     pending_results::{PendingResult, PendingResults},
     player::mana_pool::SpendReason,
     protogen::targets::Restriction,
-    protogen::{cost::ManaCost, mana::Mana, mana::ManaSource},
+    protogen::{cost::ManaCost, effects::Duration, mana::Mana, mana::ManaSource},
     stack::ActiveTarget,
 };
 
@@ -742,7 +742,7 @@ impl Cost {
                     results.push(ActionResult::ExileTarget {
                         source,
                         target: ActiveTarget::Battlefield { id: *target },
-                        duration: EffectDuration::Permanently,
+                        duration: Duration::PERMANENTLY.into(),
                         reason: None,
                     });
                 }
@@ -763,7 +763,7 @@ impl Cost {
                     results.push(ActionResult::ExileTarget {
                         source,
                         target: target_from_location(db, *target),
-                        duration: EffectDuration::Permanently,
+                        duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
                     });
                 }
@@ -776,7 +776,7 @@ impl Cost {
                     results.push(ActionResult::ExileTarget {
                         source,
                         target: target_from_location(db, *target),
-                        duration: EffectDuration::Permanently,
+                        duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
                     });
                 }

@@ -8,10 +8,11 @@ Future plans:
 
 # Adding Cards
 Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto
-schema is defined in the [protos directory](src/protos). In particular, check out the
-[card](src/protos/card.proto), [effect](src/protos/effects.proto#L12), and
-[restriction](src/protos/targets.proto#L9) definitions for all of the fields available. See the
-[counter](src/counters.rs), and [keyword](src/card.rs) implementations for their definitions.
+schema is defined in the [protos directory](piece-lib/src/protos). In particular, check out the
+[card](piece-lib/src/protos/card.proto), [effect](piece-lib/src/protos/effects.proto#L12), and
+[restriction](piece-lib/src/protos/targets.proto#L9) definitions for all of the fields available.
+See also the [counter](piece-lib/src/protos/counters.proto), and
+[keyword](piece-lib/src/protos/keywords.proto) implementations for their definitions.
 
 ## Validation
 Added cards can be validated by running `cargo run --bin validate`. This will validate that all
