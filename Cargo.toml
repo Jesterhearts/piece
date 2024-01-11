@@ -17,14 +17,6 @@ name = "yaml"
 path = "src/bin/export_yaml.rs"
 
 [[bin]]
-name = "json"
-path = "src/bin/export_json.rs"
-
-[[bin]]
-name = "toml"
-path = "src/bin/export_toml.rs"
-
-[[bin]]
 name = "validate"
 path = "src/bin/validate.rs"
 
@@ -46,12 +38,10 @@ protobuf           = "3.3.0"
 rand               = "0.8.5"
 scopeguard         = "1.2.0"
 serde              = { version = "1.0.193", features = [ "derive" ] }
-serde_json         = "1.0.108"
 serde_yaml         = "0.9.29"
 strum              = { version = "0.25.0", features = [ "derive" ] }
 taffy              = "0.3.18"
 tantivy            = { version = "0.21.1", default-features = false }
-toml               = "0.8.8"
 tracing            = { version = "0.1.40", features = [ "max_level_debug", "release_max_level_info" ] }
 tracing-appender   = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = [ "tracing-log" ] }

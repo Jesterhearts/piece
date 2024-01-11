@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::fs::OpenOptions;
+use std::{fs::OpenOptions, time::Instant};
 
 use convert_case::{Case, Casing};
 use egui::{Color32, Label, Layout, Sense, TextEdit};
@@ -129,6 +129,8 @@ fn main() -> anyhow::Result<()> {
     let mut database = Database::new(all_players);
     let ai = AI::new(player2);
 
+    let timer = Instant::now();
+
     let cost_tokenizer = TextFieldIndexing::default().set_tokenizer("cost");
     let cost_options = TextOptions::default().set_indexing_options(cost_tokenizer);
 
@@ -168,73 +170,7 @@ fn main() -> anyhow::Result<()> {
 
     index_writer.commit()?;
 
-    let land1 = CardId::upload(&mut database, &cards, player1, "Forest");
-    let land2 = CardId::upload(&mut database, &cards, player1, "Forest");
-    let land3 = CardId::upload(&mut database, &cards, player1, "Forest");
-    let _ = Battlefields::add_from_stack_or_hand(&mut database, land1, None);
-    let _ = Battlefields::add_from_stack_or_hand(&mut database, land2, None);
-    let _ = Battlefields::add_from_stack_or_hand(&mut database, land3, None);
-
-    let card2 = CardId::upload(&mut database, &cards, player1, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card2, None);
-    assert_eq!(
-        results.resolve(&mut database, None),
-        ResolutionResult::Complete
-    );
-
-    let card3 = CardId::upload(&mut database, &cards, player1, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card3, None);
-    assert_eq!(
-        results.resolve(&mut database, None),
-        ResolutionResult::Complete
-    );
-
-    let card8 = CardId::upload(&mut database, &cards, player1, "Might of the Ancestors");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card8, None);
-    assert_eq!(
-        results.resolve(&mut database, None),
-        ResolutionResult::Complete
-    );
-
-    let card9 = CardId::upload(&mut database, &cards, player1, "Bat Colony");
-    card9.move_to_hand(&mut database);
-
-    let card10 = CardId::upload(
-        &mut database,
-        &cards,
-        player1,
-        "Ojer Taq, Deepest Foundation",
-    );
-    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card10, None);
-    assert_eq!(
-        results.resolve(&mut database, None),
-        ResolutionResult::Complete
-    );
-
-    let card11 = CardId::upload(&mut database, &cards, player1, "Abzan Banner");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card11, None);
-    assert_eq!(
-        results.resolve(&mut database, None),
-        ResolutionResult::Complete
-    );
-
-    let card12 = CardId::upload(&mut database, &cards, player1, "Resplendent Angel");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut database, card12, None);
-    assert_eq!(
-        results.resolve(&mut database, None),
-        ResolutionResult::Complete
-    );
-
-    let card13 = CardId::upload(&mut database, &cards, player1, "Get Lost");
-    card13.move_to_hand(&mut database);
-
-    let card14 = CardId::upload(&mut database, &cards, player1, "Kutzil's Flanker");
-    card14.move_to_hand(&mut database);
-
-    while !database.stack.is_empty() {
-        let mut results = Stack::resolve_1(&mut database);
-        while results.resolve(&mut database, None) != ResolutionResult::Complete {}
-    }
+    info!("Indexed cards in {}ms", timer.elapsed().as_millis());
 
     let mut def = DeckDefinition::default();
     for card in cards.keys() {
