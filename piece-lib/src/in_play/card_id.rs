@@ -352,6 +352,7 @@ impl CardId {
                 card: token.into(),
                 controller: player.into(),
                 owner: player,
+                token: true,
                 ..Default::default()
             },
         );
