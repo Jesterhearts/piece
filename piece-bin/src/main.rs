@@ -1,24 +1,25 @@
 #[macro_use]
 extern crate tracing;
 
+mod load;
+mod ui;
+
 use std::{fs::OpenOptions, time::Instant};
 
 use convert_case::{Case, Casing};
 use egui::{Color32, Label, Layout, Sense, TextEdit};
 use itertools::Itertools;
-use piece::{
+use piece_lib::{
     ai::AI,
     battlefield::Battlefields,
     card::replace_symbols,
     in_play::{CardId, Database},
     library::DeckDefinition,
-    load_cards,
     pending_results::{PendingResults, ResolutionResult},
     player::{AllPlayers, Owner, Player},
     protogen::targets::Location,
     stack::Stack,
     turns::Turn,
-    ui::{self, ManaDisplay},
     Cards, FONT_DATA,
 };
 use taffy::prelude::*;
@@ -30,6 +31,10 @@ use tantivy::{
     tokenizer::RegexTokenizer,
     Index, Searcher,
 };
+
+use ui::ManaDisplay;
+
+use crate::load::load_cards;
 
 struct App {
     cards: Cards,

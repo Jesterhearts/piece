@@ -4,7 +4,7 @@ use egui::{
 };
 use itertools::Itertools;
 
-use crate::{
+use piece_lib::{
     in_play::{CardId, Database},
     pending_results::PendingResults,
     player::Owner,
@@ -363,7 +363,11 @@ impl Widget for Battlefield<'_, '_> {
                                 let name = if self.db[*card].manifested {
                                     "Manifested".to_string()
                                 } else if self.db[*card].cloning.is_some() {
-                                    format!("({}) {}", self.db[*card].card.name, card.name(self.db))
+                                    format!(
+                                        "({}) {}",
+                                        self.db[*card].modified_name,
+                                        card.name(self.db)
+                                    )
                                 } else {
                                     card.name(self.db).clone()
                                 };

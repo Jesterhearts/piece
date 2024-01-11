@@ -8,7 +8,7 @@ use crate::{
 
 #[derive(Debug, Clone, Default)]
 pub struct CastingCost {
-    pub(crate) mana_cost: Vec<protobuf::EnumOrUnknown<ManaCost>>,
+    pub mana_cost: Vec<protobuf::EnumOrUnknown<ManaCost>>,
     pub(crate) additional_cost: Vec<AdditionalCost>,
 }
 

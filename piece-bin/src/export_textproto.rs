@@ -1,4 +1,4 @@
-use piece::{card::Card, load_protos};
+use piece_lib::{card::Card, load_protos};
 use protobuf::text_format::print_to_string_pretty;
 
 fn main() -> anyhow::Result<()> {

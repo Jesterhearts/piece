@@ -660,7 +660,7 @@ pub(crate) struct Effects(pub(crate) Vec<AnyEffect>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyEffect {
     pub(crate) effect: Effect,
-    pub(crate) oracle_text: String,
+    pub oracle_text: String,
 }
 
 impl TryFrom<&protogen::effects::Effect> for AnyEffect {

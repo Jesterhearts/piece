@@ -1,0 +1,42 @@
+[package]
+name        = "piece-bin"
+version     = "0.1.0"
+edition     = "2021"
+default-run = "game"
+
+[[bin]]
+name = "game"
+path = "src/main.rs"
+
+[[bin]]
+name = "textproto"
+path = "src/export_textproto.rs"
+
+[[bin]]
+name = "yaml"
+path = "src/export_yaml.rs"
+
+[[bin]]
+name = "validate"
+path = "src/validate.rs"
+
+[dependencies]
+anyhow             = "1.0.79"
+eframe             = "0.25.0"
+egui               = "0.25.0"
+convert_case       = "0.6.0"
+include_dir        = "0.7.3"
+itertools          = "0.12.0"
+piece-lib          = { path = "../piece-lib" }
+protobuf           = "3.3.0"
+serde              = { version = "1.0.193", features = [ "derive" ] }
+serde_yaml         = "0.9.29"
+taffy              = "0.3.18"
+tantivy            = { version = "0.21.1", default-features = false }
+tracing            = { version = "0.1.40", features = [ "max_level_debug", "release_max_level_info" ] }
+tracing-appender   = "0.2.3"
+tracing-subscriber = { version = "0.3.18", features = [ "tracing-log" ] }
+
+[build-dependencies]
+piece-lib = { path = "../piece-lib" }
+protobuf  = "3.3.0"

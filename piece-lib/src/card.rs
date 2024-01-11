@@ -44,11 +44,11 @@ pub struct Card {
 
     pub(crate) colors: Vec<::protobuf::EnumOrUnknown<Color>>,
 
-    pub(crate) oracle_text: String,
+    pub oracle_text: String,
 
     pub(crate) enchant: Option<Enchant>,
 
-    pub(crate) effects: Vec<AnyEffect>,
+    pub effects: Vec<AnyEffect>,
     pub(crate) modes: Vec<Mode>,
 
     pub(crate) etb_abilities: Vec<AnyEffect>,

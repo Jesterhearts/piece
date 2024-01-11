@@ -272,10 +272,10 @@ impl ActivatedAbility {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct TriggeredAbility {
+pub struct TriggeredAbility {
     pub(crate) trigger: Trigger,
     pub(crate) effects: Vec<AnyEffect>,
-    pub(crate) oracle_text: String,
+    pub oracle_text: String,
 }
 
 impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
@@ -409,7 +409,7 @@ impl Ability {
         }
     }
 
-    pub(crate) fn text(&self, db: &Database) -> String {
+    pub fn text(&self, db: &Database) -> String {
         match self {
             Ability::Activated(id) => db[*id].ability.oracle_text.clone(),
             Ability::Mana(id) => db[*id].ability.oracle_text.clone(),
@@ -419,7 +419,7 @@ impl Ability {
         }
     }
 
-    pub(crate) fn can_be_activated(
+    pub fn can_be_activated(
         &self,
         db: &Database,
         source: CardId,

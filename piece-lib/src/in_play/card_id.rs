@@ -182,8 +182,8 @@ impl std::fmt::Display for CardId {
 
 #[derive(Debug, Default)]
 pub struct CardInPlay {
-    pub(crate) card: Card,
-    pub(crate) cloning: Option<Card>,
+    pub card: Card,
+    pub cloning: Option<Card>,
     pub(crate) cloned_id: Option<CardId>,
 
     pub(crate) static_abilities: HashSet<StaticAbilityId>,
@@ -210,26 +210,26 @@ pub struct CardInPlay {
     pub(crate) revealed: bool,
     pub(crate) tapped: bool,
     pub(crate) attacking: Option<Owner>,
-    pub(crate) manifested: bool,
+    pub manifested: bool,
     pub(crate) facedown: bool,
     pub(crate) transformed: bool,
     pub(crate) token: bool,
 
     pub(crate) replacements_active: bool,
 
-    pub(crate) modified_name: String,
-    pub(crate) modified_cost: CastingCost,
+    pub modified_name: String,
+    pub modified_cost: CastingCost,
     pub(crate) modified_base_power: Option<BasePowerType>,
     pub(crate) modified_base_toughness: Option<BaseToughnessType>,
     pub(crate) add_power: i32,
     pub(crate) add_toughness: i32,
-    pub(crate) modified_types: TypeSet,
-    pub(crate) modified_subtypes: SubtypeSet,
+    pub modified_types: TypeSet,
+    pub modified_subtypes: SubtypeSet,
     pub(crate) modified_colors: HashSet<Color>,
-    pub(crate) modified_keywords: HashMap<String, u32>,
+    pub modified_keywords: HashMap<String, u32>,
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
-    pub(crate) modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
-    pub(crate) modified_etb_abilities: Vec<AnyEffect>,
+    pub modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
+    pub modified_etb_abilities: Vec<AnyEffect>,
     pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
     pub(crate) modified_activated_abilities: HashSet<ActivatedAbilityId>,
     pub(crate) modified_mana_abilities: HashSet<GainManaAbilityId>,
@@ -283,7 +283,7 @@ impl CardInPlay {
             .collect_vec()
     }
 
-    pub(crate) fn counter_text_on(&self) -> Vec<String> {
+    pub fn counter_text_on(&self) -> Vec<String> {
         let mut results = vec![];
 
         for counter in Counter::iter() {
@@ -2038,7 +2038,7 @@ impl CardId {
         true
     }
 
-    pub(crate) fn tapped(self, db: &Database) -> bool {
+    pub fn tapped(self, db: &Database) -> bool {
         db[self].tapped
     }
 
