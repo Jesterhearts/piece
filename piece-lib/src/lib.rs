@@ -15,15 +15,18 @@ use itertools::Itertools;
 use protobuf::{Enum, MessageDyn, MessageFull};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::protogen::{
-    card::Card,
-    cost::ManaCost,
-    counters::Counter,
-    effects::gain_mana,
-    empty::Empty,
-    keywords::Keyword,
-    mana::Mana,
-    types::{Subtype, Type, Typeline},
+use crate::{
+    card::{replace_emoji_symbols, replace_expanded_symbols},
+    protogen::{
+        card::Card,
+        cost::ManaCost,
+        counters::Counter,
+        effects::gain_mana,
+        empty::Empty,
+        keywords::Keyword,
+        mana::Mana,
+        types::{Subtype, Type, Typeline},
+    },
 };
 
 #[cfg(test)]
@@ -800,6 +803,37 @@ where
                     .map(protobuf::EnumOrUnknown::new)
                     .ok_or_else(|| E::custom(format!("Unknown variant: {}", v))),
             }
+        }
+    }
+
+    deserializer.deserialize_str(Visit)
+}
+
+fn serialize_oracle_text<S>(value: &str, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&replace_emoji_symbols(value))
+}
+
+fn deserialize_oracle_text<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+
+    impl<'de> Visitor<'de> for Visit {
+        type Value = String;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a string")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(replace_expanded_symbols(v))
         }
     }
 

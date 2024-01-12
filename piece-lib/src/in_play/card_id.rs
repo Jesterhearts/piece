@@ -14,7 +14,7 @@ use tracing::Level;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    card::{replace_symbols, BasePowerType, BaseToughnessType},
+    card::{replace_expanded_symbols, BasePowerType, BaseToughnessType},
     effects::EffectBehaviors,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
@@ -87,7 +87,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_symbols("{T}: Add {W}."),
+                        oracle_text: replace_expanded_symbols("{T}: Add {W}."),
                         ..Default::default()
                     },
                 )
@@ -112,7 +112,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_symbols("{T}: Add {U}."),
+                        oracle_text: replace_expanded_symbols("{T}: Add {U}."),
                         ..Default::default()
                     },
                 )
@@ -137,7 +137,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_symbols("{T}: Add {B}."),
+                        oracle_text: replace_expanded_symbols("{T}: Add {B}."),
                         ..Default::default()
                     },
                 )
@@ -162,7 +162,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_symbols("{T}: Add {R}."),
+                        oracle_text: replace_expanded_symbols("{T}: Add {R}."),
                         ..Default::default()
                     },
                 )
@@ -187,7 +187,7 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                         }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_symbols("{T}: Add {G}."),
+                        oracle_text: replace_expanded_symbols("{T}: Add {G}."),
                         ..Default::default()
                     },
                 )

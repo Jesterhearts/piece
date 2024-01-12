@@ -7,6 +7,9 @@ fn main() {
 
     let cards = load_protos().expect("Failed to load cards");
 
+    if std::path::Path::new("../cards_binpb").exists() {
+        std::fs::remove_dir_all("../cards_binpb").expect("Failed to remove directory");
+    }
     std::fs::create_dir_all("../cards_binpb").expect("Failed to create directory");
 
     for (card, file) in cards {

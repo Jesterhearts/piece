@@ -9,10 +9,17 @@ Future plans:
 # Adding Cards
 Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto
 schema is defined in the [protos directory](piece-lib/src/protos). In particular, check out the
-[card](piece-lib/src/protos/card.proto), [effect](piece-lib/src/protos/effects.proto#L12), and
-[restriction](piece-lib/src/protos/targets.proto#L9) definitions for all of the fields available.
-See also the [counter](piece-lib/src/protos/counters.proto), and
-[keyword](piece-lib/src/protos/keywords.proto) implementations for their definitions.
+[card](piece-lib/src/protos/card.proto#L12), [effect](piece-lib/src/protos/effects.proto#L13), and
+[restriction](piece-lib/src/protos/targets.proto#L11) definitions for all of the fields available.
+See also the [counter](piece-lib/src/protos/counters.proto#L5), and
+[keyword](piece-lib/src/protos/keywords.proto#L5) implementations for their definitions.
+
+## Text-to-enum conversions
+- Counters accepts the text +1/+1 and -1/-1 for P1P1 and M1M1 counters.
+- Enums accept any format of Title Case, UpperCamelCase, lower case, etc. The only thing to be
+  careful of is types, where the typeline needs compound types to not be space-separated. E.g.
+  PowerPlant needs to be in UpperCamelCase, snake_case, SCREAMING_SNAKE, etc. Otherwise it is
+  ambiguous if the types are Power and Plant or just Power Plant.
 
 ## Quirks to be aware of
 - Assume most effects are pulling targets from anywhere (battlefield, graveyard, exile, etc) and use

@@ -12,7 +12,7 @@ use itertools::Itertools;
 use piece_lib::{
     ai::AI,
     battlefield::Battlefields,
-    card::replace_symbols,
+    card::replace_expanded_symbols,
     in_play::{CardId, Database},
     library::DeckDefinition,
     pending_results::{PendingResults, ResolutionResult},
@@ -987,7 +987,7 @@ impl eframe::App for App {
                             }),
                     );
                     if edit.changed() {
-                        *adding = replace_symbols(adding);
+                        *adding = replace_expanded_symbols(adding);
                     }
 
                     let query = self.parser.parse_query_lenient(adding).0;

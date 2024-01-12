@@ -68,7 +68,15 @@ fn main() {
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {
-            if field.name() == "counter" && field.proto().type_() == Type::TYPE_ENUM {
+            if field.name() == "oracle_text" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_oracle_text",
+                        deserialize_with="crate::deserialize_oracle_text",
+                    )]"#,
+                )
+            } else if field.name() == "counter" && field.proto().type_() == Type::TYPE_ENUM {
                 Customize::default().before(
                     r#"#[serde(
                         default,
