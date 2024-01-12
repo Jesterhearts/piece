@@ -3,7 +3,6 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use derive_more::{Deref, DerefMut};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use protobuf::Enum;
