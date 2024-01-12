@@ -15,6 +15,6 @@ replacement_abilities:
             count: 2
       - effect: !ControllerLosesLife
           count: 1
-    replacing: !Draw {}
+    replacing: draw
 power: 2
 toughness: 1

@@ -11,6 +11,6 @@ replacement_abilities:
       - restriction: !Self_ {}
     effects:
       - effect: !CopyOfAnyCreatureNonTargeting {}
-    replacing: !Etb {}
+    replacing: etb
 power: 0
 toughness: 0

@@ -14,7 +14,7 @@ use crate::{
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
         AnyEffect, BattlefieldModifier, Effect, EffectBehaviors, ModifyBattlefield,
-        ReplacementAbility, Replacing, Token,
+        ReplacementAbility, Token,
     },
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
@@ -26,7 +26,9 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         counters::Counter,
-        effects::{examine_top_cards::Dest, BattleCry, Cascade, Duration},
+        effects::{
+            examine_top_cards::Dest, replacement_effect::Replacing, BattleCry, Cascade, Duration,
+        },
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, TriggerSource},
@@ -441,7 +443,7 @@ impl ActionResult {
                 let mut results = PendingResults::default();
 
                 let mut replacements = db
-                    .replacement_abilities_watching(Replacing::TokenCreation)
+                    .replacement_abilities_watching(Replacing::TOKEN_CREATION)
                     .into_iter();
 
                 let card = CardId::upload_token(db, db[*source].controller.into(), token.clone());
@@ -768,7 +770,7 @@ impl ActionResult {
                 let mut results = PendingResults::default();
 
                 let mut replacements = db
-                    .replacement_abilities_watching(Replacing::TokenCreation)
+                    .replacement_abilities_watching(Replacing::TOKEN_CREATION)
                     .into_iter();
 
                 create_token_copy_with_replacements(

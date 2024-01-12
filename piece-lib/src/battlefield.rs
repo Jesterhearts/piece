@@ -7,7 +7,7 @@ use crate::{
     abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility},
     action_result::ActionResult,
     cost::{AdditionalCost, PayLife},
-    effects::{EffectBehaviors, Replacing},
+    effects::EffectBehaviors,
     in_play::{CardId, Database, ExileReason},
     log::LogId,
     pending_results::{
@@ -21,7 +21,7 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner},
     protogen::{
         color::Color,
-        effects::Duration,
+        effects::{replacement_effect::Replacing, Duration},
         targets::Location,
         triggers::{self, TriggerSource},
     },
@@ -157,7 +157,7 @@ impl Battlefields {
         db[source_card_id].replacements_active = true;
 
         let mut replaced = false;
-        for (source, replacement) in db.replacement_abilities_watching(Replacing::Etb) {
+        for (source, replacement) in db.replacement_abilities_watching(Replacing::ETB) {
             if !source_card_id.passes_restrictions(
                 db,
                 LogId::current(db),

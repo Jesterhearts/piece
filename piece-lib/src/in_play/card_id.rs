@@ -18,7 +18,7 @@ use crate::{
     battlefield::Battlefields,
     card::{replace_symbols, BasePowerType, BaseToughnessType, Card},
     cost::{AbilityCost, CastingCost},
-    effects::{AnyEffect, EffectBehaviors, ReplacementAbility, Replacing, Token},
+    effects::{AnyEffect, EffectBehaviors, ReplacementAbility, Token},
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId, NEXT_CARD_ID,
@@ -29,7 +29,9 @@ use crate::{
     protogen::{
         color::Color,
         counters::Counter,
-        effects::{dynamic_power_toughness, Duration, DynamicPowerToughness},
+        effects::{
+            dynamic_power_toughness, replacement_effect::Replacing, Duration, DynamicPowerToughness,
+        },
         keywords::Keyword,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{
@@ -810,7 +812,7 @@ impl CardId {
             let mut abilities: HashMap<Replacing, Vec<ReplacementAbility>> = Default::default();
             for ability in source.replacement_abilities.iter() {
                 abilities
-                    .entry(ability.replacing)
+                    .entry(ability.replacing.enum_value().unwrap())
                     .or_default()
                     .push(ability.clone());
             }

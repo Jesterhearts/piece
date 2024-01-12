@@ -84,9 +84,10 @@ use crate::{
         self,
         color::Color,
         effects::{
-            BattleCry, CantAttackThisTurn, Cascade, ControllerDiscards, ControllerLosesLife,
-            CopyOfAnyCreatureNonTargeting, CopySpellOrAbility, CounterSpellOrAbility, Cycling,
-            DealDamage, DestroyEach, DestroyTarget, Discover, DynamicPowerToughness, ExileTarget,
+            replacement_effect::Replacing, BattleCry, CantAttackThisTurn, Cascade,
+            ControllerDiscards, ControllerLosesLife, CopyOfAnyCreatureNonTargeting,
+            CopySpellOrAbility, CounterSpellOrAbility, Cycling, DealDamage, DestroyEach,
+            DestroyTarget, Discover, DynamicPowerToughness, ExileTarget,
             ExileTargetCreatureManifestTopOfLibrary, ExileTargetGraveyard, GainLife, Mill,
             MultiplyTokens, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToHand,
             ReturnFromGraveyardToLibrary, ReturnSelfToHand, ReturnTargetToHand, ReturnTransformed,
@@ -572,28 +573,9 @@ impl TryFrom<&protogen::effects::create_token::Token> for Token {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum Replacing {
-    Draw,
-    Etb,
-    TokenCreation,
-}
-
-impl From<&protogen::effects::replacement_effect::Replacing> for Replacing {
-    fn from(value: &protogen::effects::replacement_effect::Replacing) -> Self {
-        match value {
-            protogen::effects::replacement_effect::Replacing::Draw(_) => Self::Draw,
-            protogen::effects::replacement_effect::Replacing::Etb(_) => Self::Etb,
-            protogen::effects::replacement_effect::Replacing::TokenCreation(_) => {
-                Self::TokenCreation
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct ReplacementAbility {
-    pub(crate) replacing: Replacing,
+    pub(crate) replacing: protobuf::EnumOrUnknown<Replacing>,
     pub(crate) restrictions: Vec<Restriction>,
     pub(crate) effects: Vec<AnyEffect>,
 }
@@ -603,13 +585,7 @@ impl TryFrom<&protogen::effects::ReplacementEffect> for ReplacementAbility {
 
     fn try_from(value: &protogen::effects::ReplacementEffect) -> Result<Self, Self::Error> {
         Ok(Self {
-            replacing: value
-                .replacing
-                .as_ref()
-                .ok_or_else(|| {
-                    anyhow!("Expected replacement effect to have a replacement specified")
-                })
-                .map(Replacing::from)?,
+            replacing: value.replacing,
             restrictions: value.restrictions.clone(),
             effects: value
                 .effects

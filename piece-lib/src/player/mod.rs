@@ -14,21 +14,24 @@ use crate::{
     abilities::StaticAbility,
     action_result::ActionResult,
     battlefield::Battlefields,
-    effects::{EffectBehaviors, ReplacementAbility, Replacing},
+    effects::{EffectBehaviors, ReplacementAbility},
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
     pending_results::PendingResults,
     player::mana_pool::{ManaPool, SpendReason},
-    protogen::targets::{
-        restriction::{self, EnteredBattlefieldThisTurn},
-        Restriction,
-    },
     protogen::{
         color::Color,
         cost::ManaCost,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::Location,
+    },
+    protogen::{
+        effects::replacement_effect::Replacing,
+        targets::{
+            restriction::{self, EnteredBattlefieldThisTurn},
+            Restriction,
+        },
     },
     stack::Stack,
 };
@@ -381,7 +384,7 @@ impl Player {
         let mut results = PendingResults::default();
 
         for _ in 0..count {
-            let replacements = db.replacement_abilities_watching(Replacing::Draw);
+            let replacements = db.replacement_abilities_watching(Replacing::DRAW);
             if !replacements.is_empty() {
                 Self::draw_with_replacement(
                     db,

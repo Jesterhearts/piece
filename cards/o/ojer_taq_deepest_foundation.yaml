@@ -25,7 +25,7 @@ replacement_abilities:
     effects:
       - effect: !MultiplyTokens
           multiplier: 3
-    replacing: !TokenCreation {}
+    replacing: token creation
 power: 6
 toughness: 6
 keywords: Vigilance

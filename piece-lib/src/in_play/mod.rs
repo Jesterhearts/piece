@@ -20,14 +20,14 @@ pub(crate) use static_ability_id::{StaticAbilityId, StaticAbilityInPlay};
 use crate::{
     abilities::TriggeredAbility,
     battlefield::Battlefields,
-    effects::{ReplacementAbility, Replacing},
+    effects::ReplacementAbility,
     exile::Exiles,
     graveyard::Graveyards,
     hand::Hands,
     library::Library,
     log::Log,
     player::{AllPlayers, Controller, Owner},
-    protogen::triggers::TriggerSource,
+    protogen::{effects::replacement_effect::Replacing, triggers::TriggerSource},
     stack::Stack,
     turns::Turn,
 };

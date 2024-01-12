@@ -84,75 +84,75 @@ message Effect {
     ExileTargetGraveyard exile_target_graveyard = 26;
     // For each mana from a particular source (e.g. cave or treasure) spent on
     // casting this effect's card, apply some effects.
-    ForEachManaOfSource for_each_mana_of_source = 29;
+    ForEachManaOfSource for_each_mana_of_source = 27;
     // Choose a permanent matching some list of restrictions for each player,
     // then apply some effects.
-    ForEachPlayerChooseThen for_each_player_choose_then = 30;
+    ForEachPlayerChooseThen for_each_player_choose_then = 28;
     // Place some number of counters on a target, narrowed by a list of
     // restrictions.
-    GainCounter target_gains_counters = 31;
+    GainCounter target_gains_counters = 29;
     // The controller of this effect gains life.
-    GainLife gain_life = 32;
+    GainLife gain_life = 30;
     // If the source of this effect passes some restrictions, apply some
     // effects. Otherwise, apply a different set of effects. This is used to
     // implement e.g. threshold.
-    IfThenElse if_then_else = 33;
+    IfThenElse if_then_else = 31;
     // Mill some number of cards for a target player.
-    Mill mill = 34;
+    Mill mill = 32;
     // Offer the controller of this effect a choice between several modes, then
     // apply the chosen effects.
-    Modes modal = 35;
+    Modes modal = 33;
     // Multiply the number of tokens created. This is only applied as a
     // replacement effect.
-    MultiplyTokens multiply_tokens = 36;
+    MultiplyTokens multiply_tokens = 34;
     // Ask the controller of this effect to pay some cost, then apply some
     // effects if they paid the cost.
-    PayCostThen pay_cost_then = 37;
+    PayCostThen pay_cost_then = 35;
     // Return a card from the graveyard to the battlefield.
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 38;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 36;
     // Return a card from the graveyard to the hand. TODO: This should probably
     // be merged with ReturnTargetToHand.
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 39;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 37;
     // Return a card from the graveyard to the library. TODO: This should
     // probably be merged with TargetToTopOfLibrary.
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 40;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 38;
     // Return the card associated with this effect to hand.
-    ReturnSelfToHand return_self_to_hand = 41;
+    ReturnSelfToHand return_self_to_hand = 39;
     // Return target card to the hand.
-    ReturnTargetToHand return_target_to_hand = 42;
+    ReturnTargetToHand return_target_to_hand = 40;
     // Return a card from exile or graveyard to the battlefield transformed.
-    ReturnTransformed return_transformed = 43;
+    ReturnTransformed return_transformed = 41;
     // Reveal the top card of each player's library, then apply some effects
     // depending on the revealed cards.
-    RevealEachTopOfLibrary reveal_each_top_of_library = 44;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 42;
     // Scry some number of cards.
-    Scry scry = 45;
+    Scry scry = 43;
     // The card with the effect explores.
-    SelfExplores self_explores = 46;
+    SelfExplores self_explores = 44;
     // Tap a target permanent. This automatically narrows the list of targets to
     // targets on the battlefield.
-    TapTarget tap_target = 47;
+    TapTarget tap_target = 45;
     // Tap the card associated with this effect.
-    TapThis tap_this = 48;
+    TapThis tap_this = 46;
     // The targetted creature explores. This automatically narrows the list of
     // valid targets to creatures on the battlefield.
-    TargetCreatureExplores target_creature_explores = 28;
+    TargetCreatureExplores target_creature_explores = 47;
     // Return target to the top of its owner's library.
-    TargetToTopOfLibrary target_to_top_of_library = 49;
+    TargetToTopOfLibrary target_to_top_of_library = 48;
     // Transform in place on the battlefield. This will preserve equipment and
     // auras attached to the transformed card.
-    Transform transform = 50;
+    Transform transform = 49;
     // Search the library for cards matching some set of restrictions and allow
     // the player to move it to a location.
-    TutorLibrary tutor_library = 51;
+    TutorLibrary tutor_library = 50;
     // Untap the card associated with this effect.
-    UntapThis untap_this = 52;
+    UntapThis untap_this = 51;
     // Untap a target permanent. THis automatically narrows the list of targets
     // to targets on the battlefield.
-    UntapTarget untap_target = 53;
+    UntapTarget untap_target = 52;
   }
 
-  string oracle_text = 54;
+  string oracle_text = 53;
 }
 
 message ActivatedAbility {
@@ -565,16 +565,13 @@ message Modes {
 }
 
 message ReplacementEffect {
-  message Draw {}
-  message Etb {}
-  message TokenCreation {}
-
-  oneof replacing {
-    Draw draw = 1;
-    Etb etb = 2;
-    TokenCreation token_creation = 3;
+  enum Replacing {
+    DRAW = 0;
+    ETB = 1;
+    TOKEN_CREATION = 2;
   }
 
+  Replacing replacing = 3;
   repeated targets.Restriction restrictions = 4;
   repeated Effect effects = 5;
 }
