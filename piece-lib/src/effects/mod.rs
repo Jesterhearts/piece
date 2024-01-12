@@ -160,45 +160,6 @@ pub(crate) enum Effect {
 
 pub(crate) use battlefield_modifier::BattlefieldModifier;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::AsRefStr)]
-pub(crate) enum Destination {
-    Hand,
-    TopOfLibrary,
-    BottomOfLibrary,
-    Graveyard,
-    Battlefield { enters_tapped: bool },
-}
-
-impl TryFrom<&protogen::effects::Destination> for Destination {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Destination) -> Result<Self, Self::Error> {
-        value
-            .destination
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected destination to have a destination set"))
-            .map(Self::from)
-    }
-}
-
-impl From<&protogen::effects::destination::Destination> for Destination {
-    fn from(value: &protogen::effects::destination::Destination) -> Self {
-        match value {
-            protogen::effects::destination::Destination::Hand(_) => Self::Hand,
-            protogen::effects::destination::Destination::TopOfLibrary(_) => Self::TopOfLibrary,
-            protogen::effects::destination::Destination::Battlefield(battlefield) => {
-                Self::Battlefield {
-                    enters_tapped: battlefield.enters_tapped,
-                }
-            }
-            protogen::effects::destination::Destination::BottomOfLibrary(_) => {
-                Self::BottomOfLibrary
-            }
-            protogen::effects::destination::Destination::Graveyard(_) => Self::Graveyard,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NumberOfPermanentsMatching {
     pub(crate) restrictions: Vec<Restriction>,

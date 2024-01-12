@@ -1,6 +1,5 @@
 use std::vec::IntoIter;
 
-use indexmap::IndexMap;
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
 use tracing::Level;
@@ -14,7 +13,7 @@ use crate::{
     effects::{
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, ModifyBattlefield,
+        AnyEffect, BattlefieldModifier, Effect, EffectBehaviors, ModifyBattlefield,
         ReplacementAbility, Replacing, Token,
     },
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
@@ -27,7 +26,7 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         counters::Counter,
-        effects::{BattleCry, Cascade, Duration},
+        effects::{examine_top_cards::Dest, BattleCry, Cascade, Duration},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, TriggerSource},
@@ -141,7 +140,7 @@ pub(crate) enum ActionResult {
         count: usize,
     },
     ExamineTopCards {
-        destinations: IndexMap<Destination, usize>,
+        destinations: Vec<Dest>,
         count: usize,
         controller: Controller,
     },
@@ -290,10 +289,7 @@ impl ActionResult {
             }
             ActionResult::DiscardCards { target, count } => {
                 let mut pending = PendingResults::default();
-                pending.push_choose_discard(
-                    db.hand[*target].iter().copied().collect_vec(),
-                    *count as usize,
-                );
+                pending.push_choose_discard(db.hand[*target].iter().copied().collect_vec(), *count);
                 pending
             }
             ActionResult::TapPermanent(card_id) => card_id.tap(db),

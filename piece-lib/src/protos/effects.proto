@@ -318,10 +318,10 @@ message Equip {
 message ExamineTopCards {
   message Dest {
     Destination destination = 1;
-    int32 count = 2;
+    uint32 count = 2;
   }
 
-  int32 count = 3;
+  uint32 count = 3;
   repeated Dest destinations = 4;
 }
 

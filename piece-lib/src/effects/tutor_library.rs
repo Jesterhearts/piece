@@ -2,16 +2,23 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Destination, Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::{
+        self,
+        effects::{
+            destination::{self, Battlefield},
+            Destination,
+        },
+        targets::Restriction,
+    },
     stack::ActiveTarget,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TutorLibrary {
     pub(crate) restrictions: Vec<Restriction>,
-    pub(crate) destination: Destination,
+    pub(crate) destination: protobuf::MessageField<Destination>,
     pub(crate) reveal: bool,
 }
 
@@ -21,7 +28,7 @@ impl TryFrom<&protogen::effects::TutorLibrary> for TutorLibrary {
     fn try_from(value: &protogen::effects::TutorLibrary) -> Result<Self, Self::Error> {
         Ok(Self {
             restrictions: value.restrictions.clone(),
-            destination: value.destination.get_or_default().try_into()?,
+            destination: value.destination.clone(),
             reveal: value.reveal,
         })
     }
@@ -110,8 +117,8 @@ impl EffectBehaviors for TutorLibrary {
             }
         }
 
-        match self.destination {
-            Destination::Hand => {
+        match self.destination.destination.as_ref().unwrap() {
+            destination::Destination::Hand(_) => {
                 for target in targets {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
@@ -119,7 +126,7 @@ impl EffectBehaviors for TutorLibrary {
                     results.push_settled(ActionResult::MoveToHandFromLibrary(id))
                 }
             }
-            Destination::TopOfLibrary => {
+            destination::Destination::TopOfLibrary(_) => {
                 for target in targets {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
@@ -127,19 +134,19 @@ impl EffectBehaviors for TutorLibrary {
                     results.push_settled(ActionResult::MoveFromLibraryToTopOfLibrary(id))
                 }
             }
-            Destination::Battlefield { enters_tapped } => {
+            destination::Destination::Battlefield(Battlefield { enters_tapped, .. }) => {
                 for target in targets {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
                     };
                     results.push_settled(ActionResult::AddToBattlefieldFromLibrary {
                         card: id,
-                        enters_tapped,
+                        enters_tapped: *enters_tapped,
                     });
                 }
             }
-            Destination::BottomOfLibrary => unreachable!(),
-            Destination::Graveyard => {
+            destination::Destination::BottomOfLibrary(_) => unreachable!(),
+            destination::Destination::Graveyard(_) => {
                 for target in targets {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()

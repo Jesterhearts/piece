@@ -14,14 +14,14 @@ use std::{
 };
 
 use enum_dispatch::enum_dispatch;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
     abilities::{Ability, GainMana},
     action_result::ActionResult,
-    effects::{Destination, Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors},
     in_play::{CardId, CastFrom, Database, GainManaAbilityId},
     pending_results::{
         choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
@@ -31,6 +31,7 @@ use crate::{
         pay_costs::PayCost,
     },
     player::{Controller, Owner},
+    protogen::effects::{destination, examine_top_cards::Dest, Destination},
     stack::{ActiveTarget, StackEntry},
 };
 
@@ -269,19 +270,44 @@ impl PendingResults {
             .push_back(Pending::ExamineCards(ExamineCards::new(
                 examine_top_cards::Location::Library,
                 cards,
-                IndexMap::from([
-                    (Destination::BottomOfLibrary, usize::MAX),
-                    (Destination::TopOfLibrary, usize::MAX),
-                ]),
+                vec![
+                    Dest {
+                        destination: protobuf::MessageField::some(Destination {
+                            destination: Some(destination::Destination::BottomOfLibrary(
+                                Default::default(),
+                            )),
+                            ..Default::default()
+                        }),
+                        count: u32::MAX,
+                        ..Default::default()
+                    },
+                    Dest {
+                        destination: protobuf::MessageField::some(Destination {
+                            destination: Some(destination::Destination::TopOfLibrary(
+                                Default::default(),
+                            )),
+                            ..Default::default()
+                        }),
+                        count: u32::MAX,
+                        ..Default::default()
+                    },
+                ],
             )));
     }
 
-    pub(crate) fn push_choose_discard(&mut self, cards: Vec<CardId>, count: usize) {
+    pub(crate) fn push_choose_discard(&mut self, cards: Vec<CardId>, count: u32) {
         self.pending
             .push_back(Pending::ExamineCards(ExamineCards::new(
                 examine_top_cards::Location::Hand,
                 cards,
-                IndexMap::from([(Destination::Graveyard, count)]),
+                vec![Dest {
+                    destination: protobuf::MessageField::some(Destination {
+                        destination: Some(destination::Destination::Graveyard(Default::default())),
+                        ..Default::default()
+                    }),
+                    count,
+                    ..Default::default()
+                }],
             )));
     }
 

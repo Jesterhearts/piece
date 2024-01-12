@@ -1,15 +1,13 @@
-use indexmap::IndexMap;
-
 use crate::{
     action_result::ActionResult,
-    effects::{Destination, EffectBehaviors},
-    protogen,
+    effects::EffectBehaviors,
+    protogen::{self, effects::examine_top_cards::Dest},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExamineTopCards {
     count: usize,
-    destinations: IndexMap<Destination, usize>,
+    destinations: Vec<Dest>,
 }
 
 impl TryFrom<&protogen::effects::ExamineTopCards> for ExamineTopCards {
@@ -18,16 +16,7 @@ impl TryFrom<&protogen::effects::ExamineTopCards> for ExamineTopCards {
     fn try_from(value: &protogen::effects::ExamineTopCards) -> Result<Self, Self::Error> {
         Ok(Self {
             count: usize::try_from(value.count)?,
-            destinations: value
-                .destinations
-                .iter()
-                .map(|dest| -> anyhow::Result<_> {
-                    Ok((
-                        Destination::try_from(dest.destination.get_or_default())?,
-                        usize::try_from(dest.count)?,
-                    ))
-                })
-                .collect::<anyhow::Result<_>>()?,
+            destinations: value.destinations.clone(),
         })
     }
 }

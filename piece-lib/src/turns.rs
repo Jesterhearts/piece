@@ -254,7 +254,8 @@ impl Turn {
                 let in_hand = &db.hand[player];
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
-                    pending.push_choose_discard(in_hand.iter().copied().collect_vec(), discard);
+                    pending
+                        .push_choose_discard(in_hand.iter().copied().collect_vec(), discard as u32);
                 }
                 pending
             }

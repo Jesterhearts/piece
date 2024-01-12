@@ -23,8 +23,17 @@ fn main() {
             )
         }
 
-        fn message(&self, _message: &MessageDescriptor) -> Customize {
-            Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq)]\n#[serde(deny_unknown_fields)]")
+        fn message(&self, message: &MessageDescriptor) -> Customize {
+            if message.fields().any(|field| {
+                field.is_repeated_or_map()
+                    || field.proto().has_oneof_index()
+                    || field.proto().type_() == Type::TYPE_ENUM
+                    || field.proto().type_() == Type::TYPE_MESSAGE
+            }) {
+                Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq)]\n#[serde(deny_unknown_fields)]")
+            } else {
+                Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq, Hash)]\n#[serde(deny_unknown_fields)]")
+            }
         }
 
         fn oneof(&self, oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
@@ -37,6 +46,20 @@ fn main() {
                     ::strum::EnumString,
                     ::strum::AsRefStr,
                     Eq,
+                )]
+                #[strum(ascii_case_insensitive)]"#,
+                )
+            } else if oneof.name() == "destination" {
+                Customize::default().before(
+                    r#"#[derive(
+                    ::serde::Serialize,
+                    ::serde::Deserialize,
+                    ::strum::EnumIter,
+                    ::strum::EnumString,
+                    ::strum::AsRefStr,
+                    ::derive_more::From,
+                    Eq,
+                    Hash,
                 )]
                 #[strum(ascii_case_insensitive)]"#,
                 )

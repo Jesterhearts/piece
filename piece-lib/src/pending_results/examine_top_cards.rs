@@ -3,9 +3,12 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::Destination,
     in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
+    protogen::effects::{
+        destination::{self, Battlefield},
+        examine_top_cards::Dest,
+    },
 };
 
 #[derive(Debug)]
@@ -18,17 +21,13 @@ pub(crate) enum Location {
 pub(crate) struct ExamineCards {
     location: Location,
     cards: Vec<CardId>,
-    cards_to_location: IndexMap<Destination, Vec<CardId>>,
-    destinations: IndexMap<Destination, usize>,
+    cards_to_location: IndexMap<destination::Destination, Vec<CardId>>,
+    destinations: Vec<Dest>,
     placing: usize,
 }
 
 impl ExamineCards {
-    pub(crate) fn new(
-        location: Location,
-        cards: Vec<CardId>,
-        destinations: IndexMap<Destination, usize>,
-    ) -> Self {
+    pub(crate) fn new(location: Location, cards: Vec<CardId>, destinations: Vec<Dest>) -> Self {
         Self {
             location,
             cards,
@@ -41,33 +40,47 @@ impl ExamineCards {
     fn choose(&mut self, choice: Option<usize>) -> bool {
         debug!(
             "Choosing to place to {:?}",
-            self.destinations
-                .get_index(self.placing)
-                .map(|t| t.0.as_ref())
+            self.destinations.get(self.placing).map(|t| t
+                .destination
+                .destination
+                .as_ref()
+                .unwrap())
         );
 
         if choice.is_none() && self.placing < self.destinations.len() - 1 {
             self.placing += 1;
             return false;
         } else if choice.is_none() {
-            let (destination, count) = self.destinations.get_index(self.placing).unwrap();
-            for card in self.cards.drain(..).take(*count) {
+            let Dest {
+                destination, count, ..
+            } = &self.destinations[self.placing];
+
+            for card in self.cards.drain(..).take(*count as usize) {
                 self.cards_to_location
-                    .entry(*destination)
+                    .entry(destination.destination.as_ref().unwrap().clone())
                     .or_default()
                     .push(card);
             }
             return true;
         }
 
-        let (destination, max) = self.destinations.get_index(self.placing).unwrap();
+        let Dest {
+            destination, count, ..
+        } = &self.destinations[self.placing];
+
         let card = self.cards.remove(choice.unwrap());
         self.cards_to_location
-            .entry(*destination)
+            .entry(destination.destination.as_ref().unwrap().clone())
             .or_default()
             .push(card);
 
-        if self.cards_to_location[destination].len() == *max {
+        if self
+            .cards_to_location
+            .get(destination.destination.as_ref().unwrap())
+            .unwrap()
+            .len()
+            == *count as usize
+        {
             self.placing += 1;
         }
 
@@ -78,7 +91,7 @@ impl ExamineCards {
 impl PendingResult for ExamineCards {
     fn optional(&self, _db: &Database) -> bool {
         (self.placing < self.destinations.len() - 1)
-            || (*self.destinations.get_index(self.placing).unwrap().1 >= self.cards.len())
+            || (self.destinations[self.placing].count as usize >= self.cards.len())
     }
 
     fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
@@ -91,13 +104,17 @@ impl PendingResult for ExamineCards {
 
     #[instrument(skip(_db))]
     fn description(&self, _db: &Database) -> String {
-        let (destination, _) = self.destinations.get_index(self.placing).unwrap();
-        match destination {
-            Destination::Hand => "moving to your hand".to_string(),
-            Destination::TopOfLibrary => "placing on top of your library".to_string(),
-            Destination::BottomOfLibrary => "placing on the bottom of your library".to_string(),
-            Destination::Graveyard => "placing in your graveyard".to_string(),
-            Destination::Battlefield { .. } => "placing on the battlefield".to_string(),
+        let Dest { destination, .. } = &self.destinations[self.placing];
+        match destination.destination.as_ref().unwrap() {
+            destination::Destination::Hand(_) => "moving to your hand".to_string(),
+            destination::Destination::TopOfLibrary(_) => {
+                "placing on top of your library".to_string()
+            }
+            destination::Destination::BottomOfLibrary(_) => {
+                "placing on the bottom of your library".to_string()
+            }
+            destination::Destination::Graveyard(_) => "placing in your graveyard".to_string(),
+            destination::Destination::Battlefield(_) => "placing on the battlefield".to_string(),
         }
     }
 
@@ -114,7 +131,7 @@ impl PendingResult for ExamineCards {
         if self.choose(choice) {
             for (destination, cards) in self.cards_to_location.drain(..) {
                 match destination {
-                    Destination::Hand => {
+                    destination::Destination::Hand(_) => {
                         for card in cards {
                             match self.location {
                                 Location::Hand => {
@@ -126,7 +143,7 @@ impl PendingResult for ExamineCards {
                             }
                         }
                     }
-                    Destination::TopOfLibrary => {
+                    destination::Destination::TopOfLibrary(_) => {
                         for card in cards {
                             match self.location {
                                 Location::Hand => todo!(),
@@ -138,7 +155,7 @@ impl PendingResult for ExamineCards {
                             }
                         }
                     }
-                    Destination::BottomOfLibrary => {
+                    destination::Destination::BottomOfLibrary(_) => {
                         for card in cards {
                             match self.location {
                                 Location::Hand => todo!(),
@@ -150,7 +167,7 @@ impl PendingResult for ExamineCards {
                             }
                         }
                     }
-                    Destination::Graveyard => {
+                    destination::Destination::Graveyard(_) => {
                         for card in cards {
                             match self.location {
                                 Location::Hand => {
@@ -164,7 +181,9 @@ impl PendingResult for ExamineCards {
                             }
                         }
                     }
-                    Destination::Battlefield { enters_tapped } => {
+                    destination::Destination::Battlefield(Battlefield {
+                        enters_tapped, ..
+                    }) => {
                         for card in cards {
                             match self.location {
                                 Location::Hand => todo!(),
