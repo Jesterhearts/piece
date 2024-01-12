@@ -727,9 +727,7 @@ impl CardId {
         } else if let Some(dynamic) = source.dynamic_power_toughness.as_ref() {
             Some(BasePowerType::Dynamic(dynamic.clone()))
         } else {
-            source
-                .power
-                .map(|power| BasePowerType::Static(power as i32))
+            source.power.map(BasePowerType::Static)
         };
 
         let mut base_toughness = if facedown {
@@ -737,9 +735,7 @@ impl CardId {
         } else if let Some(dynamic) = source.dynamic_power_toughness.as_ref() {
             Some(BaseToughnessType::Dynamic(dynamic.clone()))
         } else {
-            source
-                .toughness
-                .map(|toughness| BaseToughnessType::Static(toughness as i32))
+            source.toughness.map(BaseToughnessType::Static)
         };
 
         let mut types = if facedown {
