@@ -8,15 +8,13 @@ use protobuf::Enum;
 use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer},
-    effects::{
-        AnyEffect, DynamicPowerToughness, Effect, Mode, ReplacementAbility, Token, TokenCreature,
-    },
+    effects::{AnyEffect, Effect, Mode, ReplacementAbility, Token, TokenCreature},
     protogen::targets::Restriction,
     protogen::{
         self,
         color::Color,
         cost::ManaCost,
-        effects::TargetCreatureExplores,
+        effects::{DynamicPowerToughness, TargetCreatureExplores},
         keywords::Keyword,
         types::{Subtype, Type},
     },
@@ -182,10 +180,7 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .map(GainManaAbility::try_from)
                 .collect::<anyhow::Result<Vec<_>>>()?,
             etb_tapped: value.etb_tapped,
-            dynamic_power_toughness: value
-                .dynamic_power_toughness
-                .as_ref()
-                .map_or(Ok(None), |dynamic| dynamic.try_into().map(Some))?,
+            dynamic_power_toughness: value.dynamic_power_toughness.as_ref().cloned(),
             power: value
                 .power
                 .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {

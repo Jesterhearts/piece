@@ -84,16 +84,15 @@ use crate::{
     protogen::{
         self,
         color::Color,
-        counters::Counter,
         effects::{
             BattleCry, CantAttackThisTurn, Cascade, ControllerDiscards, ControllerLosesLife,
             CopyOfAnyCreatureNonTargeting, CopySpellOrAbility, CounterSpellOrAbility, Cycling,
-            DealDamage, DestroyEach, DestroyTarget, Discover, ExileTarget,
+            DealDamage, DestroyEach, DestroyTarget, Discover, DynamicPowerToughness, ExileTarget,
             ExileTargetCreatureManifestTopOfLibrary, ExileTargetGraveyard, GainLife, Mill,
-            MultiplyTokens, NumberOfPermanentsMatching, ReturnFromGraveyardToBattlefield,
-            ReturnFromGraveyardToHand, ReturnFromGraveyardToLibrary, ReturnSelfToHand,
-            ReturnTargetToHand, ReturnTransformed, Scry, SelfExplores, TapTarget, TapThis,
-            TargetCreatureExplores, TargetToTopOfLibrary, Transform, UntapTarget, UntapThis,
+            MultiplyTokens, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToHand,
+            ReturnFromGraveyardToLibrary, ReturnSelfToHand, ReturnTargetToHand, ReturnTransformed,
+            Scry, SelfExplores, TapTarget, TapThis, TargetCreatureExplores, TargetToTopOfLibrary,
+            Transform, UntapTarget, UntapThis,
         },
         empty::Empty,
         types::{Subtype, Type},
@@ -160,41 +159,6 @@ pub(crate) enum Effect {
 
 pub(crate) use battlefield_modifier::BattlefieldModifier;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum DynamicPowerToughness {
-    NumberOfCountersOnThis(protobuf::EnumOrUnknown<Counter>),
-    NumberOfPermanentsMatching(NumberOfPermanentsMatching),
-}
-
-impl TryFrom<&protogen::effects::DynamicPowerToughness> for DynamicPowerToughness {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::DynamicPowerToughness) -> Result<Self, Self::Error> {
-        value
-            .source
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected dynamic p/t to have a source set"))
-            .and_then(Self::try_from)
-    }
-}
-
-impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPowerToughness {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::dynamic_power_toughness::Source,
-    ) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::dynamic_power_toughness::Source::NumberOfCountersOnThis(counter) => {
-                Ok(Self::NumberOfCountersOnThis(counter.counter))
-            }
-            protogen::effects::dynamic_power_toughness::Source::NumberOfPermanentsMatching(
-                value,
-            ) => Ok(Self::NumberOfPermanentsMatching(value.clone())),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ModifyBattlefield {
     pub(crate) base_power: Option<i32>,
@@ -238,10 +202,7 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
             base_toughness: value.base_toughness,
             add_power: value.add_power,
             add_toughness: value.add_toughness,
-            dynamic_power_toughness: value
-                .add_dynamic_power_toughness
-                .as_ref()
-                .map_or(Ok(None), |pt| pt.try_into().map(Some))?,
+            dynamic_power_toughness: value.add_dynamic_power_toughness.as_ref().cloned(),
             add_types: value.add_types.clone(),
             add_subtypes: value.add_subtypes.clone(),
             add_colors: value.add_colors.clone(),
@@ -531,9 +492,6 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
     }
 }
 
-#[derive(Debug, Deref, Clone, DerefMut, Default)]
-pub(crate) struct Effects(pub(crate) Vec<AnyEffect>);
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyEffect {
     pub(crate) effect: Effect,
@@ -577,10 +535,7 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
             subtypes: value.typeline.subtypes.clone(),
             colors: value.colors.clone(),
             keywords: value.keywords.clone(),
-            dynamic_power_toughness: value
-                .dynamic_power_toughness
-                .as_ref()
-                .map_or(Ok(None), |dynamic| dynamic.try_into().map(Some))?,
+            dynamic_power_toughness: value.dynamic_power_toughness.as_ref().cloned(),
             power: usize::try_from(value.power)?,
             toughness: usize::try_from(value.toughness)?,
         })
