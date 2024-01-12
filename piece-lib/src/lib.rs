@@ -468,13 +468,11 @@ where
     let types = value
         .types
         .iter()
-        .sorted()
         .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::Title))
         .join(" ");
     let subtypes = value
         .subtypes
         .iter()
-        .sorted()
         .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::Title))
         .join(" ");
 
