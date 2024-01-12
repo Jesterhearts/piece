@@ -13,8 +13,8 @@ use crate::{
     effects::{
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Effect, EffectBehaviors, ReplacementAbility, Replacing,
-        Token,
+        AnyEffect, BattlefieldModifier, Effect, EffectBehaviors, ModifyBattlefield,
+        ReplacementAbility, Replacing, Token,
     },
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,

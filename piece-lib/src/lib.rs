@@ -468,12 +468,12 @@ where
     let types = value
         .types
         .iter()
-        .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::Title))
+        .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::UpperCamel))
         .join(" ");
     let subtypes = value
         .subtypes
         .iter()
-        .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::Title))
+        .map(|ty| ty.enum_value().unwrap().as_ref().to_case(Case::UpperCamel))
         .join(" ");
 
     if subtypes.is_empty() {
