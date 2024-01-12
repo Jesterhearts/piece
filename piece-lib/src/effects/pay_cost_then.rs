@@ -1,32 +1,10 @@
 use crate::{
     abilities::Ability,
-    cost::{AbilityCost, AdditionalCost},
-    effects::{AnyEffect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::pay_costs::{Cost, PayCost, SacrificePermanent, SpendMana, TapPermanent},
     player::mana_pool::SpendReason,
-    protogen,
+    protogen::{cost::additional_cost, effects::PayCostThen},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PayCostThen {
-    cost: AbilityCost,
-    effects: Vec<AnyEffect>,
-}
-
-impl TryFrom<&protogen::effects::PayCostThen> for PayCostThen {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::PayCostThen) -> Result<Self, Self::Error> {
-        Ok(Self {
-            cost: value.cost.get_or_default().try_into()?,
-            effects: value
-                .effects
-                .iter()
-                .map(AnyEffect::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
 
 impl EffectBehaviors for PayCostThen {
     fn needs_targets(
@@ -60,27 +38,29 @@ impl EffectBehaviors for PayCostThen {
             )),
         ));
 
-        for cost in self.cost.additional_cost.iter() {
-            match cost {
-                AdditionalCost::DiscardThis => unreachable!(),
-                AdditionalCost::ExileCardsCmcX(_) => unreachable!(),
-                AdditionalCost::SacrificeSource => unreachable!(),
-                AdditionalCost::PayLife(_) => todo!(),
-                AdditionalCost::ExileCard { .. } => todo!(),
-                AdditionalCost::ExileXOrMoreCards { .. } => todo!(),
-                AdditionalCost::ExileSharingCardType { .. } => todo!(),
-                AdditionalCost::TapPermanentsPowerXOrMore { .. } => todo!(),
-                AdditionalCost::RemoveCounter { .. } => todo!(),
-                AdditionalCost::SacrificePermanent(restrictions) => {
+        for cost in self.cost.additional_costs.iter() {
+            match cost.cost.as_ref().unwrap() {
+                additional_cost::Cost::DiscardThis(_) => unreachable!(),
+                additional_cost::Cost::ExileCardsCmcX(_) => unreachable!(),
+                additional_cost::Cost::SacrificeSource(_) => unreachable!(),
+                additional_cost::Cost::PayLife(_) => todo!(),
+                additional_cost::Cost::ExileCard(_) => todo!(),
+                additional_cost::Cost::ExileXOrMoreCards(_) => todo!(),
+                additional_cost::Cost::ExileSharingCardType(_) => todo!(),
+                additional_cost::Cost::TapPermanentsPowerXOrMore(_) => todo!(),
+                additional_cost::Cost::RemoveCounters(_) => todo!(),
+                additional_cost::Cost::SacrificePermanent(sacrifice) => {
                     results.push_pay_costs(PayCost::new(
                         source,
-                        Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                        Cost::SacrificePermanent(SacrificePermanent::new(
+                            sacrifice.restrictions.clone(),
+                        )),
                     ));
                 }
-                AdditionalCost::TapPermanent(restrictions) => {
+                additional_cost::Cost::TapPermanent(tap) => {
                     results.push_pay_costs(PayCost::new(
                         source,
-                        Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                        Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                     ));
                 }
             }
@@ -106,27 +86,29 @@ impl EffectBehaviors for PayCostThen {
             )),
         ));
 
-        for cost in self.cost.additional_cost.iter() {
-            match cost {
-                AdditionalCost::DiscardThis => unreachable!(),
-                AdditionalCost::ExileCardsCmcX(_) => unreachable!(),
-                AdditionalCost::SacrificeSource => unreachable!(),
-                AdditionalCost::PayLife(_) => todo!(),
-                AdditionalCost::ExileCard { .. } => todo!(),
-                AdditionalCost::ExileXOrMoreCards { .. } => todo!(),
-                AdditionalCost::ExileSharingCardType { .. } => todo!(),
-                AdditionalCost::TapPermanentsPowerXOrMore { .. } => todo!(),
-                AdditionalCost::RemoveCounter { .. } => todo!(),
-                AdditionalCost::SacrificePermanent(restrictions) => {
+        for cost in self.cost.additional_costs.iter() {
+            match cost.cost.as_ref().unwrap() {
+                additional_cost::Cost::DiscardThis(_) => unreachable!(),
+                additional_cost::Cost::ExileCardsCmcX(_) => unreachable!(),
+                additional_cost::Cost::SacrificeSource(_) => unreachable!(),
+                additional_cost::Cost::PayLife(_) => todo!(),
+                additional_cost::Cost::ExileCard(_) => todo!(),
+                additional_cost::Cost::ExileXOrMoreCards(_) => todo!(),
+                additional_cost::Cost::ExileSharingCardType(_) => todo!(),
+                additional_cost::Cost::TapPermanentsPowerXOrMore(_) => todo!(),
+                additional_cost::Cost::RemoveCounters(_) => todo!(),
+                additional_cost::Cost::SacrificePermanent(sacrifice) => {
                     results.push_pay_costs(PayCost::new(
                         source,
-                        Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                        Cost::SacrificePermanent(SacrificePermanent::new(
+                            sacrifice.restrictions.clone(),
+                        )),
                     ));
                 }
-                AdditionalCost::TapPermanent(restrictions) => {
+                additional_cost::Cost::TapPermanent(tap) => {
                     results.push_pay_costs(PayCost::new(
                         source,
-                        Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                        Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                     ));
                 }
             }

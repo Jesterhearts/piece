@@ -251,7 +251,7 @@ impl Log {
                             .ability
                             .effects
                             .iter()
-                            .any(|effect| effect.effect.is_equip())
+                            .any(|effect| effect.effect.as_ref().unwrap().is_equip())
                     })
             }),
             had_counters: db[card].counters.clone(),

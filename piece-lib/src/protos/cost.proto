@@ -28,10 +28,10 @@ message AdditionalCost {
     repeated targets.Restriction restrictions = 1;
   }
   message ExileSharingCardType {
-    int32 count = 1;
+    uint32 count = 1;
   }
   message ExileXOrMoreCards {
-    int32 minimum = 1;
+    uint32 minimum = 1;
     repeated targets.Restriction restrictions = 2;
   }
   message PayLife {
@@ -39,7 +39,7 @@ message AdditionalCost {
   }
   message RemoveCounters {
     counters.Counter counter = 1;
-    int32 count = 2;
+    uint32 count = 2;
   }
   message SacrificePermanent {
     repeated targets.Restriction restrictions = 1;
@@ -49,7 +49,7 @@ message AdditionalCost {
     repeated targets.Restriction restrictions = 1;
   }
   message TapPermanentsPowerXOrMore {
-    int32 x_is = 1;
+    uint32 x_is = 1;
     repeated targets.Restriction restrictions = 2;
   }
 
@@ -70,7 +70,7 @@ message AdditionalCost {
 
 message AbilityRestriction {
   message AttackedWithXOrMoreCreatures {
-    int32 x_is = 1;
+    uint32 x_is = 1;
   }
   message OncePerTurn {}
 
@@ -91,7 +91,7 @@ message CastingCost {
 
 message AbilityCost {
   repeated ManaCost mana_cost = 1;
-  optional bool tap = 2;
+  bool tap = 2;
   repeated AdditionalCost additional_costs = 3;
   repeated AbilityRestriction restrictions = 4;
 }

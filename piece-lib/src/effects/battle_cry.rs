@@ -4,10 +4,10 @@ use protobuf::Enum;
 
 use crate::{
     action_result::ActionResult,
-    effects::{BattlefieldModifier, EffectBehaviors, ModifyBattlefield},
+    effects::EffectBehaviors,
     in_play::ModifierId,
     protogen::{
-        effects::{BattleCry, Duration},
+        effects::{BattleCry, BattlefieldModifier, Duration, ModifyBattlefield},
         empty::Empty,
         targets::{restriction, Restriction},
         types::Type,
@@ -42,11 +42,11 @@ impl EffectBehaviors for BattleCry {
             db,
             source,
             BattlefieldModifier {
-                modifier: ModifyBattlefield {
+                modifier: protobuf::MessageField::some(ModifyBattlefield {
                     add_power: Some(1),
                     entire_battlefield: true,
                     ..Default::default()
-                },
+                }),
                 duration: Duration::UNTIL_END_OF_TURN.into(),
                 restrictions: vec![
                     Restriction {
@@ -80,6 +80,7 @@ impl EffectBehaviors for BattleCry {
                         ..Default::default()
                     },
                 ],
+                ..Default::default()
             },
         );
 

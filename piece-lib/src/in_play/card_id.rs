@@ -12,13 +12,10 @@ use strum::IntoEnumIterator;
 use tracing::Level;
 
 use crate::{
-    abilities::{
-        Ability, AddKeywordsIf, GainMana, GainManaAbility, StaticAbility, TriggeredAbility,
-    },
+    abilities::Ability,
     battlefield::Battlefields,
     card::{replace_symbols, BasePowerType, BaseToughnessType, Card},
-    cost::{AbilityCost, CastingCost},
-    effects::{AnyEffect, EffectBehaviors, ReplacementAbility, Token},
+    effects::EffectBehaviors,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId, NEXT_CARD_ID,
@@ -27,10 +24,19 @@ use crate::{
     pending_results::PendingResults,
     player::{Controller, Owner},
     protogen::{
+        abilities::TriggeredAbility,
         color::Color,
+        cost::{AbilityCost, CastingCost},
         counters::Counter,
         effects::{
-            dynamic_power_toughness, replacement_effect::Replacing, Duration, DynamicPowerToughness,
+            create_token::Token,
+            dynamic_power_toughness,
+            gain_mana::{Gain, Specific},
+            replacement_effect::Replacing,
+            static_ability::{
+                self, AddKeywordsIf, AllAbilitiesOfExiledWith, GreenCannotBeCountered,
+            },
+            Duration, DynamicPowerToughness, Effect, GainMana, GainManaAbility, ReplacementEffect,
         },
         keywords::Keyword,
         mana::{Mana, ManaRestriction, ManaSource},
@@ -67,18 +73,21 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     db,
                     source,
                     GainManaAbility {
-                        cost: AbilityCost {
-                            mana_cost: vec![],
+                        cost: protobuf::MessageField::some(AbilityCost {
                             tap: true,
-                            additional_cost: vec![],
-                            restrictions: vec![],
-                        },
-                        gain: GainMana::Specific {
-                            gains: vec![Mana::WHITE.into()],
-                        },
+                            ..Default::default()
+                        }),
+                        gain_mana: protobuf::MessageField::some(GainMana {
+                            gain: Some(Gain::Specific(Specific {
+                                gain: vec![Mana::WHITE.into()],
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {W}."),
+                        ..Default::default()
                     },
                 )
             });
@@ -89,18 +98,21 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     db,
                     source,
                     GainManaAbility {
-                        cost: AbilityCost {
-                            mana_cost: vec![],
+                        cost: protobuf::MessageField::some(AbilityCost {
                             tap: true,
-                            additional_cost: vec![],
-                            restrictions: vec![],
-                        },
-                        gain: GainMana::Specific {
-                            gains: vec![Mana::BLUE.into()],
-                        },
+                            ..Default::default()
+                        }),
+                        gain_mana: protobuf::MessageField::some(GainMana {
+                            gain: Some(Gain::Specific(Specific {
+                                gain: vec![Mana::BLUE.into()],
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {U}."),
+                        ..Default::default()
                     },
                 )
             });
@@ -111,18 +123,21 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     db,
                     source,
                     GainManaAbility {
-                        cost: AbilityCost {
-                            mana_cost: vec![],
+                        cost: protobuf::MessageField::some(AbilityCost {
                             tap: true,
-                            additional_cost: vec![],
-                            restrictions: vec![],
-                        },
-                        gain: GainMana::Specific {
-                            gains: vec![Mana::BLACK.into()],
-                        },
+                            ..Default::default()
+                        }),
+                        gain_mana: protobuf::MessageField::some(GainMana {
+                            gain: Some(Gain::Specific(Specific {
+                                gain: vec![Mana::BLACK.into()],
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {B}."),
+                        ..Default::default()
                     },
                 )
             });
@@ -133,18 +148,21 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     db,
                     source,
                     GainManaAbility {
-                        cost: AbilityCost {
-                            mana_cost: vec![],
+                        cost: protobuf::MessageField::some(AbilityCost {
                             tap: true,
-                            additional_cost: vec![],
-                            restrictions: vec![],
-                        },
-                        gain: GainMana::Specific {
-                            gains: vec![Mana::RED.into()],
-                        },
+                            ..Default::default()
+                        }),
+                        gain_mana: protobuf::MessageField::some(GainMana {
+                            gain: Some(Gain::Specific(Specific {
+                                gain: vec![Mana::RED.into()],
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {R}."),
+                        ..Default::default()
                     },
                 )
             });
@@ -155,18 +173,21 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
                     db,
                     source,
                     GainManaAbility {
-                        cost: AbilityCost {
-                            mana_cost: vec![],
+                        cost: protobuf::MessageField::some(AbilityCost {
                             tap: true,
-                            additional_cost: vec![],
-                            restrictions: vec![],
-                        },
-                        gain: GainMana::Specific {
-                            gains: vec![Mana::GREEN.into()],
-                        },
+                            ..Default::default()
+                        }),
+                        gain_mana: protobuf::MessageField::some(GainMana {
+                            gain: Some(Gain::Specific(Specific {
+                                gain: vec![Mana::GREEN.into()],
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }),
                         mana_restriction: ManaRestriction::NONE.into(),
                         mana_source: protobuf::EnumOrUnknown::default(),
                         oracle_text: replace_symbols("{T}: Add {G}."),
+                        ..Default::default()
                     },
                 )
             });
@@ -234,9 +255,9 @@ pub struct CardInPlay {
     pub modified_subtypes: SubtypeSet,
     pub(crate) modified_colors: HashSet<Color>,
     pub modified_keywords: HashMap<i32, u32>,
-    pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementAbility>>,
+    pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementEffect>>,
     pub modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
-    pub modified_etb_abilities: Vec<AnyEffect>,
+    pub modified_etb_abilities: Vec<Effect>,
     pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
     pub(crate) modified_activated_abilities: HashSet<ActivatedAbilityId>,
     pub(crate) modified_mana_abilities: HashSet<GainManaAbilityId>,
@@ -320,8 +341,12 @@ impl CardId {
         let id = Self::new();
 
         let mut static_abilities = HashSet::default();
-        for ability in card.static_abilities.clone() {
-            static_abilities.insert(StaticAbilityId::upload(db, id, ability));
+        for ability in card.static_abilities.iter() {
+            static_abilities.insert(StaticAbilityId::upload(
+                db,
+                id,
+                ability.ability.as_ref().unwrap().clone(),
+            ));
         }
 
         let mut activated_abilities = HashSet::default();
@@ -388,7 +413,7 @@ impl CardId {
         db[self].mana_abilities.clear();
 
         for ability in self.faceup_face(db).static_abilities.clone() {
-            let id = StaticAbilityId::upload(db, self, ability);
+            let id = StaticAbilityId::upload(db, self, ability.ability.unwrap().clone());
             db[self].static_abilities.insert(id);
         }
 
@@ -809,7 +834,7 @@ impl CardId {
         let mut replacement_abilities = if facedown {
             Default::default()
         } else {
-            let mut abilities: HashMap<Replacing, Vec<ReplacementAbility>> = Default::default();
+            let mut abilities: HashMap<Replacing, Vec<ReplacementEffect>> = Default::default();
             for ability in source.replacement_abilities.iter() {
                 abilities
                     .entry(ability.replacing.enum_value().unwrap())
@@ -1014,9 +1039,10 @@ impl CardId {
         let add_keywords = static_abilities
             .iter()
             .filter_map(|sa| {
-                if let StaticAbility::AddKeywordsIf(AddKeywordsIf {
+                if let static_ability::Ability::AddKeywordsIf(AddKeywordsIf {
                     keywords: add_keywords,
                     restrictions,
+                    ..
                 }) = &db[*sa].ability
                 {
                     let power = base_power.as_ref().map(|base| match base {
@@ -1083,16 +1109,19 @@ impl CardId {
         let add_abilities = static_abilities
             .iter()
             .filter_map(|sa| {
-                if let StaticAbility::AllAbilitiesOfExiledWith {
-                    ability_restriction,
-                } = &db[*sa].ability
+                if let static_ability::Ability::AllAbilitiesOfExiledWith(
+                    AllAbilitiesOfExiledWith {
+                        activation_restrictions,
+                        ..
+                    },
+                ) = &db[*sa].ability
                 {
                     let mut add = vec![];
                     for card in db[self].exiling.iter().copied() {
                         add.extend(db[card].activated_abilities.iter().copied());
                     }
 
-                    Some((ability_restriction.clone(), add))
+                    Some((activation_restrictions.clone(), add))
                 } else {
                     None
                 }
@@ -1102,7 +1131,11 @@ impl CardId {
         for (restrictions, to_add) in add_abilities {
             activated_abilities.extend(to_add.into_iter().map(|id| {
                 let mut ability = db[id].ability.clone();
-                ability.cost.restrictions.extend(restrictions.clone());
+                ability
+                    .cost
+                    .mut_or_insert_default()
+                    .restrictions
+                    .extend(restrictions.clone());
                 ActivatedAbilityId::upload(db, self, ability)
             }));
         }
@@ -1279,7 +1312,12 @@ impl CardId {
                 add_toughness += add;
             }
 
-            if let Some(dynamic) = modifier.modifier.modifier.dynamic_power_toughness.as_ref() {
+            if let Some(dynamic) = modifier
+                .modifier
+                .modifier
+                .add_dynamic_power_toughness
+                .as_ref()
+            {
                 let to_add = self.dynamic_power_toughness_given_types(
                     db,
                     dynamic,
@@ -1325,12 +1363,12 @@ impl CardId {
         db[self].modified_static_abilities = static_abilities
             .into_iter()
             .inspect(|sa| {
-                if let StaticAbility::BattlefieldModifier(modifier) = &db[*sa].ability {
+                if let static_ability::Ability::BattlefieldModifier(modifier) = &db[*sa].ability {
                     if db[*sa].owned_modifier.is_none() {
                         let modifier = ModifierId::upload_temporary_modifier(
                             db,
                             db[*sa].source,
-                            *modifier.clone(),
+                            modifier.clone(),
                         );
                         db[*sa].owned_modifier = Some(modifier);
                         modifier.activate(&mut db.modifiers);
@@ -1470,7 +1508,7 @@ impl CardId {
             .chain(
                 effects
                     .iter()
-                    .map(|effect| effect.effect.needs_targets(db, self)),
+                    .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, self)),
             )
             .collect_vec()
     }
@@ -1483,7 +1521,7 @@ impl CardId {
             .chain(
                 effects
                     .into_iter()
-                    .map(|effect| effect.effect.wants_targets(db, self)),
+                    .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, self)),
             )
             .collect_vec()
     }
@@ -1969,7 +2007,7 @@ impl CardId {
         let controller = db[self].controller;
         if !ability.apply_to_self(db) {
             for effect in ability.effects(db).iter() {
-                targets.push(effect.effect.valid_targets(
+                targets.push(effect.effect.as_ref().unwrap().valid_targets(
                     db,
                     self,
                     LogId::current(db),
@@ -2028,7 +2066,10 @@ impl CardId {
 
         for (ability, _) in Battlefields::static_abilities(db) {
             match &ability {
-                StaticAbility::GreenCannotBeCountered { restrictions } => {
+                static_ability::Ability::GreenCannotBeCountered(GreenCannotBeCountered {
+                    restrictions,
+                    ..
+                }) => {
                     if db[self].modified_colors.contains(&Color::GREEN)
                         && self.passes_restrictions(db, log_session, source, restrictions)
                     {
@@ -2246,10 +2287,12 @@ impl CardId {
 
     pub(crate) fn can_attack(self, db: &Database) -> bool {
         self.types_intersect(db, &TypeSet::from([Type::CREATURE]))
-            && !db[self]
-                .modified_static_abilities
-                .iter()
-                .any(|ability| matches!(db[*ability].ability, StaticAbility::PreventAttacks))
+            && !db[self].modified_static_abilities.iter().any(|ability| {
+                matches!(
+                    db[*ability].ability,
+                    static_ability::Ability::PreventAttacks(_)
+                )
+            })
     }
 
     pub(crate) fn battle_cry(self, db: &Database) -> u32 {

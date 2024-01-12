@@ -5,14 +5,18 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    cost::ReduceWhen,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{target_from_location, CardId, Database, ExileReason},
     log::LogId,
     pending_results::{PendingResult, PendingResults},
     player::mana_pool::SpendReason,
     protogen::targets::Restriction,
-    protogen::{cost::ManaCost, effects::Duration, mana::Mana, mana::ManaSource},
+    protogen::{
+        cost::{cost_reducer::When, ManaCost},
+        effects::{effect::Effect, Duration},
+        mana::Mana,
+        mana::ManaSource,
+    },
     stack::ActiveTarget,
 };
 
@@ -375,8 +379,8 @@ impl Cost {
                 }
 
                 if let Some(reducer) = source.faceup_face(db).reducer.as_ref() {
-                    match reducer.when {
-                        ReduceWhen::TargetTappedCreature => {
+                    match reducer.when.as_ref().unwrap() {
+                        When::TargetTappedCreature(_) => {
                             if let Ok(Some(target)) = already_chosen
                                 .iter()
                                 .exactly_one()

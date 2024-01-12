@@ -1,26 +1,14 @@
-use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::{BattlefieldModifier, Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{target_from_location, Database, ModifierId},
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen::{self, effects::Duration},
+    protogen::effects::{effect::Effect, BattlefieldModifier, Duration, ModifyTarget},
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Deref, DerefMut)]
-pub(crate) struct ModifyTarget(pub(crate) BattlefieldModifier);
-
-impl TryFrom<&protogen::effects::BattlefieldModifier> for ModifyTarget {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::BattlefieldModifier) -> Result<Self, Self::Error> {
-        Ok(Self(BattlefieldModifier::try_from(value)?))
-    }
-}
 
 impl EffectBehaviors for ModifyTarget {
     fn needs_targets(
@@ -119,7 +107,7 @@ impl EffectBehaviors for ModifyTarget {
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),
                     duration: self.duration,
-                    restrictions: vec![],
+                    ..Default::default()
                 },
             ),
             _ => ModifierId::upload_temporary_modifier(
@@ -128,7 +116,7 @@ impl EffectBehaviors for ModifyTarget {
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),
                     duration: self.duration,
-                    restrictions: vec![],
+                    ..Default::default()
                 },
             ),
         };

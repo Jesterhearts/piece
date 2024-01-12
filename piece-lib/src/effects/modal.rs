@@ -1,29 +1,10 @@
 use crate::{
-    effects::{Effect, EffectBehaviors, Mode},
+    effects::{EffectBehaviors, Mode},
     pending_results::Source,
-    protogen,
+    protogen::effects::{effect::Effect, Modes},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Modal {
-    modes: Vec<Mode>,
-}
-
-impl TryFrom<&protogen::effects::Modes> for Modal {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Modes) -> Result<Self, Self::Error> {
-        Ok(Self {
-            modes: value
-                .modes
-                .iter()
-                .map(Mode::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
-
-impl EffectBehaviors for Modal {
+impl EffectBehaviors for Modes {
     fn modes(&self) -> Vec<Mode> {
         self.modes.clone()
     }
@@ -55,6 +36,8 @@ impl EffectBehaviors for Modal {
             for effect in self.modes[mode].effects.iter() {
                 effect
                     .effect
+                    .as_ref()
+                    .unwrap()
                     .push_pending_behavior(db, source, controller, results);
             }
         } else {

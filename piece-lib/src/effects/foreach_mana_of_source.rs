@@ -1,25 +1,6 @@
 use crate::{
-    action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
-    protogen::{self, mana::ManaSource},
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ForEachManaOfSource,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ForEachManaOfSource {
-    pub(crate) source: protobuf::EnumOrUnknown<ManaSource>,
-    pub(crate) effect: Box<Effect>,
-}
-
-impl TryFrom<&protogen::effects::ForEachManaOfSource> for ForEachManaOfSource {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ForEachManaOfSource) -> Result<Self, Self::Error> {
-        Ok(Self {
-            source: value.source,
-            effect: Box::new(value.effect.get_or_default().try_into()?),
-        })
-    }
-}
 
 impl EffectBehaviors for ForEachManaOfSource {
     fn needs_targets(
@@ -48,7 +29,7 @@ impl EffectBehaviors for ForEachManaOfSource {
         results.push_settled(ActionResult::ForEachManaOfSource {
             card: source,
             source: self.source,
-            effect: *self.effect.clone(),
+            effect: self.effect.clone(),
         });
     }
 
@@ -64,7 +45,7 @@ impl EffectBehaviors for ForEachManaOfSource {
         results.push_settled(ActionResult::ForEachManaOfSource {
             card: source,
             source: self.source,
-            effect: *self.effect.clone(),
+            effect: self.effect.clone(),
         });
     }
 }

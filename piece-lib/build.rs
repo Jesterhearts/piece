@@ -37,19 +37,7 @@ fn main() {
         }
 
         fn oneof(&self, oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
-            if oneof.name() == "effect" {
-                Customize::default().before(
-                    r#"#[derive(
-                    ::serde::Serialize,
-                    ::serde::Deserialize,
-                    ::strum::EnumIter,
-                    ::strum::EnumString,
-                    ::strum::AsRefStr,
-                    Eq,
-                )]
-                #[strum(ascii_case_insensitive)]"#,
-                )
-            } else if oneof.name() == "destination" {
+            if oneof.name() == "destination" {
                 Customize::default().before(
                     r#"#[derive(
                     ::serde::Serialize,

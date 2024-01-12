@@ -1,98 +1,16 @@
-use anyhow::anyhow;
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, counters::Counter, targets::Restriction},
+    protogen::effects::{effect::Effect, TargetGainsCounter},
     stack::ActiveTarget,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum DynamicCounter {
-    X,
-    LeftBattlefieldThisTurn { restrictions: Vec<Restriction> },
-}
-
-impl TryFrom<&protogen::effects::gain_counter::Dynamic> for DynamicCounter {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::gain_counter::Dynamic) -> Result<Self, Self::Error> {
-        value
-            .dynamic
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected dynamic counter to have a value set"))
-            .and_then(Self::try_from)
-    }
-}
-
-impl TryFrom<&protogen::effects::gain_counter::dynamic::Dynamic> for DynamicCounter {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::gain_counter::dynamic::Dynamic,
-    ) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::gain_counter::dynamic::Dynamic::LeftBattlefieldThisTurn(value) => {
-                Ok(Self::LeftBattlefieldThisTurn {
-                    restrictions: value.restrictions.clone(),
-                })
-            }
-            protogen::effects::gain_counter::dynamic::Dynamic::X(_) => Ok(Self::X),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum GainCount {
-    Single,
-    Multiple(usize),
-    Dynamic(DynamicCounter),
-}
-
-impl TryFrom<&protogen::effects::gain_counter::Count> for GainCount {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::gain_counter::Count) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::gain_counter::Count::Single(_) => Ok(Self::Single),
-            protogen::effects::gain_counter::Count::Multiple(value) => {
-                Ok(Self::Multiple(usize::try_from(value.count)?))
-            }
-            protogen::effects::gain_counter::Count::Dynamic(dynamic) => {
-                Ok(Self::Dynamic(dynamic.try_into()?))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TargetGainsCounters {
-    count: GainCount,
-    counter: protobuf::EnumOrUnknown<Counter>,
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::GainCounter> for TargetGainsCounters {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::GainCounter) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: value
-                .count
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected counter to have a counter specified"))
-                .and_then(GainCount::try_from)?,
-            counter: value.counter,
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
-
-impl EffectBehaviors for TargetGainsCounters {
+impl EffectBehaviors for TargetGainsCounter {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
@@ -182,7 +100,7 @@ impl EffectBehaviors for TargetGainsCounters {
             results.push_settled(ActionResult::AddCounters {
                 source,
                 target,
-                count: self.count.clone(),
+                count: self.count.as_ref().unwrap().clone(),
                 counter: self.counter,
             });
         } else {

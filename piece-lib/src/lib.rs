@@ -49,7 +49,6 @@ pub mod pending_results;
 pub mod player;
 pub mod protogen;
 pub mod stack;
-pub mod triggers;
 pub mod turns;
 pub mod types;
 

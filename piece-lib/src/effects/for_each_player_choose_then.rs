@@ -3,33 +3,12 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{target_from_location, Database},
     log::Log,
     pending_results::choose_for_each_player::ChooseForEachPlayer,
-    protogen::{self, targets::Restriction},
+    protogen::effects::{effect::Effect, ForEachPlayerChooseThen},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ForEachPlayerChooseThen {
-    restrictions: Vec<Restriction>,
-    effects: Vec<Effect>,
-}
-
-impl TryFrom<&protogen::effects::ForEachPlayerChooseThen> for ForEachPlayerChooseThen {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ForEachPlayerChooseThen) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-            effects: value
-                .effects
-                .iter()
-                .map(Effect::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
 
 impl EffectBehaviors for ForEachPlayerChooseThen {
     fn needs_targets(
@@ -115,7 +94,11 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         }
 
         for effect in self.effects.iter() {
-            effect.push_pending_behavior(db, source, controller, results);
+            effect
+                .effect
+                .as_ref()
+                .unwrap()
+                .push_pending_behavior(db, source, controller, results);
         }
     }
 }

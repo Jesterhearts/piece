@@ -10,6 +10,8 @@ effects:
         - restriction: !OfType
             types: Enchantment, Creature, Planeswalker
   - effect: !TargetControllerGainsTokens
-      token: !Map {}
+      create_token:
+        token: !Map {}
   - effect: !TargetControllerGainsTokens
-      token: !Map {}
+      create_token:
+        token: !Map {}

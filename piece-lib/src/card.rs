@@ -6,17 +6,23 @@ use itertools::Itertools;
 use protobuf::Enum;
 
 use crate::{
-    abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
-    cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer},
-    effects::{AnyEffect, Effect, Mode, ReplacementAbility, Token, TokenCreature},
-    protogen::targets::Restriction,
+    abilities::Enchant,
     protogen::{
         self,
+        abilities::TriggeredAbility,
         color::Color,
-        cost::ManaCost,
-        effects::{DynamicPowerToughness, TargetCreatureExplores},
+        cost::{additional_cost, AbilityCost, AdditionalCost, CastingCost, CostReducer, ManaCost},
+        effects::{
+            create_token::{self, Token},
+            effect, ActivatedAbility, DynamicPowerToughness, GainManaAbility, StaticAbility,
+            TargetCreatureExplores,
+        },
         keywords::Keyword,
         types::{Subtype, Type},
+    },
+    protogen::{
+        effects::{Effect, Mode, ReplacementEffect},
+        targets::Restriction,
     },
 };
 
@@ -48,10 +54,10 @@ pub struct Card {
 
     pub(crate) enchant: Option<Enchant>,
 
-    pub effects: Vec<AnyEffect>,
+    pub effects: Vec<Effect>,
     pub(crate) modes: Vec<Mode>,
 
-    pub(crate) etb_abilities: Vec<AnyEffect>,
+    pub(crate) etb_abilities: Vec<Effect>,
     pub(crate) apply_individually: bool,
 
     pub(crate) static_abilities: Vec<StaticAbility>,
@@ -60,7 +66,7 @@ pub struct Card {
 
     pub(crate) triggered_abilities: Vec<TriggeredAbility>,
 
-    pub(crate) replacement_abilities: Vec<ReplacementAbility>,
+    pub(crate) replacement_abilities: Vec<ReplacementEffect>,
 
     pub(crate) mana_abilities: Vec<GainManaAbility>,
 
@@ -126,11 +132,8 @@ impl TryFrom<&protogen::card::Card> for Card {
             name: value.name.clone(),
             types: value.typeline.types.clone(),
             subtypes: value.typeline.subtypes.clone(),
-            cost: value.cost.get_or_default().try_into()?,
-            reducer: value
-                .cost_reducer
-                .as_ref()
-                .map_or(Ok(None), |reducer| reducer.try_into().map(Some))?,
+            cost: value.cost.get_or_default().clone(),
+            reducer: value.cost_reducer.as_ref().cloned(),
             cannot_be_countered: value.cannot_be_countered,
             colors: value.colors.clone(),
             oracle_text: replace_symbols(&value.oracle_text),
@@ -138,47 +141,15 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .enchant
                 .as_ref()
                 .map_or(Ok(None), |enchant| enchant.try_into().map(Some))?,
-            effects: value
-                .effects
-                .iter()
-                .map(AnyEffect::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            modes: value
-                .modes
-                .iter()
-                .map(Mode::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            etb_abilities: value
-                .etb_abilities
-                .iter()
-                .map(AnyEffect::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            effects: value.effects.clone(),
+            modes: value.modes.clone(),
+            etb_abilities: value.etb_abilities.clone(),
             apply_individually: value.apply_individually,
-            static_abilities: value
-                .static_abilities
-                .iter()
-                .map(StaticAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            activated_abilities: value
-                .activated_abilities
-                .iter()
-                .map(ActivatedAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            triggered_abilities: value
-                .triggered_abilities
-                .iter()
-                .map(TriggeredAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            replacement_abilities: value
-                .replacement_abilities
-                .iter()
-                .map(ReplacementAbility::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            mana_abilities: value
-                .mana_abilities
-                .iter()
-                .map(GainManaAbility::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
+            static_abilities: value.static_abilities.clone(),
+            activated_abilities: value.activated_abilities.clone(),
+            triggered_abilities: value.triggered_abilities.clone(),
+            replacement_abilities: value.replacement_abilities.clone(),
+            mana_abilities: value.mana_abilities.clone(),
             etb_tapped: value.etb_tapped,
             dynamic_power_toughness: value.dynamic_power_toughness.as_ref().cloned(),
             power: value.power,
@@ -196,48 +167,55 @@ impl From<Token> for Card {
     fn from(value: Token) -> Self {
         match value {
             Token::Creature(token) => {
-                let TokenCreature {
+                let create_token::Creature {
                     name,
-                    types,
-                    subtypes,
+                    typeline,
                     colors,
                     keywords,
                     dynamic_power_toughness,
                     power,
                     toughness,
-                } = *token;
+                    ..
+                } = token;
 
+                let typeline = typeline.unwrap();
                 Self {
                     name,
-                    types,
-                    subtypes,
+                    types: typeline.types,
+                    subtypes: typeline.subtypes,
                     colors,
                     power: Some(power),
                     toughness: Some(toughness),
                     keywords,
-                    dynamic_power_toughness,
+                    dynamic_power_toughness: dynamic_power_toughness.into_option(),
                     ..Default::default()
                 }
             }
-            Token::Map => Self {
+            Token::Map(_) => Self {
                 name: "Map".to_string(),
                 types: vec![Type::ARTIFACT.into()],
                 activated_abilities: vec![ActivatedAbility {
-                    cost: AbilityCost {
+                    cost: protobuf::MessageField::some(AbilityCost {
                         mana_cost: vec![ManaCost::GENERIC.into()],
                         tap: true,
-                        additional_cost: vec![AdditionalCost::SacrificeSource],
+                        additional_costs: vec![AdditionalCost {
+                            cost: Some(additional_cost::Cost::SacrificeSource(Default::default())),
+                            ..Default::default()
+                        }],
                         restrictions: vec![],
-                    },
-                    effects: vec![AnyEffect {
-                        effect: Effect::from(TargetCreatureExplores::default()),
+                        ..Default::default()
+                    }),
+                    effects: vec![Effect {
+                        effect: Some(effect::Effect::from(TargetCreatureExplores::default())),
                         oracle_text: String::default(),
+                        ..Default::default()
                     }],
                     apply_to_self: false,
                     oracle_text: "Target creature you control explores. Activate only as sorcery"
                         .to_string(),
                     sorcery_speed: true,
                     craft: false,
+                    ..Default::default()
                 }],
                 ..Default::default()
             },

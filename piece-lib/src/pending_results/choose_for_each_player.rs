@@ -4,10 +4,11 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 
 use crate::{
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{CardId, Database},
     pending_results::{Pending, PendingResult},
     player::Controller,
+    protogen::effects::effect::Effect,
     stack::ActiveTarget,
 };
 

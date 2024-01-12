@@ -10,10 +10,9 @@ use protobuf::Enum;
 use tracing::Level;
 
 use crate::{
-    abilities::{Ability, TriggeredAbility},
+    abilities::Ability,
     action_result::ActionResult,
     battlefield::Battlefields,
-    cost::AdditionalCost,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
     log::{Log, LogEntry, LogId},
@@ -28,7 +27,9 @@ use crate::{
     },
     player::{mana_pool::SpendReason, Owner},
     protogen::{
+        abilities::TriggeredAbility,
         color::Color,
+        cost::additional_cost::{self, ExileXOrMoreCards},
         keywords::Keyword,
         targets::{
             comparison,
@@ -646,7 +647,7 @@ impl Stack {
             .into_iter()
             .zip((&mut targets).chain(std::iter::repeat(vec![])))
         {
-            let effect = effect.effect;
+            let effect = effect.effect.unwrap();
             if targets.len() != effect.needs_targets(db, source)
                 && effect.needs_targets(db, source) != 0
             {
@@ -754,7 +755,7 @@ impl Stack {
         let mut targets = vec![];
         let controller = db[listener].controller;
         for effect in trigger.effects.iter() {
-            targets.push(effect.effect.valid_targets(
+            targets.push(effect.effect.as_ref().unwrap().valid_targets(
                 db,
                 listener,
                 crate::log::LogId::current(db),
@@ -893,13 +894,15 @@ pub(crate) fn add_card_to_stack(
         }
 
         if card.faceup_face(db).effects.len() == 1 {
-            let effect = &card
+            let effect = card
                 .faceup_face(db)
                 .effects
                 .iter()
                 .exactly_one()
                 .unwrap()
-                .effect;
+                .effect
+                .as_ref()
+                .unwrap();
             let valid_targets = effect.valid_targets(
                 db,
                 card,
@@ -919,7 +922,8 @@ pub(crate) fn add_card_to_stack(
             ));
         } else {
             for effect in card.faceup_face(db).effects.iter() {
-                let valid_targets = effect.effect.valid_targets(
+                let effect = effect.effect.as_ref().unwrap();
+                let valid_targets = effect.valid_targets(
                     db,
                     card,
                     crate::log::LogId::current(db),
@@ -927,7 +931,7 @@ pub(crate) fn add_card_to_stack(
                     &HashSet::default(),
                 );
                 results.push_choose_targets(ChooseTargets::new(
-                    TargetSource::Effect(effect.effect.clone()),
+                    TargetSource::Effect(effect.clone()),
                     valid_targets,
                     crate::log::LogId::current(db),
                     card,
@@ -947,63 +951,67 @@ pub(crate) fn add_card_to_stack(
             )),
         ));
     }
-    for cost in cost.additional_cost.iter() {
-        match cost {
-            AdditionalCost::DiscardThis => unreachable!(),
-            AdditionalCost::SacrificeSource => unreachable!(),
-            AdditionalCost::RemoveCounter { .. } => unreachable!(),
-            AdditionalCost::PayLife(_) => todo!(),
-            AdditionalCost::SacrificePermanent(restrictions) => {
+    for cost in cost.additional_costs.iter() {
+        match cost.cost.as_ref().unwrap() {
+            additional_cost::Cost::DiscardThis(_) => unreachable!(),
+            additional_cost::Cost::SacrificeSource(_) => unreachable!(),
+            additional_cost::Cost::RemoveCounters(_) => unreachable!(),
+            additional_cost::Cost::PayLife(_) => todo!(),
+            additional_cost::Cost::SacrificePermanent(sac) => {
                 results.push_pay_costs(PayCost::new(
                     card,
-                    Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                    Cost::SacrificePermanent(SacrificePermanent::new(sac.restrictions.clone())),
                 ));
             }
-            AdditionalCost::TapPermanent(restrictions) => {
+            additional_cost::Cost::TapPermanent(tap) => {
                 results.push_pay_costs(PayCost::new(
                     card,
-                    Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                    Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                 ));
             }
-            AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
+            additional_cost::Cost::TapPermanentsPowerXOrMore(tap) => {
                 results.push_pay_costs(PayCost::new(
                     card,
                     Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
-                        restrictions.clone(),
-                        *x_is,
+                        tap.restrictions.clone(),
+                        tap.x_is as usize,
                     )),
                 ));
             }
-            AdditionalCost::ExileCardsCmcX(restrictions) => {
+            additional_cost::Cost::ExileCardsCmcX(exile) => {
                 results.push_pay_costs(PayCost::new(
                     card,
-                    Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(restrictions.clone())),
+                    Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(exile.restrictions.clone())),
                 ));
             }
-            AdditionalCost::ExileCard { restrictions } => {
+            additional_cost::Cost::ExileCard(exile) => {
                 results.push_pay_costs(PayCost::new(
                     card,
-                    Cost::ExileCards(ExileCards::new(None, 1, 1, restrictions.clone())),
+                    Cost::ExileCards(ExileCards::new(None, 1, 1, exile.restrictions.clone())),
                 ));
             }
-            AdditionalCost::ExileXOrMoreCards {
+            additional_cost::Cost::ExileXOrMoreCards(ExileXOrMoreCards {
                 minimum,
                 restrictions,
-            } => {
+                ..
+            }) => {
                 results.push_pay_costs(PayCost::new(
                     card,
                     Cost::ExileCards(ExileCards::new(
                         None,
-                        *minimum,
+                        *minimum as usize,
                         usize::MAX,
                         restrictions.clone(),
                     )),
                 ));
             }
-            AdditionalCost::ExileSharingCardType { count } => {
+            additional_cost::Cost::ExileSharingCardType(exile) => {
                 results.push_pay_costs(PayCost::new(
                     card,
-                    Cost::ExileCardsSharingType(ExileCardsSharingType::new(None, *count)),
+                    Cost::ExileCardsSharingType(ExileCardsSharingType::new(
+                        None,
+                        exile.count as usize,
+                    )),
                 ));
             }
         }

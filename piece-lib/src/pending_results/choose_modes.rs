@@ -41,11 +41,13 @@ impl PendingResult for ChooseModes {
                     for effect in card.faceup_face(db).modes[choice]
                         .effects
                         .iter()
-                        .filter(|effect| effect.effect.wants_targets(db, *card) > 0)
+                        .filter(|effect| {
+                            effect.effect.as_ref().unwrap().wants_targets(db, *card) > 0
+                        })
                         .cloned()
                         .collect_vec()
                     {
-                        effect.effect.push_pending_behavior(
+                        effect.effect.as_ref().unwrap().push_pending_behavior(
                             db,
                             *card,
                             db[*card].controller,

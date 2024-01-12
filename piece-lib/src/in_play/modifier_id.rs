@@ -6,10 +6,10 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    effects::BattlefieldModifier,
     in_play::{
         ActivatedAbilityId, CardId, Database, GainManaAbilityId, StaticAbilityId, NEXT_MODIFIER_ID,
     },
+    protogen::effects::BattlefieldModifier,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
@@ -42,7 +42,11 @@ impl ModifierId {
 
         let mut add_static_abilities = HashSet::default();
         for ability in modifier.modifier.add_static_abilities.iter() {
-            add_static_abilities.insert(StaticAbilityId::upload(db, source, ability.clone()));
+            add_static_abilities.insert(StaticAbilityId::upload(
+                db,
+                source,
+                ability.ability.as_ref().unwrap().clone(),
+            ));
         }
 
         let mut add_activated_abilities = HashSet::default();

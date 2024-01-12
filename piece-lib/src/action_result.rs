@@ -5,17 +5,12 @@ use rand::{seq::SliceRandom, thread_rng};
 use tracing::Level;
 
 use crate::{
-    abilities::{Ability, TriggeredAbility},
+    abilities::Ability,
     battlefield::{
         complete_add_from_exile, complete_add_from_graveyard, complete_add_from_library,
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
-    effects::{
-        reveal_each_top_of_library::RevealEachTopOfLibrary,
-        target_gains_counters::{DynamicCounter, GainCount},
-        AnyEffect, BattlefieldModifier, Effect, EffectBehaviors, ModifyBattlefield,
-        ReplacementAbility, Token,
-    },
+    effects::EffectBehaviors,
     in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry, LogId},
@@ -25,17 +20,23 @@ use crate::{
     },
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
+        abilities::TriggeredAbility,
         counters::Counter,
         effects::{
-            examine_top_cards::Dest, replacement_effect::Replacing, BattleCry, Cascade, Duration,
+            create_token::Token,
+            effect,
+            examine_top_cards::Dest,
+            replacement_effect::Replacing,
+            target_gains_counter::{self, dynamic::Dynamic},
+            BattleCry, BattlefieldModifier, Cascade, Duration, Effect, ModifyBattlefield,
+            ReplacementEffect, RevealEachTopOfLibrary,
         },
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
-        triggers::{self, TriggerSource},
+        triggers::{self, Trigger, TriggerSource},
         types::Type,
     },
     stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
-    triggers::Trigger,
     types::TypeSet,
 };
 
@@ -50,7 +51,7 @@ pub(crate) enum ActionResult {
     AddCounters {
         source: CardId,
         target: CardId,
-        count: GainCount,
+        count: target_gains_counter::Count,
         counter: protobuf::EnumOrUnknown<Counter>,
     },
     AddModifier {
@@ -115,7 +116,7 @@ pub(crate) enum ActionResult {
     CreateTokenCopyOf {
         source: CardId,
         target: CardId,
-        modifiers: Vec<crate::effects::ModifyBattlefield>,
+        modifiers: Vec<ModifyBattlefield>,
     },
     DamageTarget {
         quantity: u32,
@@ -143,7 +144,7 @@ pub(crate) enum ActionResult {
     },
     ExamineTopCards {
         destinations: Vec<Dest>,
-        count: usize,
+        count: u32,
         controller: Controller,
     },
     ExileGraveyard {
@@ -162,7 +163,7 @@ pub(crate) enum ActionResult {
     ForEachManaOfSource {
         card: CardId,
         source: protobuf::EnumOrUnknown<ManaSource>,
-        effect: Effect,
+        effect: protobuf::MessageField<Effect>,
     },
     GainLife {
         target: Controller,
@@ -541,48 +542,50 @@ impl ActionResult {
                 counter,
             } => {
                 match count {
-                    GainCount::Single => {
+                    target_gains_counter::Count::Single(_) => {
                         *db[*target]
                             .counters
                             .entry(counter.enum_value().unwrap())
                             .or_default() += 1;
                     }
-                    GainCount::Multiple(count) => {
+                    target_gains_counter::Count::Multiple(count) => {
                         *db[*target]
                             .counters
                             .entry(counter.enum_value().unwrap())
-                            .or_default() += *count;
+                            .or_default() += count.count as usize;
                     }
-                    GainCount::Dynamic(dynamic) => match dynamic {
-                        DynamicCounter::X => {
-                            let x = source.get_x(db);
-                            if x > 0 {
-                                *db[*target]
-                                    .counters
-                                    .entry(counter.enum_value().unwrap())
-                                    .or_default() += x;
+                    target_gains_counter::Count::Dynamic(dynamic) => {
+                        match dynamic.dynamic.as_ref().unwrap() {
+                            Dynamic::X(_) => {
+                                let x = source.get_x(db);
+                                if x > 0 {
+                                    *db[*target]
+                                        .counters
+                                        .entry(counter.enum_value().unwrap())
+                                        .or_default() += x;
+                                }
+                            }
+                            Dynamic::LeftBattlefieldThisTurn(left) => {
+                                let cards = CardId::left_battlefield_this_turn(db);
+                                let x = cards
+                                    .filter(|card| {
+                                        card.passes_restrictions(
+                                            db,
+                                            LogId::current(db),
+                                            *source,
+                                            &left.restrictions,
+                                        )
+                                    })
+                                    .count();
+                                if x > 0 {
+                                    *db[*target]
+                                        .counters
+                                        .entry(counter.enum_value().unwrap())
+                                        .or_default() += x;
+                                }
                             }
                         }
-                        DynamicCounter::LeftBattlefieldThisTurn { restrictions } => {
-                            let cards = CardId::left_battlefield_this_turn(db);
-                            let x = cards
-                                .filter(|card| {
-                                    card.passes_restrictions(
-                                        db,
-                                        LogId::current(db),
-                                        *source,
-                                        restrictions,
-                                    )
-                                })
-                                .count();
-                            if x > 0 {
-                                *db[*target]
-                                    .counters
-                                    .entry(counter.enum_value().unwrap())
-                                    .or_default() += x;
-                            }
-                        }
-                    },
+                    }
                 }
 
                 PendingResults::default()
@@ -673,7 +676,7 @@ impl ActionResult {
                         db,
                         *card,
                         TriggeredAbility {
-                            trigger: Trigger {
+                            trigger: protobuf::MessageField::some(Trigger {
                                 source: TriggerSource::CAST.into(),
                                 from: triggers::Location::HAND.into(),
                                 restrictions: vec![Restriction {
@@ -689,12 +692,14 @@ impl ActionResult {
                                     )),
                                     ..Default::default()
                                 }],
-                            },
-                            effects: vec![AnyEffect {
-                                effect: Effect::from(Cascade::default()),
-                                oracle_text: Default::default(),
+                                ..Default::default()
+                            }),
+                            effects: vec![Effect {
+                                effect: Some(effect::Effect::from(Cascade::default())),
+                                ..Default::default()
                             }],
                             oracle_text: "Cascade".to_string(),
+                            ..Default::default()
                         },
                     ));
                 }
@@ -729,18 +734,27 @@ impl ActionResult {
                 let mut results = PendingResults::default();
                 if revealed.is_empty() {
                     let controller = db[*source].controller;
-                    for effect in reveal.for_each.if_none.iter() {
-                        effect.push_pending_behavior(db, *source, controller, &mut results);
+                    for effect in reveal.for_each.if_none.effects.iter() {
+                        effect.effect.as_ref().unwrap().push_pending_behavior(
+                            db,
+                            *source,
+                            controller,
+                            &mut results,
+                        );
                     }
                 } else {
                     for target in revealed {
                         for effect in reveal.for_each.effects.iter() {
-                            effect.push_behavior_from_top_of_library(
-                                db,
-                                *source,
-                                target,
-                                &mut results,
-                            );
+                            effect
+                                .effect
+                                .as_ref()
+                                .unwrap()
+                                .push_behavior_from_top_of_library(
+                                    db,
+                                    *source,
+                                    target,
+                                    &mut results,
+                                );
                         }
                     }
                 }
@@ -756,7 +770,12 @@ impl ActionResult {
                 if let Some(from_source) = db[*card].sourced_mana.get(&source.enum_value().unwrap())
                 {
                     for _ in 0..*from_source {
-                        effect.push_pending_behavior(db, *card, db[*card].controller, &mut results);
+                        effect.effect.as_ref().unwrap().push_pending_behavior(
+                            db,
+                            *card,
+                            db[*card].controller,
+                            &mut results,
+                        );
                     }
                 }
 
@@ -965,7 +984,7 @@ impl ActionResult {
                             db,
                             *attacker,
                             TriggeredAbility {
-                                trigger: Trigger {
+                                trigger: protobuf::MessageField::some(Trigger {
                                     source: TriggerSource::ATTACKS.into(),
                                     from: triggers::Location::ANYWHERE.into(),
                                     restrictions: vec![Restriction {
@@ -981,12 +1000,14 @@ impl ActionResult {
                                         )),
                                         ..Default::default()
                                     }],
-                                },
-                                effects: vec![AnyEffect {
-                                    effect: Effect::from(BattleCry::default()),
-                                    oracle_text: String::default(),
+                                    ..Default::default()
+                                }),
+                                effects: vec![Effect {
+                                    effect: Some(effect::Effect::from(BattleCry::default())),
+                                    ..Default::default()
                                 }],
                                 oracle_text: "Battle cry".to_string(),
+                                ..Default::default()
                             },
                         ));
                     }
@@ -1110,7 +1131,12 @@ impl ActionResult {
                     .any(|entry| entry.1.left_battlefield_passes_restrictions(if_was))
                 {
                     for effect in then.iter() {
-                        effect.push_pending_behavior(db, *source, *controller, &mut results);
+                        effect.effect.as_ref().unwrap().push_pending_behavior(
+                            db,
+                            *source,
+                            *controller,
+                            &mut results,
+                        );
                     }
                 }
 
@@ -1126,7 +1152,7 @@ pub(crate) fn create_token_copy_with_replacements(
     source: CardId,
     copying: CardId,
     modifiers: &[ModifyBattlefield],
-    replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
+    replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
     results: &mut PendingResults,
 ) {
     let mut replaced = false;
@@ -1150,7 +1176,7 @@ pub(crate) fn create_token_copy_with_replacements(
 
             replaced = true;
             for effect in replacement.effects.iter() {
-                effect.effect.replace_token_creation(
+                effect.effect.as_ref().unwrap().replace_token_creation(
                     db,
                     source,
                     replacements,
@@ -1171,9 +1197,9 @@ pub(crate) fn create_token_copy_with_replacements(
                 db,
                 token,
                 BattlefieldModifier {
-                    modifier: modifier.clone(),
+                    modifier: protobuf::MessageField::some(modifier.clone()),
                     duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
-                    restrictions: vec![],
+                    ..Default::default()
                 },
             );
             modifier.activate(&mut db.modifiers);

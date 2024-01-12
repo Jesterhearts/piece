@@ -1,25 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
-    effects::{EffectBehaviors, Token},
-    protogen,
+    action_result::ActionResult, effects::EffectBehaviors,
+    protogen::effects::TargetControllerGainsTokens,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TargetControllerGainsTokens {
-    token: Token,
-}
-
-impl TryFrom<&protogen::effects::CreateToken> for TargetControllerGainsTokens {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CreateToken) -> Result<Self, Self::Error> {
-        Ok(Self {
-            token: value.try_into()?,
-        })
-    }
-}
 
 impl EffectBehaviors for TargetControllerGainsTokens {
     fn needs_targets(
@@ -58,7 +42,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
     ) {
         results.push_settled(ActionResult::CreateToken {
             source: targets.into_iter().exactly_one().unwrap().id().unwrap(),
-            token: self.token.clone(),
+            token: self.create_token.token.as_ref().unwrap().clone(),
         });
     }
 }

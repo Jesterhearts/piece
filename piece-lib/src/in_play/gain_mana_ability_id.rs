@@ -3,8 +3,8 @@ use std::sync::atomic::Ordering;
 use derive_more::{From, Into};
 
 use crate::{
-    abilities::GainManaAbility,
     in_play::{CardId, Database, NEXT_ABILITY_ID},
+    protogen::effects::GainManaAbility,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]

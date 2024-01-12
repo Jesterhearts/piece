@@ -1,9 +1,9 @@
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::effects::ExileTarget,
+    protogen::effects::{effect::Effect, ExileTarget},
 };
 
 impl EffectBehaviors for ExileTarget {

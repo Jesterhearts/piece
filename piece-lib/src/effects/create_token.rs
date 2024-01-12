@@ -1,23 +1,6 @@
 use crate::{
-    action_result::ActionResult,
-    effects::{EffectBehaviors, Token},
-    protogen,
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::CreateToken,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CreateToken {
-    token: Token,
-}
-
-impl TryFrom<&protogen::effects::CreateToken> for CreateToken {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CreateToken) -> Result<Self, Self::Error> {
-        Ok(Self {
-            token: value.try_into()?,
-        })
-    }
-}
 
 impl EffectBehaviors for CreateToken {
     fn needs_targets(
@@ -45,7 +28,7 @@ impl EffectBehaviors for CreateToken {
     ) {
         results.push_settled(ActionResult::CreateToken {
             source,
-            token: self.token.clone(),
+            token: self.token.as_ref().unwrap().clone(),
         });
     }
 
@@ -58,7 +41,7 @@ impl EffectBehaviors for CreateToken {
     ) {
         results.push_settled(ActionResult::CreateToken {
             source,
-            token: self.token.clone(),
+            token: self.token.as_ref().unwrap().clone(),
         });
     }
 
@@ -73,7 +56,7 @@ impl EffectBehaviors for CreateToken {
     ) {
         results.push_settled(ActionResult::CreateToken {
             source,
-            token: self.token.clone(),
+            token: self.token.as_ref().unwrap().clone(),
         });
     }
 }

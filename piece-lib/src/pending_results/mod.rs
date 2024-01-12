@@ -18,9 +18,9 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    abilities::{Ability, GainMana},
+    abilities::Ability,
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database, GainManaAbilityId},
     pending_results::{
         choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
@@ -30,7 +30,13 @@ use crate::{
         pay_costs::PayCost,
     },
     player::{Controller, Owner},
-    protogen::effects::{destination, examine_top_cards::Dest, Destination},
+    protogen::effects::{
+        destination,
+        effect::Effect,
+        examine_top_cards::Dest,
+        gain_mana::{Choice, Gain},
+        Destination,
+    },
     stack::{ActiveTarget, StackEntry},
 };
 
@@ -82,9 +88,9 @@ impl Source {
                 .collect_vec(),
             Source::Ability { ability, .. } => {
                 if let Ability::Mana(gain) = ability {
-                    match &db[*gain].ability.gain {
-                        GainMana::Specific { .. } => vec![],
-                        GainMana::Choice { choices } => {
+                    match &db[*gain].ability.gain_mana.gain.as_ref().unwrap() {
+                        Gain::Specific(_) => vec![],
+                        Gain::Choice(Choice { choices, .. }) => {
                             let mut result = vec![];
                             for (idx, choice) in choices.iter().enumerate() {
                                 let mut add = "Add ".to_string();
@@ -477,16 +483,14 @@ impl PendingResults {
                 let target = db[source].controller;
                 let source = db[gain].ability.mana_source;
                 let restriction = db[gain].ability.mana_restriction;
-                match &db[gain].ability.gain {
-                    GainMana::Specific { gains } => {
-                        self.settled_effects.push(ActionResult::GainMana {
-                            gain: gains.clone(),
-                            target,
-                            source,
-                            restriction,
-                        })
-                    }
-                    GainMana::Choice { choices } => {
+                match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
+                    Gain::Specific(specific) => self.settled_effects.push(ActionResult::GainMana {
+                        gain: specific.gain.clone(),
+                        target,
+                        source,
+                        restriction,
+                    }),
+                    Gain::Choice(Choice { choices, .. }) => {
                         let option = self.chosen_modes.pop().unwrap();
                         self.chosen_modes.clear();
                         self.settled_effects.push(ActionResult::GainMana {

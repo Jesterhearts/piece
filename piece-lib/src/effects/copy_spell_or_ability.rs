@@ -3,12 +3,12 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{CardId, Database},
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen::effects::CopySpellOrAbility,
+    protogen::effects::{effect::Effect, CopySpellOrAbility},
     stack::{ActiveTarget, Entry},
 };
 
@@ -89,7 +89,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                     );
 
                     for effect in source.faceup_face(db).effects.iter() {
-                        let valid_targets = effect.effect.valid_targets(
+                        let valid_targets = effect.effect.as_ref().unwrap().valid_targets(
                             db,
                             *source,
                             crate::log::LogId::current(db),
@@ -99,7 +99,7 @@ impl EffectBehaviors for CopySpellOrAbility {
 
                         if !valid_targets.is_empty() {
                             results.push_choose_targets(ChooseTargets::new(
-                                TargetSource::Effect(effect.effect.clone()),
+                                TargetSource::Effect(effect.effect.as_ref().unwrap().clone()),
                                 valid_targets,
                                 crate::log::LogId::current(db),
                                 *source,
@@ -116,7 +116,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                     );
 
                     for effect in ability.effects(db) {
-                        let effect = effect.effect;
+                        let effect = effect.effect.unwrap();
                         let valid_targets = effect.valid_targets(
                             db,
                             *source,

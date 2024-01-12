@@ -24,8 +24,6 @@ message Effect {
     // you will want to set the `entire_battlefield` flag to true for the
     // modifier.
     BattlefieldModifier battlefield_modifier = 3;
-    // Apply a modifier to a specific target from a list of valid targets.
-    BattlefieldModifier modify_target = 4;
     // Prevent target player from attacking this turn.
     CantAttackThisTurn cant_attack_this_turn = 5;
     // Implement the keyword Cascade. You probably don't want to use this -
@@ -52,8 +50,6 @@ message Effect {
     CounterSpellUnlessPay counter_spell_unless_pay = 13;
     // Create a token.
     CreateToken create_token = 14;
-    // The controller of something targetted by another effect gets a token.
-    CreateToken target_controller_gains_tokens = 15;
     // Create a token copy of another permanent with some modifiers applied.
     CreateTokenCopy create_token_copy = 16;
     // Implement the cycling keyword. If there are restrictions listed for the
@@ -88,9 +84,6 @@ message Effect {
     // Choose a permanent matching some list of restrictions for each player,
     // then apply some effects.
     ForEachPlayerChooseThen for_each_player_choose_then = 28;
-    // Place some number of counters on a target, narrowed by a list of
-    // restrictions.
-    GainCounter target_gains_counters = 29;
     // The controller of this effect gains life.
     GainLife gain_life = 30;
     // If the source of this effect passes some restrictions, apply some
@@ -102,6 +95,8 @@ message Effect {
     // Offer the controller of this effect a choice between several modes, then
     // apply the chosen effects.
     Modes modal = 33;
+    // Apply a modifier to a specific target from a list of valid targets.
+    ModifyTarget modify_target = 4;
     // Multiply the number of tokens created. This is only applied as a
     // replacement effect.
     MultiplyTokens multiply_tokens = 34;
@@ -134,9 +129,14 @@ message Effect {
     TapTarget tap_target = 45;
     // Tap the card associated with this effect.
     TapThis tap_this = 46;
+    // The controller of something targetted by another effect gets a token.
+    TargetControllerGainsTokens target_controller_gains_tokens = 15;
     // The targetted creature explores. This automatically narrows the list of
     // valid targets to creatures on the battlefield.
     TargetCreatureExplores target_creature_explores = 47;
+    // Place some number of counters on a target, narrowed by a list of
+    // restrictions.
+    TargetGainsCounter target_gains_counters = 29;
     // Return target to the top of its owner's library.
     TargetToTopOfLibrary target_to_top_of_library = 48;
     // Transform in place on the battlefield. This will preserve equipment and
@@ -335,7 +335,7 @@ message ExileTargetCreatureManifestTopOfLibrary {}
 message ExileTargetGraveyard {}
 
 message ExtraLandsPerTurn {
-  int32 count = 1;
+  uint32 count = 1;
 }
 
 message ForEachManaOfSource {
@@ -346,33 +346,6 @@ message ForEachManaOfSource {
 message ForEachPlayerChooseThen {
   repeated targets.Restriction restrictions = 1;
   repeated Effect effects = 2;
-}
-
-message GainCounter {
-  message Single {}
-  message Multiple {
-    int32 count = 1;
-  }
-  message Dynamic {
-    message X {}
-    message LeftBattlefieldThisTurn {
-      repeated targets.Restriction restrictions = 1;
-    }
-
-    oneof dynamic {
-      LeftBattlefieldThisTurn left_battlefield_this_turn = 2;
-      X x = 3;
-    }
-  }
-
-  oneof count {
-    Single single = 4;
-    Multiple multiple = 5;
-    Dynamic dynamic = 6;
-  }
-
-  counters.Counter counter = 7;
-  repeated targets.Restriction restrictions = 8;
 }
 
 message GainLife {
@@ -533,7 +506,38 @@ message TapTarget {
 
 message TapThis {}
 
+message TargetControllerGainsTokens {
+  CreateToken create_token = 1;
+}
+
 message TargetCreatureExplores {}
+
+message TargetGainsCounter {
+  message Single {}
+  message Multiple {
+    uint32 count = 1;
+  }
+  message Dynamic {
+    message X {}
+    message LeftBattlefieldThisTurn {
+      repeated targets.Restriction restrictions = 1;
+    }
+
+    oneof dynamic {
+      LeftBattlefieldThisTurn left_battlefield_this_turn = 2;
+      X x = 3;
+    }
+  }
+
+  oneof count {
+    Single single = 4;
+    Multiple multiple = 5;
+    Dynamic dynamic = 6;
+  }
+
+  counters.Counter counter = 7;
+  repeated targets.Restriction restrictions = 8;
+}
 
 message TargetToTopOfLibrary {
   uint32 under_cards = 1;
@@ -562,6 +566,12 @@ message Mode {
 
 message Modes {
   repeated Mode modes = 1;
+}
+
+message ModifyTarget {
+  ModifyBattlefield modifier = 1;
+  Duration duration = 2;
+  repeated targets.Restriction restrictions = 3;
 }
 
 message ReplacementEffect {

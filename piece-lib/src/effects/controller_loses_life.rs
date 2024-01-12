@@ -2,7 +2,7 @@ use std::vec::IntoIter;
 
 use crate::{
     action_result::ActionResult,
-    effects::{EffectBehaviors, ReplacementAbility},
+    effects::{EffectBehaviors, ReplacementEffect},
     log::LogId,
     pending_results::PendingResults,
     player::{Owner, Player},
@@ -76,7 +76,7 @@ impl EffectBehaviors for ControllerLosesLife {
         &self,
         db: &mut crate::in_play::Database,
         player: crate::player::Owner,
-        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementAbility)>,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
         controller: crate::player::Controller,
         count: usize,
         results: &mut PendingResults,

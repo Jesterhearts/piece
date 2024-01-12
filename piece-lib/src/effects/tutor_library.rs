@@ -2,37 +2,15 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{
-        self,
-        effects::{
-            destination::{self, Battlefield},
-            Destination,
-        },
-        targets::Restriction,
+    protogen::effects::{
+        destination::{self, Battlefield},
+        effect::Effect,
+        TutorLibrary,
     },
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TutorLibrary {
-    pub(crate) restrictions: Vec<Restriction>,
-    pub(crate) destination: protobuf::MessageField<Destination>,
-    pub(crate) reveal: bool,
-}
-
-impl TryFrom<&protogen::effects::TutorLibrary> for TutorLibrary {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::TutorLibrary) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-            destination: value.destination.clone(),
-            reveal: value.reveal,
-        })
-    }
-}
 
 impl EffectBehaviors for TutorLibrary {
     fn needs_targets(

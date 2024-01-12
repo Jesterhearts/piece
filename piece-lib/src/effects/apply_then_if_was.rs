@@ -1,38 +1,7 @@
 use crate::{
-    action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
-    log::LogId,
-    protogen::{self, targets::Restriction},
+    action_result::ActionResult, effects::EffectBehaviors, log::LogId,
+    protogen::effects::ApplyThenIfWas,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ApplyThenIfWas {
-    apply: Vec<Effect>,
-    then_if_was: Vec<Restriction>,
-    then_apply: Vec<Effect>,
-}
-
-impl TryFrom<&protogen::effects::ApplyThenIfWas> for ApplyThenIfWas {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ApplyThenIfWas) -> Result<Self, Self::Error> {
-        Ok(Self {
-            apply: value
-                .apply
-                .iter()
-                .map(Effect::try_from)
-                .collect::<anyhow::Result<_>>()?,
-            then_if_was: value.then.get_or_default().if_was.clone(),
-            then_apply: value
-                .then
-                .get_or_default()
-                .apply
-                .iter()
-                .map(Effect::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
 
 impl EffectBehaviors for ApplyThenIfWas {
     fn needs_targets(
@@ -42,7 +11,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     ) -> usize {
         self.apply
             .iter()
-            .map(|effect| effect.needs_targets(db, source))
+            .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
             .max()
             .unwrap()
     }
@@ -54,7 +23,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     ) -> usize {
         self.apply
             .iter()
-            .map(|effect| effect.wants_targets(db, source))
+            .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source))
             .max()
             .unwrap()
     }
@@ -70,7 +39,13 @@ impl EffectBehaviors for ApplyThenIfWas {
         self.apply
             .iter()
             .map(|effect| {
-                effect.valid_targets(db, source, LogId::current(db), controller, already_chosen)
+                effect.effect.as_ref().unwrap().valid_targets(
+                    db,
+                    source,
+                    LogId::current(db),
+                    controller,
+                    already_chosen,
+                )
             })
             .max_by_key(|targets| targets.len())
             .unwrap()
@@ -84,7 +59,11 @@ impl EffectBehaviors for ApplyThenIfWas {
         results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
-            effect.push_pending_behavior(db, source, controller, results);
+            effect
+                .effect
+                .as_ref()
+                .unwrap()
+                .push_pending_behavior(db, source, controller, results);
         }
     }
 
@@ -98,7 +77,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
-            effect.push_behavior_with_targets(
+            effect.effect.as_ref().unwrap().push_behavior_with_targets(
                 db,
                 targets.clone(),
                 apply_to_self,
@@ -108,8 +87,8 @@ impl EffectBehaviors for ApplyThenIfWas {
             );
         }
         results.push_settled(ActionResult::IfWasThen {
-            if_was: self.then_if_was.clone(),
-            then: self.then_apply.clone(),
+            if_was: self.then.if_was.clone(),
+            then: self.then.apply.clone(),
             source,
             controller,
         })

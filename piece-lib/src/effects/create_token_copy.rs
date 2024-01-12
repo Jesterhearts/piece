@@ -2,30 +2,11 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors, ModifyBattlefield},
+    effects::EffectBehaviors,
     in_play::{self, target_from_location},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen,
+    protogen::effects::{effect::Effect, CreateTokenCopy},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CreateTokenCopy {
-    modifiers: Vec<ModifyBattlefield>,
-}
-
-impl TryFrom<&protogen::effects::CreateTokenCopy> for CreateTokenCopy {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CreateTokenCopy) -> Result<Self, Self::Error> {
-        Ok(Self {
-            modifiers: value
-                .modifiers
-                .iter()
-                .map(ModifyBattlefield::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
 
 impl EffectBehaviors for CreateTokenCopy {
     fn needs_targets(

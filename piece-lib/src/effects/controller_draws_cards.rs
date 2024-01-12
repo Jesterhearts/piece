@@ -1,58 +1,14 @@
 use std::vec::IntoIter;
 
-use anyhow::anyhow;
-
 use crate::{
     action_result::ActionResult,
-    effects::{EffectBehaviors, ReplacementAbility},
+    effects::{EffectBehaviors, ReplacementEffect},
     in_play::Database,
     log::LogId,
     pending_results::PendingResults,
     player::Player,
-    protogen::{self, effects::NumberOfPermanentsMatching},
+    protogen::effects::{controller_draws_cards::Count, ControllerDrawsCards},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Count {
-    Fixed(usize),
-    NumberOfPermanentsMatching(NumberOfPermanentsMatching),
-}
-
-impl TryFrom<&protogen::effects::controller_draws_cards::Count> for Count {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::controller_draws_cards::Count,
-    ) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::controller_draws_cards::Count::Fixed(count) => {
-                Ok(Self::Fixed(usize::try_from(count.count)?))
-            }
-            protogen::effects::controller_draws_cards::Count::NumberOfPermanentsMatching(
-                matching,
-            ) => Ok(Self::NumberOfPermanentsMatching(matching.clone())),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ControllerDrawsCards {
-    count: Count,
-}
-
-impl TryFrom<&protogen::effects::ControllerDrawsCards> for ControllerDrawsCards {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ControllerDrawsCards) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: value
-                .count
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected count to have a count set"))
-                .and_then(Count::try_from)?,
-        })
-    }
-}
 
 impl EffectBehaviors for ControllerDrawsCards {
     fn needs_targets(
@@ -78,8 +34,8 @@ impl EffectBehaviors for ControllerDrawsCards {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let count = match &self.count {
-            Count::Fixed(count) => *count,
+        let count = match self.count.as_ref().unwrap() {
+            Count::Fixed(count) => count.count as usize,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
                 .filter(|card| {
@@ -103,8 +59,8 @@ impl EffectBehaviors for ControllerDrawsCards {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        let count = match &self.count {
-            Count::Fixed(count) => *count,
+        let count = match self.count.as_ref().unwrap() {
+            Count::Fixed(count) => count.count as usize,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
                 .filter(|card| {
@@ -122,13 +78,13 @@ impl EffectBehaviors for ControllerDrawsCards {
         &self,
         db: &mut Database,
         player: crate::player::Owner,
-        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementAbility)>,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
         controller: crate::player::Controller,
         _count: usize,
         results: &mut PendingResults,
     ) {
-        let count = match &self.count {
-            Count::Fixed(count) => *count,
+        let count = match self.count.as_ref().unwrap() {
+            Count::Fixed(count) => count.count as usize,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
                 .filter(|card| {

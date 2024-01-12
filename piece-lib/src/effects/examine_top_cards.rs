@@ -1,25 +1,6 @@
 use crate::{
-    action_result::ActionResult,
-    effects::EffectBehaviors,
-    protogen::{self, effects::examine_top_cards::Dest},
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ExamineTopCards,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ExamineTopCards {
-    count: usize,
-    destinations: Vec<Dest>,
-}
-
-impl TryFrom<&protogen::effects::ExamineTopCards> for ExamineTopCards {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ExamineTopCards) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-            destinations: value.destinations.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for ExamineTopCards {
     fn needs_targets(

@@ -1,25 +1,23 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use anyhow::anyhow;
-use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
-    card::replace_symbols,
-    cost::{AbilityCost, AbilityRestriction, AdditionalCost},
-    effects::{AnyEffect, BattlefieldModifier, EffectBehaviors},
+    effects::EffectBehaviors,
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
     log::LogId,
     pending_results::PendingResults,
     player::{mana_pool::SpendReason, Owner},
-    protogen::targets::Restriction,
     protogen::{
         self,
+        cost::{
+            ability_restriction,
+            additional_cost::{self, ExileXOrMoreCards, RemoveCounters},
+            AbilityCost,
+        },
         counters::Counter,
-        mana::ManaSource,
-        mana::{Mana, ManaRestriction},
+        effects::{static_ability, ActivatedAbility, BattlefieldModifier, Effect, GainManaAbility},
     },
-    triggers::Trigger,
     turns::Phase,
 };
 
@@ -33,156 +31,16 @@ impl TryFrom<&protogen::abilities::Enchant> for Enchant {
 
     fn try_from(value: &protogen::abilities::Enchant) -> Result<Self, Self::Error> {
         Ok(Self {
-            modifiers: value
-                .modifiers
-                .iter()
-                .map(BattlefieldModifier::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct AddKeywordsIf {
-    pub(crate) keywords: HashMap<i32, u32>,
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::static_ability::AddKeywordsIf> for AddKeywordsIf {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::static_ability::AddKeywordsIf,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            keywords: value.keywords.clone(),
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ForceEtbTapped {
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum StaticAbility {
-    AddKeywordsIf(AddKeywordsIf),
-    AllAbilitiesOfExiledWith {
-        ability_restriction: Vec<AbilityRestriction>,
-    },
-    BattlefieldModifier(Box<BattlefieldModifier>),
-    CantCastIfAttacked,
-    ExtraLandsPerTurn(usize),
-    ForceEtbTapped(ForceEtbTapped),
-    GreenCannotBeCountered {
-        restrictions: Vec<Restriction>,
-    },
-    PreventAttacks,
-    PreventBlocks,
-    PreventAbilityActivation,
-    UntapEachUntapStep,
-}
-
-impl TryFrom<&protogen::effects::StaticAbility> for StaticAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::StaticAbility) -> Result<Self, Self::Error> {
-        value
-            .ability
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected ability to have an ability specified"))
-            .and_then(Self::try_from)
-    }
-}
-
-impl TryFrom<&protogen::effects::static_ability::Ability> for StaticAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::static_ability::Ability) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::static_ability::Ability::AddKeywordsIf(value) => {
-                Ok(Self::AddKeywordsIf(value.try_into()?))
-            }
-            protogen::effects::static_ability::Ability::AllAbilitiesOfExiledWith(value) => {
-                Ok(Self::AllAbilitiesOfExiledWith {
-                    ability_restriction: value
-                        .activation_restrictions
-                        .iter()
-                        .map(AbilityRestriction::try_from)
-                        .collect::<anyhow::Result<_>>()?,
-                })
-            }
-            protogen::effects::static_ability::Ability::CantCastIfAttacked(_) => {
-                Ok(Self::CantCastIfAttacked)
-            }
-            protogen::effects::static_ability::Ability::BattlefieldModifier(modifier) => {
-                Ok(Self::BattlefieldModifier(Box::new(modifier.try_into()?)))
-            }
-            protogen::effects::static_ability::Ability::ExtraLandsPerTurn(extra_lands) => {
-                Ok(Self::ExtraLandsPerTurn(usize::try_from(extra_lands.count)?))
-            }
-            protogen::effects::static_ability::Ability::ForceEtbTapped(force) => {
-                Ok(Self::ForceEtbTapped(ForceEtbTapped {
-                    restrictions: force.restrictions.clone(),
-                }))
-            }
-            protogen::effects::static_ability::Ability::GreenCannotBeCountered(ability) => {
-                Ok(Self::GreenCannotBeCountered {
-                    restrictions: ability.restrictions.clone(),
-                })
-            }
-            protogen::effects::static_ability::Ability::PreventAttacks(_) => {
-                Ok(Self::PreventAttacks)
-            }
-            protogen::effects::static_ability::Ability::PreventBlocks(_) => Ok(Self::PreventBlocks),
-            protogen::effects::static_ability::Ability::PreventAbilityActivation(_) => {
-                Ok(Self::PreventAbilityActivation)
-            }
-            protogen::effects::static_ability::Ability::UntapEachUntapStep(_) => {
-                Ok(Self::UntapEachUntapStep)
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ActivatedAbility {
-    pub(crate) cost: AbilityCost,
-    pub(crate) effects: Vec<AnyEffect>,
-    pub(crate) apply_to_self: bool,
-    pub(crate) oracle_text: String,
-    pub(crate) sorcery_speed: bool,
-    pub(crate) craft: bool,
-}
-
-impl TryFrom<&protogen::effects::ActivatedAbility> for ActivatedAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ActivatedAbility) -> Result<Self, Self::Error> {
-        Ok(Self {
-            cost: value
-                .cost
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected ability to have a cost"))
-                .and_then(AbilityCost::try_from)?,
-            effects: value
-                .effects
-                .iter()
-                .map(AnyEffect::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            apply_to_self: value.apply_to_self,
-            oracle_text: replace_symbols(&value.oracle_text),
-            sorcery_speed: value.sorcery_speed,
-            craft: value.craft,
+            modifiers: value.modifiers.clone(),
         })
     }
 }
 
 impl ActivatedAbility {
     pub(crate) fn can_be_played_from_hand(&self) -> bool {
-        self.effects.iter().any(|effect| effect.effect.cycling())
+        self.effects
+            .iter()
+            .any(|effect| effect.effect.as_ref().unwrap().cycling())
     }
 
     pub(crate) fn can_be_activated(
@@ -196,7 +54,7 @@ impl ActivatedAbility {
         let banned = db[source].modified_static_abilities.iter().any(|ability| {
             matches!(
                 db[*ability].ability,
-                StaticAbility::PreventAbilityActivation
+                static_ability::Ability::PreventAbilityActivation(_)
             )
         });
 
@@ -233,7 +91,7 @@ impl ActivatedAbility {
             || self
                 .effects
                 .iter()
-                .any(|effect| effect.effect.is_sorcery_speed());
+                .any(|effect| effect.effect.as_ref().unwrap().is_sorcery_speed());
         if is_sorcery {
             if controller != db.turn.active_player() {
                 return false;
@@ -251,84 +109,12 @@ impl ActivatedAbility {
             }
         }
 
-        if !can_pay_costs(db, id, &self.cost, source) {
+        if !can_pay_costs(db, id, self.cost.get_or_default(), source) {
             return false;
         }
 
         true
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct TriggeredAbility {
-    pub(crate) trigger: Trigger,
-    pub(crate) effects: Vec<AnyEffect>,
-    pub oracle_text: String,
-}
-
-impl TryFrom<&protogen::abilities::TriggeredAbility> for TriggeredAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::abilities::TriggeredAbility) -> Result<Self, Self::Error> {
-        Ok(Self {
-            trigger: value.trigger.get_or_default().try_into()?,
-            effects: value
-                .effects
-                .iter()
-                .map(AnyEffect::try_from)
-                .collect::<anyhow::Result<Vec<_>>>()?,
-            oracle_text: replace_symbols(&value.oracle_text),
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub(crate) enum GainMana {
-    Specific {
-        gains: Vec<protobuf::EnumOrUnknown<Mana>>,
-    },
-    Choice {
-        choices: Vec<protogen::effects::gain_mana::GainMana>,
-    },
-}
-
-impl TryFrom<&protogen::effects::GainMana> for GainMana {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::GainMana) -> Result<Self, Self::Error> {
-        value
-            .gain
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected mana gain to have a gain field"))
-            .and_then(GainMana::try_from)
-    }
-}
-
-impl TryFrom<&protogen::effects::gain_mana::Gain> for GainMana {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::gain_mana::Gain) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::gain_mana::Gain::Specific(specific) => Ok(Self::Specific {
-                gains: specific.gain.clone(),
-            }),
-            protogen::effects::gain_mana::Gain::Choice(choice) => Ok(Self::Choice {
-                choices: choice.choices.clone(),
-            }),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deref, DerefMut)]
-pub(crate) struct GainManaAbilities(pub(crate) Vec<GainManaAbility>);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GainManaAbility {
-    pub(crate) cost: AbilityCost,
-    pub(crate) gain: GainMana,
-    pub(crate) mana_source: protobuf::EnumOrUnknown<ManaSource>,
-    pub(crate) mana_restriction: protobuf::EnumOrUnknown<ManaRestriction>,
-    pub(crate) oracle_text: String,
 }
 
 impl GainManaAbility {
@@ -351,25 +137,11 @@ impl GainManaAbility {
     }
 }
 
-impl TryFrom<&protogen::effects::GainManaAbility> for GainManaAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::GainManaAbility) -> Result<Self, Self::Error> {
-        Ok(Self {
-            cost: value.cost.get_or_default().try_into()?,
-            gain: value.gain_mana.get_or_default().try_into()?,
-            mana_source: value.mana_source,
-            mana_restriction: value.mana_restriction,
-            oracle_text: replace_symbols(&value.oracle_text),
-        })
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Ability {
     Activated(ActivatedAbilityId),
     Mana(GainManaAbilityId),
-    EtbOrTriggered(Vec<AnyEffect>),
+    EtbOrTriggered(Vec<Effect>),
 }
 
 impl Ability {
@@ -389,7 +161,7 @@ impl Ability {
         }
     }
 
-    pub(crate) fn effects(&self, db: &Database) -> Vec<AnyEffect> {
+    pub(crate) fn effects(&self, db: &Database) -> Vec<Effect> {
         match self {
             Ability::Activated(id) => db[*id].ability.effects.clone(),
             Ability::Mana(_) => vec![],
@@ -429,7 +201,7 @@ impl Ability {
                     .ability
                     .effects
                     .iter()
-                    .map(|effect| effect.effect.needs_targets(db, source))
+                    .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
                     .zip(targets)
                     .all(|(needs, has)| has.len() >= needs)
             }
@@ -452,63 +224,64 @@ pub(crate) fn can_pay_costs(
     }
     let controller = db[source].controller;
 
-    for cost in cost.additional_cost.iter() {
-        match cost {
-            AdditionalCost::SacrificeSource => {
+    for cost in cost.additional_costs.iter() {
+        match cost.cost.as_ref().unwrap() {
+            additional_cost::Cost::SacrificeSource(_) => {
                 if !source.can_be_sacrificed(db) {
                     return false;
                 }
             }
-            AdditionalCost::PayLife(life) => {
+            additional_cost::Cost::PayLife(life) => {
                 if db.all_players[controller].life_total <= life.count as i32 {
                     return false;
                 }
             }
-            AdditionalCost::SacrificePermanent(restrictions) => {
+            additional_cost::Cost::SacrificePermanent(sac) => {
                 let any_target = db.battlefield[controller].iter().any(|card| {
-                    card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                    card.passes_restrictions(db, LogId::current(db), source, &sac.restrictions)
                 });
                 if !any_target {
                     return false;
                 }
             }
-            AdditionalCost::TapPermanent(restrictions) => {
+            additional_cost::Cost::TapPermanent(tap) => {
                 let any_target = db.battlefield[controller].iter().any(|card| {
-                    card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                    card.passes_restrictions(db, LogId::current(db), source, &tap.restrictions)
                 });
                 if !any_target {
                     return false;
                 }
             }
-            AdditionalCost::ExileCard { restrictions } => {
+            additional_cost::Cost::ExileCard(exile) => {
                 let any_target = db.battlefield[controller].iter().any(|card| {
-                    card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                    card.passes_restrictions(db, LogId::current(db), source, &exile.restrictions)
                 });
                 if !any_target {
                     return false;
                 }
             }
-            AdditionalCost::ExileXOrMoreCards {
+            additional_cost::Cost::ExileXOrMoreCards(ExileXOrMoreCards {
                 minimum,
                 restrictions,
-            } => {
+                ..
+            }) => {
                 let targets = db.battlefield[controller]
                     .iter()
                     .filter(|card| {
                         card.passes_restrictions(db, LogId::current(db), source, restrictions)
                     })
-                    .count();
+                    .count() as u32;
 
                 if targets < *minimum {
                     return false;
                 }
             }
-            AdditionalCost::DiscardThis => {
+            additional_cost::Cost::DiscardThis(_) => {
                 if !db.hand[controller].contains(&source) {
                     return false;
                 }
             }
-            AdditionalCost::RemoveCounter { counter, count } => {
+            additional_cost::Cost::RemoveCounters(RemoveCounters { counter, count, .. }) => {
                 let counters = if let Counter::ANY = counter.enum_value().unwrap() {
                     db[source].counters.values().sum::<usize>()
                 } else {
@@ -519,26 +292,26 @@ pub(crate) fn can_pay_costs(
                         .unwrap_or_default()
                 };
 
-                if counters < *count {
+                if counters < *count as usize {
                     return false;
                 }
             }
 
             // These are too complicated to compute, so just give up. The user can cancel if they can't actually pay.
-            AdditionalCost::ExileCardsCmcX(_) => {}
-            AdditionalCost::ExileSharingCardType { .. } => {}
-            AdditionalCost::TapPermanentsPowerXOrMore { .. } => {}
+            additional_cost::Cost::ExileCardsCmcX(_) => {}
+            additional_cost::Cost::ExileSharingCardType { .. } => {}
+            additional_cost::Cost::TapPermanentsPowerXOrMore { .. } => {}
         }
     }
 
     for restriction in cost.restrictions.iter() {
-        match restriction {
-            AbilityRestriction::AttackedWithXOrMoreCreatures(x) => {
-                if db.turn.number_of_attackers_this_turn < *x {
+        match restriction.restriction.as_ref().unwrap() {
+            ability_restriction::Restriction::AttackedWithXOrMoreCreatures(x) => {
+                if db.turn.number_of_attackers_this_turn < x.x_is as usize {
                     return false;
                 }
             }
-            AbilityRestriction::OncePerTurn => match id {
+            ability_restriction::Restriction::OncePerTurn(_) => match id {
                 Ability::Activated(id) => {
                     if db.turn.activated_abilities.contains(id) {
                         return false;

@@ -1,59 +1,21 @@
-use anyhow::anyhow;
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::{
         choose_targets::ChooseTargets,
         pay_costs::{self, PayCost, SpendMana},
         TargetSource,
     },
     player::mana_pool::SpendReason,
-    protogen::{self, cost::ManaCost},
-    protogen::{effects::CounterSpellOrAbility, targets::Restriction},
+    protogen::effects::CounterSpellOrAbility,
+    protogen::{
+        cost::ManaCost,
+        effects::{counter_spell_unless_pay::Cost, effect::Effect, CounterSpellUnlessPay},
+    },
     stack::{ActiveTarget, Entry, StackEntry},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Cost {
-    Fixed(usize),
-}
-
-impl TryFrom<&protogen::effects::counter_spell_unless_pay::Cost> for Cost {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::counter_spell_unless_pay::Cost,
-    ) -> Result<Self, Self::Error> {
-        match value {
-            protogen::effects::counter_spell_unless_pay::Cost::Fixed(value) => {
-                Ok(Self::Fixed(usize::try_from(value.count)?))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CounterSpellUnlessPay {
-    cost: Cost,
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::CounterSpellUnlessPay> for CounterSpellUnlessPay {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CounterSpellUnlessPay) -> Result<Self, Self::Error> {
-        Ok(Self {
-            cost: value
-                .cost
-                .as_ref()
-                .ok_or_else(|| anyhow!("Expected cost to have a cost specified"))
-                .and_then(Cost::try_from)?,
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for CounterSpellUnlessPay {
     fn needs_targets(
@@ -153,13 +115,13 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if let Ok(ActiveTarget::Stack { id }) = targets.iter().exactly_one() {
-            match self.cost {
+            match self.cost.as_ref().unwrap() {
                 Cost::Fixed(count) => {
                     results.push_pay_costs(PayCost::new_or_else(
                         db.stack.entries.get(id).unwrap().ty.source(),
                         pay_costs::Cost::SpendMana(SpendMana::new(
                             std::iter::repeat(ManaCost::GENERIC.into())
-                                .take(count)
+                                .take(count.count as usize)
                                 .collect_vec(),
                             SpendReason::Other,
                         )),

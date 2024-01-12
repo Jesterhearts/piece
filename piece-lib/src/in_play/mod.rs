@@ -18,16 +18,18 @@ pub(crate) use modifier_id::{ModifierId, ModifierInPlay};
 pub(crate) use static_ability_id::{StaticAbilityId, StaticAbilityInPlay};
 
 use crate::{
-    abilities::TriggeredAbility,
     battlefield::Battlefields,
-    effects::ReplacementAbility,
     exile::Exiles,
     graveyard::Graveyards,
     hand::Hands,
     library::Library,
     log::Log,
     player::{AllPlayers, Controller, Owner},
-    protogen::{effects::replacement_effect::Replacing, triggers::TriggerSource},
+    protogen::{
+        abilities::TriggeredAbility,
+        effects::{replacement_effect::Replacing, ReplacementEffect},
+        triggers::TriggerSource,
+    },
     stack::Stack,
     turns::Turn,
 };
@@ -219,7 +221,7 @@ impl Database {
     pub(crate) fn replacement_abilities_watching(
         &self,
         replacement: Replacing,
-    ) -> Vec<(CardId, ReplacementAbility)> {
+    ) -> Vec<(CardId, ReplacementEffect)> {
         self.cards
             .keys()
             .copied()

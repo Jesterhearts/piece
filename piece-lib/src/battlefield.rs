@@ -4,9 +4,8 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
-    abilities::{Ability, ForceEtbTapped, GainMana, StaticAbility},
+    abilities::Ability,
     action_result::ActionResult,
-    cost::{AdditionalCost, PayLife},
     effects::EffectBehaviors,
     in_play::{CardId, Database, ExileReason},
     log::LogId,
@@ -21,7 +20,13 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner},
     protogen::{
         color::Color,
-        effects::{replacement_effect::Replacing, Duration},
+        cost::additional_cost::{self, ExileXOrMoreCards, PayLife, RemoveCounters},
+        effects::{
+            gain_mana::Gain,
+            replacement_effect::Replacing,
+            static_ability::{self, ForceEtbTapped},
+            Duration,
+        },
         targets::Location,
         triggers::{self, TriggerSource},
     },
@@ -170,9 +175,12 @@ impl Battlefields {
 
             let controller = db[source].controller;
             for effect in replacement.effects.iter() {
-                effect
-                    .effect
-                    .push_pending_behavior(db, source, controller, &mut results);
+                effect.effect.as_ref().unwrap().push_pending_behavior(
+                    db,
+                    source,
+                    controller,
+                    &mut results,
+                );
             }
 
             results.push_settled(construct_skip_replacement(source_card_id, enters_tapped));
@@ -205,7 +213,10 @@ impl Battlefields {
             .filter_map(|(controller, card)| {
                 if controller == player
                     || db[card].modified_static_abilities.iter().any(|ability| {
-                        matches!(db[*ability].ability, StaticAbility::UntapEachUntapStep)
+                        matches!(
+                            db[*ability].ability,
+                            static_ability::Ability::UntapEachUntapStep(_)
+                        )
                     })
                 {
                     Some(card)
@@ -340,92 +351,97 @@ impl Battlefields {
                 _ => None,
             };
 
-            for cost in cost.additional_cost.iter() {
-                match cost {
-                    AdditionalCost::DiscardThis => {
+            for cost in cost.additional_costs.iter() {
+                match cost.cost.as_ref().unwrap() {
+                    additional_cost::Cost::DiscardThis(_) => {
                         results.push_settled(ActionResult::Discard(ability_source));
                     }
-                    AdditionalCost::SacrificeSource => {
+                    additional_cost::Cost::SacrificeSource(_) => {
                         results.push_settled(ActionResult::PermanentToGraveyard(ability_source));
                         results
                             .push_invalid_target(ActiveTarget::Battlefield { id: ability_source })
                     }
-                    AdditionalCost::PayLife(PayLife { count }) => {
+                    additional_cost::Cost::PayLife(PayLife { count, .. }) => {
                         results.push_settled(ActionResult::LoseLife {
                             target: db[source].controller,
                             count: *count,
                         })
                     }
-                    AdditionalCost::SacrificePermanent(restrictions) => {
+                    additional_cost::Cost::SacrificePermanent(sac) => {
                         results.push_pay_costs(PayCost::new(
                             source,
-                            Cost::SacrificePermanent(SacrificePermanent::new(restrictions.clone())),
+                            Cost::SacrificePermanent(SacrificePermanent::new(
+                                sac.restrictions.clone(),
+                            )),
                         ));
                     }
-                    AdditionalCost::TapPermanent(restrictions) => {
+                    additional_cost::Cost::TapPermanent(tap) => {
                         results.push_pay_costs(PayCost::new(
                             source,
-                            Cost::TapPermanent(TapPermanent::new(restrictions.clone())),
+                            Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                         ));
                     }
-                    AdditionalCost::TapPermanentsPowerXOrMore { x_is, restrictions } => {
+                    additional_cost::Cost::TapPermanentsPowerXOrMore(tap) => {
                         results.push_pay_costs(PayCost::new(
                             source,
                             Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
-                                restrictions.clone(),
-                                *x_is,
+                                tap.restrictions.clone(),
+                                tap.x_is as usize,
                             )),
                         ));
                     }
-                    AdditionalCost::ExileCardsCmcX(restrictions) => {
+                    additional_cost::Cost::ExileCardsCmcX(exile) => {
                         results.push_pay_costs(PayCost::new(
                             source,
                             Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(
-                                restrictions.clone(),
+                                exile.restrictions.clone(),
                             )),
                         ));
                     }
-                    AdditionalCost::ExileCard { restrictions } => {
+                    additional_cost::Cost::ExileCard(exile) => {
                         results.push_pay_costs(PayCost::new(
                             source,
                             Cost::ExileCards(ExileCards::new(
                                 exile_reason,
                                 1,
                                 1,
-                                restrictions.clone(),
+                                exile.restrictions.clone(),
                             )),
                         ));
                     }
-                    AdditionalCost::ExileXOrMoreCards {
+                    additional_cost::Cost::ExileXOrMoreCards(ExileXOrMoreCards {
                         minimum,
                         restrictions,
-                    } => {
+                        ..
+                    }) => {
                         results.push_pay_costs(PayCost::new(
                             source,
                             Cost::ExileCards(ExileCards::new(
                                 exile_reason,
-                                *minimum,
+                                *minimum as usize,
                                 usize::MAX,
                                 restrictions.clone(),
                             )),
                         ));
                     }
-                    AdditionalCost::ExileSharingCardType { count } => {
+                    additional_cost::Cost::ExileSharingCardType(exile) => {
                         results.push_pay_costs(PayCost::new(
                             source,
                             Cost::ExileCardsSharingType(ExileCardsSharingType::new(
                                 exile_reason,
-                                *count,
+                                exile.count as usize,
                             )),
                         ));
                     }
-                    AdditionalCost::RemoveCounter { counter, count } => {
-                        results.push_settled(ActionResult::RemoveCounters {
-                            target: source,
-                            counter: *counter,
-                            count: *count,
-                        })
-                    }
+                    additional_cost::Cost::RemoveCounters(RemoveCounters {
+                        counter,
+                        count,
+                        ..
+                    }) => results.push_settled(ActionResult::RemoveCounters {
+                        target: source,
+                        counter: *counter,
+                        count: *count as usize,
+                    }),
                 }
             }
 
@@ -439,7 +455,7 @@ impl Battlefields {
         }
 
         if let Ability::Mana(gain) = ability {
-            if let GainMana::Choice { .. } = &db[gain].ability.gain {
+            if let Gain::Choice(_) = db[gain].ability.gain_mana.gain.as_ref().unwrap() {
                 results.push_choose_mode(Source::Ability {
                     source,
                     ability: Ability::Mana(gain),
@@ -451,7 +467,7 @@ impl Battlefields {
             let controller = db[source].controller;
 
             for effect in ability.effects(db) {
-                let effect = effect.effect;
+                let effect = effect.effect.unwrap();
                 let valid_targets = effect.valid_targets(
                     db,
                     source,
@@ -478,8 +494,8 @@ impl Battlefields {
         results
     }
 
-    pub(crate) fn static_abilities(db: &Database) -> Vec<(&StaticAbility, CardId)> {
-        let mut result: Vec<(&StaticAbility, CardId)> = Default::default();
+    pub(crate) fn static_abilities(db: &Database) -> Vec<(&static_ability::Ability, CardId)> {
+        let mut result: Vec<(&static_ability::Ability, CardId)> = Default::default();
 
         for card in db
             .battlefield
@@ -785,7 +801,7 @@ pub(crate) fn move_card_to_battlefield(
     let must_enter_tapped = Battlefields::static_abilities(db)
         .iter()
         .any(|(ability, card)| match ability {
-            StaticAbility::ForceEtbTapped(ForceEtbTapped { restrictions }) => {
+            static_ability::Ability::ForceEtbTapped(ForceEtbTapped { restrictions, .. }) => {
                 source_card_id.passes_restrictions(db, LogId::current(db), *card, restrictions)
             }
             _ => false,

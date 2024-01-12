@@ -11,10 +11,9 @@ use itertools::Itertools;
 use strum::IntoEnumIterator;
 
 use crate::{
-    abilities::StaticAbility,
     action_result::ActionResult,
     battlefield::Battlefields,
-    effects::{EffectBehaviors, ReplacementAbility},
+    effects::EffectBehaviors,
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
@@ -23,6 +22,7 @@ use crate::{
     protogen::{
         color::Color,
         cost::ManaCost,
+        effects::{static_ability, ReplacementEffect},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::Location,
     },
@@ -407,7 +407,7 @@ impl Player {
     pub(crate) fn draw_with_replacement(
         db: &mut Database,
         player: Owner,
-        replacements: &mut IntoIter<(CardId, ReplacementAbility)>,
+        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
         count: usize,
         results: &mut PendingResults,
     ) {
@@ -424,7 +424,7 @@ impl Player {
                     }
 
                     for effect in replacement.effects.iter() {
-                        effect.effect.replace_draw(
+                        effect.effect.as_ref().unwrap().replace_draw(
                             db,
                             player,
                             replacements,
@@ -559,7 +559,9 @@ impl Player {
             .filter_map(|(ability, card)| {
                 if db[card].controller == player {
                     match ability {
-                        StaticAbility::ExtraLandsPerTurn(count) => Some(count),
+                        static_ability::Ability::ExtraLandsPerTurn(count) => {
+                            Some(count.count as usize)
+                        }
                         _ => None,
                     }
                 } else {

@@ -5,12 +5,11 @@ use protobuf::Enum;
 
 use crate::{
     action_result::ActionResult,
-    effects::{BattlefieldModifier, Effect, EffectBehaviors, ModifyBattlefield},
+    effects::EffectBehaviors,
     in_play::ModifierId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
-        self,
-        effects::Duration,
+        effects::{effect::Effect, BattlefieldModifier, Duration, Equip},
         empty::Empty,
         targets::{restriction, Restriction},
         types::Type,
@@ -18,25 +17,6 @@ use crate::{
     stack::ActiveTarget,
     types::TypeSet,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Equip {
-    modifiers: Vec<ModifyBattlefield>,
-}
-
-impl TryFrom<&protogen::effects::Equip> for Equip {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Equip) -> Result<Self, Self::Error> {
-        Ok(Self {
-            modifiers: value
-                .modifiers
-                .iter()
-                .map(ModifyBattlefield::try_from)
-                .collect::<anyhow::Result<_>>()?,
-        })
-    }
-}
 
 impl EffectBehaviors for Equip {
     fn needs_targets(
@@ -145,7 +125,7 @@ impl EffectBehaviors for Equip {
                 db,
                 source,
                 BattlefieldModifier {
-                    modifier: modifier.clone(),
+                    modifier: protobuf::MessageField::some(modifier.clone()),
                     duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
                     restrictions: vec![
                         Restriction {
@@ -172,6 +152,7 @@ impl EffectBehaviors for Equip {
                             ..Default::default()
                         },
                     ],
+                    ..Default::default()
                 },
             );
 

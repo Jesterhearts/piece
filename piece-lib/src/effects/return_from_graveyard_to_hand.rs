@@ -2,9 +2,9 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::effects::ReturnFromGraveyardToHand,
+    protogen::effects::{effect::Effect, ReturnFromGraveyardToHand},
     stack::ActiveTarget,
 };
 

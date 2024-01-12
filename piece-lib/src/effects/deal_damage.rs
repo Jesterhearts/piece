@@ -1,8 +1,11 @@
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{effects::DealDamage, types::Type},
+    protogen::{
+        effects::{effect::Effect, DealDamage},
+        types::Type,
+    },
     stack::ActiveTarget,
     types::TypeSet,
 };

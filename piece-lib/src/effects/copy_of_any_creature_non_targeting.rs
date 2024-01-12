@@ -5,9 +5,13 @@ use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{effects::CopyOfAnyCreatureNonTargeting, targets::Location, types::Type},
+    protogen::{
+        effects::{effect::Effect, CopyOfAnyCreatureNonTargeting},
+        targets::Location,
+        types::Type,
+    },
     stack::ActiveTarget,
     types::TypeSet,
 };

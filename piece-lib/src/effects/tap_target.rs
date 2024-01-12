@@ -3,9 +3,9 @@ use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
-    effects::{Effect, EffectBehaviors},
+    effects::EffectBehaviors,
     pending_results::choose_targets::ChooseTargets,
-    protogen::effects::TapTarget,
+    protogen::effects::{effect::Effect, TapTarget},
     stack::ActiveTarget,
 };
 
