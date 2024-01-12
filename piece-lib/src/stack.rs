@@ -124,9 +124,6 @@ impl Entry {
     }
 }
 
-#[derive(Debug, Clone, Deref, DerefMut)]
-pub(crate) struct Modes(pub(crate) Vec<usize>);
-
 #[derive(Debug, Clone)]
 pub struct StackEntry {
     pub(crate) targets: Vec<Vec<ActiveTarget>>,
