@@ -9,13 +9,13 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::Player,
-    protogen::{self, targets::Restriction},
+    protogen::{self, effects::NumberOfPermanentsMatching},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Count {
     Fixed(usize),
-    NumberOfPermanentsMatching(Vec<Restriction>),
+    NumberOfPermanentsMatching(NumberOfPermanentsMatching),
 }
 
 impl TryFrom<&protogen::effects::controller_draws_cards::Count> for Count {
@@ -30,9 +30,7 @@ impl TryFrom<&protogen::effects::controller_draws_cards::Count> for Count {
             }
             protogen::effects::controller_draws_cards::Count::NumberOfPermanentsMatching(
                 matching,
-            ) => Ok(Self::NumberOfPermanentsMatching(
-                matching.restrictions.clone(),
-            )),
+            ) => Ok(Self::NumberOfPermanentsMatching(matching.clone())),
         }
     }
 }
@@ -84,7 +82,9 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
-                .filter(|card| card.passes_restrictions(db, LogId::current(db), source, matching))
+                .filter(|card| {
+                    card.passes_restrictions(db, LogId::current(db), source, &matching.restrictions)
+                })
                 .count(),
         };
 
@@ -107,7 +107,9 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
-                .filter(|card| card.passes_restrictions(db, LogId::current(db), source, matching))
+                .filter(|card| {
+                    card.passes_restrictions(db, LogId::current(db), source, &matching.restrictions)
+                })
                 .count(),
         };
         results.push_settled(ActionResult::DrawCards {
@@ -129,7 +131,9 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::Fixed(count) => *count,
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
-                .filter(|card| card.passes_restrictions(db, LogId::current(db), **card, matching))
+                .filter(|card| {
+                    card.passes_restrictions(db, LogId::current(db), **card, &matching.restrictions)
+                })
                 .count(),
         };
 

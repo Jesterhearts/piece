@@ -90,10 +90,10 @@ use crate::{
             CopyOfAnyCreatureNonTargeting, CopySpellOrAbility, CounterSpellOrAbility, Cycling,
             DealDamage, DestroyEach, DestroyTarget, Discover, ExileTarget,
             ExileTargetCreatureManifestTopOfLibrary, ExileTargetGraveyard, GainLife, Mill,
-            MultiplyTokens, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToHand,
-            ReturnFromGraveyardToLibrary, ReturnSelfToHand, ReturnTargetToHand, ReturnTransformed,
-            Scry, SelfExplores, TapTarget, TapThis, TargetCreatureExplores, TargetToTopOfLibrary,
-            Transform, UntapTarget, UntapThis,
+            MultiplyTokens, NumberOfPermanentsMatching, ReturnFromGraveyardToBattlefield,
+            ReturnFromGraveyardToHand, ReturnFromGraveyardToLibrary, ReturnSelfToHand,
+            ReturnTargetToHand, ReturnTransformed, Scry, SelfExplores, TapTarget, TapThis,
+            TargetCreatureExplores, TargetToTopOfLibrary, Transform, UntapTarget, UntapThis,
         },
         empty::Empty,
         types::{Subtype, Type},
@@ -161,23 +161,6 @@ pub(crate) enum Effect {
 pub(crate) use battlefield_modifier::BattlefieldModifier;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct NumberOfPermanentsMatching {
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::NumberOfPermanentsMatching> for NumberOfPermanentsMatching {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        value: &protogen::effects::NumberOfPermanentsMatching,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DynamicPowerToughness {
     NumberOfCountersOnThis(protobuf::EnumOrUnknown<Counter>),
     NumberOfPermanentsMatching(NumberOfPermanentsMatching),
@@ -207,7 +190,7 @@ impl TryFrom<&protogen::effects::dynamic_power_toughness::Source> for DynamicPow
             }
             protogen::effects::dynamic_power_toughness::Source::NumberOfPermanentsMatching(
                 value,
-            ) => Ok(Self::NumberOfPermanentsMatching(value.try_into()?)),
+            ) => Ok(Self::NumberOfPermanentsMatching(value.clone())),
         }
     }
 }
