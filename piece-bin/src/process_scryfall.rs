@@ -102,7 +102,7 @@ fn main() -> anyhow::Result<()> {
             }
 
             let mut name = proto.name.clone();
-            name.retain(|c| !['-', '\'', ',', '+'].contains(&c));
+            name.retain(|c| !['-', '\'', ',', '+', '"'].contains(&c));
             unique_cards.insert(name, proto);
         }
     }
