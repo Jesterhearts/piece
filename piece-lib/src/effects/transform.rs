@@ -1,7 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Transform;
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Transform};
 
 impl EffectBehaviors for Transform {
     fn needs_targets(

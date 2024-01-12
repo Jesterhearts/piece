@@ -1,19 +1,6 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ReturnTransformed {
-    enters_tapped: bool,
-}
-
-impl TryFrom<&protogen::effects::ReturnTransformed> for ReturnTransformed {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ReturnTransformed) -> Result<Self, Self::Error> {
-        Ok(Self {
-            enters_tapped: value.enters_tapped,
-        })
-    }
-}
+use crate::{
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ReturnTransformed,
+};
 
 impl EffectBehaviors for ReturnTransformed {
     fn needs_targets(

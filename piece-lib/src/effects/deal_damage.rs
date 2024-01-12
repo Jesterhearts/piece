@@ -2,28 +2,10 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::targets::Restriction,
-    protogen::{self, types::Type},
+    protogen::{effects::DealDamage, types::Type},
     stack::ActiveTarget,
     types::TypeSet,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DealDamage {
-    pub(crate) quantity: usize,
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::DealDamage> for DealDamage {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::DealDamage) -> Result<Self, Self::Error> {
-        Ok(Self {
-            quantity: usize::try_from(value.quantity)?,
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for DealDamage {
     fn needs_targets(

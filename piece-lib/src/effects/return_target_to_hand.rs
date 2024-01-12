@@ -6,23 +6,8 @@ use crate::{
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::effects::ReturnTargetToHand,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ReturnTargetToHand {
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::ReturnTargetToHand> for ReturnTargetToHand {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ReturnTargetToHand) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for ReturnTargetToHand {
     fn needs_targets(

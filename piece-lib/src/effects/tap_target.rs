@@ -5,24 +5,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::choose_targets::ChooseTargets,
-    protogen::{self, targets::Restriction},
+    protogen::effects::TapTarget,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TapTarget {
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::TapTarget> for TapTarget {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::TapTarget) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for TapTarget {
     fn needs_targets(

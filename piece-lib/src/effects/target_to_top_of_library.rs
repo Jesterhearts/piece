@@ -4,26 +4,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::effects::TargetToTopOfLibrary,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TargetToTopOfLibrary {
-    restrictions: Vec<Restriction>,
-    under_cards: usize,
-}
-
-impl TryFrom<&protogen::effects::TargetToTopOfLibrary> for TargetToTopOfLibrary {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::TargetToTopOfLibrary) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-            under_cards: usize::try_from(value.under_cards)?,
-        })
-    }
-}
 
 impl EffectBehaviors for TargetToTopOfLibrary {
     fn needs_targets(

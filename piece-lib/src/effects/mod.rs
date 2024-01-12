@@ -66,32 +66,15 @@ use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
     card::replace_symbols,
     effects::{
-        apply_then_if_was::ApplyThenIfWas, cant_attack_this_turn::CantAttackThisTurn,
-        cascade::Cascade, controller_discards::ControllerDiscards,
-        controller_draws_cards::ControllerDrawsCards, controller_loses_life::ControllerLosesLife,
-        copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
-        copy_spell_or_ability::CopySpellOrAbility, counter_spell::CounterSpellOrAbility,
+        apply_then_if_was::ApplyThenIfWas, controller_draws_cards::ControllerDrawsCards,
         counter_spell_unless_pay::CounterSpellUnlessPay, create_token::CreateToken,
-        create_token_copy::CreateTokenCopy, cycling::Cycling, deal_damage::DealDamage,
-        destroy_each::DestroyEach, destroy_target::DestroyTarget, discover::Discover, equip::Equip,
-        examine_top_cards::ExamineTopCards, exile_target::ExileTarget,
-        exile_target_creature_manifest_top_of_library::ExileTargetCreatureManifestTopOfLibrary,
-        exile_target_graveyard::ExileTargetGraveyard,
+        create_token_copy::CreateTokenCopy, equip::Equip, examine_top_cards::ExamineTopCards,
         for_each_player_choose_then::ForEachPlayerChooseThen,
-        foreach_mana_of_source::ForEachManaOfSource, gain_life::GainLife, if_then_else::IfThenElse,
-        mill::Mill, modal::Modal, modify_target::ModifyTarget, multiply_tokens::MultiplyTokens,
-        pay_cost_then::PayCostThen,
-        return_from_graveyard_to_battlefield::ReturnFromGraveyardToBattlefield,
-        return_from_graveyard_to_hand::ReturnFromGraveyardToHand,
-        return_from_graveyard_to_library::ReturnFromGraveyardToLibrary,
-        return_self_to_hand::ReturnSelfToHand, return_target_to_hand::ReturnTargetToHand,
-        return_transformed::ReturnTransformed, reveal_each_top_of_library::RevealEachTopOfLibrary,
-        scry::Scry, self_explores::SelfExplores, tap_target::TapTarget, tap_this::TapThis,
+        foreach_mana_of_source::ForEachManaOfSource, if_then_else::IfThenElse, modal::Modal,
+        modify_target::ModifyTarget, pay_cost_then::PayCostThen,
+        reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_controller_gains_tokens::TargetControllerGainsTokens,
-        target_creature_explores::TargetCreatureExplores,
-        target_gains_counters::TargetGainsCounters, target_to_top_of_library::TargetToTopOfLibrary,
-        transform::Transform, tutor_library::TutorLibrary, untap_target::UntapTarget,
-        untap_this::UntapThis,
+        target_gains_counters::TargetGainsCounters, tutor_library::TutorLibrary,
     },
     in_play::{CardId, Database},
     log::LogId,
@@ -102,7 +85,16 @@ use crate::{
         self,
         color::Color,
         counters::Counter,
-        effects::BattleCry,
+        effects::{
+            BattleCry, CantAttackThisTurn, Cascade, ControllerDiscards, ControllerLosesLife,
+            CopyOfAnyCreatureNonTargeting, CopySpellOrAbility, CounterSpellOrAbility, Cycling,
+            DealDamage, DestroyEach, DestroyTarget, Discover, ExileTarget,
+            ExileTargetCreatureManifestTopOfLibrary, ExileTargetGraveyard, GainLife, Mill,
+            MultiplyTokens, ReturnFromGraveyardToBattlefield, ReturnFromGraveyardToHand,
+            ReturnFromGraveyardToLibrary, ReturnSelfToHand, ReturnTargetToHand, ReturnTransformed,
+            Scry, SelfExplores, TapTarget, TapThis, TargetCreatureExplores, TargetToTopOfLibrary,
+            Transform, UntapTarget, UntapThis,
+        },
         empty::Empty,
         types::{Subtype, Type},
     },
@@ -478,26 +470,26 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
                 Ok(Self::from(ModifyTarget::try_from(value)?))
             }
             protogen::effects::effect::Effect::CantAttackThisTurn(value) => {
-                Ok(Self::from(CantAttackThisTurn::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
-            protogen::effects::effect::Effect::Cascade(_) => Ok(Self::from(Cascade)),
+            protogen::effects::effect::Effect::Cascade(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::ControllerDiscards(value) => {
-                Ok(Self::from(ControllerDiscards::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::ControllerDrawsCards(value) => {
                 Ok(Self::from(ControllerDrawsCards::try_from(value)?))
             }
             protogen::effects::effect::Effect::ControllerLosesLife(value) => {
-                Ok(Self::from(ControllerLosesLife::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
-            protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(_) => {
-                Ok(Self::from(CopyOfAnyCreatureNonTargeting))
+            protogen::effects::effect::Effect::CopyOfAnyCreatureNonTargeting(value) => {
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::CopySpellOrAbility(value) => {
-                Ok(Self::from(CopySpellOrAbility::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::CounterSpellOrAbility(value) => {
-                Ok(Self::from(CounterSpellOrAbility::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::CounterSpellUnlessPay(value) => {
                 Ok(Self::from(CounterSpellUnlessPay::try_from(value)?))
@@ -508,35 +500,25 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::CreateTokenCopy(value) => {
                 Ok(Self::from(CreateTokenCopy::try_from(value)?))
             }
-            protogen::effects::effect::Effect::Cycling(value) => {
-                Ok(Self::from(Cycling::try_from(value)?))
-            }
-            protogen::effects::effect::Effect::DealDamage(value) => {
-                Ok(Self::from(DealDamage::try_from(value)?))
-            }
-            protogen::effects::effect::Effect::DestroyEach(value) => {
-                Ok(Self::from(DestroyEach::try_from(value)?))
-            }
+            protogen::effects::effect::Effect::Cycling(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::DealDamage(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::DestroyEach(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::DestroyTarget(value) => {
-                Ok(Self::from(DestroyTarget::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
-            protogen::effects::effect::Effect::Discover(value) => {
-                Ok(Self::from(Discover::try_from(value)?))
-            }
+            protogen::effects::effect::Effect::Discover(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::Equip(value) => {
                 Ok(Self::from(Equip::try_from(value)?))
             }
             protogen::effects::effect::Effect::ExamineTopCards(value) => {
                 Ok(Self::from(ExamineTopCards::try_from(value)?))
             }
-            protogen::effects::effect::Effect::ExileTarget(value) => {
-                Ok(Self::from(ExileTarget::try_from(value)?))
+            protogen::effects::effect::Effect::ExileTarget(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(value) => {
+                Ok(Self::from(value.clone()))
             }
-            protogen::effects::effect::Effect::ExileTargetCreatureManifestTopOfLibrary(_) => {
-                Ok(Self::from(ExileTargetCreatureManifestTopOfLibrary))
-            }
-            protogen::effects::effect::Effect::ExileTargetGraveyard(_) => {
-                Ok(Self::from(ExileTargetGraveyard))
+            protogen::effects::effect::Effect::ExileTargetGraveyard(value) => {
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::ForEachManaOfSource(value) => {
                 Ok(Self::from(ForEachManaOfSource::try_from(value)?))
@@ -547,68 +529,60 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::TargetGainsCounters(value) => {
                 Ok(Self::from(TargetGainsCounters::try_from(value)?))
             }
-            protogen::effects::effect::Effect::GainLife(value) => {
-                Ok(Self::from(GainLife::try_from(value)?))
-            }
+            protogen::effects::effect::Effect::GainLife(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::IfThenElse(value) => {
                 Ok(Self::from(IfThenElse::try_from(value)?))
             }
-            protogen::effects::effect::Effect::Mill(value) => {
-                Ok(Self::from(Mill::try_from(value)?))
-            }
+            protogen::effects::effect::Effect::Mill(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::Modal(value) => {
                 Ok(Self::from(Modal::try_from(value)?))
             }
             protogen::effects::effect::Effect::MultiplyTokens(value) => {
-                Ok(Self::from(MultiplyTokens::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::PayCostThen(value) => {
                 Ok(Self::from(PayCostThen::try_from(value)?))
             }
-            protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => Ok(
-                Self::from(ReturnFromGraveyardToBattlefield::try_from(value)?),
-            ),
+            protogen::effects::effect::Effect::ReturnFromGraveyardToBattlefield(value) => {
+                Ok(Self::from(value.clone()))
+            }
             protogen::effects::effect::Effect::ReturnFromGraveyardToHand(value) => {
-                Ok(Self::from(ReturnFromGraveyardToHand::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::ReturnFromGraveyardToLibrary(value) => {
-                Ok(Self::from(ReturnFromGraveyardToLibrary::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::ReturnTransformed(value) => {
-                Ok(Self::from(ReturnTransformed::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
-            protogen::effects::effect::Effect::ReturnSelfToHand(_) => {
-                Ok(Self::from(ReturnSelfToHand))
+            protogen::effects::effect::Effect::ReturnSelfToHand(value) => {
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::ReturnTargetToHand(value) => {
-                Ok(Self::from(ReturnTargetToHand::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::RevealEachTopOfLibrary(value) => {
                 Ok(Self::from(RevealEachTopOfLibrary::try_from(value)?))
             }
-            protogen::effects::effect::Effect::Scry(value) => {
-                Ok(Self::from(Scry::try_from(value)?))
-            }
-            protogen::effects::effect::Effect::SelfExplores(_) => Ok(Self::from(SelfExplores)),
-            protogen::effects::effect::Effect::TapTarget(value) => {
-                Ok(Self::from(TapTarget::try_from(value)?))
-            }
-            protogen::effects::effect::Effect::TapThis(_) => Ok(Self::from(TapThis)),
+            protogen::effects::effect::Effect::Scry(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::SelfExplores(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::TapTarget(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::TapThis(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => {
                 Ok(Self::from(TargetControllerGainsTokens::try_from(value)?))
             }
-            protogen::effects::effect::Effect::TargetCreatureExplores(_) => {
-                Ok(Self::from(TargetCreatureExplores))
+            protogen::effects::effect::Effect::TargetCreatureExplores(value) => {
+                Ok(Self::from(value.clone()))
             }
             protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => {
-                Ok(Self::from(TargetToTopOfLibrary::try_from(value)?))
+                Ok(Self::from(value.clone()))
             }
-            protogen::effects::effect::Effect::Transform(_) => Ok(Self::from(Transform)),
+            protogen::effects::effect::Effect::Transform(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::TutorLibrary(value) => {
                 Ok(Self::from(TutorLibrary::try_from(value)?))
             }
-            protogen::effects::effect::Effect::UntapThis(_) => Ok(Self::from(UntapThis)),
-            protogen::effects::effect::Effect::UntapTarget(_) => Ok(Self::from(UntapTarget)),
+            protogen::effects::effect::Effect::UntapThis(value) => Ok(Self::from(value.clone())),
+            protogen::effects::effect::Effect::UntapTarget(value) => Ok(Self::from(value.clone())),
         }
     }
 }

@@ -1,7 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors};
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct Cascade;
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Cascade};
 
 impl EffectBehaviors for Cascade {
     fn needs_targets(

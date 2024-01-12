@@ -1,7 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors};
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct UntapThis;
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::UntapThis};
 
 impl EffectBehaviors for UntapThis {
     fn needs_targets(

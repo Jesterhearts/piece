@@ -40,7 +40,7 @@ pub struct Turn {
     passed: usize,
 
     pub(crate) ban_attacking_this_turn: HashSet<Owner>,
-    pub(crate) life_gained_this_turn: HashMap<Owner, usize>,
+    pub(crate) life_gained_this_turn: HashMap<Owner, u32>,
     pub(crate) number_of_attackers_this_turn: usize,
     pub(crate) activated_abilities: HashSet<ActivatedAbilityId>,
 }

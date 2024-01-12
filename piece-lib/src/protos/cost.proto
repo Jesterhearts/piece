@@ -35,7 +35,7 @@ message AdditionalCost {
     repeated targets.Restriction restrictions = 2;
   }
   message PayLife {
-    int32 count = 1;
+    uint32 count = 1;
   }
   message RemoveCounters {
     counters.Counter counter = 1;

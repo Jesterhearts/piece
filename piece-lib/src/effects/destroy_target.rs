@@ -4,24 +4,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::effects::DestroyTarget,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DestroyTarget {
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::DestroyTarget> for DestroyTarget {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::DestroyTarget) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for DestroyTarget {
     fn needs_targets(

@@ -2,13 +2,13 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{effects::Duration, types::Type},
+    protogen::{
+        effects::{Duration, ExileTargetCreatureManifestTopOfLibrary},
+        types::Type,
+    },
     stack::ActiveTarget,
     types::TypeSet,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct ExileTargetCreatureManifestTopOfLibrary;
 
 impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn needs_targets(
@@ -71,7 +71,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         );
 
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(*self)),
+            TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
             source,

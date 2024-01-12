@@ -1,21 +1,6 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen, protogen::targets::Restriction,
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::DestroyEach,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DestroyEach {
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::DestroyEach> for DestroyEach {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::DestroyEach) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for DestroyEach {
     fn needs_targets(

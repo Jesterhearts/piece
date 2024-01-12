@@ -1,27 +1,7 @@
 use crate::{
-    action_result::ActionResult,
-    effects::EffectBehaviors,
-    log::LogId,
-    player::Owner,
-    protogen::{self, targets::Restriction},
+    action_result::ActionResult, effects::EffectBehaviors, log::LogId, player::Owner,
+    protogen::effects::ControllerDiscards,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ControllerDiscards {
-    count: usize,
-    unless: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::ControllerDiscards> for ControllerDiscards {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ControllerDiscards) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-            unless: value.unless.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for ControllerDiscards {
     fn needs_targets(

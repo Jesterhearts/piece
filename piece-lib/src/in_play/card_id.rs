@@ -1899,7 +1899,7 @@ impl CardId {
         db[self].marked_damage
     }
 
-    pub(crate) fn mark_damage(self, db: &mut Database, amount: usize) {
+    pub(crate) fn mark_damage(self, db: &mut Database, amount: u32) {
         db[self].marked_damage += amount as i32;
     }
 

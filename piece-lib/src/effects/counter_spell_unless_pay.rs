@@ -3,15 +3,15 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    effects::{counter_spell::CounterSpellOrAbility, Effect, EffectBehaviors},
+    effects::{Effect, EffectBehaviors},
     pending_results::{
         choose_targets::ChooseTargets,
         pay_costs::{self, PayCost, SpendMana},
         TargetSource,
     },
     player::mana_pool::SpendReason,
-    protogen::targets::Restriction,
     protogen::{self, cost::ManaCost},
+    protogen::{effects::CounterSpellOrAbility, targets::Restriction},
     stack::{ActiveTarget, Entry, StackEntry},
 };
 
@@ -163,9 +163,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
                                 .collect_vec(),
                             SpendReason::Other,
                         )),
-                        vec![Effect::CounterSpellOrAbility(CounterSpellOrAbility {
-                            restrictions: Default::default(),
-                        })],
+                        vec![Effect::from(CounterSpellOrAbility::default())],
                         targets,
                     ));
                 }

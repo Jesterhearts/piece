@@ -8,24 +8,9 @@ use crate::{
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen::{self, targets::Restriction},
+    protogen::effects::CopySpellOrAbility,
     stack::{ActiveTarget, Entry},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CopySpellOrAbility {
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::CopySpellOrAbility> for CopySpellOrAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CopySpellOrAbility) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for CopySpellOrAbility {
     fn needs_targets(&self, _db: &Database, _source: CardId) -> usize {

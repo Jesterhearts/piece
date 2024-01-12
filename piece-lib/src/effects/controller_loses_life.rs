@@ -6,25 +6,8 @@ use crate::{
     log::LogId,
     pending_results::PendingResults,
     player::{Owner, Player},
-    protogen::{self, targets::Restriction},
+    protogen::effects::ControllerLosesLife,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ControllerLosesLife {
-    count: usize,
-    unless: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::ControllerLosesLife> for ControllerLosesLife {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ControllerLosesLife) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-            unless: value.unless.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for ControllerLosesLife {
     fn needs_targets(

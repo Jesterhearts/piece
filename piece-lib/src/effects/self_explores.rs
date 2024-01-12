@@ -4,11 +4,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::effects::SelfExplores,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SelfExplores;
 
 impl EffectBehaviors for SelfExplores {
     fn needs_targets(

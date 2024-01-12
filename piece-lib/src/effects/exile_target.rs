@@ -3,25 +3,8 @@ use crate::{
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, effects::Duration, targets::Restriction},
+    protogen::effects::ExileTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ExileTarget {
-    duration: protobuf::EnumOrUnknown<Duration>,
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::ExileTarget> for ExileTarget {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ExileTarget) -> Result<Self, Self::Error> {
-        Ok(Self {
-            duration: value.duration,
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for ExileTarget {
     fn needs_targets(

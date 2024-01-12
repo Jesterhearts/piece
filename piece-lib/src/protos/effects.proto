@@ -82,11 +82,6 @@ message Effect {
         exile_target_creature_manifest_top_of_library = 25;
     // Exile the graveyard of target player.
     ExileTargetGraveyard exile_target_graveyard = 26;
-    // The card with the associated effect explores.
-    Explore self_explores = 27;
-    // The targetted creature explores. This automatically narrows the list of
-    // valid targets to creatures on the battlefield.
-    Explore target_creature_explores = 28;
     // For each mana from a particular source (e.g. cave or treasure) spent on
     // casting this effect's card, apply some effects.
     ForEachManaOfSource for_each_mana_of_source = 29;
@@ -132,27 +127,32 @@ message Effect {
     RevealEachTopOfLibrary reveal_each_top_of_library = 44;
     // Scry some number of cards.
     Scry scry = 45;
+    // The card with the effect explores.
+    SelfExplores self_explores = 46;
     // Tap a target permanent. This automatically narrows the list of targets to
     // targets on the battlefield.
-    TapTarget tap_target = 46;
+    TapTarget tap_target = 47;
     // Tap the card associated with this effect.
-    TapThis tap_this = 47;
+    TapThis tap_this = 48;
+    // The targetted creature explores. This automatically narrows the list of
+    // valid targets to creatures on the battlefield.
+    TargetCreatureExplores target_creature_explores = 28;
     // Return target to the top of its owner's library.
-    TargetToTopOfLibrary target_to_top_of_library = 48;
+    TargetToTopOfLibrary target_to_top_of_library = 49;
     // Transform in place on the battlefield. This will preserve equipment and
     // auras attached to the transformed card.
-    Transform transform = 49;
+    Transform transform = 50;
     // Search the library for cards matching some set of restrictions and allow
     // the player to move it to a location.
-    TutorLibrary tutor_library = 50;
+    TutorLibrary tutor_library = 51;
     // Untap the card associated with this effect.
-    UntapThis untap_this = 51;
+    UntapThis untap_this = 52;
     // Untap a target permanent. THis automatically narrows the list of targets
     // to targets on the battlefield.
-    UntapTarget untap_target = 52;
+    UntapTarget untap_target = 53;
   }
 
-  string oracle_text = 53;
+  string oracle_text = 54;
 }
 
 message ActivatedAbility {
@@ -189,7 +189,7 @@ message CantAttackThisTurn {
 message Cascade {}
 
 message ControllerDiscards {
-  int32 count = 1;
+  uint32 count = 1;
   repeated targets.Restriction unless = 2;
 }
 
@@ -205,7 +205,7 @@ message ControllerDrawsCards {
 }
 
 message ControllerLosesLife {
-  int32 count = 1;
+  uint32 count = 1;
   repeated targets.Restriction unless = 2;
 }
 
@@ -259,7 +259,7 @@ message Cycling {
 }
 
 message DealDamage {
-  int32 quantity = 1;
+  uint32 quantity = 1;
   repeated targets.Restriction restrictions = 2;
 }
 
@@ -289,7 +289,7 @@ message DestroyTarget {
 }
 
 message Discover {
-  int32 count = 1;
+  uint32 count = 1;
 }
 
 enum Duration {
@@ -334,8 +334,6 @@ message ExileTargetCreatureManifestTopOfLibrary {}
 
 message ExileTargetGraveyard {}
 
-message Explore {}
-
 message ExtraLandsPerTurn {
   int32 count = 1;
 }
@@ -378,7 +376,7 @@ message GainCounter {
 }
 
 message GainLife {
-  int32 count = 1;
+  uint32 count = 1;
 }
 
 message GainMana {
@@ -412,7 +410,7 @@ message IfThenElse {
 }
 
 message Mill {
-  int32 count = 1;
+  uint32 count = 1;
   repeated targets.Restriction restrictions = 2;
 }
 
@@ -441,7 +439,7 @@ message ModifyBattlefield {
 }
 
 message MultiplyTokens {
-  int32 multiplier = 1;
+  uint32 multiplier = 1;
 }
 
 message NumberOfPermanentsMatching {
@@ -454,19 +452,19 @@ message PayCostThen {
 }
 
 message ReturnFromGraveyardToBattlefield {
-  int32 count = 1;
+  uint32 count = 1;
   repeated targets.Restriction restrictions = 2;
   optional cost.XIs x_is = 3;
   bool enters_tapped = 4;
 }
 
 message ReturnFromGraveyardToHand {
-  int32 count = 1;
+  uint32 count = 1;
   repeated targets.Restriction restrictions = 2;
 }
 
 message ReturnFromGraveyardToLibrary {
-  int32 count = 1;
+  uint32 count = 1;
   repeated targets.Restriction restrictions = 2;
 }
 
@@ -489,8 +487,10 @@ message RevealEachTopOfLibrary {
 }
 
 message Scry {
-  int32 count = 1;
+  uint32 count = 1;
 }
+
+message SelfExplores {}
 
 message StaticAbility {
   message AddKeywordsIf {
@@ -533,8 +533,10 @@ message TapTarget {
 
 message TapThis {}
 
+message TargetCreatureExplores {}
+
 message TargetToTopOfLibrary {
-  int32 under_cards = 1;
+  uint32 under_cards = 1;
   repeated targets.Restriction restrictions = 2;
 }
 

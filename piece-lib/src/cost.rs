@@ -95,16 +95,14 @@ impl TryFrom<&protogen::cost::CastingCost> for CastingCost {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PayLife {
-    pub(crate) count: usize,
+    pub(crate) count: u32,
 }
 
 impl TryFrom<&protogen::cost::additional_cost::PayLife> for PayLife {
     type Error = anyhow::Error;
 
     fn try_from(value: &protogen::cost::additional_cost::PayLife) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-        })
+        Ok(Self { count: value.count })
     }
 }
 

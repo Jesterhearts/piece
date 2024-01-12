@@ -4,11 +4,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::effects::ExileTargetGraveyard,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct ExileTargetGraveyard;
 
 impl EffectBehaviors for ExileTargetGraveyard {
     fn needs_targets(
@@ -57,7 +55,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
             results.all_currently_targeted(),
         );
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(*self)),
+            TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
             source,

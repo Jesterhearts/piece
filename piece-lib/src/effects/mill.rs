@@ -6,26 +6,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::effects::Mill,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Mill {
-    count: usize,
-    restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::Mill> for Mill {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Mill) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for Mill {
     fn needs_targets(

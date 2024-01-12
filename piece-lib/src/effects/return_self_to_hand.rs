@@ -1,7 +1,6 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors};
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct ReturnSelfToHand;
+use crate::{
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ReturnSelfToHand,
+};
 
 impl EffectBehaviors for ReturnSelfToHand {
     fn needs_targets(

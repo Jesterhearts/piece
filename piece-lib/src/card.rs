@@ -9,14 +9,14 @@ use crate::{
     abilities::{ActivatedAbility, Enchant, GainManaAbility, StaticAbility, TriggeredAbility},
     cost::{AbilityCost, AdditionalCost, CastingCost, CostReducer},
     effects::{
-        target_creature_explores::TargetCreatureExplores, AnyEffect, DynamicPowerToughness, Effect,
-        Mode, ReplacementAbility, Token, TokenCreature,
+        AnyEffect, DynamicPowerToughness, Effect, Mode, ReplacementAbility, Token, TokenCreature,
     },
     protogen::targets::Restriction,
     protogen::{
         self,
         color::Color,
         cost::ManaCost,
+        effects::TargetCreatureExplores,
         keywords::Keyword,
         types::{Subtype, Type},
     },
@@ -243,7 +243,7 @@ impl From<Token> for Card {
                         restrictions: vec![],
                     },
                     effects: vec![AnyEffect {
-                        effect: Effect::from(TargetCreatureExplores),
+                        effect: Effect::from(TargetCreatureExplores::default()),
                         oracle_text: String::default(),
                     }],
                     apply_to_self: false,

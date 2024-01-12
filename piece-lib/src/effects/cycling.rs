@@ -1,32 +1,15 @@
-use std::collections::HashMap;
-
 use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::targets::{restriction, Restriction},
-    protogen::{self, empty::Empty},
+    protogen::{
+        effects::Cycling,
+        targets::{restriction, Restriction},
+    },
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Cycling {
-    types: HashMap<i32, Empty>,
-    subtypes: HashMap<i32, Empty>,
-}
-
-impl TryFrom<&protogen::effects::Cycling> for Cycling {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Cycling) -> Result<Self, Self::Error> {
-        Ok(Self {
-            types: value.types.clone(),
-            subtypes: value.subtypes.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for Cycling {
     fn needs_targets(

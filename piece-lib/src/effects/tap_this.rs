@@ -1,7 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TapThis;
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::TapThis};
 
 impl EffectBehaviors for TapThis {
     fn needs_targets(

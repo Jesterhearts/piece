@@ -1,23 +1,8 @@
 use crate::{
     action_result::create_token_copy_with_replacements,
     effects::{EffectBehaviors, ReplacementAbility},
-    protogen,
+    protogen::effects::MultiplyTokens,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct MultiplyTokens {
-    multiplier: usize,
-}
-
-impl TryFrom<&protogen::effects::MultiplyTokens> for MultiplyTokens {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::MultiplyTokens) -> Result<Self, Self::Error> {
-        Ok(Self {
-            multiplier: usize::try_from(value.multiplier)?,
-        })
-    }
-}
 
 impl EffectBehaviors for MultiplyTokens {
     fn needs_targets(

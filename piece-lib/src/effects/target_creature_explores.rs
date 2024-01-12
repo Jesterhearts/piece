@@ -4,13 +4,11 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::effects::TargetCreatureExplores,
     protogen::types::Type,
     stack::ActiveTarget,
     types::TypeSet,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TargetCreatureExplores;
 
 impl EffectBehaviors for TargetCreatureExplores {
     fn needs_targets(

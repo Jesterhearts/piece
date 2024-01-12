@@ -12,7 +12,6 @@ use crate::{
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
     effects::{
-        cascade::Cascade,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
         AnyEffect, BattlefieldModifier, Destination, Effect, EffectBehaviors, ModifyBattlefield,
@@ -28,7 +27,7 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         counters::Counter,
-        effects::{BattleCry, Duration},
+        effects::{BattleCry, Cascade, Duration},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, TriggerSource},
@@ -118,7 +117,7 @@ pub(crate) enum ActionResult {
         modifiers: Vec<crate::effects::ModifyBattlefield>,
     },
     DamageTarget {
-        quantity: usize,
+        quantity: u32,
         target: ActiveTarget,
     },
     DeclareAttackers {
@@ -130,11 +129,11 @@ pub(crate) enum ActionResult {
     Discard(CardId),
     DiscardCards {
         target: Controller,
-        count: usize,
+        count: u32,
     },
     Discover {
         source: CardId,
-        count: usize,
+        count: u32,
         player: Controller,
     },
     DrawCards {
@@ -166,7 +165,7 @@ pub(crate) enum ActionResult {
     },
     GainLife {
         target: Controller,
-        count: usize,
+        count: u32,
     },
     GainMana {
         gain: Vec<protobuf::EnumOrUnknown<Mana>>,
@@ -183,11 +182,11 @@ pub(crate) enum ActionResult {
     },
     LoseLife {
         target: Controller,
-        count: usize,
+        count: u32,
     },
     ManifestTopOfLibrary(Controller),
     Mill {
-        count: usize,
+        count: u32,
         targets: Vec<ActiveTarget>,
     },
     ModifyCreatures {
@@ -207,7 +206,7 @@ pub(crate) enum ActionResult {
     },
     ReturnFromBattlefieldToLibrary {
         target: ActiveTarget,
-        under_cards: usize,
+        under_cards: u32,
     },
     ReturnFromGraveyardToBattlefield {
         targets: Vec<ActiveTarget>,
@@ -224,7 +223,7 @@ pub(crate) enum ActionResult {
     },
     RevealCard(CardId),
     RevealEachTopOfLibrary(CardId, RevealEachTopOfLibrary),
-    Scry(CardId, usize),
+    Scry(CardId, u32),
     Shuffle(Owner),
     SpellCountered {
         index: StackId,
@@ -291,7 +290,10 @@ impl ActionResult {
             }
             ActionResult::DiscardCards { target, count } => {
                 let mut pending = PendingResults::default();
-                pending.push_choose_discard(db.hand[*target].iter().copied().collect_vec(), *count);
+                pending.push_choose_discard(
+                    db.hand[*target].iter().copied().collect_vec(),
+                    *count as usize,
+                );
                 pending
             }
             ActionResult::TapPermanent(card_id) => card_id.tap(db),
@@ -417,7 +419,7 @@ impl ActionResult {
                     unreachable!()
                 };
 
-                Library::place_under_top(db, db[*target].owner, *target, *under_cards);
+                Library::place_under_top(db, db[*target].owner, *target, *under_cards as usize);
                 PendingResults::default()
             }
             ActionResult::LoseLife { target, count } => {
@@ -691,7 +693,7 @@ impl ActionResult {
                                 }],
                             },
                             effects: vec![AnyEffect {
-                                effect: Effect::from(Cascade),
+                                effect: Effect::from(Cascade::default()),
                                 oracle_text: Default::default(),
                             }],
                             oracle_text: "Cascade".to_string(),
@@ -878,7 +880,7 @@ impl ActionResult {
                     *source,
                     Some(ExileReason::Cascade),
                 ) {
-                    if !card.is_land(db) && card.faceup_face(db).cost.cmc() < *count {
+                    if !card.is_land(db) && card.faceup_face(db).cost.cmc() < *count as usize {
                         results.push_choose_cast(card, false, true);
                         break;
                     }

@@ -1,19 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen};
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct Scry {
-    count: usize,
-}
-
-impl TryFrom<&protogen::effects::Scry> for Scry {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Scry) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-        })
-    }
-}
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Scry};
 
 impl EffectBehaviors for Scry {
     fn needs_targets(

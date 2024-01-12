@@ -1,19 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen};
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct Discover {
-    count: usize,
-}
-
-impl TryFrom<&protogen::effects::Discover> for Discover {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::Discover) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-        })
-    }
-}
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Discover};
 
 impl EffectBehaviors for Discover {
     fn needs_targets(

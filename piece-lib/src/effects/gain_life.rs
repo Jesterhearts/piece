@@ -1,19 +1,4 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen};
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct GainLife {
-    count: usize,
-}
-
-impl TryFrom<&protogen::effects::GainLife> for GainLife {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::GainLife) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-        })
-    }
-}
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::GainLife};
 
 impl EffectBehaviors for GainLife {
     fn needs_targets(

@@ -4,26 +4,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::effects::ReturnFromGraveyardToHand,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ReturnFromGraveyardToHand {
-    pub(crate) count: usize,
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::ReturnFromGraveyardToHand> for ReturnFromGraveyardToHand {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::ReturnFromGraveyardToHand) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: usize::try_from(value.count)?,
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for ReturnFromGraveyardToHand {
     fn needs_targets(
@@ -31,7 +14,7 @@ impl EffectBehaviors for ReturnFromGraveyardToHand {
         _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
-        self.count
+        self.count as usize
     }
 
     fn wants_targets(
@@ -39,7 +22,7 @@ impl EffectBehaviors for ReturnFromGraveyardToHand {
         _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
-        self.count
+        self.count as usize
     }
 
     fn valid_targets(

@@ -7,13 +7,10 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{targets::Location, types::Type},
+    protogen::{effects::CopyOfAnyCreatureNonTargeting, targets::Location, types::Type},
     stack::ActiveTarget,
     types::TypeSet,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct CopyOfAnyCreatureNonTargeting;
 
 impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn needs_targets(
@@ -71,7 +68,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
             results.all_currently_targeted(),
         );
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(*self)),
+            TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
             source,

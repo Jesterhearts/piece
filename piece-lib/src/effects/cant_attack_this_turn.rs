@@ -1,26 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
-    effects::EffectBehaviors,
-    protogen::{self, targets::Restriction},
+    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::CantAttackThisTurn,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CantAttackThisTurn {
-    retrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::CantAttackThisTurn> for CantAttackThisTurn {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CantAttackThisTurn) -> Result<Self, Self::Error> {
-        Ok(Self {
-            retrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for CantAttackThisTurn {
     fn needs_targets(
@@ -56,7 +39,7 @@ impl EffectBehaviors for CantAttackThisTurn {
                     log_session,
                     controller,
                     &source.faceup_face(db).restrictions,
-                ) && player.passes_restrictions(db, log_session, controller, &self.retrictions)
+                ) && player.passes_restrictions(db, log_session, controller, &self.restrictions)
             })
             .map(|player| ActiveTarget::Player { id: player })
             .collect_vec()

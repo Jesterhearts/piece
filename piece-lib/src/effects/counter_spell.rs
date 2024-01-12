@@ -2,24 +2,9 @@ use crate::{
     action_result::ActionResult,
     effects::{Effect, EffectBehaviors},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{self, targets::Restriction},
+    protogen::effects::CounterSpellOrAbility,
     stack::{ActiveTarget, Entry, StackEntry},
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CounterSpellOrAbility {
-    pub(crate) restrictions: Vec<Restriction>,
-}
-
-impl TryFrom<&protogen::effects::CounterSpellOrAbility> for CounterSpellOrAbility {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::effects::CounterSpellOrAbility) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restrictions: value.restrictions.clone(),
-        })
-    }
-}
 
 impl EffectBehaviors for CounterSpellOrAbility {
     fn needs_targets(

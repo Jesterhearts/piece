@@ -5,11 +5,9 @@ use crate::{
     effects::{Effect, EffectBehaviors},
     in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
+    protogen::effects::UntapTarget,
     stack::ActiveTarget,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub(crate) struct UntapTarget;
 
 impl EffectBehaviors for UntapTarget {
     fn needs_targets(
@@ -75,7 +73,7 @@ impl EffectBehaviors for UntapTarget {
             results.all_currently_targeted(),
         );
         results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(*self)),
+            TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
             source,
