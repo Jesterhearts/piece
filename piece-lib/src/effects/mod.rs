@@ -59,7 +59,6 @@ use std::{
 
 use anyhow::anyhow;
 use derive_more::{Deref, DerefMut};
-use enum_dispatch::enum_dispatch;
 use itertools::Itertools;
 
 use crate::{
@@ -101,7 +100,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[enum_dispatch(EffectBehaviors)]
+#[enum_delegate::implement(EffectBehaviors)]
 pub(crate) enum Effect {
     ApplyThenIfWas(ApplyThenIfWas),
     BattleCry(BattleCry),
@@ -233,8 +232,8 @@ impl TryFrom<&protogen::effects::ModifyBattlefield> for ModifyBattlefield {
     }
 }
 
-#[enum_dispatch]
-pub(crate) trait EffectBehaviors: Debug {
+#[enum_delegate::register]
+pub(crate) trait EffectBehaviors {
     fn choices(&self, db: &Database, targets: &[ActiveTarget]) -> Vec<String> {
         targets
             .iter()
@@ -290,12 +289,12 @@ pub(crate) trait EffectBehaviors: Debug {
         &self,
         db: &Database,
         source: CardId,
-        target: CardId,
+        target_card: CardId,
         results: &mut PendingResults,
     ) {
         let _ = db;
         let _ = source;
-        let _ = target;
+        let _ = target_card;
         let _ = results;
         unreachable!()
     }

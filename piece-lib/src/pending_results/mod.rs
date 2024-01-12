@@ -13,7 +13,6 @@ use std::{
     fmt::Debug,
 };
 
-use enum_dispatch::enum_dispatch;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use tracing::Level;
@@ -139,7 +138,7 @@ impl TargetSource {
 }
 
 #[derive(Debug)]
-#[enum_dispatch(PendingResult)]
+#[enum_delegate::implement(PendingResult)]
 pub(crate) enum Pending {
     ChooseForEachPlayer(ChooseForEachPlayer),
     ChooseModes(ChooseModes),
@@ -152,8 +151,8 @@ pub(crate) enum Pending {
     PayCosts(PayCost),
 }
 
-#[enum_dispatch]
-pub(crate) trait PendingResult: std::fmt::Debug {
+#[enum_delegate::register]
+pub(crate) trait PendingResult {
     #[must_use]
     fn optional(&self, db: &Database) -> bool;
 
