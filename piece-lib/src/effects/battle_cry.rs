@@ -7,15 +7,12 @@ use crate::{
     effects::{BattlefieldModifier, EffectBehaviors, ModifyBattlefield},
     in_play::ModifierId,
     protogen::{
-        effects::Duration,
+        effects::{BattleCry, Duration},
         empty::Empty,
         targets::{restriction, Restriction},
         types::Type,
     },
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct BattleCry;
 
 impl EffectBehaviors for BattleCry {
     fn needs_targets(

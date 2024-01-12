@@ -12,7 +12,6 @@ use crate::{
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
     effects::{
-        battle_cry::BattleCry,
         cascade::Cascade,
         reveal_each_top_of_library::RevealEachTopOfLibrary,
         target_gains_counters::{DynamicCounter, GainCount},
@@ -29,7 +28,7 @@ use crate::{
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         counters::Counter,
-        effects::Duration,
+        effects::{BattleCry, Duration},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, TriggerSource},
@@ -984,7 +983,7 @@ impl ActionResult {
                                     }],
                                 },
                                 effects: vec![AnyEffect {
-                                    effect: Effect::from(BattleCry),
+                                    effect: Effect::from(BattleCry::default()),
                                     oracle_text: String::default(),
                                 }],
                                 oracle_text: "Battle cry".to_string(),

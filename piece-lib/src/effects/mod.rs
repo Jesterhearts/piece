@@ -66,10 +66,9 @@ use crate::{
     abilities::{ActivatedAbility, GainManaAbility, StaticAbility},
     card::replace_symbols,
     effects::{
-        apply_then_if_was::ApplyThenIfWas, battle_cry::BattleCry,
-        cant_attack_this_turn::CantAttackThisTurn, cascade::Cascade,
-        controller_discards::ControllerDiscards, controller_draws_cards::ControllerDrawsCards,
-        controller_loses_life::ControllerLosesLife,
+        apply_then_if_was::ApplyThenIfWas, cant_attack_this_turn::CantAttackThisTurn,
+        cascade::Cascade, controller_discards::ControllerDiscards,
+        controller_draws_cards::ControllerDrawsCards, controller_loses_life::ControllerLosesLife,
         copy_of_any_creature_non_targeting::CopyOfAnyCreatureNonTargeting,
         copy_spell_or_ability::CopySpellOrAbility, counter_spell::CounterSpellOrAbility,
         counter_spell_unless_pay::CounterSpellUnlessPay, create_token::CreateToken,
@@ -103,6 +102,7 @@ use crate::{
         self,
         color::Color,
         counters::Counter,
+        effects::BattleCry,
         empty::Empty,
         types::{Subtype, Type},
     },
@@ -470,6 +470,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ApplyThenIfWas(value) => {
                 Ok(Self::from(ApplyThenIfWas::try_from(value)?))
             }
+            protogen::effects::effect::Effect::BattleCry(value) => Ok(Self::from(value.clone())),
             protogen::effects::effect::Effect::BattlefieldModifier(value) => {
                 Ok(Self::from(BattlefieldModifier::try_from(value)?))
             }
@@ -483,7 +484,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::ControllerDiscards(value) => {
                 Ok(Self::from(ControllerDiscards::try_from(value)?))
             }
-            protogen::effects::effect::Effect::ControllerDrawCards(value) => {
+            protogen::effects::effect::Effect::ControllerDrawsCards(value) => {
                 Ok(Self::from(ControllerDrawsCards::try_from(value)?))
             }
             protogen::effects::effect::Effect::ControllerLosesLife(value) => {
@@ -495,7 +496,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::CopySpellOrAbility(value) => {
                 Ok(Self::from(CopySpellOrAbility::try_from(value)?))
             }
-            protogen::effects::effect::Effect::CounterSpell(value) => {
+            protogen::effects::effect::Effect::CounterSpellOrAbility(value) => {
                 Ok(Self::from(CounterSpellOrAbility::try_from(value)?))
             }
             protogen::effects::effect::Effect::CounterSpellUnlessPay(value) => {
@@ -596,7 +597,7 @@ impl TryFrom<&protogen::effects::effect::Effect> for Effect {
             protogen::effects::effect::Effect::TargetControllerGainsTokens(value) => {
                 Ok(Self::from(TargetControllerGainsTokens::try_from(value)?))
             }
-            protogen::effects::effect::Effect::TargetExplores(_) => {
+            protogen::effects::effect::Effect::TargetCreatureExplores(_) => {
                 Ok(Self::from(TargetCreatureExplores))
             }
             protogen::effects::effect::Effect::TargetToTopOfLibrary(value) => {
