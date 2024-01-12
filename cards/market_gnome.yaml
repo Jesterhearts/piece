@@ -16,7 +16,7 @@ triggered_abilities:
     effects:
       - effect: !GainLife
           count: 1
-      - effect: !ControllerDrawCards
+      - effect: !ControllerDrawsCards
           count: !Fixed
             count: 1
   - trigger:
@@ -29,7 +29,7 @@ triggered_abilities:
     effects:
       - effect: !GainLife
           count: 1
-      - effect: !ControllerDrawCards
+      - effect: !ControllerDrawsCards
           count: !Fixed
             count: 1
 power: 0

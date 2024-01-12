@@ -4,7 +4,7 @@ cost:
   mana_cost: '{U}{U}'
 oracle_text: Counter target artifact or enchantment spell.
 effects:
-  - effect: !CounterSpell
+  - effect: !CounterSpellOrAbility
       restrictions:
         - restriction: !OfType
             types: Artifact, Enchantment

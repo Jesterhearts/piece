@@ -18,17 +18,17 @@ pub(crate) enum Count {
     NumberOfPermanentsMatching(Vec<Restriction>),
 }
 
-impl TryFrom<&protogen::effects::controller_draw_cards::Count> for Count {
+impl TryFrom<&protogen::effects::controller_draws_cards::Count> for Count {
     type Error = anyhow::Error;
 
     fn try_from(
-        value: &protogen::effects::controller_draw_cards::Count,
+        value: &protogen::effects::controller_draws_cards::Count,
     ) -> Result<Self, Self::Error> {
         match value {
-            protogen::effects::controller_draw_cards::Count::Fixed(count) => {
+            protogen::effects::controller_draws_cards::Count::Fixed(count) => {
                 Ok(Self::Fixed(usize::try_from(count.count)?))
             }
-            protogen::effects::controller_draw_cards::Count::NumberOfPermanentsMatching(
+            protogen::effects::controller_draws_cards::Count::NumberOfPermanentsMatching(
                 matching,
             ) => Ok(Self::NumberOfPermanentsMatching(
                 matching.restrictions.clone(),
@@ -42,10 +42,10 @@ pub(crate) struct ControllerDrawsCards {
     count: Count,
 }
 
-impl TryFrom<&protogen::effects::ControllerDrawCards> for ControllerDrawsCards {
+impl TryFrom<&protogen::effects::ControllerDrawsCards> for ControllerDrawsCards {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::ControllerDrawCards) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::ControllerDrawsCards) -> Result<Self, Self::Error> {
         Ok(Self {
             count: value
                 .count

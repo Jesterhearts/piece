@@ -56,7 +56,7 @@ back_face:
         mana_cost: '{3}{U}'
         tap: true
       effects:
-        - effect: !ControllerDrawCards
+        - effect: !ControllerDrawsCards
             count: !NumberOfPermanentsMatching
               restrictions:
                 - restriction: !OfType

@@ -4,7 +4,7 @@ cost:
   mana_cost: '{1}{U}'
 oracle_text: Draw two cards. Then discard a card unless you attacked this turn.
 effects:
-  - effect: !ControllerDrawCards
+  - effect: !ControllerDrawsCards
       count: !Fixed
         count: 2
   - effect: !ControllerDiscards

@@ -11,6 +11,6 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !Self_ {}
     effects:
-      - effect: !TargetExplores {}
+      - effect: !TargetCreatureExplores {}
     oracle_text: When Miner's Guidewing dies, target creature you control explores.
 keywords: Flying, Vigilance

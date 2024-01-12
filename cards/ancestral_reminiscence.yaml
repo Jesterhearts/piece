@@ -4,7 +4,7 @@ cost:
   mana_cost: '{3}{U}'
 oracle_text: Draw three cards, then discard a card.
 effects:
-  - effect: !ControllerDrawCards
+  - effect: !ControllerDrawsCards
       count: !Fixed
         count: 3
   - effect: !ControllerDiscards

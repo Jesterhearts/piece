@@ -17,7 +17,7 @@ effects:
         - restriction: !OfType
             types: Creature, Artifact
   - oracle_text: Draw a card
-    effect: !ControllerDrawCards
+    effect: !ControllerDrawsCards
       count: !Fixed
         count: 1
 restrictions:

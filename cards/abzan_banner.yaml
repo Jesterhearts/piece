@@ -9,7 +9,7 @@ activated_abilities:
       additional_costs:
         - cost: !SacrificeSource {}
     effects:
-      - effect: !ControllerDrawCards
+      - effect: !ControllerDrawsCards
           count: !Fixed
             count: 1
     oracle_text: '{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card'

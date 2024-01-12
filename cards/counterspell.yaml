@@ -4,4 +4,4 @@ cost:
   mana_cost: '{U}{U}'
 oracle_text: Counter target spell.
 effects:
-  - effect: !CounterSpell {}
+  - effect: !CounterSpellOrAbility {}

@@ -10,7 +10,7 @@ replacement_abilities:
           controller: !Self_ {}
       - restriction: !ControllerHandEmpty {}
     effects:
-      - effect: !ControllerDrawCards
+      - effect: !ControllerDrawsCards
           count: !Fixed
             count: 2
       - effect: !ControllerLosesLife

@@ -11,10 +11,10 @@ pub(crate) struct CounterSpellOrAbility {
     pub(crate) restrictions: Vec<Restriction>,
 }
 
-impl TryFrom<&protogen::effects::CounterSpell> for CounterSpellOrAbility {
+impl TryFrom<&protogen::effects::CounterSpellOrAbility> for CounterSpellOrAbility {
     type Error = anyhow::Error;
 
-    fn try_from(value: &protogen::effects::CounterSpell) -> Result<Self, Self::Error> {
+    fn try_from(value: &protogen::effects::CounterSpellOrAbility) -> Result<Self, Self::Error> {
         Ok(Self {
             restrictions: value.restrictions.clone(),
         })
