@@ -1,5 +1,5 @@
 name: Glorifier of Suffering
-typeline: Creature - Soldier Vampire
+typeline: Creature - Vampire Soldier
 cost:
   mana_cost: '{2}{W}'
 apply_individually: true

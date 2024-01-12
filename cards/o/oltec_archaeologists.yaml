@@ -1,5 +1,5 @@
 name: Oltec Archaeologists
-typeline: Creature - Artificer Human Scout
+typeline: Creature - Scount Human Artificer
 cost:
   mana_cost: '{4}{W}'
 oracle_text: |

@@ -1,5 +1,5 @@
 name: Vanguard of the Rose
-typeline: Creature - Knight Vampire
+typeline: Creature - Vampire Knight
 cost:
   mana_cost: '{1}{W}'
 activated_abilities:

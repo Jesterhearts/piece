@@ -1,5 +1,5 @@
 name: Dryad of the Ilysian Grove
-typeline: Enchantment Creature - Dryad Nymph
+typeline: Enchantment Creature - Nymph Dryad
 cost:
   mana_cost: '{2}{G}'
 oracle_text: |-

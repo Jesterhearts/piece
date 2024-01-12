@@ -1,5 +1,5 @@
 name: Sanguine Evangelist
-typeline: Creature - Cleric Vampire
+typeline: Creature - Vampire Cleric
 cost:
   mana_cost: '{2}{W}'
 etb_abilities:

@@ -1,5 +1,5 @@
 name: Council of Echos
-typeline: Creature - Advisor Spirit
+typeline: Creature - Spirit Advisor
 cost:
   mana_cost: '{4}{U}{U}'
 etb_abilities:

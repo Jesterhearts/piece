@@ -1,5 +1,5 @@
 name: Dauntless Dismantler
-typeline: Creature - Artificer Human
+typeline: Creature - Human Artificer
 cost:
   mana_cost: '{1}{W}'
 oracle_text: Artifacts your opponents control enter the battlefield tapped.

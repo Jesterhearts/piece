@@ -1,5 +1,5 @@
 name: Didact Echo
-typeline: Creature - Cleric Spirit
+typeline: Creature - Spirit Cleric
 cost:
   mana_cost: '{4}{U}'
 oracle_text: Descend 4 - Didact Echo has flying as long as there are four or more

@@ -1,5 +1,5 @@
 name: Blood Scrivener
-typeline: Creature - Wizard Zombie
+typeline: Creature - Zombie Wizard
 cost:
   mana_cost: '{1}{B}'
 oracle_text: If you would draw a card while you have no cards in hand, instead you
