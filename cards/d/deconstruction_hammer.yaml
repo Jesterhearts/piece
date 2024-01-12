@@ -1,0 +1,28 @@
+name: Deconstruction Hammer
+typeline: Artifact - Equipment
+cost:
+  mana_cost: '{W}'
+oracle_text: 'Equipped creature gets +1/+1 and has "{3}, {T}, Sacrifice Deconstruction
+  Hammer: Destroy target artifact or enchantment."'
+activated_abilities:
+  - cost:
+      mana_cost: '{1}'
+    effects:
+      - effect: !Equip
+          modifiers:
+            - add_power: 1
+              add_toughness: 1
+            - add_ability:
+                cost:
+                  mana_cost: '{3}'
+                  tap: true
+                  additional_costs:
+                    - cost: !SacrificeSource {}
+                effects:
+                  - effect: !DestroyTarget
+                      restrictions:
+                        - restriction: !OfType
+                            types: Enchantment, Artifact
+                oracle_text: '{3}, {T}, Sacrifice Deconstruction Hammer: Destroy Target
+                  artifact or enchantment.'
+    oracle_text: Equip {3}

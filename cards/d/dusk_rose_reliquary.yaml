@@ -1,0 +1,36 @@
+name: Dusk Rose Reliquary
+typeline: Artifact
+cost:
+  mana_cost: '{W}'
+  additional_costs:
+    - cost: !SacrificePermanent
+        restrictions:
+          - restriction: !OfType
+              types: Artifact, Creature
+oracle_text: As an additional cost to cast this spell, sacrifice an artifact or creature.
+etb_abilities:
+  - oracle_text: When Dusk Rose Reliquary enters the battlefield, exile target artifact
+      or creature an opponent controls until Dusk Rose Reliquary leaves the battlefield.
+    effect: !ExileTarget
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Location
+            locations: On Battlefield
+        - restriction: !OfType
+            types: Artifact, Creature
+        - restriction: !Controller
+            controller: !Opponent {}
+triggered_abilities:
+  - trigger:
+      source: targeted
+      from: anywhere
+      restrictions:
+        - restriction: !TargetedBy {}
+    effects:
+      - oracle_text: Counter spell or ability unless its controller pays {2}
+        effect: !CounterSpellUnlessPay
+          restrictions:
+            - restriction: !TargetedBy {}
+          cost: !Fixed
+            count: 2
+    oracle_text: Ward {2}

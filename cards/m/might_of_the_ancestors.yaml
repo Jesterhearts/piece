@@ -1,0 +1,25 @@
+name: Might of the Ancestors
+typeline: Enchantment
+cost:
+  mana_cost: '{2}{W}'
+triggered_abilities:
+  - trigger:
+      source: start of combat
+      from: anywhere
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+    effects:
+      - effect: !ModifyTarget
+          modifier:
+            add_power: 2
+            add_keywords: Vigilance
+          duration: until end of turn
+          restrictions:
+            - restriction: !Controller
+                controller: !Self_ {}
+            - restriction: !OfType
+                types: Creature
+            - restriction: !OnBattlefield {}
+    oracle_text: At the beginning of combat on your turn, target creature you control
+      gets +2/+0 and gains vigilance until end of turn.

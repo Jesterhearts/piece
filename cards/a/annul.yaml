@@ -1,0 +1,10 @@
+name: Annul
+typeline: Instant
+cost:
+  mana_cost: '{U}{U}'
+oracle_text: Counter target artifact or enchantment spell.
+effects:
+  - effect: !CounterSpellOrAbility
+      restrictions:
+        - restriction: !OfType
+            types: Enchantment, Artifact

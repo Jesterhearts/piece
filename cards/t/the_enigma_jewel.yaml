@@ -1,0 +1,54 @@
+name: The Enigma Jewel
+typeline: Legendary Artifact
+cost:
+  mana_cost: '{U}'
+oracle_text: The Enigma Jewel enters the battlefield tapped.
+activated_abilities:
+  - cost:
+      mana_cost: '{8}{U}'
+      additional_costs:
+        - cost: !ExileXOrMoreCards
+            minimum: 4
+            restrictions:
+              - restriction: !NotOfType
+                  types: Land
+              - restriction: !HasActivatedAbility {}
+              - restriction: !Location
+                  locations: On Battlefield, In Graveyard
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Craft with four or more nonlands with activated abilities {8}{U}
+    sorcery_speed: true
+    craft: true
+mana_abilities:
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gain: '{C}{C}'
+    mana_source: any
+    mana_restriction: activate ability
+    oracle_text: '{T}: Add {C}{C}. Spend this mana only to activate abilities.'
+etb_tapped: true
+back_face:
+  name: Locus of Enlightenment
+  typeline: Legendary Artifact
+  colors: Blue
+  static_abilities:
+    - ability: !AllAbilitiesOfExiledWith
+        activation_restrictions:
+          - restriction: !OncePerTurn {}
+  triggered_abilities:
+    - trigger:
+        source: ability activated
+        from: anywhere
+      effects:
+        - oracle_text: Whenever you activate an ability that isn't a mana ability,
+            copy it. You may choose new targets for the copy.
+          effect: !CopySpellOrAbility
+            restrictions:
+              - restriction: !SpellOrAbilityJustCast {}

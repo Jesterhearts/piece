@@ -1,0 +1,35 @@
+name: Sanguine Evangelist
+typeline: Creature - Cleric Vampire
+cost:
+  mana_cost: '{2}{W}'
+etb_abilities:
+  - oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a
+      1/1 black Bat creature token with flying.
+    effect: !CreateToken
+      token: !Creature
+        name: Bat
+        typeline: Creature - Bat
+        colors: Black
+        power: 1
+        toughness: 1
+triggered_abilities:
+  - trigger:
+      source: put into graveyard
+      from: battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !Self_ {}
+    effects:
+      - effect: !CreateToken
+          token: !Creature
+            name: Bat
+            typeline: Creature - Bat
+            colors: Black
+            power: 1
+            toughness: 1
+    oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a
+      1/1 black Bat creature token with flying.
+power: 2
+toughness: 1
+keywords: Battle Cry

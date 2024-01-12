@@ -10,9 +10,10 @@ fn main() {
     std::fs::create_dir_all("../cards_binpb").expect("Failed to create directory");
 
     for (card, file) in cards {
+        let path = std::path::Path::new("../cards_binpb").join(file.path().parent().unwrap());
+        std::fs::create_dir_all(path.clone()).expect("Failed to create directory");
         let mut file = std::fs::File::create(
-            std::path::Path::new("../cards_binpb")
-                .join(file.path())
+            path.join(file.path().file_name().unwrap())
                 .with_extension("binpb"),
         )
         .expect("Failed to create file");

@@ -1,0 +1,93 @@
+name: Thousand Moons Smithy
+typeline: Legendary Artifact
+cost:
+  mana_cost: '{2}{W}{W}'
+etb_abilities:
+  - oracle_text: When Thousand Moons Smithy enters the battlefield, create a white
+      Gnome Soldier artifact creature token with "This creature's power and toughness
+      are each equal to the number of artifacts and/or creatures you control."
+    effect: !CreateToken
+      token: !Creature
+        name: Gnome Soldier
+        typeline: Artifact Creature - Gnome Soldier
+        colors: White
+        dynamic_power_toughness:
+          source: !NumberOfPermanentsMatching
+            restrictions:
+              - restriction: !Controller
+                  controller: !Self_ {}
+              - restriction: !OfType
+                  types: Artifact, Creature
+triggered_abilities:
+  - trigger:
+      source: pre combat main phase
+      from: anywhere
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+    effects:
+      - effect: !PayCostThen
+          cost:
+            additional_costs:
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact, Creature
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact, Creature
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact, Creature
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact, Creature
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact, Creature
+          effects:
+            - effect: !Transform {}
+    oracle_text: At the beginning of your precombat main phase, you may tap five untapped
+      artifacts and/or creatures you control. If you do, transform Thousand Moons
+      Smithy.
+back_face:
+  name: Barracks of the Thousand
+  typeline: Legendary Artifact Land
+  triggered_abilities:
+    - trigger:
+        source: cast
+        from: anywhere
+        restrictions:
+          - restriction: !Controller
+              controller: !Self_ {}
+          - restriction: !OfType
+              types: Artifact, Creature
+      effects:
+        - effect: !CreateToken
+            token: !Creature
+              name: Gnome Soldier
+              typeline: Artifact Creature - Gnome Soldier
+              colors: White
+              dynamic_power_toughness:
+                source: !NumberOfPermanentsMatching
+                  restrictions:
+                    - restriction: !Controller
+                        controller: !Self_ {}
+                    - restriction: !OfType
+                        types: Artifact, Creature
+      oracle_text: Whenever you cast an artifact or creature spell using mana from
+        Barracks of the Thousand, create a white Gnome Soldier artifact creature token
+        with "This creature's power and toughness are each equal to the number of
+        artifacts and/or creatures you control."
+  mana_abilities:
+    - cost:
+        tap: true
+      gain_mana:
+        gain: !Specific
+          gain: '{W}'
+      mana_source: barracks of the thousand
+      mana_restriction: none

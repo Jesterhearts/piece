@@ -1,0 +1,34 @@
+name: Mace of the Valiant
+typeline: Artifact - Equipment
+cost:
+  mana_cost: '{2}{W}'
+oracle_text: Equipped creature gets +1/+1 for each charge counter on Mace of the Valiant
+  and has vigilance.
+activated_abilities:
+  - cost:
+      mana_cost: '{3}'
+    effects:
+      - effect: !Equip
+          modifiers:
+            - add_dynamic_power_toughness:
+                source: !NumberOfCountersOnThis
+                  counter: charge
+    oracle_text: |
+      Equip {3}
+triggered_abilities:
+  - trigger:
+      source: enters the battlefield
+      from: anywhere
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Creature
+    effects:
+      - effect: !TargetGainsCounters
+          counter: charge
+          restrictions:
+            - restriction: !Self_ {}
+          count: !Single {}
+    oracle_text: Whenever a creature enters the battlefield under your control, put
+      a charge counter on Mace of the Valiant.

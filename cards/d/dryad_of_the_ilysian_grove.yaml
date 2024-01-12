@@ -1,0 +1,22 @@
+name: Dryad of the Ilysian Grove
+typeline: Enchantment Creature - Dryad Nymph
+cost:
+  mana_cost: '{2}{G}'
+oracle_text: |-
+  You may play an additional land on each of your turns.
+  Lands you control are every basic land type in addition to their other types.
+static_abilities:
+  - ability: !BattlefieldModifier
+      modifier:
+        add_subtypes: Forest, Island, Mountain, Plains, Swamp
+        entire_battlefield: true
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Land
+  - ability: !ExtraLandsPerTurn
+      count: 1
+power: 2
+toughness: 4

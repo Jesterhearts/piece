@@ -1,0 +1,35 @@
+name: Glorifier of Suffering
+typeline: Creature - Soldier Vampire
+cost:
+  mana_cost: '{2}{W}'
+apply_individually: true
+etb_abilities:
+  - oracle_text: When Glorifier of Suffering enters the battlefield, you may sacrifice
+      another creature or artifact. When you do, put a +1/+1 counter on each of up
+      to two target creatures.
+    effect: !PayCostThen
+      cost:
+        additional_costs:
+          - cost: !SacrificePermanent
+              restrictions:
+                - restriction: !OfType
+                    types: Artifact, Creature
+      effects:
+        - oracle_text: Put a +1/+1 counter on target creature
+          effect: !TargetGainsCounters
+            counter: +1/+1
+            restrictions:
+              - restriction: !OfType
+                  types: Creature
+              - restriction: !OnBattlefield {}
+            count: !Single {}
+        - oracle_text: Put a +1/+1 counter on target creature
+          effect: !TargetGainsCounters
+            counter: +1/+1
+            restrictions:
+              - restriction: !OfType
+                  types: Creature
+              - restriction: !OnBattlefield {}
+            count: !Single {}
+power: 3
+toughness: 2

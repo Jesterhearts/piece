@@ -1,9 +1,0 @@
-name: Kinjalli's Dawnrunner
-typeline: Creature - Human Scout
-cost:
-  mana_cost: '{3}{W}'
-etb_abilities:
-  - effect: !SelfExplores {}
-power: 1
-toughness: 1
-keywords: DoubleStrike

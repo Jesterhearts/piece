@@ -1,0 +1,21 @@
+name: Paradise Mantle
+typeline: Artifact - Equipment
+cost: {}
+oracle_text: 'Equipped creature has "{T}: Add one mana of any color."'
+activated_abilities:
+  - cost:
+      mana_cost: '{1}'
+    effects:
+      - effect: !Equip
+          modifiers:
+            - mana_ability:
+                cost:
+                  tap: true
+                gain_mana:
+                  gain: !Choice
+                    choices: '{W}, {U}, {B}, {R}, {G}'
+                mana_source: any
+                mana_restriction: none
+                oracle_text: |
+                  {T}: Add one mana of any color.
+    oracle_text: Equip {1}

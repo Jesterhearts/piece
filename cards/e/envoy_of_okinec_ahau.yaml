@@ -1,0 +1,15 @@
+name: Envoy of Okinec Ahau
+typeline: Creature - Advisor Cat
+cost:
+  mana_cost: '{2}{W}'
+activated_abilities:
+  - cost:
+      mana_cost: '{4}{W}'
+    effects:
+      - effect: !CreateToken
+          token: !Creature
+            name: Gnome
+            typeline: Artifact Creature - Gnome
+            power: 1
+            toughness: 1
+    oracle_text: '{4}{W}: Create a 1/1 colorless Gnome artifact creature token.'
