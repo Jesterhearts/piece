@@ -378,7 +378,7 @@ impl Cost {
                     return false;
                 }
 
-                if let Some(reducer) = source.faceup_face(db).reducer.as_ref() {
+                if let Some(reducer) = source.faceup_face(db).cost_reducer.as_ref() {
                     match reducer.when.as_ref().unwrap() {
                         When::TargetTappedCreature(_) => {
                             if let Ok(Some(target)) = already_chosen

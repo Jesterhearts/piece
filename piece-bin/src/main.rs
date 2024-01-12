@@ -168,8 +168,8 @@ fn main() -> anyhow::Result<()> {
             name => card.name.as_str(),
             cost => card.cost.text(),
             keywords => card.keywords.keys().map(|k| Keyword::from_i32(*k).unwrap().as_ref().to_case(Case::Lower)).join(", "),
-            types => card.types.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
-            subtypes => card.subtypes.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
+            types => card.typeline.types.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
+            subtypes => card.typeline.subtypes.iter().map(|t| t.enum_value().unwrap().as_ref().to_case(Case::Lower)).join(", "),
             oracle_text => card.document(),
         ))?;
     }

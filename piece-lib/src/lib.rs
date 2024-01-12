@@ -15,17 +15,15 @@ use itertools::Itertools;
 use protobuf::{Enum, MessageDyn, MessageFull};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{
+use crate::protogen::{
     card::Card,
-    protogen::{
-        cost::ManaCost,
-        counters::Counter,
-        effects::gain_mana,
-        empty::Empty,
-        keywords::Keyword,
-        mana::Mana,
-        types::{Subtype, Type, Typeline},
-    },
+    cost::ManaCost,
+    counters::Counter,
+    effects::gain_mana,
+    empty::Empty,
+    keywords::Keyword,
+    mana::Mana,
+    types::{Subtype, Type, Typeline},
 };
 
 #[cfg(test)]
@@ -58,7 +56,7 @@ static CARD_DEFINITIONS: Dir = include_dir!("cards");
 
 pub type Cards = IndexMap<String, Card>;
 
-pub fn load_protos() -> anyhow::Result<Vec<(protogen::card::Card, &'static File<'static>)>> {
+pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static File<'static>)>> {
     fn dir_to_files(dir: &'static Dir) -> Vec<&'static File<'static>> {
         let mut results = vec![];
         for entry in dir.entries() {
@@ -125,17 +123,9 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 
     let timer = std::time::Instant::now();
     let mut cards = Cards::with_capacity(protos.len());
-    for (card, card_file) in protos {
-        if cards
-            .insert(
-                card.name.clone(),
-                (&card)
-                    .try_into()
-                    .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
-            )
-            .is_some()
-        {
-            warn!("Overwriting card {}", card.name);
+    for (card, _) in protos {
+        if let Some(overwritten) = cards.insert(card.name.clone(), card) {
+            warn!("Overwriting card {}", overwritten.name);
         };
     }
 

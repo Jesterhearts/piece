@@ -9,32 +9,16 @@ use crate::{
     pending_results::PendingResults,
     player::{mana_pool::SpendReason, Owner},
     protogen::{
-        self,
         cost::{
             ability_restriction,
             additional_cost::{self, ExileXOrMoreCards, RemoveCounters},
             AbilityCost,
         },
         counters::Counter,
-        effects::{static_ability, ActivatedAbility, BattlefieldModifier, Effect, GainManaAbility},
+        effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
     },
     turns::Phase,
 };
-
-#[derive(Debug, Clone)]
-pub(crate) struct Enchant {
-    pub(crate) modifiers: Vec<BattlefieldModifier>,
-}
-
-impl TryFrom<&protogen::abilities::Enchant> for Enchant {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &protogen::abilities::Enchant) -> Result<Self, Self::Error> {
-        Ok(Self {
-            modifiers: value.modifiers.clone(),
-        })
-    }
-}
 
 impl ActivatedAbility {
     pub(crate) fn can_be_played_from_hand(&self) -> bool {

@@ -1,4 +1,3 @@
-use anyhow::Context;
 use include_dir::{include_dir, Dir, File};
 use piece_lib::Cards;
 use protobuf::CodedInputStream;
@@ -52,17 +51,9 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 
     let timer = std::time::Instant::now();
     let mut cards = Cards::with_capacity(protos.len());
-    for (card, card_file) in protos {
-        if cards
-            .insert(
-                card.name.clone(),
-                (&card)
-                    .try_into()
-                    .with_context(|| format!("Validating file: {}", card_file.path().display()))?,
-            )
-            .is_some()
-        {
-            warn!("Overwriting card {}", card.name);
+    for (card, _) in protos {
+        if let Some(overwritten) = cards.insert(card.name.clone(), card) {
+            warn!("Overwriting card {}", overwritten.name);
         };
     }
 

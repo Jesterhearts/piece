@@ -17,10 +17,6 @@ name = "yaml"
 path = "src/export_yaml.rs"
 
 [[bin]]
-name = "validate"
-path = "src/validate.rs"
-
-[[bin]]
 name = "scryfall"
 path = "src/process_scryfall.rs"
 

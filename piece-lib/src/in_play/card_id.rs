@@ -14,7 +14,7 @@ use tracing::Level;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    card::{replace_symbols, BasePowerType, BaseToughnessType, Card},
+    card::{replace_symbols, BasePowerType, BaseToughnessType},
     effects::EffectBehaviors,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
@@ -25,6 +25,7 @@ use crate::{
     player::{Controller, Owner},
     protogen::{
         abilities::TriggeredAbility,
+        card::Card,
         color::Color,
         cost::{AbilityCost, CastingCost},
         counters::Counter,
@@ -432,7 +433,7 @@ impl CardId {
         if let Some(cloning) = db[self].cloning.as_ref() {
             cloning
         } else if db[self].facedown {
-            db[self].card.back_face.as_deref().unwrap_or(&db[self].card)
+            db[self].card.back_face.as_ref().unwrap_or(&db[self].card)
         } else {
             &db[self].card
         }
@@ -746,7 +747,7 @@ impl CardId {
         let cost = if facedown {
             CastingCost::default()
         } else {
-            source.cost.clone()
+            source.cost.get_or_default().clone()
         };
 
         let mut base_power = if facedown {
@@ -768,13 +769,13 @@ impl CardId {
         let mut types = if facedown {
             TypeSet::from([Type::CREATURE])
         } else {
-            TypeSet::from(&source.types)
+            TypeSet::from(&source.typeline.types)
         };
 
         let mut subtypes = if facedown {
             SubtypeSet::default()
         } else {
-            SubtypeSet::from(&source.subtypes)
+            SubtypeSet::from(&source.typeline.subtypes)
         };
 
         let mut keywords = if facedown {
@@ -2313,10 +2314,9 @@ impl Default for CardId {
 fn clone_card(db: &mut Database, cloning: CardId) -> Card {
     Card {
         name: cloning.faceup_face(db).name.clone(),
-        types: cloning.faceup_face(db).types.clone(),
-        subtypes: cloning.faceup_face(db).subtypes.clone(),
+        typeline: cloning.faceup_face(db).typeline.clone(),
         cost: cloning.faceup_face(db).cost.clone(),
-        reducer: Default::default(),
+        cost_reducer: Default::default(),
         cannot_be_countered: false,
         colors: cloning.faceup_face(db).colors.clone(),
         oracle_text: String::default(),
@@ -2336,7 +2336,8 @@ fn clone_card(db: &mut Database, cloning: CardId) -> Card {
         etb_tapped: cloning.faceup_face(db).etb_tapped,
         keywords: cloning.faceup_face(db).keywords.clone(),
         restrictions: cloning.faceup_face(db).restrictions.clone(),
-        back_face: None,
+        back_face: protobuf::MessageField::none(),
+        ..Default::default()
     }
 }
 

@@ -14,11 +14,6 @@ schema is defined in the [protos directory](piece-lib/src/protos). In particular
 See also the [counter](piece-lib/src/protos/counters.proto), and
 [keyword](piece-lib/src/protos/keywords.proto) implementations for their definitions.
 
-## Validation
-Added cards can be validated by running `cargo run --bin validate`. This will validate that all
-cards in the DB can be loaded successfully and should print helpful error messages if validation
-fails.
-
 ## Quirks to be aware of
 - Assume most effects are pulling targets from anywhere (battlefield, graveyard, exile, etc) and use
   restrictions to narrow down the target list appropriately.
