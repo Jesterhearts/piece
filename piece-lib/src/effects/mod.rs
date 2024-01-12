@@ -521,8 +521,8 @@ pub(crate) struct TokenCreature {
     pub(crate) colors: Vec<protobuf::EnumOrUnknown<Color>>,
     pub(crate) keywords: HashMap<i32, u32>,
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
-    pub(crate) power: usize,
-    pub(crate) toughness: usize,
+    pub(crate) power: i32,
+    pub(crate) toughness: i32,
 }
 
 impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
@@ -536,8 +536,8 @@ impl TryFrom<&protogen::effects::create_token::Creature> for TokenCreature {
             colors: value.colors.clone(),
             keywords: value.keywords.clone(),
             dynamic_power_toughness: value.dynamic_power_toughness.as_ref().cloned(),
-            power: usize::try_from(value.power)?,
-            toughness: usize::try_from(value.toughness)?,
+            power: value.power,
+            toughness: value.toughness,
         })
     }
 }

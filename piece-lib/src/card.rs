@@ -65,8 +65,8 @@ pub struct Card {
     pub(crate) mana_abilities: Vec<GainManaAbility>,
 
     pub(crate) dynamic_power_toughness: Option<DynamicPowerToughness>,
-    pub(crate) power: Option<usize>,
-    pub(crate) toughness: Option<usize>,
+    pub(crate) power: Option<i32>,
+    pub(crate) toughness: Option<i32>,
 
     pub(crate) etb_tapped: bool,
 
@@ -181,16 +181,8 @@ impl TryFrom<&protogen::card::Card> for Card {
                 .collect::<anyhow::Result<Vec<_>>>()?,
             etb_tapped: value.etb_tapped,
             dynamic_power_toughness: value.dynamic_power_toughness.as_ref().cloned(),
-            power: value
-                .power
-                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                    Ok(usize::try_from(v).map(Some)?)
-                })?,
-            toughness: value
-                .toughness
-                .map_or::<anyhow::Result<Option<usize>>, _>(Ok(None), |v| {
-                    Ok(usize::try_from(v).map(Some)?)
-                })?,
+            power: value.power,
+            toughness: value.toughness,
             keywords: value.keywords.clone(),
             restrictions: value.restrictions.clone(),
             back_face: value.back_face.as_ref().map_or(Ok(None), |back| {

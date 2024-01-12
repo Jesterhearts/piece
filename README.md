@@ -57,6 +57,14 @@ fails.
   definitions. E.g. `battlefield_modifier` is `!BattlefieldModifier` and `modify_target` is
   `!ModifyTarget` for the `effect` oneof field in the `Effects` proto.
 
+# Why Protos?
+- The author is familiar with their usage.
+- They provide a convenient one-stop location for the card schema.
+- They load very fast (less than 100ms for ~24k cards from a scryfall dump on the author's laptop).
+  - The two-stage build process allows the binary proto files to be exported at build time, while
+    allowing changes to the yaml & proto card definitions (including changing proto tag numbers -
+    normally a nono).
+
 
 ---
 Mana symbols are sourced from: https://github.com/andrewgioia/Mana
