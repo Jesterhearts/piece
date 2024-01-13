@@ -9,7 +9,11 @@ fn main() -> anyhow::Result<()> {
     for (card, card_file) in cards {
         std::fs::write(
             std::path::Path::new("experimental/textproto")
-                .join(card_file.path().file_name().unwrap())
+                .join(
+                    std::path::Path::new(card_file.relative_path)
+                        .file_name()
+                        .unwrap(),
+                )
                 .with_extension("textproto"),
             print_to_string_pretty(&card),
         )?;

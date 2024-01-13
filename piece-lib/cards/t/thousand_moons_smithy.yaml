@@ -66,6 +66,8 @@ back_face:
               controller: !Self_ {}
           - restriction: !OfType
               types: Artifact, Creature
+          - restriction: !ManaSpentFromSource
+              source: barracks of the thousand
       effects:
         - effect: !CreateToken
             token: !Creature

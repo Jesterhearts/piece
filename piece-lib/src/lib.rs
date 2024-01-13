@@ -9,7 +9,6 @@ use anyhow::{anyhow, Context};
 
 use ariadne::{Label, Report, ReportKind, Source};
 use convert_case::{Case, Casing};
-use include_dir::{include_dir, Dir, File};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use protobuf::{Enum, MessageDyn, MessageFull};
@@ -55,59 +54,39 @@ pub mod types;
 
 pub static FONT_DATA: &[u8] = include_bytes!("../../fonts/mana.ttf");
 
-static CARD_DEFINITIONS: Dir = include_dir!("cards");
+#[iftree::include_file_tree("paths = 'cards/**'")]
+pub struct CardDefinitions {
+    pub relative_path: &'static str,
+    pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
+}
 
 pub type Cards = IndexMap<String, Card>;
 
-pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static File<'static>)>> {
-    fn dir_to_files(dir: &'static Dir) -> Vec<&'static File<'static>> {
-        let mut results = vec![];
-        for entry in dir.entries() {
-            match entry {
-                include_dir::DirEntry::Dir(dir) => results.extend(dir_to_files(dir)),
-                include_dir::DirEntry::File(file) => {
-                    results.push(file);
-                }
-            }
-        }
-
-        results
-    }
-
+pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static CardDefinitions)>> {
     let mut results = vec![];
-    for card_file in CARD_DEFINITIONS
-        .entries()
-        .iter()
-        .flat_map(|entry| match entry {
-            include_dir::DirEntry::Dir(dir) => dir_to_files(dir).into_iter(),
-            include_dir::DirEntry::File(file) => vec![file].into_iter(),
-        })
-    {
-        let contents = card_file.contents();
 
-        let card: protogen::card::Card = serde_yaml::from_slice(contents)
+    for card_file in ASSETS.iter() {
+        let contents = (card_file.get_bytes)();
+
+        let card: protogen::card::Card = serde_yaml::from_slice(&contents)
             .map_err(|e| {
                 let location = e.location().unwrap();
-                Report::build(
-                    ReportKind::Error,
-                    card_file.path().display().to_string(),
-                    location.index(),
-                )
-                .with_label(Label::new((
-                    card_file.path().display().to_string(),
-                    location.index()..location.index() + 1,
-                )))
-                .with_message(e.to_string())
-                .finish()
-                .eprint((
-                    card_file.path().display().to_string(),
-                    Source::from(std::str::from_utf8(contents).expect("Invalid utf8")),
-                ))
-                .unwrap();
+                Report::build(ReportKind::Error, card_file.relative_path, location.index())
+                    .with_label(Label::new((
+                        card_file.relative_path,
+                        location.index()..location.index() + 1,
+                    )))
+                    .with_message(e.to_string())
+                    .finish()
+                    .eprint((
+                        card_file.relative_path,
+                        Source::from(std::str::from_utf8(&contents).expect("Invalid utf8")),
+                    ))
+                    .unwrap();
 
                 anyhow!(e.to_string())
             })
-            .with_context(|| format!("Parsing file: {}", card_file.path().display()))?;
+            .with_context(|| format!("Parsing file: {}", card_file.relative_path))?;
 
         results.push((card, card_file));
     }

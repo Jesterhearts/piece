@@ -13,10 +13,13 @@ fn main() {
     std::fs::create_dir_all("../cards_binpb").expect("Failed to create directory");
 
     for (card, file) in cards {
-        let path = std::path::Path::new("../cards_binpb").join(file.path().parent().unwrap());
+        let file_path = std::path::Path::new(file.relative_path);
+
+        let path = std::path::Path::new("../cards_binpb")
+            .join(file_path.parent().unwrap().strip_prefix("cards/").unwrap());
         std::fs::create_dir_all(path.clone()).expect("Failed to create directory");
         let mut file = std::fs::File::create(
-            path.join(file.path().file_name().unwrap())
+            path.join(file_path.file_name().unwrap())
                 .with_extension("binpb"),
         )
         .expect("Failed to create file");
