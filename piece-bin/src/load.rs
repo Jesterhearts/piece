@@ -1,40 +1,19 @@
-use include_dir::{include_dir, Dir, File};
 use piece_lib::Cards;
 use protobuf::CodedInputStream;
 
-static CARD_DEFINITIONS: Dir = include_dir!("cards_binpb");
-
-pub fn load_protos(
-) -> anyhow::Result<Vec<(piece_lib::protogen::card::Card, &'static File<'static>)>> {
-    fn dir_to_files(dir: &'static Dir) -> Vec<&'static File<'static>> {
-        let mut results = vec![];
-        for entry in dir.entries() {
-            match entry {
-                include_dir::DirEntry::Dir(dir) => results.extend(dir_to_files(dir)),
-                include_dir::DirEntry::File(file) => {
-                    results.push(file);
-                }
-            }
-        }
-
-        results
-    }
-
+#[iftree::include_file_tree("paths = 'cards_binpb/**'")]
+pub struct CardProtos {
+    pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
+}
+pub fn load_protos() -> anyhow::Result<Vec<piece_lib::protogen::card::Card>> {
     let mut results = vec![];
-    for card_file in CARD_DEFINITIONS
-        .entries()
-        .iter()
-        .flat_map(|entry| match entry {
-            include_dir::DirEntry::Dir(dir) => dir_to_files(dir).into_iter(),
-            include_dir::DirEntry::File(file) => vec![file].into_iter(),
-        })
-    {
-        let contents = card_file.contents();
+    for card_file in ASSETS.iter() {
+        let contents = (card_file.get_bytes)();
 
-        let mut input = CodedInputStream::from_bytes(contents);
+        let mut input = CodedInputStream::from_bytes(&contents);
         let card = input.read_message::<piece_lib::protogen::card::Card>()?;
 
-        results.push((card, card_file));
+        results.push(card);
     }
 
     Ok(results)
@@ -51,7 +30,7 @@ pub fn load_cards() -> anyhow::Result<Cards> {
 
     let timer = std::time::Instant::now();
     let mut cards = Cards::with_capacity(protos.len());
-    for (card, _) in protos {
+    for card in protos {
         if let Some(overwritten) = cards.insert(card.name.clone(), card) {
             warn!("Overwriting card {}", overwritten.name);
         };

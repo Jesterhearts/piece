@@ -7,15 +7,15 @@ fn main() {
 
     let cards = load_protos().expect("Failed to load cards");
 
-    if std::path::Path::new("../cards_binpb").exists() {
-        std::fs::remove_dir_all("../cards_binpb").expect("Failed to remove directory");
+    if std::path::Path::new("cards_binpb").exists() {
+        std::fs::remove_dir_all("cards_binpb").expect("Failed to remove directory");
     }
-    std::fs::create_dir_all("../cards_binpb").expect("Failed to create directory");
+    std::fs::create_dir_all("cards_binpb").expect("Failed to create directory");
 
     for (card, file) in cards {
         let file_path = std::path::Path::new(file.relative_path);
 
-        let path = std::path::Path::new("../cards_binpb")
+        let path = std::path::Path::new("cards_binpb")
             .join(file_path.parent().unwrap().strip_prefix("cards/").unwrap());
         std::fs::create_dir_all(path.clone()).expect("Failed to create directory");
         let mut file = std::fs::File::create(

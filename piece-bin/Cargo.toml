@@ -25,7 +25,7 @@ anyhow             = "1.0.79"
 convert_case       = "0.6.0"
 eframe             = "0.25.0"
 egui               = "0.25.0"
-include_dir        = "0.7.3"
+iftree             = "1.0.4"
 itertools          = "0.12.0"
 piece-lib          = { path = "../piece-lib" }
 protobuf           = "3.3.0"

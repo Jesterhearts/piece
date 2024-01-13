@@ -22,4 +22,4 @@ piece-lib/src/protogen/*
 *.log
 err.txt
 a.txt
-cards_binpb/*
+piece-bin/cards_binpb/*
