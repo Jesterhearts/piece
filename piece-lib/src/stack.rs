@@ -279,6 +279,15 @@ impl StackEntry {
                         return false;
                     }
                 }
+                restriction::Restriction::IsPermanent(_) => {
+                    let Entry::Card(card) = &self.ty else {
+                        return false;
+                    };
+
+                    if !card.is_permanent(db) {
+                        return false;
+                    }
+                }
                 restriction::Restriction::InGraveyard(_) => {
                     return false;
                 }

@@ -1695,6 +1695,11 @@ impl CardId {
                         return false;
                     }
                 }
+                restriction::Restriction::IsPermanent(_) => {
+                    if !self.is_permanent(db) {
+                        return false;
+                    }
+                }
                 restriction::Restriction::InGraveyard(_) => {
                     if !self.is_in_location(db, Location::IN_GRAVEYARD) {
                         return false;

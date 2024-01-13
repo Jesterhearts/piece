@@ -41,6 +41,7 @@ message Restriction {
   }
   message HasActivatedAbility {}
   message InGraveyard {}
+  message IsPermanent {}
   message ControllerJustCast {}
   message LifeGainedThisTurn {
     int32 count = 1;
@@ -101,27 +102,28 @@ message Restriction {
     EnteredBattlefieldThisTurn entered_battlefield_this_turn = 13;
     HasActivatedAbility has_activated_ability = 14;
     InGraveyard in_graveyard = 15;
-    ControllerJustCast controller_just_cast = 16;
-    LifeGainedThisTurn life_gained_this_turn = 17;
-    Locations location = 18;
-    ManaSpentFromSource mana_spent_from_source = 19;
-    NonToken non_token = 20;
-    NotChosen not_chosen = 21;
-    NotKeywords not_keywords = 22;
-    NotOfType not_of_type = 23;
-    NotSelf not_self = 24;
-    NumberOfCountersOnThis number_of_counters_on_this = 25;
-    OfColor of_color = 26;
-    OfType of_type = 27;
-    OnBattlefield on_battlefield = 28;
-    Power power = 29;
-    Self self = 30;
-    SourceCast source_cast = 31;
-    SpellOrAbilityJustCast spell_or_ability_just_cast = 32;
-    Tapped tapped = 33;
-    TargetedBy targeted_by = 34;
-    Threshold threshold = 35;
-    Toughness toughness = 36;
+    IsPermanent is_permanent = 16;
+    ControllerJustCast controller_just_cast = 17;
+    LifeGainedThisTurn life_gained_this_turn = 18;
+    Locations location = 19;
+    ManaSpentFromSource mana_spent_from_source = 20;
+    NonToken non_token = 21;
+    NotChosen not_chosen = 22;
+    NotKeywords not_keywords = 23;
+    NotOfType not_of_type = 24;
+    NotSelf not_self = 25;
+    NumberOfCountersOnThis number_of_counters_on_this = 26;
+    OfColor of_color = 27;
+    OfType of_type = 28;
+    OnBattlefield on_battlefield = 29;
+    Power power = 30;
+    Self self = 31;
+    SourceCast source_cast = 32;
+    SpellOrAbilityJustCast spell_or_ability_just_cast = 33;
+    Tapped tapped = 34;
+    TargetedBy targeted_by = 35;
+    Threshold threshold = 36;
+    Toughness toughness = 37;
   }
 }
 
@@ -157,9 +159,9 @@ message Dynamic {
 
 enum Location {
   ON_BATTLEFIELD = 0;
-  IN_HAND = 2;
-  IN_LIBRARY = 3;
-  IN_GRAVEYARD = 1;
+  IN_HAND = 1;
+  IN_LIBRARY = 2;
+  IN_GRAVEYARD = 3;
   IN_EXILE = 4;
   IN_STACK = 5;
 }

@@ -245,6 +245,9 @@ impl Owner {
                 restriction::Restriction::SpellOrAbilityJustCast(_) => {
                     return false;
                 }
+                restriction::Restriction::IsPermanent(_) => {
+                    return false;
+                }
             }
         }
 
