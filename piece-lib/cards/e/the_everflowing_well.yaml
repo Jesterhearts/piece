@@ -21,6 +21,9 @@ triggered_abilities:
             count: 8
     effects:
       - effect: !Transform {}
+    oracle_text:
+      Descend 8 - At the beginning of your upkeep, if there are eight or more
+      permanent cards in your graveyard, transform The Everflowing Well.
 back_face:
   name: The Myriad Pools
   typeline: Legendary Artifact Land
