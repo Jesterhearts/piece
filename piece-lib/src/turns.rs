@@ -96,7 +96,24 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Upkeep;
-                PendingResults::default()
+
+                let mut results = PendingResults::default();
+                let player = db.turn.active_player();
+
+                for (listener, trigger) in db.active_triggers_of_source(TriggerSource::UPKEEP) {
+                    if !Owner::from(db[listener].controller).passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        player.into(),
+                        &trigger.trigger.restrictions,
+                    ) {
+                        continue;
+                    }
+
+                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                }
+
+                results
             }
             Phase::Upkeep => {
                 for player in db.all_players.all_players() {

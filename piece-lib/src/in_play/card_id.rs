@@ -6,6 +6,7 @@ use std::{
 };
 
 use derive_more::From;
+use indexmap::IndexSet;
 use itertools::Itertools;
 use protobuf::Enum;
 use strum::IntoEnumIterator;
@@ -216,8 +217,8 @@ pub struct CardInPlay {
     pub(crate) cloned_id: Option<CardId>,
 
     pub(crate) static_abilities: HashSet<StaticAbilityId>,
-    pub(crate) activated_abilities: HashSet<ActivatedAbilityId>,
-    pub(crate) mana_abilities: HashSet<GainManaAbilityId>,
+    pub(crate) activated_abilities: IndexSet<ActivatedAbilityId>,
+    pub(crate) mana_abilities: IndexSet<GainManaAbilityId>,
 
     pub(crate) owner: Owner,
     pub(crate) controller: Controller,
@@ -260,8 +261,8 @@ pub struct CardInPlay {
     pub modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
     pub modified_etb_abilities: Vec<Effect>,
     pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
-    pub(crate) modified_activated_abilities: HashSet<ActivatedAbilityId>,
-    pub(crate) modified_mana_abilities: HashSet<GainManaAbilityId>,
+    pub(crate) modified_activated_abilities: IndexSet<ActivatedAbilityId>,
+    pub(crate) modified_mana_abilities: IndexSet<GainManaAbilityId>,
 
     pub(crate) marked_damage: i32,
 
@@ -276,10 +277,10 @@ impl CardInPlay {
         let mut static_abilities = HashSet::default();
         std::mem::swap(&mut static_abilities, &mut self.static_abilities);
 
-        let mut activated_abilities = HashSet::default();
+        let mut activated_abilities = IndexSet::default();
         std::mem::swap(&mut activated_abilities, &mut self.activated_abilities);
 
-        let mut mana_abilities = HashSet::default();
+        let mut mana_abilities = IndexSet::default();
         std::mem::swap(&mut mana_abilities, &mut self.mana_abilities);
 
         let mut exiling = HashSet::default();
@@ -350,12 +351,12 @@ impl CardId {
             ));
         }
 
-        let mut activated_abilities = HashSet::default();
+        let mut activated_abilities = IndexSet::default();
         for ability in card.activated_abilities.iter() {
             activated_abilities.insert(ActivatedAbilityId::upload(db, id, ability.clone()));
         }
 
-        let mut mana_abilities = HashSet::default();
+        let mut mana_abilities = IndexSet::default();
         for ability in card.mana_abilities.iter() {
             mana_abilities.insert(GainManaAbilityId::upload(db, id, ability.clone()));
         }
@@ -823,16 +824,18 @@ impl CardId {
         };
 
         let mut activated_abilities = if facedown {
-            HashSet::default()
+            IndexSet::default()
         } else {
             db[self].activated_abilities.clone()
         };
 
         let mut mana_abilities = if facedown {
-            HashSet::default()
+            IndexSet::default()
         } else {
             db[self].mana_abilities.clone()
         };
+
+        dbg!(&mana_abilities);
 
         let mut replacement_abilities = if facedown {
             Default::default()
@@ -1449,7 +1452,7 @@ impl CardId {
         self_subtypes: &SubtypeSet,
         self_keywords: &HashMap<i32, u32>,
         self_colors: &HashSet<Color>,
-        self_activated_abilities: &HashSet<ActivatedAbilityId>,
+        self_activated_abilities: &IndexSet<ActivatedAbilityId>,
     ) -> usize {
         match dynamic.source.as_ref().unwrap() {
             dynamic_power_toughness::Source::NumberOfCountersOnThis(counter) => {
@@ -1566,7 +1569,7 @@ impl CardId {
         self_subtypes: &SubtypeSet,
         self_keywords: &HashMap<i32, u32>,
         self_colors: &HashSet<Color>,
-        self_activated_abilities: &HashSet<ActivatedAbilityId>,
+        self_activated_abilities: &IndexSet<ActivatedAbilityId>,
         self_power: Option<i32>,
         self_toughness: Option<i32>,
     ) -> bool {

@@ -19,6 +19,8 @@ triggered_abilities:
       restrictions:
         - restriction: !Descend
             count: 8
+        - restriction: !Controller
+            controller: !Self_ {}
     effects:
       - effect: !Transform {}
     oracle_text:
@@ -34,6 +36,7 @@ back_face:
         gain: !Specific
           gain: '{U}'
       mana_source: the myriad pools
+      oracle_text: '{T}: Add {U}.'
   triggered_abilities:
     - trigger:
         source: cast
