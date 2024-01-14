@@ -1,14 +1,12 @@
-use std::sync::atomic::Ordering;
-
-use derive_more::{From, Into};
+use uuid::Uuid;
 
 use crate::{
-    in_play::{CardId, Database, ModifierId, NEXT_ABILITY_ID},
+    in_play::{CardId, Database, ModifierId},
     protogen::effects::static_ability,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
-pub(crate) struct StaticAbilityId(usize);
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub(crate) struct StaticAbilityId(Uuid);
 
 #[derive(Debug)]
 pub struct StaticAbilityInPlay {
@@ -19,7 +17,7 @@ pub struct StaticAbilityInPlay {
 
 impl StaticAbilityId {
     pub(crate) fn new() -> Self {
-        Self(NEXT_ABILITY_ID.fetch_add(1, Ordering::Relaxed))
+        Self(Uuid::new_v4())
     }
 
     pub(crate) fn upload(

@@ -2,15 +2,14 @@ use std::{
     cell::OnceCell,
     collections::{HashMap, HashSet},
     rc::Rc,
-    sync::atomic::Ordering,
 };
 
-use derive_more::From;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use protobuf::Enum;
 use strum::IntoEnumIterator;
 use tracing::Level;
+use uuid::Uuid;
 
 use crate::{
     abilities::Ability,
@@ -19,7 +18,7 @@ use crate::{
     effects::EffectBehaviors,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
-        StaticAbilityId, NEXT_CARD_ID,
+        StaticAbilityId,
     },
     log::{LeaveReason, Log, LogEntry, LogId},
     pending_results::PendingResults,
@@ -201,8 +200,8 @@ fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
     })
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From)]
-pub struct CardId(usize);
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct CardId(Uuid);
 
 impl std::fmt::Display for CardId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -335,7 +334,7 @@ impl CardInPlay {
 
 impl CardId {
     pub fn new() -> Self {
-        Self(NEXT_CARD_ID.fetch_add(1, Ordering::Relaxed))
+        Self(Uuid::new_v4())
     }
 
     pub fn upload(db: &mut Database, cards: &Cards, player: Owner, card: &str) -> CardId {

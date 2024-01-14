@@ -4,8 +4,6 @@ mod gain_mana_ability_id;
 mod modifier_id;
 mod static_ability_id;
 
-use std::sync::atomic::AtomicUsize;
-
 use indexmap::{IndexMap, IndexSet};
 
 pub use activated_ability_id::{ActivatedAbilityId, ActivatedAbilityInPlay};
@@ -33,10 +31,6 @@ use crate::{
     stack::Stack,
     turns::Turn,
 };
-
-static NEXT_ABILITY_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_CARD_ID: AtomicUsize = AtomicUsize::new(0);
-static NEXT_MODIFIER_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
 pub(crate) enum CastFrom {

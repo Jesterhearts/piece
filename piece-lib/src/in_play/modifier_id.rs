@@ -1,19 +1,17 @@
-use std::{collections::HashSet, sync::atomic::Ordering};
+use std::collections::HashSet;
 
-use derive_more::{From, Into};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use tracing::Level;
+use uuid::Uuid;
 
 use crate::{
-    in_play::{
-        ActivatedAbilityId, CardId, Database, GainManaAbilityId, StaticAbilityId, NEXT_MODIFIER_ID,
-    },
+    in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId, StaticAbilityId},
     protogen::effects::BattlefieldModifier,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
-pub(crate) struct ModifierId(usize);
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub(crate) struct ModifierId(Uuid);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModifierInPlay {
@@ -30,7 +28,7 @@ pub struct ModifierInPlay {
 
 impl ModifierId {
     pub(crate) fn new() -> Self {
-        Self(NEXT_MODIFIER_ID.fetch_add(1, Ordering::Relaxed))
+        Self(Uuid::new_v4())
     }
 
     pub(crate) fn upload_temporary_modifier(

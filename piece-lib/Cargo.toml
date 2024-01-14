@@ -25,6 +25,7 @@ tracing            = { version = "0.1.40", features = [ "max_level_debug", "rele
 tracing-appender   = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = [ "tracing-log" ] }
 unicode-width      = "0.1.11"
+uuid               = { version = "1.6.1", features = [ "v4" ] }
 
 [build-dependencies]
 protobuf         = "3.3.0"
