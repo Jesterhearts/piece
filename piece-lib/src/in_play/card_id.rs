@@ -835,8 +835,6 @@ impl CardId {
             db[self].mana_abilities.clone()
         };
 
-        dbg!(&mana_abilities);
-
         let mut replacement_abilities = if facedown {
             Default::default()
         } else {

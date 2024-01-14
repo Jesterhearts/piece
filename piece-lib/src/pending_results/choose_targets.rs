@@ -110,9 +110,7 @@ impl ChooseTargets {
     }
 
     pub(crate) fn choices_complete(&mut self, db: &mut Database, results: &PendingResults) -> bool {
-        if self.recompute_targets(db, results.all_currently_targeted()) {
-            return false;
-        }
+        let _ = self.recompute_targets(db, results.all_currently_targeted());
 
         self.chosen_targets_count() >= self.target_source.wants_targets(db, self.card)
             || (self.chosen_targets_count() >= self.valid_targets.len()

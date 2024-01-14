@@ -64,6 +64,8 @@ fn mace() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(5));
