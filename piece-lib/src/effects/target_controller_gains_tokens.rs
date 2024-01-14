@@ -33,7 +33,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
 
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
@@ -41,7 +41,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
-            source: targets.into_iter().exactly_one().unwrap().id().unwrap(),
+            source: targets.into_iter().exactly_one().unwrap().id(db).unwrap(),
             token: self.create_token.token.as_ref().unwrap().clone(),
         });
     }

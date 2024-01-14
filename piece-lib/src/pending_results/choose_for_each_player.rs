@@ -66,7 +66,7 @@ impl ChooseForEachPlayer {
             } else {
                 *self
                     .chosen
-                    .entry(db[self.valid_targets[choice].id().unwrap()].controller)
+                    .entry(db[self.valid_targets[choice].id(db).unwrap()].controller)
                     .or_default() = choice;
                 true
             }
@@ -74,7 +74,7 @@ impl ChooseForEachPlayer {
             debug!("Choosing default only target");
             *self
                 .chosen
-                .entry(db[self.valid_targets[0].id().unwrap()].controller)
+                .entry(db[self.valid_targets[0].id(db).unwrap()].controller)
                 .or_default() = 0;
             true
         } else {

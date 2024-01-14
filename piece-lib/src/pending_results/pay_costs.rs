@@ -384,7 +384,7 @@ impl Cost {
                             if let Ok(Some(target)) = already_chosen
                                 .iter()
                                 .exactly_one()
-                                .map(|target| target.id())
+                                .map(|target| target.id(db))
                             {
                                 if target.tapped(db) {
                                     let reduction: ::counter::Counter<ManaCost> = reducer
@@ -415,7 +415,7 @@ impl Cost {
             Cost::ExilePermanentsCmcX(exile) => {
                 exile.target = already_chosen
                     .iter()
-                    .map(|target| target.id().unwrap().faceup_face(db).cost.cmc())
+                    .map(|target| target.id(db).unwrap().faceup_face(db).cost.cmc())
                     .sum::<usize>();
 
                 let controller = db[source].controller;

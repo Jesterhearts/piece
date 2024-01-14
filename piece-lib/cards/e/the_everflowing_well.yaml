@@ -45,3 +45,7 @@ back_face:
         - effect: !TargetCopiesPermanent
             copy_restrictions:
               - restriction: !SpellOrAbilityJustCast {}
+          oracle_text:
+            Whenever you cast a permanent spell using mana produced by The
+            Myriad Pools, up to one other target permanent you control becomes a
+            copy of that spell until end of turn.

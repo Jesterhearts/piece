@@ -94,7 +94,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
 
     fn push_behavior_with_targets(
         &self,
-        _db: &mut Database,
+        db: &mut Database,
         mut targets: Vec<ActiveTarget>,
         _apply_to_self: bool,
         _source: CardId,
@@ -103,7 +103,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
     ) {
         assert_eq!(targets.len(), 2);
 
-        let cloned = targets.pop().unwrap().id().unwrap();
+        let cloned = targets.pop().unwrap().id(db).unwrap();
         let Some(ActiveTarget::Battlefield { id }) = targets.pop() else {
             unreachable!()
         };

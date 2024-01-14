@@ -77,17 +77,17 @@ impl EffectBehaviors for ReturnTargetToHand {
         ));
     }
 
-    #[instrument(level = Level::INFO, skip(_db, results))]
+    #[instrument(level = Level::INFO, skip(db, results))]
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if let Ok(Some(target)) = targets.into_iter().exactly_one().map(|t| t.id()) {
+        if let Ok(Some(target)) = targets.into_iter().exactly_one().map(|t| t.id(db)) {
             results.push_settled(ActionResult::HandFromBattlefield(target))
         } else {
             warn!("Skipping targets")

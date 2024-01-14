@@ -71,7 +71,6 @@ pub(crate) enum ActionResult {
     AddTriggerToStack {
         source: CardId,
         trigger: TriggeredAbility,
-        targets: Vec<Vec<ActiveTarget>>,
     },
     ApplyAuraToTarget {
         aura_source: CardId,
@@ -345,15 +344,11 @@ impl ActionResult {
 
                 results
             }
-            ActionResult::AddTriggerToStack {
-                source,
-                trigger,
-                targets,
-            } => Stack::push_ability(
+            ActionResult::AddTriggerToStack { source, trigger } => Stack::push_ability(
                 db,
                 *source,
                 Ability::EtbOrTriggered(trigger.effects.clone()),
-                targets.clone(),
+                vec![],
             ),
             ActionResult::CloneCard { cloning, cloned } => {
                 cloning.clone_card(db, *cloned);
@@ -482,7 +477,7 @@ impl ActionResult {
                 duration,
                 reason,
             } => {
-                let Some(target) = target.id() else {
+                let Some(target) = target.id(db) else {
                     unreachable!()
                 };
                 if let Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD = duration.enum_value().unwrap() {
@@ -1061,7 +1056,7 @@ impl ActionResult {
                 Battlefields::permanent_to_graveyard(db, *id)
             }
             ActionResult::Explore { target } => {
-                let explorer = target.id().unwrap();
+                let explorer = target.id(db).unwrap();
                 let controller = db[explorer].controller;
                 if let Some(card) = db.all_players[controller].library.draw() {
                     db[card].revealed = true;

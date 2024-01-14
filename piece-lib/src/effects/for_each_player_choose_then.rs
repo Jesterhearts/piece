@@ -37,7 +37,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
     ) -> Vec<crate::stack::ActiveTarget> {
         let already_chosen = already_chosen
             .iter()
-            .map(|target| db[target.id().unwrap()].controller)
+            .map(|target| db[target.id(db).unwrap()].controller)
             .collect::<HashSet<_>>();
 
         db.cards
@@ -90,7 +90,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
-            Log::card_chosen(db, target.id().unwrap());
+            Log::card_chosen(db, target.id(db).unwrap());
         }
 
         for effect in self.effects.iter() {

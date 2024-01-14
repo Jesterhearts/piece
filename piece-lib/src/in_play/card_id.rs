@@ -427,6 +427,8 @@ impl CardId {
             let id = GainManaAbilityId::upload(db, self, ability);
             db[self].mana_abilities.insert(id);
         }
+
+        self.apply_modifiers_layered(db);
     }
 
     pub fn faceup_face(self, db: &Database) -> &Card {
@@ -2353,7 +2355,11 @@ pub(crate) fn target_from_location(db: &Database, card: CardId) -> ActiveTarget 
         ActiveTarget::Graveyard { id: card }
     } else if db.all_players[db[card].owner].library.cards.contains(&card) {
         ActiveTarget::Library { id: card }
-    } else {
+    } else if db.exile[db[card].owner].contains(&card) {
         todo!()
+    } else {
+        ActiveTarget::Stack {
+            id: db.stack.find(card).unwrap(),
+        }
     }
 }

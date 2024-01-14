@@ -98,12 +98,18 @@ impl ActiveTarget {
         }
     }
 
-    pub(crate) fn id(&self) -> Option<CardId> {
+    pub(crate) fn id(&self, db: &Database) -> Option<CardId> {
         match self {
             ActiveTarget::Battlefield { id }
             | ActiveTarget::Graveyard { id }
             | ActiveTarget::Library { id } => Some(*id),
-            ActiveTarget::Stack { .. } => None,
+            ActiveTarget::Stack { id } => db.stack.entries.get(id).and_then(|entry| {
+                if let Entry::Card(card) = entry.ty {
+                    Some(card)
+                } else {
+                    None
+                }
+            }),
             ActiveTarget::Player { .. } => None,
         }
     }
@@ -557,6 +563,13 @@ impl Stack {
             .any(|(_, entry)| matches!(entry.ty, Entry::Card(entry) if entry == card))
     }
 
+    pub(crate) fn find(&self, card: CardId) -> Option<StackId> {
+        self.entries
+            .iter()
+            .find(|(_, entry)| matches!(entry.ty, Entry::Card(entry) if entry == card))
+            .map(|(id, _)| *id)
+    }
+
     pub(crate) fn split_second(&self, db: &Database) -> bool {
         if let Some((
             _,
@@ -751,28 +764,15 @@ impl Stack {
     }
 
     pub(crate) fn move_trigger_to_stack(
-        db: &mut Database,
+        _db: &mut Database,
         listener: CardId,
         trigger: TriggeredAbility,
     ) -> PendingResults {
         let mut results = PendingResults::default();
 
-        let mut targets = vec![];
-        let controller = db[listener].controller;
-        for effect in trigger.effects.iter() {
-            targets.push(effect.effect.as_ref().unwrap().valid_targets(
-                db,
-                listener,
-                crate::log::LogId::current(db),
-                controller,
-                &HashSet::default(),
-            ));
-        }
-
         results.push_settled(ActionResult::AddTriggerToStack {
             source: listener,
             trigger,
-            targets,
         });
 
         results

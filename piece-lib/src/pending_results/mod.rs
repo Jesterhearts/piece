@@ -435,7 +435,6 @@ impl PendingResults {
 
     pub fn resolve(&mut self, db: &mut Database, choice: Option<usize>) -> ResolutionResult {
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
-        debug!("Choosing {:?} for {:#?}", choice, self);
 
         let mut recomputed = false;
         for pend in self.pending.iter_mut() {

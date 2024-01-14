@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use indexmap::IndexMap;
 use itertools::Itertools;
 
 use crate::{
@@ -8,7 +7,7 @@ use crate::{
     effects::EffectBehaviors,
     in_play::{CardId, Database},
     log::{Log, LogId},
-    pending_results::{Pending, PendingResult, TargetSource},
+    pending_results::{Pending, PendingResult, PendingResults, TargetSource},
     protogen::triggers::TriggerSource,
     stack::{ActiveTarget, Stack},
 };
@@ -17,7 +16,7 @@ use crate::{
 pub(crate) struct ChooseTargets {
     target_source: TargetSource,
     pub(crate) valid_targets: Vec<ActiveTarget>,
-    chosen: IndexMap<usize, usize>,
+    chosen: Vec<ActiveTarget>,
     skipping_remainder: bool,
     log_session: LogId,
     card: CardId,
@@ -83,12 +82,12 @@ impl ChooseTargets {
             } else if choice >= self.valid_targets.len() {
                 false
             } else {
-                *self.chosen.entry(choice).or_default() += 1;
+                self.chosen.push(self.valid_targets[choice]);
                 true
             }
         } else if self.valid_targets.len() == 1 {
             debug!("Choosing default only target");
-            *self.chosen.entry(0).or_default() += 1;
+            self.chosen.push(self.valid_targets[0]);
             true
         } else if self.can_skip(db) {
             self.skipping_remainder = true;
@@ -99,16 +98,7 @@ impl ChooseTargets {
     }
 
     pub(crate) fn chosen_targets_and_effect(&self) -> (Vec<ActiveTarget>, TargetSource) {
-        let mut results = vec![];
-        for choice in self
-            .chosen
-            .iter()
-            .flat_map(|(choice, count)| std::iter::repeat(*choice).take(*count))
-        {
-            results.push(self.valid_targets[choice]);
-        }
-
-        (results, self.target_source.clone())
+        (self.chosen.clone(), self.target_source.clone())
     }
 
     fn effect_or_aura(&self) -> TargetSource {
@@ -116,12 +106,17 @@ impl ChooseTargets {
     }
 
     pub(crate) fn chosen_targets_count(&self) -> usize {
-        self.chosen.values().sum()
+        self.chosen.len()
     }
 
-    pub(crate) fn choices_complete(&self, db: &mut Database) -> bool {
+    pub(crate) fn choices_complete(&mut self, db: &mut Database, results: &PendingResults) -> bool {
+        if self.recompute_targets(db, results.all_currently_targeted()) {
+            return false;
+        }
+
         self.chosen_targets_count() >= self.target_source.wants_targets(db, self.card)
-            || self.chosen_targets_count() >= self.valid_targets.len()
+            || (self.chosen_targets_count() >= self.valid_targets.len()
+                && self.chosen == self.valid_targets)
             || (self.can_skip(db) && self.skipping_remainder)
     }
 
@@ -159,10 +154,13 @@ impl PendingResult for ChooseTargets {
         results: &mut super::PendingResults,
     ) -> bool {
         if self.choose_targets(db, choice) {
-            if self.choices_complete(db) {
+            results
+                .all_chosen_targets
+                .extend(self.chosen.iter().copied());
+
+            if self.choices_complete(db, results) {
                 let (choices, effect_or_aura) = self.chosen_targets_and_effect();
 
-                results.all_chosen_targets.extend(choices.iter().copied());
                 if results.add_to_stack.is_none() {
                     let player = db[self.card].controller;
 

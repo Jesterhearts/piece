@@ -33,6 +33,7 @@ mod quicksand_whirlpool;
 mod reality_shift;
 mod recruiter_of_the_guard;
 mod sinister_strength;
+mod the_everflowing_well;
 mod thermal_blast;
 mod titania_protector_of_argoth;
 mod zhulodok_void_gorger;

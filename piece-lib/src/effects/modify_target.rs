@@ -103,7 +103,7 @@ impl EffectBehaviors for ModifyTarget {
         let modifier = match self.duration.enum_value().unwrap() {
             Duration::UNTIL_TARGET_LEAVES_BATTLEFIELD => ModifierId::upload_temporary_modifier(
                 db,
-                final_targets.iter().exactly_one().unwrap().id().unwrap(),
+                final_targets.iter().exactly_one().unwrap().id(db).unwrap(),
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),
                     duration: self.duration,

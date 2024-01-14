@@ -95,7 +95,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                 reason: None,
             });
             results.push_settled(ActionResult::ManifestTopOfLibrary(
-                db[target.id().unwrap()].controller,
+                db[target.id(db).unwrap()].controller,
             ));
         }
     }
