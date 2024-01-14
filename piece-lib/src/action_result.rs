@@ -92,6 +92,10 @@ pub(crate) enum ActionResult {
         x_is: Option<usize>,
         chosen_modes: Vec<usize>,
     },
+    CloneCard {
+        cloning: CardId,
+        cloned: CardId,
+    },
     CloneCreatureNonTargeting {
         source: CardId,
         target: ActiveTarget,
@@ -351,6 +355,10 @@ impl ActionResult {
                 Ability::EtbOrTriggered(trigger.effects.clone()),
                 targets.clone(),
             ),
+            ActionResult::CloneCard { cloning, cloned } => {
+                cloning.clone_card(db, *cloned);
+                PendingResults::default()
+            }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let ActiveTarget::Battlefield { id: target } = target {
                     source.clone_card(db, *target);

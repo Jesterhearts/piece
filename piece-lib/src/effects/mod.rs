@@ -43,6 +43,7 @@ pub(crate) mod self_explores;
 pub(crate) mod tap_target;
 pub(crate) mod tap_this;
 pub(crate) mod target_controller_gains_tokens;
+pub(crate) mod target_copies_permanent;
 pub(crate) mod target_creature_explores;
 pub(crate) mod target_gains_counters;
 pub(crate) mod target_to_top_of_library;
@@ -111,6 +112,7 @@ use crate::{
         TapTarget(TapTarget),
         TapThis(TapThis),
         TargetControllerGainsTokens(TargetControllerGainsTokens),
+        TargetCopiesPermanent(TargetCopiesPermanent),
         TargetCreatureExplores(TargetCreatureExplores),
         TargetGainsCounters(TargetGainsCounters),
         TargetToTopOfLibrary(TargetToTopOfLibrary),

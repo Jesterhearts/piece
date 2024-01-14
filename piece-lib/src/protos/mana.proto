@@ -6,7 +6,8 @@ enum ManaSource {
   ANY = 0;
   BARRACKS_OF_THE_THOUSAND = 1;
   CAVE = 2;
-  TREASURE = 3;
+  THE_MYRIAD_POOLS = 3;
+  TREASURE = 4;
 }
 
 enum Mana {

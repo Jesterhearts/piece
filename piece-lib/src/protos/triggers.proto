@@ -25,6 +25,7 @@ enum TriggerSource {
   START_OF_COMBAT = 9;
   TAPPED = 10;
   TARGETED = 11;
+  UPKEEP = 12;
 }
 
 message Trigger {

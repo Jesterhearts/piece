@@ -1,0 +1,44 @@
+name: The Everflowing Well
+cost:
+  mana_cost: '{2}{U}'
+typeline: Legendary Artifact
+etb_abilities:
+  - effect: !Mill
+      count: 2
+      restrictions:
+        - restriction: !Self_ {}
+    oracle_text:
+      When The Everflowing Well enters the battlefield, mill two cards, then
+      draw two cards.
+  - effect: !ControllerDrawsCards
+      count: !Fixed
+        count: 2
+triggered_abilities:
+  - trigger:
+      source: upkeep
+      restrictions:
+        - restriction: !Descend
+            count: 8
+    effects:
+      - effect: !Transform {}
+back_face:
+  name: The Myriad Pools
+  typeline: Legendary Artifact Land
+  mana_abilities:
+    - cost:
+        tap: true
+      gain_mana:
+        gain: !Specific
+          gain: '{U}'
+      mana_source: the myriad pools
+  triggered_abilities:
+    - trigger:
+        source: cast
+        restrictions:
+          - restriction: !ManaSpentFromSource
+              source: the myriad pools
+          - restriction: !IsPermanent {}
+      effects:
+        - effect: !TargetCopiesPermanent
+            copy_restrictions:
+              - restriction: !SpellOrAbilityJustCast {}
