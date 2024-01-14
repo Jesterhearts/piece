@@ -1,2 +1,9 @@
 name: Plains
 typeline: Basic Land - Plains
+mana_abilities:
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gain: '{W}'
+    oracle_text: '{T}: Add {W}.'

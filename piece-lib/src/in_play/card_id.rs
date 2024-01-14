@@ -1,8 +1,4 @@
-use std::{
-    cell::OnceCell,
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use std::collections::{HashMap, HashSet};
 
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -14,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    card::{replace_expanded_symbols, BasePowerType, BaseToughnessType},
+    card::{BasePowerType, BaseToughnessType},
     effects::EffectBehaviors,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
@@ -27,20 +23,19 @@ use crate::{
         abilities::TriggeredAbility,
         card::Card,
         color::Color,
-        cost::{AbilityCost, CastingCost},
+        cost::CastingCost,
         counters::Counter,
         effects::{
             create_token::Token,
             dynamic_power_toughness,
-            gain_mana::{Gain, Specific},
             replacement_effect::Replacing,
             static_ability::{
                 self, AddKeywordsIf, AllAbilitiesOfExiledWith, GreenCannotBeCountered,
             },
-            Duration, DynamicPowerToughness, Effect, GainMana, GainManaAbility, ReplacementEffect,
+            Duration, DynamicPowerToughness, Effect, ReplacementEffect,
         },
         keywords::Keyword,
-        mana::{Mana, ManaRestriction, ManaSource},
+        mana::ManaSource,
         targets::{
             comparison,
             dynamic::Dynamic,
@@ -57,148 +52,6 @@ use crate::{
     types::{SubtypeSet, TypeSet},
     Cards,
 };
-
-type MakeLandAbility = Rc<dyn Fn(&mut Database, CardId) -> GainManaAbilityId>;
-
-thread_local! {
-    static INIT_LAND_ABILITIES: OnceCell<HashMap<Subtype, MakeLandAbility>> = OnceCell::new();
-}
-
-fn land_abilities() -> HashMap<Subtype, MakeLandAbility> {
-    INIT_LAND_ABILITIES.with(|init| {
-        init.get_or_init(|| {
-            let mut abilities: HashMap<Subtype, MakeLandAbility> = HashMap::new();
-
-            let add = Rc::new(|db: &mut _, source| {
-                GainManaAbilityId::upload_temporary_ability(
-                    db,
-                    source,
-                    GainManaAbility {
-                        cost: protobuf::MessageField::some(AbilityCost {
-                            tap: true,
-                            ..Default::default()
-                        }),
-                        gain_mana: protobuf::MessageField::some(GainMana {
-                            gain: Some(Gain::Specific(Specific {
-                                gain: vec![Mana::WHITE.into()],
-                                ..Default::default()
-                            })),
-                            ..Default::default()
-                        }),
-                        mana_restriction: ManaRestriction::NONE.into(),
-                        mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_expanded_symbols("{T}: Add {W}."),
-                        ..Default::default()
-                    },
-                )
-            });
-            abilities.insert(Subtype::PLAINS, add);
-
-            let add = Rc::new(|db: &mut _, source| {
-                GainManaAbilityId::upload_temporary_ability(
-                    db,
-                    source,
-                    GainManaAbility {
-                        cost: protobuf::MessageField::some(AbilityCost {
-                            tap: true,
-                            ..Default::default()
-                        }),
-                        gain_mana: protobuf::MessageField::some(GainMana {
-                            gain: Some(Gain::Specific(Specific {
-                                gain: vec![Mana::BLUE.into()],
-                                ..Default::default()
-                            })),
-                            ..Default::default()
-                        }),
-                        mana_restriction: ManaRestriction::NONE.into(),
-                        mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_expanded_symbols("{T}: Add {U}."),
-                        ..Default::default()
-                    },
-                )
-            });
-            abilities.insert(Subtype::ISLAND, add);
-
-            let add = Rc::new(|db: &mut _, source| {
-                GainManaAbilityId::upload_temporary_ability(
-                    db,
-                    source,
-                    GainManaAbility {
-                        cost: protobuf::MessageField::some(AbilityCost {
-                            tap: true,
-                            ..Default::default()
-                        }),
-                        gain_mana: protobuf::MessageField::some(GainMana {
-                            gain: Some(Gain::Specific(Specific {
-                                gain: vec![Mana::BLACK.into()],
-                                ..Default::default()
-                            })),
-                            ..Default::default()
-                        }),
-                        mana_restriction: ManaRestriction::NONE.into(),
-                        mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_expanded_symbols("{T}: Add {B}."),
-                        ..Default::default()
-                    },
-                )
-            });
-            abilities.insert(Subtype::SWAMP, add);
-
-            let add = Rc::new(|db: &mut _, source| {
-                GainManaAbilityId::upload_temporary_ability(
-                    db,
-                    source,
-                    GainManaAbility {
-                        cost: protobuf::MessageField::some(AbilityCost {
-                            tap: true,
-                            ..Default::default()
-                        }),
-                        gain_mana: protobuf::MessageField::some(GainMana {
-                            gain: Some(Gain::Specific(Specific {
-                                gain: vec![Mana::RED.into()],
-                                ..Default::default()
-                            })),
-                            ..Default::default()
-                        }),
-                        mana_restriction: ManaRestriction::NONE.into(),
-                        mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_expanded_symbols("{T}: Add {R}."),
-                        ..Default::default()
-                    },
-                )
-            });
-            abilities.insert(Subtype::MOUNTAIN, add);
-
-            let add = Rc::new(|db: &mut _, source| {
-                GainManaAbilityId::upload_temporary_ability(
-                    db,
-                    source,
-                    GainManaAbility {
-                        cost: protobuf::MessageField::some(AbilityCost {
-                            tap: true,
-                            ..Default::default()
-                        }),
-                        gain_mana: protobuf::MessageField::some(GainMana {
-                            gain: Some(Gain::Specific(Specific {
-                                gain: vec![Mana::GREEN.into()],
-                                ..Default::default()
-                            })),
-                            ..Default::default()
-                        }),
-                        mana_restriction: ManaRestriction::NONE.into(),
-                        mana_source: protobuf::EnumOrUnknown::default(),
-                        oracle_text: replace_expanded_symbols("{T}: Add {G}."),
-                        ..Default::default()
-                    },
-                )
-            });
-            abilities.insert(Subtype::FOREST, add);
-
-            abilities
-        })
-        .clone()
-    })
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct CardId(Uuid);
@@ -960,12 +813,6 @@ impl CardId {
             }
         }
 
-        for (ty, add_ability) in land_abilities() {
-            if subtypes.contains(&ty) {
-                mana_abilities.insert(add_ability(db, self));
-            }
-        }
-
         for id in modifiers.iter().copied() {
             let modifier = &db[id];
             if !applied_modifiers.contains(&id) {
@@ -1419,19 +1266,6 @@ impl CardId {
                 } else {
                     true
                 }
-            } else {
-                true
-            }
-        });
-
-        db.mana_abilities.retain(|id, ability| {
-            if ability.source == self && ability.temporary {
-                db.cards
-                    .get(&self)
-                    .unwrap()
-                    .modified_mana_abilities
-                    .contains(id)
-                    || db.cards.get(&self).unwrap().mana_abilities.contains(id)
             } else {
                 true
             }

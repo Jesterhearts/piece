@@ -16,6 +16,86 @@ static_abilities:
             controller: !Self_ {}
         - restriction: !OfType
             types: Land
+  - ability: !BattlefieldModifier
+      modifier:
+        mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Specific
+              gain: '{W}'
+          oracle_text: '{T}: Add {W}.'
+        entire_battlefield: true
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Land
+  - ability: !BattlefieldModifier
+      modifier:
+        mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Specific
+              gain: '{U}'
+          oracle_text: '{T}: Add {U}.'
+        entire_battlefield: true
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Land
+  - ability: !BattlefieldModifier
+      modifier:
+        mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Specific
+              gain: '{B}'
+          oracle_text: '{T}: Add {B}.'
+        entire_battlefield: true
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Land
+  - ability: !BattlefieldModifier
+      modifier:
+        mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Specific
+              gain: '{R}'
+          oracle_text: '{T}: Add {R}.'
+        entire_battlefield: true
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Land
+  - ability: !BattlefieldModifier
+      modifier:
+        mana_ability:
+          cost:
+            tap: true
+          gain_mana:
+            gain: !Specific
+              gain: '{G}'
+          oracle_text: '{T}: Add {G}.'
+        entire_battlefield: true
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Controller
+            controller: !Self_ {}
+        - restriction: !OfType
+            types: Land
   - ability: !ExtraLandsPerTurn
       count: 1
 power: 2

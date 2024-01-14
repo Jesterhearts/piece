@@ -1,2 +1,9 @@
 name: Swamp
 typeline: Basic Land - Swamp
+mana_abilities:
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gain: '{B}'
+    oracle_text: '{T}: Add {B}.'

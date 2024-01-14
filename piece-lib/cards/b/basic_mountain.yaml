@@ -1,2 +1,9 @@
 name: Mountain
 typeline: Basic Land - Mountain
+mana_abilities:
+  - cost:
+      tap: true
+    gain_mana:
+      gain: !Specific
+        gain: '{R}'
+    oracle_text: '{T}: Add {R}.'

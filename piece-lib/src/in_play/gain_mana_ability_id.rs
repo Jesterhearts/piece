@@ -12,7 +12,6 @@ pub struct GainManaAbilityId(Uuid);
 pub struct GainManaAbilityInPlay {
     pub(crate) source: CardId,
     pub(crate) ability: GainManaAbility,
-    pub(crate) temporary: bool,
 }
 
 impl GainManaAbilityId {
@@ -23,33 +22,8 @@ impl GainManaAbilityId {
     pub(crate) fn upload(db: &mut Database, source: CardId, ability: GainManaAbility) -> Self {
         let id = Self::new();
 
-        db.mana_abilities.insert(
-            id,
-            GainManaAbilityInPlay {
-                source,
-                ability,
-                temporary: false,
-            },
-        );
-
-        id
-    }
-
-    pub(crate) fn upload_temporary_ability(
-        db: &mut Database,
-        source: CardId,
-        ability: GainManaAbility,
-    ) -> Self {
-        let id = Self::new();
-
-        db.mana_abilities.insert(
-            id,
-            GainManaAbilityInPlay {
-                source,
-                ability,
-                temporary: true,
-            },
-        );
+        db.mana_abilities
+            .insert(id, GainManaAbilityInPlay { source, ability });
 
         id
     }
