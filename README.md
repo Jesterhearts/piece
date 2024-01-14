@@ -7,7 +7,7 @@ Future plans:
 - An AI capable of making interesting matches.
 
 # Adding Cards
-Cards are written in `yaml` format. You can see examples in the [cards directory](cards). The proto
+Cards are written in `yaml` format. You can see examples in the [cards directory](piece-lib/cards). The proto
 schema is defined in the [protos directory](piece-lib/src/protos). In particular, check out the
 [card](piece-lib/src/protos/card.proto#L12), [effect](piece-lib/src/protos/effects.proto#L13), and
 [restriction](piece-lib/src/protos/targets.proto#L11) definitions for all of the fields available.
