@@ -773,7 +773,7 @@ where
         type Value = protobuf::EnumOrUnknown<Counter>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("expected a comma separate sequence of values")
+            formatter.write_str("expected a counter type")
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
