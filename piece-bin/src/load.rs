@@ -1,7 +1,12 @@
 use piece_lib::Cards;
 use protobuf::CodedInputStream;
 
-#[iftree::include_file_tree("paths = 'cards_binpb/**'")]
+#[iftree::include_file_tree(
+    "
+paths = 'cards_binpb/**'
+template.identifiers = false
+"
+)]
 pub struct CardProtos {
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
 }

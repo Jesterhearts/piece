@@ -54,7 +54,12 @@ pub mod types;
 
 pub static FONT_DATA: &[u8] = include_bytes!("../../fonts/mana.ttf");
 
-#[iftree::include_file_tree("paths = 'cards/**'")]
+#[iftree::include_file_tree(
+    "
+paths = 'cards/**'
+template.identifiers = false
+"
+)]
 pub struct CardDefinitions {
     pub relative_path: &'static str,
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
