@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use convert_case::{Case, Casing};
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -332,15 +333,19 @@ fn display(
         symbol.push_mana_symbol(&mut result);
         if let ManaRestriction::NONE = restriction {
             if source != ManaSource::ANY {
-                result.push_str(&format!(" ({}): {}", source.as_ref(), amount));
+                result.push_str(&format!(
+                    " ({}): {}",
+                    source.as_ref().to_case(Case::Title),
+                    amount
+                ));
             } else {
                 result.push_str(&format!(": {}", amount));
             }
         } else if source != ManaSource::ANY {
             result.push_str(&format!(
                 " ({}) ({}): {}",
-                source.as_ref(),
-                restriction.as_ref(),
+                source.as_ref().to_case(Case::Title),
+                restriction.as_ref().to_case(Case::Title),
                 amount
             ));
         } else {
