@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use itertools::Itertools;
 
@@ -13,7 +13,7 @@ use crate::{
     types::TypeSet,
 };
 
-#[derive(Debug, Default, strum::AsRefStr)]
+#[derive(Debug, Default, PartialEq, Eq, strum::AsRefStr)]
 pub enum Phase {
     #[default]
     Untap,
@@ -39,8 +39,6 @@ pub struct Turn {
     priority_player: usize,
     passed: usize,
 
-    pub(crate) ban_attacking_this_turn: HashSet<Owner>,
-    pub(crate) life_gained_this_turn: HashMap<Owner, u32>,
     pub(crate) number_of_attackers_this_turn: usize,
     pub(crate) activated_abilities: HashSet<ActivatedAbilityId>,
 }
@@ -57,8 +55,6 @@ impl Turn {
             priority_player: 0,
             passed: 0,
 
-            ban_attacking_this_turn: Default::default(),
-            life_gained_this_turn: Default::default(),
             number_of_attackers_this_turn: 0,
             activated_abilities: Default::default(),
         }
@@ -283,9 +279,14 @@ impl Turn {
 
                 CardId::cleanup_tokens_in_limbo(db);
                 db.graveyard.descended_this_turn.clear();
-                db.turn.ban_attacking_this_turn.clear();
-                db.turn.life_gained_this_turn.clear();
                 db.turn.number_of_attackers_this_turn = 0;
+
+                for player in db.all_players.all_players() {
+                    let player = &mut db.all_players[player];
+                    player.lands_played_this_turn = 0;
+                    player.life_gained_this_turn = 0;
+                    player.ban_attacking_this_turn = false;
+                }
 
                 for ability in db.gc_abilities.drain(..) {
                     db.activated_abilities.remove(&ability);

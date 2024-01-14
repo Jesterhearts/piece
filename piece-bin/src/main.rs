@@ -184,6 +184,13 @@ fn main() -> anyhow::Result<()> {
     }
     database.all_players[player1].library = def.build_deck(&mut database, &cards, player1);
 
+    let mut def = DeckDefinition::default();
+    def.add_card("Plains".to_string(), 100);
+    database.all_players[player2].library = def.build_deck(&mut database, &cards, player2);
+
+    Player::draw_initial_hand(&mut database, player1);
+    Player::draw_initial_hand(&mut database, player2);
+
     let reader = index.reader()?;
     let searcher = reader.searcher();
     let mut parser = QueryParser::for_index(

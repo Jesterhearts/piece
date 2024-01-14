@@ -44,7 +44,7 @@ message Restriction {
   message IsPermanent {}
   message ControllerJustCast {}
   message LifeGainedThisTurn {
-    int32 count = 1;
+    uint32 count = 1;
   }
   message Locations {
     repeated Location locations = 1;

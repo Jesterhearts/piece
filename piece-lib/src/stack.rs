@@ -301,12 +301,8 @@ impl StackEntry {
                     }
                 }
                 restriction::Restriction::LifeGainedThisTurn(count) => {
-                    let gained_this_turn = db
-                        .turn
-                        .life_gained_this_turn
-                        .get(&Owner::from(spell_or_ability_controller))
-                        .copied()
-                        .unwrap_or_default() as i32;
+                    let gained_this_turn =
+                        db.all_players[spell_or_ability_controller].life_gained_this_turn;
                     if gained_this_turn < count.count {
                         return false;
                     }

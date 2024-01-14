@@ -958,10 +958,7 @@ impl ActionResult {
             }
             ActionResult::GainLife { target, count } => {
                 db.all_players[*target].life_total += *count as i32;
-                *db.turn
-                    .life_gained_this_turn
-                    .entry(Owner::from(*target))
-                    .or_default() += *count;
+                db.all_players[*target].life_gained_this_turn += *count;
                 PendingResults::default()
             }
             ActionResult::DeclareAttackers { attackers, targets } => {
@@ -1118,7 +1115,7 @@ impl ActionResult {
                 PendingResults::default()
             }
             ActionResult::BanAttacking(player) => {
-                db.turn.ban_attacking_this_turn.insert(*player);
+                db.all_players[*player].ban_attacking_this_turn = true;
                 PendingResults::default()
             }
             ActionResult::IfWasThen {

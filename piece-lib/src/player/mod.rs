@@ -125,12 +125,7 @@ impl Owner {
                     return false;
                 }
                 restriction::Restriction::LifeGainedThisTurn(count) => {
-                    let life_gained = db
-                        .turn
-                        .life_gained_this_turn
-                        .get(&self)
-                        .copied()
-                        .unwrap_or_default() as i32;
+                    let life_gained = db.all_players[self].life_gained_this_turn;
                     if life_gained < count.count {
                         return false;
                     }
@@ -322,8 +317,10 @@ impl AllPlayers {
                 name,
                 hexproof: false,
                 life_total,
-                lands_played: 0,
                 hand_size: 7,
+                lands_played_this_turn: 0,
+                life_gained_this_turn: 0,
+                ban_attacking_this_turn: false,
                 mana_pool: Default::default(),
                 library: Library::empty(),
                 lost: false,
@@ -344,9 +341,12 @@ pub struct Player {
 
     #[allow(unused)]
     pub(crate) hexproof: bool,
-    pub(crate) lands_played: usize,
     pub(crate) hand_size: usize,
     pub mana_pool: ManaPool,
+
+    pub(crate) lands_played_this_turn: usize,
+    pub(crate) ban_attacking_this_turn: bool,
+    pub(crate) life_gained_this_turn: u32,
 
     pub life_total: i32,
 
@@ -370,9 +370,9 @@ impl Player {
         }
     }
 
-    pub fn draw_initial_hand(&mut self, db: &mut Database) {
+    pub fn draw_initial_hand(db: &mut Database, player: Owner) {
         for _ in 0..7 {
-            let card = self
+            let card = db.all_players[player]
                 .library
                 .draw()
                 .expect("Decks should have at least 7 cards");
@@ -446,15 +446,13 @@ impl Player {
     pub fn play_card(db: &mut Database, player: Owner, card: CardId) -> PendingResults {
         assert!(db.hand[player].contains(&card));
 
-        if card.is_land(db)
-            && db.all_players[player].lands_played >= Self::lands_per_turn(db, player)
-        {
+        if card.is_land(db) && !Self::can_play_land(db, player) {
             return PendingResults::default();
         }
 
         let mut db = scopeguard::guard(db, |db| db.stack.settle());
         if card.is_land(&db) {
-            db.all_players[player].lands_played += 1;
+            db.all_players[player].lands_played_this_turn += 1;
             return Battlefields::add_from_stack_or_hand(&mut db, card, None);
         }
 
@@ -570,5 +568,9 @@ impl Player {
                 }
             })
             .sum::<usize>()
+    }
+
+    pub(crate) fn can_play_land(db: &mut Database, player: Owner) -> bool {
+        db.all_players[player].lands_played_this_turn < Self::lands_per_turn(db, player)
     }
 }
