@@ -1,12 +1,10 @@
-use std::{
-    collections::HashSet,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::collections::HashSet;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
 use protobuf::Enum;
 use tracing::Level;
+use uuid::Uuid;
 
 use crate::{
     abilities::Ability,
@@ -43,14 +41,12 @@ use crate::{
     },
 };
 
-static NEXT_STACK_ID: AtomicUsize = AtomicUsize::new(0);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct StackId(usize);
+pub(crate) struct StackId(Uuid);
 
 impl StackId {
     pub(crate) fn new() -> Self {
-        Self(NEXT_STACK_ID.fetch_add(1, Ordering::Relaxed))
+        Self(Uuid::new_v4())
     }
 }
 

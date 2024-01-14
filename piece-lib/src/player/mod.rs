@@ -2,13 +2,13 @@ pub(crate) mod mana_pool;
 
 use std::{
     ops::{Index, IndexMut},
-    sync::atomic::{AtomicUsize, Ordering},
     vec::IntoIter,
 };
 
 use indexmap::IndexMap;
 use itertools::Itertools;
 use strum::IntoEnumIterator;
+use uuid::Uuid;
 
 use crate::{
     action_result::ActionResult,
@@ -36,10 +36,8 @@ use crate::{
     stack::Stack,
 };
 
-static NEXT_PLAYER_ID: AtomicUsize = AtomicUsize::new(0);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Owner(usize);
+pub struct Owner(Uuid);
 
 impl From<Controller> for Owner {
     fn from(value: Controller) -> Self {
@@ -256,7 +254,7 @@ impl Owner {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Controller(usize);
+pub struct Controller(Uuid);
 
 impl From<Owner> for Controller {
     fn from(value: Owner) -> Self {
@@ -317,7 +315,7 @@ pub struct AllPlayers {
 impl AllPlayers {
     #[must_use]
     pub fn new_player(&mut self, name: String, life_total: i32) -> Owner {
-        let id = Owner(NEXT_PLAYER_ID.fetch_add(1, Ordering::Relaxed));
+        let id = Owner(Uuid::new_v4());
         self.players.insert(
             id,
             Player {
