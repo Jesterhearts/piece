@@ -2,6 +2,9 @@ name: Frilled Cave-Wurm
 cost:
   mana_cost: '{3}{U}'
 typeline: Creature - Salamander Wurm
+oracle_text:
+  Descend 4 - Frilled Cave-Wurm gets +2/+0 as long as there are four or more
+  permanent cards in your graveyard.
 static_abilities:
   - ability: !BattlefieldModifier
       modifier:
