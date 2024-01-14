@@ -151,10 +151,7 @@ impl PendingResult for ChooseForEachPlayer {
                     results.chosen_targets.push(choices.clone());
                 }
 
-                if !{
-                    let this = self.card;
-                    this.faceup_face(db).apply_individually
-                } {
+                if !self.card.faceup_face(db).apply_individually {
                     let player = db[self.card].controller;
 
                     let mut effect_or_auras = vec![];

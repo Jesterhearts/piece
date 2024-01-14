@@ -1,0 +1,13 @@
+name: Frilled Cave-Wurm
+cost:
+  mana_cost: '{3}{U}'
+typeline: Creature - Salamander Wurm
+static_abilities:
+  - ability: !BattlefieldModifier
+      modifier:
+        add_power: 2
+      duration: until source leaves battlefield
+      restrictions:
+        - restriction: !Self_
+        - restriction: !Descend
+            count: 4

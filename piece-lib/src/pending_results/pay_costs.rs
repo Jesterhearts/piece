@@ -415,13 +415,7 @@ impl Cost {
             Cost::ExilePermanentsCmcX(exile) => {
                 exile.target = already_chosen
                     .iter()
-                    .map(|target| {
-                        {
-                            let this = target.id().unwrap();
-                            &this.faceup_face(db).cost
-                        }
-                        .cmc()
-                    })
+                    .map(|target| target.id().unwrap().faceup_face(db).cost.cmc())
                     .sum::<usize>();
 
                 let controller = db[source].controller;
