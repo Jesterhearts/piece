@@ -96,11 +96,9 @@ message AbilityCost {
   repeated AbilityRestriction restrictions = 4;
 }
 
-message XIs {
-  message Cmc {}
-  oneof x_is {
-    Cmc cmc = 1;
-  }
+enum XIs {
+  MANA_VALUE = 0;
+  MANA_VALUE_OF_TARGET = 1;
 }
 
 message CostReducer {

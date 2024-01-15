@@ -2185,7 +2185,7 @@ pub(crate) fn target_from_location(db: &Database, card: CardId) -> ActiveTarget 
     } else if db.all_players[db[card].owner].library.cards.contains(&card) {
         ActiveTarget::Library { id: card }
     } else if db.exile[db[card].owner].contains(&card) {
-        todo!()
+        ActiveTarget::Exile { id: card }
     } else if db.hand[db[card].owner].contains(&card) {
         ActiveTarget::Hand { id: card }
     } else {

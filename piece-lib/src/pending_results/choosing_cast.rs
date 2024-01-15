@@ -56,7 +56,12 @@ impl PendingResult for ChoosingCast {
                 self.choosing_to_cast.remove(choice),
                 self.paying_costs,
             );
-            results.extend(cast_results);
+            if cast_results.is_empty() && self.discovering {
+                let card = *self.choosing_to_cast.iter().exactly_one().unwrap();
+                card.move_to_hand(db);
+            } else {
+                results.extend(cast_results);
+            }
             true
         } else {
             if self.discovering {

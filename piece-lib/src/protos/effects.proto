@@ -293,7 +293,16 @@ message DestroyTarget {
 }
 
 message Discover {
-  uint32 count = 1;
+  message X {
+    cost.XIs x_is = 1;
+  }
+  message Fixed {
+    uint32 count = 1;
+  }
+  oneof count {
+    X x = 2;
+    Fixed fixed = 3;
+  }
 }
 
 enum Duration {

@@ -1,4 +1,13 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Discover};
+use itertools::Itertools;
+
+use crate::{
+    action_result::ActionResult,
+    effects::EffectBehaviors,
+    protogen::{
+        cost::XIs,
+        effects::{discover::Count, Discover},
+    },
+};
 
 impl EffectBehaviors for Discover {
     fn needs_targets(
@@ -19,22 +28,28 @@ impl EffectBehaviors for Discover {
 
     fn push_pending_behavior(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
             source,
-            count: self.count,
+            count: match self.count.as_ref().unwrap() {
+                Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
+                    XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
+                    XIs::MANA_VALUE_OF_TARGET => unreachable!(),
+                },
+                Count::Fixed(fixed) => fixed.count,
+            },
             player: controller,
         })
     }
 
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
+        db: &mut crate::in_play::Database,
+        targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
@@ -42,7 +57,16 @@ impl EffectBehaviors for Discover {
     ) {
         results.push_settled(ActionResult::Discover {
             source,
-            count: self.count,
+            count: match self.count.as_ref().unwrap() {
+                Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
+                    XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
+                    XIs::MANA_VALUE_OF_TARGET => {
+                        let card = &db[targets.into_iter().exactly_one().unwrap().id(db).unwrap()];
+                        (card.modified_cost.cmc() + card.x_is) as u32
+                    }
+                },
+                Count::Fixed(fixed) => fixed.count,
+            },
             player: controller,
         })
     }

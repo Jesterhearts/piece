@@ -177,6 +177,17 @@ fn main() {
                         skip_serializing_if="::protobuf::MessageField::is_none"
                     )]"#,
                 )
+            } else if !field.is_repeated()
+                && field.proto().proto3_optional()
+                && field.proto().type_() == Type::TYPE_ENUM
+            {
+                Customize::default().before(
+                    r#"#[serde(
+                        serialize_with = "crate::serialize_optional_enum",
+                        deserialize_with = "crate::deserialize_optional_enum",
+                        default,
+                    )]"#,
+                )
             } else if !field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {
                 Customize::default().before(
                     r#"#[serde(

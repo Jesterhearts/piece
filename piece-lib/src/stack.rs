@@ -68,6 +68,7 @@ pub enum ActiveTarget {
     Battlefield { id: CardId },
     Graveyard { id: CardId },
     Library { id: CardId },
+    Exile { id: CardId },
     Hand { id: CardId },
     Player { id: Owner },
 }
@@ -82,19 +83,12 @@ impl ActiveTarget {
                     db.stack.entries.get(id).unwrap().display(db)
                 )
             }
-            ActiveTarget::Battlefield { id } => {
-                format!("{} - ({})", id.name(db), id)
-            }
-            ActiveTarget::Graveyard { id } => {
-                format!("{} - ({})", id.name(db), id)
-            }
-            ActiveTarget::Library { id } => {
-                format!("{} - ({})", id.name(db), id)
-            }
+            ActiveTarget::Battlefield { id } => id.name(db).clone(),
+            ActiveTarget::Graveyard { id } => id.name(db).clone(),
+            ActiveTarget::Exile { id } => id.name(db).clone(),
+            ActiveTarget::Library { id } => id.name(db).clone(),
             ActiveTarget::Player { id } => db.all_players[*id].name.clone(),
-            ActiveTarget::Hand { id } => {
-                format!("{} - ({})", id.name(db), id)
-            }
+            ActiveTarget::Hand { id } => id.name(db).clone(),
         }
     }
 
@@ -103,7 +97,8 @@ impl ActiveTarget {
             ActiveTarget::Battlefield { id }
             | ActiveTarget::Graveyard { id }
             | ActiveTarget::Library { id }
-            | ActiveTarget::Hand { id } => Some(*id),
+            | ActiveTarget::Hand { id }
+            | ActiveTarget::Exile { id } => Some(*id),
             ActiveTarget::Stack { id } => db.stack.entries.get(id).and_then(|entry| {
                 if let Entry::Card(card) = entry.ty {
                     Some(card)
@@ -932,6 +927,10 @@ pub(crate) fn add_card_to_stack(
                     controller,
                     &HashSet::default(),
                 );
+                if valid_targets.len() < effect.needs_targets(db, card) {
+                    return PendingResults::default();
+                }
+
                 results.push_choose_targets(ChooseTargets::new(
                     TargetSource::Effect(effect.clone()),
                     valid_targets,

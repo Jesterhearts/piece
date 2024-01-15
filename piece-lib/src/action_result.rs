@@ -496,10 +496,7 @@ impl ActionResult {
                     ActiveTarget::Player { id } => {
                         db.all_players[*id].life_total -= *quantity as i32;
                     }
-                    ActiveTarget::Graveyard { .. }
-                    | ActiveTarget::Library { .. }
-                    | ActiveTarget::Stack { .. }
-                    | ActiveTarget::Hand { .. } => unreachable!(),
+                    _ => unreachable!(),
                 }
                 PendingResults::default()
             }

@@ -19,10 +19,10 @@ activated_abilities:
                 controller: !Self_ {}
             - restriction: !OfType
                 types: Artifact
-          x_is:
-            x_is: !Cmc {}
-    oracle_text: '{2}{W}, {T}, Exile one of more other artifacts you conrol with total
-      mana value {X}: Return target artifact card with mana value {X} or less from
+          x_is: mana value of target
+    oracle_text:
+      '{2}{W}, {T}, Exile one of more other artifacts you conrol with total mana
+      value {X}: Return target artifact card with mana value {X} or less from
       your graveyard to the battlefield. Activate only as sorcery.'
     sorcery_speed: true
 mana_abilities:
@@ -33,5 +33,6 @@ mana_abilities:
         gain: '{W}'
     mana_source: any
     mana_restriction: artifact spell or ability
-    oracle_text: '{T}: Add {W}. Spend this mana only to cast an artifact spell or
-      activate an ability of an artifact source.'
+    oracle_text:
+      '{T}: Add {W}. Spend this mana only to cast an artifact spell or activate
+      an ability of an artifact source.'

@@ -747,6 +747,57 @@ where
     deserializer.deserialize_str(Visit::<T>::default())
 }
 
+fn serialize_optional_enum<T, S>(
+    value: &Option<::protobuf::EnumOrUnknown<T>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Serialize + Enum + AsRef<str>,
+{
+    if let Some(value) = value {
+        serializer.serialize_str(&value.enum_value().unwrap().as_ref().to_case(Case::Lower))
+    } else {
+        serializer.serialize_none()
+    }
+}
+
+fn deserialize_optional_enum<'de, T, D>(
+    deserializer: D,
+) -> Result<Option<::protobuf::EnumOrUnknown<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Enum,
+{
+    #[derive(Default)]
+    struct Visit<T> {
+        _p: PhantomData<T>,
+    }
+
+    impl<'de, T> Visitor<'de> for Visit<T>
+    where
+        T: Enum,
+    {
+        type Value = Option<protobuf::EnumOrUnknown<T>>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a comma separate sequence of values")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            T::from_str(&v.to_case(Case::ScreamingSnake))
+                .map(protobuf::EnumOrUnknown::new)
+                .ok_or_else(|| E::custom(format!("Unknown variant: {}", v)))
+                .map(Some)
+        }
+    }
+
+    deserializer.deserialize_str(Visit::<T>::default())
+}
+
 fn serialize_counter<S>(
     value: &::protobuf::EnumOrUnknown<Counter>,
     serializer: S,
