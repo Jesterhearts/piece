@@ -13,6 +13,7 @@ message Restriction {
   message Attacking {}
   message AttackingOrBlocking {}
   message CastFromHand {}
+  message Chosen {}
   message Cmc {
     oneof cmc {
       Dynamic dynamic = 1;
@@ -94,38 +95,39 @@ message Restriction {
     Attacking attacking = 3;
     AttackingOrBlocking attacking_or_blocking = 4;
     CastFromHand cast_from_hand = 5;
-    Cmc cmc = 6;
-    Controller controller = 7;
-    ControllerControlsColors controller_controls_colors = 8;
-    ControllerHandEmpty controller_hand_empty = 9;
-    ControllerJustCast controller_just_cast = 17;
-    Descend descend = 10;
-    DescendedThisTurn descended_this_turn = 11;
-    DuringControllersTurn during_controllers_turn = 12;
-    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 13;
-    HasActivatedAbility has_activated_ability = 14;
-    InGraveyard in_graveyard = 15;
-    IsPermanent is_permanent = 16;
-    LifeGainedThisTurn life_gained_this_turn = 18;
-    Locations location = 19;
-    ManaSpentFromSource mana_spent_from_source = 20;
-    NonToken non_token = 21;
-    NotChosen not_chosen = 22;
-    NotKeywords not_keywords = 23;
-    NotOfType not_of_type = 24;
-    NotSelf not_self = 25;
-    NumberOfCountersOnThis number_of_counters_on_this = 26;
-    OfColor of_color = 27;
-    OfType of_type = 28;
-    OnBattlefield on_battlefield = 29;
-    Power power = 30;
-    Self self = 31;
-    SourceCast source_cast = 32;
-    SpellOrAbilityJustCast spell_or_ability_just_cast = 33;
-    Tapped tapped = 34;
-    TargetedBy targeted_by = 35;
-    Threshold threshold = 36;
-    Toughness toughness = 37;
+    Chosen chosen = 6;
+    Cmc cmc = 7;
+    Controller controller = 8;
+    ControllerControlsColors controller_controls_colors = 9;
+    ControllerHandEmpty controller_hand_empty = 10;
+    ControllerJustCast controller_just_cast = 11;
+    Descend descend = 12;
+    DescendedThisTurn descended_this_turn = 13;
+    DuringControllersTurn during_controllers_turn = 14;
+    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 15;
+    HasActivatedAbility has_activated_ability = 16;
+    InGraveyard in_graveyard = 17;
+    IsPermanent is_permanent = 18;
+    LifeGainedThisTurn life_gained_this_turn = 19;
+    Locations location = 20;
+    ManaSpentFromSource mana_spent_from_source = 21;
+    NonToken non_token = 22;
+    NotChosen not_chosen = 23;
+    NotKeywords not_keywords = 24;
+    NotOfType not_of_type = 25;
+    NotSelf not_self = 26;
+    NumberOfCountersOnThis number_of_counters_on_this = 27;
+    OfColor of_color = 28;
+    OfType of_type = 29;
+    OnBattlefield on_battlefield = 30;
+    Power power = 31;
+    Self self = 32;
+    SourceCast source_cast = 33;
+    SpellOrAbilityJustCast spell_or_ability_just_cast = 34;
+    Tapped tapped = 35;
+    TargetedBy targeted_by = 36;
+    Threshold threshold = 37;
+    Toughness toughness = 38;
   }
 }
 

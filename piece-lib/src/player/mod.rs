@@ -20,7 +20,6 @@ use crate::{
     pending_results::PendingResults,
     player::mana_pool::{ManaPool, SpendReason},
     protogen::{
-        color::Color,
         cost::ManaCost,
         effects::{static_ability, ReplacementEffect},
         mana::{Mana, ManaRestriction, ManaSource},
@@ -243,6 +242,9 @@ impl Owner {
                     return false;
                 }
                 restriction::Restriction::IsPermanent(_) => {
+                    return false;
+                }
+                restriction::Restriction::Chosen(_) => {
                     return false;
                 }
             }

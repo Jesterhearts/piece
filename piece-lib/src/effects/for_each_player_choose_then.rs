@@ -16,7 +16,11 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
-        db.all_players.all_players().len()
+        if self.is_optional {
+            0
+        } else {
+            db.all_players.all_players().len()
+        }
     }
 
     fn wants_targets(

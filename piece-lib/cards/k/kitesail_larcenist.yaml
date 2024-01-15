@@ -1,0 +1,57 @@
+name: Kitesail Larcenist
+cost:
+  mana_cost: '{2}{U}'
+typeline: Creature - Human Pirate
+keywords: Flying
+triggered_abilities:
+  - trigger:
+      source: targeted
+      from: anywhere
+      restrictions:
+        - restriction: !TargetedBy {}
+    effects:
+      - oracle_text: Counter spell or ability unless its controller pays {1}
+        effect: !CounterSpellUnlessPay
+          restrictions:
+            - restriction: !TargetedBy {}
+          cost: !Fixed
+            count: 1
+    oracle_text: Ward {1}
+etb_abilities:
+  - oracle_text: >-
+      When Kitesail Larcenist enters the battlefield, for each player, choose up to
+      one other target artifact or creature that player controls. For as long as Kitesail
+      Larcenist remains on the battlefield, the chosen permanents become Treasure
+      artifacts with “{T}, Sacrifice this artifact: Add one mana of any color” and
+      lose all other abilities.
+    effect: !ForEachPlayerChooseThen
+      is_optional: true
+      restrictions:
+        - restriction: !OfType
+            types: Artifact, Creature
+        - restriction: !OnBattlefield {}
+      effects:
+        - effect: !ModifyTarget
+            modifier:
+              remove_all_types: true
+              remove_all_subtypes: true
+              remove_all_abilities: true
+            duration: until source leaves battlefield
+            restrictions:
+              - restriction: !Chosen {}
+        - effect: !ModifyTarget
+            modifier:
+              add_types: Artifact
+              add_subtypes: Treasure
+              mana_ability:
+                cost:
+                  tap: true
+                  additional_costs:
+                    - cost: !SacrificeSource {}
+                gain_mana:
+                  gain: !Choice
+                    choices: '{W}, {U}, {B}, {R}, {G}'
+                oracle_text: '{T}, Sacrifice this artifact: Add one mana of any color.'
+            duration: until source leaves battlefield
+            restrictions:
+              - restriction: !Chosen {}

@@ -185,6 +185,7 @@ fn main() {
                     r#"#[serde(
                         serialize_with = "crate::serialize_optional_enum",
                         deserialize_with = "crate::deserialize_optional_enum",
+                        skip_serializing_if="Option::is_none",
                         default,
                     )]"#,
                 )

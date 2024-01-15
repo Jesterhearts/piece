@@ -811,6 +811,11 @@ impl CardId {
                 applied_modifiers.insert(id);
                 subtypes.retain(|ty| !ty.is_creature_type());
             }
+
+            if modifier.modifier.modifier.remove_all_subtypes {
+                applied_modifiers.insert(id);
+                subtypes.clear();
+            }
         }
 
         for id in modifiers.iter().copied() {
@@ -1424,6 +1429,16 @@ impl CardId {
                 }
                 restriction::Restriction::CastFromHand(_) => {
                     if !matches!(db[self].cast_from, Some(CastFrom::Hand)) {
+                        return false;
+                    }
+                }
+                restriction::Restriction::Chosen(_) => {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
+                        let LogEntry::CardChosen { card } = entry else {
+                            return false;
+                        };
+                        *card == self
+                    }) {
                         return false;
                     }
                 }

@@ -358,7 +358,8 @@ message ForEachManaOfSource {
 
 message ForEachPlayerChooseThen {
   repeated targets.Restriction restrictions = 1;
-  repeated Effect effects = 2;
+  bool is_optional = 2;
+  repeated Effect effects = 3;
 }
 
 message GainLife {
@@ -416,12 +417,13 @@ message ModifyBattlefield {
   repeated StaticAbility add_static_abilities = 13;
   bool remove_all_creature_types = 14;
   bool remove_all_types = 15;
-  bool remove_all_colors = 16;
-  bool remove_all_abilities = 17;
-  bool entire_battlefield = 18;
-  bool global = 19;
-  map<int32, uint32> add_keywords = 20;
-  map<int32, uint32> remove_keywords = 21;
+  bool remove_all_subtypes = 16;
+  bool remove_all_colors = 17;
+  bool remove_all_abilities = 18;
+  bool entire_battlefield = 19;
+  bool global = 20;
+  map<int32, uint32> add_keywords = 21;
+  map<int32, uint32> remove_keywords = 22;
 }
 
 message MultiplyTokens {

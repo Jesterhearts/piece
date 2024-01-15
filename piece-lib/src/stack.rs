@@ -25,7 +25,6 @@ use crate::{
     player::{mana_pool::SpendReason, Owner},
     protogen::{
         abilities::TriggeredAbility,
-        color::Color,
         cost::additional_cost::{self, ExileXOrMoreCards},
         keywords::Keyword,
         targets::{
@@ -168,6 +167,9 @@ impl StackEntry {
                     if !matches!(db[*card].cast_from, Some(CastFrom::Hand)) {
                         return false;
                     }
+                }
+                restriction::Restriction::Chosen(_) => {
+                    return false;
                 }
                 restriction::Restriction::Cmc(cmc_test) => {
                     let Entry::Card(card) = &self.ty else {
