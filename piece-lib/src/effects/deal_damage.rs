@@ -1,6 +1,9 @@
+use std::collections::HashSet;
+
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
         effects::{effect::Effect, DealDamage},
@@ -93,18 +96,31 @@ impl EffectBehaviors for DealDamage {
 
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        source: crate::in_play::CardId,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
+        let valid = self
+            .valid_targets(
+                db,
+                source,
+                LogId::current(db),
+                controller,
+                &HashSet::default(),
+            )
+            .into_iter()
+            .collect::<HashSet<_>>();
+
         for target in targets {
-            results.push_settled(ActionResult::DamageTarget {
-                quantity: self.quantity,
-                target,
-            });
+            if valid.contains(&target) {
+                results.push_settled(ActionResult::DamageTarget {
+                    quantity: self.quantity,
+                    target,
+                });
+            }
         }
     }
 }

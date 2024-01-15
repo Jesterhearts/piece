@@ -57,15 +57,17 @@ fn copies_permanent() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Add the trigger to the stack
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-
-    // Resolve the trigger
-    let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::Complete);
+
+    dbg!(&db.stack);
+    // Resolve the trigger
+    let mut results = Stack::resolve_1(&mut db);
+    dbg!(&results);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

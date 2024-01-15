@@ -188,7 +188,7 @@ pub(crate) enum ActionResult {
     ManifestTopOfLibrary(Controller),
     Mill {
         count: u32,
-        targets: Vec<ActiveTarget>,
+        target: ActiveTarget,
     },
     ModifyCreatures {
         targets: Vec<ActiveTarget>,
@@ -210,13 +210,13 @@ pub(crate) enum ActionResult {
         under_cards: u32,
     },
     ReturnFromGraveyardToBattlefield {
-        targets: Vec<ActiveTarget>,
+        target: ActiveTarget,
     },
     ReturnFromGraveyardToHand {
-        targets: Vec<ActiveTarget>,
+        target: ActiveTarget,
     },
     ReturnFromGraveyardToLibrary {
-        targets: Vec<ActiveTarget>,
+        target: ActiveTarget,
     },
     ReturnTransformed {
         target: CardId,
@@ -356,52 +356,44 @@ impl ActionResult {
                 modifier.activate(&mut db.modifiers);
                 PendingResults::default()
             }
-            ActionResult::Mill { count, targets } => {
+            ActionResult::Mill { count, target } => {
                 let mut pending = PendingResults::default();
-                for target in targets {
-                    let ActiveTarget::Player { id: target } = target else {
-                        unreachable!()
-                    };
+                let ActiveTarget::Player { id: target } = target else {
+                    unreachable!()
+                };
 
-                    for _ in 0..*count {
-                        let card_id = db.all_players[*target].library.draw();
-                        if let Some(card_id) = card_id {
-                            pending.extend(Battlefields::library_to_graveyard(db, card_id));
-                        }
+                for _ in 0..*count {
+                    let card_id = db.all_players[*target].library.draw();
+                    if let Some(card_id) = card_id {
+                        pending.extend(Battlefields::library_to_graveyard(db, card_id));
                     }
                 }
 
                 pending
             }
-            ActionResult::ReturnFromGraveyardToLibrary { targets } => {
-                for target in targets {
-                    let ActiveTarget::Graveyard { id: target } = target else {
-                        unreachable!()
-                    };
+            ActionResult::ReturnFromGraveyardToLibrary { target } => {
+                let ActiveTarget::Graveyard { id: target } = target else {
+                    unreachable!()
+                };
 
-                    Library::place_on_top(db, db[*target].owner, *target);
-                }
+                Library::place_on_top(db, db[*target].owner, *target);
                 PendingResults::default()
             }
-            ActionResult::ReturnFromGraveyardToBattlefield { targets } => {
+            ActionResult::ReturnFromGraveyardToBattlefield { target } => {
                 let mut pending = PendingResults::default();
-                for target in targets {
-                    let ActiveTarget::Graveyard { id: target } = target else {
-                        unreachable!()
-                    };
-                    pending.extend(Battlefields::add_from_stack_or_hand(db, *target, None));
-                }
+                let ActiveTarget::Graveyard { id: target } = target else {
+                    unreachable!()
+                };
+                pending.extend(Battlefields::add_from_stack_or_hand(db, *target, None));
 
                 pending
             }
-            ActionResult::ReturnFromGraveyardToHand { targets } => {
-                for target in targets {
-                    let ActiveTarget::Battlefield { id } = target else {
-                        unreachable!()
-                    };
+            ActionResult::ReturnFromGraveyardToHand { target } => {
+                let ActiveTarget::Battlefield { id } = target else {
+                    unreachable!()
+                };
 
-                    id.move_to_hand(db);
-                }
+                id.move_to_hand(db);
 
                 PendingResults::default()
             }

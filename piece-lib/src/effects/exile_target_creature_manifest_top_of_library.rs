@@ -1,6 +1,9 @@
+use std::collections::HashSet;
+
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
         effects::{effect::Effect, Duration, ExileTargetCreatureManifestTopOfLibrary},
@@ -84,19 +87,32 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        for target in targets {
-            results.push_settled(ActionResult::ExileTarget {
+        let valid = self
+            .valid_targets(
+                db,
                 source,
-                target,
-                duration: Duration::PERMANENTLY.into(),
-                reason: None,
-            });
-            results.push_settled(ActionResult::ManifestTopOfLibrary(
-                db[target.id(db).unwrap()].controller,
-            ));
+                LogId::current(db),
+                controller,
+                &HashSet::default(),
+            )
+            .into_iter()
+            .collect::<HashSet<_>>();
+
+        for target in targets {
+            if valid.contains(&target) {
+                results.push_settled(ActionResult::ExileTarget {
+                    source,
+                    target,
+                    duration: Duration::PERMANENTLY.into(),
+                    reason: None,
+                });
+                results.push_settled(ActionResult::ManifestTopOfLibrary(
+                    db[target.id(db).unwrap()].controller,
+                ));
+            }
         }
     }
 }

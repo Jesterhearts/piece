@@ -658,35 +658,7 @@ impl Stack {
             .into_iter()
             .zip((&mut targets).chain(std::iter::repeat(vec![])))
         {
-            let effect = effect.effect.unwrap();
-
-            if effect.wants_targets(db, source) > 0 {
-                let valid_targets = effect
-                    .valid_targets(
-                        db,
-                        source,
-                        crate::log::LogId::current(db),
-                        controller,
-                        &HashSet::default(),
-                    )
-                    .into_iter()
-                    .collect::<HashSet<_>>();
-                if !targets.iter().all(|target| valid_targets.contains(target)) {
-                    warn!(
-                        "Did not match targets: {:?} vs valid {:?}",
-                        targets, valid_targets
-                    );
-                    if let Some(resolving_card) = resolving_card {
-                        let mut results = PendingResults::default();
-                        results.push_settled(ActionResult::StackToGraveyard(resolving_card));
-                        return results;
-                    } else {
-                        return PendingResults::default();
-                    }
-                }
-            }
-
-            effect.push_behavior_with_targets(
+            effect.effect.unwrap().push_behavior_with_targets(
                 db,
                 targets,
                 apply_to_self,
@@ -733,20 +705,12 @@ impl Stack {
             .any(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source) > 0)
         {
             for effect in ability.effects(db).into_iter() {
-                let effect = effect.effect.unwrap();
-                let valid_targets = effect.valid_targets(
+                effect.effect.unwrap().push_pending_behavior(
                     db,
                     source,
-                    LogId::current(db),
                     db[source].controller,
-                    results.all_currently_targeted(),
+                    &mut results,
                 );
-                results.push_choose_targets(ChooseTargets::new(
-                    TargetSource::Effect(effect),
-                    valid_targets,
-                    LogId::current(db),
-                    source,
-                ));
             }
             results.add_ability_to_stack(source, ability);
         } else {

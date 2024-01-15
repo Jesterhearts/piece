@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, TargetGainsCounters},
     stack::ActiveTarget,
@@ -83,17 +86,31 @@ impl EffectBehaviors for TargetGainsCounters {
         ));
     }
 
-    #[instrument(level = Level::INFO, skip(_db, results))]
+    #[instrument(level = Level::INFO, skip(db, results))]
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if let Ok(target) = targets.into_iter().exactly_one() {
+            if !self
+                .valid_targets(
+                    db,
+                    source,
+                    LogId::current(db),
+                    controller,
+                    &HashSet::default(),
+                )
+                .into_iter()
+                .any(|t| t == target)
+            {
+                return;
+            }
+
             let target = match target {
                 ActiveTarget::Battlefield { id } => id,
                 ActiveTarget::Graveyard { id } => id,

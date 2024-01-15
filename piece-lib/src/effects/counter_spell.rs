@@ -1,6 +1,7 @@
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, CounterSpellOrAbility},
     stack::{ActiveTarget, Entry, StackEntry},
@@ -75,19 +76,26 @@ impl EffectBehaviors for CounterSpellOrAbility {
     }
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {
-            let ActiveTarget::Stack { id } = target else {
-                unreachable!()
-            };
+            if target.id(db).unwrap().can_be_countered(
+                db,
+                LogId::current(db),
+                source,
+                &self.restrictions,
+            ) {
+                let ActiveTarget::Stack { id } = target else {
+                    unreachable!()
+                };
 
-            results.push_settled(ActionResult::SpellCountered { index: id });
+                results.push_settled(ActionResult::SpellCountered { index: id });
+            }
         }
     }
 }

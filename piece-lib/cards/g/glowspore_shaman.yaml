@@ -5,18 +5,22 @@ cost:
 apply_individually: true
 etb_abilities:
   - oracle_text: When Glowspore Shaman enters the battlefield, mill three cards.
-    effect: !Mill
-      count: 3
-      restrictions:
-        - restriction: !Controller
-            controller: !Self_ {}
-  - oracle_text: You may put a land card from your graveyard on top of your library.
-    effect: !ReturnFromGraveyardToLibrary
-      count: 1
-      restrictions:
-        - restriction: !Controller
-            controller: !Self_ {}
-        - restriction: !OfType
-            types: Land
+    effect: !ApplyThen
+      apply:
+        - effect: !Mill
+            count: 3
+            restrictions:
+              - restriction: !Controller
+                  controller: !Self_ {}
+      then:
+        - oracle_text: You may put a land card from your graveyard on top of your
+            library.
+          effect: !ReturnFromGraveyardToLibrary
+            count: 1
+            restrictions:
+              - restriction: !Controller
+                  controller: !Self_ {}
+              - restriction: !OfType
+                  types: Land
 power: 3
 toughness: 1

@@ -1,12 +1,14 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::choose_targets::ChooseTargets,
     protogen::effects::{effect::Effect, TapTarget},
-    stack::ActiveTarget,
 };
 
 impl EffectBehaviors for TapTarget {
@@ -75,18 +77,32 @@ impl EffectBehaviors for TapTarget {
         ));
     }
 
-    #[instrument(level = Level::INFO, skip(_db, results))]
+    #[instrument(level = Level::INFO, skip(db, results))]
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        source: crate::in_play::CardId,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if let Ok(ActiveTarget::Battlefield { id }) = targets.into_iter().exactly_one() {
-            results.push_settled(ActionResult::TapPermanent(id))
+        if let Ok(target) = targets.into_iter().exactly_one() {
+            if !self
+                .valid_targets(
+                    db,
+                    source,
+                    LogId::current(db),
+                    controller,
+                    &HashSet::default(),
+                )
+                .into_iter()
+                .any(|t| t == target)
+            {
+                return;
+            }
+
+            results.push_settled(ActionResult::TapPermanent(target.id(db).unwrap()))
         } else {
             warn!("Skipping targeting")
         }

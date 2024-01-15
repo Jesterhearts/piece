@@ -1,8 +1,11 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, TargetCreatureExplores},
     protogen::types::Type,
@@ -70,15 +73,28 @@ impl EffectBehaviors for TargetCreatureExplores {
 
     fn push_behavior_with_targets(
         &self,
-        _db: &mut crate::in_play::Database,
+        db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        source: crate::in_play::CardId,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Explore {
-            target: targets.into_iter().exactly_one().unwrap(),
-        })
+        let target = targets.into_iter().exactly_one().unwrap();
+
+        if !self
+            .valid_targets(
+                db,
+                source,
+                LogId::current(db),
+                controller,
+                &HashSet::default(),
+            )
+            .into_iter()
+            .any(|t| t == target)
+        {
+            return;
+        }
+        results.push_settled(ActionResult::Explore { target })
     }
 }

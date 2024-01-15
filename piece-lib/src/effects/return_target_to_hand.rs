@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, ReturnTargetToHand},
 };
@@ -82,12 +85,26 @@ impl EffectBehaviors for ReturnTargetToHand {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
-        _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        source: crate::in_play::CardId,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if let Ok(Some(target)) = targets.into_iter().exactly_one().map(|t| t.id(db)) {
-            results.push_settled(ActionResult::HandFromBattlefield(target))
+        if let Ok(target) = targets.into_iter().exactly_one() {
+            if !self
+                .valid_targets(
+                    db,
+                    source,
+                    LogId::current(db),
+                    controller,
+                    &HashSet::default(),
+                )
+                .into_iter()
+                .any(|t| t == target)
+            {
+                return;
+            }
+
+            results.push_settled(ActionResult::HandFromBattlefield(target.id(db).unwrap()))
         } else {
             warn!("Skipping targets")
         }

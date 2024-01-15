@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
     in_play::{Database, ModifierId},
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
     protogen::effects::{effect::Effect, BattlefieldModifier, Duration, ModifyTarget},
@@ -84,19 +87,32 @@ impl EffectBehaviors for ModifyTarget {
         targets: Vec<ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
-        _controller: Controller,
+        controller: Controller,
         results: &mut PendingResults,
     ) {
+        let valid = self
+            .valid_targets(
+                db,
+                source,
+                LogId::current(db),
+                controller,
+                &HashSet::default(),
+            )
+            .into_iter()
+            .collect::<HashSet<_>>();
+
         let mut final_targets = vec![];
         for target in targets {
-            match target {
-                ActiveTarget::Battlefield { .. } => {
-                    final_targets.push(target);
+            if valid.contains(&target) {
+                match target {
+                    ActiveTarget::Battlefield { .. } => {
+                        final_targets.push(target);
+                    }
+                    ActiveTarget::Graveyard { .. } => {
+                        final_targets.push(target);
+                    }
+                    _ => unreachable!(),
                 }
-                ActiveTarget::Graveyard { .. } => {
-                    final_targets.push(target);
-                }
-                _ => unreachable!(),
             }
         }
 

@@ -61,6 +61,8 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // resolve the etb
@@ -103,12 +105,12 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Pay for ward
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
@@ -195,6 +197,8 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
@@ -208,12 +212,12 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Pay for ward
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));

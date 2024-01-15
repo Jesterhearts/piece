@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use protobuf::Enum;
@@ -7,6 +7,7 @@ use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
     in_play::ModifierId,
+    log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
         effects::{effect::Effect, BattlefieldModifier, Duration, Equip},
@@ -100,10 +101,25 @@ impl EffectBehaviors for Equip {
         targets: Vec<crate::stack::ActiveTarget>,
         _apply_to_self: bool,
         source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
+        controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let target = targets.into_iter().exactly_one().unwrap();
+
+        if !self
+            .valid_targets(
+                db,
+                source,
+                LogId::current(db),
+                controller,
+                &HashSet::default(),
+            )
+            .into_iter()
+            .any(|t| t == target)
+        {
+            return;
+        }
+
         for modifier in db
             .modifiers
             .iter()

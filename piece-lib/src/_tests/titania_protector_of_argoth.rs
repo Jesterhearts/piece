@@ -33,6 +33,8 @@ fn etb() -> anyhow::Result<()> {
     let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, titania, None);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
@@ -78,6 +80,8 @@ fn graveyard_trigger() -> anyhow::Result<()> {
 
     let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, titania, None);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

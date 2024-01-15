@@ -12,151 +12,154 @@ import "types.proto";
 
 message Effect {
   oneof effect {
+    // Apply an effect, then apply another effect, allowing another round of
+    // choosing targets.
+    ApplyThen apply_then = 1;
     // Apply an effect, then examine the log of results from the effect and
     // compare it to a list of restrictions. If any log entry resulting from the
     // applied effects matches, apply another effect. This is used e.g. to apply
     // an effect if the target that just left the battlefield was tapped.
-    ApplyThenIfWas apply_then_if_was = 1;
+    ApplyThenIfWas apply_then_if_was = 2;
     // Implement the Battle Cry effect. You don't need to use this directly,
     // specifying the Battle Cry keyword in the keyword list is enough.
-    BattleCry battle_cry = 2;
+    BattleCry battle_cry = 3;
     // Apply a modifier to the battlefield without targeting anything. Typically
     // you will want to set the `entire_battlefield` flag to true for the
     // modifier.
-    BattlefieldModifier battlefield_modifier = 3;
+    BattlefieldModifier battlefield_modifier = 4;
     // Prevent target player from attacking this turn.
-    CantAttackThisTurn cant_attack_this_turn = 4;
+    CantAttackThisTurn cant_attack_this_turn = 5;
     // Implement the keyword Cascade. You probably don't want to use this -
     // instead use the Cascade keyword in the keywords list.
-    Cascade cascade = 5;
+    Cascade cascade = 6;
     // The controller of the card triggering the effect discards some number of
     // cards unless they meet some restrictions.
-    ControllerDiscards controller_discards = 6;
+    ControllerDiscards controller_discards = 7;
     // The controller of the card triggering the effect draws some number of
     // cards.
-    ControllerDrawsCards controller_draws_cards = 7;
+    ControllerDrawsCards controller_draws_cards = 8;
     // The controller of the card triggering the effect loses life unless they
     // meet some restrictions.
-    ControllerLosesLife controller_loses_life = 8;
+    ControllerLosesLife controller_loses_life = 9;
     // Copy any creature on the battlefield without checking if it can be
     // targetted (i.e. ignore hexproof and shroud). This is used to implement
     // e.g. Clone.
-    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 9;
+    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 10;
     // Copy a spell or ability on the stack
-    CopySpellOrAbility copy_spell_or_ability = 10;
+    CopySpellOrAbility copy_spell_or_ability = 11;
     // Counter a spell.
-    CounterSpellOrAbility counter_spell_or_ability = 11;
+    CounterSpellOrAbility counter_spell_or_ability = 12;
     // Counter spell unless the spell's controller pays some cost.
-    CounterSpellUnlessPay counter_spell_unless_pay = 12;
+    CounterSpellUnlessPay counter_spell_unless_pay = 13;
     // Create a token.
-    CreateToken create_token = 13;
+    CreateToken create_token = 14;
     // Create a token copy of another permanent with some modifiers applied.
-    CreateTokenCopy create_token_copy = 14;
+    CreateTokenCopy create_token_copy = 15;
     // Implement the cycling keyword. If there are restrictions listed for the
     // effect, it will act as a tutor for matching cards. If no restrictions are
     // specified, it will default to drawing a card.
-    Cycling cycling = 15;
+    Cycling cycling = 16;
     // Deal some amount of damage to any target, narrowed by restrictions.
-    DealDamage deal_damage = 16;
+    DealDamage deal_damage = 17;
     // Destroy each permanent matching some set of restrictions.
-    DestroyEach destroy_each = 17;
+    DestroyEach destroy_each = 18;
     // Destroy a target permanent from a target list narrowed by restrictions.
-    DestroyTarget destroy_target = 18;
+    DestroyTarget destroy_target = 19;
     // Implement the Discover keyword.
-    Discover discover = 19;
+    Discover discover = 20;
     // Apply modifiers to a target using the Equip mechanics.
-    Equip equip = 20;
+    Equip equip = 21;
     // Examine the top N cards of the effect controller's library and give the
     // player a choice of where to move the cards to. This is used to implement
     // e.g. Confounding Riddle's effect.
-    ExamineTopCards examine_top_cards = 21;
+    ExamineTopCards examine_top_cards = 22;
     // Exile a target from a list narrowed by a set of restrictions.
-    ExileTarget exile_target = 22;
+    ExileTarget exile_target = 23;
     // TODO: This should probably be split into two separate effects. It is
     // currently used to implement just Reality Shift.
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 23;
+        exile_target_creature_manifest_top_of_library = 24;
     // Exile the graveyard of target player.
-    ExileTargetGraveyard exile_target_graveyard = 24;
+    ExileTargetGraveyard exile_target_graveyard = 25;
     // For each mana from a particular source (e.g. cave or treasure) spent on
     // casting this effect's card, apply some effects.
-    ForEachManaOfSource for_each_mana_of_source = 25;
+    ForEachManaOfSource for_each_mana_of_source = 26;
     // Choose a permanent matching some list of restrictions for each player,
     // then apply some effects.
-    ForEachPlayerChooseThen for_each_player_choose_then = 26;
+    ForEachPlayerChooseThen for_each_player_choose_then = 27;
     // The controller of this effect gains life.
-    GainLife gain_life = 27;
+    GainLife gain_life = 28;
     // If the source of this effect passes some restrictions, apply some
     // effects. Otherwise, apply a different set of effects. This is used to
     // implement e.g. threshold.
-    IfThenElse if_then_else = 28;
+    IfThenElse if_then_else = 29;
     // Mill some number of cards for a target player.
-    Mill mill = 29;
+    Mill mill = 30;
     // Offer the controller of this effect a choice between several modes, then
     // apply the chosen effects.
-    Modes modal = 30;
+    Modes modal = 31;
     // Apply a modifier to a specific target from a list of valid targets.
-    ModifyTarget modify_target = 31;
+    ModifyTarget modify_target = 32;
     // Multiply the number of tokens created. This is only applied as a
     // replacement effect.
-    MultiplyTokens multiply_tokens = 32;
+    MultiplyTokens multiply_tokens = 33;
     // Ask the controller of this effect to pay some cost, then apply some
     // effects if they paid the cost.
-    PayCostThen pay_cost_then = 33;
+    PayCostThen pay_cost_then = 34;
     // Return a card from the graveyard to the battlefield.
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 34;
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 35;
     // Return a card from the graveyard to the hand. TODO: This should probably
     // be merged with ReturnTargetToHand.
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 35;
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 36;
     // Return a card from the graveyard to the library. TODO: This should
     // probably be merged with TargetToTopOfLibrary.
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 36;
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 37;
     // Return the card associated with this effect to hand.
-    ReturnSelfToHand return_self_to_hand = 37;
+    ReturnSelfToHand return_self_to_hand = 38;
     // Return target card to the hand.
-    ReturnTargetToHand return_target_to_hand = 38;
+    ReturnTargetToHand return_target_to_hand = 39;
     // Return a card from exile or graveyard to the battlefield transformed.
-    ReturnTransformed return_transformed = 39;
+    ReturnTransformed return_transformed = 40;
     // Reveal the top card of each player's library, then apply some effects
     // depending on the revealed cards.
-    RevealEachTopOfLibrary reveal_each_top_of_library = 40;
+    RevealEachTopOfLibrary reveal_each_top_of_library = 41;
     // Scry some number of cards.
-    Scry scry = 41;
+    Scry scry = 42;
     // The card with the effect explores.
-    SelfExplores self_explores = 42;
+    SelfExplores self_explores = 43;
     // Tap a target permanent. This automatically narrows the list of targets to
     // targets on the battlefield.
-    TapTarget tap_target = 43;
+    TapTarget tap_target = 44;
     // Tap the card associated with this effect.
-    TapThis tap_this = 44;
+    TapThis tap_this = 45;
     // The controller of something targetted by another effect gets a token.
-    TargetControllerGainsTokens target_controller_gains_tokens = 45;
+    TargetControllerGainsTokens target_controller_gains_tokens = 46;
     // A target permanent on battlefield, narrowed by restrictions, becomes a
     // copy of another permanent spell or on the battlefield, narrowed by
     // restrictions.
-    TargetCopiesPermanent target_copies_permanent = 46;
+    TargetCopiesPermanent target_copies_permanent = 47;
     // The targetted creature explores. This automatically narrows the list of
     // valid targets to creatures on the battlefield.
-    TargetCreatureExplores target_creature_explores = 47;
+    TargetCreatureExplores target_creature_explores = 48;
     // Place some number of counters on a target, narrowed by a list of
     // restrictions.
-    TargetGainsCounters target_gains_counters = 48;
+    TargetGainsCounters target_gains_counters = 49;
     // Return target to the top of its owner's library.
-    TargetToTopOfLibrary target_to_top_of_library = 49;
+    TargetToTopOfLibrary target_to_top_of_library = 50;
     // Transform in place on the battlefield. This will preserve equipment and
     // auras attached to the transformed card.
-    Transform transform = 50;
+    Transform transform = 51;
     // Search the library for cards matching some set of restrictions and allow
     // the player to move it to a location.
-    TutorLibrary tutor_library = 51;
+    TutorLibrary tutor_library = 52;
     // Untap the card associated with this effect.
-    UntapThis untap_this = 52;
+    UntapThis untap_this = 53;
     // Untap a target permanent. THis automatically narrows the list of targets
     // to targets on the battlefield.
-    UntapTarget untap_target = 53;
+    UntapTarget untap_target = 54;
   }
 
-  string oracle_text = 54;
+  string oracle_text = 55;
 }
 
 message ActivatedAbility {
@@ -166,6 +169,11 @@ message ActivatedAbility {
   string oracle_text = 4;
   bool sorcery_speed = 5;
   bool craft = 6;
+}
+
+message ApplyThen {
+  repeated Effect apply = 1;
+  repeated Effect then = 2;
 }
 
 message ApplyThenIfWas {
