@@ -49,32 +49,25 @@ fn copies_permanent() -> anyhow::Result<()> {
     // Spend the myriad pools mana
     let result = results.resolve(&mut db, Some(2));
     assert_eq!(result, ResolutionResult::PendingChoice);
-    dbg!(&db.stack.entries);
     // Fill in the rest of the generic mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    dbg!(&db.stack.entries);
 
     // Add the card to the stack
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
-    dbg!(&db.stack.entries);
     // Add the trigger to the stack
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-
-    dbg!(&db.stack.entries);
 
     // Resolve the trigger
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::PendingChoice);
-    dbg!(results.options(&mut db));
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    dbg!(results.options(&mut db));
 
     assert_eq!(db[card].cloned_id, Some(elesh));
 

@@ -68,10 +68,6 @@ pub(crate) enum ActionResult {
         card: CardId,
         enters_tapped: bool,
     },
-    AddTriggerToStack {
-        source: CardId,
-        trigger: TriggeredAbility,
-    },
     ApplyAuraToTarget {
         aura_source: CardId,
         target: ActiveTarget,
@@ -334,6 +330,8 @@ impl ActionResult {
                     {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
+                } else {
+                    Log::triggered(db, *source);
                 }
                 results.extend(Stack::push_ability(
                     db,
@@ -344,12 +342,6 @@ impl ActionResult {
 
                 results
             }
-            ActionResult::AddTriggerToStack { source, trigger } => Stack::push_ability(
-                db,
-                *source,
-                Ability::EtbOrTriggered(trigger.effects.clone()),
-                vec![],
-            ),
             ActionResult::CloneCard { cloning, cloned } => {
                 cloning.clone_card(db, *cloned);
                 PendingResults::default()

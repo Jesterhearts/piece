@@ -46,7 +46,6 @@ fn damages_target() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    dbg!(&results);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
     assert_eq!(bear.marked_damage(&db), 3);

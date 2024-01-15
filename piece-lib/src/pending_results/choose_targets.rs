@@ -6,10 +6,9 @@ use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
     in_play::{CardId, Database},
-    log::{Log, LogId},
+    log::LogId,
     pending_results::{Pending, PendingResult, PendingResults, TargetSource},
-    protogen::triggers::TriggerSource,
-    stack::{ActiveTarget, Stack},
+    stack::ActiveTarget,
 };
 
 #[derive(Debug, Clone)]
@@ -165,28 +164,6 @@ impl PendingResult for ChooseTargets {
 
                 if results.add_to_stack.is_none() {
                     let player = db[self.card].controller;
-
-                    for target in choices.iter() {
-                        if let ActiveTarget::Battlefield { id } = target {
-                            Log::targetted(db, self.card, *id);
-                            for (listener, trigger) in
-                                db.active_triggers_of_source(TriggerSource::TARGETED)
-                            {
-                                if listener == *id
-                                    && self.card.passes_restrictions(
-                                        db,
-                                        LogId::current(db),
-                                        listener,
-                                        &trigger.trigger.restrictions,
-                                    )
-                                {
-                                    results.extend(Stack::move_trigger_to_stack(
-                                        db, listener, trigger,
-                                    ));
-                                }
-                            }
-                        }
-                    }
 
                     match effect_or_aura {
                         TargetSource::Effect(effect) => {

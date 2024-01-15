@@ -497,6 +497,9 @@ impl PendingResults {
                     }
                     Source::Effect(_, _) => unreachable!(),
                 }
+
+                self.chosen_modes.clear();
+                self.chosen_targets.clear();
             } else if !self.gain_mana.is_empty() {
                 for (source, gain) in self.gain_mana.drain(..) {
                     let target = db[source].controller;
@@ -554,6 +557,9 @@ impl PendingResults {
                         }),
                     }
                 }
+
+                self.chosen_targets.clear();
+                self.chosen_modes.clear();
             }
 
             if !self.settled_effects.is_empty() {

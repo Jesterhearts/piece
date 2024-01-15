@@ -789,7 +789,7 @@ pub(crate) fn move_card_to_battlefield(
     }
 
     if !db[source_card_id].modified_etb_abilities.is_empty() {
-        results.extend(Stack::move_etb_ability_to_stack(
+        results.extend(Stack::move_ability_to_stack(
             db,
             Ability::EtbOrTriggered(db[source_card_id].modified_etb_abilities.clone()),
             source_card_id,

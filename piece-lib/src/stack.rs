@@ -75,13 +75,7 @@ pub enum ActiveTarget {
 impl ActiveTarget {
     pub(crate) fn display(&self, db: &Database) -> String {
         match self {
-            ActiveTarget::Stack { id } => {
-                format!(
-                    "Stack ({}): {}",
-                    id,
-                    db.stack.entries.get(id).unwrap().display(db)
-                )
-            }
+            ActiveTarget::Stack { id } => db.stack.entries.get(id).unwrap().display(db),
             ActiveTarget::Battlefield { id } => id.name(db).clone(),
             ActiveTarget::Graveyard { id } => id.name(db).clone(),
             ActiveTarget::Exile { id } => id.name(db).clone(),
@@ -504,17 +498,13 @@ impl StackEntry {
                     return false;
                 }
                 restriction::Restriction::TargetedBy(_) => {
-                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
-                        if let LogEntry::Targeted {
-                            source: targeting,
-                            target,
-                        } = entry
-                        {
-                            self.ty.source() == *targeting && *target == source
-                        } else {
-                            false
-                        }
-                    }) {
+                    if !self
+                        .targets
+                        .iter()
+                        .flat_map(|t| t.iter())
+                        .flat_map(|t| t.id(db))
+                        .all(|card| card == source)
+                    {
                         return false;
                     }
                 }
@@ -565,7 +555,11 @@ impl Stack {
     pub(crate) fn find(&self, card: CardId) -> Option<StackId> {
         self.entries
             .iter()
-            .find(|(_, entry)| matches!(entry.ty, Entry::Card(entry) if entry == card))
+            .rev()
+            .find(|(_, entry)| match &entry.ty {
+                Entry::Card(entry) => *entry == card,
+                Entry::Ability { source, .. } => *source == card,
+            })
             .map(|(id, _)| *id)
     }
 
@@ -665,24 +659,6 @@ impl Stack {
             .zip((&mut targets).chain(std::iter::repeat(vec![])))
         {
             let effect = effect.effect.unwrap();
-            if targets.len() != effect.needs_targets(db, source)
-                && effect.needs_targets(db, source) != 0
-            {
-                let valid_targets = effect.valid_targets(
-                    db,
-                    source,
-                    crate::log::LogId::current(db),
-                    controller,
-                    &HashSet::default(),
-                );
-                results.push_choose_targets(ChooseTargets::new(
-                    TargetSource::Effect(effect),
-                    valid_targets,
-                    crate::log::LogId::current(db),
-                    source,
-                ));
-                continue;
-            }
 
             if effect.wants_targets(db, source) > 0 {
                 let valid_targets = effect
@@ -744,37 +720,53 @@ impl Stack {
         results
     }
 
-    pub(crate) fn move_etb_ability_to_stack(
+    pub(crate) fn move_ability_to_stack(
         db: &mut Database,
         ability: Ability,
         source: CardId,
     ) -> PendingResults {
         let mut results = PendingResults::default();
 
-        let targets = source.targets_for_ability(db, &ability, &HashSet::default());
-        results.push_settled(ActionResult::AddAbilityToStack {
-            ability,
-            source,
-            targets,
-            x_is: None,
-        });
+        if ability
+            .effects(db)
+            .iter()
+            .any(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source) > 0)
+        {
+            for effect in ability.effects(db).into_iter() {
+                let effect = effect.effect.unwrap();
+                let valid_targets = effect.valid_targets(
+                    db,
+                    source,
+                    LogId::current(db),
+                    db[source].controller,
+                    results.all_currently_targeted(),
+                );
+                results.push_choose_targets(ChooseTargets::new(
+                    TargetSource::Effect(effect),
+                    valid_targets,
+                    LogId::current(db),
+                    source,
+                ));
+            }
+            results.add_ability_to_stack(source, ability);
+        } else {
+            results.push_settled(ActionResult::AddAbilityToStack {
+                ability,
+                source,
+                targets: vec![],
+                x_is: None,
+            });
+        }
 
         results
     }
 
     pub(crate) fn move_trigger_to_stack(
-        _db: &mut Database,
+        db: &mut Database,
         listener: CardId,
         trigger: TriggeredAbility,
     ) -> PendingResults {
-        let mut results = PendingResults::default();
-
-        results.push_settled(ActionResult::AddTriggerToStack {
-            source: listener,
-            trigger,
-        });
-
-        results
+        Self::move_ability_to_stack(db, Ability::EtbOrTriggered(trigger.effects), listener)
     }
 
     pub(crate) fn move_card_to_stack_from_hand(
@@ -812,7 +804,6 @@ impl Stack {
         let mut results = PendingResults::default();
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
             if let ActiveTarget::Battlefield { id } = target {
-                Log::targetted(db, source, id);
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TARGETED) {
                     if listener == id
                         && source.passes_restrictions(
@@ -850,7 +841,6 @@ impl Stack {
         let mut results = PendingResults::default();
         for target in targets.into_iter().flat_map(|t| t.into_iter()) {
             if let ActiveTarget::Battlefield { id } = target {
-                Log::targetted(db, source, id);
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TARGETED) {
                     if listener == id
                         && source.passes_restrictions(

@@ -1723,17 +1723,16 @@ impl CardId {
                     }
                 }
                 restriction::Restriction::TargetedBy(_) => {
-                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
-                        if let LogEntry::Targeted {
-                            source: targeting,
-                            target,
-                        } = entry
-                        {
-                            self == *targeting && *target == source
-                        } else {
-                            false
-                        }
-                    }) {
+                    if !db
+                        .stack
+                        .find(self)
+                        .iter()
+                        .flat_map(|stackid| db.stack.entries.get(stackid))
+                        .flat_map(|entry| entry.targets.iter())
+                        .flat_map(|t| t.iter())
+                        .flat_map(|t| t.id(db))
+                        .any(|target| target == source)
+                    {
                         return false;
                     }
                 }

@@ -30,6 +30,7 @@ etb_abilities:
         - restriction: !OfType
             types: Artifact, Creature
         - restriction: !OnBattlefield {}
+        - restriction: !NotSelf {}
       effects:
         - effect: !ModifyTarget
             modifier:

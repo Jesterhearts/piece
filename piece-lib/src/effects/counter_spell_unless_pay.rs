@@ -14,7 +14,7 @@ use crate::{
         cost::ManaCost,
         effects::{counter_spell_unless_pay::Cost, effect::Effect, CounterSpellUnlessPay},
     },
-    stack::{ActiveTarget, Entry, StackEntry},
+    stack::ActiveTarget,
 };
 
 impl EffectBehaviors for CounterSpellUnlessPay {
@@ -41,41 +41,20 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
-        _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
+        already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
         for id in db.stack.entries.iter().filter_map(|(id, entry)| {
-            if let StackEntry {
-                ty: Entry::Card(card),
-                ..
-            } = entry
-            {
-                if card.can_be_countered(db, log_session, source, &[])
-                    && card.passes_restrictions(db, log_session, source, &self.restrictions)
-                {
-                    Some(*id)
-                } else {
-                    None
-                }
-            } else if let StackEntry {
-                ty:
-                    Entry::Ability {
-                        source: ability_source,
-                        ..
-                    },
-                ..
-            } = entry
-            {
-                if ability_source.passes_restrictions(db, log_session, source, &self.restrictions) {
-                    Some(*id)
-                } else {
-                    None
-                }
+            if entry.passes_restrictions(db, log_session, source, &self.restrictions) {
+                Some(*id)
             } else {
                 None
             }
         }) {
-            targets.push(ActiveTarget::Stack { id });
+            let target = ActiveTarget::Stack { id };
+            if !already_chosen.contains(&target) {
+                targets.push(target);
+            }
         }
 
         targets

@@ -68,9 +68,8 @@ pub enum LogEntry {
         card: CardId,
         ability: ActivatedAbilityId,
     },
-    Targeted {
-        source: CardId,
-        target: CardId,
+    Triggered {
+        card: CardId,
     },
     CardChosen {
         card: CardId,
@@ -228,6 +227,13 @@ impl Log {
         db.log.entries.push((id, entry));
     }
 
+    pub(crate) fn triggered(db: &mut Database, card: CardId) {
+        let entry = LogEntry::Triggered { card };
+        let id = LogId::new(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
+    }
+
     pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: CardId) {
         let modified_by = card.modified_by(db);
         let entry = LogEntry::LeftBattlefield {
@@ -258,13 +264,6 @@ impl Log {
             turn: db.turn.turn_count,
         };
 
-        let id = LogId::current(db);
-        event!(Level::INFO, ?id, ?entry);
-        db.log.entries.push((id, entry));
-    }
-
-    pub(crate) fn targetted(db: &mut Database, source: CardId, target: CardId) {
-        let entry = LogEntry::Targeted { source, target };
         let id = LogId::current(db);
         event!(Level::INFO, ?id, ?entry);
         db.log.entries.push((id, entry));
