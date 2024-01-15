@@ -45,7 +45,7 @@ impl EffectBehaviors for ReturnTargetToHand {
                     )
                     && card.can_be_targeted(db, controller)
                 {
-                    Some(card.target_from_location(db))
+                    card.target_from_location(db)
                 } else {
                     None
                 }

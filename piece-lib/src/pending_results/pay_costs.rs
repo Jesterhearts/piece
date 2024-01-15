@@ -576,7 +576,7 @@ impl Cost {
             }) => {
                 if let Some(choice) = choice {
                     let target = valid_targets[choice];
-                    if !all_targets.contains(&target.target_from_location(db)) {
+                    if !all_targets.contains(&target.target_from_location(db).unwrap()) {
                         chosen.insert(target);
                         true
                     } else {
@@ -593,7 +593,7 @@ impl Cost {
             }) => {
                 if let Some(choice) = choice {
                     let target = valid_targets[choice];
-                    if !all_targets.contains(&target.target_from_location(db)) {
+                    if !all_targets.contains(&target.target_from_location(db).unwrap()) {
                         chosen.insert(target);
                         true
                     } else {
@@ -760,7 +760,7 @@ impl Cost {
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
                         source,
-                        target: target.target_from_location(db),
+                        target: target.target_from_location(db).unwrap(),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
                     });
@@ -773,7 +773,7 @@ impl Cost {
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
                         source,
-                        target: target.target_from_location(db),
+                        target: target.target_from_location(db).unwrap(),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
                     });
@@ -830,12 +830,12 @@ impl Cost {
             Cost::ExileCards(exile) => exile
                 .chosen
                 .iter()
-                .map(|card| card.target_from_location(db))
+                .map(|card| card.target_from_location(db).unwrap())
                 .collect_vec(),
             Cost::ExileCardsSharingType(exile) => exile
                 .chosen
                 .iter()
-                .map(|card| card.target_from_location(db))
+                .map(|card| card.target_from_location(db).unwrap())
                 .collect_vec(),
         }
     }

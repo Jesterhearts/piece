@@ -45,7 +45,7 @@ impl EffectBehaviors for TargetGainsCounter {
                 )
                 && card.can_be_targeted(db, controller)
             {
-                let target = card.target_from_location(db);
+                let target = card.target_from_location(db).unwrap();
                 if already_chosen.contains(&target) {
                     continue;
                 }

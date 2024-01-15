@@ -22,7 +22,7 @@ impl PendingResult for ChooseModes {
     }
 
     fn target_for_option(&self, db: &Database, _option: usize) -> Option<ActiveTarget> {
-        Some(self.source.card().target_from_location(db))
+        self.source.card().target_from_location(db)
     }
 
     fn description(&self, _db: &crate::in_play::Database) -> String {

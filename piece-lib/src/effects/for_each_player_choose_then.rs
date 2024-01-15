@@ -51,7 +51,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
                 ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
                     && !already_chosen.contains(&db[*card].controller)
                 {
-                    Some(card.target_from_location(db))
+                    card.target_from_location(db)
                 } else {
                     None
                 }

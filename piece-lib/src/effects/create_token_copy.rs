@@ -43,7 +43,7 @@ impl EffectBehaviors for CreateTokenCopy {
             )
         }) {
             if target.can_be_targeted(db, controller) {
-                let target = target.target_from_location(db);
+                let target = target.target_from_location(db).unwrap();
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }

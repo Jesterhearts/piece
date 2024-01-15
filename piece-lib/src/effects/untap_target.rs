@@ -49,7 +49,7 @@ impl EffectBehaviors for UntapTarget {
             })
             .collect_vec()
         {
-            let target = card.target_from_location(db);
+            let target = card.target_from_location(db).unwrap();
             if card.can_be_targeted(db, controller) && !already_chosen.contains(&target) {
                 targets.push(target);
             }

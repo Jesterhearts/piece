@@ -26,6 +26,7 @@ convert_case       = "0.6.0"
 eframe             = "0.25.0"
 egui               = "0.25.0"
 iftree             = "1.0.4"
+indexmap           = "2.1.0"
 itertools          = "0.12.0"
 piece-lib          = { path = "../piece-lib" }
 protobuf           = "3.3.0"

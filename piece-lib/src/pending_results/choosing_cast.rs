@@ -37,7 +37,7 @@ impl PendingResult for ChoosingCast {
     ) -> Option<crate::stack::ActiveTarget> {
         self.choosing_to_cast
             .get(option)
-            .map(|card| card.target_from_location(db))
+            .and_then(|card| card.target_from_location(db))
     }
 
     fn is_empty(&self) -> bool {

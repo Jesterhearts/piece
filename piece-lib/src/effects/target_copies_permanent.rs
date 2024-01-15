@@ -51,7 +51,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                     )
                 })
                 .copied()
-                .map(|card| card.target_from_location(db))
+                .map(|card| card.target_from_location(db).unwrap())
                 .collect_vec()
         } else {
             db.cards
@@ -66,7 +66,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                     ) && card.passes_restrictions(db, log_session, source, &self.copy_restrictions)
                 })
                 .copied()
-                .map(|card| card.target_from_location(db))
+                .map(|card| card.target_from_location(db).unwrap())
                 .collect_vec()
         }
     }

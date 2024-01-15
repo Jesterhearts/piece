@@ -2,6 +2,7 @@ use convert_case::{Case, Casing};
 use egui::{
     Color32, Frame, Label, Layout, PointerButton, RichText, ScrollArea, Sense, Stroke, Widget,
 };
+use indexmap::IndexMap;
 use itertools::Itertools;
 
 use piece_lib::{
@@ -9,7 +10,7 @@ use piece_lib::{
     pending_results::PendingResults,
     player::Owner,
     protogen::{keywords::Keyword, targets::Location},
-    stack::ActiveTarget,
+    stack::{ActiveTarget, StackEntry, StackId},
     turns::Turn,
 };
 use protobuf::Enum;
@@ -196,12 +197,14 @@ impl Widget for ManaDisplay {
     }
 }
 
-pub struct Stack<'clicked> {
-    pub items: Vec<String>,
+pub struct Stack<'stack, 'db, 'clicked> {
+    pub items: &'stack IndexMap<StackId, StackEntry>,
+    pub db: &'db Database,
     pub left_clicked: &'clicked mut Option<usize>,
+    pub target: Option<ActiveTarget>,
 }
 
-impl Widget for Stack<'_> {
+impl Widget for Stack<'_, '_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         Frame::none()
             .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
@@ -217,8 +220,23 @@ impl Widget for Stack<'_> {
                         .auto_shrink([false, false])
                         .show(ui, |ui| {
                             ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                                for (idx, item) in self.items.into_iter().enumerate() {
-                                    if ui.add(Label::new(item).sense(Sense::click())).clicked() {
+                                for (idx, (stack_id, entry)) in self.items.iter().rev().enumerate()
+                                {
+                                    let highlight =
+                                        if let Some(ActiveTarget::Stack { id }) = self.target {
+                                            id == *stack_id
+                                        } else {
+                                            false
+                                        };
+
+                                    let text = RichText::new(entry.display(self.db));
+                                    let text = if highlight {
+                                        text.color(Color32::DARK_BLUE)
+                                    } else {
+                                        text
+                                    };
+
+                                    if ui.add(Label::new(text).sense(Sense::click())).clicked() {
                                         *self.left_clicked = Some(idx);
                                     }
                                 }

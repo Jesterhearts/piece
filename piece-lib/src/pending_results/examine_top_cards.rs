@@ -109,7 +109,7 @@ impl PendingResult for ExamineCards {
     ) -> Option<crate::stack::ActiveTarget> {
         self.cards
             .get(option)
-            .map(|card| card.target_from_location(db))
+            .and_then(|card| card.target_from_location(db))
     }
 
     #[instrument(skip(_db))]

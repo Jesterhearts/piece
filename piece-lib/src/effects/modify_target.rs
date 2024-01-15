@@ -46,7 +46,7 @@ impl EffectBehaviors for ModifyTarget {
                 )
                 && card.passes_restrictions(db, log_session, source, &self.restrictions)
             {
-                let target = card.target_from_location(db);
+                let target = card.target_from_location(db).unwrap();
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }

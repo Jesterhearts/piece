@@ -2140,21 +2140,19 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub(crate) fn target_from_location(self, db: &Database) -> ActiveTarget {
+    pub(crate) fn target_from_location(self, db: &Database) -> Option<ActiveTarget> {
         if db.battlefield[db[self].controller].contains(&self) {
-            ActiveTarget::Battlefield { id: self }
+            Some(ActiveTarget::Battlefield { id: self })
         } else if db.graveyard[db[self].owner].contains(&self) {
-            ActiveTarget::Graveyard { id: self }
+            Some(ActiveTarget::Graveyard { id: self })
         } else if db.all_players[db[self].owner].library.cards.contains(&self) {
-            ActiveTarget::Library { id: self }
+            Some(ActiveTarget::Library { id: self })
         } else if db.exile[db[self].owner].contains(&self) {
-            ActiveTarget::Exile { id: self }
+            Some(ActiveTarget::Exile { id: self })
         } else if db.hand[db[self].owner].contains(&self) {
-            ActiveTarget::Hand { id: self }
+            Some(ActiveTarget::Hand { id: self })
         } else {
-            ActiveTarget::Stack {
-                id: db.stack.find(self).unwrap(),
-            }
+            db.stack.find(self).map(|id| ActiveTarget::Stack { id })
         }
     }
 }

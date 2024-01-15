@@ -574,16 +574,10 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ui::Stack {
-                    items: self
-                        .database
-                        .stack
-                        .entries()
-                        .values()
-                        .rev()
-                        .enumerate()
-                        .map(|(idx, e)| format!("({}) {}", idx, e.display(&self.database)))
-                        .collect_vec(),
+                    items: self.database.stack.entries(),
+                    db: &self.database,
                     left_clicked: &mut self.left_clicked,
+                    target: self.hovering_target,
                 },
             );
 
