@@ -175,6 +175,7 @@ impl CardInPlay {
                     Counter::CHARGE => format!("Charge x{}", amount),
                     Counter::NET => format!("Net x{}", amount),
                     Counter::P1P1 => format!("+1/+1 x{}", amount),
+                    Counter::STUN => format!("Stun x{}", amount),
                     Counter::M1M1 => format!("-1/-1 x{}", amount),
                     Counter::ANY => format!("{} total counters", amount),
                 });

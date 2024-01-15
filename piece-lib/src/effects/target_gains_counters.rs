@@ -5,17 +5,21 @@ use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::effects::{effect::Effect, TargetGainsCounter},
+    protogen::effects::{effect::Effect, TargetGainsCounters},
     stack::ActiveTarget,
 };
 
-impl EffectBehaviors for TargetGainsCounter {
+impl EffectBehaviors for TargetGainsCounters {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
         _source: crate::in_play::CardId,
     ) -> usize {
-        1
+        if self.is_optional {
+            0
+        } else {
+            1
+        }
     }
 
     fn wants_targets(

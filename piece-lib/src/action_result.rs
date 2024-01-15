@@ -27,7 +27,7 @@ use crate::{
             effect,
             examine_top_cards::Dest,
             replacement_effect::Replacing,
-            target_gains_counter::{self, dynamic::Dynamic},
+            target_gains_counters::{self, dynamic::Dynamic},
             BattleCry, BattlefieldModifier, Cascade, Duration, Effect, ModifyBattlefield,
             ReplacementEffect, RevealEachTopOfLibrary,
         },
@@ -51,7 +51,7 @@ pub(crate) enum ActionResult {
     AddCounters {
         source: CardId,
         target: CardId,
-        count: target_gains_counter::Count,
+        count: target_gains_counters::Count,
         counter: protobuf::EnumOrUnknown<Counter>,
     },
     AddModifier {
@@ -535,19 +535,19 @@ impl ActionResult {
                 counter,
             } => {
                 match count {
-                    target_gains_counter::Count::Single(_) => {
+                    target_gains_counters::Count::Single(_) => {
                         *db[*target]
                             .counters
                             .entry(counter.enum_value().unwrap())
                             .or_default() += 1;
                     }
-                    target_gains_counter::Count::Multiple(count) => {
+                    target_gains_counters::Count::Multiple(count) => {
                         *db[*target]
                             .counters
                             .entry(counter.enum_value().unwrap())
                             .or_default() += count.count as usize;
                     }
-                    target_gains_counter::Count::Dynamic(dynamic) => {
+                    target_gains_counters::Count::Dynamic(dynamic) => {
                         match dynamic.dynamic.as_ref().unwrap() {
                             Dynamic::X(_) => {
                                 let x = source.get_x(db);
@@ -849,7 +849,13 @@ impl ActionResult {
                 results
             }
             ActionResult::Untap(target) => {
-                target.untap(db);
+                let stun = db[*target].counters.entry(Counter::STUN).or_default();
+                if *stun > 0 {
+                    *stun -= 1;
+                } else {
+                    target.untap(db);
+                }
+
                 PendingResults::default()
             }
             ActionResult::Cascade {

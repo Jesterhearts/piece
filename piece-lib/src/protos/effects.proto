@@ -140,7 +140,7 @@ message Effect {
     TargetCreatureExplores target_creature_explores = 47;
     // Place some number of counters on a target, narrowed by a list of
     // restrictions.
-    TargetGainsCounter target_gains_counters = 48;
+    TargetGainsCounters target_gains_counters = 48;
     // Return target to the top of its owner's library.
     TargetToTopOfLibrary target_to_top_of_library = 49;
     // Transform in place on the battlefield. This will preserve equipment and
@@ -532,7 +532,7 @@ message TargetCopiesPermanent {
 
 message TargetCreatureExplores {}
 
-message TargetGainsCounter {
+message TargetGainsCounters {
   message Single {}
   message Multiple {
     uint32 count = 1;
@@ -557,6 +557,7 @@ message TargetGainsCounter {
 
   counters.Counter counter = 7;
   repeated targets.Restriction restrictions = 8;
+  bool is_optional = 9;
 }
 
 message TargetToTopOfLibrary {

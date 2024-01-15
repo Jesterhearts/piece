@@ -7,5 +7,6 @@ enum Counter {
   CHARGE = 1;
   NET = 2;
   P1P1 = 3;
-  M1M1 = 4;
+  STUN = 4;
+  M1M1 = 5;
 }

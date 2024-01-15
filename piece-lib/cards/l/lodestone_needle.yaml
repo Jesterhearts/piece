@@ -1,0 +1,44 @@
+name: Lodestone Needle
+cost:
+  mana_cost: '{1}{U}'
+typeline: Artifact
+keywords: Flash
+etb_abilities:
+  - effect: !TargetGainsCounters
+      counter: Stun
+      count: !Multiple
+        count: 2
+      restrictions:
+        - restriction: !OfType
+            types: Artifact, Creature
+      is_optional: true
+activated_abilities:
+  - cost:
+      mana_cost: '{2}{U}'
+      additional_costs:
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact
+              - restriction: !Location
+                  locations: On Battlefield, In Graveyard
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Craft with artifact {2}{U}
+    sorcery_speed: true
+    craft: true
+back_face:
+  name: Guidestone Compass
+  typeline: Artifact
+  colors: Blue
+  activated_abilities:
+    - cost:
+        mana_cost: '{1}'
+        tap: true
+      effects:
+        - effect: !TargetCreatureExplores {}
+      sorcery_speed: true
