@@ -9,6 +9,7 @@ use piece_lib::{
     pending_results::PendingResults,
     player::Owner,
     protogen::{keywords::Keyword, targets::Location},
+    stack::ActiveTarget,
     turns::Turn,
 };
 use protobuf::Enum;
@@ -17,6 +18,7 @@ pub struct Card<'db> {
     pub db: &'db Database,
     pub card: CardId,
     pub title: Option<String>,
+    pub highlight: bool,
 }
 
 impl Widget for Card<'_> {
@@ -121,7 +123,14 @@ impl Widget for Card<'_> {
             .join("\n");
 
         Frame::none()
-            .stroke(Stroke::new(2.0, Color32::DARK_GRAY))
+            .stroke(Stroke::new(
+                2.0,
+                if self.highlight {
+                    Color32::DARK_BLUE
+                } else {
+                    Color32::DARK_GRAY
+                },
+            ))
             .inner_margin(5.0)
             .outer_margin(2.0)
             .show(ui, |ui| {
@@ -332,6 +341,7 @@ pub struct Battlefield<'db, 'clicked> {
     pub cards: Vec<(usize, CardId)>,
     pub left_clicked: &'clicked mut Option<usize>,
     pub right_clicked: &'clicked mut Option<usize>,
+    pub target: Option<ActiveTarget>,
 }
 
 impl Widget for Battlefield<'_, '_> {
@@ -376,9 +386,9 @@ impl Widget for Battlefield<'_, '_> {
                                 let cost = &self.db[*card].modified_cost;
 
                                 if cost.mana_cost.is_empty() || self.db[*card].manifested {
-                                    format!("({}) {}", card, name)
+                                    name
                                 } else {
-                                    format!("({}) {} - {}", card, name, cost.text())
+                                    format!("{} - {}", name, cost.text())
                                 }
                             })
                             .collect_vec();
@@ -387,12 +397,20 @@ impl Widget for Battlefield<'_, '_> {
                         const MIN_HEIGHT: f32 = 300.0;
 
                         for ((idx, card), title) in self.cards.into_iter().zip(card_titles) {
+                            let highlight =
+                                if let Some(ActiveTarget::Battlefield { id }) = self.target {
+                                    id == card
+                                } else {
+                                    false
+                                };
+
                             let sense = ui.add_sized(
                                 egui::vec2(MIN_WIDTH, MIN_HEIGHT),
                                 Card {
                                     db: self.db,
                                     card,
                                     title: Some(title),
+                                    highlight,
                                 },
                             );
 

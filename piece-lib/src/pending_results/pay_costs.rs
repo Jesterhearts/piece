@@ -1020,6 +1020,42 @@ impl PendingResult for PayCost {
         }
     }
 
+    fn target_for_option(&self, _db: &Database, option: usize) -> Option<ActiveTarget> {
+        match &self.cost {
+            Cost::SacrificePermanent(sac) => sac
+                .valid_targets
+                .get(option)
+                .map(|t| ActiveTarget::Battlefield { id: *t }),
+            Cost::TapPermanent(tap) => tap
+                .valid_targets
+                .get(option)
+                .map(|t| ActiveTarget::Battlefield { id: *t }),
+            Cost::TapPermanentsPowerXOrMore(tap) => tap
+                .valid_targets
+                .get(option)
+                .map(|t| ActiveTarget::Battlefield { id: *t }),
+            Cost::ExilePermanentsCmcX(exile) => exile
+                .valid_targets
+                .get(option)
+                .map(|t| ActiveTarget::Battlefield { id: *t }),
+            Cost::ExileCards(exile) => {
+                if exile.chosen.len() == exile.maximum {
+                    None
+                } else {
+                    exile
+                        .valid_targets
+                        .get(option)
+                        .map(|t| ActiveTarget::Battlefield { id: *t })
+                }
+            }
+            Cost::ExileCardsSharingType(exile) => exile
+                .valid_targets
+                .get(option)
+                .map(|t| ActiveTarget::Battlefield { id: *t }),
+            Cost::SpendMana(_) => None,
+        }
+    }
+
     fn description(&self, _db: &Database) -> String {
         match &self.cost {
             Cost::SacrificePermanent(_) => "sacrificing a permanent".to_string(),

@@ -38,6 +38,22 @@ impl PendingResult for DeclaringAttackers {
         }
     }
 
+    fn target_for_option(
+        &self,
+        _db: &Database,
+        option: usize,
+    ) -> Option<crate::stack::ActiveTarget> {
+        if self.choices.len() == self.targets.len() {
+            self.candidates
+                .get(option)
+                .map(|card| crate::stack::ActiveTarget::Battlefield { id: *card })
+        } else {
+            self.valid_targets
+                .get(option)
+                .map(|t| crate::stack::ActiveTarget::Player { id: *t })
+        }
+    }
+
     fn description(&self, _db: &crate::in_play::Database) -> String {
         "attackers".to_string()
     }

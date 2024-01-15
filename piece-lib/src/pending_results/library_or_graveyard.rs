@@ -23,6 +23,14 @@ impl PendingResult for LibraryOrGraveyard {
             .collect_vec()
     }
 
+    fn target_for_option(
+        &self,
+        _db: &Database,
+        _option: usize,
+    ) -> Option<crate::stack::ActiveTarget> {
+        None
+    }
+
     fn description(&self, db: &crate::in_play::Database) -> String {
         self.card.name(db).clone()
     }

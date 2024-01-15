@@ -42,7 +42,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct StackId(Uuid);
+pub struct StackId(Uuid);
 
 impl StackId {
     pub(crate) fn new() -> Self {
@@ -63,11 +63,12 @@ enum ResolutionType {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub(crate) enum ActiveTarget {
+pub enum ActiveTarget {
     Stack { id: StackId },
     Battlefield { id: CardId },
     Graveyard { id: CardId },
     Library { id: CardId },
+    Hand { id: CardId },
     Player { id: Owner },
 }
 
@@ -91,6 +92,9 @@ impl ActiveTarget {
                 format!("{} - ({})", id.name(db), id)
             }
             ActiveTarget::Player { id } => db.all_players[*id].name.clone(),
+            ActiveTarget::Hand { id } => {
+                format!("{} - ({})", id.name(db), id)
+            }
         }
     }
 
@@ -98,7 +102,8 @@ impl ActiveTarget {
         match self {
             ActiveTarget::Battlefield { id }
             | ActiveTarget::Graveyard { id }
-            | ActiveTarget::Library { id } => Some(*id),
+            | ActiveTarget::Library { id }
+            | ActiveTarget::Hand { id } => Some(*id),
             ActiveTarget::Stack { id } => db.stack.entries.get(id).and_then(|entry| {
                 if let Entry::Card(card) = entry.ty {
                     Some(card)
@@ -590,8 +595,8 @@ impl Stack {
         ActiveTarget::Stack { id: *id }
     }
 
-    pub fn entries(&self) -> Vec<StackEntry> {
-        self.entries.values().cloned().collect_vec()
+    pub fn entries(&self) -> &IndexMap<StackId, StackEntry> {
+        &self.entries
     }
 
     pub fn entries_unsettled(&self) -> Vec<StackEntry> {

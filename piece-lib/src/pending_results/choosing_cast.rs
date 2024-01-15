@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::{target_from_location, CardId, Database},
     pending_results::{PendingResult, PendingResults},
     stack::Stack,
 };
@@ -28,6 +28,16 @@ impl PendingResult for ChoosingCast {
 
     fn description(&self, _db: &Database) -> String {
         "spells to cast".to_string()
+    }
+
+    fn target_for_option(
+        &self,
+        db: &Database,
+        option: usize,
+    ) -> Option<crate::stack::ActiveTarget> {
+        self.choosing_to_cast
+            .get(option)
+            .map(|card| target_from_location(db, *card))
     }
 
     fn is_empty(&self) -> bool {

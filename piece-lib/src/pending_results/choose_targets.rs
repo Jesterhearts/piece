@@ -137,6 +137,10 @@ impl PendingResult for ChooseTargets {
             .collect_vec()
     }
 
+    fn target_for_option(&self, _db: &Database, option: usize) -> Option<ActiveTarget> {
+        self.valid_targets.get(option).copied()
+    }
+
     fn description(&self, db: &Database) -> String {
         format!("targets for {}", self.card.name(db))
     }

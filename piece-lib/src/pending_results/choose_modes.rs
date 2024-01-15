@@ -2,8 +2,9 @@ use itertools::Itertools;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{target_from_location, Database},
     pending_results::{PendingResult, Source},
+    stack::ActiveTarget,
 };
 
 #[derive(Debug)]
@@ -18,6 +19,10 @@ impl PendingResult for ChooseModes {
 
     fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
         self.source.mode_options(db)
+    }
+
+    fn target_for_option(&self, db: &Database, _option: usize) -> Option<ActiveTarget> {
+        Some(target_from_location(db, self.source.card()))
     }
 
     fn description(&self, _db: &crate::in_play::Database) -> String {

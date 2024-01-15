@@ -2186,6 +2186,8 @@ pub(crate) fn target_from_location(db: &Database, card: CardId) -> ActiveTarget 
         ActiveTarget::Library { id: card }
     } else if db.exile[db[card].owner].contains(&card) {
         todo!()
+    } else if db.hand[db[card].owner].contains(&card) {
+        ActiveTarget::Hand { id: card }
     } else {
         ActiveTarget::Stack {
             id: db.stack.find(card).unwrap(),

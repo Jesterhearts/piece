@@ -18,7 +18,7 @@ use piece_lib::{
     pending_results::{PendingResults, ResolutionResult},
     player::{AllPlayers, Owner, Player},
     protogen::{keywords::Keyword, targets::Location},
-    stack::Stack,
+    stack::{ActiveTarget, Stack},
     turns::Turn,
     Cards, FONT_DATA,
 };
@@ -57,6 +57,7 @@ struct App {
     right_clicked: Option<usize>,
     selected_card: Option<CardId>,
     inspecting_card: Option<CardId>,
+    hovering_target: Option<ActiveTarget>,
 }
 
 impl App {
@@ -102,6 +103,7 @@ impl App {
             right_clicked: None,
             selected_card: None,
             inspecting_card: None,
+            hovering_target: None,
         }
     }
 }
@@ -575,7 +577,7 @@ impl eframe::App for App {
                         .database
                         .stack
                         .entries()
-                        .iter()
+                        .values()
                         .rev()
                         .enumerate()
                         .map(|(idx, e)| format!("({}) {}", idx, e.display(&self.database)))
@@ -628,6 +630,7 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut None,
                     right_clicked: &mut self.right_clicked,
+                    target: self.hovering_target,
                 },
             );
 
@@ -652,6 +655,7 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut self.left_clicked,
                     right_clicked: &mut self.right_clicked,
+                    target: self.hovering_target,
                 },
             );
 
@@ -852,6 +856,7 @@ impl eframe::App for App {
             }
         });
 
+        self.hovering_target = None;
         let mut choice: Option<Option<usize>> = None;
         if let Some(resolving) = self.to_resolve.as_mut() {
             if resolving.priority(&self.database) == self.player2 {
@@ -884,7 +889,12 @@ impl eframe::App for App {
                             }
 
                             for (idx, option) in resolving.options(&mut self.database) {
-                                if ui.button(option).clicked() {
+                                let button = ui.button(option);
+                                if button.hovered() {
+                                    self.hovering_target =
+                                        resolving.target_for_option(&self.database, idx);
+                                }
+                                if button.clicked() {
                                     choice = Some(Some(idx));
                                 }
                             }
@@ -967,6 +977,7 @@ impl eframe::App for App {
                     db: &mut self.database,
                     card: inspecting,
                     title: None,
+                    highlight: false,
                 });
             });
 

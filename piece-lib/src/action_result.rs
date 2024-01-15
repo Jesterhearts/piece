@@ -498,7 +498,8 @@ impl ActionResult {
                     }
                     ActiveTarget::Graveyard { .. }
                     | ActiveTarget::Library { .. }
-                    | ActiveTarget::Stack { .. } => unreachable!(),
+                    | ActiveTarget::Stack { .. }
+                    | ActiveTarget::Hand { .. } => unreachable!(),
                 }
                 PendingResults::default()
             }

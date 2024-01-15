@@ -36,6 +36,14 @@ impl PendingResult for OrganizingStack {
             .collect_vec()
     }
 
+    fn target_for_option(
+        &self,
+        _db: &Database,
+        _option: usize,
+    ) -> Option<crate::stack::ActiveTarget> {
+        None
+    }
+
     fn description(&self, _db: &Database) -> String {
         "stack order".to_string()
     }

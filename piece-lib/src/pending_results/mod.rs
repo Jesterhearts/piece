@@ -71,6 +71,14 @@ pub(crate) enum CopySource {
 }
 
 impl Source {
+    fn card(&self) -> CardId {
+        match self {
+            Source::Card(source) | Source::Ability { source, .. } | Source::Effect(_, source) => {
+                *source
+            }
+        }
+    }
+
     fn mode_options(&self, db: &mut Database) -> Vec<(usize, String)> {
         match self {
             Source::Card(card) => card
@@ -180,6 +188,9 @@ pub(crate) trait PendingResult {
 
     #[must_use]
     fn options(&self, db: &mut Database) -> Vec<(usize, String)>;
+
+    #[must_use]
+    fn target_for_option(&self, db: &Database, option: usize) -> Option<ActiveTarget>;
 
     #[must_use]
     fn description(&self, db: &Database) -> String;
@@ -422,6 +433,14 @@ impl PendingResults {
             pending.options(db)
         } else {
             vec![]
+        }
+    }
+
+    pub fn target_for_option(&self, db: &Database, option: usize) -> Option<ActiveTarget> {
+        if let Some(pending) = self.pending.front() {
+            pending.target_for_option(db, option)
+        } else {
+            None
         }
     }
 
