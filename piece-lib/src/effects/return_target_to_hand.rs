@@ -4,7 +4,6 @@ use tracing::Level;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, ReturnTargetToHand},
 };
@@ -46,7 +45,7 @@ impl EffectBehaviors for ReturnTargetToHand {
                     )
                     && card.can_be_targeted(db, controller)
                 {
-                    Some(target_from_location(db, *card))
+                    Some(card.target_from_location(db))
                 } else {
                     None
                 }

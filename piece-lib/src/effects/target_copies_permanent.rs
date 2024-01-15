@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{target_from_location, CardId, Database},
+    in_play::{CardId, Database},
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
@@ -51,7 +51,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                     )
                 })
                 .copied()
-                .map(|card| target_from_location(db, card))
+                .map(|card| card.target_from_location(db))
                 .collect_vec()
         } else {
             db.cards
@@ -66,7 +66,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                     ) && card.passes_restrictions(db, log_session, source, &self.copy_restrictions)
                 })
                 .copied()
-                .map(|card| target_from_location(db, card))
+                .map(|card| card.target_from_location(db))
                 .collect_vec()
         }
     }

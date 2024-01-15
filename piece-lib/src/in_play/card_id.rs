@@ -2139,6 +2139,24 @@ impl CardId {
             .copied()
             .unwrap_or_default()
     }
+
+    pub(crate) fn target_from_location(self, db: &Database) -> ActiveTarget {
+        if db.battlefield[db[self].controller].contains(&self) {
+            ActiveTarget::Battlefield { id: self }
+        } else if db.graveyard[db[self].owner].contains(&self) {
+            ActiveTarget::Graveyard { id: self }
+        } else if db.all_players[db[self].owner].library.cards.contains(&self) {
+            ActiveTarget::Library { id: self }
+        } else if db.exile[db[self].owner].contains(&self) {
+            ActiveTarget::Exile { id: self }
+        } else if db.hand[db[self].owner].contains(&self) {
+            ActiveTarget::Hand { id: self }
+        } else {
+            ActiveTarget::Stack {
+                id: db.stack.find(self).unwrap(),
+            }
+        }
+    }
 }
 
 impl Default for CardId {
@@ -2174,23 +2192,5 @@ fn clone_card(db: &mut Database, cloning: CardId) -> Card {
         restrictions: cloning.faceup_face(db).restrictions.clone(),
         back_face: protobuf::MessageField::none(),
         ..Default::default()
-    }
-}
-
-pub(crate) fn target_from_location(db: &Database, card: CardId) -> ActiveTarget {
-    if db.battlefield[db[card].controller].contains(&card) {
-        ActiveTarget::Battlefield { id: card }
-    } else if db.graveyard[db[card].owner].contains(&card) {
-        ActiveTarget::Graveyard { id: card }
-    } else if db.all_players[db[card].owner].library.cards.contains(&card) {
-        ActiveTarget::Library { id: card }
-    } else if db.exile[db[card].owner].contains(&card) {
-        ActiveTarget::Exile { id: card }
-    } else if db.hand[db[card].owner].contains(&card) {
-        ActiveTarget::Hand { id: card }
-    } else {
-        ActiveTarget::Stack {
-            id: db.stack.find(card).unwrap(),
-        }
     }
 }

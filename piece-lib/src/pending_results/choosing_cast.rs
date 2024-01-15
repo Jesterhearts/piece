@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    in_play::{target_from_location, CardId, Database},
+    in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
     stack::Stack,
 };
@@ -37,7 +37,7 @@ impl PendingResult for ChoosingCast {
     ) -> Option<crate::stack::ActiveTarget> {
         self.choosing_to_cast
             .get(option)
-            .map(|card| target_from_location(db, *card))
+            .map(|card| card.target_from_location(db))
     }
 
     fn is_empty(&self) -> bool {

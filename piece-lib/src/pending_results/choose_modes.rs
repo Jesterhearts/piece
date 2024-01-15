@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::{target_from_location, Database},
+    in_play::Database,
     pending_results::{PendingResult, Source},
     stack::ActiveTarget,
 };
@@ -22,7 +22,7 @@ impl PendingResult for ChooseModes {
     }
 
     fn target_for_option(&self, db: &Database, _option: usize) -> Option<ActiveTarget> {
-        Some(target_from_location(db, self.source.card()))
+        Some(self.source.card().target_from_location(db))
     }
 
     fn description(&self, _db: &crate::in_play::Database) -> String {

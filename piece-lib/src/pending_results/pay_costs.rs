@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{target_from_location, CardId, Database, ExileReason},
+    in_play::{CardId, Database, ExileReason},
     log::LogId,
     pending_results::{PendingResult, PendingResults},
     player::mana_pool::SpendReason,
@@ -576,7 +576,7 @@ impl Cost {
             }) => {
                 if let Some(choice) = choice {
                     let target = valid_targets[choice];
-                    if !all_targets.contains(&target_from_location(db, target)) {
+                    if !all_targets.contains(&target.target_from_location(db)) {
                         chosen.insert(target);
                         true
                     } else {
@@ -593,7 +593,7 @@ impl Cost {
             }) => {
                 if let Some(choice) = choice {
                     let target = valid_targets[choice];
-                    if !all_targets.contains(&target_from_location(db, target)) {
+                    if !all_targets.contains(&target.target_from_location(db)) {
                         chosen.insert(target);
                         true
                     } else {
@@ -760,7 +760,7 @@ impl Cost {
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
                         source,
-                        target: target_from_location(db, *target),
+                        target: target.target_from_location(db),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
                     });
@@ -773,7 +773,7 @@ impl Cost {
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
                         source,
-                        target: target_from_location(db, *target),
+                        target: target.target_from_location(db),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
                     });
@@ -830,12 +830,12 @@ impl Cost {
             Cost::ExileCards(exile) => exile
                 .chosen
                 .iter()
-                .map(|card| target_from_location(db, *card))
+                .map(|card| card.target_from_location(db))
                 .collect_vec(),
             Cost::ExileCardsSharingType(exile) => exile
                 .chosen
                 .iter()
-                .map(|card| target_from_location(db, *card))
+                .map(|card| card.target_from_location(db))
                 .collect_vec(),
         }
     }

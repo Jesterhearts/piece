@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{self, target_from_location},
+    in_play::{self},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, CreateTokenCopy},
 };
@@ -43,7 +43,7 @@ impl EffectBehaviors for CreateTokenCopy {
             )
         }) {
             if target.can_be_targeted(db, controller) {
-                let target = target_from_location(db, *target);
+                let target = target.target_from_location(db);
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }

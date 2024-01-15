@@ -3,7 +3,6 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::target_from_location,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, UntapTarget},
     stack::ActiveTarget,
@@ -50,7 +49,7 @@ impl EffectBehaviors for UntapTarget {
             })
             .collect_vec()
         {
-            let target = target_from_location(db, *card);
+            let target = card.target_from_location(db);
             if card.can_be_targeted(db, controller) && !already_chosen.contains(&target) {
                 targets.push(target);
             }

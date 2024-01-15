@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    in_play::{target_from_location, CardId, Database},
+    in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
     protogen::effects::{
         destination::{self, Battlefield},
@@ -109,7 +109,7 @@ impl PendingResult for ExamineCards {
     ) -> Option<crate::stack::ActiveTarget> {
         self.cards
             .get(option)
-            .map(|card| target_from_location(db, *card))
+            .map(|card| card.target_from_location(db))
     }
 
     #[instrument(skip(_db))]

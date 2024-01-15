@@ -11,7 +11,7 @@ use crate::{
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
     effects::EffectBehaviors,
-    in_play::{target_from_location, CardId, CastFrom, Database, ExileReason, ModifierId},
+    in_play::{CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry, LogId},
     pending_results::{
@@ -1091,10 +1091,7 @@ impl ActionResult {
                 } else if target.is_in_location(db, Location::IN_GRAVEYARD) {
                     Location::IN_GRAVEYARD
                 } else {
-                    unreachable!(
-                        "unexpected location {:?}",
-                        target_from_location(db, *target)
-                    )
+                    unreachable!("unexpected location {:?}", target.target_from_location(db))
                 };
                 move_card_to_battlefield(db, *target, *enters_tapped, &mut results, None);
                 match location {

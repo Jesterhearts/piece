@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::{target_from_location, Database},
+    in_play::Database,
     log::Log,
     pending_results::choose_for_each_player::ChooseForEachPlayer,
     protogen::effects::{effect::Effect, ForEachPlayerChooseThen},
@@ -51,7 +51,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
                 ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
                     && !already_chosen.contains(&db[*card].controller)
                 {
-                    Some(target_from_location(db, *card))
+                    Some(card.target_from_location(db))
                 } else {
                     None
                 }

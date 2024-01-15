@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{target_from_location, Database, ModifierId},
+    in_play::{Database, ModifierId},
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
     protogen::effects::{effect::Effect, BattlefieldModifier, Duration, ModifyTarget},
@@ -46,7 +46,7 @@ impl EffectBehaviors for ModifyTarget {
                 )
                 && card.passes_restrictions(db, log_session, source, &self.restrictions)
             {
-                let target = target_from_location(db, *card);
+                let target = card.target_from_location(db);
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }

@@ -7,7 +7,6 @@ mod static_ability_id;
 use indexmap::{IndexMap, IndexSet};
 
 pub use activated_ability_id::{ActivatedAbilityId, ActivatedAbilityInPlay};
-pub(crate) use card_id::target_from_location;
 pub use card_id::CardId;
 pub(crate) use card_id::CardInPlay;
 pub use gain_mana_ability_id::{GainManaAbilityId, GainManaAbilityInPlay};
