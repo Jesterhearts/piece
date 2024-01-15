@@ -1,3 +1,24 @@
+//! The lifetime of an effect:
+//! - First the effect is moved into a set of [PendingResults] by calling either
+//!     [EffectBehaviors::push_pending_behavior] or [EffectBehaviors::push_behavior_with_targets].
+//!     - Some effects are moved into [PendingResults] directly with their associated list of valid
+//!       targets. For example, in [crate::stack::Stack::move_ability_to_stack].
+//!     - [EffectBehaviors::push_pending_behavior] is intended to be used when the list of targets
+//!       for the effect is unknown. This delegates to the specific effect implementation to decide
+//!       how it wants the [PendingResults] to present options to the end user, or if it wants to
+//!       choose targets at all. This is typically the entrypoint for most effects.
+//!     - [EffectBehaviors::push_behavior_with_targets] is intended to be called when the list of
+//!       targets for the effect is known, and the effect should tell [PendingResults] how to handle
+//!       resolving the effect.
+//! - Then [PendingResults] handles optional target selection for the effect. If targets are
+//!   selected, [PendingResults] calls back into [EffectBehaviors::push_behavior_with_targets] to
+//!   get the final set of behaviors from the effect.
+//! - Then [crate::action_result::ActionResult::apply_action_results] is called on the aggregated
+//!   list of actions to take for the effect. These are deferred so that [PendingResults] can
+//!   cancel taking action and so that the results of effects don't interfere with the application
+//!   of followon effects in the  same batch. This batching can be circumvented with the
+//!   [PendingResults::apply_in_stages] flag.
+
 pub(crate) mod apply_then_if_was;
 pub(crate) mod battle_cry;
 pub(crate) mod battlefield_modifier;
