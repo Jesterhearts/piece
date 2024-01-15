@@ -574,7 +574,9 @@ message ReturnTransformed {
   bool enters_tapped = 1;
 }
 
-message UntapTarget {}
+message UntapTarget {
+  repeated targets.Restriction restrictions = 1;
+}
 
 message UntapThis {}
 

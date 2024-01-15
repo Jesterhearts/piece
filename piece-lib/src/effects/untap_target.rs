@@ -45,7 +45,7 @@ impl EffectBehaviors for UntapTarget {
                     log_session,
                     source,
                     &source.faceup_face(db).restrictions,
-                )
+                ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
             })
             .collect_vec()
         {

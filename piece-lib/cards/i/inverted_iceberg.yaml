@@ -1,0 +1,61 @@
+name: Inverted Iceberg
+cost:
+  mana_cost: '{1}{U}'
+typeline: Artifact
+etb_abilities:
+  - effect: !Mill
+      count: 1
+      restrictions:
+        - restriction: !Self_ {}
+    oracle_text: When Inverted Iceberg enters the battlefield, mill a card, then draw
+      a card.
+  - effect: !ControllerDrawsCards
+      count: !Fixed
+        count: 1
+activated_abilities:
+  - cost:
+      mana_cost: '{4}{U}{U}'
+      additional_costs:
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact
+              - restriction: !Location
+                  locations: On Battlefield, In Graveyard
+              - restriction: !NotSelf {}
+        - cost: !ExileCard
+            restrictions:
+              - restriction: !Self_ {}
+    effects:
+      - effect: !ReturnTransformed {}
+    oracle_text: Craft with artifact {4}{U}{U}
+    sorcery_speed: true
+    craft: true
+back_face:
+  name: Iceberg Titan
+  colors: Blue
+  typeline: Artifact Creature - Golem
+  power: 6
+  toughness: 6
+  triggered_abilities:
+    - trigger:
+        source: attacks
+        restrictions:
+          - restriction: !Controller
+              controller: !Self_ {}
+          - restriction: !Self_ {}
+      oracle_text: Whenever Iceberg Titan attacks, you may tap or untap target artifact
+        or creature.
+      effects:
+        - effect: !Modal
+            modes:
+              - effects:
+                  - effect: !TapTarget
+                      restrictions:
+                        - restriction: !OfType
+                            types: Artifact, Creature
+              - effects:
+                  - effect: !UntapTarget
+                      restrictions:
+                        - restriction: !OfType
+                            types: Artifact, Creature
