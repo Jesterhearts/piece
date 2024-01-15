@@ -1,6 +1,6 @@
 //! The lifetime of an effect:
 //! - First the effect is moved into a set of [PendingResults] by calling either
-//!     [EffectBehaviors::push_pending_behavior] or [EffectBehaviors::push_behavior_with_targets].
+//!   [EffectBehaviors::push_pending_behavior] or [EffectBehaviors::push_behavior_with_targets].
 //!     - Some effects are moved into [PendingResults] directly with their associated list of valid
 //!       targets. For example, in [crate::stack::Stack::move_ability_to_stack].
 //!     - [EffectBehaviors::push_pending_behavior] is intended to be used when the list of targets
