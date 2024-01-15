@@ -210,9 +210,14 @@ impl StackEntry {
                         }
                     };
                 }
-                restriction::Restriction::ControllerControlsBlackOrGreen(_) => {
-                    let colors = Battlefields::controlled_colors(db, spell_or_ability_controller);
-                    if !(colors.contains(&Color::GREEN) || colors.contains(&Color::BLACK)) {
+                restriction::Restriction::ControllerControlsColors(colors) => {
+                    let controlled_colors =
+                        Battlefields::controlled_colors(db, spell_or_ability_controller);
+                    if !colors
+                        .colors
+                        .iter()
+                        .any(|color| controlled_colors.contains(&color.enum_value().unwrap()))
+                    {
                         return false;
                     }
                 }

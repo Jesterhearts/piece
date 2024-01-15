@@ -16,7 +16,8 @@ enchant:
         add_keywords: Vigilance
       duration: until source leaves battlefield
       restrictions:
-        - restriction: !ControllerControlsBlackOrGreen {}
+        - restriction: !ControllerControlsColors
+            colors: Black, Green
 restrictions:
   - restriction: !OfType
       types: Creature

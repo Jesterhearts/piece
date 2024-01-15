@@ -28,7 +28,9 @@ message Restriction {
       Opponent opponent = 2;
     }
   }
-  message ControllerControlsBlackOrGreen {}
+  message ControllerControlsColors {
+    repeated color.Color colors = 1;
+  }
   message ControllerHandEmpty {}
   message Descend {
     int32 count = 1;
@@ -94,8 +96,9 @@ message Restriction {
     CastFromHand cast_from_hand = 5;
     Cmc cmc = 6;
     Controller controller = 7;
-    ControllerControlsBlackOrGreen controller_controls_black_or_green = 8;
+    ControllerControlsColors controller_controls_colors = 8;
     ControllerHandEmpty controller_hand_empty = 9;
+    ControllerJustCast controller_just_cast = 17;
     Descend descend = 10;
     DescendedThisTurn descended_this_turn = 11;
     DuringControllersTurn during_controllers_turn = 12;
@@ -103,7 +106,6 @@ message Restriction {
     HasActivatedAbility has_activated_ability = 14;
     InGraveyard in_graveyard = 15;
     IsPermanent is_permanent = 16;
-    ControllerJustCast controller_just_cast = 17;
     LifeGainedThisTurn life_gained_this_turn = 18;
     Locations location = 19;
     ManaSpentFromSource mana_spent_from_source = 20;
