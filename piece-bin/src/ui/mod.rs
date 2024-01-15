@@ -146,7 +146,7 @@ impl Widget for Card<'_> {
                         ui.separator();
                     }
 
-                    ScrollArea::vertical().id_source(self.title).show(ui, |ui| {
+                    ScrollArea::vertical().id_source(self.card).show(ui, |ui| {
                         sense = sense.union(ui.add(Label::new(paragraph).sense(Sense::click())));
                     });
 

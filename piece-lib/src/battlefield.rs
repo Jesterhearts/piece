@@ -333,9 +333,7 @@ impl Battlefields {
         let mut results = PendingResults::default();
         if let Some(cost) = ability.cost(db) {
             if cost.tap {
-                if source.tapped(db) {
-                    unreachable!()
-                }
+                assert!(!source.tapped(db));
 
                 results.push_settled(ActionResult::TapPermanent(source));
             }

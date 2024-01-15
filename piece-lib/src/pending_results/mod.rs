@@ -219,7 +219,7 @@ pub struct PendingResults {
     settled_effects: Vec<ActionResult>,
 
     apply_in_stages: bool,
-    gain_mana: Option<(CardId, GainManaAbilityId)>,
+    gain_mana: Vec<(CardId, GainManaAbilityId)>,
     add_to_stack: Option<Source>,
     copy_to_stack: Vec<CopySource>,
     cast_from: Option<CastFrom>,
@@ -231,7 +231,7 @@ pub struct PendingResults {
 
 impl PendingResults {
     pub(crate) fn add_gain_mana(&mut self, source: CardId, gain: GainManaAbilityId) {
-        self.gain_mana = Some((source, gain));
+        self.gain_mana.push((source, gain));
     }
 
     pub(crate) fn add_ability_to_stack(&mut self, source: CardId, ability: Ability) {
@@ -497,26 +497,30 @@ impl PendingResults {
                     }
                     Source::Effect(_, _) => unreachable!(),
                 }
-            } else if let Some((source, gain)) = self.gain_mana.take() {
-                let target = db[source].controller;
-                let source = db[gain].ability.mana_source;
-                let restriction = db[gain].ability.mana_restriction;
-                match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
-                    Gain::Specific(specific) => self.settled_effects.push(ActionResult::GainMana {
-                        gain: specific.gain.clone(),
-                        target,
-                        source,
-                        restriction,
-                    }),
-                    Gain::Choice(Choice { choices, .. }) => {
-                        let option = self.chosen_modes.pop().unwrap();
-                        self.chosen_modes.clear();
-                        self.settled_effects.push(ActionResult::GainMana {
-                            gain: choices[option].gains.clone(),
-                            target,
-                            source,
-                            restriction,
-                        })
+            } else if !self.gain_mana.is_empty() {
+                for (source, gain) in self.gain_mana.drain(..) {
+                    let target = db[source].controller;
+                    let source = db[gain].ability.mana_source;
+                    let restriction = db[gain].ability.mana_restriction;
+                    match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
+                        Gain::Specific(specific) => {
+                            self.settled_effects.push(ActionResult::GainMana {
+                                gain: specific.gain.clone(),
+                                target,
+                                source,
+                                restriction,
+                            })
+                        }
+                        Gain::Choice(Choice { choices, .. }) => {
+                            let option = self.chosen_modes.pop().unwrap();
+                            self.chosen_modes.clear();
+                            self.settled_effects.push(ActionResult::GainMana {
+                                gain: choices[option].gains.clone(),
+                                target,
+                                source,
+                                restriction,
+                            })
+                        }
                     }
                 }
             } else if !self.copy_to_stack.is_empty() {
@@ -598,11 +602,12 @@ impl PendingResults {
 
         self.pending.extend(results.pending);
         self.settled_effects.extend(results.settled_effects);
+        self.gain_mana.extend(results.gain_mana);
 
         self.applied = results.applied;
         self.add_to_stack = results.add_to_stack;
-        self.gain_mana = results.gain_mana;
         self.cast_from = results.cast_from;
+        self.x_is = results.x_is;
         self.apply_in_stages = results.apply_in_stages;
     }
 

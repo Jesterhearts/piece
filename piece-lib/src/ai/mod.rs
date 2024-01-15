@@ -1,4 +1,7 @@
+use itertools::Itertools;
+
 use crate::{
+    battlefield::Battlefields,
     in_play::Database,
     pending_results::{PendingResults, ResolutionResult},
     player::{Owner, Player},
@@ -15,21 +18,59 @@ impl AI {
     }
 
     pub fn priority(&self, db: &mut Database, pending: &mut PendingResults) -> PendingResults {
-        if pending.is_empty()
-            && db.turn.active_player() == self.player
-            && matches!(db.turn.phase, Phase::PreCombatMainPhase)
-            && Player::can_play_land(db, self.player)
-        {
-            debug!("Playing land");
-            if let Some(land) = db.hand[self.player].iter().find(|card| card.is_land(db)) {
-                pending.extend(Player::play_card(db, self.player, *land));
-            } else {
-                debug!("Found no lands in hand");
+        if pending.is_empty() && db.turn.active_player() == self.player {
+            if matches!(db.turn.phase, Phase::PreCombatMainPhase)
+                && Player::can_play_land(db, self.player)
+            {
+                debug!("Playing land");
+                if let Some(land) = db.hand[self.player].iter().find(|card| card.is_land(db)) {
+                    pending.extend(Player::play_card(db, self.player, *land));
+                } else {
+                    debug!("Found no lands in hand");
+                }
+            } else if matches!(db.turn.phase, Phase::PostCombatMainPhase) {
+                for land in db.battlefield[self.player]
+                    .iter()
+                    .filter(|card| card.is_land(db))
+                    .copied()
+                    .collect_vec()
+                {
+                    pending.extend(Battlefields::activate_ability(
+                        db,
+                        &None,
+                        self.player,
+                        land,
+                        0,
+                    ));
+                }
+
+                assert!(pending.only_immediate_results(db));
+
+                let result = pending.resolve(db, None);
+                assert_eq!(result, ResolutionResult::Complete);
+
+                if let Some(card) = db.hand[self.player].iter().find(|card| !card.is_land(db)) {
+                    pending.extend(Player::play_card(db, self.player, *card));
+                }
             }
         }
 
         while pending.priority(db) == self.player {
-            let result = pending.resolve(db, Some(0));
+            let result = if pending.options(db).is_empty() {
+                let result = pending.resolve(db, None);
+                if result == ResolutionResult::PendingChoice
+                    && pending.options(db).is_empty()
+                    && pending.can_cancel(db)
+                {
+                    debug!("Cancelling pending");
+                    ResolutionResult::Complete
+                } else {
+                    result
+                }
+            } else {
+                pending.resolve(db, Some(0))
+            };
+
             if result == ResolutionResult::Complete {
                 break;
             }

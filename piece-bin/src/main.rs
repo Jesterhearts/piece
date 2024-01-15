@@ -187,7 +187,8 @@ fn main() -> anyhow::Result<()> {
     database.all_players[player1].library = def.build_deck(&mut database, &cards, player1);
 
     let mut def = DeckDefinition::default();
-    def.add_card("Plains".to_string(), 100);
+    def.add_card("Forest".to_string(), 4);
+    def.add_card("Alpine Grizzly".to_string(), 3);
     database.all_players[player2].library = def.build_deck(&mut database, &cards, player2);
 
     Player::draw_initial_hand(&mut database, player1);
