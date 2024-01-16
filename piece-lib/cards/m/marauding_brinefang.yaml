@@ -1,0 +1,26 @@
+name: Marauding Brinefang
+cost:
+  mana_cost: '{5}{U}{U}'
+activated_abilities:
+  - cost:
+      mana_cost: '{2}'
+      additional_costs:
+        - cost: !DiscardThis {}
+    effects:
+      - effect: !Cycling
+          subtypes: Island
+    oracle_text: Islandcycling {2}
+triggered_abilities:
+  - trigger:
+      source: targeted
+      from: anywhere
+      restrictions:
+        - restriction: !TargetedBy {}
+    effects:
+      - oracle_text: Counter spell or ability unless its controller pays {3}
+        effect: !CounterSpellUnlessPay
+          restrictions:
+            - restriction: !TargetedBy {}
+          cost: !Fixed
+            count: 2
+    oracle_text: Ward {3}
