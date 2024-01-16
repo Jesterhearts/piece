@@ -217,7 +217,6 @@ pub(crate) trait EffectBehaviors {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        apply_to_self: bool,
         source: CardId,
         controller: Controller,
         results: &mut PendingResults,

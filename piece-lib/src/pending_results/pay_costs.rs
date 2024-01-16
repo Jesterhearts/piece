@@ -1093,7 +1093,6 @@ impl PendingResult for PayCost {
                 effect.push_behavior_with_targets(
                     db,
                     targets.clone(),
-                    false,
                     self.source,
                     db[self.source].controller,
                     results,

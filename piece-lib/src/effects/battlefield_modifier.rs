@@ -41,12 +41,11 @@ impl EffectBehaviors for BattlefieldModifier {
         &self,
         db: &mut Database,
         _targets: Vec<ActiveTarget>,
-        apply_to_self: bool,
         source: crate::in_play::CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
-        if apply_to_self {
+        if self.apply_to_self {
             let modifier = ModifierId::upload_temporary_modifier(db, source, self.clone());
             results.push_settled(ActionResult::ModifyCreatures {
                 modifier,

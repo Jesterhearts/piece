@@ -162,7 +162,7 @@ impl PendingResult for ChooseTargets {
             if self.choices_complete(db, results) {
                 let (choices, effect_or_aura) = self.chosen_targets_and_effect();
 
-                if results.add_to_stack.is_none() {
+                if results.add_to_stack.is_empty() {
                     let player = db[self.card].controller;
 
                     match effect_or_aura {
@@ -170,7 +170,6 @@ impl PendingResult for ChooseTargets {
                             effect.push_behavior_with_targets(
                                 db,
                                 choices.clone(),
-                                false,
                                 self.card,
                                 player,
                                 results,
@@ -200,7 +199,7 @@ impl PendingResult for ChooseTargets {
                     });
 
                     for effect_or_aura in effect_or_auras {
-                        if results.add_to_stack.is_some() {
+                        if results.add_to_stack.is_empty() {
                             results.chosen_targets.push(choices.clone());
                         } else {
                             match effect_or_aura {
@@ -208,7 +207,6 @@ impl PendingResult for ChooseTargets {
                                     effect.push_behavior_with_targets(
                                         db,
                                         choices.clone(),
-                                        false,
                                         self.card,
                                         player,
                                         results,

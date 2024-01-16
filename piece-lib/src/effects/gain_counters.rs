@@ -36,7 +36,6 @@ impl EffectBehaviors for GainCounters {
         &self,
         _db: &mut Database,
         _targets: Vec<ActiveTarget>,
-        _apply_to_self: bool,
         source: CardId,
         _controller: Controller,
         results: &mut PendingResults,

@@ -7,12 +7,17 @@ Future plans:
 - An AI capable of making interesting matches.
 
 # Adding Cards
-Cards are written in `yaml` format. You can see examples in the [cards directory](piece-lib/cards). The proto
-schema is defined in the [protos directory](piece-lib/src/protos). In particular, check out the
-[card](piece-lib/src/protos/card.proto#L12), [effect](piece-lib/src/protos/effects.proto#L13), and
+Cards are written in `yaml` format. You can see examples in the [cards directory](piece-lib/cards).
+The proto schema is defined in the [protos directory](piece-lib/src/protos). In particular, check
+out the [card](piece-lib/src/protos/card.proto#L12),
+[effect](piece-lib/src/protos/effects.proto#L13), and
 [restriction](piece-lib/src/protos/targets.proto#L11) definitions for all of the fields available.
 See also the [counter](piece-lib/src/protos/counters.proto#L5), and
-[keyword](piece-lib/src/protos/keywords.proto#L5) implementations for their definitions.
+[keyword](piece-lib/src/protos/keywords.proto#L5) implementations for their definitions. Some
+keywords work as-is, some need to be implemented as the appropriate ability/effect. In general, if
+the keyword's effects are always the same (i.e. neither the cost nor the effect vary e.g. Battle
+Cry, Cascade), specifying the keyword for the card is enough. If the keyword varies (e.g. cycling),
+then it must be implemented using effects - typically as an activated or triggered ability.
 
 ## Text-to-enum conversions
 - Counters accepts the text +1/+1 and -1/-1 for P1P1 and M1M1 counters.

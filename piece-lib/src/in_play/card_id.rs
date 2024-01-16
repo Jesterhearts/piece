@@ -117,6 +117,7 @@ pub struct CardInPlay {
     pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
     pub(crate) modified_activated_abilities: IndexSet<ActivatedAbilityId>,
     pub(crate) modified_mana_abilities: IndexSet<GainManaAbilityId>,
+    pub(crate) unblockable: bool,
 
     pub(crate) marked_damage: i32,
 
@@ -606,6 +607,8 @@ impl CardId {
             self.faceup_face(db)
         };
 
+        let mut unblockable = false;
+
         let name = if facedown {
             String::default()
         } else {
@@ -1059,6 +1062,11 @@ impl CardId {
                 }
             }
 
+            if modifier.modifier.modifier.unblockable {
+                applied_modifiers.insert(id);
+                unblockable = true;
+            }
+
             if modifier.modifier.modifier.remove_all_abilities {
                 applied_modifiers.insert(id);
 
@@ -1215,6 +1223,7 @@ impl CardId {
         db[self].modified_base_toughness = base_toughness;
 
         db[self].add_power = add_power;
+        db[self].unblockable = unblockable;
         db[self].modified_cost = cost;
         db[self].modified_name = name;
         db[self].add_toughness = add_toughness;
@@ -1880,18 +1889,14 @@ impl CardId {
     ) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
         let controller = db[self].controller;
-        if !ability.apply_to_self(db) {
-            for effect in ability.effects(db).iter() {
-                targets.push(effect.effect.as_ref().unwrap().valid_targets(
-                    db,
-                    self,
-                    LogId::current(db),
-                    controller,
-                    already_chosen,
-                ));
-            }
-        } else {
-            targets.push(vec![ActiveTarget::Battlefield { id: self }])
+        for effect in ability.effects(db).iter() {
+            targets.push(effect.effect.as_ref().unwrap().valid_targets(
+                db,
+                self,
+                LogId::current(db),
+                controller,
+                already_chosen,
+            ));
         }
 
         targets

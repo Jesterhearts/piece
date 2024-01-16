@@ -33,7 +33,6 @@ impl EffectBehaviors for ReturnSelfToHand {
         &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        _apply_to_self: bool,
         source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,

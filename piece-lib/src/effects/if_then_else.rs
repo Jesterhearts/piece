@@ -71,7 +71,6 @@ impl EffectBehaviors for IfThenElse {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
@@ -81,7 +80,6 @@ impl EffectBehaviors for IfThenElse {
                 effect.effect.as_ref().unwrap().push_behavior_with_targets(
                     db,
                     targets.clone(),
-                    apply_to_self,
                     source,
                     controller,
                     results,
@@ -92,7 +90,6 @@ impl EffectBehaviors for IfThenElse {
                 effect.effect.as_ref().unwrap().push_behavior_with_targets(
                     db,
                     targets.clone(),
-                    apply_to_self,
                     source,
                     controller,
                     results,

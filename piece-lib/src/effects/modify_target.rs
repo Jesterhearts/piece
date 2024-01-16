@@ -85,7 +85,6 @@ impl EffectBehaviors for ModifyTarget {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: Controller,
         results: &mut PendingResults,

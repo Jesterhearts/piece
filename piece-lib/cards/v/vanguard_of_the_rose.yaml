@@ -12,6 +12,7 @@ activated_abilities:
                   types: Artifact, Creature
     effects:
       - effect: !BattlefieldModifier
+          apply_to_self: true
           modifier:
             add_keywords: Indestructible
           duration: until end of turn
@@ -20,7 +21,6 @@ activated_abilities:
                 controller: !Self_ {}
             - restriction: !Self_ {}
       - effect: !TapThis {}
-    apply_to_self: true
     oracle_text: '{1}, Sacrifce another creature or artifact: Vanguard of the Rose
       gains indestructible until end of turn. Tap it.'
 power: 3

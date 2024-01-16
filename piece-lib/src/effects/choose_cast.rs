@@ -69,7 +69,6 @@ impl EffectBehaviors for ChooseCast {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        _apply_to_self: bool,
         _source: CardId,
         _controller: Controller,
         results: &mut PendingResults,

@@ -6,9 +6,9 @@ keywords: Vigilance
 activated_abilities:
   - cost:
       mana_cost: '{1}{U}'
-    apply_to_self: true
     effects:
       - effect: !BattlefieldModifier
+          apply_to_self: true
           modifier:
             add_power: 3
             add_toughness: -3

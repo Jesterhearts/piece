@@ -98,7 +98,6 @@ impl EffectBehaviors for DealDamage {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _apply_to_self: bool,
         source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,

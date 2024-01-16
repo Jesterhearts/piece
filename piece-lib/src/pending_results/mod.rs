@@ -223,7 +223,7 @@ pub struct PendingResults {
 
     apply_in_stages: bool,
     gain_mana: Vec<(CardId, GainManaAbilityId)>,
-    add_to_stack: Option<Source>,
+    add_to_stack: VecDeque<Source>,
     copy_to_stack: Vec<CopySource>,
     cast_from: Option<CastFrom>,
 
@@ -238,11 +238,12 @@ impl PendingResults {
     }
 
     pub(crate) fn add_ability_to_stack(&mut self, source: CardId, ability: Ability) {
-        self.add_to_stack = Some(Source::Ability { source, ability });
+        self.add_to_stack
+            .push_back(Source::Ability { source, ability });
     }
 
     pub(crate) fn add_card_to_stack(&mut self, source: CardId, from: Option<CastFrom>) {
-        self.add_to_stack = Some(Source::Card(source));
+        self.add_to_stack.push_back(Source::Card(source));
         self.cast_from(from);
     }
 
@@ -281,7 +282,7 @@ impl PendingResults {
 
     pub(crate) fn apply_in_stages(&mut self) {
         self.apply_in_stages = true;
-        self.add_to_stack = None;
+        self.add_to_stack.clear();
     }
 
     pub(crate) fn push_choose_scry(&mut self, cards: Vec<CardId>) {
@@ -459,7 +460,7 @@ impl PendingResults {
     pub fn resolve(&mut self, db: &mut Database, choice: Option<usize>) -> ResolutionResult {
         event!(Level::DEBUG, "resolution");
 
-        assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
+        assert!(self.add_to_stack.is_empty() || !self.apply_in_stages);
 
         let mut recomputed = false;
         for pend in self.pending.iter_mut() {
@@ -492,7 +493,7 @@ impl PendingResults {
         });
 
         if self.pending.is_empty() {
-            if let Some(source) = self.add_to_stack.take() {
+            if let Some(source) = self.add_to_stack.pop_front() {
                 match source {
                     Source::Card(card) => {
                         debug!("Casting card {}", db[card].modified_name);
@@ -624,7 +625,7 @@ impl PendingResults {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.add_to_stack.is_none()
+        self.add_to_stack.is_empty()
             && self.pending.is_empty()
             && self.settled_effects.is_empty()
             && self.gain_mana.is_empty()

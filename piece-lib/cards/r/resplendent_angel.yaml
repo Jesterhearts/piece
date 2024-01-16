@@ -7,6 +7,7 @@ activated_abilities:
       mana_cost: '{3}{W}{W}{W}'
     effects:
       - effect: !BattlefieldModifier
+          apply_to_self: true
           modifier:
             add_power: 2
             add_toughness: 2
@@ -16,7 +17,6 @@ activated_abilities:
             - restriction: !Controller
                 controller: !Self_ {}
             - restriction: !Self_ {}
-    apply_to_self: true
     oracle_text: '{3}{W}{W}{W}: Until end of turn, Resplendent Angel gets +2/+2 and
       gains lifelink.'
 triggered_abilities:

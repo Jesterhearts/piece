@@ -137,14 +137,6 @@ impl Ability {
         }
     }
 
-    pub(crate) fn apply_to_self(&self, db: &Database) -> bool {
-        match self {
-            Ability::Activated(id) => db[*id].ability.apply_to_self,
-            Ability::Mana(_) => false,
-            Ability::EtbOrTriggered(_) => false,
-        }
-    }
-
     pub(crate) fn effects(&self, db: &Database) -> Vec<Effect> {
         match self {
             Ability::Activated(id) => db[*id].ability.effects.clone(),

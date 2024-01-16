@@ -35,7 +35,6 @@ impl EffectBehaviors for MultiplyTokens {
         &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _results: &mut crate::pending_results::PendingResults,

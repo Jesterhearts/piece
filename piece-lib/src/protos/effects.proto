@@ -14,7 +14,8 @@ message Effect {
   oneof effect {
     // Apply an effect, then apply another effect, allowing another round of
     // choosing targets. You need to use this if your effects depend on the
-    // results of previous effects. See Glowspore Shaman for an example.
+    // results of previous effects. See Glowspore Shaman and Malcom, Alluring
+    // Scoundrel for examples.
     ApplyThen apply_then = 1;
     // Apply an effect, then examine the log of results from the effect and
     // compare it to a list of restrictions. If any log entry resulting from the
@@ -170,10 +171,9 @@ message Effect {
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
-  bool apply_to_self = 3;
-  string oracle_text = 4;
-  bool sorcery_speed = 5;
-  bool craft = 6;
+  string oracle_text = 3;
+  bool sorcery_speed = 4;
+  bool craft = 5;
 }
 
 message ApplyThen {
@@ -197,6 +197,7 @@ message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
   Duration duration = 2;
   repeated targets.Restriction restrictions = 3;
+  bool apply_to_self = 4;
 }
 
 message CantAttackThisTurn {
@@ -464,10 +465,11 @@ message ModifyBattlefield {
   bool remove_all_subtypes = 16;
   bool remove_all_colors = 17;
   bool remove_all_abilities = 18;
-  bool entire_battlefield = 19;
-  bool global = 20;
-  map<int32, uint32> add_keywords = 21;
-  map<int32, uint32> remove_keywords = 22;
+  bool unblockable = 19;
+  bool entire_battlefield = 20;
+  bool global = 21;
+  map<int32, uint32> add_keywords = 22;
+  map<int32, uint32> remove_keywords = 23;
 }
 
 message MultiplyTokens {

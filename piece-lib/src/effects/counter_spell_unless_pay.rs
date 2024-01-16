@@ -88,7 +88,6 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _apply_to_self: bool,
         _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,

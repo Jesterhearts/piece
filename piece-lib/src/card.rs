@@ -101,7 +101,6 @@ impl From<Token> for Card {
                         oracle_text: String::default(),
                         ..Default::default()
                     }],
-                    apply_to_self: false,
                     oracle_text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as sorcery"
                         .to_string(),
                     sorcery_speed: true,

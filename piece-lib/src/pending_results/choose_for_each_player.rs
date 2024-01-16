@@ -141,12 +141,11 @@ impl PendingResult for ChooseForEachPlayer {
                 let choices = self.chosen_targets();
 
                 results.all_chosen_targets.extend(choices.iter().copied());
-                if results.add_to_stack.is_none() {
+                if results.add_to_stack.is_empty() {
                     let player = db[self.card].controller;
                     self.target_source.push_behavior_with_targets(
                         db,
                         choices.clone(),
-                        false,
                         self.card,
                         player,
                         results,
@@ -168,13 +167,12 @@ impl PendingResult for ChooseForEachPlayer {
                     });
 
                     for effect in effect_or_auras {
-                        if results.add_to_stack.is_some() {
+                        if results.add_to_stack.is_empty() {
                             results.chosen_targets.push(choices.clone());
                         } else {
                             effect.push_behavior_with_targets(
                                 db,
                                 choices.clone(),
-                                false,
                                 self.card,
                                 player,
                                 results,

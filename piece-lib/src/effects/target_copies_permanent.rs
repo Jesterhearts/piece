@@ -96,7 +96,6 @@ impl EffectBehaviors for TargetCopiesPermanent {
         &self,
         db: &mut Database,
         mut targets: Vec<ActiveTarget>,
-        _apply_to_self: bool,
         _source: CardId,
         _controller: Controller,
         results: &mut PendingResults,

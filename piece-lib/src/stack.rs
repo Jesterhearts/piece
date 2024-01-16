@@ -623,7 +623,7 @@ impl Stack {
 
         db.stack.settle();
 
-        let (apply_to_self, effects, controller, resolving_card, source, ty) = match next.ty {
+        let (effects, controller, resolving_card, source, ty) = match next.ty {
             Entry::Card(card) => {
                 let effects = if !card.faceup_face(db).modes.is_empty() {
                     debug!("Modes: {:?}", card.faceup_face(db).modes);
@@ -635,7 +635,6 @@ impl Stack {
                 };
 
                 (
-                    false,
                     effects,
                     db[card].controller,
                     Some(card),
@@ -644,7 +643,6 @@ impl Stack {
                 )
             }
             Entry::Ability { source, ability } => (
-                ability.apply_to_self(db),
                 ability.effects(db),
                 db[source].controller,
                 None,
@@ -664,7 +662,6 @@ impl Stack {
             effect.effect.unwrap().push_behavior_with_targets(
                 db,
                 targets,
-                apply_to_self,
                 source,
                 controller,
                 &mut results,

@@ -69,7 +69,6 @@ impl EffectBehaviors for CopySpellOrAbility {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        _apply_to_self: bool,
         _source: CardId,
         controller: Controller,
         results: &mut PendingResults,

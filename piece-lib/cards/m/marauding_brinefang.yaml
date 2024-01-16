@@ -1,6 +1,7 @@
 name: Marauding Brinefang
 cost:
   mana_cost: '{5}{U}{U}'
+typeline: Creature - Dinosaur
 activated_abilities:
   - cost:
       mana_cost: '{2}'
@@ -24,3 +25,5 @@ triggered_abilities:
           cost: !Fixed
             count: 2
     oracle_text: Ward {3}
+power: 6
+toughness: 7
