@@ -128,6 +128,8 @@ impl Widget for Card<'_> {
                 2.0,
                 if self.highlight {
                     Color32::DARK_BLUE
+                } else if self.card.summoning_sick(self.db) {
+                    Color32::LIGHT_BLUE
                 } else {
                     Color32::DARK_GRAY
                 },

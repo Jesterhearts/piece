@@ -451,7 +451,7 @@ impl eframe::App for App {
                     assert_eq!(self.database.turn.priority_player(), self.player1);
                     self.database.turn.pass_priority();
 
-                    if self.database.turn.passed_full_round() {
+                    if self.database.turn.passed_full_priority_round() {
                         let mut pending = Turn::step(&mut self.database);
                         while pending.only_immediate_results(&self.database) {
                             let result = pending.resolve(&mut self.database, None);

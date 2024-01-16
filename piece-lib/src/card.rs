@@ -12,7 +12,7 @@ use crate::{
             create_token::{self, Token},
             effect, ActivatedAbility, DynamicPowerToughness, TargetCreatureExplores,
         },
-        types::{Type, Typeline},
+        types::{Subtype, Type, Typeline},
     },
 };
 
@@ -82,6 +82,7 @@ impl From<Token> for Card {
                 name: "Map".to_string(),
                 typeline: protobuf::MessageField::some(Typeline {
                     types: vec![Type::ARTIFACT.into()],
+                    subtypes: vec![Subtype::MAP.into()],
                     ..Default::default()
                 }),
                 activated_abilities: vec![ActivatedAbility {
@@ -101,7 +102,7 @@ impl From<Token> for Card {
                         ..Default::default()
                     }],
                     apply_to_self: false,
-                    oracle_text: "Target creature you control explores. Activate only as sorcery"
+                    oracle_text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as sorcery"
                         .to_string(),
                     sorcery_speed: true,
                     craft: false,

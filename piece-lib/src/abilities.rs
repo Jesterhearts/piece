@@ -203,7 +203,7 @@ pub(crate) fn can_pay_costs(
     cost: &AbilityCost,
     source: CardId,
 ) -> bool {
-    if cost.tap && db[source].tapped {
+    if cost.tap && (db[source].tapped || source.summoning_sick(db)) {
         return false;
     }
     let controller = db[source].controller;

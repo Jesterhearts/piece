@@ -79,10 +79,10 @@ impl AI {
         db.turn.pass_priority();
         debug!(
             "Passing priority: full round {}",
-            db.turn.passed_full_round()
+            db.turn.passed_full_priority_round()
         );
 
-        if db.turn.passed_full_round() {
+        if db.turn.passed_full_priority_round() {
             let mut pending = Turn::step(db);
             debug!("Pending priority {:?}", pending.priority(db));
             if pending.priority(db) == self.player {

@@ -297,6 +297,7 @@ impl Turn {
                 db.turn.priority_player = db.turn.active_player;
 
                 db.turn.turn_count += 1;
+
                 Log::new_turn(db, db.turn.active_player());
 
                 Battlefields::untap(db, db.turn.active_player());
@@ -331,8 +332,12 @@ impl Turn {
         self.turn_order[self.active_player]
     }
 
-    pub fn passed_full_round(&self) -> bool {
+    pub fn passed_full_priority_round(&self) -> bool {
         self.passed == 0
+    }
+
+    pub fn turns_per_round(&self) -> usize {
+        self.turn_order.len()
     }
 
     pub fn priority_player(&self) -> Owner {

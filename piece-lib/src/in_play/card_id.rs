@@ -75,6 +75,7 @@ pub struct CardInPlay {
     pub(crate) owner: Owner,
     pub(crate) controller: Controller,
 
+    pub(crate) came_under_control_turn: Option<usize>,
     pub(crate) entered_battlefield_turn: Option<usize>,
     pub(crate) left_battlefield_turn: Option<usize>,
 
@@ -193,6 +194,15 @@ impl CardId {
 
     pub fn upload(db: &mut Database, cards: &Cards, player: Owner, card: &str) -> CardId {
         let card = cards.get(card).expect("Invalid card name");
+        Self::upload_card_or_token(db, player, card.clone(), false)
+    }
+
+    pub fn upload_card_or_token(
+        db: &mut Database,
+        player: Owner,
+        card: Card,
+        token: bool,
+    ) -> CardId {
         let id = Self::new();
 
         let mut static_abilities = HashSet::default();
@@ -217,12 +227,13 @@ impl CardId {
         db.cards.insert(
             id,
             CardInPlay {
-                card: card.clone(),
+                card,
                 controller: player.into(),
                 owner: player,
                 static_abilities,
                 activated_abilities,
                 mana_abilities,
+                token,
                 ..Default::default()
             },
         );
@@ -232,20 +243,7 @@ impl CardId {
     }
 
     pub(crate) fn upload_token(db: &mut Database, player: Owner, token: Token) -> CardId {
-        let id = Self::new();
-        db.cards.insert(
-            id,
-            CardInPlay {
-                card: token.into(),
-                controller: player.into(),
-                owner: player,
-                token: true,
-                ..Default::default()
-            },
-        );
-
-        id.apply_modifiers_layered(db);
-        id
+        Self::upload_card_or_token(db, player, token.into(), true)
     }
 
     pub fn is_in_location(self, db: &Database, location: Location) -> bool {
@@ -292,6 +290,18 @@ impl CardId {
             db[self].card.back_face.as_ref().unwrap_or(&db[self].card)
         } else {
             &db[self].card
+        }
+    }
+
+    pub fn summoning_sick(self, db: &Database) -> bool {
+        if !self.types_intersect(db, &TypeSet::from([Type::CREATURE])) {
+            return false;
+        }
+
+        if let Some(turn) = db[self].came_under_control_turn {
+            turn as i32 >= (db.turn.turn_count as i32 - db.turn.turns_per_round() as i32)
+        } else {
+            true
         }
     }
 
@@ -405,6 +415,7 @@ impl CardId {
             modifier.activate(&mut db.modifiers);
         }
 
+        db[self].came_under_control_turn = Some(db.turn.turn_count);
         db[self].entered_battlefield_turn = Some(db.turn.turn_count);
 
         self.apply_modifiers_layered(db);
@@ -2149,6 +2160,7 @@ impl CardId {
                     static_ability::Ability::PreventAttacks(_)
                 )
             })
+            && !self.summoning_sick(db)
     }
 
     pub(crate) fn battle_cry(self, db: &Database) -> u32 {
