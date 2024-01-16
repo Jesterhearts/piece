@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -11,6 +11,7 @@ use crate::{
     log::LogId,
     pending_results::{
         choose_targets::ChooseTargets,
+        examine_top_cards::ExamineCards,
         pay_costs::{
             Cost, ExileCards, ExileCardsSharingType, ExilePermanentsCmcX, PayCost,
             SacrificePermanent, SpendMana, TapPermanent, TapPermanentsPowerXOrMore,
@@ -22,15 +23,19 @@ use crate::{
         color::Color,
         cost::additional_cost::{self, ExileXOrMoreCards, PayLife, RemoveCounters},
         effects::{
+            destination::{self, Graveyard},
+            examine_top_cards::Dest,
             gain_mana::Gain,
             replacement_effect::Replacing,
             static_ability::{self, ForceEtbTapped},
-            Duration,
+            Destination, Duration,
         },
         targets::Location,
         triggers::{self, TriggerSource},
+        types::Type,
     },
     stack::{ActiveTarget, Stack},
+    types::TypeSet,
 };
 
 #[must_use]
@@ -281,6 +286,9 @@ impl Battlefields {
 
     pub fn check_sba(db: &mut Database) -> PendingResults {
         let mut result = PendingResults::default();
+
+        let mut legendary_cards: HashMap<String, Vec<CardId>> = HashMap::default();
+
         for card in db
             .battlefield
             .battlefields
@@ -288,6 +296,13 @@ impl Battlefields {
             .flat_map(|b| b.iter())
             .copied()
         {
+            if card.types_intersect(db, &TypeSet::from([Type::LEGENDARY])) {
+                legendary_cards
+                    .entry(db[card].modified_name.clone())
+                    .or_default()
+                    .push(card);
+            }
+
             let toughness = card.toughness(db);
 
             if toughness.is_some()
@@ -305,6 +320,23 @@ impl Battlefields {
                     .is_in_location(db, Location::ON_BATTLEFIELD)
             {
                 result.push_settled(ActionResult::PermanentToGraveyard(card));
+            }
+        }
+
+        for legends in legendary_cards.values() {
+            if legends.len() > 1 {
+                result.push_examine_cards(ExamineCards::new(
+                    Location::ON_BATTLEFIELD,
+                    legends.clone(),
+                    vec![Dest {
+                        destination: protobuf::MessageField::some(Destination {
+                            destination: Some(destination::Destination::from(Graveyard::default())),
+                            ..Default::default()
+                        }),
+                        count: (legends.len() - 1) as u32,
+                        ..Default::default()
+                    }],
+                ))
             }
         }
 

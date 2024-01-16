@@ -40,6 +40,9 @@ fn place_on_top() -> anyhow::Result<()> {
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     creature.move_to_battlefield(&mut db);
 
+    // Get rid of summoning sickness
+    db.turn.turn_count += db.turn.turns_per_round();
+
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     // Pay the blue
     let result = results.resolve(&mut db, None);

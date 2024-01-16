@@ -14,10 +14,7 @@ use crate::{
     in_play::{CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry, LogId},
-    pending_results::{
-        examine_top_cards::{self, ExamineCards},
-        PendingResults,
-    },
+    pending_results::{examine_top_cards::ExamineCards, PendingResults},
     player::{mana_pool::SpendReason, Controller, Owner, Player},
     protogen::{
         abilities::TriggeredAbility,
@@ -936,8 +933,8 @@ impl ActionResult {
                 }
 
                 let mut results = PendingResults::default();
-                results.push_examine_top_cards(ExamineCards::new(
-                    examine_top_cards::Location::Library,
+                results.push_examine_cards(ExamineCards::new(
+                    Location::IN_LIBRARY,
                     cards,
                     destinations.clone(),
                 ));

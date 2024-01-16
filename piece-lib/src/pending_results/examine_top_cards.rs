@@ -5,17 +5,14 @@ use crate::{
     action_result::ActionResult,
     in_play::{CardId, Database},
     pending_results::{PendingResult, PendingResults},
-    protogen::effects::{
-        destination::{self, Battlefield},
-        examine_top_cards::Dest,
+    protogen::{
+        effects::{
+            destination::{self, Battlefield},
+            examine_top_cards::Dest,
+        },
+        targets::Location,
     },
 };
-
-#[derive(Debug)]
-pub(crate) enum Location {
-    Hand,
-    Library,
-}
 
 #[derive(Debug)]
 pub(crate) struct ExamineCards {
@@ -144,50 +141,52 @@ impl PendingResult for ExamineCards {
                     destination::Destination::Hand(_) => {
                         for card in cards {
                             match self.location {
-                                Location::Hand => {
-                                    unreachable!()
-                                }
-                                Location::Library => {
+                                Location::IN_LIBRARY => {
                                     results.push_settled(ActionResult::MoveToHandFromLibrary(card));
                                 }
+                                _ => unreachable!(),
                             }
                         }
                     }
                     destination::Destination::TopOfLibrary(_) => {
                         for card in cards {
                             match self.location {
-                                Location::Hand => todo!(),
-                                Location::Library => {
+                                Location::IN_LIBRARY => {
                                     results.push_settled(
                                         ActionResult::MoveFromLibraryToTopOfLibrary(card),
                                     );
                                 }
+                                _ => todo!(),
                             }
                         }
                     }
                     destination::Destination::BottomOfLibrary(_) => {
                         for card in cards {
                             match self.location {
-                                Location::Hand => todo!(),
-                                Location::Library => {
+                                Location::IN_LIBRARY => {
                                     results.push_settled(
                                         ActionResult::MoveFromLibraryToBottomOfLibrary(card),
                                     );
                                 }
+                                _ => todo!(),
                             }
                         }
                     }
                     destination::Destination::Graveyard(_) => {
                         for card in cards {
                             match self.location {
-                                Location::Hand => {
+                                Location::IN_HAND => {
                                     results.push_settled(ActionResult::Discard(card));
                                 }
-                                Location::Library => {
+                                Location::IN_LIBRARY => {
                                     results.push_settled(ActionResult::MoveFromLibraryToGraveyard(
                                         card,
                                     ));
                                 }
+                                Location::ON_BATTLEFIELD => {
+                                    results.push_settled(ActionResult::PermanentToGraveyard(card));
+                                }
+                                _ => todo!(),
                             }
                         }
                     }
@@ -196,8 +195,7 @@ impl PendingResult for ExamineCards {
                     }) => {
                         for card in cards {
                             match self.location {
-                                Location::Hand => todo!(),
-                                Location::Library => {
+                                Location::IN_LIBRARY => {
                                     results.push_settled(
                                         ActionResult::AddToBattlefieldFromLibrary {
                                             card,
@@ -205,6 +203,7 @@ impl PendingResult for ExamineCards {
                                         },
                                     );
                                 }
+                                _ => todo!(),
                             }
                         }
                     }

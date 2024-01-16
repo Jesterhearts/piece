@@ -299,7 +299,7 @@ impl CardId {
         }
 
         if let Some(turn) = db[self].came_under_control_turn {
-            turn as i32 >= (db.turn.turn_count as i32 - db.turn.turns_per_round() as i32)
+            turn as i32 > (db.turn.turn_count as i32 - db.turn.turns_per_round() as i32)
         } else {
             true
         }

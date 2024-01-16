@@ -44,6 +44,9 @@ fn destroys_artifact() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
+    // Get rid of summoning sickness
+    db.turn.turn_count += db.turn.turns_per_round();
+
     // Equip the bear
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card2, 0);
     // Pay the costs

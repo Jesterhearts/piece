@@ -30,12 +30,15 @@ use crate::{
         pay_costs::PayCost,
     },
     player::{Controller, Owner},
-    protogen::effects::{
-        destination,
-        effect::Effect,
-        examine_top_cards::Dest,
-        gain_mana::{Choice, Gain},
-        Destination,
+    protogen::{
+        effects::{
+            destination,
+            effect::Effect,
+            examine_top_cards::Dest,
+            gain_mana::{Choice, Gain},
+            Destination,
+        },
+        targets::Location,
     },
     stack::{ActiveTarget, StackEntry},
 };
@@ -284,7 +287,7 @@ impl PendingResults {
     pub(crate) fn push_choose_scry(&mut self, cards: Vec<CardId>) {
         self.pending
             .push_back(Pending::ExamineCards(ExamineCards::new(
-                examine_top_cards::Location::Library,
+                Location::IN_LIBRARY,
                 cards,
                 vec![
                     Dest {
@@ -314,7 +317,7 @@ impl PendingResults {
     pub(crate) fn push_choose_discard(&mut self, cards: Vec<CardId>, count: u32) {
         self.pending
             .push_back(Pending::ExamineCards(ExamineCards::new(
-                examine_top_cards::Location::Hand,
+                Location::IN_HAND,
                 cards,
                 vec![Dest {
                     destination: protobuf::MessageField::some(Destination {
@@ -327,7 +330,7 @@ impl PendingResults {
             )));
     }
 
-    pub(crate) fn push_examine_top_cards(&mut self, examining: ExamineCards) {
+    pub(crate) fn push_examine_cards(&mut self, examining: ExamineCards) {
         self.pending.push_back(Pending::ExamineCards(examining));
     }
 

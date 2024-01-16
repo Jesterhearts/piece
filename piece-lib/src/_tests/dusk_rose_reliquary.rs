@@ -43,6 +43,9 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     card4.move_to_battlefield(&mut db);
     card5.move_to_battlefield(&mut db);
 
+    // Get rid of summoning sickness
+    db.turn.turn_count += db.turn.turns_per_round();
+
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     let result = results.resolve(&mut db, None);
     // Pay mana
@@ -161,6 +164,9 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     card3.move_to_battlefield(&mut db);
     card4.move_to_battlefield(&mut db);
     card5.move_to_battlefield(&mut db);
+
+    // Get rid of summoning sickness
+    db.turn.turn_count += db.turn.turns_per_round();
 
     // Equip deconstruction hammer
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card5, 0);
