@@ -455,7 +455,7 @@ impl PendingResults {
         }
     }
 
-    #[instrument(skip(db))]
+    #[instrument(level = Level::DEBUG, skip(db))]
     pub fn resolve(&mut self, db: &mut Database, choice: Option<usize>) -> ResolutionResult {
         event!(Level::DEBUG, "resolution");
 
