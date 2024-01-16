@@ -455,7 +455,10 @@ impl PendingResults {
         }
     }
 
+    #[instrument(skip(db))]
     pub fn resolve(&mut self, db: &mut Database, choice: Option<usize>) -> ResolutionResult {
+        event!(Level::DEBUG, "resolution");
+
         assert!(!(self.add_to_stack.is_some() && self.apply_in_stages));
 
         let mut recomputed = false;
@@ -464,6 +467,19 @@ impl PendingResults {
         }
 
         if recomputed {
+            return ResolutionResult::TryAgain;
+        }
+
+        if self.apply_in_stages && !self.settled_effects.is_empty() {
+            self.applied = true;
+            let results = ActionResult::apply_action_results(db, &self.settled_effects);
+            self.settled_effects.clear();
+            self.extend(results);
+
+            if self.is_empty() {
+                return ResolutionResult::Complete;
+            }
+
             return ResolutionResult::TryAgain;
         }
 
@@ -579,19 +595,6 @@ impl PendingResults {
             return ResolutionResult::TryAgain;
         }
 
-        if self.apply_in_stages && !self.settled_effects.is_empty() {
-            self.applied = true;
-            let results = ActionResult::apply_action_results(db, &self.settled_effects);
-            self.settled_effects.clear();
-            self.extend(results);
-
-            for pend in self.pending.iter_mut() {
-                if pend.recompute_targets(db, &self.all_chosen_targets) {
-                    return ResolutionResult::TryAgain;
-                }
-            }
-        }
-
         if let Some(mut next) = self.pending.pop_front() {
             if next.make_choice(db, choice, self) {
                 ResolutionResult::TryAgain
@@ -621,7 +624,10 @@ impl PendingResults {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.pending.is_empty() && self.settled_effects.is_empty()
+        self.add_to_stack.is_none()
+            && self.pending.is_empty()
+            && self.settled_effects.is_empty()
+            && self.gain_mana.is_empty()
     }
 
     pub fn only_immediate_results(&self, db: &Database) -> bool {

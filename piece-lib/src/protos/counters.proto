@@ -5,8 +5,9 @@ package counters;
 enum Counter {
   ANY = 0;
   CHARGE = 1;
-  NET = 2;
-  P1P1 = 3;
-  STUN = 4;
-  M1M1 = 5;
+  CHORUS = 2;
+  NET = 3;
+  P1P1 = 4;
+  STUN = 5;
+  M1M1 = 6;
 }

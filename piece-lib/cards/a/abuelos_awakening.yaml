@@ -13,8 +13,9 @@ effects:
             controller: !Self_ {}
   - effect: !TargetGainsCounters
       counter: +1/+1
-      count: !Dynamic
-        dynamic: !X {}
+      count:
+        count: !Dynamic
+          dynamic: !X {}
   - effect: !ModifyTarget
       modifier:
         base_power: 1

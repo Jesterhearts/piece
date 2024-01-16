@@ -1,0 +1,44 @@
+name: Malcom, Alluring Scoundrel
+cost:
+  mana_cost: '{1}{U}'
+typeline: Legendary Creature - Siren Pirate
+keywords: Flash, Flying
+triggered_abilities:
+  - trigger:
+      source: deals combat damage to player
+      restrictions:
+        - restriction: !Self_ {}
+    oracle_text: Whenever Malcolm, Alluring Scoundrel deals combat damage to a player,
+      put a chorus counter on it. Draw a card, then discard a card. If there are four
+      or more chorus counters on Malcolm, you may cast the discarded card without
+      paying its mana cost.
+    effects:
+      - effect: !ApplyThen
+          apply:
+            - effect: !GainCounters
+                counter: chorus
+                count:
+                  count: !Fixed
+                    count: 1
+          then:
+            - effect: !ApplyThen
+                apply:
+                  - effect: !ControllerDrawsCards
+                      count: !Fixed
+                        count: 1
+                  - effect: !ControllerDiscards
+                      count: 1
+                then:
+                  - effect: !IfThenElse
+                      if_:
+                        - restriction: !NumberOfCountersOnThis
+                            counter: chorus
+                            comparison:
+                              value: !GreaterThanOrEqual
+                                value: 4
+                      then:
+                        - effect: !ChooseCast
+                            restrictions:
+                              - restriction: !JustDiscarded {}
+power: 2
+toughness: 1

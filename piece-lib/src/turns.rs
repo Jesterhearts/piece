@@ -193,26 +193,85 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::FirstStrike;
-                PendingResults::default()
+
+                let mut results = PendingResults::default();
+
+                for (card, target) in db.battlefield[db.turn.active_player()]
+                    .iter()
+                    .filter_map(|card| {
+                        db[*card]
+                            .attacking
+                            .filter(|_| card.first_strike(db) || card.double_strike(db))
+                            .map(|attacking| (*card, attacking))
+                    })
+                    .collect_vec()
+                {
+                    if let Some(power) = card.power(db) {
+                        if power > 0 {
+                            db.all_players[target].life_total -= power;
+
+                            for (listener, trigger) in db.active_triggers_of_source(
+                                TriggerSource::DEALS_COMBAT_DAMAGE_TO_PLAYER,
+                            ) {
+                                if card.passes_restrictions(
+                                    db,
+                                    LogId::current(db),
+                                    listener,
+                                    &trigger.trigger.restrictions,
+                                ) {
+                                    results.extend(Stack::move_trigger_to_stack(
+                                        db, listener, trigger,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                results
             }
             Phase::FirstStrike => {
                 for player in db.all_players.all_players() {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Damage;
+
+                let mut results = PendingResults::default();
+
                 // TODO blocks
                 for (card, target) in db.battlefield[db.turn.active_player()]
                     .iter()
-                    .filter_map(|card| db[*card].attacking.map(|attacking| (*card, attacking)))
+                    .filter_map(|card| {
+                        db[*card]
+                            .attacking
+                            .filter(|_| !card.first_strike(db))
+                            .map(|attacking| (*card, attacking))
+                    })
                     .collect_vec()
                 {
                     if let Some(power) = card.power(db) {
                         if power > 0 {
                             db.all_players[target].life_total -= power;
+
+                            for (listener, trigger) in db.active_triggers_of_source(
+                                TriggerSource::DEALS_COMBAT_DAMAGE_TO_PLAYER,
+                            ) {
+                                if card.passes_restrictions(
+                                    db,
+                                    LogId::current(db),
+                                    listener,
+                                    &trigger.trigger.restrictions,
+                                ) {
+                                    results.extend(Stack::move_trigger_to_stack(
+                                        db, listener, trigger,
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
-                PendingResults::default()
+
+                results
             }
             Phase::Damage => {
                 for player in db.all_players.all_players() {

@@ -31,6 +31,8 @@ triggered_abilities:
             - restriction: !OfType
                 types: Creature
             - restriction: !OnBattlefield {}
-          count: !Single {}
+          count:
+            count: !Fixed
+              count: 1
     oracle_text: Whenever a Cave enters the battlefield under your control, put a
       +1/+1 counter on target creature you control.

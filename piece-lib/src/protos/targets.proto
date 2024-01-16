@@ -33,6 +33,7 @@ message Restriction {
     repeated color.Color colors = 1;
   }
   message ControllerHandEmpty {}
+  message ControllerJustCast {}
   message Descend {
     int32 count = 1;
   }
@@ -45,7 +46,7 @@ message Restriction {
   message HasActivatedAbility {}
   message InGraveyard {}
   message IsPermanent {}
-  message ControllerJustCast {}
+  message JustDiscarded {}
   message LifeGainedThisTurn {
     uint32 count = 1;
   }
@@ -108,26 +109,27 @@ message Restriction {
     HasActivatedAbility has_activated_ability = 16;
     InGraveyard in_graveyard = 17;
     IsPermanent is_permanent = 18;
-    LifeGainedThisTurn life_gained_this_turn = 19;
-    Locations location = 20;
-    ManaSpentFromSource mana_spent_from_source = 21;
-    NonToken non_token = 22;
-    NotChosen not_chosen = 23;
-    NotKeywords not_keywords = 24;
-    NotOfType not_of_type = 25;
-    NotSelf not_self = 26;
-    NumberOfCountersOnThis number_of_counters_on_this = 27;
-    OfColor of_color = 28;
-    OfType of_type = 29;
-    OnBattlefield on_battlefield = 30;
-    Power power = 31;
-    Self self = 32;
-    SourceCast source_cast = 33;
-    SpellOrAbilityJustCast spell_or_ability_just_cast = 34;
-    Tapped tapped = 35;
-    TargetedBy targeted_by = 36;
-    Threshold threshold = 37;
-    Toughness toughness = 38;
+    JustDiscarded just_discarded = 19;
+    LifeGainedThisTurn life_gained_this_turn = 20;
+    Locations location = 21;
+    ManaSpentFromSource mana_spent_from_source = 22;
+    NonToken non_token = 23;
+    NotChosen not_chosen = 24;
+    NotKeywords not_keywords = 25;
+    NotOfType not_of_type = 26;
+    NotSelf not_self = 27;
+    NumberOfCountersOnThis number_of_counters_on_this = 28;
+    OfColor of_color = 29;
+    OfType of_type = 30;
+    OnBattlefield on_battlefield = 31;
+    Power power = 32;
+    Self self = 33;
+    SourceCast source_cast = 34;
+    SpellOrAbilityJustCast spell_or_ability_just_cast = 35;
+    Tapped tapped = 36;
+    TargetedBy targeted_by = 37;
+    Threshold threshold = 38;
+    Toughness toughness = 39;
   }
 }
 

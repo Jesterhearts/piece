@@ -64,10 +64,8 @@ fn copies_permanent() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    dbg!(&db.stack);
     // Resolve the trigger
     let mut results = Stack::resolve_1(&mut db);
-    dbg!(&results);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

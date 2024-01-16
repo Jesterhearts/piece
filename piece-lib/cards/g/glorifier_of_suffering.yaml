@@ -22,7 +22,9 @@ etb_abilities:
               - restriction: !OfType
                   types: Creature
               - restriction: !OnBattlefield {}
-            count: !Single {}
+            count:
+              count: !Fixed
+                count: 1
         - oracle_text: Put a +1/+1 counter on target creature
           effect: !TargetGainsCounters
             counter: +1/+1
@@ -30,6 +32,8 @@ etb_abilities:
               - restriction: !OfType
                   types: Creature
               - restriction: !OnBattlefield {}
-            count: !Single {}
+            count:
+              count: !Fixed
+                count: 1
 power: 3
 toughness: 2

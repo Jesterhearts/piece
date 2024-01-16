@@ -60,8 +60,6 @@ fn mace() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);

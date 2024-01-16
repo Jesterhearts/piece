@@ -294,17 +294,20 @@ impl StackEntry {
                 restriction::Restriction::InGraveyard(_) => {
                     return false;
                 }
-                restriction::Restriction::Location(Locations { locations, .. }) => {
-                    if locations.iter().any(|location| {
-                        !matches!(location.enum_value().unwrap(), Location::IN_STACK)
-                    }) {
-                        return false;
-                    }
+                restriction::Restriction::JustDiscarded(_) => {
+                    return false;
                 }
                 restriction::Restriction::LifeGainedThisTurn(count) => {
                     let gained_this_turn =
                         db.all_players[spell_or_ability_controller].life_gained_this_turn;
                     if gained_this_turn < count.count {
+                        return false;
+                    }
+                }
+                restriction::Restriction::Location(Locations { locations, .. }) => {
+                    if locations.iter().any(|location| {
+                        !matches!(location.enum_value().unwrap(), Location::IN_STACK)
+                    }) {
                         return false;
                     }
                 }
@@ -739,14 +742,6 @@ impl Stack {
         paying_costs: bool,
     ) -> PendingResults {
         add_card_to_stack(db, card, Some(CastFrom::Hand), paying_costs)
-    }
-
-    pub(crate) fn move_card_to_stack_from_exile(
-        db: &mut Database,
-        card: CardId,
-        paying_costs: bool,
-    ) -> PendingResults {
-        add_card_to_stack(db, card, Some(CastFrom::Exile), paying_costs)
     }
 
     pub(crate) fn push_card(

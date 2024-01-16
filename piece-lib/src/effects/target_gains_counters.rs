@@ -120,7 +120,7 @@ impl EffectBehaviors for TargetGainsCounters {
             results.push_settled(ActionResult::AddCounters {
                 source,
                 target,
-                count: self.count.as_ref().unwrap().clone(),
+                count: self.count.count.as_ref().unwrap().clone(),
                 counter: self.counter,
             });
         } else {

@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use convert_case::{Case, Casing};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use protobuf::Enum;
@@ -173,12 +174,10 @@ impl CardInPlay {
             let amount = self.counters.get(&counter).copied().unwrap_or_default();
             if amount > 0 {
                 results.push(match counter {
-                    Counter::CHARGE => format!("Charge x{}", amount),
-                    Counter::NET => format!("Net x{}", amount),
                     Counter::P1P1 => format!("+1/+1 x{}", amount),
-                    Counter::STUN => format!("Stun x{}", amount),
                     Counter::M1M1 => format!("-1/-1 x{}", amount),
                     Counter::ANY => format!("{} total counters", amount),
+                    counter => format!("{} x{}", counter.as_ref().to_case(Case::Title), amount),
                 });
             }
         }
@@ -424,6 +423,8 @@ impl CardId {
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
+        } else if self.is_in_location(db, Location::IN_HAND) {
+            Log::discarded(db, self);
         }
 
         if db[self].token {
@@ -1572,6 +1573,13 @@ impl CardId {
                         return false;
                     }
                 }
+                restriction::Restriction::JustDiscarded(_) => {
+                    if !Log::session(db, log_session).iter().any(
+                        |(_, entry)| matches!(entry, LogEntry::Discarded { card } if *card == self),
+                    ) {
+                        return false;
+                    }
+                }
                 restriction::Restriction::Location(restriction::Locations {
                     locations, ..
                 }) => {
@@ -2066,6 +2074,18 @@ impl CardId {
             .contains_key(&Keyword::FLYING.value())
     }
 
+    pub(crate) fn first_strike(self, db: &Database) -> bool {
+        db[self]
+            .modified_keywords
+            .contains_key(&Keyword::FIRST_STRIKE.value())
+    }
+
+    pub(crate) fn double_strike(self, db: &Database) -> bool {
+        db[self]
+            .modified_keywords
+            .contains_key(&Keyword::DOUBLE_STRIKE.value())
+    }
+
     pub(crate) fn indestructible(self, db: &Database) -> bool {
         db[self]
             .modified_keywords
@@ -2169,6 +2189,22 @@ impl CardId {
             .get(&Keyword::BATTLE_CRY.value())
             .copied()
             .unwrap_or_default()
+    }
+
+    pub(crate) fn location(self, db: &Database) -> Option<Location> {
+        if db.battlefield[db[self].controller].contains(&self) {
+            Some(Location::ON_BATTLEFIELD)
+        } else if db.graveyard[db[self].owner].contains(&self) {
+            Some(Location::IN_GRAVEYARD)
+        } else if db.all_players[db[self].owner].library.cards.contains(&self) {
+            Some(Location::IN_LIBRARY)
+        } else if db.exile[db[self].owner].contains(&self) {
+            Some(Location::IN_EXILE)
+        } else if db.hand[db[self].owner].contains(&self) {
+            Some(Location::IN_HAND)
+        } else {
+            db.stack.find(self).map(|_| Location::IN_STACK)
+        }
     }
 
     pub(crate) fn target_from_location(self, db: &Database) -> Option<ActiveTarget> {

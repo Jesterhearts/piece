@@ -20,13 +20,9 @@ use crate::{
         abilities::TriggeredAbility,
         counters::Counter,
         effects::{
-            create_token::Token,
-            effect,
-            examine_top_cards::Dest,
-            replacement_effect::Replacing,
-            target_gains_counters::{self, dynamic::Dynamic},
-            BattleCry, BattlefieldModifier, Cascade, Duration, Effect, ModifyBattlefield,
-            ReplacementEffect, RevealEachTopOfLibrary,
+            self, count::dynamic::Dynamic, create_token::Token, effect, examine_top_cards::Dest,
+            replacement_effect::Replacing, BattleCry, BattlefieldModifier, Cascade, Duration,
+            Effect, ModifyBattlefield, ReplacementEffect, RevealEachTopOfLibrary,
         },
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
@@ -48,7 +44,7 @@ pub(crate) enum ActionResult {
     AddCounters {
         source: CardId,
         target: CardId,
-        count: target_gains_counters::Count,
+        count: effects::count::Count,
         counter: protobuf::EnumOrUnknown<Counter>,
     },
     AddModifier {
@@ -234,6 +230,11 @@ pub(crate) enum ActionResult {
     },
     StackToGraveyard(CardId),
     TapPermanent(CardId),
+    ThenApply {
+        apply: Vec<crate::protogen::effects::Effect>,
+        source: CardId,
+        controller: Controller,
+    },
     Transform {
         target: CardId,
     },
@@ -524,19 +525,13 @@ impl ActionResult {
                 counter,
             } => {
                 match count {
-                    target_gains_counters::Count::Single(_) => {
-                        *db[*target]
-                            .counters
-                            .entry(counter.enum_value().unwrap())
-                            .or_default() += 1;
-                    }
-                    target_gains_counters::Count::Multiple(count) => {
+                    effects::count::Count::Fixed(count) => {
                         *db[*target]
                             .counters
                             .entry(counter.enum_value().unwrap())
                             .or_default() += count.count as usize;
                     }
-                    target_gains_counters::Count::Dynamic(dynamic) => {
+                    effects::count::Count::Dynamic(dynamic) => {
                         match dynamic.dynamic.as_ref().unwrap() {
                             Dynamic::X(_) => {
                                 let x = source.get_x(db);
@@ -1120,6 +1115,24 @@ impl ActionResult {
                             &mut results,
                         );
                     }
+                }
+
+                results
+            }
+            ActionResult::ThenApply {
+                apply,
+                source,
+                controller,
+            } => {
+                let mut results = PendingResults::default();
+                results.apply_in_stages();
+                for effect in apply.iter() {
+                    effect.effect.as_ref().unwrap().push_pending_behavior(
+                        db,
+                        *source,
+                        *controller,
+                        &mut results,
+                    )
                 }
 
                 results

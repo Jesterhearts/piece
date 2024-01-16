@@ -35,6 +35,7 @@ use crate::{
 pub(crate) enum CastFrom {
     Hand,
     Exile,
+    Graveyard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

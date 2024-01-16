@@ -6,8 +6,9 @@ keywords: Flash
 etb_abilities:
   - effect: !TargetGainsCounters
       counter: Stun
-      count: !Multiple
-        count: 2
+      count:
+        count: !Fixed
+          count: 2
       restrictions:
         - restriction: !OfType
             types: Artifact, Creature

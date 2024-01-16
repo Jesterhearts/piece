@@ -23,6 +23,7 @@ pub(crate) mod battle_cry;
 pub(crate) mod battlefield_modifier;
 pub(crate) mod cant_attack_this_turn;
 pub(crate) mod cascade;
+pub(crate) mod choose_cast;
 pub(crate) mod controller_discards;
 pub(crate) mod controller_draws_cards;
 pub(crate) mod controller_loses_life;
@@ -44,6 +45,7 @@ pub(crate) mod exile_target_creature_manifest_top_of_library;
 pub(crate) mod exile_target_graveyard;
 pub(crate) mod for_each_player_choose_then;
 pub(crate) mod foreach_mana_of_source;
+pub mod gain_counters;
 pub(crate) mod gain_life;
 pub(crate) mod if_then_else;
 pub(crate) mod mill;
@@ -93,6 +95,7 @@ use crate::{
         BattlefieldModifier(BattlefieldModifier),
         CantAttackThisTurn(CantAttackThisTurn),
         Cascade(Cascade),
+        ChooseCast(ChooseCast),
         ControllerDiscards(ControllerDiscards),
         ControllerDrawsCards(ControllerDrawsCards),
         ControllerLosesLife(ControllerLosesLife),
@@ -114,6 +117,7 @@ use crate::{
         ExileTargetGraveyard(ExileTargetGraveyard),
         ForEachPlayerChooseThen(ForEachPlayerChooseThen),
         ForEachManaOfSource(ForEachManaOfSource),
+        GainCounters(GainCounters),
         GainLife(GainLife),
         IfThenElse(IfThenElse),
         Mill(Mill),

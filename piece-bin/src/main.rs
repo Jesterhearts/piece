@@ -945,7 +945,6 @@ impl eframe::App for App {
                                 break;
                             }
                             ResolutionResult::TryAgain => {
-                                debug!("Trying again for {:#?}", resolving);
                                 if !resolving.only_immediate_results(&self.database) {
                                     break;
                                 }

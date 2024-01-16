@@ -29,11 +29,11 @@ activated_abilities:
               - restriction: !OfType
                   types: Artifact, Creature
     effects:
-      - effect: !TargetGainsCounters
+      - effect: !GainCounters
           counter: +1/+1
-          restrictions:
-            - restriction: !Self_ {}
-          count: !Single {}
+          count:
+            count: !Fixed
+              count: 1
       - effect: !Scry
           count: 1
     oracle_text: 'Tap three untapped artifacts and/or creatures you control: Put a

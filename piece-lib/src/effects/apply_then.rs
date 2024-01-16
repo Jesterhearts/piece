@@ -1,4 +1,4 @@
-use crate::{effects::EffectBehaviors, log::LogId, protogen::effects::ApplyThen};
+use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ApplyThen};
 
 impl EffectBehaviors for ApplyThen {
     fn needs_targets(
@@ -25,29 +25,6 @@ impl EffectBehaviors for ApplyThen {
             .unwrap()
     }
 
-    fn valid_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _log_session: crate::log::LogId,
-        controller: crate::player::Controller,
-        already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
-    ) -> Vec<crate::stack::ActiveTarget> {
-        self.apply
-            .iter()
-            .map(|effect| {
-                effect.effect.as_ref().unwrap().valid_targets(
-                    db,
-                    source,
-                    LogId::current(db),
-                    controller,
-                    already_chosen,
-                )
-            })
-            .max_by_key(|targets| targets.len())
-            .unwrap()
-    }
-
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
@@ -62,6 +39,12 @@ impl EffectBehaviors for ApplyThen {
                 .unwrap()
                 .push_pending_behavior(db, source, controller, results);
         }
+
+        results.push_settled(ActionResult::ThenApply {
+            apply: self.then.clone(),
+            source,
+            controller,
+        })
     }
 
     fn push_behavior_with_targets(
@@ -84,12 +67,10 @@ impl EffectBehaviors for ApplyThen {
             );
         }
 
-        for effect in self.then.iter() {
-            effect
-                .effect
-                .as_ref()
-                .unwrap()
-                .push_pending_behavior(db, source, controller, results);
-        }
+        results.push_settled(ActionResult::ThenApply {
+            apply: self.then.clone(),
+            source,
+            controller,
+        });
     }
 }

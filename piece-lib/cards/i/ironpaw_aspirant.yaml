@@ -11,6 +11,8 @@ etb_abilities:
         - restriction: !OfType
             types: Creature
         - restriction: !OnBattlefield {}
-      count: !Single {}
+      count:
+        count: !Fixed
+          count: 1
 power: 1
 toughness: 2

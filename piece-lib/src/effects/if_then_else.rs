@@ -7,13 +7,17 @@ impl EffectBehaviors for IfThenElse {
         source: crate::in_play::CardId,
     ) -> usize {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            self.then.effect.as_ref().unwrap().needs_targets(db, source)
+            self.then
+                .iter()
+                .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
+                .max()
+                .unwrap()
         } else {
             self.else_
-                .effect
-                .as_ref()
-                .unwrap()
-                .needs_targets(db, source)
+                .iter()
+                .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
+                .max()
+                .unwrap_or_default()
         }
     }
 
@@ -23,40 +27,17 @@ impl EffectBehaviors for IfThenElse {
         source: crate::in_play::CardId,
     ) -> usize {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            self.then.effect.as_ref().unwrap().wants_targets(db, source)
+            self.then
+                .iter()
+                .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source))
+                .max()
+                .unwrap()
         } else {
             self.else_
-                .effect
-                .as_ref()
-                .unwrap()
-                .wants_targets(db, source)
-        }
-    }
-
-    fn valid_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        log_session: crate::log::LogId,
-        controller: crate::player::Controller,
-        already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
-    ) -> Vec<crate::stack::ActiveTarget> {
-        if source.passes_restrictions(db, log_session, source, &self.if_) {
-            self.then.effect.as_ref().unwrap().valid_targets(
-                db,
-                source,
-                crate::log::LogId::current(db),
-                controller,
-                already_chosen,
-            )
-        } else {
-            self.else_.effect.as_ref().unwrap().valid_targets(
-                db,
-                source,
-                crate::log::LogId::current(db),
-                controller,
-                already_chosen,
-            )
+                .iter()
+                .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source))
+                .max()
+                .unwrap_or_default()
         }
     }
 
@@ -68,17 +49,21 @@ impl EffectBehaviors for IfThenElse {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            self.then
-                .effect
-                .as_ref()
-                .unwrap()
-                .push_pending_behavior(db, source, controller, results)
+            for effect in self.then.iter() {
+                effect
+                    .effect
+                    .as_ref()
+                    .unwrap()
+                    .push_pending_behavior(db, source, controller, results);
+            }
         } else {
-            self.else_
-                .effect
-                .as_ref()
-                .unwrap()
-                .push_pending_behavior(db, source, controller, results)
+            for effect in self.else_.iter() {
+                effect
+                    .effect
+                    .as_ref()
+                    .unwrap()
+                    .push_pending_behavior(db, source, controller, results);
+            }
         }
     }
 
@@ -92,17 +77,27 @@ impl EffectBehaviors for IfThenElse {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            self.then
-                .effect
-                .as_ref()
-                .unwrap()
-                .push_behavior_with_targets(db, targets, apply_to_self, source, controller, results)
+            for effect in self.then.iter() {
+                effect.effect.as_ref().unwrap().push_behavior_with_targets(
+                    db,
+                    targets.clone(),
+                    apply_to_self,
+                    source,
+                    controller,
+                    results,
+                );
+            }
         } else {
-            self.else_
-                .effect
-                .as_ref()
-                .unwrap()
-                .push_behavior_with_targets(db, targets, apply_to_self, source, controller, results)
+            for effect in self.else_.iter() {
+                effect.effect.as_ref().unwrap().push_behavior_with_targets(
+                    db,
+                    targets.clone(),
+                    apply_to_self,
+                    source,
+                    controller,
+                    results,
+                );
+            }
         }
     }
 }

@@ -10,11 +10,11 @@ effects:
       if_:
         - restriction: !Threshold {}
       then:
-        effect: !DealDamage
-          quantity: 5
+        - effect: !DealDamage
+            quantity: 5
       else_:
-        effect: !DealDamage
-          quantity: 3
+        - effect: !DealDamage
+            quantity: 3
 restrictions:
   - restriction: !OnBattlefield {}
   - restriction: !OfType

@@ -25,10 +25,10 @@ triggered_abilities:
         - restriction: !OfType
             types: Creature
     effects:
-      - effect: !TargetGainsCounters
+      - effect: !GainCounters
           counter: charge
-          restrictions:
-            - restriction: !Self_ {}
-          count: !Single {}
+          count:
+            count: !Fixed
+              count: 1
     oracle_text: Whenever a creature enters the battlefield under your control, put
       a charge counter on Mace of the Valiant.

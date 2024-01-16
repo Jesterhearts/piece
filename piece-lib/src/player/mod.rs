@@ -174,7 +174,7 @@ impl Owner {
                     }
                 }
                 restriction::Restriction::ControllerJustCast(_) => {
-                    if !Log::current_session(db).iter().any(|(_, entry)| {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Cast { card } = entry {
                             db[*card].controller == self
                         } else {
@@ -245,6 +245,9 @@ impl Owner {
                     return false;
                 }
                 restriction::Restriction::Chosen(_) => {
+                    return false;
+                }
+                restriction::Restriction::JustDiscarded(_) => {
                     return false;
                 }
             }

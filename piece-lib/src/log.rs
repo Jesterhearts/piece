@@ -74,6 +74,9 @@ pub enum LogEntry {
     CardChosen {
         card: CardId,
     },
+    Discarded {
+        card: CardId,
+    },
 }
 
 impl LogEntry {
@@ -175,10 +178,8 @@ impl Log {
             {
                 let final_entry = db.log.entries.len() - after;
                 let first_entry = db.log.entries.len() - (len + after);
-                event!(Level::DEBUG, ?after, ?len, ?final_entry, ?first_entry);
 
                 let entries = &db.log.entries.as_slice()[first_entry..final_entry];
-                event!(Level::DEBUG, ?entries, "{:?}", session,);
                 entries
             } else {
                 &[]
@@ -264,6 +265,13 @@ impl Log {
             turn: db.turn.turn_count,
         };
 
+        let id = LogId::current(db);
+        event!(Level::INFO, ?id, ?entry);
+        db.log.entries.push((id, entry));
+    }
+
+    pub(crate) fn discarded(db: &mut Database, card: CardId) {
+        let entry = LogEntry::Discarded { card };
         let id = LogId::current(db);
         event!(Level::INFO, ?id, ?entry);
         db.log.entries.push((id, entry));
