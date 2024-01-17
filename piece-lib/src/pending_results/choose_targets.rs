@@ -199,7 +199,7 @@ impl PendingResult for ChooseTargets {
                     });
 
                     for effect_or_aura in effect_or_auras {
-                        if results.add_to_stack.is_empty() {
+                        if !results.add_to_stack.is_empty() {
                             results.chosen_targets.push(choices.clone());
                         } else {
                             match effect_or_aura {

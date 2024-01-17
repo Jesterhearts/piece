@@ -861,6 +861,7 @@ pub(crate) fn add_card_to_stack(
                 &HashSet::default(),
             );
             if valid_targets.len() < effect.needs_targets(db, card) {
+                debug!("Insufficient targets");
                 return PendingResults::default();
             }
 
@@ -881,6 +882,7 @@ pub(crate) fn add_card_to_stack(
                     &HashSet::default(),
                 );
                 if valid_targets.len() < effect.needs_targets(db, card) {
+                    debug!("Insufficient targets");
                     return PendingResults::default();
                 }
 

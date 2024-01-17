@@ -45,7 +45,7 @@ pub(crate) mod exile_target_creature_manifest_top_of_library;
 pub(crate) mod exile_target_graveyard;
 pub(crate) mod for_each_player_choose_then;
 pub(crate) mod foreach_mana_of_source;
-pub mod gain_counters;
+pub(crate) mod gain_counters;
 pub(crate) mod gain_life;
 pub(crate) mod if_then_else;
 pub(crate) mod mill;

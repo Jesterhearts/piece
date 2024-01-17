@@ -123,7 +123,7 @@ impl EffectBehaviors for TargetGainsCounters {
                 counter: self.counter,
             });
         } else {
-            warn!("Skpping targets");
+            warn!("Skipping targets");
         }
     }
 }
