@@ -55,7 +55,7 @@ pub mod types;
 #[macro_export]
 macro_rules! initialize_assets {
     ($relative_path:literal, $absolute_path:literal) => {
-        CardProtos {
+        CardDefs {
             relative_path: $relative_path,
             get_bytes: {
                 ::cfg_if::cfg_if! {
@@ -83,7 +83,7 @@ template.identifiers = false
 template.initializer = 'initialize_assets'
 "
 )]
-pub struct CardProtos {
+pub struct CardDefs {
     pub relative_path: &'static str,
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
 }

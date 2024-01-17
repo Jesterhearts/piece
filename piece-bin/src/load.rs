@@ -8,7 +8,7 @@ template.identifiers = false
 template.initializer = 'initialize_assets'
 "
 )]
-pub struct CardProtos {
+pub struct CardDefs {
     pub relative_path: &'static str,
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
 }
