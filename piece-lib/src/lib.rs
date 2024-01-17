@@ -52,20 +52,45 @@ pub mod stack;
 pub mod turns;
 pub mod types;
 
+#[macro_export]
+macro_rules! initialize_assets {
+    ($relative_path:literal, $absolute_path:literal) => {
+        CardProtos {
+            relative_path: $relative_path,
+            get_bytes: {
+                ::cfg_if::cfg_if! {
+                    if #[cfg(debug_assertions)] {
+                        fn get() -> std::borrow::Cow<'static,[u8]> {
+                            std::borrow::Cow::from(std::fs::read($absolute_path).unwrap())
+                        }
+                        get
+                    } else {
+                        fn get() -> std::borrow::Cow<'static,[u8]> {
+                            std::borrow::Cow::from(&include_bytes!($absolute_path)[..])
+                        }
+                        get
+                    }
+                }
+            },
+        }
+    };
+}
+
 #[iftree::include_file_tree(
     "
 paths = 'cards/**'
 template.identifiers = false
+template.initializer = 'initialize_assets'
 "
 )]
-pub struct CardDefinitions {
+pub struct CardProtos {
     pub relative_path: &'static str,
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
 }
 
 pub type Cards = IndexMap<String, Card>;
 
-pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static CardDefinitions)>> {
+pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static CardProtos)>> {
     let mut results = vec![];
 
     for card_file in ASSETS.iter() {

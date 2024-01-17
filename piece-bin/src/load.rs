@@ -1,13 +1,15 @@
-use piece_lib::Cards;
+use piece_lib::{initialize_assets, Cards};
 use protobuf::CodedInputStream;
 
 #[iftree::include_file_tree(
     "
 paths = 'cards_binpb/**'
 template.identifiers = false
+template.initializer = 'initialize_assets'
 "
 )]
 pub struct CardProtos {
+    pub relative_path: &'static str,
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
 }
 pub fn load_protos() -> anyhow::Result<Vec<piece_lib::protogen::card::Card>> {
