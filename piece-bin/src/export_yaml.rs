@@ -6,7 +6,7 @@ fn main() -> anyhow::Result<()> {
     std::fs::create_dir_all("experimental/yaml")?;
 
     for (card, file) in cards {
-        let file_path = std::path::Path::new(file.relative_path);
+        let file_path = std::path::Path::new(file);
         let path = std::path::Path::new("experimental/yaml").join(
             file_path
                 .file_name()

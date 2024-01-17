@@ -13,7 +13,7 @@ fn main() {
     std::fs::create_dir_all("cards_binpb").expect("Failed to create directory");
 
     for (card, file) in cards {
-        let file_path = std::path::Path::new(file.relative_path);
+        let file_path = std::path::Path::new(file);
 
         let path = std::path::Path::new("cards_binpb")
             .join(file_path.parent().unwrap().strip_prefix("cards/").unwrap());

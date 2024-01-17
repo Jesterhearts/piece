@@ -90,7 +90,7 @@ pub struct CardProtos {
 
 pub type Cards = IndexMap<String, Card>;
 
-pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static CardProtos)>> {
+pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static str)>> {
     let mut results = vec![];
 
     for card_file in ASSETS.iter() {
@@ -116,7 +116,7 @@ pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static CardProtos)>> {
             })
             .with_context(|| format!("Parsing file: {}", card_file.relative_path))?;
 
-        results.push((card, card_file));
+        results.push((card, card_file.relative_path));
     }
 
     Ok(results)
