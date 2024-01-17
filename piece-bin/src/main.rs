@@ -20,7 +20,7 @@ use piece_lib::{
     protogen::{keywords::Keyword, targets::Location},
     stack::{ActiveTarget, Stack},
     turns::Turn,
-    Cards, FONT_DATA,
+    Cards,
 };
 use protobuf::Enum;
 use taffy::prelude::*;
@@ -36,6 +36,8 @@ use tantivy::{
 use ui::ManaDisplay;
 
 use crate::load::load_cards;
+
+static FONT_DATA: &[u8] = include_bytes!("../../fonts/mana.ttf");
 
 struct App {
     cards: Cards,

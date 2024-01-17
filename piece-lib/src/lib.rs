@@ -52,8 +52,6 @@ pub mod stack;
 pub mod turns;
 pub mod types;
 
-pub static FONT_DATA: &[u8] = include_bytes!("../../fonts/mana.ttf");
-
 #[iftree::include_file_tree(
     "
 paths = 'cards/**'
