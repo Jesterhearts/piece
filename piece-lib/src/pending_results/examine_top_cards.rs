@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     in_play::{CardId, Database},
-    pending_results::{PendingResult, PendingResults},
+    pending_results::{Options, PendingResult, PendingResults},
     protogen::{
         effects::{
             destination::{self, Battlefield},
@@ -86,17 +86,26 @@ impl ExamineCards {
 }
 
 impl PendingResult for ExamineCards {
-    fn optional(&self, _db: &Database) -> bool {
+    fn cancelable(&self, _db: &Database) -> bool {
         (self.placing < self.destinations.len() - 1)
             || (self.destinations[self.placing].count as usize >= self.cards.len())
     }
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
-        self.cards
+    fn options(&self, db: &mut Database) -> Options {
+        let options = self
+            .cards
             .iter()
             .map(|card| card.name(db).clone())
             .enumerate()
-            .collect_vec()
+            .collect_vec();
+
+        if (self.placing < self.destinations.len() - 1)
+            || (self.destinations[self.placing].count as usize >= self.cards.len())
+        {
+            Options::OptionalList(options)
+        } else {
+            Options::MandatoryList(options)
+        }
     }
 
     fn target_for_option(

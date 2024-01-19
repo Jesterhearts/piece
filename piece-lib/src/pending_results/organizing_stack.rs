@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     in_play::Database,
-    pending_results::{PendingResult, PendingResults},
+    pending_results::{Options, PendingResult, PendingResults},
     stack::StackEntry,
 };
 
@@ -23,17 +23,19 @@ impl OrganizingStack {
 }
 
 impl PendingResult for OrganizingStack {
-    fn optional(&self, _db: &Database) -> bool {
+    fn cancelable(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
-        self.entries
-            .iter()
-            .enumerate()
-            .filter(|(idx, _)| !self.choices.contains(idx))
-            .map(|(idx, entry)| (idx, entry.display(db)))
-            .collect_vec()
+    fn options(&self, db: &mut Database) -> Options {
+        Options::ListWithDefault(
+            self.entries
+                .iter()
+                .enumerate()
+                .filter(|(idx, _)| !self.choices.contains(idx))
+                .map(|(idx, entry)| (idx, entry.display(db)))
+                .collect_vec(),
+        )
     }
 
     fn target_for_option(

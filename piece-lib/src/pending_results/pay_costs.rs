@@ -8,7 +8,7 @@ use crate::{
     effects::EffectBehaviors,
     in_play::{CardId, Database, ExileReason},
     log::LogId,
-    pending_results::{PendingResult, PendingResults},
+    pending_results::{Options, PendingResult, PendingResults},
     player::mana_pool::SpendReason,
     protogen::targets::Restriction,
     protogen::{
@@ -904,14 +904,8 @@ impl PayCost {
             Cost::ExileCardsSharingType(_) => false,
         }
     }
-}
 
-impl PendingResult for PayCost {
-    fn cancelable(&self, db: &Database) -> bool {
-        self.or_else.is_none() && self.optional(db)
-    }
-
-    fn optional(&self, _db: &Database) -> bool {
+    fn optional(&self) -> bool {
         match &self.cost {
             Cost::SacrificePermanent(_) => true,
             Cost::TapPermanent(_) => true,
@@ -940,9 +934,15 @@ impl PendingResult for PayCost {
             }
         }
     }
+}
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
-        match &self.cost {
+impl PendingResult for PayCost {
+    fn cancelable(&self, _db: &Database) -> bool {
+        self.or_else.is_none() && self.optional()
+    }
+
+    fn options(&self, db: &mut Database) -> Options {
+        let options = match &self.cost {
             Cost::SacrificePermanent(sac) => sac
                 .valid_targets
                 .iter()
@@ -977,7 +977,7 @@ impl PendingResult for PayCost {
                         .max(db, spend.reason)
                         .is_none()
                 {
-                    return vec![];
+                    return Options::OptionalList(vec![]);
                 }
                 let pool_post_paid = pool_post_paid.unwrap();
 
@@ -1017,6 +1017,12 @@ impl PendingResult for PayCost {
                 .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
                 .map(|(idx, target)| (idx, target.name(db).clone()))
                 .collect_vec(),
+        };
+
+        if self.optional() {
+            Options::OptionalList(options)
+        } else {
+            Options::MandatoryList(options)
         }
     }
 

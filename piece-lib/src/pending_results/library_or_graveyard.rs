@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::{
     in_play::{CardId, Database},
     library::Library,
-    pending_results::{PendingResult, PendingResults},
+    pending_results::{Options, PendingResult, PendingResults},
 };
 
 #[derive(Debug)]
@@ -12,15 +12,17 @@ pub(crate) struct LibraryOrGraveyard {
 }
 
 impl PendingResult for LibraryOrGraveyard {
-    fn optional(&self, _db: &Database) -> bool {
+    fn cancelable(&self, _db: &Database) -> bool {
         false
     }
 
-    fn options(&self, _db: &mut Database) -> Vec<(usize, String)> {
-        ["Library".to_string(), "Graveyard".to_string()]
-            .into_iter()
-            .enumerate()
-            .collect_vec()
+    fn options(&self, _db: &mut Database) -> Options {
+        Options::MandatoryList(
+            ["Library".to_string(), "Graveyard".to_string()]
+                .into_iter()
+                .enumerate()
+                .collect_vec(),
+        )
     }
 
     fn target_for_option(

@@ -15,7 +15,7 @@ use piece_lib::{
     card::replace_expanded_symbols,
     in_play::{CardId, Database},
     library::DeckDefinition,
-    pending_results::{PendingResults, ResolutionResult},
+    pending_results::{Options, PendingResults, ResolutionResult},
     player::{AllPlayers, Owner, Player},
     protogen::{keywords::Keyword, targets::Location},
     stack::{ActiveTarget, Stack},
@@ -915,13 +915,23 @@ impl eframe::App for App {
                     .open(&mut open)
                     .show(ctx, |ui| {
                         ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                            if resolving.choices_optional(&self.database)
-                                && ui.button("None").clicked()
-                            {
-                                choice = Some(None);
-                            }
+                            let rest = match resolving.options(&mut self.database) {
+                                Options::MandatoryList(list) => list,
+                                Options::OptionalList(list) => {
+                                    if ui.button("None").clicked() {
+                                        choice = Some(None);
+                                    }
+                                    list
+                                }
+                                Options::ListWithDefault(list) => {
+                                    if ui.button("Default").clicked() {
+                                        choice = Some(None);
+                                    }
+                                    list
+                                }
+                            };
 
-                            for (idx, option) in resolving.options(&mut self.database) {
+                            for (idx, option) in rest {
                                 let button = ui.button(option);
                                 if button.hovered() {
                                     self.hovering_target =

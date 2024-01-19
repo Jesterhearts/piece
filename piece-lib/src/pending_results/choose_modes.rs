@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::{
     effects::EffectBehaviors,
     in_play::Database,
-    pending_results::{PendingResult, Source},
+    pending_results::{Options, PendingResult, Source},
     stack::ActiveTarget,
 };
 
@@ -13,12 +13,12 @@ pub(crate) struct ChooseModes {
 }
 
 impl PendingResult for ChooseModes {
-    fn optional(&self, _db: &Database) -> bool {
+    fn cancelable(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
-        self.source.mode_options(db)
+    fn options(&self, db: &mut Database) -> Options {
+        Options::MandatoryList(self.source.mode_options(db))
     }
 
     fn target_for_option(&self, db: &Database, _option: usize) -> Option<ActiveTarget> {

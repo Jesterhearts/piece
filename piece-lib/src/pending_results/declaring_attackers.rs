@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     in_play::{CardId, Database},
-    pending_results::{PendingResult, PendingResults},
+    pending_results::{Options, PendingResult, PendingResults},
     player::Owner,
 };
 
@@ -17,24 +17,28 @@ pub(crate) struct DeclaringAttackers {
 }
 
 impl PendingResult for DeclaringAttackers {
-    fn optional(&self, _db: &Database) -> bool {
+    fn cancelable(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
+    fn options(&self, db: &mut Database) -> Options {
         if self.choices.len() == self.targets.len() {
-            self.candidates
-                .iter()
-                .map(|card| card.name(db).clone())
-                .enumerate()
-                .filter(|(idx, _)| !self.choices.contains(idx))
-                .collect_vec()
+            Options::OptionalList(
+                self.candidates
+                    .iter()
+                    .map(|card| card.name(db).clone())
+                    .enumerate()
+                    .filter(|(idx, _)| !self.choices.contains(idx))
+                    .collect_vec(),
+            )
         } else {
-            self.valid_targets
-                .iter()
-                .map(|player| db.all_players[*player].name.clone())
-                .enumerate()
-                .collect_vec()
+            Options::MandatoryList(
+                self.valid_targets
+                    .iter()
+                    .map(|player| db.all_players[*player].name.clone())
+                    .enumerate()
+                    .collect_vec(),
+            )
         }
     }
 

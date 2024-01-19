@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     in_play::{CardId, CastFrom, Database},
-    pending_results::{PendingResult, PendingResults},
+    pending_results::{Options, PendingResult, PendingResults},
     protogen::targets::Location,
     stack::add_card_to_stack,
 };
@@ -15,16 +15,18 @@ pub(crate) struct ChoosingCast {
 }
 
 impl PendingResult for ChoosingCast {
-    fn optional(&self, _db: &Database) -> bool {
+    fn cancelable(&self, _db: &Database) -> bool {
         true
     }
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
-        self.choosing_to_cast
-            .iter()
-            .enumerate()
-            .map(|(idx, card)| (idx, card.name(db).clone()))
-            .collect_vec()
+    fn options(&self, db: &mut Database) -> Options {
+        Options::OptionalList(
+            self.choosing_to_cast
+                .iter()
+                .enumerate()
+                .map(|(idx, card)| (idx, card.name(db).clone()))
+                .collect_vec(),
+        )
     }
 
     fn description(&self, _db: &Database) -> String {

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::{
     effects::EffectBehaviors,
     in_play::{CardId, Database},
-    pending_results::{Pending, PendingResult},
+    pending_results::{Options, Pending, PendingResult},
     player::Controller,
     protogen::effects::effect::Effect,
     stack::ActiveTarget,
@@ -106,16 +106,25 @@ impl ChooseForEachPlayer {
 }
 
 impl PendingResult for ChooseForEachPlayer {
-    fn optional(&self, _db: &Database) -> bool {
-        self.valid_targets.len() <= 1
+    fn cancelable(&self, _db: &Database) -> bool {
+        self.valid_targets.is_empty()
     }
 
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)> {
-        self.valid_targets
+    fn options(&self, db: &mut Database) -> Options {
+        let options = self
+            .valid_targets
             .iter()
             .enumerate()
             .map(|(idx, target)| (idx, target.display(db)))
-            .collect_vec()
+            .collect_vec();
+
+        if self.valid_targets.is_empty() {
+            Options::OptionalList(options)
+        } else if self.valid_targets.len() == 1 {
+            Options::ListWithDefault(options)
+        } else {
+            Options::MandatoryList(options)
+        }
     }
 
     fn target_for_option(&self, _db: &Database, option: usize) -> Option<ActiveTarget> {

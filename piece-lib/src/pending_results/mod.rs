@@ -43,6 +43,22 @@ use crate::{
     stack::{ActiveTarget, StackEntry},
 };
 
+pub enum Options {
+    MandatoryList(Vec<(usize, String)>),
+    OptionalList(Vec<(usize, String)>),
+    ListWithDefault(Vec<(usize, String)>),
+}
+
+impl Options {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Options::MandatoryList(opts)
+            | Options::OptionalList(opts)
+            | Options::ListWithDefault(opts) => opts.is_empty(),
+        }
+    }
+}
+
 #[must_use]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ResolutionResult {
@@ -171,12 +187,7 @@ pub(crate) enum Pending {
 #[enum_delegate::register]
 pub(crate) trait PendingResult {
     #[must_use]
-    fn optional(&self, db: &Database) -> bool;
-
-    #[must_use]
-    fn cancelable(&self, db: &Database) -> bool {
-        self.optional(db)
-    }
+    fn cancelable(&self, db: &Database) -> bool;
 
     #[must_use]
     fn recompute_targets(
@@ -190,7 +201,7 @@ pub(crate) trait PendingResult {
     }
 
     #[must_use]
-    fn options(&self, db: &mut Database) -> Vec<(usize, String)>;
+    fn options(&self, db: &mut Database) -> Options;
 
     #[must_use]
     fn target_for_option(&self, db: &Database, option: usize) -> Option<ActiveTarget>;
@@ -421,14 +432,7 @@ impl PendingResults {
             }));
     }
 
-    pub fn choices_optional(&self, db: &Database) -> bool {
-        self.pending
-            .front()
-            .map(|pend| pend.optional(db))
-            .unwrap_or(true)
-    }
-
-    pub fn options(&mut self, db: &mut Database) -> Vec<(usize, String)> {
+    pub fn options(&mut self, db: &mut Database) -> Options {
         for pending in self.pending.iter_mut() {
             let _ = pending.recompute_targets(db, &self.all_chosen_targets);
         }
@@ -436,7 +440,7 @@ impl PendingResults {
         if let Some(pending) = self.pending.front_mut() {
             pending.options(db)
         } else {
-            vec![]
+            Options::OptionalList(vec![])
         }
     }
 
