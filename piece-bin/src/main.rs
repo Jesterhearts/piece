@@ -55,6 +55,7 @@ struct App {
     to_resolve: Option<PendingResults>,
     organizing_stack: bool,
 
+    hovered: Option<usize>,
     left_clicked: Option<usize>,
     right_clicked: Option<usize>,
     selected_card: Option<CardId>,
@@ -115,6 +116,7 @@ impl App {
             adding_card: None,
             to_resolve: None,
             organizing_stack: false,
+            hovered: None,
             left_clicked: None,
             right_clicked: None,
             selected_card: None,
@@ -783,6 +785,7 @@ impl eframe::App for App {
                     db: &mut self.database,
                     owner: self.player1,
                     cards,
+                    hovered: &mut self.hovered,
                     left_clicked: &mut self.left_clicked,
                     right_clicked: &mut self.right_clicked,
                 },

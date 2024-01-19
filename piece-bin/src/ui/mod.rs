@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
 use egui::{
-    Color32, Frame, Label, Layout, PointerButton, RichText, ScrollArea, Sense, Stroke, Widget,
+    vec2, Color32, Frame, Label, Layout, PointerButton, RichText, ScrollArea, Sense, Stroke, Widget,
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -159,6 +159,7 @@ impl Widget for Card<'_> {
             .join("\n");
 
         Frame::none()
+            .fill(Color32::from_hex("#141414").unwrap())
             .stroke(Stroke::new(
                 2.0,
                 if self.highlight {
@@ -174,31 +175,24 @@ impl Widget for Card<'_> {
             .show(ui, |ui| {
                 ui.expand_to_include_rect(ui.max_rect());
                 ui.vertical(|ui| {
-                    let mut sense = ui.allocate_response(egui::vec2(0.0, 0.0), Sense::click());
-
-                    sense = sense.union(
-                        ui.add(Label::new(RichText::new(title).heading()).sense(Sense::click())),
-                    );
+                    ui.add(Label::new(RichText::new(title).heading()));
                     ui.separator();
 
                     ScrollArea::vertical().id_source(self.card).show(ui, |ui| {
-                        sense = sense.union(ui.add(Label::new(paragraph).sense(Sense::click())));
+                        ui.add(Label::new(paragraph));
                     });
 
                     ui.separator();
-                    sense = sense.union(ui.add(Label::new(typeline).sense(Sense::click())));
+                    ui.add(Label::new(typeline));
 
                     if let Some(pt) = self.card.pt_text(self.db) {
                         ui.with_layout(Layout::right_to_left(egui::Align::Min), |ui| {
-                            sense = sense.union(ui.add(Label::new(pt).sense(Sense::click())));
+                            ui.add(Label::new(pt));
                         });
                     }
-
-                    sense
-                })
-                .inner
+                });
             })
-            .inner
+            .response
     }
 }
 
@@ -356,6 +350,7 @@ pub struct Hand<'db, 'clicked> {
     pub db: &'db Database,
     pub owner: Owner,
     pub cards: Vec<CardId>,
+    pub hovered: &'clicked mut Option<usize>,
     pub left_clicked: &'clicked mut Option<usize>,
     pub right_clicked: &'clicked mut Option<usize>,
 }
@@ -370,15 +365,55 @@ impl Widget for Hand<'_, '_> {
                 ui.expand_to_include_rect(ui.max_rect());
                 ui.horizontal(|ui| {
                     ScrollArea::horizontal().id_source("Hand").show(ui, |ui| {
-                        for (index, card) in self.cards.into_iter().enumerate() {
-                            let sense =
-                                ui.add(Label::new(card.name(self.db)).sense(Sense::click()));
-                            ui.separator();
+                        const MIN_WIDTH: f32 = 200.0;
+                        const MIN_HEIGHT: f32 = 300.0;
+                        let mut rects = vec![];
+
+                        let mut hovered = false;
+                        for index in 0..self.cards.len() {
+                            let (rect, sense) =
+                                ui.allocate_exact_size(vec2(MIN_WIDTH, MIN_HEIGHT), Sense::click());
+
+                            rects.push(rect);
+                            if sense.hovered() {
+                                hovered = true;
+                                *self.hovered = Some(index);
+                            };
+
                             if sense.clicked_by(PointerButton::Primary) {
                                 *self.left_clicked = Some(index);
                             } else if sense.clicked_by(PointerButton::Secondary) {
                                 *self.right_clicked = Some(index);
                             }
+                        }
+
+                        for (index, (mut rect, card)) in
+                            rects.into_iter().zip(self.cards).enumerate()
+                        {
+                            if Some(index) == *self.hovered {
+                                rect = rect.translate(vec2(0.0, -MIN_HEIGHT));
+                                let sense = ui.allocate_rect(rect, Sense::click());
+                                if sense.hovered() {
+                                    hovered = true;
+                                }
+
+                                if sense.clicked_by(PointerButton::Primary) {
+                                    *self.left_clicked = Some(index);
+                                } else if sense.clicked_by(PointerButton::Secondary) {
+                                    *self.right_clicked = Some(index);
+                                }
+                            }
+                            ui.put(
+                                rect,
+                                Card {
+                                    db: self.db,
+                                    card,
+                                    highlight: false,
+                                },
+                            );
+                        }
+                        if !hovered {
+                            *self.hovered = None;
                         }
                     });
                 });
@@ -430,8 +465,10 @@ impl Widget for Battlefield<'_, '_> {
                                     false
                                 };
 
-                            let sense = ui.add_sized(
-                                egui::vec2(MIN_WIDTH, MIN_HEIGHT),
+                            let (rect, sense) =
+                                ui.allocate_exact_size(vec2(MIN_WIDTH, MIN_HEIGHT), Sense::click());
+                            ui.put(
+                                rect,
                                 Card {
                                     db: self.db,
                                     card,
