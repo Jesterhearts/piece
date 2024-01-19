@@ -18,7 +18,6 @@ use protobuf::Enum;
 pub struct Card<'db> {
     pub db: &'db Database,
     pub card: CardId,
-    pub title: Option<String>,
     pub highlight: bool,
 }
 
@@ -29,6 +28,26 @@ impl Widget for Card<'_> {
             ui.style_mut().visuals.widgets.hovered = ui.style().visuals.widgets.noninteractive;
             ui.style_mut().visuals.widgets.inactive = ui.style().visuals.widgets.noninteractive;
         }
+
+        let name = if self.db[self.card].manifested {
+            "Manifested".to_string()
+        } else if self.db[self.card].cloning.is_some() {
+            format!(
+                "({}) {}",
+                self.card.faceup_face(self.db).name,
+                self.card.name(self.db),
+            )
+        } else {
+            self.card.name(self.db).clone()
+        };
+
+        let cost = &self.db[self.card].modified_cost;
+
+        let title = if cost.mana_cost.is_empty() || self.db[self.card].manifested {
+            name
+        } else {
+            format!("{} - {}", name, cost.text())
+        };
 
         let source = &self.db[self.card];
         let typeline = std::iter::once(
@@ -141,13 +160,10 @@ impl Widget for Card<'_> {
                 ui.vertical(|ui| {
                     let mut sense = ui.allocate_response(egui::vec2(0.0, 0.0), Sense::click());
 
-                    if let Some(title) = self.title.as_ref() {
-                        sense =
-                            sense.union(ui.add(
-                                Label::new(RichText::new(title).heading()).sense(Sense::click()),
-                            ));
-                        ui.separator();
-                    }
+                    sense = sense.union(
+                        ui.add(Label::new(RichText::new(title).heading()).sense(Sense::click())),
+                    );
+                    ui.separator();
 
                     ScrollArea::vertical().id_source(self.card).show(ui, |ui| {
                         sense = sense.union(ui.add(Label::new(paragraph).sense(Sense::click())));
@@ -387,36 +403,10 @@ impl Widget for Battlefield<'_, '_> {
                             (types, subtypes)
                         });
 
-                        let card_titles = self
-                            .cards
-                            .iter()
-                            .map(|(_, card)| {
-                                let name = if self.db[*card].manifested {
-                                    "Manifested".to_string()
-                                } else if self.db[*card].cloning.is_some() {
-                                    format!(
-                                        "({}) {}",
-                                        self.db[*card].modified_name,
-                                        card.name(self.db)
-                                    )
-                                } else {
-                                    card.name(self.db).clone()
-                                };
-
-                                let cost = &self.db[*card].modified_cost;
-
-                                if cost.mana_cost.is_empty() || self.db[*card].manifested {
-                                    name
-                                } else {
-                                    format!("{} - {}", name, cost.text())
-                                }
-                            })
-                            .collect_vec();
-
                         const MIN_WIDTH: f32 = 200.0;
                         const MIN_HEIGHT: f32 = 300.0;
 
-                        for ((idx, card), title) in self.cards.into_iter().zip(card_titles) {
+                        for (idx, card) in self.cards {
                             let highlight =
                                 if let Some(ActiveTarget::Battlefield { id }) = self.target {
                                     id == card
@@ -429,7 +419,6 @@ impl Widget for Battlefield<'_, '_> {
                                 Card {
                                     db: self.db,
                                     card,
-                                    title: Some(title),
                                     highlight,
                                 },
                             );

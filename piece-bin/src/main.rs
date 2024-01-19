@@ -7,7 +7,7 @@ mod ui;
 use std::{fs::OpenOptions, time::Instant};
 
 use convert_case::{Case, Casing};
-use egui::{Color32, Label, Layout, Sense, TextEdit};
+use egui::{Color32, Frame, Label, Layout, Sense, Stroke, TextEdit};
 use itertools::Itertools;
 use piece_lib::{
     ai::AI,
@@ -88,6 +88,20 @@ impl App {
             .insert(1, "symbols".to_string());
 
         cc.egui_ctx.set_fonts(fonts);
+        cc.egui_ctx.style_mut(|style| {
+            style.visuals.dark_mode = true;
+            let color = Color32::from_hex("#141414").unwrap();
+            style.visuals.widgets.active.bg_fill = color;
+            style.visuals.widgets.active.weak_bg_fill = color;
+            style.visuals.widgets.inactive.bg_fill = color;
+            style.visuals.widgets.inactive.weak_bg_fill = color;
+            style.visuals.widgets.hovered.bg_fill = color;
+            style.visuals.widgets.hovered.weak_bg_fill = color;
+
+            style.visuals.widgets.active.bg_stroke = Stroke::new(1.0, Color32::WHITE);
+            style.visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, Color32::WHITE);
+            style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, Color32::DARK_GRAY);
+        });
 
         Self {
             cards,
@@ -443,18 +457,75 @@ impl eframe::App for App {
             );
         }
 
-        egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
-            ui.set_enabled(self.to_resolve.is_none() && self.adding_card.is_none());
-            ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
-                if ui.button("Pass").clicked()
-                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num1)))
-                {
-                    debug!("Passing priority");
-                    assert_eq!(self.database.turn.priority_player(), self.player1);
-                    self.database.turn.pass_priority();
+        let frame = Frame {
+            fill: Color32::from_hex("#141414").unwrap(),
+            ..Default::default()
+        };
+        let window_frame = Frame {
+            fill: Color32::from_hex("#141414").unwrap(),
+            stroke: Stroke::new(1.0, Color32::DARK_GRAY),
+            ..Default::default()
+        };
+        egui::TopBottomPanel::top("Menu")
+            .frame(frame)
+            .show(ctx, |ui| {
+                ui.set_enabled(self.to_resolve.is_none() && self.adding_card.is_none());
+                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                    if ui.button("Pass").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num1)))
+                    {
+                        debug!("Passing priority");
+                        assert_eq!(self.database.turn.priority_player(), self.player1);
+                        self.database.turn.pass_priority();
 
-                    if self.database.turn.passed_full_priority_round() {
-                        let mut pending = Turn::step(&mut self.database);
+                        if self.database.turn.passed_full_priority_round() {
+                            let mut pending = Turn::step(&mut self.database);
+                            while pending.only_immediate_results(&self.database) {
+                                let result = pending.resolve(&mut self.database, None);
+                                if result == ResolutionResult::Complete {
+                                    break;
+                                }
+                            }
+
+                            maybe_organize_stack(
+                                &mut self.database,
+                                pending,
+                                &mut self.to_resolve,
+                                &mut self.organizing_stack,
+                            );
+                        }
+                    }
+
+                    if ui.button("(Debug) Untap all").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num2)))
+                    {
+                        for card in self
+                            .database
+                            .battlefield
+                            .battlefields
+                            .values()
+                            .flat_map(|b| b.iter())
+                            .copied()
+                            .collect_vec()
+                        {
+                            card.untap(&mut self.database);
+                        }
+                    }
+
+                    if ui.button("(Debug) Infinite mana").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num3)))
+                    {
+                        self.database.all_players[self.player1].infinite_mana();
+                    }
+
+                    if ui.button("(Debug) Draw").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num4)))
+                    {
+                        let mut pending = Player::draw(&mut self.database, self.player1, 1);
                         while pending.only_immediate_results(&self.database) {
                             let result = pending.resolve(&mut self.database, None);
                             if result == ResolutionResult::Complete {
@@ -469,80 +540,39 @@ impl eframe::App for App {
                             &mut self.organizing_stack,
                         );
                     }
-                }
 
-                if ui.button("(Debug) Untap all").clicked()
-                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num2)))
-                {
-                    for card in self
-                        .database
-                        .battlefield
-                        .battlefields
-                        .values()
-                        .flat_map(|b| b.iter())
-                        .copied()
-                        .collect_vec()
+                    if ui.button("(Debug) Add Card to Hand").clicked()
+                        || (ui.is_enabled()
+                            && ctx.input(|input| input.key_released(egui::Key::Num5)))
                     {
-                        card.untap(&mut self.database);
+                        self.adding_card = Some(String::default());
                     }
-                }
+                });
 
-                if ui.button("(Debug) Infinite mana").clicked()
-                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num3)))
-                {
-                    self.database.all_players[self.player1].infinite_mana();
-                }
+                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                    ui.label(format!(
+                        "{} {}",
+                        self.database.all_players[self.database.turn.active_player()].name,
+                        self.database.turn.phase.as_ref()
+                    ));
 
-                if ui.button("(Debug) Draw").clicked()
-                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num4)))
-                {
-                    let mut pending = Player::draw(&mut self.database, self.player1, 1);
-                    while pending.only_immediate_results(&self.database) {
-                        let result = pending.resolve(&mut self.database, None);
-                        if result == ResolutionResult::Complete {
-                            break;
-                        }
-                    }
+                    ui.separator();
+                    ui.label(format!(
+                        "{} ({})",
+                        self.database.all_players[self.player1].name,
+                        self.database.all_players[self.player1].life_total
+                    ));
 
-                    maybe_organize_stack(
-                        &mut self.database,
-                        pending,
-                        &mut self.to_resolve,
-                        &mut self.organizing_stack,
-                    );
-                }
-
-                if ui.button("(Debug) Add Card to Hand").clicked()
-                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Num5)))
-                {
-                    self.adding_card = Some(String::default());
-                }
+                    ui.separator();
+                    ui.label(format!(
+                        "{} ({})",
+                        self.database.all_players[self.player2].name,
+                        self.database.all_players[self.player2].life_total
+                    ));
+                })
             });
 
-            ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
-                ui.label(format!(
-                    "{} {}",
-                    self.database.all_players[self.database.turn.active_player()].name,
-                    self.database.turn.phase.as_ref()
-                ));
-
-                ui.separator();
-                ui.label(format!(
-                    "{} ({})",
-                    self.database.all_players[self.player1].name,
-                    self.database.all_players[self.player1].life_total
-                ));
-
-                ui.separator();
-                ui.label(format!(
-                    "{} ({})",
-                    self.database.all_players[self.player2].name,
-                    self.database.all_players[self.player2].life_total
-                ));
-            })
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             let size = ui.max_rect();
             tree.compute_layout(
                 root,
@@ -876,6 +906,7 @@ impl eframe::App for App {
                 let mut open = true;
 
                 egui::Window::new(resolving.description(&self.database))
+                    .frame(window_frame)
                     .open(&mut open)
                     .show(ctx, |ui| {
                         ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
@@ -962,20 +993,16 @@ impl eframe::App for App {
 
         if let Some(inspecting) = self.inspecting_card {
             let mut open = true;
-            egui::Window::new(format!(
-                "{} - {}",
-                inspecting.name(&self.database),
-                inspecting.faceup_face(&self.database).cost.text()
-            ))
-            .open(&mut open)
-            .show(ctx, |ui| {
-                ui.add(ui::Card {
-                    db: &mut self.database,
-                    card: inspecting,
-                    title: None,
-                    highlight: false,
+            egui::Window::new("")
+                .frame(window_frame)
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    ui.add(ui::Card {
+                        db: &mut self.database,
+                        card: inspecting,
+                        highlight: false,
+                    });
                 });
-            });
 
             if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
                 self.inspecting_card = None;
@@ -986,6 +1013,7 @@ impl eframe::App for App {
             let mut open = true;
 
             egui::Window::new("Add card to hand")
+                .frame(window_frame)
                 .open(&mut open)
                 .show(ctx, |ui| {
                     let adding = self.adding_card.as_mut().unwrap();
