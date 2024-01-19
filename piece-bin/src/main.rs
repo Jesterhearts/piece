@@ -573,6 +573,8 @@ impl eframe::App for App {
             });
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            ui.set_enabled(self.to_resolve.is_none() && self.adding_card.is_none());
+
             let size = ui.max_rect();
             tree.compute_layout(
                 root,
@@ -615,7 +617,7 @@ impl eframe::App for App {
 
             if self.to_resolve.is_none()
                 && (self.left_clicked.take().is_some()
-                    || ctx.input(|input| input.key_released(egui::Key::Enter)))
+                    || (ui.is_enabled() && ctx.input(|input| input.key_released(egui::Key::Enter))))
             {
                 cleanup_stack(
                     &mut self.database,

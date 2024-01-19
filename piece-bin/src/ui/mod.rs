@@ -81,6 +81,20 @@ impl Widget for Card<'_> {
             .collect_vec();
         let has_etb_text = !etb_text.is_empty();
 
+        let modes_text = self
+            .card
+            .faceup_face(self.db)
+            .modes
+            .iter()
+            .map(|mode| {
+                format!(
+                    "•\t{}",
+                    mode.effects.iter().map(|e| &e.oracle_text).join(" ")
+                )
+            })
+            .collect_vec();
+        let has_modes_text = !modes_text.is_empty();
+
         let effects_text = self
             .card
             .faceup_face(self.db)
@@ -127,6 +141,8 @@ impl Widget for Card<'_> {
             .chain(std::iter::once(String::default()).filter(|_| has_oracle_text))
             .chain(etb_text)
             .chain(std::iter::once(String::default()).filter(|_| has_etb_text))
+            .chain(modes_text)
+            .chain(std::iter::once(String::default()).filter(|_| has_modes_text))
             .chain(effects_text)
             .chain(std::iter::once(String::default()).filter(|_| has_effects_text))
             .chain(triggers)

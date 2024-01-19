@@ -63,7 +63,8 @@ impl EffectBehaviors for DealDamage {
                 log_session,
                 controller,
                 &source.faceup_face(db).restrictions,
-            ) {
+            ) && player.passes_restrictions(db, log_session, controller, &self.restrictions)
+            {
                 targets.push(ActiveTarget::Player { id: player });
             }
         }
