@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
                 proto.toughness = Some(toughness);
             }
 
-            let mut name = proto.name.clone();
+            let mut name = proto.name.replace("+", "plus_");
             name.retain(|c| !['-', '\'', ',', '+', '"'].contains(&c));
             unique_cards.insert(name, proto);
         }

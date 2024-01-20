@@ -14,6 +14,7 @@ fn main() -> anyhow::Result<()> {
                 .to_str()
                 .unwrap()
                 .trim_start_matches("the_")
+                .replace("+", "plus_")
                 .chars()
                 .next()
                 .unwrap()
