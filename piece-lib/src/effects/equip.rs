@@ -23,7 +23,7 @@ impl EffectBehaviors for Equip {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -31,7 +31,7 @@ impl EffectBehaviors for Equip {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -47,7 +47,7 @@ impl EffectBehaviors for Equip {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -61,7 +61,7 @@ impl EffectBehaviors for Equip {
                 &source.faceup_face(db).restrictions,
             ) && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
             {
-                let target = ActiveTarget::Battlefield { id: card.clone() };
+                let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {
                     continue;
                 }
@@ -76,7 +76,7 @@ impl EffectBehaviors for Equip {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -91,7 +91,7 @@ impl EffectBehaviors for Equip {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source.clone(),
+            source,
         ));
     }
 
@@ -99,7 +99,7 @@ impl EffectBehaviors for Equip {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -123,7 +123,7 @@ impl EffectBehaviors for Equip {
             .modifiers
             .iter()
             .filter_map(|(id, modifier)| {
-                if modifier.source == *source {
+                if modifier.source == source {
                     Some(id)
                 } else {
                     None
@@ -138,7 +138,7 @@ impl EffectBehaviors for Equip {
         for modifier in self.modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(
                 db,
-                source.clone(),
+                source,
                 BattlefieldModifier {
                     modifier: protobuf::MessageField::some(modifier.clone()),
                     duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
@@ -172,7 +172,7 @@ impl EffectBehaviors for Equip {
             );
 
             results.push_settled(ActionResult::ModifyCreatures {
-                targets: vec![target.clone()],
+                targets: vec![target],
                 modifier,
             });
         }

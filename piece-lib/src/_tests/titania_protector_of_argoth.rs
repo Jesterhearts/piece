@@ -2,8 +2,8 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
-    player::AllPlayers, protogen::ids::CardId, stack::Stack,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
+    pending_results::ResolutionResult, player::AllPlayers, stack::Stack,
 };
 
 #[test]
@@ -31,7 +31,7 @@ fn etb() -> anyhow::Result<()> {
     land.move_to_graveyard(&mut db);
 
     let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &titania, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, titania, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -46,7 +46,7 @@ fn etb() -> anyhow::Result<()> {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .cloned()
+            .copied()
             .collect_vec(),
         [titania, land]
     );
@@ -79,13 +79,13 @@ fn graveyard_trigger() -> anyhow::Result<()> {
     land.move_to_battlefield(&mut db);
 
     let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &titania, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, titania, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::permanent_to_graveyard(&mut db, &land);
+    let mut results = Battlefields::permanent_to_graveyard(&mut db, land);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

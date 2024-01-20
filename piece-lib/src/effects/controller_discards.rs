@@ -7,7 +7,7 @@ impl EffectBehaviors for ControllerDiscards {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -15,7 +15,7 @@ impl EffectBehaviors for ControllerDiscards {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -23,7 +23,7 @@ impl EffectBehaviors for ControllerDiscards {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -46,7 +46,7 @@ impl EffectBehaviors for ControllerDiscards {
         &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

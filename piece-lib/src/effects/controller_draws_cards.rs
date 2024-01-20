@@ -14,7 +14,7 @@ impl EffectBehaviors for ControllerDrawsCards {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -22,7 +22,7 @@ impl EffectBehaviors for ControllerDrawsCards {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -30,7 +30,7 @@ impl EffectBehaviors for ControllerDrawsCards {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -54,7 +54,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -77,7 +77,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         &self,
         db: &mut Database,
         player: crate::player::Owner,
-        replacements: &mut IntoIter<(crate::protogen::ids::CardId, ReplacementEffect)>,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
         controller: crate::player::Controller,
         _count: usize,
         results: &mut PendingResults,
@@ -87,7 +87,7 @@ impl EffectBehaviors for ControllerDrawsCards {
             Count::NumberOfPermanentsMatching(matching) => db.battlefield[controller]
                 .iter()
                 .filter(|card| {
-                    card.passes_restrictions(db, LogId::current(db), card, &matching.restrictions)
+                    card.passes_restrictions(db, LogId::current(db), **card, &matching.restrictions)
                 })
                 .count(),
         };

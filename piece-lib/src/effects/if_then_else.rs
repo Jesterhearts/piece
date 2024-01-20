@@ -4,7 +4,7 @@ impl EffectBehaviors for IfThenElse {
     fn needs_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
     ) -> usize {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
             self.then
@@ -24,7 +24,7 @@ impl EffectBehaviors for IfThenElse {
     fn wants_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
     ) -> usize {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
             self.then
@@ -44,7 +44,7 @@ impl EffectBehaviors for IfThenElse {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -71,7 +71,7 @@ impl EffectBehaviors for IfThenElse {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

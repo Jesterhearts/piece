@@ -2,8 +2,8 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::Database, library::Library, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, protogen::ids::CardId, stack::Stack,
+    battlefield::Battlefields, in_play::CardId, in_play::Database, library::Library, load_cards,
+    pending_results::ResolutionResult, player::AllPlayers, stack::Stack,
 };
 
 #[test]
@@ -28,7 +28,7 @@ fn etb() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    Library::place_on_top(&mut db, player, bear.clone());
+    Library::place_on_top(&mut db, player, bear);
 
     let spell = CardId::upload(&mut db, &cards, player, "Annul");
     Library::place_on_top(&mut db, player, spell);
@@ -38,7 +38,7 @@ fn etb() -> anyhow::Result<()> {
 
     let recruiter = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
     recruiter.move_to_hand(&mut db);
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &recruiter, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, recruiter, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);

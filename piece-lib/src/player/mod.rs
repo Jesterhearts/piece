@@ -14,7 +14,7 @@ use crate::{
     action_result::ActionResult,
     battlefield::Battlefields,
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
     pending_results::PendingResults,
@@ -22,7 +22,6 @@ use crate::{
     protogen::{
         cost::ManaCost,
         effects::{static_ability, ReplacementEffect},
-        ids::CardId,
         mana::{Mana, ManaRestriction, ManaSource},
         targets::Location,
     },
@@ -177,7 +176,7 @@ impl Owner {
                 restriction::Restriction::ControllerJustCast(_) => {
                     if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Cast { card } = entry {
-                            db[card].controller == self
+                            db[*card].controller == self
                         } else {
                             false
                         }
@@ -212,7 +211,7 @@ impl Owner {
                 ) => {
                     let entered_this_turn = CardId::entered_battlefield_this_turn(db)
                         .filter(|card| {
-                            card.passes_restrictions(db, log_session, card, restrictions)
+                            card.passes_restrictions(db, log_session, *card, restrictions)
                         })
                         .count() as i32;
                     if entered_this_turn < *count {
@@ -428,7 +427,7 @@ impl Player {
                     if !source.passes_restrictions(
                         db,
                         LogId::current(db),
-                        &source,
+                        source,
                         &replacement.restrictions,
                     ) {
                         continue;
@@ -439,7 +438,7 @@ impl Player {
                             db,
                             player,
                             replacements,
-                            db[&source].controller,
+                            db[source].controller,
                             count,
                             results,
                         );
@@ -453,8 +452,8 @@ impl Player {
         }
     }
 
-    pub fn play_card(db: &mut Database, player: Owner, card: &CardId) -> PendingResults {
-        assert!(db.hand[player].contains(card));
+    pub fn play_card(db: &mut Database, player: Owner, card: CardId) -> PendingResults {
+        assert!(db.hand[player].contains(&card));
 
         if card.is_land(db) && !Self::can_play_land(db, player) {
             return PendingResults::default();
@@ -466,7 +465,7 @@ impl Player {
             return Battlefields::add_from_stack_or_hand(&mut db, card, None);
         }
 
-        Stack::move_card_to_stack_from_hand(&mut db, card.clone(), true)
+        Stack::move_card_to_stack_from_hand(&mut db, card, true)
     }
 
     pub(crate) fn can_meet_cost(
@@ -474,7 +473,7 @@ impl Player {
         db: &Database,
         mana: &[protobuf::EnumOrUnknown<ManaCost>],
         sources: &[ManaSource],
-        reason: &SpendReason,
+        reason: SpendReason,
     ) -> bool {
         for (cost, source) in mana.iter().copied().zip(
             sources
@@ -498,7 +497,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: &SpendReason,
+        reason: SpendReason,
     ) -> Option<ManaPool> {
         let mut mana_pool = self.mana_pool.clone();
 
@@ -521,7 +520,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: &SpendReason,
+        reason: SpendReason,
     ) -> bool {
         self.pool_post_pay(db, mana, sources, reason).is_some()
     }
@@ -531,7 +530,7 @@ impl Player {
         player: Owner,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: &SpendReason,
+        reason: SpendReason,
     ) -> bool {
         let mut mana_pool = db.all_players[player].mana_pool.clone();
 
@@ -553,10 +552,10 @@ impl Player {
     pub(crate) fn manifest(db: &mut Database, player: Owner) -> PendingResults {
         if let Some(manifested) = db.all_players[player].library.draw() {
             {
-                db[&manifested].manifested = true;
-                db[&manifested].facedown = true;
+                db[manifested].manifested = true;
+                db[manifested].facedown = true;
             };
-            Battlefields::add_from_stack_or_hand(db, &manifested, None)
+            Battlefields::add_from_stack_or_hand(db, manifested, None)
         } else {
             PendingResults::default()
         }

@@ -3,8 +3,13 @@ use std::collections::VecDeque;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
-    player::AllPlayers, protogen::ids::CardId, stack::Stack, turns::Phase,
+    battlefield::Battlefields,
+    in_play::{CardId, Database},
+    load_cards,
+    pending_results::ResolutionResult,
+    player::AllPlayers,
+    stack::Stack,
+    turns::Phase,
 };
 
 #[test]
@@ -38,7 +43,7 @@ fn place_on_top() -> anyhow::Result<()> {
     // Get rid of summoning sickness
     db.turn.turn_count += db.turn.turns_per_round();
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     // Pay the blue
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);

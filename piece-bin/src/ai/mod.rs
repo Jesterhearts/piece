@@ -24,7 +24,7 @@ impl AI {
             {
                 debug!("Playing land");
                 if let Some(land) = db.hand[self.player].iter().find(|card| card.is_land(db)) {
-                    pending.extend(Player::play_card(db, self.player, &land.clone()));
+                    pending.extend(Player::play_card(db, self.player, *land));
                 } else {
                     debug!("Found no lands in hand");
                 }
@@ -32,14 +32,14 @@ impl AI {
                 for land in db.battlefield[self.player]
                     .iter()
                     .filter(|card| card.is_land(db))
-                    .cloned()
+                    .copied()
                     .collect_vec()
                 {
                     pending.extend(Battlefields::activate_ability(
                         db,
                         &None,
                         self.player,
-                        &land,
+                        land,
                         0,
                     ));
                 }
@@ -50,7 +50,7 @@ impl AI {
                 assert_eq!(result, ResolutionResult::Complete);
 
                 if let Some(card) = db.hand[self.player].iter().find(|card| !card.is_land(db)) {
-                    pending.extend(Player::play_card(db, self.player, &card.clone()));
+                    pending.extend(Player::play_card(db, self.player, *card));
                 }
             }
         }

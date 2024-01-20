@@ -15,7 +15,7 @@ impl EffectBehaviors for Cycling {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -23,7 +23,7 @@ impl EffectBehaviors for Cycling {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         if !self.types.is_empty() || !self.subtypes.is_empty() {
             1
@@ -39,7 +39,7 @@ impl EffectBehaviors for Cycling {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -62,14 +62,14 @@ impl EffectBehaviors for Cycling {
             .cards
             .iter()
             .filter(|card| card.passes_restrictions(db, log_session, source, &restrictions))
-            .map(|card| ActiveTarget::Library { id: card.clone() })
+            .map(|card| ActiveTarget::Library { id: *card })
             .collect_vec()
     }
 
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -90,7 +90,7 @@ impl EffectBehaviors for Cycling {
                 TargetSource::Effect(Effect::from(self.clone())),
                 valid_targets,
                 crate::log::LogId::current(db),
-                source.clone(),
+                source,
             ));
         }
     }
@@ -99,7 +99,7 @@ impl EffectBehaviors for Cycling {
         &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -114,7 +114,7 @@ impl EffectBehaviors for Cycling {
                     unreachable!()
                 };
 
-                results.push_settled(ActionResult::RevealCard(id.clone()));
+                results.push_settled(ActionResult::RevealCard(id));
                 results.push_settled(ActionResult::MoveToHandFromLibrary(id));
             }
         }

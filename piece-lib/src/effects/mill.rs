@@ -15,7 +15,7 @@ impl EffectBehaviors for Mill {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -23,7 +23,7 @@ impl EffectBehaviors for Mill {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -31,7 +31,7 @@ impl EffectBehaviors for Mill {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &HashSet<ActiveTarget>,
@@ -49,7 +49,7 @@ impl EffectBehaviors for Mill {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -65,7 +65,7 @@ impl EffectBehaviors for Mill {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source.clone(),
+            source,
         ));
     }
 
@@ -73,7 +73,7 @@ impl EffectBehaviors for Mill {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

@@ -2,8 +2,8 @@ use derive_more::{From, Into};
 use uuid::Uuid;
 
 use crate::{
-    in_play::Database,
-    protogen::{effects::ActivatedAbility, ids::CardId},
+    in_play::{CardId, Database},
+    protogen::effects::ActivatedAbility,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]

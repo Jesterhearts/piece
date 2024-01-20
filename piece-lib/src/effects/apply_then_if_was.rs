@@ -7,7 +7,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     fn needs_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
     ) -> usize {
         self.apply
             .iter()
@@ -19,7 +19,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     fn wants_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
     ) -> usize {
         self.apply
             .iter()
@@ -31,7 +31,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -54,7 +54,7 @@ impl EffectBehaviors for ApplyThenIfWas {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -71,7 +71,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -87,7 +87,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         results.push_settled(ActionResult::IfWasThen {
             if_was: self.then.if_was.clone(),
             then: self.then.apply.clone(),
-            source: source.clone(),
+            source,
             controller,
         })
     }

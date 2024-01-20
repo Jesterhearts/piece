@@ -1,8 +1,13 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
-    player::AllPlayers, protogen::ids::CardId, stack::Stack, turns::Phase,
+    battlefield::Battlefields,
+    in_play::{CardId, Database},
+    load_cards,
+    pending_results::ResolutionResult,
+    player::AllPlayers,
+    stack::Stack,
+    turns::Phase,
 };
 
 #[test]
@@ -26,16 +31,16 @@ fn mace() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &mace, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, mace, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &mace, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, mace, 0);
     // Pay the cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -53,7 +58,7 @@ fn mace() -> anyhow::Result<()> {
     assert_eq!(bear.toughness(&db), Some(2));
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

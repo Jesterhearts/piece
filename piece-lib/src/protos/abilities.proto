@@ -4,7 +4,6 @@ package abilities;
 
 import "cost.proto";
 import "effects.proto";
-import "ids.proto";
 import "triggers.proto";
 import "types.proto";
 
@@ -16,17 +15,4 @@ message TriggeredAbility {
   triggers.Trigger trigger = 1;
   repeated effects.Effect effects = 2;
   string oracle_text = 3;
-}
-
-message EtbAbility {
-  repeated effects.Effect effects = 1;
-}
-
-message Ability {
-  oneof ability {
-    ids.ActivatedAbilityId activated = 1;
-    ids.GainManaAbilityId mana = 2;
-    TriggeredAbility triggered = 3;
-    EtbAbility etb = 4;
-  }
 }

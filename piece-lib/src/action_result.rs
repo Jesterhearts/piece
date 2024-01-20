@@ -11,7 +11,7 @@ use crate::{
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
     effects::EffectBehaviors,
-    in_play::{CastFrom, Database, ExileReason, ModifierId},
+    in_play::{CardId, CastFrom, Database, ExileReason, ModifierId},
     library::Library,
     log::{Log, LogEntry, LogId},
     pending_results::{examine_top_cards::ExamineCards, PendingResults},
@@ -24,13 +24,12 @@ use crate::{
             replacement_effect::Replacing, BattleCry, BattlefieldModifier, Cascade, Duration,
             Effect, ModifyBattlefield, ReplacementEffect, RevealEachTopOfLibrary,
         },
-        ids::{CardId, StackId},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, Trigger, TriggerSource},
         types::Type,
     },
-    stack::{ActiveTarget, Entry, Stack, StackEntry},
+    stack::{ActiveTarget, Entry, Stack, StackEntry, StackId},
     types::TypeSet,
 };
 
@@ -265,7 +264,7 @@ impl ActionResult {
                 card.passes_restrictions(
                     db,
                     LogId::current(db),
-                    &listener,
+                    listener,
                     &trigger.trigger.restrictions,
                 )
             }) {
@@ -273,7 +272,7 @@ impl ActionResult {
             }
         }
 
-        for card in db.cards.keys().cloned().collect_vec() {
+        for card in db.cards.keys().copied().collect_vec() {
             card.apply_modifiers_layered(db);
         }
 
@@ -290,12 +289,12 @@ impl ActionResult {
             }
             ActionResult::DiscardCards { target, count } => {
                 let mut pending = PendingResults::default();
-                pending.push_choose_discard(db.hand[*target].iter().cloned().collect_vec(), *count);
+                pending.push_choose_discard(db.hand[*target].iter().copied().collect_vec(), *count);
                 pending
             }
             ActionResult::TapPermanent(card_id) => card_id.tap(db),
             ActionResult::PermanentToGraveyard(card_id) => {
-                Battlefields::permanent_to_graveyard(db, card_id)
+                Battlefields::permanent_to_graveyard(db, *card_id)
             }
             ActionResult::CopyAbility {
                 source,
@@ -304,9 +303,9 @@ impl ActionResult {
                 x_is,
             } => {
                 if let Some(x) = x_is {
-                    db[source].x_is = *x;
+                    db[*source].x_is = *x;
                 }
-                Stack::push_ability(db, source, ability.clone(), targets.clone())
+                Stack::push_ability(db, *source, ability.clone(), targets.clone())
             }
             ActionResult::AddAbilityToStack {
                 source,
@@ -315,13 +314,13 @@ impl ActionResult {
                 x_is,
             } => {
                 if let Some(x) = x_is {
-                    db[source].x_is = *x;
+                    db[*source].x_is = *x;
                 }
 
                 let mut results = PendingResults::default();
 
                 if let Ability::Activated(ability) = ability {
-                    Log::activated(db, source.clone(), *ability);
+                    Log::activated(db, *source, *ability);
                     db.turn.activated_abilities.insert(*ability);
 
                     for (listener, trigger) in
@@ -330,11 +329,11 @@ impl ActionResult {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
                 } else {
-                    Log::triggered(db, source.clone());
+                    Log::triggered(db, *source);
                 }
                 results.extend(Stack::push_ability(
                     db,
-                    source,
+                    *source,
                     ability.clone(),
                     targets.clone(),
                 ));
@@ -342,12 +341,12 @@ impl ActionResult {
                 results
             }
             ActionResult::CloneCard { cloning, cloned } => {
-                cloning.clone_card(db, cloned);
+                cloning.clone_card(db, *cloned);
                 PendingResults::default()
             }
             ActionResult::CloneCreatureNonTargeting { source, target } => {
                 if let ActiveTarget::Battlefield { id: target } = target {
-                    source.clone_card(db, target);
+                    source.clone_card(db, *target);
                 }
                 PendingResults::default()
             }
@@ -364,7 +363,7 @@ impl ActionResult {
                 for _ in 0..*count {
                     let card_id = db.all_players[*target].library.draw();
                     if let Some(card_id) = card_id {
-                        pending.extend(Battlefields::library_to_graveyard(db, &card_id));
+                        pending.extend(Battlefields::library_to_graveyard(db, card_id));
                     }
                 }
 
@@ -375,7 +374,7 @@ impl ActionResult {
                     unreachable!()
                 };
 
-                Library::place_on_top(db, db[target].owner, target.clone());
+                Library::place_on_top(db, db[*target].owner, *target);
                 PendingResults::default()
             }
             ActionResult::ReturnFromGraveyardToBattlefield { target } => {
@@ -383,7 +382,7 @@ impl ActionResult {
                 let ActiveTarget::Graveyard { id: target } = target else {
                     unreachable!()
                 };
-                pending.extend(Battlefields::add_from_stack_or_hand(db, target, None));
+                pending.extend(Battlefields::add_from_stack_or_hand(db, *target, None));
 
                 pending
             }
@@ -404,12 +403,7 @@ impl ActionResult {
                     unreachable!()
                 };
 
-                Library::place_under_top(
-                    db,
-                    db[target].owner,
-                    target.clone(),
-                    *under_cards as usize,
-                );
+                Library::place_under_top(db, db[*target].owner, *target, *under_cards as usize);
                 PendingResults::default()
             }
             ActionResult::LoseLife { target, count } => {
@@ -438,11 +432,11 @@ impl ActionResult {
                     .replacement_abilities_watching(Replacing::TOKEN_CREATION)
                     .into_iter();
 
-                let card = CardId::upload_token(db, db[source].controller.into(), token.clone());
+                let card = CardId::upload_token(db, db[*source].controller.into(), token.clone());
                 create_token_copy_with_replacements(
                     db,
-                    source,
-                    &card,
+                    *source,
+                    card,
                     &[],
                     &mut replacements,
                     &mut results,
@@ -452,11 +446,9 @@ impl ActionResult {
             }
             ActionResult::DrawCards { target, count } => Player::draw(db, (*target).into(), *count),
             ActionResult::AddToBattlefield(card, target) => {
-                Battlefields::add_from_stack_or_hand(db, card, target.as_ref())
+                Battlefields::add_from_stack_or_hand(db, *card, *target)
             }
-            ActionResult::StackToGraveyard(card) => {
-                Battlefields::stack_to_graveyard(db, card.clone())
-            }
+            ActionResult::StackToGraveyard(card) => Battlefields::stack_to_graveyard(db, *card),
             ActionResult::ApplyToBattlefield(modifier) => {
                 modifier.activate(&mut db.modifiers);
                 PendingResults::default()
@@ -467,7 +459,7 @@ impl ActionResult {
                 duration,
                 reason,
             } => {
-                let Some(target) = target.id(db).cloned() else {
+                let Some(target) = target.id(db) else {
                     unreachable!()
                 };
                 if let Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD = duration.enum_value().unwrap() {
@@ -476,7 +468,7 @@ impl ActionResult {
                     }
                 }
 
-                Battlefields::exile(db, source, &target, *reason, duration.enum_value().unwrap())
+                Battlefields::exile(db, *source, target, *reason, duration.enum_value().unwrap())
             }
             ActionResult::DamageTarget { quantity, target } => {
                 match target {
@@ -504,7 +496,7 @@ impl ActionResult {
             }
             ActionResult::SpellCountered { index } => {
                 match &db.stack.entries.get(index).unwrap().ty {
-                    Entry::Card(card) => Battlefields::stack_to_graveyard(db, card.clone()),
+                    Entry::Card(card) => Battlefields::stack_to_graveyard(db, *card),
                     Entry::Ability { .. } => {
                         db.stack.entries.shift_remove(index);
                         PendingResults::default()
@@ -516,10 +508,10 @@ impl ActionResult {
                 counter,
                 count,
             } => {
-                *db[target]
+                *db[*target]
                     .counters
                     .entry(counter.enum_value().unwrap())
-                    .or_default() = db[target]
+                    .or_default() = db[*target]
                     .counters
                     .entry(counter.enum_value().unwrap())
                     .or_default()
@@ -534,7 +526,7 @@ impl ActionResult {
             } => {
                 match count {
                     effects::count::Count::Fixed(count) => {
-                        *db[target]
+                        *db[*target]
                             .counters
                             .entry(counter.enum_value().unwrap())
                             .or_default() += count.count as usize;
@@ -544,7 +536,7 @@ impl ActionResult {
                             Dynamic::X(_) => {
                                 let x = source.get_x(db);
                                 if x > 0 {
-                                    *db[target]
+                                    *db[*target]
                                         .counters
                                         .entry(counter.enum_value().unwrap())
                                         .or_default() += x;
@@ -557,13 +549,13 @@ impl ActionResult {
                                         card.passes_restrictions(
                                             db,
                                             LogId::current(db),
-                                            source,
+                                            *source,
                                             &left.restrictions,
                                         )
                                     })
                                     .count();
                                 if x > 0 {
-                                    *db[target]
+                                    *db[*target]
                                         .counters
                                         .entry(counter.enum_value().unwrap())
                                         .or_default() += x;
@@ -576,7 +568,7 @@ impl ActionResult {
                 PendingResults::default()
             }
             ActionResult::RevealCard(card) => {
-                db[card].revealed = true;
+                db[*card].revealed = true;
                 PendingResults::default()
             }
             ActionResult::MoveToHandFromLibrary(card) => {
@@ -586,7 +578,7 @@ impl ActionResult {
             ActionResult::AddToBattlefieldFromLibrary {
                 card,
                 enters_tapped,
-            } => Battlefields::add_from_library(db, card, *enters_tapped),
+            } => Battlefields::add_from_library(db, *card, *enters_tapped),
             ActionResult::Shuffle(owner) => {
                 db.all_players[*owner].library.shuffle();
                 PendingResults::default()
@@ -597,7 +589,7 @@ impl ActionResult {
             } => {
                 match target {
                     ActiveTarget::Battlefield { id } => {
-                        id.apply_aura(db, aura_source.clone());
+                        id.apply_aura(db, *aura_source);
                     }
                     ActiveTarget::Graveyard { .. } => todo!(),
                     ActiveTarget::Player { .. } => todo!(),
@@ -618,9 +610,9 @@ impl ActionResult {
             } => {
                 let copy = card.token_copy_of(db, *controller);
                 if let Some(x_is) = x_is {
-                    db[&copy].x_is = *x_is;
+                    db[copy].x_is = *x_is;
                 }
-                Stack::push_card(db, card, targets.clone(), chosen_modes.clone())
+                Stack::push_card(db, *card, targets.clone(), chosen_modes.clone())
             }
             ActionResult::CastCard {
                 card,
@@ -631,7 +623,7 @@ impl ActionResult {
             } => {
                 let mut results = PendingResults::default();
 
-                Log::cast(db, card.clone());
+                Log::cast(db, *card);
 
                 results.extend(card.move_to_stack(
                     db,
@@ -640,7 +632,7 @@ impl ActionResult {
                     chosen_modes.clone(),
                 ));
                 if let Some(x_is) = x_is {
-                    db[card].x_is = *x_is;
+                    db[*card].x_is = *x_is;
                 };
                 card.apply_modifiers_layered(db);
 
@@ -648,7 +640,7 @@ impl ActionResult {
                     if card.passes_restrictions(
                         db,
                         LogId::current(db),
-                        &listener,
+                        listener,
                         &trigger.trigger.restrictions,
                     ) {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -659,7 +651,7 @@ impl ActionResult {
                 for _ in 0..cascade {
                     results.extend(Stack::move_trigger_to_stack(
                         db,
-                        card.clone(),
+                        *card,
                         TriggeredAbility {
                             trigger: protobuf::MessageField::some(Trigger {
                                 source: TriggerSource::CAST.into(),
@@ -694,12 +686,12 @@ impl ActionResult {
             ActionResult::UpdateStackEntries(entries) => {
                 db.stack.entries = entries
                     .iter()
-                    .map(|e| (StackId::generate(), e.clone()))
+                    .map(|e| (StackId::new(), e.clone()))
                     .collect();
                 db.stack.settle();
                 PendingResults::default()
             }
-            ActionResult::HandFromBattlefield(card) => Battlefields::permanent_to_hand(db, card),
+            ActionResult::HandFromBattlefield(card) => Battlefields::permanent_to_hand(db, *card),
             ActionResult::RevealEachTopOfLibrary(source, reveal) => {
                 let players = db.all_players.all_players();
                 let revealed = players
@@ -709,7 +701,7 @@ impl ActionResult {
                             card.passes_restrictions(
                                 db,
                                 LogId::current(db),
-                                source,
+                                *source,
                                 &reveal.for_each.restrictions,
                             )
                         })
@@ -718,11 +710,11 @@ impl ActionResult {
 
                 let mut results = PendingResults::default();
                 if revealed.is_empty() {
-                    let controller = db[source].controller;
+                    let controller = db[*source].controller;
                     for effect in reveal.for_each.if_none.effects.iter() {
                         effect.effect.as_ref().unwrap().push_pending_behavior(
                             db,
-                            source,
+                            *source,
                             controller,
                             &mut results,
                         );
@@ -736,8 +728,8 @@ impl ActionResult {
                                 .unwrap()
                                 .push_behavior_from_top_of_library(
                                     db,
-                                    source,
-                                    target.clone(),
+                                    *source,
+                                    target,
                                     &mut results,
                                 );
                         }
@@ -752,13 +744,13 @@ impl ActionResult {
                 effect,
             } => {
                 let mut results = PendingResults::default();
-                if let Some(from_source) = db[card].sourced_mana.get(&source.enum_value().unwrap())
+                if let Some(from_source) = db[*card].sourced_mana.get(&source.enum_value().unwrap())
                 {
                     for _ in 0..*from_source {
                         effect.effect.as_ref().unwrap().push_pending_behavior(
                             db,
-                            card,
-                            db[card].controller,
+                            *card,
+                            db[*card].controller,
                             &mut results,
                         );
                     }
@@ -779,8 +771,8 @@ impl ActionResult {
 
                 create_token_copy_with_replacements(
                     db,
-                    source,
-                    target,
+                    *source,
+                    *target,
                     modifiers,
                     &mut replacements,
                     &mut results,
@@ -789,19 +781,19 @@ impl ActionResult {
                 results
             }
             ActionResult::MoveFromLibraryToTopOfLibrary(card) => {
-                let owner = db[card].owner;
-                db.all_players[owner].library.remove(card);
-                Library::place_on_top(db, owner, card.clone());
+                let owner = db[*card].owner;
+                db.all_players[owner].library.remove(*card);
+                Library::place_on_top(db, owner, *card);
                 PendingResults::default()
             }
             ActionResult::MoveFromLibraryToBottomOfLibrary(card) => {
-                let owner = db[card].owner;
-                db.all_players[owner].library.remove(card);
-                Library::place_on_bottom(db, owner, card.clone());
+                let owner = db[*card].owner;
+                db.all_players[owner].library.remove(*card);
+                Library::place_on_bottom(db, owner, *card);
                 PendingResults::default()
             }
             ActionResult::MoveFromLibraryToGraveyard(card) => {
-                Battlefields::library_to_graveyard(db, card)
+                Battlefields::library_to_graveyard(db, *card)
             }
             ActionResult::SpendMana {
                 card,
@@ -810,8 +802,8 @@ impl ActionResult {
                 reason,
             } => {
                 card.mana_from_source(db, sources);
-                let controller = db[card].controller;
-                let spent = Player::spend_mana(db, controller.into(), mana, sources, reason);
+                let controller = db[*card].controller;
+                let spent = Player::spend_mana(db, controller.into(), mana, sources, *reason);
                 assert!(
                     spent,
                     "Should have validated mana could be spent before spending."
@@ -820,14 +812,14 @@ impl ActionResult {
             }
             ActionResult::AddToBattlefieldSkipReplacementEffects(card, target) => {
                 let mut results = PendingResults::default();
-                move_card_to_battlefield(db, card, false, &mut results, target.as_ref());
-                complete_add_from_stack_or_hand(db, card, &mut results);
+                move_card_to_battlefield(db, *card, false, &mut results, *target);
+                complete_add_from_stack_or_hand(db, *card, &mut results);
                 results
             }
             ActionResult::AddToBattlefieldSkipReplacementEffectsFromExile(card, target) => {
                 let mut results = PendingResults::default();
-                move_card_to_battlefield(db, card, false, &mut results, target.as_ref());
-                complete_add_from_exile(db, card, &mut results);
+                move_card_to_battlefield(db, *card, false, &mut results, *target);
+                complete_add_from_exile(db, *card, &mut results);
 
                 results
             }
@@ -836,12 +828,12 @@ impl ActionResult {
                 enters_tapped,
             } => {
                 let mut results = PendingResults::default();
-                move_card_to_battlefield(db, card, *enters_tapped, &mut results, None);
-                complete_add_from_library(db, card, &mut results);
+                move_card_to_battlefield(db, *card, *enters_tapped, &mut results, None);
+                complete_add_from_library(db, *card, &mut results);
                 results
             }
             ActionResult::Untap(target) => {
-                let stun = db[target].counters.entry(Counter::STUN).or_default();
+                let stun = db[*target].counters.entry(Counter::STUN).or_default();
                 if *stun > 0 {
                     *stun -= 1;
                 } else {
@@ -861,7 +853,7 @@ impl ActionResult {
                 while let Some(card) = Library::exile_top_card(
                     db,
                     (*player).into(),
-                    source,
+                    *source,
                     Some(ExileReason::Cascade),
                 ) {
                     if !card.is_land(db) && card.faceup_face(db).cost.cmc() < *cascading {
@@ -885,7 +877,7 @@ impl ActionResult {
                 while let Some(card) = Library::exile_top_card(
                     db,
                     (*player).into(),
-                    source,
+                    *source,
                     Some(ExileReason::Cascade),
                 ) {
                     if !card.is_land(db) && card.faceup_face(db).cost.cmc() < *count as usize {
@@ -908,7 +900,7 @@ impl ActionResult {
             ActionResult::Scry(source, count) => {
                 let mut cards = vec![];
                 for _ in 0..*count {
-                    let controller = db[source].controller;
+                    let controller = db[*source].controller;
                     if let Some(card) = db.all_players[controller].library.draw() {
                         cards.push(card);
                     } else {
@@ -952,7 +944,7 @@ impl ActionResult {
             ActionResult::DeclareAttackers { attackers, targets } => {
                 let mut results = PendingResults::default();
                 for (attacker, target) in attackers.iter().zip(targets.iter()) {
-                    db[attacker].attacking = Some(*target);
+                    db[*attacker].attacking = Some(*target);
 
                     let listeners = db.active_triggers_of_source(TriggerSource::ATTACKS);
                     debug!("attack listeners {:?}", listeners);
@@ -960,7 +952,7 @@ impl ActionResult {
                         if attacker.passes_restrictions(
                             db,
                             LogId::current(db),
-                            &listener,
+                            listener,
                             &trigger.trigger.restrictions,
                         ) {
                             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -970,7 +962,7 @@ impl ActionResult {
                     for _ in 0..attacker.battle_cry(db) {
                         results.extend(Stack::move_trigger_to_stack(
                             db,
-                            attacker.clone(),
+                            *attacker,
                             TriggeredAbility {
                                 trigger: protobuf::MessageField::some(Trigger {
                                     source: TriggerSource::ATTACKS.into(),
@@ -1019,16 +1011,16 @@ impl ActionResult {
                     .battlefields
                     .values()
                     .flat_map(|b| b.iter())
+                    .copied()
                     .filter(|card| {
-                        card.passes_restrictions(db, LogId::current(db), source, restrictions)
+                        card.passes_restrictions(db, LogId::current(db), *source, restrictions)
                             && !card.indestructible(db)
                     })
-                    .cloned()
                     .collect_vec();
 
                 let mut results = PendingResults::default();
                 for card in cards {
-                    results.extend(Battlefields::permanent_to_graveyard(db, &card));
+                    results.extend(Battlefields::permanent_to_graveyard(db, card));
                 }
 
                 results
@@ -1038,23 +1030,23 @@ impl ActionResult {
                     unreachable!()
                 };
 
-                Battlefields::permanent_to_graveyard(db, id)
+                Battlefields::permanent_to_graveyard(db, *id)
             }
             ActionResult::Explore { target } => {
-                let explorer = target.id(db).unwrap().clone();
-                let controller = db[&explorer].controller;
+                let explorer = target.id(db).unwrap();
+                let controller = db[explorer].controller;
                 let mut results = PendingResults::default();
 
                 if let Some(card) = db.all_players[controller].library.draw() {
-                    db[&card].revealed = true;
+                    db[card].revealed = true;
                     if card.types_intersect(db, &TypeSet::from([Type::LAND])) {
                         card.move_to_hand(db);
                     } else {
-                        *db[&explorer].counters.entry(Counter::P1P1).or_default() += 1;
+                        *db[explorer].counters.entry(Counter::P1P1).or_default() += 1;
                         results.push_choose_library_or_graveyard(card);
                     }
                 } else {
-                    *db[&explorer].counters.entry(Counter::P1P1).or_default() += 1;
+                    *db[explorer].counters.entry(Counter::P1P1).or_default() += 1;
                 }
 
                 for (listener, trigger) in
@@ -1063,7 +1055,7 @@ impl ActionResult {
                     if explorer.passes_restrictions(
                         db,
                         LogId::current(db),
-                        &listener,
+                        listener,
                         &trigger.trigger.restrictions,
                     ) {
                         results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -1078,8 +1070,8 @@ impl ActionResult {
                     unreachable!()
                 };
 
-                for card in db.graveyard[*id].iter().cloned().collect_vec() {
-                    card.move_to_exile(db, source, None, Duration::PERMANENTLY)
+                for card in db.graveyard[*id].iter().copied().collect_vec() {
+                    card.move_to_exile(db, *source, None, Duration::PERMANENTLY)
                 }
 
                 PendingResults::default()
@@ -1097,10 +1089,12 @@ impl ActionResult {
                 } else {
                     unreachable!("unexpected location {:?}", target.target_from_location(db))
                 };
-                move_card_to_battlefield(db, target, *enters_tapped, &mut results, None);
+                move_card_to_battlefield(db, *target, *enters_tapped, &mut results, None);
                 match location {
-                    Location::IN_EXILE => complete_add_from_exile(db, target, &mut results),
-                    Location::IN_GRAVEYARD => complete_add_from_graveyard(db, target, &mut results),
+                    Location::IN_EXILE => complete_add_from_exile(db, *target, &mut results),
+                    Location::IN_GRAVEYARD => {
+                        complete_add_from_graveyard(db, *target, &mut results)
+                    }
                     _ => unreachable!(),
                 }
 
@@ -1130,7 +1124,7 @@ impl ActionResult {
                     for effect in then.iter() {
                         effect.effect.as_ref().unwrap().push_pending_behavior(
                             db,
-                            source,
+                            *source,
                             *controller,
                             &mut results,
                         );
@@ -1149,7 +1143,7 @@ impl ActionResult {
                 for effect in apply.iter() {
                     effect.effect.as_ref().unwrap().push_pending_behavior(
                         db,
-                        source,
+                        *source,
                         *controller,
                         &mut results,
                     )
@@ -1164,8 +1158,8 @@ impl ActionResult {
 #[instrument(skip(db, modifiers, results))]
 pub(crate) fn create_token_copy_with_replacements(
     db: &mut Database,
-    source: &CardId,
-    copying: &CardId,
+    source: CardId,
+    copying: CardId,
     modifiers: &[ModifyBattlefield],
     replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
     results: &mut PendingResults,
@@ -1176,12 +1170,12 @@ pub(crate) fn create_token_copy_with_replacements(
             if !source.passes_restrictions(
                 db,
                 LogId::current(db),
-                &source,
+                source,
                 &source.faceup_face(db).restrictions,
             ) || !copying.passes_restrictions(
                 db,
                 LogId::current(db),
-                &source,
+                source,
                 &replacement.restrictions,
             ) {
                 continue;
@@ -1193,7 +1187,7 @@ pub(crate) fn create_token_copy_with_replacements(
             for effect in replacement.effects.iter() {
                 effect.effect.as_ref().unwrap().replace_token_creation(
                     db,
-                    &source,
+                    source,
                     replacements,
                     copying,
                     modifiers,
@@ -1210,7 +1204,7 @@ pub(crate) fn create_token_copy_with_replacements(
         for modifier in modifiers.iter() {
             let modifier = ModifierId::upload_temporary_modifier(
                 db,
-                token.clone(),
+                token,
                 BattlefieldModifier {
                     modifier: protobuf::MessageField::some(modifier.clone()),
                     duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
@@ -1223,6 +1217,6 @@ pub(crate) fn create_token_copy_with_replacements(
         }
 
         token.apply_modifiers_layered(db);
-        results.extend(Battlefields::add_from_stack_or_hand(db, &token, None));
+        results.extend(Battlefields::add_from_stack_or_hand(db, token, None));
     }
 }

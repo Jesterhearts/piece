@@ -8,7 +8,7 @@ impl EffectBehaviors for MultiplyTokens {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -16,7 +16,7 @@ impl EffectBehaviors for MultiplyTokens {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -24,7 +24,7 @@ impl EffectBehaviors for MultiplyTokens {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
@@ -35,7 +35,7 @@ impl EffectBehaviors for MultiplyTokens {
         &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
@@ -45,9 +45,9 @@ impl EffectBehaviors for MultiplyTokens {
     fn replace_token_creation(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
-        replacements: &mut std::vec::IntoIter<(crate::protogen::ids::CardId, ReplacementEffect)>,
-        token: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
+        replacements: &mut std::vec::IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
+        token: crate::in_play::CardId,
         modifiers: &[super::ModifyBattlefield],
         results: &mut crate::pending_results::PendingResults,
     ) {

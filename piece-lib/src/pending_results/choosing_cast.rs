@@ -1,9 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    in_play::{CastFrom, Database},
+    in_play::{CardId, CastFrom, Database},
     pending_results::{Options, PendingResult, PendingResults},
-    protogen::{ids::CardId, targets::Location},
+    protogen::targets::Location,
     stack::add_card_to_stack,
 };
 
@@ -61,8 +61,7 @@ impl PendingResult for ChoosingCast {
                 Location::IN_EXILE => CastFrom::Exile,
                 _ => unreachable!(),
             };
-            let cast_results =
-                add_card_to_stack(db, card.clone(), Some(cast_from), self.paying_costs);
+            let cast_results = add_card_to_stack(db, card, Some(cast_from), self.paying_costs);
             if cast_results.is_empty() && self.discovering {
                 card.move_to_hand(db);
             } else {
@@ -71,7 +70,7 @@ impl PendingResult for ChoosingCast {
             true
         } else {
             if self.discovering {
-                let card = self.choosing_to_cast.iter().exactly_one().cloned().unwrap();
+                let card = *self.choosing_to_cast.iter().exactly_one().unwrap();
                 card.move_to_hand(db);
             }
             self.choosing_to_cast.clear();

@@ -2,36 +2,34 @@ use itertools::Itertools;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{CardId, Database},
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen::{
-        effects::{effect::Effect, ChooseCast},
-        ids::CardId,
-    },
+    protogen::effects::{effect::Effect, ChooseCast},
     stack::ActiveTarget,
 };
 
 impl EffectBehaviors for ChooseCast {
-    fn needs_targets(&self, _db: &Database, _source: &CardId) -> usize {
+    fn needs_targets(&self, _db: &Database, _source: CardId) -> usize {
         1
     }
 
-    fn wants_targets(&self, _db: &Database, _source: &CardId) -> usize {
+    fn wants_targets(&self, _db: &Database, _source: CardId) -> usize {
         1
     }
 
     fn valid_targets(
         &self,
         db: &Database,
-        source: &CardId,
+        source: CardId,
         log_session: LogId,
         _controller: Controller,
         _already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         db.cards
             .keys()
+            .copied()
             .filter(|card| {
                 card.passes_restrictions(
                     db,
@@ -40,7 +38,6 @@ impl EffectBehaviors for ChooseCast {
                     &source.faceup_face(db).restrictions,
                 ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
             })
-            .cloned()
             .filter_map(|card| card.target_from_location(db))
             .collect_vec()
     }
@@ -48,7 +45,7 @@ impl EffectBehaviors for ChooseCast {
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: &CardId,
+        source: CardId,
         controller: Controller,
         results: &mut PendingResults,
     ) {
@@ -64,7 +61,7 @@ impl EffectBehaviors for ChooseCast {
             TargetSource::Effect(Effect::from(self.clone())),
             targets,
             LogId::current(db),
-            source.clone(),
+            source,
         ))
     }
 
@@ -72,12 +69,12 @@ impl EffectBehaviors for ChooseCast {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        _source: &CardId,
+        _source: CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
         for target in targets {
-            results.push_choose_cast(target.id(db).unwrap().clone(), false, false);
+            results.push_choose_cast(target.id(db).unwrap(), false, false);
         }
     }
 }

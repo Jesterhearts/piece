@@ -3,12 +3,11 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::Database,
+    in_play::{CardId, Database},
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::{AllPlayers, Player},
-    protogen::ids::CardId,
 };
 
 #[test]
@@ -34,11 +33,11 @@ fn replacement() -> anyhow::Result<()> {
 
     let deck1 = CardId::upload(&mut db, &cards, player, "Annul");
     let deck2 = CardId::upload(&mut db, &cards, player, "Annul");
-    Library::place_on_top(&mut db, player, deck1.clone());
-    Library::place_on_top(&mut db, player, deck2.clone());
+    Library::place_on_top(&mut db, player, deck1);
+    Library::place_on_top(&mut db, player, deck2);
 
     let card = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

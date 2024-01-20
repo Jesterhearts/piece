@@ -2,11 +2,11 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::Database,
+    in_play::{CardId, Database},
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::{ids::CardId, types::Type},
+    protogen::types::Type,
     stack::Stack,
     turns::Phase,
     types::TypeSet,
@@ -38,13 +38,13 @@ fn spawns_bats() -> anyhow::Result<()> {
     let cave3 = CardId::upload(&mut db, &cards, player, "Hidden Courtyard");
     cave3.move_to_battlefield(&mut db);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &cave1, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, cave1, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &cave2, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, cave2, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &cave3, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, cave3, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -80,7 +80,7 @@ fn spawns_bats() -> anyhow::Result<()> {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .cloned()
+            .copied()
             .filter(|card| card.types_intersect(&db, &TypeSet::from([Type::CREATURE])))
             .count(),
         3

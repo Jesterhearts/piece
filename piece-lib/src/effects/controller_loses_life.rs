@@ -13,7 +13,7 @@ impl EffectBehaviors for ControllerLosesLife {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -21,7 +21,7 @@ impl EffectBehaviors for ControllerLosesLife {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -29,7 +29,7 @@ impl EffectBehaviors for ControllerLosesLife {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -52,7 +52,7 @@ impl EffectBehaviors for ControllerLosesLife {
         &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -75,7 +75,7 @@ impl EffectBehaviors for ControllerLosesLife {
         &self,
         db: &mut crate::in_play::Database,
         player: crate::player::Owner,
-        replacements: &mut IntoIter<(crate::protogen::ids::CardId, ReplacementEffect)>,
+        replacements: &mut IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
         controller: crate::player::Controller,
         count: usize,
         results: &mut PendingResults,

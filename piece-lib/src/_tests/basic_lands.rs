@@ -3,11 +3,11 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    in_play::CardId,
     in_play::Database,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::ids::CardId,
     protogen::{
         mana::ManaSource,
         mana::{Mana, ManaRestriction},
@@ -36,10 +36,10 @@ fn plains() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Plains");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -81,10 +81,10 @@ fn island() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Island");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -125,10 +125,10 @@ fn swamp() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Swamp");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -170,10 +170,10 @@ fn mountain() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Mountain");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -214,10 +214,10 @@ fn forest() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Forest");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

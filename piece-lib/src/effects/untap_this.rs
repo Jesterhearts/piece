@@ -4,7 +4,7 @@ impl EffectBehaviors for UntapThis {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -12,7 +12,7 @@ impl EffectBehaviors for UntapThis {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -20,21 +20,21 @@ impl EffectBehaviors for UntapThis {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Untap(source.clone()));
+        results.push_settled(ActionResult::Untap(source));
     }
 
     fn push_behavior_with_targets(
         &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Untap(source.clone()))
+        results.push_settled(ActionResult::Untap(source))
     }
 }

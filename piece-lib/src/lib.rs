@@ -1,16 +1,9 @@
 #![allow(clippy::single_match)]
-// Protos mutate their size field through an & reference, leading to this warning. We explicitly
-// skip that field when hashing.
-#![allow(clippy::mutable_key_type)]
 
 #[macro_use]
 extern crate tracing;
 
-use std::{
-    collections::HashMap,
-    hash::{Hash, Hasher},
-    marker::PhantomData,
-};
+use std::{collections::HashMap, marker::PhantomData};
 
 use anyhow::{anyhow, Context};
 
@@ -902,25 +895,4 @@ where
     }
 
     deserializer.deserialize_str(Visit)
-}
-
-fn hash_optional_enum<H: Hasher, T: Enum + Hash>(
-    e: &Option<protobuf::EnumOrUnknown<T>>,
-    state: &mut H,
-) {
-    if let Some(e) = e.as_ref() {
-        e.enum_value().unwrap().hash(state)
-    } else {
-        Option::<T>::None.hash(state)
-    }
-}
-
-fn hash_enum_or_unknown<H: Hasher, T: Enum + Hash>(e: &protobuf::EnumOrUnknown<T>, state: &mut H) {
-    e.enum_value().unwrap().hash(state)
-}
-
-fn hash_enum_list<H: Hasher, T: Enum + Hash>(es: &[protobuf::EnumOrUnknown<T>], state: &mut H) {
-    for e in es.iter() {
-        hash_enum_or_unknown(e, state);
-    }
 }

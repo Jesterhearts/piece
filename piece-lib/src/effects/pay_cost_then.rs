@@ -10,7 +10,7 @@ impl EffectBehaviors for PayCostThen {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -18,7 +18,7 @@ impl EffectBehaviors for PayCostThen {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -26,12 +26,12 @@ impl EffectBehaviors for PayCostThen {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_pay_costs(PayCost::new(
-            source.clone(),
+            source,
             Cost::SpendMana(SpendMana::new(
                 self.cost.mana_cost.clone(),
                 SpendReason::Other,
@@ -51,7 +51,7 @@ impl EffectBehaviors for PayCostThen {
                 additional_cost::Cost::RemoveCounters(_) => todo!(),
                 additional_cost::Cost::SacrificePermanent(sacrifice) => {
                     results.push_pay_costs(PayCost::new(
-                        source.clone(),
+                        source,
                         Cost::SacrificePermanent(SacrificePermanent::new(
                             sacrifice.restrictions.clone(),
                         )),
@@ -59,29 +59,26 @@ impl EffectBehaviors for PayCostThen {
                 }
                 additional_cost::Cost::TapPermanent(tap) => {
                     results.push_pay_costs(PayCost::new(
-                        source.clone(),
+                        source,
                         Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                     ));
                 }
             }
         }
 
-        results.add_ability_to_stack(
-            source.clone(),
-            Ability::EtbOrTriggered(self.effects.clone()),
-        );
+        results.add_ability_to_stack(source, Ability::EtbOrTriggered(self.effects.clone()));
     }
 
     fn push_behavior_with_targets(
         &self,
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_pay_costs(PayCost::new(
-            source.clone(),
+            source,
             Cost::SpendMana(SpendMana::new(
                 self.cost.mana_cost.clone(),
                 SpendReason::Other,
@@ -101,7 +98,7 @@ impl EffectBehaviors for PayCostThen {
                 additional_cost::Cost::RemoveCounters(_) => todo!(),
                 additional_cost::Cost::SacrificePermanent(sacrifice) => {
                     results.push_pay_costs(PayCost::new(
-                        source.clone(),
+                        source,
                         Cost::SacrificePermanent(SacrificePermanent::new(
                             sacrifice.restrictions.clone(),
                         )),
@@ -109,16 +106,13 @@ impl EffectBehaviors for PayCostThen {
                 }
                 additional_cost::Cost::TapPermanent(tap) => {
                     results.push_pay_costs(PayCost::new(
-                        source.clone(),
+                        source,
                         Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                     ));
                 }
             }
         }
 
-        results.add_ability_to_stack(
-            source.clone(),
-            Ability::EtbOrTriggered(self.effects.clone()),
-        );
+        results.add_ability_to_stack(source, Ability::EtbOrTriggered(self.effects.clone()));
     }
 }

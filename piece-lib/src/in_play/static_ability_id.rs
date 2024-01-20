@@ -31,7 +31,7 @@ impl StaticAbilityId {
             if let static_ability::Ability::BattlefieldModifier(modifier) = &ability {
                 Some(ModifierId::upload_temporary_modifier(
                     db,
-                    source.clone(),
+                    source,
                     modifier.clone(),
                 ))
             } else {

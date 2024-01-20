@@ -79,14 +79,11 @@ use std::{collections::HashSet, vec::IntoIter};
 use itertools::Itertools;
 
 use crate::{
-    in_play::Database,
+    in_play::{CardId, Database},
     log::LogId,
     pending_results::PendingResults,
     player::{Controller, Owner},
-    protogen::{
-        effects::{Mode, ModifyBattlefield, ReplacementEffect},
-        ids::CardId,
-    },
+    protogen::effects::{Mode, ModifyBattlefield, ReplacementEffect},
     stack::ActiveTarget,
 };
 
@@ -174,14 +171,14 @@ pub(crate) trait EffectBehaviors {
         false
     }
 
-    fn needs_targets(&self, db: &Database, source: &CardId) -> usize;
+    fn needs_targets(&self, db: &Database, source: CardId) -> usize;
 
-    fn wants_targets(&self, db: &Database, source: &CardId) -> usize;
+    fn wants_targets(&self, db: &Database, source: CardId) -> usize;
 
     fn valid_targets(
         &self,
         db: &Database,
-        source: &CardId,
+        source: CardId,
         log_session: LogId,
         controller: Controller,
         already_chosen: &HashSet<ActiveTarget>,
@@ -197,7 +194,7 @@ pub(crate) trait EffectBehaviors {
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: &CardId,
+        source: CardId,
         controller: Controller,
         results: &mut PendingResults,
     );
@@ -205,7 +202,7 @@ pub(crate) trait EffectBehaviors {
     fn push_behavior_from_top_of_library(
         &self,
         db: &Database,
-        source: &CardId,
+        source: CardId,
         target_card: CardId,
         results: &mut PendingResults,
     ) {
@@ -220,7 +217,7 @@ pub(crate) trait EffectBehaviors {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        source: &CardId,
+        source: CardId,
         controller: Controller,
         results: &mut PendingResults,
     );
@@ -246,9 +243,9 @@ pub(crate) trait EffectBehaviors {
     fn replace_token_creation(
         &self,
         db: &mut Database,
-        source: &CardId,
+        source: CardId,
         replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
-        token: &CardId,
+        token: CardId,
         modifiers: &[ModifyBattlefield],
         results: &mut PendingResults,
     ) {

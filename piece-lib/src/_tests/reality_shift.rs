@@ -3,12 +3,12 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    in_play::CardId,
     in_play::Database,
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::ids::CardId,
     protogen::types::Subtype,
     stack::{ActiveTarget, Stack},
     types::SubtypeSet,
@@ -39,19 +39,19 @@ fn resolves_shift() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
     let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear1, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    Library::place_on_top(&mut db, player, bear3.clone());
+    Library::place_on_top(&mut db, player, bear3);
 
     let shift = CardId::upload(&mut db, &all_cards, player, "Reality Shift");
     let mut results = shift.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: bear1.clone() }]],
+        vec![vec![ActiveTarget::Battlefield { id: bear1 }]],
         None,
         vec![],
     );
@@ -67,13 +67,13 @@ fn resolves_shift() -> anyhow::Result<()> {
     assert_eq!(bear2.power(&db), Some(4));
     assert_eq!(bear2.toughness(&db), Some(2));
     assert_eq!(
-        db[&bear2].modified_subtypes,
+        db[bear2].modified_subtypes,
         SubtypeSet::from([Subtype::BEAR])
     );
 
     assert_eq!(bear3.power(&db), Some(2));
     assert_eq!(bear3.toughness(&db), Some(2));
-    assert_eq!(db[&bear3].modified_subtypes, SubtypeSet::from([]));
+    assert_eq!(db[bear3].modified_subtypes, SubtypeSet::from([]));
 
     Ok(())
 }

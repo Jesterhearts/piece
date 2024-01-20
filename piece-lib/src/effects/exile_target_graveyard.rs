@@ -12,7 +12,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -20,7 +20,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -28,7 +28,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
         _log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -43,7 +43,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -58,7 +58,7 @@ impl EffectBehaviors for ExileTargetGraveyard {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source.clone(),
+            source,
         ))
     }
 
@@ -66,13 +66,13 @@ impl EffectBehaviors for ExileTargetGraveyard {
         &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::ExileGraveyard {
             target: targets.into_iter().exactly_one().unwrap(),
-            source: source.clone(),
+            source,
         });
     }
 }

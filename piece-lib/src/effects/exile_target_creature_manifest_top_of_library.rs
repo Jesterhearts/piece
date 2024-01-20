@@ -17,7 +17,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -25,7 +25,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -33,7 +33,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -47,7 +47,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                 &source.faceup_face(db).restrictions,
             ) && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
             {
-                let target = ActiveTarget::Battlefield { id: card.clone() };
+                let target = ActiveTarget::Battlefield { id: *card };
                 if already_chosen.contains(&target) {
                     continue;
                 }
@@ -61,7 +61,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -77,7 +77,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source.clone(),
+            source,
         ));
     }
 
@@ -85,7 +85,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -103,8 +103,8 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         for target in targets {
             if valid.contains(&target) {
                 results.push_settled(ActionResult::ExileTarget {
-                    source: source.clone(),
-                    target: target.clone(),
+                    source,
+                    target,
                     duration: Duration::PERMANENTLY.into(),
                     reason: None,
                 });

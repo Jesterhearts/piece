@@ -4,13 +4,12 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::Database,
+    in_play::{CardId, Database},
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::{
-        ids::CardId,
         mana::ManaSource,
         mana::{Mana, ManaRestriction},
     },
@@ -39,15 +38,15 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, land.clone());
+    Library::place_on_top(&mut db, player, land);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
     // Pay banner cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -91,11 +90,11 @@ fn add_mana() -> anyhow::Result<()> {
     db.turn.set_phase(Phase::PreCombatMainPhase);
 
     let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 

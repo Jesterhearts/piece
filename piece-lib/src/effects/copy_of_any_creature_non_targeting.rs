@@ -20,7 +20,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -28,7 +28,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -36,7 +36,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         already_chosen: &HashSet<crate::stack::ActiveTarget>,
@@ -47,9 +47,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
                 && card.is_in_location(db, Location::ON_BATTLEFIELD)
                 && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
         }) {
-            let target = ActiveTarget::Battlefield {
-                id: creature.clone(),
-            };
+            let target = ActiveTarget::Battlefield { id: *creature };
             if already_chosen.contains(&target) {
                 continue;
             }
@@ -62,7 +60,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -77,7 +75,7 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source.clone(),
+            source,
         ));
     }
 
@@ -86,15 +84,12 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if let Ok(target) = targets.into_iter().exactly_one() {
-            results.push_settled(ActionResult::CloneCreatureNonTargeting {
-                source: source.clone(),
-                target,
-            })
+            results.push_settled(ActionResult::CloneCreatureNonTargeting { source, target })
         } else {
             warn!("Skipping targets");
         }

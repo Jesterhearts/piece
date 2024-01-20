@@ -1,32 +1,32 @@
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{CardId, Database},
     pending_results::PendingResults,
     player::Controller,
-    protogen::{effects::GainCounters, ids::CardId},
+    protogen::effects::GainCounters,
     stack::ActiveTarget,
 };
 
 impl EffectBehaviors for GainCounters {
-    fn needs_targets(&self, _db: &Database, _source: &CardId) -> usize {
+    fn needs_targets(&self, _db: &Database, _source: CardId) -> usize {
         0
     }
 
-    fn wants_targets(&self, _db: &Database, _source: &CardId) -> usize {
+    fn wants_targets(&self, _db: &Database, _source: CardId) -> usize {
         0
     }
 
     fn push_pending_behavior(
         &self,
         _db: &mut Database,
-        source: &CardId,
+        source: CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddCounters {
-            source: source.clone(),
-            target: source.clone(),
+            source,
+            target: source,
             count: self.count.count.as_ref().unwrap().clone(),
             counter: self.counter,
         });
@@ -36,13 +36,13 @@ impl EffectBehaviors for GainCounters {
         &self,
         _db: &mut Database,
         _targets: Vec<ActiveTarget>,
-        source: &CardId,
+        source: CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddCounters {
-            source: source.clone(),
-            target: source.clone(),
+            source,
+            target: source,
             count: self.count.count.as_ref().unwrap().clone(),
             counter: self.counter,
         })

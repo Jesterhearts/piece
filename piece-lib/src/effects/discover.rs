@@ -13,7 +13,7 @@ impl EffectBehaviors for Discover {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -21,7 +21,7 @@ impl EffectBehaviors for Discover {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -29,12 +29,12 @@ impl EffectBehaviors for Discover {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
-            source: source.clone(),
+            source,
             count: match self.count.as_ref().unwrap() {
                 Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
                     XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
@@ -50,12 +50,12 @@ impl EffectBehaviors for Discover {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
-            source: source.clone(),
+            source,
             count: match self.count.as_ref().unwrap() {
                 Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
                     XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,

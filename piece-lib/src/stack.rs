@@ -11,7 +11,7 @@ use crate::{
     action_result::ActionResult,
     battlefield::Battlefields,
     effects::EffectBehaviors,
-    in_play::{CastFrom, Database},
+    in_play::{CardId, CastFrom, Database},
     log::{Log, LogEntry, LogId},
     pending_results::{
         choose_targets::ChooseTargets,
@@ -26,7 +26,6 @@ use crate::{
     protogen::{
         abilities::TriggeredAbility,
         cost::additional_cost::{self, ExileXOrMoreCards},
-        ids::{CardId, StackId},
         keywords::Keyword,
         targets::{
             comparison,
@@ -41,12 +40,18 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct StackId(Uuid);
+
 impl StackId {
-    pub(crate) fn generate() -> Self {
-        Self {
-            id: Uuid::new_v4().to_string(),
-            ..Default::default()
-        }
+    pub(crate) fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl std::fmt::Display for StackId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
@@ -56,7 +61,7 @@ enum ResolutionType {
     Ability(CardId),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ActiveTarget {
     Stack { id: StackId },
     Battlefield { id: CardId },
@@ -80,18 +85,15 @@ impl ActiveTarget {
         }
     }
 
-    pub(crate) fn id<'this, 'db>(&'this self, db: &'db Database) -> Option<&'this CardId>
-    where
-        'db: 'this,
-    {
+    pub(crate) fn id(&self, db: &Database) -> Option<CardId> {
         match self {
             ActiveTarget::Battlefield { id }
             | ActiveTarget::Graveyard { id }
             | ActiveTarget::Library { id }
             | ActiveTarget::Hand { id }
-            | ActiveTarget::Exile { id } => Some(id),
+            | ActiveTarget::Exile { id } => Some(*id),
             ActiveTarget::Stack { id } => db.stack.entries.get(id).and_then(|entry| {
-                if let Entry::Card(card) = &entry.ty {
+                if let Entry::Card(card) = entry.ty {
                     Some(card)
                 } else {
                     None
@@ -109,9 +111,9 @@ pub(crate) enum Entry {
 }
 
 impl Entry {
-    pub(crate) fn source(&self) -> &CardId {
+    pub(crate) fn source(&self) -> CardId {
         match self {
-            Entry::Card(source) | Entry::Ability { source, .. } => source,
+            Entry::Card(source) | Entry::Ability { source, .. } => *source,
         }
     }
 }
@@ -132,7 +134,7 @@ impl StackEntry {
                 source: card_source,
                 ability,
             } => {
-                format!("{}: {}", db[card_source].modified_name, ability.text(db))
+                format!("{}: {}", db[*card_source].modified_name, ability.text(db))
             }
         }
     }
@@ -141,7 +143,7 @@ impl StackEntry {
         &self,
         db: &Database,
         log_session: LogId,
-        source: &CardId,
+        source: CardId,
         restrictions: &[Restriction],
     ) -> bool {
         let spell_or_ability_controller = db[self.ty.source()].controller;
@@ -156,7 +158,7 @@ impl StackEntry {
                         return false;
                     };
 
-                    if !matches!(db[card].cast_from, Some(CastFrom::Hand)) {
+                    if !matches!(db[*card].cast_from, Some(CastFrom::Hand)) {
                         return false;
                     }
                 }
@@ -167,7 +169,7 @@ impl StackEntry {
                     let Entry::Card(card) = &self.ty else {
                         return false;
                     };
-                    let cmc = db[card].modified_cost.cmc() as i32;
+                    let cmc = db[*card].modified_cost.cmc() as i32;
 
                     match cmc_test.cmc.as_ref().unwrap() {
                         Cmc::Comparison(comparison) => {
@@ -225,7 +227,7 @@ impl StackEntry {
                         let LogEntry::Cast { card } = entry else {
                             return false;
                         };
-                        db[card].controller == spell_or_ability_controller
+                        db[*card].controller == spell_or_ability_controller
                     }) {
                         return false;
                     }
@@ -276,7 +278,7 @@ impl StackEntry {
                         return false;
                     };
 
-                    if db[card].modified_activated_abilities.is_empty() {
+                    if db[*card].modified_activated_abilities.is_empty() {
                         return false;
                     }
                 }
@@ -315,7 +317,7 @@ impl StackEntry {
                         return false;
                     };
 
-                    if !db[card]
+                    if !db[*card]
                         .sourced_mana
                         .contains_key(&source.source.enum_value().unwrap())
                     {
@@ -336,7 +338,7 @@ impl StackEntry {
                         let LogEntry::CardChosen { card } = entry else {
                             return false;
                         };
-                        card == candidate
+                        *card == *candidate
                     }) {
                         return false;
                     }
@@ -346,7 +348,7 @@ impl StackEntry {
                         return false;
                     };
 
-                    if db[card]
+                    if db[*card]
                         .modified_keywords
                         .keys()
                         .any(|keyword| keywords.contains_key(keyword))
@@ -362,7 +364,7 @@ impl StackEntry {
                     };
 
                     if !types.is_empty()
-                        && db[card]
+                        && db[*card]
                             .modified_types
                             .iter()
                             .any(|ty| types.contains_key(&ty.value()))
@@ -370,7 +372,7 @@ impl StackEntry {
                         return false;
                     }
                     if !subtypes.is_empty()
-                        && db[card]
+                        && db[*card]
                             .modified_subtypes
                             .iter()
                             .any(|ty| subtypes.contains_key(&ty.value()))
@@ -383,7 +385,7 @@ impl StackEntry {
                         continue;
                     };
 
-                    if source == card {
+                    if source == *card {
                         return false;
                     }
                 }
@@ -396,7 +398,7 @@ impl StackEntry {
                     };
 
                     if !colors.iter().any(|color| {
-                        db[card]
+                        db[*card]
                             .modified_colors
                             .contains(&color.enum_value().unwrap())
                     }) {
@@ -411,7 +413,7 @@ impl StackEntry {
                     };
 
                     if !types.is_empty()
-                        && !db[card]
+                        && !db[*card]
                             .modified_types
                             .iter()
                             .any(|ty| types.contains_key(&ty.value()))
@@ -419,7 +421,7 @@ impl StackEntry {
                         return false;
                     }
                     if !subtypes.is_empty()
-                        && !db[card]
+                        && !db[*card]
                             .modified_subtypes
                             .iter()
                             .any(|ty| subtypes.contains_key(&ty.value()))
@@ -453,7 +455,7 @@ impl StackEntry {
                         return false;
                     };
 
-                    if card != source {
+                    if *card != source {
                         return false;
                     }
                 }
@@ -467,7 +469,7 @@ impl StackEntry {
                         Entry::Card(candidate) => {
                             if !Log::session(db, log_session).iter().any(|(_, entry)| {
                                 if let LogEntry::Cast { card } = entry {
-                                    card == candidate
+                                    *card == *candidate
                                 } else {
                                     false
                                 }
@@ -547,21 +549,21 @@ pub struct Stack {
 }
 
 impl Stack {
-    pub(crate) fn contains(&self, card: &CardId) -> bool {
+    pub(crate) fn contains(&self, card: CardId) -> bool {
         self.entries
             .iter()
-            .any(|(_, entry)| matches!(&entry.ty, Entry::Card(entry) if entry == card))
+            .any(|(_, entry)| matches!(entry.ty, Entry::Card(entry) if entry == card))
     }
 
-    pub(crate) fn find(&self, card: &CardId) -> Option<StackId> {
+    pub(crate) fn find(&self, card: CardId) -> Option<StackId> {
         self.entries
             .iter()
             .rev()
             .find(|(_, entry)| match &entry.ty {
-                Entry::Card(entry) => entry == card,
-                Entry::Ability { source, .. } => source == card,
+                Entry::Card(entry) => *entry == card,
+                Entry::Ability { source, .. } => *source == card,
             })
-            .map(|(id, _)| id.clone())
+            .map(|(id, _)| *id)
     }
 
     pub(crate) fn split_second(&self, db: &Database) -> bool {
@@ -573,7 +575,7 @@ impl Stack {
             },
         )) = self.entries.last()
         {
-            db[card]
+            db[*card]
                 .modified_keywords
                 .contains_key(&Keyword::SPLIT_SECOND.value())
         } else {
@@ -581,15 +583,15 @@ impl Stack {
         }
     }
 
-    pub(crate) fn remove(&mut self, card: &CardId) {
+    pub(crate) fn remove(&mut self, card: CardId) {
         self.entries
-            .retain(|_, entry| !matches!(&entry.ty, Entry::Card(entry) if entry == card));
+            .retain(|_, entry| !matches!(entry.ty, Entry::Card(entry) if entry == card));
     }
 
     #[cfg(test)]
     pub(crate) fn target_nth(&self, nth: usize) -> ActiveTarget {
         let id = self.entries.get_index(nth).unwrap().0;
-        ActiveTarget::Stack { id: id.clone() }
+        ActiveTarget::Stack { id: *id }
     }
 
     pub fn entries(&self) -> &IndexMap<StackId, StackEntry> {
@@ -634,17 +636,17 @@ impl Stack {
 
                 (
                     effects,
-                    db[&card].controller,
-                    Some(card.clone()),
-                    card.clone(),
+                    db[card].controller,
+                    Some(card),
+                    card,
                     ResolutionType::Card(card),
                 )
             }
             Entry::Ability { source, ability } => (
                 ability.effects(db),
-                db[&source].controller,
+                db[source].controller,
                 None,
-                source.clone(),
+                source,
                 ResolutionType::Ability(source),
             ),
         };
@@ -660,7 +662,7 @@ impl Stack {
             effect.effect.unwrap().push_behavior_with_targets(
                 db,
                 targets,
-                &source,
+                source,
                 controller,
                 &mut results,
             );
@@ -684,7 +686,7 @@ impl Stack {
 
         match ty {
             ResolutionType::Card(card) => Log::spell_resolved(db, card),
-            ResolutionType::Ability(source) => Log::ability_resolved(db, &source),
+            ResolutionType::Ability(source) => Log::ability_resolved(db, source),
         }
 
         results
@@ -700,13 +702,13 @@ impl Stack {
         if ability
             .effects(db)
             .iter()
-            .any(|effect| effect.effect.as_ref().unwrap().wants_targets(db, &source) > 0)
+            .any(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source) > 0)
         {
             for effect in ability.effects(db).into_iter() {
                 effect.effect.unwrap().push_pending_behavior(
                     db,
-                    &source,
-                    db[&source].controller,
+                    source,
+                    db[source].controller,
                     &mut results,
                 );
             }
@@ -741,14 +743,14 @@ impl Stack {
 
     pub(crate) fn push_card(
         db: &mut Database,
-        source: &CardId,
+        source: CardId,
         targets: Vec<Vec<ActiveTarget>>,
         chosen_modes: Vec<usize>,
     ) -> PendingResults {
         db.stack.entries.insert(
-            StackId::generate(),
+            StackId::new(),
             StackEntry {
-                ty: Entry::Card(source.clone()),
+                ty: Entry::Card(source),
                 targets: targets.clone(),
                 settled: true,
                 mode: chosen_modes,
@@ -763,7 +765,7 @@ impl Stack {
                         && source.passes_restrictions(
                             db,
                             LogId::current(db),
-                            &listener,
+                            listener,
                             &trigger.trigger.restrictions,
                         )
                     {
@@ -778,17 +780,14 @@ impl Stack {
 
     pub(crate) fn push_ability(
         db: &mut Database,
-        source: &CardId,
+        source: CardId,
         ability: Ability,
         targets: Vec<Vec<ActiveTarget>>,
     ) -> PendingResults {
         db.stack.entries.insert(
-            StackId::generate(),
+            StackId::new(),
             StackEntry {
-                ty: Entry::Ability {
-                    source: source.clone(),
-                    ability,
-                },
+                ty: Entry::Ability { source, ability },
                 targets: targets.clone(),
                 mode: vec![],
                 settled: true,
@@ -803,7 +802,7 @@ impl Stack {
                         && source.passes_restrictions(
                             db,
                             LogId::current(db),
-                            &listener,
+                            listener,
                             &trigger.trigger.restrictions,
                         )
                     {
@@ -825,22 +824,22 @@ pub(crate) fn add_card_to_stack(
 ) -> PendingResults {
     let mut results = PendingResults::default();
 
-    db[&card].cast_from = from;
+    db[card].cast_from = from;
     card.apply_modifiers_layered(db);
 
     if card.has_modes(db) {
-        results.push_choose_mode(Source::Card(card.clone()));
+        results.push_choose_mode(Source::Card(card));
     }
 
-    results.add_card_to_stack(card.clone(), from);
+    results.add_card_to_stack(card, from);
     if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
-        let controller = db[&card].controller;
+        let controller = db[card].controller;
         if card.faceup_face(db).enchant.is_some() {
             results.push_choose_targets(ChooseTargets::new(
-                TargetSource::Aura(card.clone()),
+                TargetSource::Aura(card),
                 card.targets_for_aura(db).unwrap(),
                 crate::log::LogId::current(db),
-                card.clone(),
+                card,
             ))
         }
 
@@ -856,12 +855,12 @@ pub(crate) fn add_card_to_stack(
                 .unwrap();
             let valid_targets = effect.valid_targets(
                 db,
-                &card,
+                card,
                 crate::log::LogId::current(db),
                 controller,
                 &HashSet::default(),
             );
-            if valid_targets.len() < effect.needs_targets(db, &card) {
+            if valid_targets.len() < effect.needs_targets(db, card) {
                 debug!("Insufficient targets");
                 return PendingResults::default();
             }
@@ -870,19 +869,19 @@ pub(crate) fn add_card_to_stack(
                 TargetSource::Effect(effect.clone()),
                 valid_targets,
                 crate::log::LogId::current(db),
-                card.clone(),
+                card,
             ));
         } else {
             for effect in card.faceup_face(db).effects.iter() {
                 let effect = effect.effect.as_ref().unwrap();
                 let valid_targets = effect.valid_targets(
                     db,
-                    &card,
+                    card,
                     crate::log::LogId::current(db),
                     controller,
                     &HashSet::default(),
                 );
-                if valid_targets.len() < effect.needs_targets(db, &card) {
+                if valid_targets.len() < effect.needs_targets(db, card) {
                     debug!("Insufficient targets");
                     return PendingResults::default();
                 }
@@ -891,7 +890,7 @@ pub(crate) fn add_card_to_stack(
                     TargetSource::Effect(effect.clone()),
                     valid_targets,
                     crate::log::LogId::current(db),
-                    card.clone(),
+                    card,
                 ));
             }
         }
@@ -901,10 +900,10 @@ pub(crate) fn add_card_to_stack(
     let cost = &card.faceup_face(db).cost;
     if paying_costs {
         results.push_pay_costs(PayCost::new(
-            card.clone(),
+            card,
             Cost::SpendMana(SpendMana::new(
                 cost.mana_cost.clone(),
-                SpendReason::Casting(card.clone()),
+                SpendReason::Casting(card),
             )),
         ));
     }
@@ -916,19 +915,19 @@ pub(crate) fn add_card_to_stack(
             additional_cost::Cost::PayLife(_) => todo!(),
             additional_cost::Cost::SacrificePermanent(sac) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::SacrificePermanent(SacrificePermanent::new(sac.restrictions.clone())),
                 ));
             }
             additional_cost::Cost::TapPermanent(tap) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                 ));
             }
             additional_cost::Cost::TapPermanentsPowerXOrMore(tap) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
                         tap.restrictions.clone(),
                         tap.x_is as usize,
@@ -937,13 +936,13 @@ pub(crate) fn add_card_to_stack(
             }
             additional_cost::Cost::ExileCardsCmcX(exile) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(exile.restrictions.clone())),
                 ));
             }
             additional_cost::Cost::ExileCard(exile) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::ExileCards(ExileCards::new(None, 1, 1, exile.restrictions.clone())),
                 ));
             }
@@ -953,7 +952,7 @@ pub(crate) fn add_card_to_stack(
                 ..
             }) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::ExileCards(ExileCards::new(
                         None,
                         *minimum as usize,
@@ -964,7 +963,7 @@ pub(crate) fn add_card_to_stack(
             }
             additional_cost::Cost::ExileSharingCardType(exile) => {
                 results.push_pay_costs(PayCost::new(
-                    card.clone(),
+                    card,
                     Cost::ExileCardsSharingType(ExileCardsSharingType::new(
                         None,
                         exile.count as usize,
@@ -982,8 +981,11 @@ mod tests {
     use itertools::Itertools;
 
     use crate::{
-        in_play::Database, load_cards, pending_results::ResolutionResult, player::AllPlayers,
-        protogen::ids::CardId, stack::Stack,
+        in_play::{CardId, Database},
+        load_cards,
+        pending_results::ResolutionResult,
+        player::AllPlayers,
+        stack::Stack,
     };
 
     #[test]
@@ -1009,7 +1011,7 @@ mod tests {
                 .battlefields
                 .values()
                 .flat_map(|b| b.iter())
-                .cloned()
+                .copied()
                 .collect_vec(),
             [card1]
         );

@@ -2,12 +2,12 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::Database,
+    in_play::{CardId, Database},
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::{ids::CardId, targets::Location},
+    protogen::targets::Location,
     stack::Stack,
     turns::Phase,
 };
@@ -31,7 +31,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -61,22 +61,22 @@ fn tutors() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let forest = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, forest.clone());
+    Library::place_on_top(&mut db, player, forest);
 
     let plains = CardId::upload(&mut db, &cards, player, "Plains");
-    Library::place_on_top(&mut db, player, plains.clone());
+    Library::place_on_top(&mut db, player, plains);
 
     let annul = CardId::upload(&mut db, &cards, player, "Annul");
     Library::place_on_top(&mut db, player, annul);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     card.untap(&mut db);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
 
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

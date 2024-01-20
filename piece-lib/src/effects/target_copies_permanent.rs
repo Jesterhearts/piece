@@ -3,31 +3,30 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{CardId, Database},
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
     protogen::{
         effects::{effect::Effect, TargetCopiesPermanent},
-        ids::CardId,
         targets::Location,
     },
     stack::ActiveTarget,
 };
 
 impl EffectBehaviors for TargetCopiesPermanent {
-    fn needs_targets(&self, _db: &Database, _source: &CardId) -> usize {
+    fn needs_targets(&self, _db: &Database, _source: CardId) -> usize {
         2
     }
 
-    fn wants_targets(&self, _db: &Database, _source: &CardId) -> usize {
+    fn wants_targets(&self, _db: &Database, _source: CardId) -> usize {
         2
     }
 
     fn valid_targets(
         &self,
         db: &Database,
-        source: &CardId,
+        source: CardId,
         log_session: LogId,
         _controller: Controller,
         already_chosen: &std::collections::HashSet<ActiveTarget>,
@@ -51,7 +50,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                         &self.target_restrictions,
                     )
                 })
-                .cloned()
+                .copied()
                 .map(|card| card.target_from_location(db).unwrap())
                 .collect_vec()
         } else {
@@ -66,7 +65,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                         &card.faceup_face(db).restrictions,
                     ) && card.passes_restrictions(db, log_session, source, &self.copy_restrictions)
                 })
-                .cloned()
+                .copied()
                 .map(|card| card.target_from_location(db).unwrap())
                 .collect_vec()
         }
@@ -75,7 +74,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: &CardId,
+        source: CardId,
         controller: Controller,
         results: &mut PendingResults,
     ) {
@@ -89,7 +88,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
                 results.all_currently_targeted(),
             ),
             LogId::current(db),
-            source.clone(),
+            source,
         ));
     }
 
@@ -97,13 +96,13 @@ impl EffectBehaviors for TargetCopiesPermanent {
         &self,
         db: &mut Database,
         mut targets: Vec<ActiveTarget>,
-        _source: &CardId,
+        _source: CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
         assert_eq!(targets.len(), 2);
 
-        let cloned = targets.pop().unwrap().id(db).unwrap().clone();
+        let cloned = targets.pop().unwrap().id(db).unwrap();
         let Some(ActiveTarget::Battlefield { id }) = targets.pop() else {
             unreachable!()
         };

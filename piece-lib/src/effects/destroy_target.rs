@@ -15,7 +15,7 @@ impl EffectBehaviors for DestroyTarget {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -23,7 +23,7 @@ impl EffectBehaviors for DestroyTarget {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         1
     }
@@ -31,7 +31,7 @@ impl EffectBehaviors for DestroyTarget {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -47,7 +47,7 @@ impl EffectBehaviors for DestroyTarget {
                 && card.passes_restrictions(db, log_session, source, &self.restrictions)
                 && !card.indestructible(db)
             {
-                let target = ActiveTarget::Battlefield { id: card.clone() };
+                let target = ActiveTarget::Battlefield { id: *card };
                 if !already_chosen.contains(&target) {
                     targets.push(target);
                 }
@@ -60,7 +60,7 @@ impl EffectBehaviors for DestroyTarget {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -76,7 +76,7 @@ impl EffectBehaviors for DestroyTarget {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source.clone(),
+            source,
         ));
     }
 
@@ -84,7 +84,7 @@ impl EffectBehaviors for DestroyTarget {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

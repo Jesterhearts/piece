@@ -8,6 +8,7 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 pub use activated_ability_id::{ActivatedAbilityId, ActivatedAbilityInPlay};
+pub use card_id::CardId;
 pub(crate) use card_id::CardInPlay;
 pub use gain_mana_ability_id::{GainManaAbilityId, GainManaAbilityInPlay};
 pub(crate) use modifier_id::{ModifierId, ModifierInPlay};
@@ -24,7 +25,6 @@ use crate::{
     protogen::{
         abilities::TriggeredAbility,
         effects::{replacement_effect::Replacing, ReplacementEffect},
-        ids::CardId,
         triggers::TriggerSource,
     },
     stack::Stack,
@@ -75,17 +75,17 @@ pub struct OwnerViewMut<'db> {
     library: &'db mut Library,
 }
 
-impl std::ops::Index<&CardId> for Database {
+impl std::ops::Index<CardId> for Database {
     type Output = CardInPlay;
 
-    fn index(&self, index: &CardId) -> &Self::Output {
-        self.cards.get(index).unwrap()
+    fn index(&self, index: CardId) -> &Self::Output {
+        self.cards.get(&index).unwrap()
     }
 }
 
-impl std::ops::IndexMut<&CardId> for Database {
-    fn index_mut(&mut self, index: &CardId) -> &mut Self::Output {
-        self.cards.get_mut(index).unwrap()
+impl std::ops::IndexMut<CardId> for Database {
+    fn index_mut(&mut self, index: CardId) -> &mut Self::Output {
+        self.cards.get_mut(&index).unwrap()
     }
 }
 
@@ -201,12 +201,12 @@ impl Database {
             .values()
             .flat_map(|b| b.iter())
             .flat_map(|card| {
-                self[card]
+                self[*card]
                     .modified_triggers
                     .get(&source)
                     .iter()
                     .flat_map(|triggers| triggers.iter())
-                    .map(|ability| (card.clone(), ability.clone()))
+                    .map(|ability| (*card, ability.clone()))
                     .collect_vec()
             })
             .collect_vec()
@@ -218,6 +218,7 @@ impl Database {
     ) -> Vec<(CardId, ReplacementEffect)> {
         self.cards
             .keys()
+            .copied()
             .filter(|card| self[*card].replacements_active)
             .flat_map(|card| {
                 self[card]
@@ -226,9 +227,7 @@ impl Database {
                     .cloned()
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|replacing| (card.clone(), replacing.clone()))
-                    .collect_vec()
-                    .into_iter()
+                    .map(move |replacing| (card, replacing))
             })
             .collect_vec()
     }

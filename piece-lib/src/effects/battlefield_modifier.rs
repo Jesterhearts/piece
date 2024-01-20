@@ -12,7 +12,7 @@ impl EffectBehaviors for BattlefieldModifier {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -20,7 +20,7 @@ impl EffectBehaviors for BattlefieldModifier {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: &crate::protogen::ids::CardId,
+        _source: crate::in_play::CardId,
     ) -> usize {
         0
     }
@@ -28,12 +28,12 @@ impl EffectBehaviors for BattlefieldModifier {
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddModifier {
-            modifier: ModifierId::upload_temporary_modifier(db, source.clone(), self.clone()),
+            modifier: ModifierId::upload_temporary_modifier(db, source, self.clone()),
         });
     }
 
@@ -41,19 +41,19 @@ impl EffectBehaviors for BattlefieldModifier {
         &self,
         db: &mut Database,
         _targets: Vec<ActiveTarget>,
-        source: &crate::protogen::ids::CardId,
+        source: crate::in_play::CardId,
         _controller: Controller,
         results: &mut PendingResults,
     ) {
         if self.apply_to_self {
-            let modifier = ModifierId::upload_temporary_modifier(db, source.clone(), self.clone());
+            let modifier = ModifierId::upload_temporary_modifier(db, source, self.clone());
             results.push_settled(ActionResult::ModifyCreatures {
                 modifier,
-                targets: vec![ActiveTarget::Battlefield { id: source.clone() }],
+                targets: vec![ActiveTarget::Battlefield { id: source }],
             });
         } else {
             results.push_settled(ActionResult::ApplyToBattlefield(
-                ModifierId::upload_temporary_modifier(db, source.clone(), self.clone()),
+                ModifierId::upload_temporary_modifier(db, source, self.clone()),
             ));
         }
     }

@@ -3,10 +3,9 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    in_play::Database,
+    in_play::{CardId, Database},
     pending_results::{Options, PendingResult, PendingResults},
     player::Owner,
-    protogen::ids::CardId,
 };
 
 #[derive(Debug)]
@@ -51,7 +50,7 @@ impl PendingResult for DeclaringAttackers {
         if self.choices.len() == self.targets.len() {
             self.candidates
                 .get(option)
-                .map(|card| crate::stack::ActiveTarget::Battlefield { id: card.clone() })
+                .map(|card| crate::stack::ActiveTarget::Battlefield { id: *card })
         } else {
             self.valid_targets
                 .get(option)
@@ -91,7 +90,7 @@ impl PendingResult for DeclaringAttackers {
                 attackers: self
                     .choices
                     .iter()
-                    .map(|choice| self.candidates[*choice].clone())
+                    .map(|choice| self.candidates[*choice])
                     .collect_vec(),
                 targets: self.targets.clone(),
             });

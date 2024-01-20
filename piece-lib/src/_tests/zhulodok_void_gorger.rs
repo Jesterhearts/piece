@@ -5,15 +5,12 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::Database,
+    in_play::{CardId, Database},
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::{
-        ids::CardId,
-        types::{Subtype, Type},
-    },
+    protogen::types::{Subtype, Type},
     stack::Stack,
     types::{SubtypeSet, TypeSet},
 };
@@ -43,20 +40,20 @@ fn cascades() -> anyhow::Result<()> {
     hand1.move_to_hand(&mut db);
 
     let deck1 = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
-    Library::place_on_top(&mut db, player, deck1.clone());
+    Library::place_on_top(&mut db, player, deck1);
     let deck2 = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, deck2.clone());
+    Library::place_on_top(&mut db, player, deck2);
     let deck3 = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
-    Library::place_on_top(&mut db, player, deck3.clone());
+    Library::place_on_top(&mut db, player, deck3);
     let deck4 = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, deck4.clone());
+    Library::place_on_top(&mut db, player, deck4);
 
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &zhul, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, zhul, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1.clone(), false);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1, false);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -81,11 +78,11 @@ fn cascades() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        db[&zhul].modified_types,
+        db[zhul].modified_types,
         TypeSet::from([Type::ARTIFACT, Type::CREATURE, Type::LEGENDARY])
     );
     assert_eq!(
-        db[&zhul].modified_subtypes,
+        db[zhul].modified_subtypes,
         SubtypeSet::from([Subtype::ELDRAZI, Subtype::ANGEL])
     );
 
@@ -104,7 +101,7 @@ fn cascades() -> anyhow::Result<()> {
             .library
             .cards
             .iter()
-            .cloned()
+            .copied()
             .collect::<HashSet<_>>(),
         HashSet::from([deck1, deck4])
     );

@@ -2,8 +2,13 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
-    player::AllPlayers, protogen::ids::CardId, stack::Stack, turns::Phase,
+    battlefield::Battlefields,
+    in_play::{CardId, Database},
+    load_cards,
+    pending_results::ResolutionResult,
+    player::AllPlayers,
+    stack::Stack,
+    turns::Phase,
 };
 
 #[test]
@@ -41,7 +46,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     // Get rid of summoning sickness
     db.turn.turn_count += db.turn.turns_per_round();
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card.clone(), true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     let result = results.resolve(&mut db, None);
     // Pay mana
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -68,15 +73,15 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db.exile[player2], IndexSet::from([card3.clone()]));
+    assert_eq!(db.exile[player2], IndexSet::from([card3]));
     assert_eq!(
         db.battlefield[player1],
-        IndexSet::from([card4.clone(), card5.clone(), card.clone()]),
+        IndexSet::from([card4, card5, card]),
     );
-    assert_eq!(db.graveyard[player1], IndexSet::from([card2.clone()]));
+    assert_eq!(db.graveyard[player1], IndexSet::from([card2]));
 
     // Equip deconstruction hammer
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card5, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -93,7 +98,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card4, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
     // Pay the white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -164,7 +169,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     db.turn.turn_count += db.turn.turns_per_round();
 
     // Equip deconstruction hammer
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card5, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -180,7 +185,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card.clone(), true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Pay mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -203,7 +208,7 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card4, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
     // Pay the mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
