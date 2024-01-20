@@ -13,10 +13,7 @@ use crate::{
     battlefield::Battlefields,
     card::{BasePowerType, BaseToughnessType},
     effects::EffectBehaviors,
-    in_play::{
-        ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
-        StaticAbilityId,
-    },
+    in_play::{CastFrom, Database, ExileReason, ModifierId, StaticAbilityId},
     log::{LeaveReason, Log, LogEntry, LogId},
     pending_results::PendingResults,
     player::{Controller, Owner},
@@ -35,7 +32,7 @@ use crate::{
             },
             Duration, DynamicPowerToughness, Effect, ReplacementEffect,
         },
-        ids::CardId,
+        ids::{ActivatedAbilityId, CardId, GainManaAbilityId},
         keywords::Keyword,
         mana::ManaSource,
         targets::{
@@ -151,12 +148,13 @@ impl CardInPlay {
     pub fn abilities(&self, db: &Database) -> Vec<(CardId, Ability)> {
         self.modified_mana_abilities
             .iter()
-            .map(|ability| (db[*ability].source.clone(), Ability::Mana(*ability)))
-            .chain(
-                self.modified_activated_abilities
-                    .iter()
-                    .map(|ability| (db[*ability].source.clone(), Ability::Activated(*ability))),
-            )
+            .map(|ability| (db[ability].source.clone(), Ability::Mana(ability.clone())))
+            .chain(self.modified_activated_abilities.iter().map(|ability| {
+                (
+                    db[ability].source.clone(),
+                    Ability::Activated(ability.clone()),
+                )
+            }))
             .collect_vec()
     }
 
@@ -349,7 +347,7 @@ impl CardId {
                 .into_iter()
                 .collect_vec()
             {
-                if let Some(modifier) = db[sa].owned_modifier.take() {
+                if let Some(modifier) = db[&sa].owned_modifier.take() {
                     modifier.deactivate(db);
                 }
             }
@@ -404,7 +402,7 @@ impl CardId {
         for modifier in db[self]
             .modified_static_abilities
             .iter()
-            .filter_map(|sa| db[*sa].owned_modifier)
+            .filter_map(|sa| db[sa].owned_modifier.clone())
             .collect_vec()
         {
             modifier.activate(&mut db.modifiers);
@@ -448,7 +446,7 @@ impl CardId {
                 .into_iter()
                 .collect_vec()
             {
-                if let Some(modifier) = db[sa].owned_modifier.take() {
+                if let Some(modifier) = db[&sa].owned_modifier.take() {
                     modifier.deactivate(db);
                 }
             }
@@ -482,7 +480,7 @@ impl CardId {
                 .into_iter()
                 .collect_vec()
             {
-                if let Some(modifier) = db[sa].owned_modifier.take() {
+                if let Some(modifier) = db[&sa].owned_modifier.take() {
                     modifier.deactivate(db);
                 }
             }
@@ -530,7 +528,7 @@ impl CardId {
                 .into_iter()
                 .collect_vec()
             {
-                if let Some(modifier) = db[sa].owned_modifier.take() {
+                if let Some(modifier) = db[&sa].owned_modifier.take() {
                     modifier.deactivate(db);
                 }
             }
@@ -557,7 +555,7 @@ impl CardId {
             .into_iter()
             .collect_vec()
         {
-            if let Some(modifier) = db[sa].owned_modifier.take() {
+            if let Some(modifier) = db[&sa].owned_modifier.take() {
                 modifier.deactivate(db);
             }
         }
@@ -588,7 +586,7 @@ impl CardId {
                         || (on_battlefield && modifier.modifier.modifier.entire_battlefield)
                         || modifier.modifying.contains(self))
                 {
-                    Some(*id)
+                    Some(id.clone())
                 } else {
                     None
                 }
@@ -716,8 +714,8 @@ impl CardId {
         // TODO control changing effects go here
         // TODO text changing effects go here
 
-        for id in modifiers.iter().copied() {
-            let modifier = &db[id];
+        for id in modifiers.iter().cloned() {
+            let modifier = &db[&id];
             if !applied_modifiers.contains(&id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
@@ -768,7 +766,7 @@ impl CardId {
             }
 
             if !modifier.modifier.modifier.add_types.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 types.extend(
                     modifier
                         .modifier
@@ -780,7 +778,7 @@ impl CardId {
             }
 
             if !modifier.modifier.modifier.add_subtypes.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 subtypes.extend(
                     modifier
                         .modifier
@@ -792,7 +790,7 @@ impl CardId {
             }
 
             if !modifier.modifier.modifier.remove_types.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 types.retain(|ty| {
                     !modifier
                         .modifier
@@ -803,12 +801,12 @@ impl CardId {
             }
 
             if modifier.modifier.modifier.remove_all_types {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 types.clear();
             }
 
             if !modifier.modifier.modifier.remove_subtypes.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 subtypes.retain(|ty| {
                     !modifier
                         .modifier
@@ -819,7 +817,7 @@ impl CardId {
             }
 
             if modifier.modifier.modifier.remove_all_creature_types {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 subtypes.retain(|ty| !ty.is_creature_type());
             }
 
@@ -829,9 +827,9 @@ impl CardId {
             }
         }
 
-        for id in modifiers.iter().copied() {
+        for id in modifiers.iter() {
             let modifier = &db[id];
-            if !applied_modifiers.contains(&id) {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
@@ -881,7 +879,7 @@ impl CardId {
             }
 
             if !modifier.modifier.modifier.add_colors.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 colors.extend(
                     modifier
                         .modifier
@@ -893,7 +891,7 @@ impl CardId {
             }
 
             if modifier.modifier.modifier.remove_all_colors {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 colors.clear();
             }
         }
@@ -909,7 +907,7 @@ impl CardId {
                     keywords: add_keywords,
                     restrictions,
                     ..
-                }) = &db[*sa].ability
+                }) = &db[sa].ability
                 {
                     let power = base_power.as_ref().map(|base| match base {
                         BasePowerType::Static(value) => *value,
@@ -980,11 +978,11 @@ impl CardId {
                         activation_restrictions,
                         ..
                     },
-                ) = &db[*sa].ability
+                ) = &db[sa].ability
                 {
                     let mut add = vec![];
                     for card in db[self].exiling.iter() {
-                        add.extend(db[card].activated_abilities.iter().copied());
+                        add.extend(db[card].activated_abilities.iter().cloned());
                     }
 
                     Some((activation_restrictions.clone(), add))
@@ -996,7 +994,7 @@ impl CardId {
 
         for (restrictions, to_add) in add_abilities {
             activated_abilities.extend(to_add.into_iter().map(|id| {
-                let mut ability = db[id].ability.clone();
+                let mut ability = db[&id].ability.clone();
                 ability
                     .cost
                     .mut_or_insert_default()
@@ -1006,9 +1004,9 @@ impl CardId {
             }));
         }
 
-        for id in modifiers.iter().copied() {
+        for id in modifiers.iter() {
             let modifier = &db[id];
-            if !applied_modifiers.contains(&id) {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
@@ -1058,12 +1056,12 @@ impl CardId {
             }
 
             if modifier.modifier.modifier.unblockable {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
                 unblockable = true;
             }
 
             if modifier.modifier.modifier.remove_all_abilities {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 triggers.clear();
                 etb_abilities.clear();
@@ -1074,32 +1072,32 @@ impl CardId {
             }
 
             if !modifier.add_mana_abilities.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
-                mana_abilities.extend(modifier.add_mana_abilities.iter().copied());
+                mana_abilities.extend(modifier.add_mana_abilities.iter().cloned());
             }
 
             if !modifier.modifier.modifier.add_static_abilities.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 static_abilities.extend(modifier.add_static_abilities.iter().copied());
             }
 
             if !modifier.add_activated_abilities.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
-                activated_abilities.extend(modifier.add_activated_abilities.iter().copied())
+                activated_abilities.extend(modifier.add_activated_abilities.iter().cloned())
             }
 
             if !modifier.modifier.modifier.remove_keywords.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 keywords
                     .retain(|kw, _| !modifier.modifier.modifier.remove_keywords.contains_key(kw));
             }
 
             if !modifier.modifier.modifier.add_keywords.is_empty() {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 keywords.extend(modifier.modifier.modifier.add_keywords.clone());
             }
@@ -1108,9 +1106,9 @@ impl CardId {
         let mut add_power = 0;
         let mut add_toughness = 0;
 
-        for id in modifiers.iter().copied() {
+        for id in modifiers.iter() {
             let modifier = &db[id];
-            if !applied_modifiers.contains(&id) {
+            if !applied_modifiers.contains(id) {
                 let power = base_power.as_ref().map(|base| match base {
                     BasePowerType::Static(value) => *value,
                     BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
@@ -1160,25 +1158,25 @@ impl CardId {
             }
 
             if let Some(base) = modifier.modifier.modifier.base_power {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 base_power = Some(BasePowerType::Static(base));
             }
 
             if let Some(base) = modifier.modifier.modifier.base_toughness {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 base_toughness = Some(BaseToughnessType::Static(base));
             }
 
             if let Some(add) = modifier.modifier.modifier.add_power {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 add_power += add;
             }
 
             if let Some(add) = modifier.modifier.modifier.add_toughness {
-                applied_modifiers.insert(id);
+                applied_modifiers.insert(id.clone());
 
                 add_toughness += add;
             }
@@ -1235,15 +1233,15 @@ impl CardId {
         db[self].modified_static_abilities = static_abilities
             .into_iter()
             .inspect(|sa| {
-                if let static_ability::Ability::BattlefieldModifier(modifier) = &db[*sa].ability {
-                    if db[*sa].owned_modifier.is_none() {
+                if let static_ability::Ability::BattlefieldModifier(modifier) = &db[sa].ability {
+                    if db[sa].owned_modifier.is_none() {
                         let modifier = ModifierId::upload_temporary_modifier(
                             db,
-                            db[*sa].source.clone(),
+                            db[sa].source.clone(),
                             modifier.clone(),
                         );
-                        db[*sa].owned_modifier = Some(modifier);
                         modifier.activate(&mut db.modifiers);
+                        db[sa].owned_modifier = Some(modifier);
                     }
                 }
             })
@@ -1344,9 +1342,9 @@ impl CardId {
         }
     }
 
-    pub(crate) fn apply_modifier(&self, db: &mut Database, modifier: ModifierId) {
+    pub(crate) fn apply_modifier(&self, db: &mut Database, modifier: &ModifierId) {
         db.modifiers
-            .get_mut(&modifier)
+            .get_mut(modifier)
             .unwrap()
             .modifying
             .insert(self.clone());
@@ -1797,7 +1795,7 @@ impl CardId {
             .collect_vec()
         {
             let modifier = ModifierId::upload_temporary_modifier(db, aura_source.clone(), modifier);
-            self.apply_modifier(db, modifier);
+            self.apply_modifier(db, &modifier);
             db.modifiers
                 .get_mut(&modifier)
                 .unwrap()
@@ -2014,7 +2012,7 @@ impl CardId {
         }) {
             modifier.modifying.remove(self);
             if modifier.modifying.is_empty() {
-                entities.push(*id);
+                entities.push(id.clone());
             }
         }
 
@@ -2175,7 +2173,7 @@ impl CardId {
         self.types_intersect(db, &TypeSet::from([Type::CREATURE]))
             && !db[self].modified_static_abilities.iter().any(|ability| {
                 matches!(
-                    db[*ability].ability,
+                    db[ability].ability,
                     static_ability::Ability::PreventAttacks(_)
                 )
             })

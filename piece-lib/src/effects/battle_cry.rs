@@ -5,10 +5,10 @@ use protobuf::Enum;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::ModifierId,
     protogen::{
         effects::{BattleCry, BattlefieldModifier, Duration, ModifyBattlefield},
         empty::Empty,
+        ids::ModifierId,
         targets::{restriction, Restriction},
         types::Type,
     },

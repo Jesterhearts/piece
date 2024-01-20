@@ -6,12 +6,12 @@ use protobuf::Enum;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::ModifierId,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
         effects::{effect::Effect, BattlefieldModifier, Duration, Equip},
         empty::Empty,
+        ids::ModifierId,
         targets::{restriction, Restriction},
         types::Type,
     },
@@ -129,7 +129,7 @@ impl EffectBehaviors for Equip {
                     None
                 }
             })
-            .copied()
+            .cloned()
             .collect_vec()
         {
             db.modifiers.get_mut(&modifier).unwrap().modifying.clear();

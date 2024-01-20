@@ -4,11 +4,15 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::{ActivatedAbilityId, Database},
+    in_play::Database,
     log::{Log, LogId},
     pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
-    protogen::{ids::CardId, triggers::TriggerSource, types::Type},
+    protogen::{
+        ids::{ActivatedAbilityId, CardId},
+        triggers::TriggerSource,
+        types::Type,
+    },
     stack::Stack,
     types::TypeSet,
 };

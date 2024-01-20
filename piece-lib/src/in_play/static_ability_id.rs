@@ -16,7 +16,7 @@ pub struct StaticAbilityInPlay {
 }
 
 impl StaticAbilityId {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn generate() -> Self {
         Self(Uuid::new_v4())
     }
 
@@ -25,7 +25,7 @@ impl StaticAbilityId {
         source: CardId,
         ability: static_ability::Ability,
     ) -> Self {
-        let id = Self::new();
+        let id = Self::generate();
 
         let owned_modifier =
             if let static_ability::Ability::BattlefieldModifier(modifier) = &ability {

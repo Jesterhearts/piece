@@ -2,11 +2,11 @@ use uuid::Uuid;
 
 use crate::{
     in_play::Database,
-    protogen::{effects::GainManaAbility, ids::CardId},
+    protogen::{
+        effects::GainManaAbility,
+        ids::{CardId, GainManaAbilityId},
+    },
 };
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct GainManaAbilityId(Uuid);
 
 #[derive(Debug)]
 pub struct GainManaAbilityInPlay {
@@ -15,15 +15,18 @@ pub struct GainManaAbilityInPlay {
 }
 
 impl GainManaAbilityId {
-    pub(crate) fn new() -> Self {
-        Self(Uuid::new_v4())
+    pub(crate) fn generate() -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            ..Default::default()
+        }
     }
 
     pub(crate) fn upload(db: &mut Database, source: CardId, ability: GainManaAbility) -> Self {
-        let id = Self::new();
+        let id = Self::generate();
 
         db.mana_abilities
-            .insert(id, GainManaAbilityInPlay { source, ability });
+            .insert(id.clone(), GainManaAbilityInPlay { source, ability });
 
         id
     }
