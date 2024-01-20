@@ -4,7 +4,7 @@ impl EffectBehaviors for ApplyThen {
     fn needs_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
     ) -> usize {
         self.apply
             .iter()
@@ -16,7 +16,7 @@ impl EffectBehaviors for ApplyThen {
     fn wants_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
     ) -> usize {
         self.apply
             .iter()
@@ -28,7 +28,7 @@ impl EffectBehaviors for ApplyThen {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -42,7 +42,7 @@ impl EffectBehaviors for ApplyThen {
 
         results.push_settled(ActionResult::ThenApply {
             apply: self.then.clone(),
-            source,
+            source: source.clone(),
             controller,
         })
     }
@@ -51,7 +51,7 @@ impl EffectBehaviors for ApplyThen {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -67,7 +67,7 @@ impl EffectBehaviors for ApplyThen {
 
         results.push_settled(ActionResult::ThenApply {
             apply: self.then.clone(),
-            source,
+            source: source.clone(),
             controller,
         });
     }

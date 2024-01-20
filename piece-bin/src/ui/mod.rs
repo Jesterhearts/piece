@@ -6,11 +6,15 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 
 use piece_lib::{
-    in_play::{CardId, Database},
+    in_play::Database,
     pending_results::PendingResults,
     player::Owner,
-    protogen::{keywords::Keyword, targets::Location},
-    stack::{ActiveTarget, StackEntry, StackId},
+    protogen::{
+        ids::{CardId, StackId},
+        keywords::Keyword,
+        targets::Location,
+    },
+    stack::{ActiveTarget, StackEntry},
     turns::Turn,
 };
 use protobuf::Enum;
@@ -29,9 +33,9 @@ impl Widget for Card<'_> {
             ui.style_mut().visuals.widgets.inactive = ui.style().visuals.widgets.noninteractive;
         }
 
-        let name = if self.db[self.card].manifested {
+        let name = if self.db[&self.card].manifested {
             "Manifested".to_string()
-        } else if self.db[self.card].cloning.is_some() {
+        } else if self.db[&self.card].cloning.is_some() {
             format!(
                 "({}) {}",
                 self.card.faceup_face(self.db).name,
@@ -41,15 +45,15 @@ impl Widget for Card<'_> {
             self.card.name(self.db).clone()
         };
 
-        let cost = &self.db[self.card].modified_cost;
+        let cost = &self.db[&self.card].modified_cost;
 
-        let title = if cost.mana_cost.is_empty() || self.db[self.card].manifested {
+        let title = if cost.mana_cost.is_empty() || self.db[&self.card].manifested {
             name
         } else {
             format!("{} - {}", name, cost.text())
         };
 
-        let source = &self.db[self.card];
+        let source = &self.db[&self.card];
         let typeline = std::iter::once(
             source
                 .modified_types
@@ -179,9 +183,11 @@ impl Widget for Card<'_> {
                     ui.add(Label::new(RichText::new(title).heading()));
                     ui.separator();
 
-                    ScrollArea::vertical().id_source(self.card).show(ui, |ui| {
-                        ui.add(Label::new(paragraph));
-                    });
+                    ScrollArea::vertical()
+                        .id_source(self.card.clone())
+                        .show(ui, |ui| {
+                            ui.add(Label::new(paragraph));
+                        });
 
                     ui.separator();
                     ui.add(Label::new(typeline));
@@ -252,8 +258,8 @@ impl Widget for Stack<'_, '_, '_> {
                                 for (idx, (stack_id, entry)) in self.items.iter().rev().enumerate()
                                 {
                                     let highlight =
-                                        if let Some(ActiveTarget::Stack { id }) = self.target {
-                                            id == *stack_id
+                                        if let Some(ActiveTarget::Stack { id }) = &self.target {
+                                            id == stack_id
                                         } else {
                                             false
                                         };
@@ -444,9 +450,9 @@ impl Widget for Battlefield<'_, '_> {
                     |ui| {
                         self.cards.sort_by_cached_key(|(_, card)| {
                             let mut types =
-                                self.db[*card].modified_types.iter().cloned().collect_vec();
+                                self.db[card].modified_types.iter().cloned().collect_vec();
                             types.sort();
-                            let mut subtypes = self.db[*card]
+                            let mut subtypes = self.db[card]
                                 .modified_subtypes
                                 .iter()
                                 .cloned()
@@ -460,8 +466,8 @@ impl Widget for Battlefield<'_, '_> {
 
                         for (idx, card) in self.cards {
                             let highlight =
-                                if let Some(ActiveTarget::Battlefield { id }) = self.target {
-                                    id == card
+                                if let Some(ActiveTarget::Battlefield { id }) = &self.target {
+                                    *id == card
                                 } else {
                                     false
                                 };
@@ -501,7 +507,7 @@ pub struct Actions<'db, 'p, 'clicked> {
 
 impl Widget for Actions<'_, '_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let abilities = if let Some(card) = self.card {
+        let abilities = if let Some(card) = self.card.as_ref() {
             if card.is_in_location(self.db, Location::IN_HAND) && Turn::can_cast(self.db, card) {
                 [(0, format!("Play {}", card.name(self.db)))]
                     .into_iter()

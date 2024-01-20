@@ -12,7 +12,7 @@ impl EffectBehaviors for CreateTokenCopy {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -20,7 +20,7 @@ impl EffectBehaviors for CreateTokenCopy {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -28,7 +28,7 @@ impl EffectBehaviors for CreateTokenCopy {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -56,7 +56,7 @@ impl EffectBehaviors for CreateTokenCopy {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -71,7 +71,7 @@ impl EffectBehaviors for CreateTokenCopy {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -79,15 +79,15 @@ impl EffectBehaviors for CreateTokenCopy {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let target = targets.into_iter().exactly_one().unwrap();
-        let target = target.id(db);
+        let target = target.id(db).unwrap();
         results.push_settled(ActionResult::CreateTokenCopyOf {
-            source,
-            target: target.unwrap(),
+            source: source.clone(),
+            target: target.clone(),
             modifiers: self.modifiers.clone(),
         });
     }
@@ -95,12 +95,12 @@ impl EffectBehaviors for CreateTokenCopy {
     fn push_behavior_from_top_of_library(
         &self,
         _db: &in_play::Database,
-        source: in_play::CardId,
-        target: in_play::CardId,
+        source: &crate::protogen::ids::CardId,
+        target: crate::protogen::ids::CardId,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateTokenCopyOf {
-            source,
+            source: source.clone(),
             target,
             modifiers: self.modifiers.clone(),
         })

@@ -23,21 +23,18 @@ fn main() {
             )
         }
 
-        fn message(&self, message: &MessageDescriptor) -> Customize {
-            if message.fields().any(|field| {
-                field.is_repeated_or_map()
-                    || field.proto().has_oneof_index()
-                    || field.proto().type_() == Type::TYPE_ENUM
-                    || field.proto().type_() == Type::TYPE_MESSAGE
-            }) {
-                Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq)]\n#[serde(deny_unknown_fields)]")
-            } else {
-                Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq, Hash)]\n#[serde(deny_unknown_fields)]")
-            }
+        fn message(&self, _message: &MessageDescriptor) -> Customize {
+            Customize::default().before(
+                    r"
+                    #[derive(::serde::Serialize, ::serde::Deserialize, Eq, ::derivative::Derivative)]
+                    #[derivative(Hash)]
+                    #[serde(deny_unknown_fields)]
+                ",
+                )
         }
 
         fn oneof(&self, oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
-            if oneof.name() == "destination" {
+            if oneof.name() == "target" {
                 Customize::default().before(
                     r#"#[derive(
                     ::serde::Serialize,
@@ -45,7 +42,6 @@ fn main() {
                     ::strum::EnumIter,
                     ::strum::EnumString,
                     ::strum::AsRefStr,
-                    ::derive_more::From,
                     Eq,
                     Hash,
                 )]
@@ -61,6 +57,7 @@ fn main() {
                     ::strum::AsRefStr,
                     ::derive_more::From,
                     Eq,
+                    Hash
                 )]
                 #[strum(ascii_case_insensitive)]"#,
                 )
@@ -82,7 +79,8 @@ fn main() {
                         default,
                         serialize_with="crate::serialize_counter",
                         deserialize_with="crate::deserialize_counter",
-                    )]"#,
+                    )]
+                    #[derivative(Hash(hash_with="crate::hash_enum_or_unknown"))]"#,
                 )
             } else if field.name() == "typeline" {
                 Customize::default().before(
@@ -108,7 +106,8 @@ fn main() {
                         serialize_with="crate::serialize_gain_mana",
                         deserialize_with="crate::deserialize_gain_mana",
                         skip_serializing_if="Vec::is_empty"
-                    )]"#,
+                    )]
+                    #[derivative(Hash(hash_with="crate::hash_enum_list"))]"#,
                 )
             } else if (field.name() == "types" && field.containing_message().name() != "Typeline")
                 || field.name() == "add_types"
@@ -120,7 +119,8 @@ fn main() {
                         serialize_with="crate::serialize_types",
                         deserialize_with="crate::deserialize_types",
                         skip_serializing_if="::std::collections::HashMap::is_empty"
-                    )]"#,
+                    )]
+                    #[derivative(Hash="ignore")]"#,
                 )
             } else if (field.name() == "subtypes"
                 && field.containing_message().name() != "Typeline")
@@ -133,7 +133,8 @@ fn main() {
                         serialize_with="crate::serialize_subtypes",
                         deserialize_with="crate::deserialize_subtypes",
                         skip_serializing_if="::std::collections::HashMap::is_empty"
-                    )]"#,
+                    )]
+                    #[derivative(Hash="ignore")]"#,
                 )
             } else if field.name() == "keywords"
                 || field.name() == "add_keywords"
@@ -145,7 +146,8 @@ fn main() {
                         serialize_with="crate::serialize_keywords",
                         deserialize_with="crate::deserialize_keywords",
                         skip_serializing_if="::std::collections::HashMap::is_empty"
-                    )]"#,
+                    )]
+                    #[derivative(Hash="ignore")]"#,
                 )
             } else if field.name() == "reduction" || field.name() == "mana_cost" {
                 Customize::default().before(
@@ -154,7 +156,8 @@ fn main() {
                         serialize_with="crate::serialize_mana_cost",
                         deserialize_with="crate::deserialize_mana_cost",
                         skip_serializing_if="Vec::is_empty"
-                    )]"#,
+                    )]
+                    #[derivative(Hash(hash_with="crate::hash_enum_list"))]"#,
                 )
             } else if field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {
                 Customize::default().before(
@@ -163,7 +166,8 @@ fn main() {
                         serialize_with="crate::serialize_enum_list",
                         deserialize_with="crate::deserialize_enum_list",
                         skip_serializing_if="Vec::is_empty"
-                    )]"#,
+                    )]
+                    #[derivative(Hash(hash_with="crate::hash_enum_list"))]"#,
                 )
             } else if field.is_repeated() {
                 Customize::default()
@@ -187,7 +191,8 @@ fn main() {
                         deserialize_with = "crate::deserialize_optional_enum",
                         skip_serializing_if="Option::is_none",
                         default,
-                    )]"#,
+                    )]
+                    #[derivative(Hash(hash_with="crate::hash_optional_enum"))]"#,
                 )
             } else if !field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {
                 Customize::default().before(
@@ -195,7 +200,16 @@ fn main() {
                         serialize_with = "crate::serialize_enum",
                         deserialize_with = "crate::deserialize_enum",
                         default,
-                    )]"#,
+                    )]
+                    #[derivative(Hash(hash_with="crate::hash_enum_or_unknown"))]"#,
+                )
+            } else if field.is_map() {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        skip_serializing_if="::std::collections::HashMap::is_empty"
+                    )]
+                    #[derivative(Hash="ignore")]"#,
                 )
             } else {
                 Customize::default()
@@ -204,7 +218,12 @@ fn main() {
         }
 
         fn special_field(&self, _message: &MessageDescriptor, _field: &str) -> Customize {
-            Customize::default().before("#[serde(skip)]")
+            Customize::default().before(
+                r#"
+                #[serde(skip)]
+                #[derivative(Hash="ignore")]
+            "#,
+            )
         }
     }
 

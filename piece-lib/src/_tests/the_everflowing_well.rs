@@ -1,12 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
-    in_play::{CardId, Database},
-    load_cards,
-    pending_results::ResolutionResult,
-    player::AllPlayers,
-    stack::Stack,
+    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
+    player::AllPlayers, protogen::ids::CardId, stack::Stack,
 };
 
 #[test]
@@ -36,11 +32,11 @@ fn copies_permanent() -> anyhow::Result<()> {
 
     let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, elesh, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, elesh.clone(), true);
     // Spend the white mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -69,7 +65,7 @@ fn copies_permanent() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db[card].cloned_id, Some(elesh));
+    assert_eq!(db[&card].cloned_id, Some(elesh));
 
     Ok(())
 }

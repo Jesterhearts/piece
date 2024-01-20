@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package ids;
+
+message ActivatedAbilityId {
+  string id = 1;
+}
+
+message GainManaAbilityId {
+  string id = 1;
+}
+
+message CardId {
+  string id = 1;
+}
+
+message ModifierId {
+  string id = 1;
+}
+
+message StackId {
+  string id = 1;
+}
+
+message Controller {
+  string id = 1;
+}
+
+message Owner {
+  string id = 1;
+}

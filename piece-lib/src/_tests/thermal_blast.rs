@@ -3,11 +3,11 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::CardId,
     in_play::Database,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::ids::CardId,
     stack::{ActiveTarget, Stack},
 };
 
@@ -38,7 +38,7 @@ fn damages_target() -> anyhow::Result<()> {
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
     let mut results = blast.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: bear }]],
+        vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],
         None,
         vec![],
     );
@@ -58,7 +58,7 @@ fn damages_target() -> anyhow::Result<()> {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .copied()
+            .cloned()
             .collect_vec(),
         []
     );
@@ -98,7 +98,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
     let mut results = blast.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: bear }]],
+        vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],
         None,
         vec![],
     );
@@ -119,7 +119,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .copied()
+            .cloned()
             .collect_vec(),
         []
     );
@@ -160,7 +160,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
     let mut results = blast.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: bear }]],
+        vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],
         None,
         vec![],
     );
@@ -181,7 +181,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .copied()
+            .cloned()
             .collect_vec(),
         []
     );

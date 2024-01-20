@@ -3,12 +3,13 @@ use pretty_assertions::assert_eq;
 use protobuf::Enum;
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::Database,
     library::Library,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::{
+        ids::CardId,
         keywords::Keyword,
         types::{Subtype, Type},
     },
@@ -56,15 +57,15 @@ fn reveals_clones() -> anyhow::Result<()> {
     assert_eq!(on_battlefield.len(), 1);
     let token = on_battlefield.pop().unwrap();
 
-    assert_eq!(db[token].modified_types, TypeSet::from([Type::CREATURE]));
+    assert_eq!(db[&token].modified_types, TypeSet::from([Type::CREATURE]));
     assert_eq!(
-        db[token].modified_subtypes,
+        db[&token].modified_subtypes,
         SubtypeSet::from([Subtype::BEAR, Subtype::SPIRIT])
     );
     assert_eq!(token.power(&db), Some(1));
     assert_eq!(token.toughness(&db), Some(1));
     assert_eq!(
-        db[token].modified_keywords,
+        db[&token].modified_keywords,
         [(Keyword::FLYING.value(), 1)].into_iter().collect()
     );
 
@@ -91,7 +92,7 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting.clone(), false);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

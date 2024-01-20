@@ -21,7 +21,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -29,7 +29,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -38,7 +38,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -46,12 +46,12 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         let mut targets = vec![];
         for id in db.stack.entries.iter().filter_map(|(id, entry)| {
             if entry.passes_restrictions(db, log_session, source, &self.restrictions) {
-                Some(*id)
+                Some(id)
             } else {
                 None
             }
         }) {
-            let target = ActiveTarget::Stack { id };
+            let target = ActiveTarget::Stack { id: id.clone() };
             if !already_chosen.contains(&target) {
                 targets.push(target);
             }
@@ -63,7 +63,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -79,7 +79,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -88,7 +88,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -96,7 +96,7 @@ impl EffectBehaviors for CounterSpellUnlessPay {
             match self.cost.as_ref().unwrap() {
                 Cost::Fixed(count) => {
                     results.push_pay_costs(PayCost::new_or_else(
-                        db.stack.entries.get(id).unwrap().ty.source(),
+                        db.stack.entries.get(id).unwrap().ty.source().clone(),
                         pay_costs::Cost::SpendMana(SpendMana::new(
                             std::iter::repeat(ManaCost::GENERIC.into())
                                 .take(count.count as usize)

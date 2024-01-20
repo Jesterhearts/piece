@@ -1,11 +1,11 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::Database,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::targets::Location,
+    protogen::{ids::CardId, targets::Location},
     stack::Stack,
 };
 

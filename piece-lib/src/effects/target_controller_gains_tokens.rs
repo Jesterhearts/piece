@@ -9,7 +9,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -17,7 +17,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -25,7 +25,7 @@ impl EffectBehaviors for TargetControllerGainsTokens {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
@@ -35,12 +35,18 @@ impl EffectBehaviors for TargetControllerGainsTokens {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
-            source: targets.into_iter().exactly_one().unwrap().id(db).unwrap(),
+            source: targets
+                .into_iter()
+                .exactly_one()
+                .unwrap()
+                .id(db)
+                .unwrap()
+                .clone(),
             token: self.create_token.token.as_ref().unwrap().clone(),
         });
     }

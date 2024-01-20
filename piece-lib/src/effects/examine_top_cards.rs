@@ -6,7 +6,7 @@ impl EffectBehaviors for ExamineTopCards {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -14,7 +14,7 @@ impl EffectBehaviors for ExamineTopCards {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -22,7 +22,7 @@ impl EffectBehaviors for ExamineTopCards {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -37,7 +37,7 @@ impl EffectBehaviors for ExamineTopCards {
         &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

@@ -3,11 +3,11 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::CardId,
     in_play::Database,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
+    protogen::ids::CardId,
     protogen::{
         mana::ManaSource,
         mana::{Mana, ManaRestriction},
@@ -46,11 +46,11 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let attendant = CardId::upload(&mut db, &cards, player, "Darigaaz's Attendant");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, attendant, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &attendant, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, attendant, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, &attendant, 0);
 
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

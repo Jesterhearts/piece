@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package stack;
+
+import "abilities.proto";
+import "ids.proto";
+
+message Target {
+  oneof target {
+    ids.StackId stack = 1;
+    ids.CardId battlefield = 2;
+    ids.CardId graveyard = 3;
+    ids.CardId library = 4;
+    ids.CardId exile = 5;
+    ids.CardId hand = 6;
+    ids.Owner player = 7;
+  }
+}
+
+message Targets {
+  repeated Target targets = 1;
+}
+
+message AbilityEntry {
+  ids.CardId source = 1;
+  abilities.Ability ability = 2;
+}
+
+message Entry {
+  repeated Targets targets = 1;
+  repeated uint32 modes = 2;
+  bool settled = 3;
+
+  oneof type {
+    ids.CardId card = 4;
+    AbilityEntry ability = 5;
+  }
+}

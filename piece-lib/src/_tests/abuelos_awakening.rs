@@ -2,11 +2,14 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::Database,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::{Subtype, Type},
+    protogen::{
+        ids::CardId,
+        types::{Subtype, Type},
+    },
     stack::Stack,
     types::{SubtypeSet, TypeSet},
 };
@@ -64,17 +67,17 @@ fn x_is_zero() -> anyhow::Result<()> {
         .battlefields
         .values()
         .flat_map(|b| b.iter())
-        .copied()
+        .cloned()
         .collect_vec();
-    assert_eq!(on_battlefield, [target]);
+    assert_eq!(on_battlefield, [target.clone()]);
     assert_eq!(target.power(&db), Some(1));
     assert_eq!(target.toughness(&db), Some(1));
     assert_eq!(
-        db[target].modified_types,
+        db[&target].modified_types,
         TypeSet::from([Type::CREATURE, Type::ARTIFACT])
     );
     assert_eq!(
-        db[target].modified_subtypes,
+        db[&target].modified_subtypes,
         SubtypeSet::from([Subtype::SPIRIT])
     );
 
@@ -140,17 +143,17 @@ fn x_is_two() -> anyhow::Result<()> {
         .battlefields
         .values()
         .flat_map(|b| b.iter())
-        .copied()
+        .cloned()
         .collect_vec();
-    assert_eq!(on_battlefield, [target]);
+    assert_eq!(on_battlefield, [target.clone()]);
     assert_eq!(target.power(&db), Some(3));
     assert_eq!(target.toughness(&db), Some(3));
     assert_eq!(
-        db[target].modified_types,
+        db[&target].modified_types,
         TypeSet::from([Type::CREATURE, Type::ARTIFACT,])
     );
     assert_eq!(
-        db[target].modified_subtypes,
+        db[&target].modified_subtypes,
         SubtypeSet::from([Subtype::SPIRIT])
     );
 

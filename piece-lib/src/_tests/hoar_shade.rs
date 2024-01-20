@@ -1,8 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
+    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
+    player::AllPlayers, protogen::ids::CardId, stack::Stack, turns::Phase,
 };
 
 #[test]
@@ -29,15 +29,15 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade1, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &shade1, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &shade2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, shade1, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, &shade1, 0);
     // Pay Costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

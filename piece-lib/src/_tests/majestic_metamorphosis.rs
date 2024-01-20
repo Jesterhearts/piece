@@ -2,11 +2,14 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::{CardId, Database},
+    in_play::Database,
     load_cards,
     pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::{Subtype, Type},
+    protogen::{
+        ids::CardId,
+        types::{Subtype, Type},
+    },
     stack::{ActiveTarget, Stack},
     types::{SubtypeSet, TypeSet},
 };
@@ -30,7 +33,7 @@ fn metamorphosis() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, mantle, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &mantle, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -38,7 +41,7 @@ fn metamorphosis() -> anyhow::Result<()> {
 
     let mut results = majestic.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: mantle }]],
+        vec![vec![ActiveTarget::Battlefield { id: mantle.clone() }]],
         None,
         vec![],
     );
@@ -54,11 +57,11 @@ fn metamorphosis() -> anyhow::Result<()> {
     assert_eq!(mantle.power(&db), Some(4));
     assert_eq!(mantle.toughness(&db), Some(4));
     assert_eq!(
-        db[mantle].modified_subtypes,
+        db[&mantle].modified_subtypes,
         SubtypeSet::from([Subtype::EQUIPMENT, Subtype::ANGEL])
     );
     assert_eq!(
-        db[mantle].modified_types,
+        db[&mantle].modified_types,
         TypeSet::from([Type::ARTIFACT, Type::CREATURE])
     );
     assert!(mantle.flying(&db));
@@ -85,7 +88,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -93,7 +96,7 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
 
     let mut results = majestic.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: bear }]],
+        vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],
         None,
         vec![],
     );
@@ -109,11 +112,11 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(4));
     assert_eq!(
-        db[bear].modified_subtypes,
+        db[&bear].modified_subtypes,
         SubtypeSet::from([Subtype::BEAR, Subtype::ANGEL])
     );
     assert_eq!(
-        db[bear].modified_types,
+        db[&bear].modified_types,
         TypeSet::from([Type::ARTIFACT, Type::CREATURE,])
     );
     assert!(bear.flying(&db));

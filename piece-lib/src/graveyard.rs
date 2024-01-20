@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
-    in_play::CardId,
     player::{Controller, Owner},
+    protogen::ids::CardId,
 };
 
 #[derive(Debug, Default)]

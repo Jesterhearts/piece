@@ -15,7 +15,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         self.count as usize
     }
@@ -23,7 +23,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         self.count as usize
     }
@@ -31,7 +31,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -48,14 +48,14 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
                     &source.faceup_face(db).restrictions,
                 ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
             })
-            .map(|card| ActiveTarget::Graveyard { id: *card })
+            .map(|card| ActiveTarget::Graveyard { id: card.clone() })
             .collect_vec()
     }
 
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -71,7 +71,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -79,7 +79,7 @@ impl EffectBehaviors for ReturnFromGraveyardToBattlefield {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

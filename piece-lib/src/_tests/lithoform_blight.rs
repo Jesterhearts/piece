@@ -1,12 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    in_play::{CardId, Database},
-    load_cards,
-    pending_results::ResolutionResult,
-    player::AllPlayers,
-    stack::Stack,
-    types::SubtypeSet,
+    in_play::Database, load_cards, pending_results::ResolutionResult, player::AllPlayers,
+    protogen::ids::CardId, stack::Stack, types::SubtypeSet,
 };
 
 #[test]
@@ -43,7 +39,7 @@ fn works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db[land].modified_subtypes, SubtypeSet::from([]));
+    assert_eq!(db[&land].modified_subtypes, SubtypeSet::from([]));
 
     Ok(())
 }

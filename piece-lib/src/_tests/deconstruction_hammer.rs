@@ -3,8 +3,8 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
+    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
+    player::AllPlayers, protogen::ids::CardId, stack::Stack, turns::Phase,
 };
 
 #[test]
@@ -32,15 +32,15 @@ fn destroys_artifact() -> anyhow::Result<()> {
     let card2 = CardId::upload(&mut db, &cards, player1, "Deconstruction Hammer");
     let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card3, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card3, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
@@ -48,7 +48,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
     db.turn.turn_count += db.turn.turns_per_round();
 
     // Equip the bear
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card2, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card2, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -65,7 +65,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability on the bear, targeting the banner
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card, 0);
     // Pay the generic mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -85,7 +85,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .copied()
+            .cloned()
             .collect_vec(),
         [card]
     );

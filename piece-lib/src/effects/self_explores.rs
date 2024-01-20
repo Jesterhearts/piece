@@ -12,7 +12,7 @@ impl EffectBehaviors for SelfExplores {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -20,7 +20,7 @@ impl EffectBehaviors for SelfExplores {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -28,18 +28,18 @@ impl EffectBehaviors for SelfExplores {
     fn valid_targets(
         &self,
         _db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         _log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
-        vec![ActiveTarget::Battlefield { id: source }]
+        vec![ActiveTarget::Battlefield { id: source.clone() }]
     }
 
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -54,7 +54,7 @@ impl EffectBehaviors for SelfExplores {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -62,7 +62,7 @@ impl EffectBehaviors for SelfExplores {
         &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{CardId, Database, ExileReason},
+    in_play::{Database, ExileReason},
     log::LogId,
     pending_results::{Options, PendingResult, PendingResults},
     player::mana_pool::SpendReason,
@@ -14,6 +14,7 @@ use crate::{
     protogen::{
         cost::{cost_reducer::When, ManaCost},
         effects::{effect::Effect, Duration},
+        ids::CardId,
         mana::Mana,
         mana::ManaSource,
     },
@@ -301,7 +302,7 @@ impl Cost {
     fn compute_targets(
         &mut self,
         db: &mut Database,
-        source: CardId,
+        source: &CardId,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
         match self {
@@ -309,16 +310,17 @@ impl Cost {
                 let controller = db[source].controller;
                 let valid_targets = db.battlefield[controller]
                     .iter()
-                    .copied()
                     .filter(|target| {
-                        !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
-                            && target.passes_restrictions(
-                                db,
-                                LogId::current(db),
-                                source,
-                                &sac.restrictions,
-                            )
+                        !already_chosen.contains(&ActiveTarget::Battlefield {
+                            id: (*target).clone(),
+                        }) && target.passes_restrictions(
+                            db,
+                            LogId::current(db),
+                            source,
+                            &sac.restrictions,
+                        )
                     })
+                    .cloned()
                     .collect_vec();
                 if valid_targets != sac.valid_targets {
                     sac.valid_targets = valid_targets;
@@ -331,10 +333,10 @@ impl Cost {
                 let controller = db[source].controller;
                 let valid_targets = db.battlefield[controller]
                     .iter()
-                    .copied()
                     .filter(|target| {
-                        !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
-                            && !target.tapped(db)
+                        !already_chosen.contains(&ActiveTarget::Battlefield {
+                            id: (*target).clone(),
+                        }) && !target.tapped(db)
                             && target.passes_restrictions(
                                 db,
                                 LogId::current(db),
@@ -342,6 +344,7 @@ impl Cost {
                                 &tap.restrictions,
                             )
                     })
+                    .cloned()
                     .collect_vec();
                 if valid_targets != tap.valid_targets {
                     tap.valid_targets = valid_targets;
@@ -354,10 +357,10 @@ impl Cost {
                 let controller = db[source].controller;
                 let valid_targets = db.battlefield[controller]
                     .iter()
-                    .copied()
                     .filter(|target| {
-                        !already_chosen.contains(&ActiveTarget::Battlefield { id: *target })
-                            && !target.tapped(db)
+                        !already_chosen.contains(&ActiveTarget::Battlefield {
+                            id: (*target).clone(),
+                        }) && !target.tapped(db)
                             && target.passes_restrictions(
                                 db,
                                 LogId::current(db),
@@ -365,6 +368,7 @@ impl Cost {
                                 &tap.restrictions,
                             )
                     })
+                    .cloned()
                     .collect_vec();
                 if valid_targets != tap.valid_targets {
                     tap.valid_targets = valid_targets;
@@ -421,7 +425,6 @@ impl Cost {
                 let controller = db[source].controller;
                 let valid_targets = db.battlefield[controller]
                     .iter()
-                    .copied()
                     .filter(|target| {
                         target.passes_restrictions(
                             db,
@@ -430,6 +433,7 @@ impl Cost {
                             &exile.restrictions,
                         )
                     })
+                    .cloned()
                     .collect_vec();
 
                 if valid_targets != exile.valid_targets {
@@ -444,7 +448,6 @@ impl Cost {
                 let valid_targets = db
                     .cards
                     .keys()
-                    .copied()
                     .filter(|target| {
                         db[*target].controller == controller
                             && target.passes_restrictions(
@@ -454,6 +457,7 @@ impl Cost {
                                 &exile.restrictions,
                             )
                     })
+                    .cloned()
                     .collect_vec();
 
                 if valid_targets != exile.valid_targets {
@@ -468,19 +472,19 @@ impl Cost {
                 let card_types = exile
                     .chosen
                     .iter()
-                    .map(|chosen| &db[*chosen].modified_types)
+                    .map(|chosen| &db[chosen].modified_types)
                     .collect_vec();
 
                 let valid_targets = db
                     .cards
                     .keys()
-                    .copied()
                     .filter(|target| {
                         db[*target].controller == controller
                             && card_types
                                 .iter()
                                 .all(|types| target.types_intersect(db, types))
                     })
+                    .cloned()
                     .collect_vec();
 
                 if valid_targets != exile.valid_targets {
@@ -496,7 +500,7 @@ impl Cost {
     fn choose_pay(
         &mut self,
         db: &mut Database,
-        source_card: CardId,
+        source_card: &CardId,
         all_targets: &HashSet<ActiveTarget>,
         choice: Option<usize>,
     ) -> bool {
@@ -507,8 +511,8 @@ impl Cost {
                 ..
             }) => {
                 if let Some(choice) = choice {
-                    let target = valid_targets[choice];
-                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                    let target = valid_targets[choice].clone();
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target.clone() }) {
                         *chosen = Some(target);
                         true
                     } else {
@@ -524,8 +528,8 @@ impl Cost {
                 ..
             }) => {
                 if let Some(choice) = choice {
-                    let target = valid_targets[choice];
-                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                    let target = valid_targets[choice].clone();
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target.clone() }) {
                         *chosen = Some(target);
                         true
                     } else {
@@ -541,8 +545,8 @@ impl Cost {
                 ..
             }) => {
                 if let Some(choice) = choice {
-                    let target = valid_targets[choice];
-                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                    let target = valid_targets[choice].clone();
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target.clone() }) {
                         chosen.insert(target);
                         true
                     } else {
@@ -558,8 +562,8 @@ impl Cost {
                 ..
             }) => {
                 if let Some(choice) = choice {
-                    let target = valid_targets[choice];
-                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target }) {
+                    let target = valid_targets[choice].clone();
+                    if !all_targets.contains(&ActiveTarget::Battlefield { id: target.clone() }) {
                         chosen.insert(target);
                         true
                     } else {
@@ -575,7 +579,7 @@ impl Cost {
                 ..
             }) => {
                 if let Some(choice) = choice {
-                    let target = valid_targets[choice];
+                    let target = valid_targets[choice].clone();
                     if !all_targets.contains(&target.target_from_location(db).unwrap()) {
                         chosen.insert(target);
                         true
@@ -592,7 +596,7 @@ impl Cost {
                 ..
             }) => {
                 if let Some(choice) = choice {
-                    let target = valid_targets[choice];
+                    let target = valid_targets[choice].clone();
                     if !all_targets.contains(&target.target_from_location(db).unwrap()) {
                         chosen.insert(target);
                         true
@@ -620,13 +624,13 @@ impl Cost {
 
                     let (mana, source) = spend.paying();
                     let mut pool_post_pay = db.all_players[db[source_card].controller]
-                        .pool_post_pay(db, &mana, &source, spend.reason)
+                        .pool_post_pay(db, &mana, &source, &spend.reason)
                         .unwrap();
                     let Some(first_unpaid) = spend.first_unpaid() else {
                         return true;
                     };
 
-                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::ANY, spend.reason) {
+                    if pool_post_pay.can_spend(db, first_unpaid, ManaSource::ANY, &spend.reason) {
                         let mana = match first_unpaid {
                             ManaCost::WHITE => Mana::WHITE,
                             ManaCost::BLUE => Mana::BLUE,
@@ -640,12 +644,16 @@ impl Cost {
                                         db,
                                         ManaCost::GENERIC,
                                         ManaSource::ANY,
-                                        spend.reason,
+                                        &spend.reason,
                                     )
                                 {
-                                    let max = pool_post_pay.max(db, spend.reason).unwrap();
-                                    let (_, source) =
-                                        pool_post_pay.spend(db, max, ManaSource::ANY, spend.reason);
+                                    let max = pool_post_pay.max(db, &spend.reason).unwrap();
+                                    let (_, source) = pool_post_pay.spend(
+                                        db,
+                                        max,
+                                        ManaSource::ANY,
+                                        &spend.reason,
+                                    );
                                     *spend
                                         .paid
                                         .entry(first_unpaid)
@@ -665,7 +673,7 @@ impl Cost {
                             ManaCost::TWO_X => unreachable!(),
                         };
                         let (_, source) =
-                            pool_post_pay.spend(db, mana, ManaSource::ANY, spend.reason);
+                            pool_post_pay.spend(db, mana, ManaSource::ANY, &spend.reason);
                         *spend
                             .paid
                             .entry(first_unpaid)
@@ -686,7 +694,7 @@ impl Cost {
 
                 let (mana, sources) = spend.paying();
                 if let Some((_, mana, source, _)) = db.all_players[db[source_card].controller]
-                    .pool_post_pay(db, &mana, &sources, spend.reason)
+                    .pool_post_pay(db, &mana, &sources, &spend.reason)
                     .unwrap()
                     .available_mana()
                     .nth(choice.unwrap())
@@ -706,7 +714,7 @@ impl Cost {
                         db,
                         &mana,
                         &sources,
-                        spend.reason,
+                        &spend.reason,
                     ) {
                         !matches!(
                             spend.first_unpaid_x_always_unpaid(),
@@ -722,24 +730,24 @@ impl Cost {
         }
     }
 
-    fn results(&self, db: &mut Database, source: CardId) -> Vec<ActionResult> {
+    fn results(&self, db: &mut Database, source: &CardId) -> Vec<ActionResult> {
         match self {
             Cost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
-                vec![ActionResult::PermanentToGraveyard(chosen.unwrap())]
+                vec![ActionResult::PermanentToGraveyard(chosen.clone().unwrap())]
             }
             Cost::TapPermanent(TapPermanent { chosen, .. }) => {
-                vec![ActionResult::TapPermanent(chosen.unwrap())]
+                vec![ActionResult::TapPermanent(chosen.clone().unwrap())]
             }
             Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore { chosen, .. }) => chosen
                 .iter()
-                .map(|chosen| ActionResult::TapPermanent(*chosen))
+                .map(|chosen| ActionResult::TapPermanent(chosen.clone()))
                 .collect_vec(),
             Cost::ExilePermanentsCmcX(exile) => {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
-                        source,
-                        target: ActiveTarget::Battlefield { id: *target },
+                        source: source.clone(),
+                        target: ActiveTarget::Battlefield { id: target.clone() },
                         duration: Duration::PERMANENTLY.into(),
                         reason: None,
                     });
@@ -749,17 +757,17 @@ impl Cost {
             Cost::SpendMana(spend) => {
                 let (mana, sources) = spend.paying();
                 vec![ActionResult::SpendMana {
-                    card: source,
+                    card: source.clone(),
                     mana,
                     sources,
-                    reason: spend.reason,
+                    reason: spend.reason.clone(),
                 }]
             }
             Cost::ExileCards(exile) => {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
-                        source,
+                        source: source.clone(),
                         target: target.target_from_location(db).unwrap(),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
@@ -772,7 +780,7 @@ impl Cost {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
                     results.push(ActionResult::ExileTarget {
-                        source,
+                        source: source.clone(),
                         target: target.target_from_location(db).unwrap(),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
@@ -810,22 +818,24 @@ impl Cost {
     fn chosen_targets(&self, db: &mut Database) -> Vec<ActiveTarget> {
         match self {
             Cost::SacrificePermanent(SacrificePermanent { chosen, .. }) => chosen
+                .clone()
                 .map(|id| ActiveTarget::Battlefield { id })
                 .into_iter()
                 .collect_vec(),
             Cost::TapPermanent(TapPermanent { chosen, .. }) => chosen
+                .clone()
                 .map(|id| ActiveTarget::Battlefield { id })
                 .into_iter()
                 .collect_vec(),
             Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore { chosen, .. }) => chosen
                 .iter()
-                .map(|id| ActiveTarget::Battlefield { id: *id })
+                .map(|id| ActiveTarget::Battlefield { id: id.clone() })
                 .collect_vec(),
             Cost::SpendMana(_) => vec![],
             Cost::ExilePermanentsCmcX(exile) => exile
                 .chosen
                 .iter()
-                .map(|chosen| ActiveTarget::Battlefield { id: *chosen })
+                .map(|chosen| ActiveTarget::Battlefield { id: chosen.clone() })
                 .collect_vec(),
             Cost::ExileCards(exile) => exile
                 .chosen
@@ -888,10 +898,11 @@ impl PayCost {
                     match first_unpaid {
                         ManaCost::TWO_X | ManaCost::X | ManaCost::GENERIC => return false,
                         unpaid => {
-                            let pool_post_pay = db.all_players[db[self.source].controller]
-                                .pool_post_pay(db, &mana, &source, spend.reason)
+                            let pool_post_pay = db.all_players[db[&self.source].controller]
+                                .pool_post_pay(db, &mana, &source, &spend.reason)
                                 .unwrap();
-                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::ANY, spend.reason) {
+                            if !pool_post_pay.can_spend(db, unpaid, ManaSource::ANY, &spend.reason)
+                            {
                                 return false;
                             }
                         }
@@ -964,17 +975,17 @@ impl PendingResult for PayCost {
                 .collect_vec(),
             Cost::SpendMana(spend) => {
                 let (mana, sources) = spend.paying();
-                let pool_post_paid = db.all_players[db[self.source].controller].pool_post_pay(
+                let pool_post_paid = db.all_players[db[&self.source].controller].pool_post_pay(
                     db,
                     &mana,
                     &sources,
-                    spend.reason,
+                    &spend.reason,
                 );
                 if pool_post_paid.is_none()
                     || pool_post_paid
                         .as_ref()
                         .unwrap()
-                        .max(db, spend.reason)
+                        .max(db, &spend.reason)
                         .is_none()
                 {
                     return Options::OptionalList(vec![]);
@@ -1031,19 +1042,19 @@ impl PendingResult for PayCost {
             Cost::SacrificePermanent(sac) => sac
                 .valid_targets
                 .get(option)
-                .map(|t| ActiveTarget::Battlefield { id: *t }),
+                .map(|t| ActiveTarget::Battlefield { id: t.clone() }),
             Cost::TapPermanent(tap) => tap
                 .valid_targets
                 .get(option)
-                .map(|t| ActiveTarget::Battlefield { id: *t }),
+                .map(|t| ActiveTarget::Battlefield { id: t.clone() }),
             Cost::TapPermanentsPowerXOrMore(tap) => tap
                 .valid_targets
                 .get(option)
-                .map(|t| ActiveTarget::Battlefield { id: *t }),
+                .map(|t| ActiveTarget::Battlefield { id: t.clone() }),
             Cost::ExilePermanentsCmcX(exile) => exile
                 .valid_targets
                 .get(option)
-                .map(|t| ActiveTarget::Battlefield { id: *t }),
+                .map(|t| ActiveTarget::Battlefield { id: t.clone() }),
             Cost::ExileCards(exile) => {
                 if exile.chosen.len() == exile.maximum {
                     None
@@ -1051,13 +1062,13 @@ impl PendingResult for PayCost {
                     exile
                         .valid_targets
                         .get(option)
-                        .map(|t| ActiveTarget::Battlefield { id: *t })
+                        .map(|t| ActiveTarget::Battlefield { id: t.clone() })
                 }
             }
             Cost::ExileCardsSharingType(exile) => exile
                 .valid_targets
                 .get(option)
-                .map(|t| ActiveTarget::Battlefield { id: *t }),
+                .map(|t| ActiveTarget::Battlefield { id: t.clone() }),
             Cost::SpendMana(_) => None,
         }
     }
@@ -1099,8 +1110,8 @@ impl PendingResult for PayCost {
                 effect.push_behavior_with_targets(
                     db,
                     targets.clone(),
-                    self.source,
-                    db[self.source].controller,
+                    &self.source,
+                    db[&self.source].controller,
                     results,
                 );
             }
@@ -1108,7 +1119,7 @@ impl PendingResult for PayCost {
             true
         } else if self
             .cost
-            .choose_pay(db, self.source, &results.all_chosen_targets, choice)
+            .choose_pay(db, &self.source, &results.all_chosen_targets, choice)
         {
             if self.cost.paid(db) {
                 results.x_is = self.cost.x_is(db);
@@ -1116,7 +1127,7 @@ impl PendingResult for PayCost {
                 for target in self.cost.chosen_targets(db) {
                     results.all_chosen_targets.insert(target);
                 }
-                for result in self.cost.results(db, self.source) {
+                for result in self.cost.results(db, &self.source) {
                     results.push_settled(result);
                 }
                 true
@@ -1133,6 +1144,6 @@ impl PendingResult for PayCost {
         db: &mut Database,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
-        self.cost.compute_targets(db, self.source, already_chosen)
+        self.cost.compute_targets(db, &self.source, already_chosen)
     }
 }

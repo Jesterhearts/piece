@@ -4,10 +4,11 @@ use tracing::Level;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::{ActivatedAbilityId, CardId, Database},
+    in_play::{ActivatedAbilityId, Database},
     player::{Controller, Owner},
     protogen::{
         counters::Counter,
+        ids::CardId,
         targets::{restriction, Restriction},
     },
 };
@@ -129,7 +130,7 @@ impl Log {
         db.log.entries.push((LogId::current(db), entry))
     }
 
-    pub(crate) fn ability_resolved(db: &mut Database, source: CardId) {
+    pub(crate) fn ability_resolved(db: &mut Database, source: &CardId) {
         let entry = LogEntry::AbilityResolved {
             controller: db[source].controller,
         };
@@ -139,10 +140,8 @@ impl Log {
     }
 
     pub(crate) fn spell_resolved(db: &mut Database, spell: CardId) {
-        let entry = LogEntry::SpellResolved {
-            spell,
-            controller: db[spell].controller,
-        };
+        let controller = db[&spell].controller;
+        let entry = LogEntry::SpellResolved { spell, controller };
         let id = LogId::new(db);
         event!(Level::INFO, ?id, ?entry);
         db.log.entries.push((id, entry))
@@ -206,8 +205,8 @@ impl Log {
         }
     }
 
-    pub(crate) fn tapped(db: &mut Database, card: CardId) {
-        let entry = LogEntry::Tapped { card };
+    pub(crate) fn tapped(db: &mut Database, card: &CardId) {
+        let entry = LogEntry::Tapped { card: card.clone() };
 
         let id = LogId::current(db);
         event!(Level::INFO, ?id, ?entry);
@@ -235,21 +234,21 @@ impl Log {
         db.log.entries.push((id, entry));
     }
 
-    pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: CardId) {
+    pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: &CardId) {
         let modified_by = card.modified_by(db);
         let entry = LogEntry::LeftBattlefield {
             reason,
             name: card.faceup_face(db).name.clone(),
-            card,
+            card: card.clone(),
             was_attacking: db[card].attacking.is_some(),
             was_token: db[card].token,
             was_tapped: card.tapped(db),
             was_enchanted: modified_by
                 .iter()
-                .copied()
+                .cloned()
                 .find(|card| card.faceup_face(db).enchant.is_some()),
-            was_equipped: modified_by.iter().copied().find(|card| {
-                db[*card]
+            was_equipped: modified_by.iter().cloned().find(|card| {
+                db[card]
                     .modified_activated_abilities
                     .iter()
                     .copied()
@@ -270,8 +269,8 @@ impl Log {
         db.log.entries.push((id, entry));
     }
 
-    pub(crate) fn discarded(db: &mut Database, card: CardId) {
-        let entry = LogEntry::Discarded { card };
+    pub(crate) fn discarded(db: &mut Database, card: &CardId) {
+        let entry = LogEntry::Discarded { card: card.clone() };
         let id = LogId::current(db);
         event!(Level::INFO, ?id, ?entry);
         db.log.entries.push((id, entry));

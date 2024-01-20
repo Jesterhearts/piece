@@ -15,7 +15,7 @@ impl EffectBehaviors for TapTarget {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -23,7 +23,7 @@ impl EffectBehaviors for TapTarget {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -31,7 +31,7 @@ impl EffectBehaviors for TapTarget {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -49,7 +49,7 @@ impl EffectBehaviors for TapTarget {
                         &source.faceup_face(db).restrictions,
                     )
             })
-            .map(|card| crate::stack::ActiveTarget::Battlefield { id: *card })
+            .map(|card| crate::stack::ActiveTarget::Battlefield { id: card.clone() })
             .filter(|target| !already_chosen.contains(target))
             .collect_vec()
     }
@@ -57,7 +57,7 @@ impl EffectBehaviors for TapTarget {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -73,7 +73,7 @@ impl EffectBehaviors for TapTarget {
             crate::pending_results::TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -82,7 +82,7 @@ impl EffectBehaviors for TapTarget {
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -101,7 +101,7 @@ impl EffectBehaviors for TapTarget {
                 return;
             }
 
-            results.push_settled(ActionResult::TapPermanent(target.id(db).unwrap()))
+            results.push_settled(ActionResult::TapPermanent(target.id(db).unwrap().clone()))
         } else {
             warn!("Skipping targeting")
         }

@@ -7,7 +7,7 @@ use crate::{
     abilities::Ability,
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{CardId, Database, ExileReason},
+    in_play::{Database, ExileReason},
     log::LogId,
     pending_results::{
         choose_targets::ChooseTargets,
@@ -30,6 +30,7 @@ use crate::{
             static_ability::{self, ForceEtbTapped},
             Destination, Duration,
         },
+        ids::CardId,
         targets::Location,
         triggers::{self, TriggerSource},
         types::Type,
@@ -93,12 +94,12 @@ impl Battlefields {
 
     pub fn add_from_stack_or_hand(
         db: &mut Database,
-        source_card_id: CardId,
-        target: Option<CardId>,
+        source_card_id: &CardId,
+        target: Option<&CardId>,
     ) -> PendingResults {
         let mut results =
             match Self::start_adding_to_battlefield(db, source_card_id, false, target, |card, _| {
-                ActionResult::AddToBattlefieldSkipReplacementEffects(card, target)
+                ActionResult::AddToBattlefieldSkipReplacementEffects(card.clone(), target.cloned())
             }) {
                 PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
                 PartialAddToBattlefieldResult::Continue(results) => results,
@@ -111,7 +112,7 @@ impl Battlefields {
 
     pub(crate) fn add_from_library(
         db: &mut Database,
-        source_card_id: CardId,
+        source_card_id: &CardId,
         enters_tapped: bool,
     ) -> PendingResults {
         let mut results = match Self::start_adding_to_battlefield(
@@ -120,7 +121,7 @@ impl Battlefields {
             enters_tapped,
             None,
             |card, enters_tapped| ActionResult::AddToBattlefieldSkipReplacementEffectsFromLibrary {
-                card,
+                card: card.clone(),
                 enters_tapped,
             },
         ) {
@@ -135,7 +136,7 @@ impl Battlefields {
 
     pub(crate) fn add_from_exile(
         db: &mut Database,
-        source_card_id: CardId,
+        source_card_id: &CardId,
         enters_tapped: bool,
         target: Option<CardId>,
     ) -> PendingResults {
@@ -144,7 +145,12 @@ impl Battlefields {
             source_card_id,
             enters_tapped,
             None,
-            |card, _| ActionResult::AddToBattlefieldSkipReplacementEffectsFromExile(card, target),
+            |card, _| {
+                ActionResult::AddToBattlefieldSkipReplacementEffectsFromExile(
+                    card.clone(),
+                    target.clone(),
+                )
+            },
         ) {
             PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
             PartialAddToBattlefieldResult::Continue(results) => results,
@@ -157,10 +163,10 @@ impl Battlefields {
 
     fn start_adding_to_battlefield(
         db: &mut Database,
-        source_card_id: CardId,
+        source_card_id: &CardId,
         enters_tapped: bool,
-        target: Option<CardId>,
-        mut construct_skip_replacement: impl FnMut(CardId, bool) -> ActionResult,
+        target: Option<&CardId>,
+        mut construct_skip_replacement: impl FnMut(&CardId, bool) -> ActionResult,
     ) -> PartialAddToBattlefieldResult {
         let mut results = PendingResults::default();
 
@@ -171,18 +177,18 @@ impl Battlefields {
             if !source_card_id.passes_restrictions(
                 db,
                 LogId::current(db),
-                source,
+                &source,
                 &replacement.restrictions,
             ) {
                 continue;
             }
             replaced = true;
 
-            let controller = db[source].controller;
+            let controller = db[&source].controller;
             for effect in replacement.effects.iter() {
                 effect.effect.as_ref().unwrap().push_pending_behavior(
                     db,
-                    source,
+                    &source,
                     controller,
                     &mut results,
                 );
@@ -203,7 +209,7 @@ impl Battlefields {
     pub(crate) fn controlled_colors(db: &Database, player: Controller) -> HashSet<Color> {
         let mut colors = HashSet::default();
         for card in db.battlefield[player].as_slice() {
-            colors.extend(db[*card].modified_colors.iter().copied())
+            colors.extend(db[card].modified_colors.iter().copied())
         }
 
         colors
@@ -214,9 +220,9 @@ impl Battlefields {
             .battlefield
             .battlefields
             .iter()
-            .flat_map(|(controller, cards)| cards.iter().map(|card| (*controller, *card)))
+            .flat_map(|(controller, cards)| cards.iter().map(move |card| (controller, card)))
             .filter_map(|(controller, card)| {
-                if controller == player
+                if *controller == player
                     || db[card].modified_static_abilities.iter().any(|ability| {
                         matches!(
                             db[*ability].ability,
@@ -229,6 +235,7 @@ impl Battlefields {
                     None
                 }
             })
+            .cloned()
             .collect_vec();
 
         for card in cards {
@@ -238,7 +245,7 @@ impl Battlefields {
 
     pub(crate) fn end_turn(db: &mut Database) -> PendingResults {
         for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
-            db.cards.entry(*card).or_default().marked_damage = 0;
+            db.cards.entry(card.clone()).or_default().marked_damage = 0;
         }
 
         let mut results = PendingResults::default();
@@ -248,11 +255,11 @@ impl Battlefields {
             .exile_zones
             .values()
             .flat_map(|e| e.iter())
-            .copied()
             .filter(|card| db[*card].exile_duration == Some(Duration::UNTIL_END_OF_TURN))
+            .cloned()
             .collect_vec()
         {
-            results.extend(Battlefields::add_from_exile(db, card, false, None));
+            results.extend(Battlefields::add_from_exile(db, &card, false, None));
         }
 
         let all_modifiers = db
@@ -277,7 +284,7 @@ impl Battlefields {
             modifier.deactivate(db);
         }
 
-        for card in db.cards.keys().copied().collect_vec() {
+        for card in db.cards.keys().cloned().collect_vec() {
             card.apply_modifiers_layered(db);
         }
 
@@ -294,13 +301,13 @@ impl Battlefields {
             .battlefields
             .values()
             .flat_map(|b| b.iter())
-            .copied()
+            .cloned()
         {
             if card.types_intersect(db, &TypeSet::from([Type::LEGENDARY])) {
                 legendary_cards
-                    .entry(db[card].modified_name.clone())
+                    .entry(db[&card].modified_name.clone())
                     .or_default()
-                    .push(card);
+                    .push(card.clone());
             }
 
             let toughness = card.toughness(db);
@@ -310,12 +317,13 @@ impl Battlefields {
                     || ((toughness.unwrap() - card.marked_damage(db)) <= 0
                         && !card.indestructible(db)))
             {
-                result.push_settled(ActionResult::PermanentToGraveyard(card));
+                result.push_settled(ActionResult::PermanentToGraveyard(card.clone()));
             }
 
-            let enchanting = db[card].enchanting;
+            let enchanting = &db[&card].enchanting;
             if enchanting.is_some()
                 && !enchanting
+                    .as_ref()
                     .unwrap()
                     .is_in_location(db, Location::ON_BATTLEFIELD)
             {
@@ -347,7 +355,7 @@ impl Battlefields {
         db: &mut Database,
         pending: &Option<PendingResults>,
         activator: Owner,
-        source: CardId,
+        source: &CardId,
         index: usize,
     ) -> PendingResults {
         if db.stack.split_second(db) {
@@ -367,7 +375,7 @@ impl Battlefields {
             if cost.tap {
                 assert!(!source.tapped(db));
 
-                results.push_settled(ActionResult::TapPermanent(source));
+                results.push_settled(ActionResult::TapPermanent(source.clone()));
             }
 
             let exile_reason = match &ability {
@@ -384,12 +392,15 @@ impl Battlefields {
             for cost in cost.additional_costs.iter() {
                 match cost.cost.as_ref().unwrap() {
                     additional_cost::Cost::DiscardThis(_) => {
-                        results.push_settled(ActionResult::Discard(ability_source));
+                        results.push_settled(ActionResult::Discard(ability_source.clone()));
                     }
                     additional_cost::Cost::SacrificeSource(_) => {
-                        results.push_settled(ActionResult::PermanentToGraveyard(ability_source));
-                        results
-                            .push_invalid_target(ActiveTarget::Battlefield { id: ability_source })
+                        results.push_settled(ActionResult::PermanentToGraveyard(
+                            ability_source.clone(),
+                        ));
+                        results.push_invalid_target(ActiveTarget::Battlefield {
+                            id: ability_source.clone(),
+                        })
                     }
                     additional_cost::Cost::PayLife(PayLife { count, .. }) => {
                         results.push_settled(ActionResult::LoseLife {
@@ -399,7 +410,7 @@ impl Battlefields {
                     }
                     additional_cost::Cost::SacrificePermanent(sac) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::SacrificePermanent(SacrificePermanent::new(
                                 sac.restrictions.clone(),
                             )),
@@ -407,13 +418,13 @@ impl Battlefields {
                     }
                     additional_cost::Cost::TapPermanent(tap) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::TapPermanent(TapPermanent::new(tap.restrictions.clone())),
                         ));
                     }
                     additional_cost::Cost::TapPermanentsPowerXOrMore(tap) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore::new(
                                 tap.restrictions.clone(),
                                 tap.x_is as usize,
@@ -422,7 +433,7 @@ impl Battlefields {
                     }
                     additional_cost::Cost::ExileCardsCmcX(exile) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::ExilePermanentsCmcX(ExilePermanentsCmcX::new(
                                 exile.restrictions.clone(),
                             )),
@@ -430,7 +441,7 @@ impl Battlefields {
                     }
                     additional_cost::Cost::ExileCard(exile) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::ExileCards(ExileCards::new(
                                 exile_reason,
                                 1,
@@ -445,7 +456,7 @@ impl Battlefields {
                         ..
                     }) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::ExileCards(ExileCards::new(
                                 exile_reason,
                                 *minimum as usize,
@@ -456,7 +467,7 @@ impl Battlefields {
                     }
                     additional_cost::Cost::ExileSharingCardType(exile) => {
                         results.push_pay_costs(PayCost::new(
-                            source,
+                            source.clone(),
                             Cost::ExileCardsSharingType(ExileCardsSharingType::new(
                                 exile_reason,
                                 exile.count as usize,
@@ -468,7 +479,7 @@ impl Battlefields {
                         count,
                         ..
                     }) => results.push_settled(ActionResult::RemoveCounters {
-                        target: source,
+                        target: source.clone(),
                         counter: *counter,
                         count: *count as usize,
                     }),
@@ -476,10 +487,10 @@ impl Battlefields {
             }
 
             results.push_pay_costs(PayCost::new(
-                source,
+                source.clone(),
                 Cost::SpendMana(SpendMana::new(
                     cost.mana_cost.clone(),
-                    SpendReason::Activating(source),
+                    SpendReason::Activating(source.clone()),
                 )),
             ));
         }
@@ -487,13 +498,13 @@ impl Battlefields {
         if let Ability::Mana(gain) = ability {
             if let Gain::Choice(_) = db[gain].ability.gain_mana.gain.as_ref().unwrap() {
                 results.push_choose_mode(Source::Ability {
-                    source,
+                    source: source.clone(),
                     ability: Ability::Mana(gain),
                 });
             }
-            results.add_gain_mana(source, gain);
+            results.add_gain_mana(source.clone(), gain);
         } else {
-            results.add_ability_to_stack(source, ability.clone());
+            results.add_ability_to_stack(source.clone(), ability.clone());
             let controller = db[source].controller;
 
             for effect in ability.effects(db) {
@@ -515,7 +526,7 @@ impl Battlefields {
                         TargetSource::Effect(effect),
                         valid_targets,
                         crate::log::LogId::current(db),
-                        source,
+                        source.clone(),
                     ));
                 }
             }
@@ -524,16 +535,10 @@ impl Battlefields {
         results
     }
 
-    pub(crate) fn static_abilities(db: &Database) -> Vec<(&static_ability::Ability, CardId)> {
-        let mut result: Vec<(&static_ability::Ability, CardId)> = Default::default();
+    pub(crate) fn static_abilities(db: &Database) -> Vec<(&static_ability::Ability, &CardId)> {
+        let mut result: Vec<(&static_ability::Ability, &CardId)> = Default::default();
 
-        for card in db
-            .battlefield
-            .battlefields
-            .values()
-            .flat_map(|b| b.iter())
-            .copied()
-        {
+        for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
             for ability in db[card].modified_static_abilities.iter() {
                 result.push((&db[*ability].ability, card));
             }
@@ -542,16 +547,16 @@ impl Battlefields {
         result
     }
 
-    pub(crate) fn permanent_to_hand(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn permanent_to_hand(db: &mut Database, target: &CardId) -> PendingResults {
         target.move_to_hand(db);
-        for card in db.cards.keys().copied().collect_vec() {
+        for card in db.cards.keys().cloned().collect_vec() {
             card.apply_modifiers_layered(db);
         }
 
         PendingResults::default()
     }
 
-    pub(crate) fn permanent_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn permanent_to_graveyard(db: &mut Database, target: &CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
         for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PUT_INTO_GRAVEYARD) {
@@ -561,7 +566,7 @@ impl Battlefields {
             ) && target.passes_restrictions(
                 db,
                 LogId::current(db),
-                listener,
+                &listener,
                 &trigger.trigger.restrictions,
             ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -571,14 +576,14 @@ impl Battlefields {
         pending.extend(Self::leave_battlefield(db, target));
         target.move_to_graveyard(db);
 
-        for card in db.cards.keys().copied().collect_vec() {
+        for card in db.cards.keys().cloned().collect_vec() {
             card.apply_modifiers_layered(db);
         }
 
         pending
     }
 
-    pub(crate) fn library_to_graveyard(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn library_to_graveyard(db: &mut Database, target: &CardId) -> PendingResults {
         let mut pending = PendingResults::default();
 
         for (listener, trigger) in db.active_triggers_of_source(TriggerSource::PUT_INTO_GRAVEYARD) {
@@ -588,7 +593,7 @@ impl Battlefields {
             ) && target.passes_restrictions(
                 db,
                 LogId::current(db),
-                listener,
+                &listener,
                 &trigger.trigger.restrictions,
             ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -600,22 +605,22 @@ impl Battlefields {
         pending
     }
 
-    pub(crate) fn leave_battlefield(db: &mut Database, target: CardId) -> PendingResults {
+    pub(crate) fn leave_battlefield(db: &mut Database, target: &CardId) -> PendingResults {
         let mut results = PendingResults::default();
 
         for card in db[target]
             .exiling
             .iter()
-            .copied()
             .filter(|card| {
                 matches!(
                     db[*card].exile_duration,
                     Some(Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD)
                 )
             })
+            .cloned()
             .collect_vec()
         {
-            results.extend(Battlefields::add_from_exile(db, card, false, None));
+            results.extend(Battlefields::add_from_exile(db, &card, false, None));
         }
 
         for modifier in db
@@ -625,11 +630,11 @@ impl Battlefields {
                 if (matches!(
                     modifier.modifier.duration.enum_value().unwrap(),
                     Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD
-                ) && modifier.source == target)
+                ) && modifier.source == *target)
                     || (matches!(
                         modifier.modifier.duration.enum_value().unwrap(),
                         Duration::UNTIL_TARGET_LEAVES_BATTLEFIELD
-                    ) && modifier.modifying.contains(&target))
+                    ) && modifier.modifying.contains(target))
                 {
                     Some(*id)
                 } else {
@@ -656,7 +661,7 @@ impl Battlefields {
             ) && target.passes_restrictions(
                 db,
                 LogId::current(db),
-                listener,
+                &listener,
                 &trigger.trigger.restrictions,
             ) {
                 pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -670,8 +675,8 @@ impl Battlefields {
 
     pub(crate) fn exile(
         db: &mut Database,
-        source: CardId,
-        target: CardId,
+        source: &CardId,
+        target: &CardId,
         reason: Option<ExileReason>,
         duration: Duration,
     ) -> PendingResults {
@@ -688,7 +693,7 @@ impl Battlefields {
                 ) && source.passes_restrictions(
                     db,
                     LogId::current(db),
-                    listener,
+                    &listener,
                     &trigger.trigger.restrictions,
                 ) {
                     results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
@@ -703,7 +708,7 @@ impl Battlefields {
 
 pub(crate) fn complete_add_from_library(
     db: &mut Database,
-    source_card_id: CardId,
+    source_card_id: &CardId,
     results: &mut PendingResults,
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
@@ -713,21 +718,21 @@ pub(crate) fn complete_add_from_library(
         ) && source_card_id.passes_restrictions(
             db,
             LogId::current(db),
-            listener,
+            &listener,
             &trigger.trigger.restrictions,
         ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
 
-    for card in db.cards.keys().copied().collect_vec() {
+    for card in db.cards.keys().cloned().collect_vec() {
         card.apply_modifiers_layered(db);
     }
 }
 
 pub(crate) fn complete_add_from_exile(
     db: &mut Database,
-    source_card_id: CardId,
+    source_card_id: &CardId,
     results: &mut PendingResults,
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
@@ -737,21 +742,21 @@ pub(crate) fn complete_add_from_exile(
         ) && source_card_id.passes_restrictions(
             db,
             LogId::current(db),
-            listener,
+            &listener,
             &trigger.trigger.restrictions,
         ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
 
-    for card in db.cards.keys().copied().collect_vec() {
+    for card in db.cards.keys().cloned().collect_vec() {
         card.apply_modifiers_layered(db);
     }
 }
 
 pub(crate) fn complete_add_from_graveyard(
     db: &mut Database,
-    source_card_id: CardId,
+    source_card_id: &CardId,
     results: &mut PendingResults,
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
@@ -761,21 +766,21 @@ pub(crate) fn complete_add_from_graveyard(
         ) && source_card_id.passes_restrictions(
             db,
             LogId::current(db),
-            listener,
+            &listener,
             &trigger.trigger.restrictions,
         ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
 
-    for card in db.cards.keys().copied().collect_vec() {
+    for card in db.cards.keys().cloned().collect_vec() {
         card.apply_modifiers_layered(db);
     }
 }
 
 pub(crate) fn complete_add_from_stack_or_hand(
     db: &mut Database,
-    source_card_id: CardId,
+    source_card_id: &CardId,
     results: &mut PendingResults,
 ) {
     for (listener, trigger) in db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD) {
@@ -785,32 +790,32 @@ pub(crate) fn complete_add_from_stack_or_hand(
         ) && source_card_id.passes_restrictions(
             db,
             LogId::current(db),
-            listener,
+            &listener,
             &trigger.trigger.restrictions,
         ) {
             results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
         }
     }
 
-    for card in db.cards.keys().copied().collect_vec() {
+    for card in db.cards.keys().cloned().collect_vec() {
         card.apply_modifiers_layered(db);
     }
 }
 
 pub(crate) fn move_card_to_battlefield(
     db: &mut Database,
-    source_card_id: CardId,
+    source_card_id: &CardId,
     enters_tapped: bool,
     results: &mut PendingResults,
-    target: Option<CardId>,
+    target: Option<&CardId>,
 ) {
     if let Some(target) = target {
-        target.apply_aura(db, source_card_id);
+        target.apply_aura(db, source_card_id.clone());
     }
 
     for ability in db
         .cards
-        .get(&source_card_id)
+        .get(source_card_id)
         .unwrap()
         .modified_static_abilities
         .iter()
@@ -824,7 +829,7 @@ pub(crate) fn move_card_to_battlefield(
         results.extend(Stack::move_ability_to_stack(
             db,
             Ability::EtbOrTriggered(db[source_card_id].modified_etb_abilities.clone()),
-            source_card_id,
+            source_card_id.clone(),
         ));
     }
 
@@ -832,7 +837,7 @@ pub(crate) fn move_card_to_battlefield(
         .iter()
         .any(|(ability, card)| match ability {
             static_ability::Ability::ForceEtbTapped(ForceEtbTapped { restrictions, .. }) => {
-                source_card_id.passes_restrictions(db, LogId::current(db), *card, restrictions)
+                source_card_id.passes_restrictions(db, LogId::current(db), card, restrictions)
             }
             _ => false,
         });

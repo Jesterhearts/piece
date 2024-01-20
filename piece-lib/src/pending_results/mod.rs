@@ -21,7 +21,7 @@ use crate::{
     abilities::Ability,
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{CardId, CastFrom, Database, GainManaAbilityId},
+    in_play::{CastFrom, Database, GainManaAbilityId},
     pending_results::{
         choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
         choose_targets::ChooseTargets, choosing_cast::ChoosingCast,
@@ -38,6 +38,7 @@ use crate::{
             gain_mana::{Choice, Gain},
             Destination,
         },
+        ids::CardId,
         targets::Location,
     },
     stack::{ActiveTarget, StackEntry},
@@ -90,10 +91,10 @@ pub(crate) enum CopySource {
 }
 
 impl Source {
-    fn card(&self) -> CardId {
+    fn card(&self) -> &CardId {
         match self {
             Source::Card(source) | Source::Ability { source, .. } | Source::Effect(_, source) => {
-                *source
+                source
             }
         }
     }
@@ -155,14 +156,14 @@ pub(crate) enum TargetSource {
 }
 
 impl TargetSource {
-    fn wants_targets(&self, db: &mut Database, source: CardId) -> usize {
+    fn wants_targets(&self, db: &mut Database, source: &CardId) -> usize {
         match self {
             TargetSource::Effect(effect) => effect.wants_targets(db, source),
             TargetSource::Aura(_) => 1,
         }
     }
 
-    fn needs_targets(&self, db: &mut Database, source: CardId) -> usize {
+    fn needs_targets(&self, db: &mut Database, source: &CardId) -> usize {
         match self {
             TargetSource::Effect(effect) => effect.needs_targets(db, source),
             TargetSource::Aura(_) => 1,
@@ -424,7 +425,7 @@ impl PendingResults {
                 candidates: db.battlefield[attacker]
                     .iter()
                     .filter(|card| card.can_attack(db))
-                    .copied()
+                    .cloned()
                     .collect_vec(),
                 choices: IndexSet::default(),
                 targets: vec![],
@@ -500,7 +501,7 @@ impl PendingResults {
             if let Some(source) = self.add_to_stack.pop_front() {
                 match source {
                     Source::Card(card) => {
-                        debug!("Casting card {}", db[card].modified_name);
+                        debug!("Casting card {}", db[&card].modified_name);
                         self.settled_effects.push(ActionResult::CastCard {
                             card,
                             targets: self.chosen_targets.clone(),
@@ -526,7 +527,7 @@ impl PendingResults {
                 self.chosen_targets.clear();
             } else if !self.gain_mana.is_empty() {
                 for (source, gain) in self.gain_mana.drain(..) {
-                    let target = db[source].controller;
+                    let target = db[&source].controller;
                     let source = db[gain].ability.mana_source;
                     let restriction = db[gain].ability.mana_restriction;
                     match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
@@ -656,7 +657,7 @@ impl PendingResults {
     pub fn priority(&self, db: &Database) -> Owner {
         if let Some(pend) = self.pending.front() {
             match pend {
-                Pending::PayCosts(pay) => db[pay.source].controller.into(),
+                Pending::PayCosts(pay) => db[&pay.source].controller.into(),
                 Pending::DeclaringAttackers(declaring) => {
                     let mut all_players = db
                         .all_players

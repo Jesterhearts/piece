@@ -3,9 +3,9 @@ use std::collections::{HashMap, VecDeque};
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    in_play::{CardId, Database, ExileReason},
+    in_play::{Database, ExileReason},
     player::Owner,
-    protogen::effects::Duration,
+    protogen::{effects::Duration, ids::CardId},
     Cards,
 };
 
@@ -74,7 +74,7 @@ impl Library {
     pub(crate) fn exile_top_card(
         db: &mut Database,
         player: Owner,
-        source: CardId,
+        source: &CardId,
         reason: Option<ExileReason>,
     ) -> Option<CardId> {
         if let Some(card) = db.all_players[player].library.cards.pop_back() {
@@ -86,9 +86,9 @@ impl Library {
     }
 
     pub(crate) fn reveal_top(db: &mut Database, player: Owner) -> Option<CardId> {
-        if let Some(card) = db.all_players[player].library.cards.back().copied() {
+        if let Some(card) = db.all_players[player].library.cards.back().cloned() {
             {
-                db[card].revealed = true;
+                db[&card].revealed = true;
             };
             Some(card)
         } else {
@@ -109,7 +109,7 @@ impl Library {
         self.cards.is_empty()
     }
 
-    pub(crate) fn remove(&mut self, card: CardId) {
-        self.cards.retain(|deck| *deck != card);
+    pub(crate) fn remove(&mut self, card: &CardId) {
+        self.cards.retain(|deck| deck != card);
     }
 }

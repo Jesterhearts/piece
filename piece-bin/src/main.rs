@@ -13,11 +13,11 @@ use itertools::Itertools;
 use piece_lib::{
     battlefield::Battlefields,
     card::replace_expanded_symbols,
-    in_play::{CardId, Database},
+    in_play::Database,
     library::DeckDefinition,
     pending_results::{Options, PendingResults, ResolutionResult},
     player::{AllPlayers, Owner, Player},
-    protogen::{keywords::Keyword, targets::Location},
+    protogen::{ids::CardId, keywords::Keyword, targets::Location},
     stack::{ActiveTarget, Stack},
     turns::Turn,
     Cards,
@@ -511,7 +511,7 @@ impl eframe::App for App {
                             .battlefields
                             .values()
                             .flat_map(|b| b.iter())
-                            .copied()
+                            .cloned()
                             .collect_vec()
                         {
                             card.untap(&mut self.database);
@@ -615,7 +615,7 @@ impl eframe::App for App {
                     items: self.database.stack.entries(),
                     db: &self.database,
                     left_clicked: &mut self.left_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -648,7 +648,7 @@ impl eframe::App for App {
 
             let cards = self.database.battlefield[self.player2]
                 .iter()
-                .copied()
+                .cloned()
                 .enumerate()
                 .collect_vec();
             let pos = tree.layout(player2_battlefield).unwrap();
@@ -663,17 +663,18 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut None,
                     right_clicked: &mut self.right_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.battlefield[self.player2][clicked]);
+                self.inspecting_card =
+                    Some(self.database.battlefield[self.player2][clicked].clone());
             }
 
             let cards = self.database.battlefield[self.player1]
                 .iter()
-                .copied()
+                .cloned()
                 .enumerate()
                 .collect_vec();
             let pos = tree.layout(player1_battlefield).unwrap();
@@ -688,14 +689,15 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut self.left_clicked,
                     right_clicked: &mut self.right_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
             if let Some(clicked) = self.left_clicked.take() {
-                self.selected_card = Some(self.database.battlefield[self.player1][clicked]);
+                self.selected_card = Some(self.database.battlefield[self.player1][clicked].clone());
             } else if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.battlefield[self.player1][clicked]);
+                self.inspecting_card =
+                    Some(self.database.battlefield[self.player1][clicked].clone());
             }
 
             let pos = tree.layout(player1_options).unwrap();
@@ -707,14 +709,14 @@ impl eframe::App for App {
                 ui::Actions {
                     db: &mut self.database,
                     player: self.player1,
-                    card: self.selected_card,
+                    card: self.selected_card.clone(),
                     pending: &self.to_resolve,
                     left_clicked: &mut self.left_clicked,
                 },
             );
 
             if let Some(clicked) = self.left_clicked.take() {
-                let card = self.selected_card.unwrap();
+                let card = self.selected_card.as_ref().unwrap();
                 let mut selected_ability = None;
                 if card.is_in_location(&self.database, Location::IN_HAND)
                     && clicked == 0
@@ -775,7 +777,7 @@ impl eframe::App for App {
 
             let cards = self.database.hand[self.player1]
                 .iter()
-                .copied()
+                .cloned()
                 .collect_vec();
             let pos = tree.layout(player1_hand).unwrap();
             ui.put(
@@ -794,9 +796,9 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.left_clicked.take() {
-                self.selected_card = Some(self.database.hand[self.player1][clicked]);
+                self.selected_card = Some(self.database.hand[self.player1][clicked].clone());
             } else if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.hand[self.player1][clicked]);
+                self.inspecting_card = Some(self.database.hand[self.player1][clicked].clone());
             }
 
             col_offset += tree.layout(center_column).unwrap().size.width;
@@ -820,7 +822,7 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.exile[self.player2][clicked]);
+                self.inspecting_card = Some(self.database.exile[self.player2][clicked].clone());
             }
 
             let cards = self.database.graveyard[self.player2]
@@ -842,7 +844,7 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.graveyard[self.player2][clicked]);
+                self.inspecting_card = Some(self.database.graveyard[self.player2][clicked].clone());
             }
 
             let cards = self.database.graveyard[self.player1]
@@ -864,7 +866,7 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.graveyard[self.player1][clicked]);
+                self.inspecting_card = Some(self.database.graveyard[self.player1][clicked].clone());
             }
 
             let cards = self.database.exile[self.player1]
@@ -886,7 +888,7 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.exile[self.player1][clicked]);
+                self.inspecting_card = Some(self.database.exile[self.player1][clicked].clone());
             }
         });
 
@@ -1008,7 +1010,7 @@ impl eframe::App for App {
             }
         }
 
-        if let Some(inspecting) = self.inspecting_card {
+        if let Some(inspecting) = self.inspecting_card.as_ref() {
             let mut open = true;
             egui::Window::new("")
                 .frame(window_frame)
@@ -1016,7 +1018,7 @@ impl eframe::App for App {
                 .show(ctx, |ui| {
                     ui.add(ui::Card {
                         db: &mut self.database,
-                        card: inspecting,
+                        card: inspecting.clone(),
                         highlight: false,
                     });
                 });

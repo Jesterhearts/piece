@@ -16,7 +16,7 @@ impl EffectBehaviors for TutorLibrary {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -24,7 +24,7 @@ impl EffectBehaviors for TutorLibrary {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -32,7 +32,7 @@ impl EffectBehaviors for TutorLibrary {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<ActiveTarget>,
@@ -49,14 +49,14 @@ impl EffectBehaviors for TutorLibrary {
                     &source.faceup_face(db).restrictions,
                 ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
             })
-            .map(|card| ActiveTarget::Library { id: *card })
+            .map(|card| ActiveTarget::Library { id: card.clone() })
             .collect_vec()
     }
 
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -72,7 +72,7 @@ impl EffectBehaviors for TutorLibrary {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -80,7 +80,7 @@ impl EffectBehaviors for TutorLibrary {
         &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -90,7 +90,7 @@ impl EffectBehaviors for TutorLibrary {
                     unreachable!()
                 };
 
-                results.push_settled(ActionResult::RevealCard(*id))
+                results.push_settled(ActionResult::RevealCard(id.clone()))
             }
         }
 
