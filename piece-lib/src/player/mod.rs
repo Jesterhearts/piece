@@ -579,7 +579,7 @@ impl Player {
             .sum::<usize>()
     }
 
-    pub(crate) fn can_play_land(db: &mut Database, player: Owner) -> bool {
+    pub fn can_play_land(db: &mut Database, player: Owner) -> bool {
         db.all_players[player].lands_played_this_turn < Self::lands_per_turn(db, player)
     }
 }

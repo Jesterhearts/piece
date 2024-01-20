@@ -2052,7 +2052,7 @@ impl CardId {
         db[self].cloning = Some(clone_card(db, cloning));
     }
 
-    pub(crate) fn is_land(self, db: &Database) -> bool {
+    pub fn is_land(self, db: &Database) -> bool {
         self.types_intersect(db, &TypeSet::from([Type::LAND]))
     }
 

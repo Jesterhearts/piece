@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
+mod ai;
 mod load;
 mod ui;
 
@@ -10,7 +11,6 @@ use convert_case::{Case, Casing};
 use egui::{Color32, Frame, Label, Layout, Sense, Stroke, TextEdit};
 use itertools::Itertools;
 use piece_lib::{
-    ai::AI,
     battlefield::Battlefields,
     card::replace_expanded_symbols,
     in_play::{CardId, Database},
@@ -33,9 +33,7 @@ use tantivy::{
     Index, Searcher,
 };
 
-use ui::ManaDisplay;
-
-use crate::load::load_cards;
+use crate::{ai::AI, load::load_cards, ui::ManaDisplay};
 
 static FONT_DATA: &[u8] = include_bytes!("../../fonts/mana.ttf");
 
@@ -459,6 +457,10 @@ impl eframe::App for App {
             );
         }
 
+        let enabled = self.to_resolve.is_none()
+            && self.adding_card.is_none()
+            && self.database.turn.active_player() == self.player1;
+
         let frame = Frame {
             fill: Color32::from_hex("#141414").unwrap(),
             ..Default::default()
@@ -471,7 +473,7 @@ impl eframe::App for App {
         egui::TopBottomPanel::top("Menu")
             .frame(frame)
             .show(ctx, |ui| {
-                ui.set_enabled(self.to_resolve.is_none() && self.adding_card.is_none());
+                ui.set_enabled(enabled);
                 ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
                     if ui.button("Pass").clicked()
                         || (ui.is_enabled()
@@ -575,7 +577,7 @@ impl eframe::App for App {
             });
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-            ui.set_enabled(self.to_resolve.is_none() && self.adding_card.is_none());
+            ui.set_enabled(enabled);
 
             let size = ui.max_rect();
             tree.compute_layout(
