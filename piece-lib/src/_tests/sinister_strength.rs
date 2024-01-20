@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, protogen::color::Color,
+    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
+    player::AllPlayers, protogen::color::Color, protogen::ids::CardId,
 };
 
 #[test]
@@ -28,32 +28,32 @@ fn aura_works() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     let aura = CardId::upload(&mut db, &cards, player, "Sinister Strength");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, aura, Some(creature));
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &aura, Some(&creature));
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(7));
     assert_eq!(creature.toughness(&db), Some(3));
-    assert_eq!(db[creature].modified_colors, HashSet::from([Color::BLACK]));
+    assert_eq!(db[&creature].modified_colors, HashSet::from([Color::BLACK]));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
+    let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(card2.power(&db), Some(4));
     assert_eq!(card2.toughness(&db), Some(2));
 
-    let results = Battlefields::permanent_to_graveyard(&mut db, aura);
+    let results = Battlefields::permanent_to_graveyard(&mut db, &aura);
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
-    assert_eq!(db[creature].modified_colors, HashSet::from([Color::GREEN]));
+    assert_eq!(db[&creature].modified_colors, HashSet::from([Color::GREEN]));
 
     assert!(Battlefields::no_modifiers(&db));
 

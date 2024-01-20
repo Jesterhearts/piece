@@ -4,9 +4,10 @@ use convert_case::{Case, Casing};
 use strum::IntoEnumIterator;
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::Database,
     protogen::{
         cost::ManaCost,
+        ids::CardId,
         mana::ManaSource,
         mana::{Mana, ManaRestriction},
         types::Type,
@@ -14,7 +15,7 @@ use crate::{
     types::TypeSet,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SpendReason {
     Casting(CardId),
     Activating(CardId),
@@ -22,10 +23,10 @@ pub(crate) enum SpendReason {
 }
 
 impl SpendReason {
-    fn card(&self) -> Option<CardId> {
+    fn card(&self) -> Option<&CardId> {
         match self {
-            SpendReason::Casting(card) => Some(*card),
-            SpendReason::Activating(source) => Some(*source),
+            SpendReason::Casting(card) => Some(card),
+            SpendReason::Activating(source) => Some(source),
             SpendReason::Other => None,
         }
     }
@@ -87,7 +88,7 @@ impl ManaPool {
         db: &Database,
         mana: Mana,
         source: ManaSource,
-        reason: SpendReason,
+        reason: &SpendReason,
     ) -> (bool, ManaSource) {
         let mana = self.sourced.entry(mana).or_default();
         let mut ultimate_source = source;
@@ -201,7 +202,7 @@ impl ManaPool {
         db: &Database,
         cost: ManaCost,
         source: ManaSource,
-        reason: SpendReason,
+        reason: &SpendReason,
     ) -> bool {
         let mut mana_pool = self.clone();
         match cost {
@@ -270,7 +271,7 @@ impl ManaPool {
         self.all_mana().filter(|(count, _, _, _)| *count > 0)
     }
 
-    pub(crate) fn max(&self, db: &Database, reason: SpendReason) -> Option<Mana> {
+    pub(crate) fn max(&self, db: &Database, reason: &SpendReason) -> Option<Mana> {
         self.available_mana()
             .filter(|(_, _, _, restriction)| {
                 if *restriction == ManaRestriction::NONE {
@@ -302,7 +303,7 @@ impl ManaPool {
 
 fn has_available_mana(
     sourced: &BTreeMap<ManaRestriction, usize>,
-    reason: SpendReason,
+    reason: &SpendReason,
     db: &Database,
 ) -> bool {
     sourced

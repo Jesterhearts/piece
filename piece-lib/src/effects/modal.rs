@@ -12,7 +12,7 @@ impl EffectBehaviors for Modes {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -20,7 +20,7 @@ impl EffectBehaviors for Modes {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -28,7 +28,7 @@ impl EffectBehaviors for Modes {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -41,7 +41,7 @@ impl EffectBehaviors for Modes {
                     .push_pending_behavior(db, source, controller, results);
             }
         } else {
-            results.push_choose_mode(Source::Effect(Effect::from(self.clone()), source));
+            results.push_choose_mode(Source::Effect(Effect::from(self.clone()), source.clone()));
         }
     }
 
@@ -49,7 +49,7 @@ impl EffectBehaviors for Modes {
         &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

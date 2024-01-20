@@ -4,11 +4,11 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefields,
-    in_play::{ActivatedAbilityId, CardId, Database},
+    in_play::{ActivatedAbilityId, Database},
     log::{Log, LogId},
     pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
-    protogen::{triggers::TriggerSource, types::Type},
+    protogen::{ids::CardId, triggers::TriggerSource, types::Type},
     stack::Stack,
     types::TypeSet,
 };
@@ -97,7 +97,7 @@ impl Turn {
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::UPKEEP) {
-                    if !Owner::from(db[listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller).passes_restrictions(
                         db,
                         LogId::current(db),
                         player.into(),
@@ -134,7 +134,7 @@ impl Turn {
                 for (listener, trigger) in
                     db.active_triggers_of_source(TriggerSource::PRE_COMBAT_MAIN_PHASE)
                 {
-                    if !Owner::from(db[listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller).passes_restrictions(
                         db,
                         LogId::current(db),
                         player.into(),
@@ -158,7 +158,7 @@ impl Turn {
                 for (listener, trigger) in
                     db.active_triggers_of_source(TriggerSource::START_OF_COMBAT)
                 {
-                    if !Owner::from(db[listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller).passes_restrictions(
                         db,
                         LogId::current(db),
                         player.into(),
@@ -199,10 +199,10 @@ impl Turn {
                 for (card, target) in db.battlefield[db.turn.active_player()]
                     .iter()
                     .filter_map(|card| {
-                        db[*card]
+                        db[card]
                             .attacking
                             .filter(|_| card.first_strike(db) || card.double_strike(db))
-                            .map(|attacking| (*card, attacking))
+                            .map(|attacking| (card.clone(), attacking))
                     })
                     .collect_vec()
                 {
@@ -216,7 +216,7 @@ impl Turn {
                                 if card.passes_restrictions(
                                     db,
                                     LogId::current(db),
-                                    listener,
+                                    &listener,
                                     &trigger.trigger.restrictions,
                                 ) {
                                     results.extend(Stack::move_trigger_to_stack(
@@ -242,10 +242,10 @@ impl Turn {
                 for (card, target) in db.battlefield[db.turn.active_player()]
                     .iter()
                     .filter_map(|card| {
-                        db[*card]
+                        db[card]
                             .attacking
                             .filter(|_| !card.first_strike(db))
-                            .map(|attacking| (*card, attacking))
+                            .map(|attacking| (card.clone(), attacking))
                     })
                     .collect_vec()
                 {
@@ -259,7 +259,7 @@ impl Turn {
                                 if card.passes_restrictions(
                                     db,
                                     LogId::current(db),
-                                    listener,
+                                    &listener,
                                     &trigger.trigger.restrictions,
                                 ) {
                                     results.extend(Stack::move_trigger_to_stack(
@@ -295,7 +295,7 @@ impl Turn {
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::END_STEP) {
-                    if !Owner::from(db[listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller).passes_restrictions(
                         db,
                         LogId::current(db),
                         player.into(),
@@ -303,7 +303,7 @@ impl Turn {
                     ) || !listener.passes_restrictions(
                         db,
                         LogId::current(db),
-                        listener,
+                        &listener,
                         &trigger.trigger.restrictions,
                     ) {
                         continue;
@@ -327,7 +327,7 @@ impl Turn {
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
                     pending
-                        .push_choose_discard(in_hand.iter().copied().collect_vec(), discard as u32);
+                        .push_choose_discard(in_hand.iter().cloned().collect_vec(), discard as u32);
                 }
                 pending
             }
@@ -365,7 +365,7 @@ impl Turn {
         }
     }
 
-    pub fn can_cast(db: &Database, card: CardId) -> bool {
+    pub fn can_cast(db: &Database, card: &CardId) -> bool {
         let instant_or_flash =
             card.types_intersect(db, &TypeSet::from([Type::INSTANT])) || card.has_flash(db);
         // TODO teferi like effects.

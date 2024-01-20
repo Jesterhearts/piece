@@ -42,19 +42,23 @@ impl ModifierId {
         for ability in modifier.modifier.add_static_abilities.iter() {
             add_static_abilities.insert(StaticAbilityId::upload(
                 db,
-                source,
+                source.clone(),
                 ability.ability.as_ref().unwrap().clone(),
             ));
         }
 
         let mut add_activated_abilities = HashSet::default();
         if let Some(add) = modifier.modifier.add_ability.as_ref() {
-            add_activated_abilities.insert(ActivatedAbilityId::upload(db, source, add.clone()));
+            add_activated_abilities.insert(ActivatedAbilityId::upload(
+                db,
+                source.clone(),
+                add.clone(),
+            ));
         }
 
         let mut add_mana_abilities = HashSet::default();
         if let Some(add) = modifier.modifier.mana_ability.as_ref() {
-            add_mana_abilities.insert(GainManaAbilityId::upload(db, source, add.clone()));
+            add_mana_abilities.insert(GainManaAbilityId::upload(db, source.clone(), add.clone()));
         }
 
         db.modifiers.insert(

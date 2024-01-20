@@ -11,7 +11,7 @@ impl EffectBehaviors for CounterSpellOrAbility {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -19,7 +19,7 @@ impl EffectBehaviors for CounterSpellOrAbility {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -27,7 +27,7 @@ impl EffectBehaviors for CounterSpellOrAbility {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         _controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -45,7 +45,9 @@ impl EffectBehaviors for CounterSpellOrAbility {
             }
         }) {
             if card.can_be_countered(db, log_session, source, &self.restrictions) {
-                targets.push(ActiveTarget::Stack { id: *stack_id });
+                targets.push(ActiveTarget::Stack {
+                    id: stack_id.clone(),
+                });
             }
         }
 
@@ -55,7 +57,7 @@ impl EffectBehaviors for CounterSpellOrAbility {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
@@ -71,14 +73,14 @@ impl EffectBehaviors for CounterSpellOrAbility {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
     fn push_behavior_with_targets(
         &self,
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

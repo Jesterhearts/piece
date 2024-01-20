@@ -17,7 +17,7 @@ impl EffectBehaviors for ModifyTarget {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -25,7 +25,7 @@ impl EffectBehaviors for ModifyTarget {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         1
     }
@@ -33,7 +33,7 @@ impl EffectBehaviors for ModifyTarget {
     fn valid_targets(
         &self,
         db: &Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         controller: Controller,
         already_chosen: &std::collections::HashSet<ActiveTarget>,
@@ -62,7 +62,7 @@ impl EffectBehaviors for ModifyTarget {
     fn push_pending_behavior(
         &self,
         db: &mut Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: Controller,
         results: &mut PendingResults,
     ) {
@@ -77,7 +77,7 @@ impl EffectBehaviors for ModifyTarget {
             TargetSource::Effect(Effect::from(self.clone())),
             valid_targets,
             crate::log::LogId::current(db),
-            source,
+            source.clone(),
         ));
     }
 
@@ -85,7 +85,7 @@ impl EffectBehaviors for ModifyTarget {
         &self,
         db: &mut Database,
         targets: Vec<ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: Controller,
         results: &mut PendingResults,
     ) {
@@ -118,7 +118,13 @@ impl EffectBehaviors for ModifyTarget {
         let modifier = match self.duration.enum_value().unwrap() {
             Duration::UNTIL_TARGET_LEAVES_BATTLEFIELD => ModifierId::upload_temporary_modifier(
                 db,
-                final_targets.iter().exactly_one().unwrap().id(db).unwrap(),
+                final_targets
+                    .iter()
+                    .exactly_one()
+                    .unwrap()
+                    .id(db)
+                    .unwrap()
+                    .clone(),
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),
                     duration: self.duration,
@@ -127,7 +133,7 @@ impl EffectBehaviors for ModifyTarget {
             ),
             _ => ModifierId::upload_temporary_modifier(
                 db,
-                source,
+                source.clone(),
                 BattlefieldModifier {
                     modifier: self.modifier.clone(),
                     duration: self.duration,

@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
 use crate::{
-    in_play::{CardId, Database},
+    in_play::Database,
     library::Library,
     pending_results::{Options, PendingResult, PendingResults},
+    protogen::ids::CardId,
 };
 
 #[derive(Debug)]
@@ -49,7 +50,7 @@ impl PendingResult for LibraryOrGraveyard {
     ) -> bool {
         if let Some(choice) = choice {
             match choice {
-                0 => Library::place_on_top(db, db[self.card].controller.into(), self.card),
+                0 => Library::place_on_top(db, db[&self.card].controller.into(), self.card.clone()),
                 1 => self.card.move_to_graveyard(db),
                 _ => unreachable!(),
             }

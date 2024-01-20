@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
+    in_play::{ActivatedAbilityId, Database, GainManaAbilityId},
     log::LogId,
     pending_results::PendingResults,
     player::{mana_pool::SpendReason, Owner},
@@ -16,6 +16,7 @@ use crate::{
         },
         counters::Counter,
         effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
+        ids::CardId,
     },
     turns::Phase,
 };
@@ -30,7 +31,7 @@ impl ActivatedAbility {
     pub(crate) fn can_be_activated(
         &self,
         db: &Database,
-        source: CardId,
+        source: &CardId,
         id: &Ability,
         activator: crate::player::Owner,
         pending: &Option<PendingResults>,
@@ -46,13 +47,13 @@ impl ActivatedAbility {
             return false;
         }
 
-        let in_battlefield = db.battlefield[db[source].controller].contains(&source);
+        let in_battlefield = db.battlefield[db[source].controller].contains(source);
 
         if pending.is_some() && !pending.as_ref().unwrap().is_empty() {
             return false;
         }
 
-        let in_hand = db.hand[activator].contains(&source);
+        let in_hand = db.hand[activator].contains(source);
         if in_hand && !self.can_be_played_from_hand() {
             return false;
         }
@@ -106,10 +107,10 @@ impl GainManaAbility {
         &self,
         db: &Database,
         id: &Ability,
-        source: CardId,
+        source: &CardId,
         activator: Owner,
     ) -> bool {
-        if !db.battlefield[db[source].controller].contains(&source) {
+        if !db.battlefield[db[source].controller].contains(source) {
             return false;
         }
 
@@ -158,7 +159,7 @@ impl Ability {
     pub fn can_be_activated(
         &self,
         db: &Database,
-        source: CardId,
+        source: &CardId,
         activator: crate::player::Owner,
         pending: &Option<PendingResults>,
     ) -> bool {
@@ -193,7 +194,7 @@ pub(crate) fn can_pay_costs(
     db: &Database,
     id: &Ability,
     cost: &AbilityCost,
-    source: CardId,
+    source: &CardId,
 ) -> bool {
     if cost.tap && (db[source].tapped || source.summoning_sick(db)) {
         return false;
@@ -253,7 +254,7 @@ pub(crate) fn can_pay_costs(
                 }
             }
             additional_cost::Cost::DiscardThis(_) => {
-                if !db.hand[controller].contains(&source) {
+                if !db.hand[controller].contains(source) {
                     return false;
                 }
             }
@@ -303,7 +304,7 @@ pub(crate) fn can_pay_costs(
         db,
         &cost.mana_cost,
         &[],
-        SpendReason::Activating(source),
+        &SpendReason::Activating(source.clone()),
     ) {
         return false;
     }

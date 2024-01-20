@@ -1,8 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
+    battlefield::Battlefields, in_play::Database, load_cards, pending_results::ResolutionResult,
+    player::AllPlayers, protogen::ids::CardId, stack::Stack, turns::Phase,
 };
 
 #[test]
@@ -27,12 +27,12 @@ fn equipment_works() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let equipment = CardId::upload(&mut db, &cards, player, "+2 Mace");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, equipment, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, &equipment, None);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, equipment, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, &equipment, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -48,12 +48,12 @@ fn equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(4));
 
     let creature2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, creature2, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, &creature2, None);
 
     assert_eq!(creature2.power(&db), Some(4));
     assert_eq!(creature2.toughness(&db), Some(2));
 
-    let results = Battlefields::permanent_to_graveyard(&mut db, equipment);
+    let results = Battlefields::permanent_to_graveyard(&mut db, &equipment);
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
@@ -85,12 +85,12 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let equipment = CardId::upload(&mut db, &cards, player, "+2 Mace");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, equipment, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, &equipment, None);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, equipment, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, &equipment, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -106,12 +106,12 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(4));
 
     let creature2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, creature2, None);
+    let _ = Battlefields::add_from_stack_or_hand(&mut db, &creature2, None);
 
     assert_eq!(creature2.power(&db), Some(4));
     assert_eq!(creature2.toughness(&db), Some(2));
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, equipment, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, player, &equipment, 0);
     // Pay the generic
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -130,7 +130,7 @@ fn reequip_equipment_works() -> anyhow::Result<()> {
     assert_eq!(creature2.power(&db), Some(6));
     assert_eq!(creature2.toughness(&db), Some(4));
 
-    let results = Battlefields::permanent_to_graveyard(&mut db, equipment);
+    let results = Battlefields::permanent_to_graveyard(&mut db, &equipment);
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));

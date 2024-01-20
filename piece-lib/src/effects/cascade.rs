@@ -4,7 +4,7 @@ impl EffectBehaviors for Cascade {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -12,7 +12,7 @@ impl EffectBehaviors for Cascade {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -20,12 +20,12 @@ impl EffectBehaviors for Cascade {
     fn push_pending_behavior(
         &self,
         db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
-            source,
+            source: source.clone(),
             cascading: source.faceup_face(db).cost.cmc(),
             player: controller,
         });
@@ -34,12 +34,12 @@ impl EffectBehaviors for Cascade {
     fn push_behavior_from_top_of_library(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _target: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
+        _target: crate::protogen::ids::CardId,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
-            source,
+            source: source.clone(),
             cascading: source.faceup_face(db).cost.cmc(),
             player: db[source].controller,
         })
@@ -49,12 +49,12 @@ impl EffectBehaviors for Cascade {
         &self,
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
-            source,
+            source: source.clone(),
             cascading: source.faceup_face(db).cost.cmc(),
             player: controller,
         })

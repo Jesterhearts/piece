@@ -1,8 +1,8 @@
 use uuid::Uuid;
 
 use crate::{
-    in_play::{CardId, Database},
-    protogen::effects::GainManaAbility,
+    in_play::Database,
+    protogen::{effects::GainManaAbility, ids::CardId},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]

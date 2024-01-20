@@ -9,7 +9,7 @@ impl EffectBehaviors for CantAttackThisTurn {
     fn needs_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -17,7 +17,7 @@ impl EffectBehaviors for CantAttackThisTurn {
     fn wants_targets(
         &self,
         _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
     ) -> usize {
         0
     }
@@ -25,7 +25,7 @@ impl EffectBehaviors for CantAttackThisTurn {
     fn valid_targets(
         &self,
         db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
+        source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
         controller: crate::player::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
@@ -48,7 +48,7 @@ impl EffectBehaviors for CantAttackThisTurn {
     fn push_pending_behavior(
         &self,
         _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
@@ -59,7 +59,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         &self,
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
+        _source: &crate::protogen::ids::CardId,
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {

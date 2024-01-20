@@ -3,13 +3,14 @@ use itertools::Itertools;
 
 use crate::{
     action_result::ActionResult,
-    in_play::{CardId, Database},
+    in_play::Database,
     pending_results::{Options, PendingResult, PendingResults},
     protogen::{
         effects::{
             destination::{self, Battlefield},
             examine_top_cards::Dest,
         },
+        ids::CardId,
         targets::Location,
     },
 };
