@@ -12,6 +12,7 @@ pub struct CardDefs {
     pub relative_path: &'static str,
     pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
 }
+
 pub fn load_protos() -> anyhow::Result<Vec<piece_lib::protogen::card::Card>> {
     let mut results = vec![];
     for card_file in ASSETS.iter() {

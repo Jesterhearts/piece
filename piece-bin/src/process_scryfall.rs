@@ -17,14 +17,6 @@ fn main() -> anyhow::Result<()> {
     let value: Value = serde_json::from_slice(&card_file)?;
     let mut unique_cards: HashMap<String, Card> = HashMap::default();
     for card in value.as_array().unwrap().iter() {
-        if card["edhrec_rank"]
-            .as_number()
-            .and_then(|n| n.as_u64())
-            .is_none()
-            || card["edhrec_rank"].as_number().and_then(|n| n.as_u64()) > Some(1000u64)
-        {
-            continue;
-        }
         if card["legalities"]["commander"] != Value::String("legal".to_string()) {
             continue;
         }
@@ -113,6 +105,7 @@ fn main() -> anyhow::Result<()> {
             title
                 .from_case(Case::Title)
                 .to_case(Case::Snake)
+                .trim_start_matches("the_")
                 .chars()
                 .take(1)
                 .join(""),
@@ -140,7 +133,7 @@ fn parse_typeline(
         .filter(|s| !s.is_empty())
         .map(|s| {
             s.split_ascii_whitespace()
-                .map(|s| s.split('-').join("").split('\'').join(""))
+                .map(|s| s.split(&['-', '\'']).join(""))
                 .collect_vec()
         })
         .collect_vec();

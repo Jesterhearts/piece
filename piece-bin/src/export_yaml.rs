@@ -13,6 +13,7 @@ fn main() -> anyhow::Result<()> {
                 .unwrap()
                 .to_str()
                 .unwrap()
+                .trim_start_matches("the_")
                 .chars()
                 .next()
                 .unwrap()

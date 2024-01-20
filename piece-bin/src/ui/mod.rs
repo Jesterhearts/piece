@@ -88,7 +88,7 @@ impl Widget for Card<'_> {
             .iter()
             .map(|mode| {
                 format!(
-                    "•\t{}",
+                    "• {}",
                     mode.effects.iter().map(|e| &e.oracle_text).join(" ")
                 )
             })
