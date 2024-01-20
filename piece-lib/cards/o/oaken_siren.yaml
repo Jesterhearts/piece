@@ -13,3 +13,5 @@ mana_abilities:
     oracle_text: >-
       {T}: Add {U}. Spend this mana only to cast an artifact spell or activate an
       ability of an artifact source.
+power: 1
+toughness: 2
