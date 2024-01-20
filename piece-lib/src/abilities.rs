@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{ActivatedAbilityId, Database, GainManaAbilityId},
     log::LogId,
     pending_results::PendingResults,
     player::{mana_pool::SpendReason, Owner},
@@ -16,7 +16,7 @@ use crate::{
         },
         counters::Counter,
         effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
-        ids::{ActivatedAbilityId, CardId, GainManaAbilityId},
+        ids::CardId,
     },
     turns::Phase,
 };
@@ -38,7 +38,7 @@ impl ActivatedAbility {
     ) -> bool {
         let banned = db[source].modified_static_abilities.iter().any(|ability| {
             matches!(
-                db[ability].ability,
+                db[*ability].ability,
                 static_ability::Ability::PreventAbilityActivation(_)
             )
         });
@@ -132,15 +132,15 @@ pub enum Ability {
 impl Ability {
     pub(crate) fn cost<'db>(&self, db: &'db Database) -> Option<&'db AbilityCost> {
         match self {
-            Ability::Activated(id) => Some(&db[id].ability.cost),
-            Ability::Mana(id) => Some(&db[id].ability.cost),
+            Ability::Activated(id) => Some(&db[*id].ability.cost),
+            Ability::Mana(id) => Some(&db[*id].ability.cost),
             Ability::EtbOrTriggered(_) => None,
         }
     }
 
     pub(crate) fn effects(&self, db: &Database) -> Vec<Effect> {
         match self {
-            Ability::Activated(id) => db[id].ability.effects.clone(),
+            Ability::Activated(id) => db[*id].ability.effects.clone(),
             Ability::Mana(_) => vec![],
             Ability::EtbOrTriggered(effects) => effects.clone(),
         }
@@ -148,8 +148,8 @@ impl Ability {
 
     pub fn text(&self, db: &Database) -> String {
         match self {
-            Ability::Activated(id) => db[id].ability.oracle_text.clone(),
-            Ability::Mana(id) => db[id].ability.oracle_text.clone(),
+            Ability::Activated(id) => db[*id].ability.oracle_text.clone(),
+            Ability::Mana(id) => db[*id].ability.oracle_text.clone(),
             Ability::EtbOrTriggered(effects) => {
                 effects.iter().map(|effect| &effect.oracle_text).join("\n")
             }
@@ -165,7 +165,7 @@ impl Ability {
     ) -> bool {
         match self {
             Ability::Activated(activated) => {
-                if !db[activated]
+                if !db[*activated]
                     .ability
                     .can_be_activated(db, source, self, activator, pending)
                 {
@@ -174,7 +174,7 @@ impl Ability {
 
                 let targets = source.targets_for_ability(db, self, &HashSet::default());
 
-                db[activated]
+                db[*activated]
                     .ability
                     .effects
                     .iter()
@@ -182,7 +182,9 @@ impl Ability {
                     .zip(targets)
                     .all(|(needs, has)| has.len() >= needs)
             }
-            Ability::Mana(id) => db[id].ability.can_be_activated(db, self, source, activator),
+            Ability::Mana(id) => db[*id]
+                .ability
+                .can_be_activated(db, self, source, activator),
             Ability::EtbOrTriggered(_) => false,
         }
     }

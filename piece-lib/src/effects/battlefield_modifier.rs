@@ -1,10 +1,10 @@
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{Database, ModifierId},
     pending_results::PendingResults,
     player::Controller,
-    protogen::{effects::BattlefieldModifier, ids::ModifierId},
+    protogen::effects::BattlefieldModifier,
     stack::ActiveTarget,
 };
 

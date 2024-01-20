@@ -5,14 +5,11 @@ use itertools::Itertools;
 use crate::{
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::Database,
+    in_play::{Database, ModifierId},
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
     player::Controller,
-    protogen::{
-        effects::{effect::Effect, BattlefieldModifier, Duration, ModifyTarget},
-        ids::ModifierId,
-    },
+    protogen::effects::{effect::Effect, BattlefieldModifier, Duration, ModifyTarget},
     stack::ActiveTarget,
 };
 

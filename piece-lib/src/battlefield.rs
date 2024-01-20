@@ -225,7 +225,7 @@ impl Battlefields {
                 if *controller == player
                     || db[card].modified_static_abilities.iter().any(|ability| {
                         matches!(
-                            db[ability].ability,
+                            db[*ability].ability,
                             static_ability::Ability::UntapEachUntapStep(_)
                         )
                     })
@@ -277,7 +277,7 @@ impl Battlefields {
                     None
                 }
             })
-            .cloned()
+            .copied()
             .collect_vec();
 
         for modifier in all_modifiers {
@@ -380,7 +380,7 @@ impl Battlefields {
 
             let exile_reason = match &ability {
                 Ability::Activated(activated) => {
-                    if db[activated].ability.craft {
+                    if db[*activated].ability.craft {
                         Some(ExileReason::Craft)
                     } else {
                         None
@@ -496,10 +496,10 @@ impl Battlefields {
         }
 
         if let Ability::Mana(gain) = ability {
-            if let Gain::Choice(_) = db[&gain].ability.gain_mana.gain.as_ref().unwrap() {
+            if let Gain::Choice(_) = db[gain].ability.gain_mana.gain.as_ref().unwrap() {
                 results.push_choose_mode(Source::Ability {
                     source: source.clone(),
-                    ability: Ability::Mana(gain.clone()),
+                    ability: Ability::Mana(gain),
                 });
             }
             results.add_gain_mana(source.clone(), gain);
@@ -540,7 +540,7 @@ impl Battlefields {
 
         for card in db.battlefield.battlefields.values().flat_map(|b| b.iter()) {
             for ability in db[card].modified_static_abilities.iter() {
-                result.push((&db[ability].ability, card));
+                result.push((&db[*ability].ability, card));
             }
         }
 
@@ -636,12 +636,11 @@ impl Battlefields {
                         Duration::UNTIL_TARGET_LEAVES_BATTLEFIELD
                     ) && modifier.modifying.contains(target))
                 {
-                    Some(id)
+                    Some(*id)
                 } else {
                     None
                 }
             })
-            .cloned()
             .collect_vec()
         {
             modifier.deactivate(db);
@@ -821,7 +820,7 @@ pub(crate) fn move_card_to_battlefield(
         .modified_static_abilities
         .iter()
     {
-        if let Some(modifier) = db[ability].owned_modifier.clone() {
+        if let Some(modifier) = db[*ability].owned_modifier {
             results.push_settled(ActionResult::AddModifier { modifier })
         }
     }
