@@ -1,13 +1,12 @@
-use derive_more::{From, Into};
 use uuid::Uuid;
 
 use crate::{
     in_play::Database,
-    protogen::{effects::ActivatedAbility, ids::CardId},
+    protogen::{
+        effects::ActivatedAbility,
+        ids::{ActivatedAbilityId, CardId},
+    },
 };
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, From, Into)]
-pub struct ActivatedAbilityId(Uuid);
 
 #[derive(Debug)]
 pub struct ActivatedAbilityInPlay {
@@ -16,15 +15,18 @@ pub struct ActivatedAbilityInPlay {
 }
 
 impl ActivatedAbilityId {
-    pub(crate) fn new() -> Self {
-        Self(Uuid::new_v4())
+    pub(crate) fn generate() -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            ..Default::default()
+        }
     }
 
     pub(crate) fn upload(db: &mut Database, source: CardId, ability: ActivatedAbility) -> Self {
-        let id = Self::new();
+        let id = Self::generate();
 
         db.activated_abilities
-            .insert(id, ActivatedAbilityInPlay { source, ability });
+            .insert(id.clone(), ActivatedAbilityInPlay { source, ability });
 
         id
     }

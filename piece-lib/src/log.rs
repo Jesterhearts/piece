@@ -4,11 +4,11 @@ use tracing::Level;
 
 use crate::{
     effects::EffectBehaviors,
-    in_play::{ActivatedAbilityId, Database},
+    in_play::Database,
     player::{Controller, Owner},
     protogen::{
         counters::Counter,
-        ids::CardId,
+        ids::{ActivatedAbilityId, CardId},
         targets::{restriction, Restriction},
     },
 };
@@ -248,17 +248,13 @@ impl Log {
                 .cloned()
                 .find(|card| card.faceup_face(db).enchant.is_some()),
             was_equipped: modified_by.iter().cloned().find(|card| {
-                db[card]
-                    .modified_activated_abilities
-                    .iter()
-                    .copied()
-                    .any(|ability| {
-                        db[ability]
-                            .ability
-                            .effects
-                            .iter()
-                            .any(|effect| effect.effect.as_ref().unwrap().is_equip())
-                    })
+                db[card].modified_activated_abilities.iter().any(|ability| {
+                    db[ability]
+                        .ability
+                        .effects
+                        .iter()
+                        .any(|effect| effect.effect.as_ref().unwrap().is_equip())
+                })
             }),
             had_counters: db[card].counters.clone(),
             turn: db.turn.turn_count,

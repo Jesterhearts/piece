@@ -7,10 +7,10 @@ mod static_ability_id;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
-pub use activated_ability_id::{ActivatedAbilityId, ActivatedAbilityInPlay};
+pub use activated_ability_id::ActivatedAbilityInPlay;
 pub(crate) use card_id::CardInPlay;
-pub use gain_mana_ability_id::{GainManaAbilityId, GainManaAbilityInPlay};
-pub(crate) use modifier_id::{ModifierId, ModifierInPlay};
+pub use gain_mana_ability_id::GainManaAbilityInPlay;
+pub(crate) use modifier_id::ModifierInPlay;
 pub(crate) use static_ability_id::{StaticAbilityId, StaticAbilityInPlay};
 
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
     protogen::{
         abilities::TriggeredAbility,
         effects::{replacement_effect::Replacing, ReplacementEffect},
-        ids::CardId,
+        ids::{ActivatedAbilityId, CardId, GainManaAbilityId, ModifierId},
         triggers::TriggerSource,
     },
     stack::Stack,
@@ -89,59 +89,59 @@ impl std::ops::IndexMut<&CardId> for Database {
     }
 }
 
-impl std::ops::Index<ModifierId> for Database {
+impl std::ops::Index<&ModifierId> for Database {
     type Output = ModifierInPlay;
 
-    fn index(&self, index: ModifierId) -> &Self::Output {
-        self.modifiers.get(&index).unwrap()
+    fn index(&self, index: &ModifierId) -> &Self::Output {
+        self.modifiers.get(index).unwrap()
     }
 }
 
-impl std::ops::IndexMut<ModifierId> for Database {
-    fn index_mut(&mut self, index: ModifierId) -> &mut Self::Output {
-        self.modifiers.get_mut(&index).unwrap()
+impl std::ops::IndexMut<&ModifierId> for Database {
+    fn index_mut(&mut self, index: &ModifierId) -> &mut Self::Output {
+        self.modifiers.get_mut(index).unwrap()
     }
 }
 
-impl std::ops::Index<StaticAbilityId> for Database {
+impl std::ops::Index<&StaticAbilityId> for Database {
     type Output = StaticAbilityInPlay;
 
-    fn index(&self, index: StaticAbilityId) -> &Self::Output {
-        self.static_abilities.get(&index).unwrap()
+    fn index(&self, index: &StaticAbilityId) -> &Self::Output {
+        self.static_abilities.get(index).unwrap()
     }
 }
 
-impl std::ops::IndexMut<StaticAbilityId> for Database {
-    fn index_mut(&mut self, index: StaticAbilityId) -> &mut Self::Output {
-        self.static_abilities.get_mut(&index).unwrap()
+impl std::ops::IndexMut<&StaticAbilityId> for Database {
+    fn index_mut(&mut self, index: &StaticAbilityId) -> &mut Self::Output {
+        self.static_abilities.get_mut(index).unwrap()
     }
 }
 
-impl std::ops::Index<ActivatedAbilityId> for Database {
+impl std::ops::Index<&ActivatedAbilityId> for Database {
     type Output = ActivatedAbilityInPlay;
 
-    fn index(&self, index: ActivatedAbilityId) -> &Self::Output {
-        self.activated_abilities.get(&index).unwrap()
+    fn index(&self, index: &ActivatedAbilityId) -> &Self::Output {
+        self.activated_abilities.get(index).unwrap()
     }
 }
 
-impl std::ops::IndexMut<ActivatedAbilityId> for Database {
-    fn index_mut(&mut self, index: ActivatedAbilityId) -> &mut Self::Output {
-        self.activated_abilities.get_mut(&index).unwrap()
+impl std::ops::IndexMut<&ActivatedAbilityId> for Database {
+    fn index_mut(&mut self, index: &ActivatedAbilityId) -> &mut Self::Output {
+        self.activated_abilities.get_mut(index).unwrap()
     }
 }
 
-impl std::ops::Index<GainManaAbilityId> for Database {
+impl std::ops::Index<&GainManaAbilityId> for Database {
     type Output = GainManaAbilityInPlay;
 
-    fn index(&self, index: GainManaAbilityId) -> &Self::Output {
-        self.mana_abilities.get(&index).unwrap()
+    fn index(&self, index: &GainManaAbilityId) -> &Self::Output {
+        self.mana_abilities.get(index).unwrap()
     }
 }
 
-impl std::ops::IndexMut<GainManaAbilityId> for Database {
-    fn index_mut(&mut self, index: GainManaAbilityId) -> &mut Self::Output {
-        self.mana_abilities.get_mut(&index).unwrap()
+impl std::ops::IndexMut<&GainManaAbilityId> for Database {
+    fn index_mut(&mut self, index: &GainManaAbilityId) -> &mut Self::Output {
+        self.mana_abilities.get_mut(index).unwrap()
     }
 }
 

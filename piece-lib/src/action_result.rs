@@ -11,7 +11,7 @@ use crate::{
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
     },
     effects::EffectBehaviors,
-    in_play::{CastFrom, Database, ExileReason, ModifierId},
+    in_play::{CastFrom, Database, ExileReason},
     library::Library,
     log::{Log, LogEntry, LogId},
     pending_results::{examine_top_cards::ExamineCards, PendingResults},
@@ -24,7 +24,7 @@ use crate::{
             replacement_effect::Replacing, BattleCry, BattlefieldModifier, Cascade, Duration,
             Effect, ModifyBattlefield, ReplacementEffect, RevealEachTopOfLibrary,
         },
-        ids::{CardId, StackId},
+        ids::{CardId, ModifierId, StackId},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::{restriction, Location, Restriction},
         triggers::{self, Trigger, TriggerSource},
@@ -321,8 +321,8 @@ impl ActionResult {
                 let mut results = PendingResults::default();
 
                 if let Ability::Activated(ability) = ability {
-                    Log::activated(db, source.clone(), *ability);
-                    db.turn.activated_abilities.insert(*ability);
+                    Log::activated(db, source.clone(), ability.clone());
+                    db.turn.activated_abilities.insert(ability.clone());
 
                     for (listener, trigger) in
                         db.active_triggers_of_source(TriggerSource::ABILITY_ACTIVATED)
@@ -498,7 +498,7 @@ impl ActionResult {
                         ActiveTarget::Graveyard { id } => id,
                         _ => unreachable!(),
                     };
-                    target.apply_modifier(db, *modifier);
+                    target.apply_modifier(db, modifier);
                 }
                 PendingResults::default()
             }
@@ -1219,7 +1219,7 @@ pub(crate) fn create_token_copy_with_replacements(
             );
             modifier.activate(&mut db.modifiers);
 
-            token.apply_modifier(db, modifier);
+            token.apply_modifier(db, &modifier);
         }
 
         token.apply_modifiers_layered(db);

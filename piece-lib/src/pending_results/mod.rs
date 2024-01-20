@@ -21,7 +21,7 @@ use crate::{
     abilities::Ability,
     action_result::ActionResult,
     effects::EffectBehaviors,
-    in_play::{CastFrom, Database, GainManaAbilityId},
+    in_play::{CastFrom, Database},
     pending_results::{
         choose_for_each_player::ChooseForEachPlayer, choose_modes::ChooseModes,
         choose_targets::ChooseTargets, choosing_cast::ChoosingCast,
@@ -38,7 +38,7 @@ use crate::{
             gain_mana::{Choice, Gain},
             Destination,
         },
-        ids::CardId,
+        ids::{CardId, GainManaAbilityId},
         targets::Location,
     },
     stack::{ActiveTarget, StackEntry},
@@ -116,7 +116,7 @@ impl Source {
                 .collect_vec(),
             Source::Ability { ability, .. } => {
                 if let Ability::Mana(gain) = ability {
-                    match &db[*gain].ability.gain_mana.gain.as_ref().unwrap() {
+                    match &db[gain].ability.gain_mana.gain.as_ref().unwrap() {
                         Gain::Specific(_) => vec![],
                         Gain::Choice(Choice { choices, .. }) => {
                             let mut result = vec![];
@@ -528,9 +528,9 @@ impl PendingResults {
             } else if !self.gain_mana.is_empty() {
                 for (source, gain) in self.gain_mana.drain(..) {
                     let target = db[&source].controller;
-                    let source = db[gain].ability.mana_source;
-                    let restriction = db[gain].ability.mana_restriction;
-                    match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
+                    let source = db[&gain].ability.mana_source;
+                    let restriction = db[&gain].ability.mana_restriction;
+                    match db[&gain].ability.gain_mana.gain.as_ref().unwrap() {
                         Gain::Specific(specific) => {
                             self.settled_effects.push(ActionResult::GainMana {
                                 gain: specific.gain.clone(),

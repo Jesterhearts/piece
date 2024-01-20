@@ -7,11 +7,8 @@ use uuid::Uuid;
 
 use crate::{
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId, StaticAbilityId},
-    protogen::effects::BattlefieldModifier,
+    protogen::{effects::BattlefieldModifier, ids::ModifierId},
 };
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub(crate) struct ModifierId(Uuid);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModifierInPlay {
@@ -27,8 +24,11 @@ pub struct ModifierInPlay {
 }
 
 impl ModifierId {
-    pub(crate) fn new() -> Self {
-        Self(Uuid::new_v4())
+    pub(crate) fn generate() -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            ..Default::default()
+        }
     }
 
     pub(crate) fn upload_temporary_modifier(
@@ -36,7 +36,7 @@ impl ModifierId {
         source: CardId,
         modifier: BattlefieldModifier,
     ) -> Self {
-        let id = Self::new();
+        let id = Self::generate();
 
         let mut add_static_abilities = HashSet::default();
         for ability in modifier.modifier.add_static_abilities.iter() {
@@ -62,7 +62,7 @@ impl ModifierId {
         }
 
         db.modifiers.insert(
-            id,
+            id.clone(),
             ModifierInPlay {
                 source,
                 temporary: true,
@@ -79,23 +79,23 @@ impl ModifierId {
     }
 
     #[instrument(level = Level::DEBUG, skip(modifiers))]
-    pub(crate) fn activate(self, modifiers: &mut IndexMap<ModifierId, ModifierInPlay>) {
-        let mut value = modifiers.shift_remove(&self).unwrap();
+    pub(crate) fn activate(&self, modifiers: &mut IndexMap<ModifierId, ModifierInPlay>) {
+        let mut value = modifiers.shift_remove(self).unwrap();
         value.active = true;
-        modifiers.insert(self, value);
+        modifiers.insert(self.clone(), value);
     }
 
     #[instrument(level = Level::DEBUG, skip(db))]
-    pub(crate) fn deactivate(self, db: &mut Database) {
+    pub(crate) fn deactivate(&self, db: &mut Database) {
         debug!("modifier from {}", db[self].source.name(db));
 
-        let modifier = db.modifiers.get_mut(&self).unwrap();
+        let modifier = db.modifiers.get_mut(self).unwrap();
         modifier.active = false;
         let modifying = modifier.modifying.drain().collect_vec();
 
         if modifier.temporary {
             for id in modifier.add_activated_abilities.iter() {
-                db.gc_abilities.push(*id);
+                db.gc_abilities.push(id.clone());
             }
 
             for id in modifier.add_static_abilities.iter() {
@@ -106,7 +106,7 @@ impl ModifierId {
                 db.mana_abilities.remove(id);
             }
 
-            db.modifiers.shift_remove(&self);
+            db.modifiers.shift_remove(self);
         }
 
         for card in modifying {
