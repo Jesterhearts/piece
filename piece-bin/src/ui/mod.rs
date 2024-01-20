@@ -160,6 +160,7 @@ impl Widget for Card<'_> {
 
         Frame::none()
             .fill(Color32::from_hex("#141414").unwrap())
+            .rounding(10.0)
             .stroke(Stroke::new(
                 2.0,
                 if self.highlight {
