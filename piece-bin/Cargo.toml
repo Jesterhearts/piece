@@ -9,6 +9,10 @@ name = "game"
 path = "src/main.rs"
 
 [[bin]]
+name = "editor"
+path = "src/editor.rs"
+
+[[bin]]
 name = "textproto"
 path = "src/export_textproto.rs"
 
@@ -26,6 +30,7 @@ cfg-if             = "1.0.0"
 convert_case       = "0.6.0"
 eframe             = "0.25.0"
 egui               = "0.25.0"
+egui_autocomplete  = "4.0.0"
 iftree             = "1.0.4"
 indexmap           = "2.1.0"
 itertools          = "0.12.0"
