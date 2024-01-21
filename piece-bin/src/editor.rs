@@ -69,12 +69,12 @@ impl eframe::App for App {
                 for (idx, field) in Card::descriptor().fields().enumerate() {
                     Self::render_field(
                         ui,
+                        &mut self.dynamic_fields,
+                        &mut self.dynamic_repeated_fields,
+                        &mut self.card,
                         "card",
                         field,
-                        &mut self.dynamic_fields,
                         idx,
-                        &mut self.card,
-                        &mut self.dynamic_repeated_fields,
                     );
                 }
             });
@@ -112,14 +112,14 @@ impl App {
 
     #[allow(clippy::too_many_arguments)]
     fn render_oneof(
+        ui: &mut egui::Ui,
         dynamic_fields: &mut HashMap<String, String>,
         dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
+        message: &mut dyn MessageDyn,
         prefix: &str,
         message_descriptor: &protobuf::reflect::MessageDescriptor,
         oneof_name: &str,
-        ui: &mut egui::Ui,
         idx: usize,
-        message: &mut dyn MessageDyn,
     ) {
         ui.vertical(|ui| {
             for (field_idx, field) in message_descriptor
@@ -129,12 +129,12 @@ impl App {
             {
                 Self::render_field(
                     ui,
+                    dynamic_fields,
+                    dynamic_repeated_fields,
+                    message,
                     &format!("{}{}_oneof_field_{}", prefix, idx, field_idx),
                     field,
-                    dynamic_fields,
                     field_idx,
-                    message,
-                    dynamic_repeated_fields,
                 );
             }
 
@@ -155,12 +155,12 @@ impl App {
                 for field in proto.fields() {
                     Self::render_field(
                         ui,
+                        dynamic_fields,
+                        dynamic_repeated_fields,
+                        message,
                         prefix,
                         field,
-                        dynamic_fields,
                         idx,
-                        message,
-                        dynamic_repeated_fields,
                     );
                 }
             }
@@ -170,12 +170,12 @@ impl App {
     #[allow(clippy::too_many_arguments)]
     fn render_field(
         ui: &mut egui::Ui,
+        dynamic_fields: &mut HashMap<String, String>,
+        dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
+        message: &mut dyn MessageDyn,
         prefix: &str,
         target: protobuf::reflect::FieldDescriptor,
-        dynamic_fields: &mut HashMap<String, String>,
         idx: usize,
-        message: &mut dyn MessageDyn,
-        dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
     ) {
         ui.horizontal(|ui| {
             ui.label(target.name());
@@ -332,8 +332,10 @@ impl App {
                                     if sense.changed() || sense.lost_focus() || changed {
                                         let oneof_name = text.to_case(Case::Snake);
                                         Self::render_oneof(
+                                            ui,
                                             dynamic_fields,
                                             dynamic_repeated_fields,
+                                            message,
                                             &format!(
                                                 "{}_{}{}",
                                                 prefix,
@@ -342,9 +344,7 @@ impl App {
                                             ),
                                             &descriptor,
                                             &oneof_name,
-                                            ui,
                                             idx,
-                                            message,
                                         );
                                     }
                                 });
@@ -353,12 +353,12 @@ impl App {
                                     for (idx, sub_field) in descriptor.fields().enumerate() {
                                         Self::render_field(
                                             ui,
+                                            dynamic_fields,
+                                            dynamic_repeated_fields,
+                                            message,
                                             &format!("{}_{}", prefix, target.full_name()),
                                             sub_field,
-                                            dynamic_fields,
                                             idx,
-                                            message,
-                                            dynamic_repeated_fields,
                                         );
                                     }
                                 });
@@ -482,14 +482,14 @@ impl App {
                                         let mut value =
                                             repeated.get(idx).to_message().unwrap().clone_box();
                                         Self::render_oneof(
+                                            ui,
                                             dynamic_fields,
                                             dynamic_repeated_fields,
+                                            &mut *value,
                                             &key,
                                             &descriptor,
                                             &text.to_case(Case::Snake),
-                                            ui,
                                             idx,
-                                            &mut *value,
                                         );
 
                                         repeated.set(idx, ReflectValueBox::Message(value));
@@ -540,12 +540,12 @@ impl App {
                                     for field in descriptor.fields() {
                                         Self::render_field(
                                             ui,
+                                            dynamic_fields,
+                                            dynamic_repeated_fields,
+                                            &mut *message,
                                             &key,
                                             field,
-                                            dynamic_fields,
                                             idx,
-                                            &mut *message,
-                                            dynamic_repeated_fields,
                                         );
                                     }
                                     repeated.set(idx, ReflectValueBox::Message(message));
