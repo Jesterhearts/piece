@@ -3,13 +3,21 @@ extern crate tracing;
 
 mod ui;
 
-use std::{collections::HashMap, env::current_dir, str::FromStr};
+use std::{
+    collections::HashMap,
+    env::current_dir,
+    str::FromStr,
+    sync::{Mutex, OnceLock},
+};
 
 use convert_case::{Case, Casing};
-use egui::TextEdit;
-use egui_autocomplete::AutoCompleteTextEdit;
+use egui::{Key, Modifiers, TextEdit};
 use itertools::Itertools;
 use native_dialog::FileDialog;
+use nucleo_matcher::{
+    pattern::{AtomKind, CaseMatching, Normalization, Pattern},
+    Config, Matcher,
+};
 use piece_lib::protogen::{
     card::Card,
     empty::Empty,
@@ -27,6 +35,7 @@ struct App {
 
     dynamic_fields: HashMap<String, String>,
     dynamic_repeated_fields: HashMap<String, Vec<String>>,
+    dynamic_selections: HashMap<String, usize>,
 }
 
 fn main() {
@@ -71,6 +80,7 @@ impl eframe::App for App {
                         ui,
                         &mut self.dynamic_fields,
                         &mut self.dynamic_repeated_fields,
+                        &mut self.dynamic_selections,
                         &mut self.card,
                         "card",
                         field,
@@ -115,6 +125,7 @@ impl App {
         ui: &mut egui::Ui,
         dynamic_fields: &mut HashMap<String, String>,
         dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
+        dynamic_selections: &mut HashMap<String, usize>,
         message: &mut dyn MessageDyn,
         prefix: &str,
         message_descriptor: &protobuf::reflect::MessageDescriptor,
@@ -131,6 +142,7 @@ impl App {
                     ui,
                     dynamic_fields,
                     dynamic_repeated_fields,
+                    dynamic_selections,
                     message,
                     &format!("{}{}_oneof_field_{}", prefix, idx, field_idx),
                     field,
@@ -157,6 +169,7 @@ impl App {
                         ui,
                         dynamic_fields,
                         dynamic_repeated_fields,
+                        dynamic_selections,
                         message,
                         prefix,
                         field,
@@ -172,13 +185,15 @@ impl App {
         ui: &mut egui::Ui,
         dynamic_fields: &mut HashMap<String, String>,
         dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
+        dynamic_selections: &mut HashMap<String, usize>,
         message: &mut dyn MessageDyn,
         prefix: &str,
         target: protobuf::reflect::FieldDescriptor,
         idx: usize,
     ) {
         ui.horizontal(|ui| {
-            ui.label(target.name());
+            ui.label(target.name().to_case(Case::Title));
+
             match target.runtime_field_type() {
                 RuntimeFieldType::Singular(single) => match single {
                     RuntimeType::I32 => {
@@ -286,14 +301,22 @@ impl App {
                             .values()
                             .map(|enum_| enum_.name().to_case(Case::Title))
                             .collect_vec();
-                        let text = dynamic_fields
-                            .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                            .or_default();
+                        let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                        let text = dynamic_fields.entry(key.clone()).or_default();
 
                         ui.horizontal(|ui| {
                             ui.label("value:");
-                            let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
-                            if sense.lost_focus() || sense.changed() {
+                            let sense = ui.text_edit_singleline(text);
+                            let changed = popup_all_options(
+                                ui,
+                                dynamic_selections,
+                                &key,
+                                idx,
+                                &sense,
+                                text,
+                                &inputs,
+                            );
+                            if sense.lost_focus() || sense.changed() || changed {
                                 if let Some(value) =
                                     descriptor.value_by_name(&text.to_case(Case::ScreamingSnake))
                                 {
@@ -324,10 +347,17 @@ impl App {
                                     ui.label("type:");
                                     let key = format!("{}_{}{}", prefix, target.full_name(), idx);
                                     let text = dynamic_fields.entry(key.clone()).or_default();
-                                    let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
+                                    let sense = ui.text_edit_singleline(text);
 
-                                    let changed =
-                                        popup_all_options(ui, &key, idx, &sense, text, &inputs);
+                                    let changed = popup_all_options(
+                                        ui,
+                                        dynamic_selections,
+                                        &key,
+                                        idx,
+                                        &sense,
+                                        text,
+                                        &inputs,
+                                    );
 
                                     if sense.changed() || sense.lost_focus() || changed {
                                         let oneof_name = text.to_case(Case::Snake);
@@ -335,6 +365,7 @@ impl App {
                                             ui,
                                             dynamic_fields,
                                             dynamic_repeated_fields,
+                                            dynamic_selections,
                                             message,
                                             &format!(
                                                 "{}_{}{}",
@@ -355,6 +386,7 @@ impl App {
                                             ui,
                                             dynamic_fields,
                                             dynamic_repeated_fields,
+                                            dynamic_selections,
                                             message,
                                             &format!("{}_{}", prefix, target.full_name()),
                                             sub_field,
@@ -399,10 +431,17 @@ impl App {
                             for (idx, text) in text.iter_mut().enumerate() {
                                 ui.horizontal(|ui| {
                                     ui.label("value:");
-                                    let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
+                                    let sense = ui.text_edit_singleline(text);
 
-                                    let changed =
-                                        popup_all_options(ui, &key, idx, &sense, text, &inputs);
+                                    let changed = popup_all_options(
+                                        ui,
+                                        dynamic_selections,
+                                        &key,
+                                        idx,
+                                        &sense,
+                                        text,
+                                        &inputs,
+                                    );
 
                                     if sense.changed() || sense.lost_focus() || changed {
                                         if let Some(value) = descriptor
@@ -474,10 +513,17 @@ impl App {
                                 for (idx, text) in text.iter_mut().enumerate() {
                                     ui.horizontal(|ui| {
                                         ui.label("type:");
-                                        let sense =
-                                            ui.add(AutoCompleteTextEdit::new(text, &inputs));
+                                        let sense = ui.text_edit_singleline(text);
 
-                                        popup_all_options(ui, &key, idx, &sense, text, &inputs);
+                                        popup_all_options(
+                                            ui,
+                                            dynamic_selections,
+                                            &key,
+                                            idx,
+                                            &sense,
+                                            text,
+                                            &inputs,
+                                        );
 
                                         let mut value =
                                             repeated.get(idx).to_message().unwrap().clone_box();
@@ -485,6 +531,7 @@ impl App {
                                             ui,
                                             dynamic_fields,
                                             dynamic_repeated_fields,
+                                            dynamic_selections,
                                             &mut *value,
                                             &key,
                                             &descriptor,
@@ -542,6 +589,7 @@ impl App {
                                             ui,
                                             dynamic_fields,
                                             dynamic_repeated_fields,
+                                            dynamic_selections,
                                             &mut *message,
                                             &key,
                                             field,
@@ -599,9 +647,17 @@ impl App {
                         for text in text.iter_mut() {
                             ui.horizontal(|ui| {
                                 ui.label("type:");
-                                let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
-                                let changed =
-                                    popup_all_options(ui, prefix, idx, &sense, text, &inputs);
+                                let sense = ui.text_edit_singleline(text);
+                                let changed = popup_all_options(
+                                    ui,
+                                    dynamic_selections,
+                                    prefix,
+                                    idx,
+                                    &sense,
+                                    text,
+                                    &inputs,
+                                );
+
                                 if sense.lost_focus() || sense.changed() || changed {
                                     if let Some(value) = Subtype::enum_descriptor()
                                         .value_by_name(&text.to_case(Case::ScreamingSnake))
@@ -641,9 +697,16 @@ impl App {
                         for text in text.iter_mut() {
                             ui.horizontal(|ui| {
                                 ui.label("subtype:");
-                                let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
-                                let changed =
-                                    popup_all_options(ui, prefix, idx, &sense, text, &inputs);
+                                let sense = ui.text_edit_singleline(text);
+                                let changed = popup_all_options(
+                                    ui,
+                                    dynamic_selections,
+                                    prefix,
+                                    idx,
+                                    &sense,
+                                    text,
+                                    &inputs,
+                                );
                                 if sense.lost_focus() || sense.changed() || changed {
                                     if let Some(value) = Subtype::enum_descriptor()
                                         .value_by_name(&text.to_case(Case::ScreamingSnake))
@@ -683,8 +746,16 @@ impl App {
                         for text in text.iter_mut() {
                             ui.horizontal(|ui| {
                                 ui.label("keyword:");
-                                let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
-                                popup_all_options(ui, prefix, idx, &sense, text, &inputs);
+                                let sense = ui.text_edit_singleline(text);
+                                popup_all_options(
+                                    ui,
+                                    dynamic_selections,
+                                    prefix,
+                                    idx,
+                                    &sense,
+                                    text,
+                                    &inputs,
+                                );
                             });
                         }
 
@@ -719,30 +790,86 @@ impl App {
 
 fn popup_all_options(
     ui: &mut egui::Ui,
+    dynamic_selections: &mut HashMap<String, usize>,
     prefix: &str,
     idx: usize,
     sense: &egui::Response,
     text: &mut String,
     inputs: &[String],
 ) -> bool {
-    let id = ui.make_persistent_id(format!("{}{}", prefix, idx));
-    if sense.has_focus() && text.is_empty() {
+    static MATCHER: OnceLock<Mutex<Matcher>> = OnceLock::new();
+    let matcher_lock = MATCHER.get_or_init(|| Mutex::new(Matcher::new(Config::DEFAULT)));
+    let mut matcher = matcher_lock.lock().unwrap();
+
+    let mut changed = false;
+
+    let key = format!("{}{}", prefix, idx);
+    let id = ui.make_persistent_id(&key);
+
+    let matches = Pattern::new(
+        text,
+        CaseMatching::Ignore,
+        Normalization::Smart,
+        AtomKind::Fuzzy,
+    )
+    .match_list(inputs, &mut matcher);
+
+    if sense.changed() {
+        dynamic_selections.remove(&key);
+    }
+
+    if sense.has_focus() {
+        let up_pressed =
+            ui.input_mut(|input| input.consume_key(Modifiers::default(), Key::ArrowUp));
+        let down_pressed =
+            ui.input_mut(|input| input.consume_key(Modifiers::default(), Key::ArrowDown));
+
+        if up_pressed {
+            let selected = *dynamic_selections.entry(key.clone()).or_default();
+            if selected == 0 {
+                dynamic_selections.remove(&key);
+            } else {
+                *dynamic_selections.entry(key.clone()).or_default() = selected - 1;
+            }
+        } else if down_pressed {
+            let selected = *dynamic_selections.entry(key.clone()).or_default();
+            *dynamic_selections.entry(key.clone()).or_default() =
+                usize::min(selected + 1, matches.len() - 1);
+        }
+
         ui.memory_mut(|m| m.open_popup(id));
     }
 
-    let mut changed = false;
+    let enter_or_tab = ui.input_mut(|input| input.key_pressed(Key::Enter))
+        || ui.input_mut(|input| input.key_pressed(Key::Tab));
+    if enter_or_tab && ui.memory(|m| m.is_popup_open(id)) {
+        changed = true;
+        let selected = *dynamic_selections.entry(key.clone()).or_default();
+        info!("Accepted {selected}");
+        *text = matches[selected].0.clone();
+    }
+
     egui::popup::popup_below_widget(ui, id, sense, |ui| {
         egui::ScrollArea::vertical().id_source(id).show(ui, |ui| {
-            for input in inputs.iter() {
-                if ui
-                    .selectable_value(text, input.clone(), input.clone())
-                    .clicked()
-                {
+            for (idx, (input, _)) in matches.iter().enumerate() {
+                let mut selected = if let Some(o) = dynamic_selections.get(&key) {
+                    *o == idx
+                } else {
+                    false
+                };
+
+                if ui.toggle_value(&mut selected, *input).clicked() {
                     changed = true;
+                    *text = input.to_string();
                     ui.memory_mut(|m| m.close_popup());
                 }
             }
         })
     });
+
+    if sense.lost_focus() {
+        ui.memory_mut(|m| m.close_popup());
+    }
+
     changed
 }
