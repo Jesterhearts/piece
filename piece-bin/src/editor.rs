@@ -3,12 +3,13 @@ extern crate tracing;
 
 mod ui;
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, env::current_dir, str::FromStr};
 
 use convert_case::{Case, Casing};
 use egui::TextEdit;
 use egui_autocomplete::AutoCompleteTextEdit;
 use itertools::Itertools;
+use native_dialog::FileDialog;
 use piece_lib::protogen::{
     card::Card,
     empty::Empty,
@@ -47,6 +48,21 @@ fn main() {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::TopBottomPanel::top("Top").show(ctx, |ui| {
+            if ui.button("Save").clicked() {
+                let path = FileDialog::new()
+                    .add_filter("YAML files", &["yaml"])
+                    .set_filename(&self.card.name.replace(['-', '\'', ',', '+', '"'], "_"))
+                    .set_location(&current_dir().unwrap())
+                    .show_save_single_file()
+                    .unwrap();
+
+                if let Some(path) = path {
+                    std::fs::write(path, serde_yaml::to_string(&self.card).unwrap()).unwrap();
+                }
+            }
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for (idx, field) in Card::descriptor().fields().enumerate() {
@@ -104,32 +120,50 @@ impl App {
         idx: usize,
         message: &mut dyn MessageDyn,
     ) {
-        if let Some(RuntimeType::Message(proto)) =
-            message_descriptor.all_oneofs().find_map(|oneof| {
-                oneof.fields().find_map(|field| {
-                    if field.name() == oneof_name {
-                        Some(field.singular_runtime_type())
-                    } else {
-                        None
-                    }
-                })
-            })
-        {
-            for field in proto.fields() {
-                let target = message_descriptor.field_by_name(oneof_name).unwrap();
-                let message = target.mut_message(message);
-
+        ui.vertical(|ui| {
+            for (field_idx, field) in message_descriptor
+                .fields()
+                .filter(|field| field.containing_oneof().is_none())
+                .enumerate()
+            {
                 Self::render_field(
                     ui,
-                    prefix,
+                    &format!("{}{}_oneof_field_{}", prefix, idx, field_idx),
                     field,
                     dynamic_fields,
-                    idx,
+                    field_idx,
                     message,
                     dynamic_repeated_fields,
                 );
             }
-        }
+
+            if let Some(RuntimeType::Message(proto)) =
+                message_descriptor.all_oneofs().find_map(|oneof| {
+                    oneof.fields().find_map(|field| {
+                        if field.name() == oneof_name {
+                            Some(field.singular_runtime_type())
+                        } else {
+                            None
+                        }
+                    })
+                })
+            {
+                for field in proto.fields() {
+                    let target = message_descriptor.field_by_name(oneof_name).unwrap();
+                    let message = target.mut_message(message);
+
+                    Self::render_field(
+                        ui,
+                        prefix,
+                        field,
+                        dynamic_fields,
+                        idx,
+                        message,
+                        dynamic_repeated_fields,
+                    );
+                }
+            }
+        });
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -269,7 +303,7 @@ impl App {
                                     .flat_map(|oneof| {
                                         oneof
                                             .fields()
-                                            .map(|field| field.name().to_string())
+                                            .map(|field| field.name().to_case(Case::Title))
                                             .collect_vec()
                                     })
                                     .collect_vec();
@@ -412,7 +446,7 @@ impl App {
                                     .flat_map(|oneof| {
                                         oneof
                                             .fields()
-                                            .map(|field| field.name().to_string())
+                                            .map(|field| field.name().to_case(Case::Title))
                                             .collect_vec()
                                     })
                                     .collect_vec();
