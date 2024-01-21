@@ -13,6 +13,7 @@ use native_dialog::FileDialog;
 use piece_lib::protogen::{
     card::Card,
     empty::Empty,
+    keywords::Keyword,
     types::{Subtype, Type},
 };
 use protobuf::{
@@ -660,6 +661,44 @@ impl App {
                         || target.name() == "add_keywords"
                         || target.name() == "remove_keywords"
                     {
+                        let inputs = Keyword::enum_descriptor()
+                            .values()
+                            .map(|enum_| enum_.name().to_case(Case::Title))
+                            .collect_vec();
+                        let text = dynamic_repeated_fields
+                            .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
+                            .or_default();
+
+                        for text in text.iter_mut() {
+                            ui.horizontal(|ui| {
+                                ui.label("keyword:");
+                                let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
+                                popup_all_options(ui, prefix, idx, &sense, text, &inputs);
+                            });
+                        }
+
+                        ui.horizontal(|ui| {
+                            if ui.button("+").clicked() {
+                                text.push(Default::default());
+                            }
+                            if ui.button("reset").clicked() {
+                                text.clear();
+                                map.clear();
+                            }
+                        });
+
+                        let mut values = HashMap::<i32, u32>::default();
+                        for text in text {
+                            if let Some(value) = Keyword::enum_descriptor()
+                                .value_by_name(&text.to_case(Case::ScreamingSnake))
+                            {
+                                *values.entry(value.value()).or_default() += 1
+                            }
+                        }
+
+                        for (key, value) in values {
+                            map.insert(ReflectValueBox::I32(key), ReflectValueBox::U32(value));
+                        }
                     }
                 }
             }
