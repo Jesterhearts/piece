@@ -26,15 +26,15 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
 
     let mut db = Database::new(all_players);
-    db.all_players[player].infinite_mana();
+    db.all_players[&player].infinite_mana();
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Allosaurus Shepherd");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
 
     // Pay costs
     let result = results.resolve(&mut db, None);
@@ -89,12 +89,12 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Allosaurus Shepherd");
+    let counterspell = CardId::upload(&mut db, &cards, player.clone(), "Counterspell");
 
     let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
     let result = results.resolve(&mut db, None);
@@ -146,13 +146,13 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
+    let card1 = CardId::upload(&mut db, &cards, player.clone(), "Allosaurus Shepherd");
+    let card2 = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
+    let counterspell = CardId::upload(&mut db, &cards, player.clone(), "Counterspell");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card1, None);
     let result = results.resolve(&mut db, None);
@@ -207,14 +207,14 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let player2 = all_players.new_player("Player".to_string(), 20);
 
     let mut db = Database::new(all_players);
 
-    let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
+    let card1 = CardId::upload(&mut db, &cards, player.clone(), "Allosaurus Shepherd");
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
-    let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
+    let counterspell = CardId::upload(&mut db, &cards, player.clone(), "Counterspell");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card1, None);
     let result = results.resolve(&mut db, None);

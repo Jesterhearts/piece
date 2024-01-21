@@ -22,19 +22,19 @@ fn adds_ability() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let equipment = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
+    let equipment = CardId::upload(&mut db, &cards, player.clone(), "Paradise Mantle");
     let _ = Battlefields::add_from_stack_or_hand(&mut db, &equipment, None);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let _ = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
 
     assert!(db[&creature].abilities(&db).is_empty());
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &equipment, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &equipment, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);

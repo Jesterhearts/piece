@@ -30,7 +30,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Krosan Verge");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -56,27 +56,27 @@ fn tutors() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let forest = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, forest.clone());
+    let forest = CardId::upload(&mut db, &cards, player.clone(), "Forest");
+    Library::place_on_top(&mut db, &player, forest.clone());
 
-    let plains = CardId::upload(&mut db, &cards, player, "Plains");
-    Library::place_on_top(&mut db, player, plains.clone());
+    let plains = CardId::upload(&mut db, &cards, player.clone(), "Plains");
+    Library::place_on_top(&mut db, &player, plains.clone());
 
-    let annul = CardId::upload(&mut db, &cards, player, "Annul");
-    Library::place_on_top(&mut db, player, annul);
+    let annul = CardId::upload(&mut db, &cards, player.clone(), "Annul");
+    Library::place_on_top(&mut db, &player, annul);
 
-    let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Krosan Verge");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     card.untap(&mut db);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 1);
 
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

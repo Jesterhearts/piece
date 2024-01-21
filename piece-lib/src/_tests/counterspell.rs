@@ -26,8 +26,8 @@ fn resolves_counterspells() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let counterspell_1 = CardId::upload(&mut db, &cards, player, "Counterspell");
-    let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");
+    let counterspell_1 = CardId::upload(&mut db, &cards, player.clone(), "Counterspell");
+    let counterspell_2 = CardId::upload(&mut db, &cards, player.clone(), "Counterspell");
 
     let mut results = counterspell_1.move_to_stack(&mut db, Default::default(), None, vec![]);
     let result = results.resolve(&mut db, None);
@@ -46,7 +46,7 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     assert!(db.stack.is_empty());
 
     assert_eq!(
-        db.graveyard[player],
+        db.graveyard[&player],
         IndexSet::from([counterspell_1, counterspell_2])
     );
 

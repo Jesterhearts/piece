@@ -23,7 +23,7 @@ impl EffectBehaviors for CreateToken {
         &self,
         _db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {
@@ -50,7 +50,7 @@ impl EffectBehaviors for CreateToken {
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::CreateToken {

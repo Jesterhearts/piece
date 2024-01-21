@@ -29,7 +29,6 @@ use crate::{
         library_or_graveyard::LibraryOrGraveyard, organizing_stack::OrganizingStack,
         pay_costs::PayCost,
     },
-    player::{Controller, Owner},
     protogen::{
         effects::{
             destination,
@@ -38,7 +37,7 @@ use crate::{
             gain_mana::{Choice, Gain},
             Destination,
         },
-        ids::{CardId, GainManaAbilityId},
+        ids::{CardId, Controller, GainManaAbilityId, Owner},
         targets::Location,
     },
     stack::{ActiveTarget, StackEntry},
@@ -263,7 +262,7 @@ impl PendingResults {
         &mut self,
         source: CardId,
         ability: Ability,
-        _controller: Controller,
+        _controller: &Controller,
         x_is: Option<usize>,
     ) {
         self.copy_to_stack.push(CopySource::Ability {
@@ -401,22 +400,20 @@ impl PendingResults {
     }
 
     pub fn set_organize_stack(&mut self, db: &Database, mut entries: Vec<StackEntry>) {
-        entries.sort_by_key(|e| {
-            db[e.ty.source()].controller != Controller::from(db.turn.priority_player())
-        });
+        entries.sort_by_key(|e| db[e.ty.source()].controller != db.turn.priority_player());
 
         self.pending
             .push_back(Pending::OrganizingStack(OrganizingStack::new(entries)))
     }
 
-    pub(crate) fn set_declare_attackers(&mut self, db: &mut Database, attacker: Owner) {
+    pub(crate) fn set_declare_attackers(&mut self, db: &mut Database, attacker: &Owner) {
         let mut players = db.all_players.all_players();
-        players.retain(|player| *player != attacker);
+        players.retain(|player| player != attacker);
         debug!(
             "Attacking {:?}",
             players
                 .iter()
-                .map(|player| db.all_players[*player].name.clone())
+                .map(|player| db.all_players[player].name.clone())
                 .collect_vec()
         );
         // TODO goad, etc.
@@ -527,14 +524,14 @@ impl PendingResults {
                 self.chosen_targets.clear();
             } else if !self.gain_mana.is_empty() {
                 for (source, gain) in self.gain_mana.drain(..) {
-                    let target = db[&source].controller;
+                    let target = &db[&source].controller;
                     let source = db[&gain].ability.mana_source;
                     let restriction = db[&gain].ability.mana_restriction;
                     match db[&gain].ability.gain_mana.gain.as_ref().unwrap() {
                         Gain::Specific(specific) => {
                             self.settled_effects.push(ActionResult::GainMana {
                                 gain: specific.gain.clone(),
-                                target,
+                                target: target.clone(),
                                 source,
                                 restriction,
                             })
@@ -544,7 +541,7 @@ impl PendingResults {
                             self.chosen_modes.clear();
                             self.settled_effects.push(ActionResult::GainMana {
                                 gain: choices[option].gains.clone(),
-                                target,
+                                target: target.clone(),
                                 source,
                                 restriction,
                             })
@@ -562,7 +559,7 @@ impl PendingResults {
                         } => {
                             self.settled_effects.push(ActionResult::CopyCardInStack {
                                 card,
-                                controller,
+                                controller: controller.clone(),
                                 targets: self.chosen_targets.clone(),
                                 x_is,
                                 chosen_modes: modes,
@@ -657,7 +654,7 @@ impl PendingResults {
     pub fn priority(&self, db: &Database) -> Owner {
         if let Some(pend) = self.pending.front() {
             match pend {
-                Pending::PayCosts(pay) => db[&pay.source].controller.into(),
+                Pending::PayCosts(pay) => db[&pay.source].controller.clone().into(),
                 Pending::DeclaringAttackers(declaring) => {
                     let mut all_players = db
                         .all_players
@@ -677,15 +674,15 @@ impl PendingResults {
                         .enumerate()
                         .find(|(idx, _)| !organizing.choices.contains(idx))
                     {
-                        db[first.1.ty.source()].controller.into()
+                        db[first.1.ty.source()].controller.clone().into()
                     } else {
-                        db.turn.priority_player()
+                        db.turn.priority_player().clone()
                     }
                 }
-                _ => db.turn.priority_player(),
+                _ => db.turn.priority_player().clone(),
             }
         } else {
-            db.turn.priority_player()
+            db.turn.priority_player().clone()
         }
     }
 }

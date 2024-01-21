@@ -22,19 +22,19 @@ fn ability() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("name".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Deadapult");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Deadapult");
     card.move_to_battlefield(&mut db);
 
-    let sac = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
+    let sac = CardId::upload(&mut db, &cards, player.clone(), "Blood Scrivener");
     sac.move_to_battlefield(&mut db);
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
     // Choose to sacrifice the zombie

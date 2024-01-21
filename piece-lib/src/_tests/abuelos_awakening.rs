@@ -31,13 +31,13 @@ fn x_is_zero() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
 
     let player = all_players.new_player("player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
-    let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let non_target = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Abuelo's Awakening");
+    let target = CardId::upload(&mut db, &cards, player.clone(), "Abzan Banner");
+    let non_target = CardId::upload(&mut db, &cards, player.clone(), "Abzan Runemark");
 
     target.move_to_graveyard(&mut db);
     non_target.move_to_graveyard(&mut db);
@@ -100,13 +100,13 @@ fn x_is_two() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Abuelo's Awakening");
-    let target = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let non_target = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Abuelo's Awakening");
+    let target = CardId::upload(&mut db, &cards, player.clone(), "Abzan Banner");
+    let non_target = CardId::upload(&mut db, &cards, player.clone(), "Abzan Runemark");
 
     target.move_to_graveyard(&mut db);
     non_target.move_to_graveyard(&mut db);

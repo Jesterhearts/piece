@@ -33,7 +33,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         db: &crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
         _log_session: crate::log::LogId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         self.apply
@@ -55,7 +55,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
@@ -72,7 +72,7 @@ impl EffectBehaviors for ApplyThenIfWas {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
@@ -88,7 +88,7 @@ impl EffectBehaviors for ApplyThenIfWas {
             if_was: self.then.if_was.clone(),
             then: self.then.apply.clone(),
             source: source.clone(),
-            controller,
+            controller: controller.clone(),
         })
     }
 }

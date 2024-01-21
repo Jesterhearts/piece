@@ -24,21 +24,21 @@ fn place_on_top() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "King Crab");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "King Crab");
     card.move_to_battlefield(&mut db);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     creature.move_to_battlefield(&mut db);
 
     // Get rid of summoning sickness
     db.turn.turn_count += db.turn.turns_per_round();
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     // Pay the blue
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -56,7 +56,7 @@ fn place_on_top() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        db.all_players[player].library.cards,
+        db.all_players[&player].library.cards,
         VecDeque::from([creature])
     );
 

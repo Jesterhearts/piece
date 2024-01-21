@@ -7,7 +7,7 @@ use crate::{
     effects::EffectBehaviors,
     in_play::Database,
     pending_results::{Options, Pending, PendingResult},
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{effects::effect::Effect, ids::CardId},
     stack::ActiveTarget,
 };
@@ -39,7 +39,7 @@ impl ChooseForEachPlayer {
         db: &mut Database,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
-        let controller = db[&self.card].controller;
+        let controller = &db[&self.card].controller;
         let new_targets = self.target_source.valid_targets(
             db,
             &self.card,
@@ -66,7 +66,11 @@ impl ChooseForEachPlayer {
             } else {
                 *self
                     .chosen
-                    .entry(db[self.valid_targets[choice].id(db).unwrap()].controller)
+                    .entry(
+                        db[self.valid_targets[choice].id(db).unwrap()]
+                            .controller
+                            .clone(),
+                    )
                     .or_default() = choice;
                 true
             }
@@ -74,7 +78,7 @@ impl ChooseForEachPlayer {
             debug!("Choosing default only target");
             *self
                 .chosen
-                .entry(db[self.valid_targets[0].id(db).unwrap()].controller)
+                .entry(db[self.valid_targets[0].id(db).unwrap()].controller.clone())
                 .or_default() = 0;
             true
         } else {
@@ -151,12 +155,12 @@ impl PendingResult for ChooseForEachPlayer {
 
                 results.all_chosen_targets.extend(choices.iter().cloned());
                 if results.add_to_stack.is_empty() {
-                    let player = db[&self.card].controller;
+                    let player = db[&self.card].controller.clone();
                     self.target_source.push_behavior_with_targets(
                         db,
                         choices.clone(),
                         &self.card,
-                        player,
+                        &player,
                         results,
                     );
                 } else {
@@ -164,7 +168,7 @@ impl PendingResult for ChooseForEachPlayer {
                 }
 
                 if !self.card.faceup_face(db).apply_individually {
-                    let player = db[&self.card].controller;
+                    let player = db[&self.card].controller.clone();
 
                     let mut effect_or_auras = vec![];
                     results.pending.retain(|p| {
@@ -183,7 +187,7 @@ impl PendingResult for ChooseForEachPlayer {
                                 db,
                                 choices.clone(),
                                 &self.card,
-                                player,
+                                &player,
                                 results,
                             );
                         }

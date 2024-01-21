@@ -29,7 +29,7 @@ impl EffectBehaviors for Modes {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if let Some(mode) = results.chosen_modes().pop() {
@@ -50,7 +50,7 @@ impl EffectBehaviors for Modes {
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         self.push_pending_behavior(db, source, controller, results);

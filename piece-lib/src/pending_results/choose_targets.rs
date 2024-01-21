@@ -44,7 +44,7 @@ impl ChooseTargets {
         db: &mut Database,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> bool {
-        let controller = db[&self.card].controller;
+        let controller = &db[&self.card].controller;
         match &self.target_source {
             TargetSource::Effect(effect) => {
                 let new_targets = effect.valid_targets(
@@ -173,15 +173,14 @@ impl PendingResult for ChooseTargets {
                 let (choices, effect_or_aura) = self.chosen_targets_and_effect();
 
                 if results.add_to_stack.is_empty() {
-                    let player = db[&self.card].controller;
-
                     match effect_or_aura {
                         TargetSource::Effect(effect) => {
+                            let controller = db[&self.card].controller.clone();
                             effect.push_behavior_with_targets(
                                 db,
                                 choices.clone(),
                                 &self.card,
-                                player,
+                                &controller,
                                 results,
                             );
                         }
@@ -197,8 +196,6 @@ impl PendingResult for ChooseTargets {
                 }
 
                 if !self.card.faceup_face(db).apply_individually {
-                    let player = db[&self.card].controller;
-
                     let mut effect_or_auras = vec![];
                     results.pending.retain(|p| {
                         let Pending::ChooseTargets(choice) = p else {
@@ -208,6 +205,7 @@ impl PendingResult for ChooseTargets {
                         false
                     });
 
+                    let controller = db[&self.card].controller.clone();
                     for effect_or_aura in effect_or_auras {
                         if !results.add_to_stack.is_empty() {
                             results.chosen_targets.push(choices.clone());
@@ -218,7 +216,7 @@ impl PendingResult for ChooseTargets {
                                         db,
                                         choices.clone(),
                                         &self.card,
-                                        player,
+                                        &controller,
                                         results,
                                     );
                                 }

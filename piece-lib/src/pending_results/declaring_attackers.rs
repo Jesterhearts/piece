@@ -5,8 +5,8 @@ use crate::{
     action_result::ActionResult,
     in_play::Database,
     pending_results::{Options, PendingResult, PendingResults},
-    player::Owner,
     protogen::ids::CardId,
+    protogen::ids::Owner,
 };
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl PendingResult for DeclaringAttackers {
             Options::MandatoryList(
                 self.valid_targets
                     .iter()
-                    .map(|player| db.all_players[*player].name.clone())
+                    .map(|player| db.all_players[player].name.clone())
                     .enumerate()
                     .collect_vec(),
             )
@@ -55,7 +55,7 @@ impl PendingResult for DeclaringAttackers {
         } else {
             self.valid_targets
                 .get(option)
-                .map(|t| crate::stack::ActiveTarget::Player { id: *t })
+                .map(|t| crate::stack::ActiveTarget::Player { id: t.clone() })
         }
     }
 
@@ -82,7 +82,7 @@ impl PendingResult for DeclaringAttackers {
                         return true;
                     }
                 } else {
-                    self.targets.push(self.valid_targets[choice]);
+                    self.targets.push(self.valid_targets[choice].clone());
                 }
                 false
             }

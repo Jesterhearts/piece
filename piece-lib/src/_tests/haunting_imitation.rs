@@ -36,16 +36,16 @@ fn reveals_clones() -> anyhow::Result<()> {
     let player2 = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
 
-    let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
+    let haunting = CardId::upload(&mut db, &cards, player1.clone(), "Haunting Imitation");
     let mut results = haunting.move_to_stack(&mut db, vec![], None, vec![]);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let land = CardId::upload(&mut db, &cards, player1, "Forest");
-    let creature = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
+    let land = CardId::upload(&mut db, &cards, player1.clone(), "Forest");
+    let creature = CardId::upload(&mut db, &cards, player2.clone(), "Alpine Grizzly");
 
-    Library::place_on_top(&mut db, player1, land);
-    Library::place_on_top(&mut db, player2, creature);
+    Library::place_on_top(&mut db, &player1, land);
+    Library::place_on_top(&mut db, &player2, creature);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
@@ -53,7 +53,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let on_battlefield = &mut db.battlefield[player1];
+    let on_battlefield = &mut db.battlefield[&player1];
     assert_eq!(on_battlefield.len(), 1);
     let token = on_battlefield.pop().unwrap();
 
@@ -91,16 +91,16 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let player2 = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
 
-    let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
+    let haunting = CardId::upload(&mut db, &cards, player1.clone(), "Haunting Imitation");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting.clone(), false);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
-    let land2 = CardId::upload(&mut db, &cards, player2, "Swamp");
+    let land1 = CardId::upload(&mut db, &cards, player1.clone(), "Forest");
+    let land2 = CardId::upload(&mut db, &cards, player2.clone(), "Swamp");
 
-    Library::place_on_top(&mut db, player1, land1);
-    Library::place_on_top(&mut db, player2, land2);
+    Library::place_on_top(&mut db, &player1, land1);
+    Library::place_on_top(&mut db, &player2, land2);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
@@ -108,8 +108,8 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db.battlefield[player1], IndexSet::<CardId>::default());
-    assert_eq!(db.hand[player1], IndexSet::from([haunting]));
+    assert_eq!(db.battlefield[&player1], IndexSet::<CardId>::default());
+    assert_eq!(db.hand[&player1], IndexSet::from([haunting]));
 
     Ok(())
 }

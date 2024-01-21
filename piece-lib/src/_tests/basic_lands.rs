@@ -34,19 +34,19 @@ fn plains() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Plains");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Plains");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(db.stack.is_empty());
 
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (1, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
@@ -79,18 +79,18 @@ fn island() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Island");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Island");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(db.stack.is_empty());
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (1, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
@@ -123,19 +123,19 @@ fn swamp() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Swamp");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Swamp");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(db.stack.is_empty());
 
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
@@ -168,18 +168,18 @@ fn mountain() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Mountain");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Mountain");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(db.stack.is_empty());
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),
@@ -212,18 +212,18 @@ fn forest() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Forest");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Forest");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(db.stack.is_empty());
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),

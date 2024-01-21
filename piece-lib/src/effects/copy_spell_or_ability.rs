@@ -7,7 +7,7 @@ use crate::{
     in_play::Database,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{
         effects::{effect::Effect, CopySpellOrAbility},
         ids::CardId,
@@ -29,7 +29,7 @@ impl EffectBehaviors for CopySpellOrAbility {
         db: &Database,
         source: &CardId,
         log_session: LogId,
-        _controller: Controller,
+        _controller: &Controller,
         _already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         db.stack
@@ -49,7 +49,7 @@ impl EffectBehaviors for CopySpellOrAbility {
         &self,
         db: &mut Database,
         source: &CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -73,7 +73,7 @@ impl EffectBehaviors for CopySpellOrAbility {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         _source: &CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     ) {
         for target in targets {
@@ -85,7 +85,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                 Entry::Card(source) => {
                     results.copy_card_to_stack(
                         source.clone(),
-                        controller,
+                        controller.clone(),
                         db.stack.entries.get(&id).unwrap().mode.clone(),
                         Some(db[source].x_is),
                     );

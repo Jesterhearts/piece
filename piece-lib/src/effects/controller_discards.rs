@@ -1,6 +1,6 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, log::LogId, player::Owner,
-    protogen::effects::ControllerDiscards,
+    action_result::ActionResult, effects::EffectBehaviors, log::LogId,
+    protogen::effects::ControllerDiscards, protogen::ids::Owner,
 };
 
 impl EffectBehaviors for ControllerDiscards {
@@ -24,11 +24,11 @@ impl EffectBehaviors for ControllerDiscards {
         &self,
         db: &mut crate::in_play::Database,
         _source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(
+            || !Owner::from(controller.clone()).passes_restrictions(
                 db,
                 LogId::current(db),
                 controller,
@@ -36,7 +36,7 @@ impl EffectBehaviors for ControllerDiscards {
             )
         {
             results.push_settled(ActionResult::DiscardCards {
-                target: controller,
+                target: controller.clone(),
                 count: self.count,
             });
         }
@@ -47,11 +47,11 @@ impl EffectBehaviors for ControllerDiscards {
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.unless.is_empty()
-            || !Owner::from(controller).passes_restrictions(
+            || !Owner::from(controller.clone()).passes_restrictions(
                 db,
                 LogId::current(db),
                 controller,
@@ -59,7 +59,7 @@ impl EffectBehaviors for ControllerDiscards {
             )
         {
             results.push_settled(ActionResult::DiscardCards {
-                target: controller,
+                target: controller.clone(),
                 count: self.count,
             });
         }

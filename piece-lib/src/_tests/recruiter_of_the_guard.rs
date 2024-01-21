@@ -23,20 +23,25 @@ fn etb() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    Library::place_on_top(&mut db, player, bear.clone());
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
+    Library::place_on_top(&mut db, &player, bear.clone());
 
-    let spell = CardId::upload(&mut db, &cards, player, "Annul");
-    Library::place_on_top(&mut db, player, spell);
+    let spell = CardId::upload(&mut db, &cards, player.clone(), "Annul");
+    Library::place_on_top(&mut db, &player, spell);
 
-    let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
-    Library::place_on_top(&mut db, player, elesh);
+    let elesh = CardId::upload(
+        &mut db,
+        &cards,
+        player.clone(),
+        "Elesh Norn, Grand Cenobite",
+    );
+    Library::place_on_top(&mut db, &player, elesh);
 
-    let recruiter = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
+    let recruiter = CardId::upload(&mut db, &cards, player.clone(), "Recruiter of the Guard");
     recruiter.move_to_hand(&mut db);
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &recruiter, None);
     let result = results.resolve(&mut db, None);
@@ -48,9 +53,9 @@ fn etb() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db.all_players[player].library.len(), 2);
+    assert_eq!(db.all_players[&player].library.len(), 2);
 
-    assert_eq!(db.hand[player], IndexSet::from([bear]));
+    assert_eq!(db.hand[&player], IndexSet::from([bear]));
 
     Ok(())
 }

@@ -34,7 +34,7 @@ impl EffectBehaviors for TutorLibrary {
         db: &crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         _already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         db.all_players[controller]
@@ -57,7 +57,7 @@ impl EffectBehaviors for TutorLibrary {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -81,7 +81,7 @@ impl EffectBehaviors for TutorLibrary {
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.reveal {
@@ -133,6 +133,6 @@ impl EffectBehaviors for TutorLibrary {
             }
         }
 
-        results.push_settled(ActionResult::Shuffle(controller.into()));
+        results.push_settled(ActionResult::Shuffle(controller.clone().into()));
     }
 }

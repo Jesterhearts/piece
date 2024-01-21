@@ -25,7 +25,7 @@ impl EffectBehaviors for MultiplyTokens {
         &self,
         _db: &mut crate::in_play::Database,
         _source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
         unreachable!()
@@ -36,7 +36,7 @@ impl EffectBehaviors for MultiplyTokens {
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
         unreachable!()

@@ -22,19 +22,19 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Fabrication Foundry");
-    let gy = CardId::upload(&mut db, &cards, player, "Abzan Banner");
-    let exiled = CardId::upload(&mut db, &cards, player, "Abzan Banner");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Fabrication Foundry");
+    let gy = CardId::upload(&mut db, &cards, player.clone(), "Abzan Banner");
+    let exiled = CardId::upload(&mut db, &cards, player.clone(), "Abzan Banner");
 
     card.move_to_battlefield(&mut db);
     gy.move_to_graveyard(&mut db);
     exiled.move_to_battlefield(&mut db);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 1);
     // Compute exile targets
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -59,8 +59,8 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db.battlefield[player], IndexSet::from([card, gy]));
-    assert_eq!(db.exile[player], IndexSet::from([exiled]));
+    assert_eq!(db.battlefield[&player], IndexSet::from([card, gy]));
+    assert_eq!(db.exile[&player], IndexSet::from([exiled]));
 
     Ok(())
 }

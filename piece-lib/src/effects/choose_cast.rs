@@ -5,7 +5,7 @@ use crate::{
     in_play::Database,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{
         effects::{effect::Effect, ChooseCast},
         ids::CardId,
@@ -27,7 +27,7 @@ impl EffectBehaviors for ChooseCast {
         db: &Database,
         source: &CardId,
         log_session: LogId,
-        _controller: Controller,
+        _controller: &Controller,
         _already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         db.cards
@@ -49,7 +49,7 @@ impl EffectBehaviors for ChooseCast {
         &self,
         db: &mut Database,
         source: &CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     ) {
         let targets = self.valid_targets(
@@ -73,7 +73,7 @@ impl EffectBehaviors for ChooseCast {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         _source: &CardId,
-        _controller: Controller,
+        _controller: &Controller,
         results: &mut PendingResults,
     ) {
         for target in targets {

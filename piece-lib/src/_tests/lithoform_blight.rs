@@ -23,10 +23,10 @@ fn works() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
 
-    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    let land = CardId::upload(&mut db, &cards, player.clone(), "Forest");
     land.move_to_battlefield(&mut db);
 
-    let lithoform = CardId::upload(&mut db, &cards, player, "Lithoform Blight");
+    let lithoform = CardId::upload(&mut db, &cards, player.clone(), "Lithoform Blight");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, lithoform, false);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

@@ -22,17 +22,22 @@ fn copies_permanent() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
 
     let player = all_players.new_player("player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "The Everflowing Well");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "The Everflowing Well");
     card.move_to_battlefield(&mut db);
     card.transform(&mut db);
 
-    let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
+    let elesh = CardId::upload(
+        &mut db,
+        &cards,
+        player.clone(),
+        "Elesh Norn, Grand Cenobite",
+    );
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 

@@ -25,12 +25,12 @@ fn cost_reducer() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Quicksand Whirlpool");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Quicksand Whirlpool");
 
-    let target = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let target = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     target.move_to_battlefield(&mut db);
     let mut results = target.tap(&mut db);
     let result = results.resolve(&mut db, None);

@@ -33,7 +33,7 @@ impl EffectBehaviors for TapTarget {
         db: &crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         db.battlefield
@@ -58,7 +58,7 @@ impl EffectBehaviors for TapTarget {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -83,7 +83,7 @@ impl EffectBehaviors for TapTarget {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if let Ok(target) = targets.into_iter().exactly_one() {

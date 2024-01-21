@@ -43,6 +43,7 @@ impl PendingResult for ChooseModes {
             results.push_chosen_mode(choice);
             match &self.source {
                 Source::Card(card) => {
+                    let controller = db[card].controller.clone();
                     for effect in card.faceup_face(db).modes[choice]
                         .effects
                         .iter()
@@ -55,13 +56,14 @@ impl PendingResult for ChooseModes {
                         effect.effect.as_ref().unwrap().push_pending_behavior(
                             db,
                             card,
-                            db[card].controller,
+                            &controller,
                             results,
                         );
                     }
                 }
                 Source::Effect(effect, source) => {
-                    effect.push_pending_behavior(db, source, db[source].controller, results);
+                    let controller = db[source].controller.clone();
+                    effect.push_pending_behavior(db, source, &controller, results);
                 }
                 _ => {}
             }

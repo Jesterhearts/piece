@@ -33,7 +33,7 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
 
-    *all_players[player]
+    *all_players[&player]
         .mana_pool
         .sourced
         .entry(Mana::COLORLESS)
@@ -45,12 +45,12 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let attendant = CardId::upload(&mut db, &cards, player, "Darigaaz's Attendant");
+    let attendant = CardId::upload(&mut db, &cards, player.clone(), "Darigaaz's Attendant");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &attendant, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &attendant, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &attendant, 0);
 
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -58,7 +58,7 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (0, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),

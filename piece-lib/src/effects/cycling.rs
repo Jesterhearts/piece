@@ -41,7 +41,7 @@ impl EffectBehaviors for Cycling {
         db: &crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         if self.types.is_empty() && self.subtypes.is_empty() {
@@ -70,12 +70,12 @@ impl EffectBehaviors for Cycling {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.types.is_empty() && self.subtypes.is_empty() {
             results.push_settled(ActionResult::DrawCards {
-                target: controller,
+                target: controller.clone(),
                 count: 1,
             })
         } else {
@@ -100,12 +100,12 @@ impl EffectBehaviors for Cycling {
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.types.is_empty() && self.subtypes.is_empty() {
             results.push_settled(ActionResult::DrawCards {
-                target: controller,
+                target: controller.clone(),
                 count: 1,
             });
         } else {

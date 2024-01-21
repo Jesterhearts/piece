@@ -28,14 +28,14 @@ fn damages_target() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
 
-    let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
+    let blast = CardId::upload(&mut db, &cards, player.clone(), "Thermal Blast");
     let mut results = blast.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],
@@ -83,19 +83,19 @@ fn damages_target_threshold() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
     for _ in 0..7 {
-        let card = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+        let card = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
         card.move_to_graveyard(&mut db);
     }
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
 
-    let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
+    let blast = CardId::upload(&mut db, &cards, player.clone(), "Thermal Blast");
     let mut results = blast.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],
@@ -144,20 +144,20 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let other = all_players.new_player("Player".to_string(), 20);
 
     let mut db = Database::new(all_players);
 
     for _ in 0..7 {
-        let card = CardId::upload(&mut db, &cards, other, "Alpine Grizzly");
+        let card = CardId::upload(&mut db, &cards, other.clone(), "Alpine Grizzly");
         card.move_to_graveyard(&mut db);
     }
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     bear.move_to_battlefield(&mut db);
 
-    let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
+    let blast = CardId::upload(&mut db, &cards, player.clone(), "Thermal Blast");
     let mut results = blast.move_to_stack(
         &mut db,
         vec![vec![ActiveTarget::Battlefield { id: bear.clone() }]],

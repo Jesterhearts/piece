@@ -7,7 +7,7 @@ use crate::{
     in_play::Database,
     log::LogId,
     pending_results::PendingResults,
-    player::{mana_pool::SpendReason, Owner},
+    player::mana_pool::SpendReason,
     protogen::{
         cost::{
             ability_restriction,
@@ -16,7 +16,7 @@ use crate::{
         },
         counters::Counter,
         effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
-        ids::{ActivatedAbilityId, CardId, GainManaAbilityId},
+        ids::{ActivatedAbilityId, CardId, GainManaAbilityId, Owner},
     },
     turns::Phase,
 };
@@ -33,7 +33,7 @@ impl ActivatedAbility {
         db: &Database,
         source: &CardId,
         id: &Ability,
-        activator: crate::player::Owner,
+        activator: &crate::protogen::ids::Owner,
         pending: &Option<PendingResults>,
     ) -> bool {
         let banned = db[source].modified_static_abilities.iter().any(|ability| {
@@ -47,7 +47,7 @@ impl ActivatedAbility {
             return false;
         }
 
-        let in_battlefield = db.battlefield[db[source].controller].contains(source);
+        let in_battlefield = db.battlefield[&db[source].controller].contains(source);
 
         if pending.is_some() && !pending.as_ref().unwrap().is_empty() {
             return false;
@@ -67,7 +67,7 @@ impl ActivatedAbility {
         }
 
         // TODO: Effects like Xantcha
-        let controller = db[source].controller;
+        let controller = &db[source].controller;
         if controller != activator {
             return false;
         }
@@ -78,7 +78,7 @@ impl ActivatedAbility {
                 .iter()
                 .any(|effect| effect.effect.as_ref().unwrap().is_sorcery_speed());
         if is_sorcery {
-            if controller != db.turn.active_player() {
+            if *controller != db.turn.active_player() {
                 return false;
             }
 
@@ -108,13 +108,13 @@ impl GainManaAbility {
         db: &Database,
         id: &Ability,
         source: &CardId,
-        activator: Owner,
+        activator: &Owner,
     ) -> bool {
-        if !db.battlefield[db[source].controller].contains(source) {
+        if !db.battlefield[&db[source].controller].contains(source) {
             return false;
         }
 
-        if db[source].controller != activator {
+        if db[source].controller != *activator {
             return false;
         }
 
@@ -160,7 +160,7 @@ impl Ability {
         &self,
         db: &Database,
         source: &CardId,
-        activator: crate::player::Owner,
+        activator: &crate::protogen::ids::Owner,
         pending: &Option<PendingResults>,
     ) -> bool {
         match self {
@@ -197,7 +197,7 @@ pub(crate) fn can_pay_costs(
     if cost.tap && (db[source].tapped || source.summoning_sick(db)) {
         return false;
     }
-    let controller = db[source].controller;
+    let controller = &db[source].controller;
 
     for cost in cost.additional_costs.iter() {
         match cost.cost.as_ref().unwrap() {

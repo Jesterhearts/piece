@@ -23,14 +23,19 @@ fn etb() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    let land = CardId::upload(&mut db, &cards, player.clone(), "Forest");
     land.move_to_graveyard(&mut db);
 
-    let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
+    let titania = CardId::upload(
+        &mut db,
+        &cards,
+        player.clone(),
+        "Titania, Protector of Argoth",
+    );
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &titania, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -71,14 +76,19 @@ fn graveyard_trigger() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    let land = CardId::upload(&mut db, &cards, player.clone(), "Forest");
     land.move_to_battlefield(&mut db);
 
-    let titania = CardId::upload(&mut db, &cards, player, "Titania, Protector of Argoth");
+    let titania = CardId::upload(
+        &mut db,
+        &cards,
+        player.clone(),
+        "Titania, Protector of Argoth",
+    );
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &titania, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);

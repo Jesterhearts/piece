@@ -16,8 +16,12 @@ use piece_lib::{
     in_play::Database,
     library::DeckDefinition,
     pending_results::{Options, PendingResults, ResolutionResult},
-    player::{AllPlayers, Owner, Player},
-    protogen::{ids::CardId, keywords::Keyword, targets::Location},
+    player::{AllPlayers, Player},
+    protogen::{
+        ids::{CardId, Owner},
+        keywords::Keyword,
+        targets::Location,
+    },
     stack::{ActiveTarget, Stack},
     turns::Turn,
     Cards,
@@ -148,10 +152,10 @@ fn main() -> anyhow::Result<()> {
 
     let player1 = all_players.new_player("Player 1".to_string(), 20);
     let player2 = all_players.new_player("Player 2".to_string(), 20);
-    all_players[player1].infinite_mana();
+    all_players[&player1].infinite_mana();
 
     let mut database = Database::new(all_players);
-    let ai = AI::new(player2);
+    let ai = AI::new(player2.clone());
 
     let timer = Instant::now();
 
@@ -200,15 +204,15 @@ fn main() -> anyhow::Result<()> {
     for card in cards.keys() {
         def.add_card(card.clone(), 1);
     }
-    database.all_players[player1].library = def.build_deck(&mut database, &cards, player1);
+    database.all_players[&player1].library = def.build_deck(&mut database, &cards, player1.clone());
 
     let mut def = DeckDefinition::default();
     def.add_card("Forest".to_string(), 4);
     def.add_card("Alpine Grizzly".to_string(), 3);
-    database.all_players[player2].library = def.build_deck(&mut database, &cards, player2);
+    database.all_players[&player2].library = def.build_deck(&mut database, &cards, player2.clone());
 
-    Player::draw_initial_hand(&mut database, player1);
-    Player::draw_initial_hand(&mut database, player2);
+    Player::draw_initial_hand(&mut database, &player1);
+    Player::draw_initial_hand(&mut database, &player2);
 
     let reader = index.reader()?;
     let searcher = reader.searcher();
@@ -522,14 +526,14 @@ impl eframe::App for App {
                         || (ui.is_enabled()
                             && ctx.input(|input| input.key_released(egui::Key::Num3)))
                     {
-                        self.database.all_players[self.player1].infinite_mana();
+                        self.database.all_players[&self.player1].infinite_mana();
                     }
 
                     if ui.button("(Debug) Draw").clicked()
                         || (ui.is_enabled()
                             && ctx.input(|input| input.key_released(egui::Key::Num4)))
                     {
-                        let mut pending = Player::draw(&mut self.database, self.player1, 1);
+                        let mut pending = Player::draw(&mut self.database, &self.player1, 1);
                         while pending.only_immediate_results(&self.database) {
                             let result = pending.resolve(&mut self.database, None);
                             if result == ResolutionResult::Complete {
@@ -556,22 +560,22 @@ impl eframe::App for App {
                 ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
                     ui.label(format!(
                         "{} {}",
-                        self.database.all_players[self.database.turn.active_player()].name,
+                        self.database.all_players[&self.database.turn.active_player()].name,
                         self.database.turn.phase.as_ref()
                     ));
 
                     ui.separator();
                     ui.label(format!(
                         "{} ({})",
-                        self.database.all_players[self.player1].name,
-                        self.database.all_players[self.player1].life_total
+                        self.database.all_players[&self.player1].name,
+                        self.database.all_players[&self.player1].life_total
                     ));
 
                     ui.separator();
                     ui.label(format!(
                         "{} ({})",
-                        self.database.all_players[self.player2].name,
-                        self.database.all_players[self.player2].life_total
+                        self.database.all_players[&self.player2].name,
+                        self.database.all_players[&self.player2].life_total
                     ));
                 })
             });
@@ -598,8 +602,8 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ManaDisplay {
-                    player: self.player2,
-                    items: self.database.all_players[self.player2]
+                    player: self.player2.clone(),
+                    items: self.database.all_players[&self.player2]
                         .mana_pool
                         .pools_display(),
                 },
@@ -637,8 +641,8 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ManaDisplay {
-                    player: self.player1,
-                    items: self.database.all_players[self.player1]
+                    player: self.player1.clone(),
+                    items: self.database.all_players[&self.player1]
                         .mana_pool
                         .pools_display(),
                 },
@@ -646,7 +650,7 @@ impl eframe::App for App {
 
             let mut col_offset = tree.layout(lhs_column).unwrap().size.width;
 
-            let cards = self.database.battlefield[self.player2]
+            let cards = self.database.battlefield[&self.player2]
                 .iter()
                 .cloned()
                 .enumerate()
@@ -659,7 +663,7 @@ impl eframe::App for App {
                 ),
                 ui::Battlefield {
                     db: &mut self.database,
-                    player: self.player2,
+                    player: self.player2.clone(),
                     cards,
                     left_clicked: &mut None,
                     right_clicked: &mut self.right_clicked,
@@ -669,10 +673,10 @@ impl eframe::App for App {
 
             if let Some(clicked) = self.right_clicked.take() {
                 self.inspecting_card =
-                    Some(self.database.battlefield[self.player2][clicked].clone());
+                    Some(self.database.battlefield[&self.player2][clicked].clone());
             }
 
-            let cards = self.database.battlefield[self.player1]
+            let cards = self.database.battlefield[&self.player1]
                 .iter()
                 .cloned()
                 .enumerate()
@@ -685,7 +689,7 @@ impl eframe::App for App {
                 ),
                 ui::Battlefield {
                     db: &mut self.database,
-                    player: self.player1,
+                    player: self.player1.clone(),
                     cards,
                     left_clicked: &mut self.left_clicked,
                     right_clicked: &mut self.right_clicked,
@@ -694,10 +698,11 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.left_clicked.take() {
-                self.selected_card = Some(self.database.battlefield[self.player1][clicked].clone());
+                self.selected_card =
+                    Some(self.database.battlefield[&self.player1][clicked].clone());
             } else if let Some(clicked) = self.right_clicked.take() {
                 self.inspecting_card =
-                    Some(self.database.battlefield[self.player1][clicked].clone());
+                    Some(self.database.battlefield[&self.player1][clicked].clone());
             }
 
             let pos = tree.layout(player1_options).unwrap();
@@ -708,7 +713,7 @@ impl eframe::App for App {
                 ),
                 ui::Actions {
                     db: &mut self.database,
-                    player: self.player1,
+                    player: self.player1.clone(),
                     card: self.selected_card.clone(),
                     pending: &self.to_resolve,
                     left_clicked: &mut self.left_clicked,
@@ -722,7 +727,7 @@ impl eframe::App for App {
                     && clicked == 0
                     && Turn::can_cast(&self.database, card)
                 {
-                    let mut pending = Player::play_card(&mut self.database, self.player1, card);
+                    let mut pending = Player::play_card(&mut self.database, &self.player1, card);
                     while pending.only_immediate_results(&self.database) {
                         let result = pending.resolve(&mut self.database, None);
                         if result == ResolutionResult::Complete {
@@ -749,7 +754,7 @@ impl eframe::App for App {
                         let mut pending = Battlefields::activate_ability(
                             &mut self.database,
                             &self.to_resolve,
-                            self.player1,
+                            &self.player1,
                             card,
                             selected,
                         );
@@ -775,7 +780,7 @@ impl eframe::App for App {
                 }
             }
 
-            let cards = self.database.hand[self.player1]
+            let cards = self.database.hand[&self.player1]
                 .iter()
                 .cloned()
                 .collect_vec();
@@ -787,7 +792,7 @@ impl eframe::App for App {
                 ),
                 ui::Hand {
                     db: &mut self.database,
-                    owner: self.player1,
+                    owner: self.player1.clone(),
                     cards,
                     hovered: &mut self.hovered,
                     left_clicked: &mut self.left_clicked,
@@ -796,14 +801,14 @@ impl eframe::App for App {
             );
 
             if let Some(clicked) = self.left_clicked.take() {
-                self.selected_card = Some(self.database.hand[self.player1][clicked].clone());
+                self.selected_card = Some(self.database.hand[&self.player1][clicked].clone());
             } else if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.hand[self.player1][clicked].clone());
+                self.inspecting_card = Some(self.database.hand[&self.player1][clicked].clone());
             }
 
             col_offset += tree.layout(center_column).unwrap().size.width;
 
-            let cards = self.database.exile[self.player2]
+            let cards = self.database.exile[&self.player2]
                 .iter()
                 .map(|card| card.name(&self.database))
                 .cloned()
@@ -815,17 +820,17 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ui::Exile {
-                    player: self.player2,
+                    player: self.player2.clone(),
                     cards,
                     right_clicked: &mut self.right_clicked,
                 },
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.exile[self.player2][clicked].clone());
+                self.inspecting_card = Some(self.database.exile[&self.player2][clicked].clone());
             }
 
-            let cards = self.database.graveyard[self.player2]
+            let cards = self.database.graveyard[&self.player2]
                 .iter()
                 .map(|card| card.name(&self.database))
                 .cloned()
@@ -837,17 +842,18 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ui::Graveyard {
-                    player: self.player2,
+                    player: self.player2.clone(),
                     cards,
                     right_clicked: &mut self.right_clicked,
                 },
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.graveyard[self.player2][clicked].clone());
+                self.inspecting_card =
+                    Some(self.database.graveyard[&self.player2][clicked].clone());
             }
 
-            let cards = self.database.graveyard[self.player1]
+            let cards = self.database.graveyard[&self.player1]
                 .iter()
                 .map(|card| card.name(&self.database))
                 .cloned()
@@ -859,17 +865,18 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ui::Graveyard {
-                    player: self.player1,
+                    player: self.player1.clone(),
                     cards,
                     right_clicked: &mut self.right_clicked,
                 },
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.graveyard[self.player1][clicked].clone());
+                self.inspecting_card =
+                    Some(self.database.graveyard[&self.player1][clicked].clone());
             }
 
-            let cards = self.database.exile[self.player1]
+            let cards = self.database.exile[&self.player1]
                 .iter()
                 .map(|card| card.name(&self.database))
                 .cloned()
@@ -881,14 +888,14 @@ impl eframe::App for App {
                     egui::vec2(pos.size.width, pos.size.height),
                 ),
                 ui::Exile {
-                    player: self.player1,
+                    player: self.player1.clone(),
                     cards,
                     right_clicked: &mut self.right_clicked,
                 },
             );
 
             if let Some(clicked) = self.right_clicked.take() {
-                self.inspecting_card = Some(self.database.exile[self.player1][clicked].clone());
+                self.inspecting_card = Some(self.database.exile[&self.player1][clicked].clone());
             }
         });
 
@@ -1101,15 +1108,19 @@ impl eframe::App for App {
                             top.as_ref().unwrap()
                         };
 
-                        let card =
-                            CardId::upload(&mut self.database, &self.cards, self.player1, adding);
+                        let card = CardId::upload(
+                            &mut self.database,
+                            &self.cards,
+                            self.player1.clone(),
+                            adding,
+                        );
                         card.move_to_hand(&mut self.database);
                         self.adding_card = None;
                     } else if let Some(inspecting) = inspecting {
                         let card = CardId::upload(
                             &mut self.database,
                             &self.cards,
-                            self.player1,
+                            self.player1.clone(),
                             &inspecting,
                         );
                         self.inspecting_card = Some(card);

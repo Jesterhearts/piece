@@ -22,16 +22,21 @@ fn remove_abilities() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
+    let elesh = CardId::upload(
+        &mut db,
+        &cards,
+        player.clone(),
+        "Elesh Norn, Grand Cenobite",
+    );
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &elesh, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -42,7 +47,7 @@ fn remove_abilities() -> anyhow::Result<()> {
     assert_eq!(bear.power(&db), Some(6));
     assert_eq!(bear.toughness(&db), Some(4));
 
-    let enchant = CardId::upload(&mut db, &cards, player, "Eaten by Piranhas");
+    let enchant = CardId::upload(&mut db, &cards, player.clone(), "Eaten by Piranhas");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &enchant, Some(&elesh));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);

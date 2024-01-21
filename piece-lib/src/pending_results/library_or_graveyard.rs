@@ -50,7 +50,11 @@ impl PendingResult for LibraryOrGraveyard {
     ) -> bool {
         if let Some(choice) = choice {
             match choice {
-                0 => Library::place_on_top(db, db[&self.card].controller.into(), self.card.clone()),
+                0 => Library::place_on_top(
+                    db,
+                    &db[&self.card].controller.clone().into(),
+                    self.card.clone(),
+                ),
                 1 => self.card.move_to_graveyard(db),
                 _ => unreachable!(),
             }

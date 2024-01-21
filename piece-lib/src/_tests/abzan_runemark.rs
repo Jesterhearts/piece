@@ -25,12 +25,12 @@ fn aura_works() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
+    let aura = CardId::upload(&mut db, &cards, player.clone(), "Abzan Runemark");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &aura, Some(&creature));
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
@@ -39,7 +39,7 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(4));
     assert!(creature.vigilance(&db));
 
-    let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let card2 = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -79,12 +79,12 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
 
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
+    let aura = CardId::upload(&mut db, &cards, player.clone(), "Abzan Runemark");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &aura, Some(&creature));
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
@@ -127,10 +127,10 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Recruiter of the Guard");
     let _ = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
 
-    let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
+    let aura = CardId::upload(&mut db, &cards, player.clone(), "Abzan Runemark");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &aura, Some(&creature));
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
@@ -139,7 +139,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(3));
     assert!(!creature.vigilance(&db));
 
-    let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let card2 = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card2, None);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);

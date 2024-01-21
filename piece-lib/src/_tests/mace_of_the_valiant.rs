@@ -21,21 +21,21 @@ fn mace() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
+    let mace = CardId::upload(&mut db, &cards, player.clone(), "Mace of the Valiant");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &mace, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &mace, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &mace, 0);
     // Pay the cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -52,7 +52,7 @@ fn mace() -> anyhow::Result<()> {
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(2));
 
-    let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear2 = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);

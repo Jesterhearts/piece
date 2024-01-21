@@ -21,11 +21,11 @@ impl EffectBehaviors for GainLife {
         &self,
         _db: &mut crate::in_play::Database,
         _source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::GainLife {
-            target: controller,
+            target: controller.clone(),
             count: self.count,
         });
     }
@@ -35,11 +35,11 @@ impl EffectBehaviors for GainLife {
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         _source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::GainLife {
-            target: controller,
+            target: controller.clone(),
             count: self.count,
         });
     }

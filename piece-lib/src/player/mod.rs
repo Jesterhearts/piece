@@ -22,7 +22,7 @@ use crate::{
     protogen::{
         cost::ManaCost,
         effects::{static_ability, ReplacementEffect},
-        ids::CardId,
+        ids::{CardId, Controller, Owner},
         mana::{Mana, ManaRestriction, ManaSource},
         targets::Location,
     },
@@ -36,33 +36,33 @@ use crate::{
     stack::Stack,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Owner(Uuid);
-
 impl From<Controller> for Owner {
     fn from(value: Controller) -> Self {
-        Self(value.0)
+        Self {
+            id: value.id.clone(),
+            ..Default::default()
+        }
     }
 }
 
 impl PartialEq<Controller> for Owner {
     fn eq(&self, other: &Controller) -> bool {
-        self.0 == other.0
+        self.id == other.id
     }
 }
 
 impl PartialEq<Owner> for Controller {
     fn eq(&self, other: &Owner) -> bool {
-        self.0 == other.0
+        self.id == other.id
     }
 }
 
 impl Owner {
     pub(crate) fn passes_restrictions(
-        self,
+        &self,
         db: &Database,
         log_session: LogId,
-        controller: Controller,
+        controller: &Controller,
         restrictions: &[Restriction],
     ) -> bool {
         for restriction in restrictions {
@@ -147,7 +147,7 @@ impl Owner {
                     let descended = db
                         .graveyard
                         .descended_this_turn
-                        .get(&self)
+                        .get(self)
                         .copied()
                         .unwrap_or_default();
                     if descended < 1 {
@@ -170,14 +170,14 @@ impl Owner {
                     return false;
                 }
                 restriction::Restriction::DuringControllersTurn(_) => {
-                    if self != db.turn.active_player() {
+                    if *self != db.turn.active_player() {
                         return false;
                     }
                 }
                 restriction::Restriction::ControllerJustCast(_) => {
                     if !Log::session(db, log_session).iter().any(|(_, entry)| {
                         if let LogEntry::Cast { card } = entry {
-                            db[card].controller == self
+                            db[card].controller == *self
                         } else {
                             false
                         }
@@ -258,17 +258,17 @@ impl Owner {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct Controller(Uuid);
-
 impl From<Owner> for Controller {
     fn from(value: Owner) -> Self {
-        Self(value.0)
+        Self {
+            id: value.id.clone(),
+            ..Default::default()
+        }
     }
 }
 
 impl Controller {
-    pub(crate) fn has_cards(self, db: &Database, location: Location) -> bool {
+    pub(crate) fn has_cards(&self, db: &Database, location: Location) -> bool {
         match location {
             Location::ON_BATTLEFIELD => !db.battlefield[self].is_empty(),
             Location::IN_GRAVEYARD => !db.graveyard[self].is_empty(),
@@ -280,34 +280,34 @@ impl Controller {
     }
 }
 
-impl Index<Owner> for AllPlayers {
+impl Index<&Owner> for AllPlayers {
     type Output = Player;
 
-    fn index(&self, index: Owner) -> &Self::Output {
-        self.players.get(&index).expect("Invalid player id")
+    fn index(&self, index: &Owner) -> &Self::Output {
+        self.players.get(index).expect("Invalid player id")
     }
 }
 
-impl IndexMut<Owner> for AllPlayers {
-    fn index_mut(&mut self, index: Owner) -> &mut Self::Output {
-        self.players.get_mut(&index).expect("Invalid player id")
+impl IndexMut<&Owner> for AllPlayers {
+    fn index_mut(&mut self, index: &Owner) -> &mut Self::Output {
+        self.players.get_mut(index).expect("Invalid player id")
     }
 }
 
-impl Index<Controller> for AllPlayers {
+impl Index<&Controller> for AllPlayers {
     type Output = Player;
 
-    fn index(&self, index: Controller) -> &Self::Output {
+    fn index(&self, index: &Controller) -> &Self::Output {
         self.players
-            .get(&Owner::from(index))
+            .get(&Owner::from(index.clone()))
             .expect("Invalid player id")
     }
 }
 
-impl IndexMut<Controller> for AllPlayers {
-    fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
+impl IndexMut<&Controller> for AllPlayers {
+    fn index_mut(&mut self, index: &Controller) -> &mut Self::Output {
         self.players
-            .get_mut(&Owner::from(index))
+            .get_mut(&Owner::from(index.clone()))
             .expect("Invalid player id")
     }
 }
@@ -320,9 +320,12 @@ pub struct AllPlayers {
 impl AllPlayers {
     #[must_use]
     pub fn new_player(&mut self, name: String, life_total: i32) -> Owner {
-        let id = Owner(Uuid::new_v4());
+        let id = Owner {
+            id: Uuid::new_v4().to_string(),
+            ..Default::default()
+        };
         self.players.insert(
-            id,
+            id.clone(),
             Player {
                 name,
                 hexproof: false,
@@ -341,7 +344,7 @@ impl AllPlayers {
     }
 
     pub(crate) fn all_players(&self) -> Vec<Owner> {
-        self.players.keys().copied().collect_vec()
+        self.players.keys().cloned().collect_vec()
     }
 }
 
@@ -380,7 +383,7 @@ impl Player {
         }
     }
 
-    pub fn draw_initial_hand(db: &mut Database, player: Owner) {
+    pub fn draw_initial_hand(db: &mut Database, player: &Owner) {
         for _ in 0..7 {
             let card = db.all_players[player]
                 .library
@@ -391,7 +394,7 @@ impl Player {
         }
     }
 
-    pub fn draw(db: &mut Database, player: Owner, count: usize) -> PendingResults {
+    pub fn draw(db: &mut Database, player: &Owner, count: usize) -> PendingResults {
         let mut results = PendingResults::default();
 
         for _ in 0..count {
@@ -407,7 +410,7 @@ impl Player {
             } else if let Some(card) = db.all_players[player].library.draw() {
                 card.move_to_hand(db);
             } else {
-                results.push_settled(ActionResult::PlayerLoses(player));
+                results.push_settled(ActionResult::PlayerLoses(player.clone()));
                 return results;
             }
         }
@@ -417,7 +420,7 @@ impl Player {
 
     pub(crate) fn draw_with_replacement(
         db: &mut Database,
-        player: Owner,
+        player: &Owner,
         replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
         count: usize,
         results: &mut PendingResults,
@@ -434,12 +437,13 @@ impl Player {
                         continue;
                     }
 
+                    let controller = db[&source].controller.clone();
                     for effect in replacement.effects.iter() {
                         effect.effect.as_ref().unwrap().replace_draw(
                             db,
                             player,
                             replacements,
-                            db[&source].controller,
+                            &controller,
                             count,
                             results,
                         );
@@ -453,7 +457,7 @@ impl Player {
         }
     }
 
-    pub fn play_card(db: &mut Database, player: Owner, card: &CardId) -> PendingResults {
+    pub fn play_card(db: &mut Database, player: &Owner, card: &CardId) -> PendingResults {
         assert!(db.hand[player].contains(card));
 
         if card.is_land(db) && !Self::can_play_land(db, player) {
@@ -528,7 +532,7 @@ impl Player {
 
     pub(crate) fn spend_mana(
         db: &mut Database,
-        player: Owner,
+        player: &Owner,
         mana: &[Mana],
         sources: &[ManaSource],
         reason: &SpendReason,
@@ -550,7 +554,7 @@ impl Player {
         true
     }
 
-    pub(crate) fn manifest(db: &mut Database, player: Owner) -> PendingResults {
+    pub(crate) fn manifest(db: &mut Database, player: &Owner) -> PendingResults {
         if let Some(manifested) = db.all_players[player].library.draw() {
             {
                 db[&manifested].manifested = true;
@@ -562,11 +566,11 @@ impl Player {
         }
     }
 
-    pub(crate) fn lands_per_turn(db: &mut Database, player: Owner) -> usize {
+    pub(crate) fn lands_per_turn(db: &mut Database, player: &Owner) -> usize {
         1 + Battlefields::static_abilities(db)
             .into_iter()
             .filter_map(|(ability, card)| {
-                if db[card].controller == player {
+                if db[card].controller == *player {
                     match ability {
                         static_ability::Ability::ExtraLandsPerTurn(count) => {
                             Some(count.count as usize)
@@ -580,7 +584,7 @@ impl Player {
             .sum::<usize>()
     }
 
-    pub fn can_play_land(db: &mut Database, player: Owner) -> bool {
+    pub fn can_play_land(db: &mut Database, player: &Owner) -> bool {
         db.all_players[player].lands_played_this_turn < Self::lands_per_turn(db, player)
     }
 }

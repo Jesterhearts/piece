@@ -26,12 +26,12 @@ fn etb_clones() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let clone = CardId::upload(&mut db, &cards, player, "Clone");
+    let clone = CardId::upload(&mut db, &cards, player.clone(), "Clone");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &clone, None);
 
     let result = results.resolve(&mut db, Some(0));
@@ -64,7 +64,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let clone = CardId::upload(&mut db, &cards, player, "Clone");
+    let clone = CardId::upload(&mut db, &cards, player.clone(), "Clone");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &clone, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -74,7 +74,7 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(db.graveyard[player], IndexSet::from([clone]));
+    assert_eq!(db.graveyard[&player], IndexSet::from([clone]));
 
     Ok(())
 }

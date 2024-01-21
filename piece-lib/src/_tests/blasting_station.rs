@@ -24,8 +24,8 @@ fn untaps() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Blasting Station");
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Blasting Station");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -34,7 +34,7 @@ fn untaps() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     // Compute targets for sacrifice
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -57,7 +57,7 @@ fn untaps() -> anyhow::Result<()> {
 
     assert!(card.tapped(&db));
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -68,7 +68,7 @@ fn untaps() -> anyhow::Result<()> {
 
     assert!(!card.tapped(&db));
 
-    assert_eq!(db.all_players[player].life_total, 19);
+    assert_eq!(db.all_players[&player].life_total, 19);
 
     Ok(())
 }

@@ -16,7 +16,6 @@ use crate::{
     in_play::{CastFrom, Database, ExileReason, ModifierId, StaticAbilityId},
     log::{LeaveReason, Log, LogEntry, LogId},
     pending_results::PendingResults,
-    player::{Controller, Owner},
     protogen::{
         abilities::TriggeredAbility,
         card::Card,
@@ -32,7 +31,7 @@ use crate::{
             },
             Duration, DynamicPowerToughness, Effect, ReplacementEffect,
         },
-        ids::{ActivatedAbilityId, CardId, GainManaAbilityId},
+        ids::{ActivatedAbilityId, CardId, Controller, GainManaAbilityId, Owner},
         keywords::Keyword,
         mana::ManaSource,
         targets::{
@@ -132,10 +131,10 @@ impl CardInPlay {
             std::mem::swap(&mut exiling, &mut self.exiling);
         }
 
-        let owner = self.owner;
+        let owner = self.owner.clone();
         *self = Self {
             card,
-            owner,
+            owner: owner.clone(),
             static_abilities,
             activated_abilities,
             mana_abilities,
@@ -221,7 +220,7 @@ impl CardId {
             id.clone(),
             CardInPlay {
                 card,
-                controller: player.into(),
+                controller: player.clone().into(),
                 owner: player,
                 static_abilities,
                 activated_abilities,
@@ -241,11 +240,11 @@ impl CardId {
 
     pub fn is_in_location(&self, db: &Database, location: Location) -> bool {
         match location {
-            Location::ON_BATTLEFIELD => db.battlefield[db[self].controller].contains(self),
-            Location::IN_GRAVEYARD => db.graveyard[db[self].owner].contains(self),
-            Location::IN_EXILE => db.exile[db[self].owner].contains(self),
-            Location::IN_LIBRARY => db.all_players[db[self].owner].library.cards.contains(self),
-            Location::IN_HAND => db.hand[db[self].owner].contains(self),
+            Location::ON_BATTLEFIELD => db.battlefield[&db[self].controller].contains(self),
+            Location::IN_GRAVEYARD => db.graveyard[&db[self].owner].contains(self),
+            Location::IN_EXILE => db.exile[&db[self].owner].contains(self),
+            Location::IN_LIBRARY => db.all_players[&db[self].owner].library.cards.contains(self),
+            Location::IN_HAND => db.hand[&db[self].owner].contains(self),
             Location::IN_STACK => db.stack.contains(self),
         }
     }
@@ -333,7 +332,8 @@ impl CardId {
             db[self].reset(false);
             db.stack.remove(self);
 
-            let view = db.owner_view_mut(db[self].owner);
+            let owner = db[self].owner.clone();
+            let view = db.owner_view_mut(&owner);
             view.battlefield.shift_remove(self);
             view.graveyard.shift_remove(self);
             view.exile.shift_remove(self);
@@ -377,7 +377,8 @@ impl CardId {
             db[self].replacements_active = false;
             db[self].cast_from = from;
 
-            let view = db.owner_view_mut(db[self].owner);
+            let owner = db[self].owner.clone();
+            let view = db.owner_view_mut(&owner);
             view.battlefield.shift_remove(self);
             view.graveyard.shift_remove(self);
             view.exile.shift_remove(self);
@@ -391,7 +392,7 @@ impl CardId {
     pub(crate) fn move_to_battlefield(&self, db: &mut Database) {
         db.stack.remove(self);
 
-        let view = db.owner_view_mut(db[self].controller.into());
+        let view = db.owner_view_mut(&db[self].controller.clone().into());
         view.graveyard.shift_remove(self);
         view.exile.shift_remove(self);
         view.library.remove(self);
@@ -428,16 +429,20 @@ impl CardId {
 
             db[self].reset(false);
             db.stack.remove(self);
-            let view = db.owner_view_mut(db[self].owner);
+            let owner = db[self].owner.clone();
+            let view = db.owner_view_mut(&owner);
             view.exile.shift_remove(self);
             view.library.remove(self);
             view.hand.shift_remove(self);
             view.battlefield.shift_remove(self);
 
-            let owner = db[self].owner;
-            db.graveyard[owner].insert(self.clone());
+            let owner = db[self].owner.clone();
+            db.graveyard[&owner].insert(self.clone());
             if self.is_permanent(db) {
-                *db.graveyard.descended_this_turn.entry(owner).or_default() += 1;
+                *db.graveyard
+                    .descended_this_turn
+                    .entry(owner.clone())
+                    .or_default() += 1;
             }
 
             for sa in db[self]
@@ -468,7 +473,8 @@ impl CardId {
 
             db[self].reset(false);
             db.stack.remove(self);
-            let view = db.owner_view_mut(db[self].owner);
+            let owner = db[self].owner.clone();
+            let view = db.owner_view_mut(&owner);
             view.exile.shift_remove(self);
             view.hand.shift_remove(self);
             view.battlefield.shift_remove(self);
@@ -514,7 +520,8 @@ impl CardId {
             db[self].exile_duration = Some(duration);
 
             db.stack.remove(self);
-            let view = db.owner_view_mut(db[self].owner);
+            let owner = db[self].owner.clone();
+            let view = db.owner_view_mut(&owner);
             view.hand.shift_remove(self);
             view.library.remove(self);
             view.battlefield.shift_remove(self);
@@ -542,7 +549,8 @@ impl CardId {
 
         db[self].reset(false);
         db.stack.remove(self);
-        let view = db.owner_view_mut(db[self].owner);
+        let owner = db[self].owner.clone();
+        let view = db.owner_view_mut(&owner);
         view.hand.shift_remove(self);
         view.library.remove(self);
         view.battlefield.shift_remove(self);
@@ -565,7 +573,7 @@ impl CardId {
 
     pub(crate) fn cleanup_tokens_in_limbo(db: &mut Database) {
         db.cards
-            .retain(|id, card| !card.token || db.battlefield[card.controller].contains(id));
+            .retain(|id, card| !card.token || db.battlefield[&card.controller].contains(id));
     }
 
     pub(crate) fn remove_all_modifiers(&self, db: &mut Database) {
@@ -723,7 +731,7 @@ impl CardId {
                         db,
                         dynamic,
                         &modifier.source,
-                        db[self].controller,
+                        &db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -738,7 +746,7 @@ impl CardId {
                             db,
                             dynamic,
                             &modifier.source,
-                            db[self].controller,
+                            &db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -751,7 +759,7 @@ impl CardId {
                     db,
                     LogId::current(db),
                     &modifier.source,
-                    db[self].controller,
+                    &db[self].controller,
                     &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
@@ -836,7 +844,7 @@ impl CardId {
                         db,
                         dynamic,
                         &modifier.source,
-                        db[self].controller,
+                        &db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -851,7 +859,7 @@ impl CardId {
                             db,
                             dynamic,
                             &modifier.source,
-                            db[self].controller,
+                            &db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -864,7 +872,7 @@ impl CardId {
                     db,
                     LogId::current(db),
                     &modifier.source,
-                    db[self].controller,
+                    &db[self].controller,
                     &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
@@ -916,7 +924,7 @@ impl CardId {
                                 db,
                                 dynamic,
                                 self,
-                                db[self].controller,
+                                &db[self].controller,
                                 &types,
                                 &subtypes,
                                 &keywords,
@@ -932,7 +940,7 @@ impl CardId {
                                 db,
                                 dynamic,
                                 self,
-                                db[self].controller,
+                                &db[self].controller,
                                 &types,
                                 &subtypes,
                                 &keywords,
@@ -944,7 +952,7 @@ impl CardId {
                         db,
                         LogId::current(db),
                         self,
-                        db[self].controller,
+                        &db[self].controller,
                         restrictions,
                         &types,
                         &subtypes,
@@ -1013,7 +1021,7 @@ impl CardId {
                         db,
                         dynamic,
                         &modifier.source,
-                        db[self].controller,
+                        &db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -1028,7 +1036,7 @@ impl CardId {
                             db,
                             dynamic,
                             &modifier.source,
-                            db[self].controller,
+                            &db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -1041,7 +1049,7 @@ impl CardId {
                     db,
                     LogId::current(db),
                     &modifier.source,
-                    db[self].controller,
+                    &db[self].controller,
                     &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
@@ -1115,7 +1123,7 @@ impl CardId {
                         db,
                         dynamic,
                         &modifier.source,
-                        db[self].controller,
+                        &db[self].controller,
                         &types,
                         &subtypes,
                         &keywords,
@@ -1130,7 +1138,7 @@ impl CardId {
                             db,
                             dynamic,
                             &modifier.source,
-                            db[self].controller,
+                            &db[self].controller,
                             &types,
                             &subtypes,
                             &keywords,
@@ -1143,7 +1151,7 @@ impl CardId {
                     db,
                     LogId::current(db),
                     &modifier.source,
-                    db[self].controller,
+                    &db[self].controller,
                     &modifier.modifier.restrictions,
                     &types,
                     &subtypes,
@@ -1191,7 +1199,7 @@ impl CardId {
                     db,
                     dynamic,
                     &modifier.source,
-                    db[self].controller,
+                    &db[self].controller,
                     &types,
                     &subtypes,
                     &keywords,
@@ -1298,7 +1306,7 @@ impl CardId {
         db: &Database,
         dynamic: &DynamicPowerToughness,
         source: &CardId,
-        self_controller: Controller,
+        self_controller: &Controller,
         self_types: &TypeSet,
         self_subtypes: &SubtypeSet,
         self_keywords: &HashMap<i32, u32>,
@@ -1396,7 +1404,7 @@ impl CardId {
             db,
             log_session,
             source,
-            db[self].controller,
+            &db[self].controller,
             restrictions,
             &db[self].modified_types,
             &db[self].modified_subtypes,
@@ -1414,7 +1422,7 @@ impl CardId {
         db: &Database,
         log_session: LogId,
         source: &CardId,
-        self_controller: Controller,
+        self_controller: &Controller,
         restrictions: &[Restriction],
         self_types: &TypeSet,
         self_subtypes: &SubtypeSet,
@@ -1483,12 +1491,12 @@ impl CardId {
                 restriction::Restriction::Controller(controller_restriction) => {
                     match controller_restriction.controller.as_ref().unwrap() {
                         restriction::controller::Controller::Self_(_) => {
-                            if db[source].controller != self_controller {
+                            if db[source].controller != *self_controller {
                                 return false;
                             }
                         }
                         restriction::controller::Controller::Opponent(_) => {
-                            if db[source].controller == self_controller {
+                            if db[source].controller == *self_controller {
                                 return false;
                             }
                         }
@@ -1514,7 +1522,7 @@ impl CardId {
                         let LogEntry::Cast { card } = entry else {
                             return false;
                         };
-                        db[card].controller == self_controller
+                        db[card].controller == *self_controller
                     }) {
                         return false;
                     }
@@ -1532,7 +1540,7 @@ impl CardId {
                     let descended = db
                         .graveyard
                         .descended_this_turn
-                        .get(&Owner::from(self_controller))
+                        .get(&Owner::from(self_controller.clone()))
                         .copied()
                         .unwrap_or_default();
                     if descended < 1 {
@@ -1540,7 +1548,7 @@ impl CardId {
                     }
                 }
                 restriction::Restriction::DuringControllersTurn(_) => {
-                    if self_controller != db.turn.active_player() {
+                    if *self_controller != db.turn.active_player() {
                         return false;
                     }
                 }
@@ -1881,7 +1889,7 @@ impl CardId {
         already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<Vec<ActiveTarget>> {
         let mut targets = vec![];
-        let controller = db[self].controller;
+        let controller = &db[self].controller;
         for effect in ability.effects(db).iter() {
             targets.push(effect.effect.as_ref().unwrap().valid_targets(
                 db,
@@ -1898,7 +1906,7 @@ impl CardId {
     pub(crate) fn targets_for_aura(&self, db: &Database) -> Option<Vec<ActiveTarget>> {
         if self.faceup_face(db).enchant.is_some() {
             let mut targets = vec![];
-            let controller = db[self].controller;
+            let controller = &db[self].controller;
             for card in db.battlefield[controller].iter() {
                 if !card.passes_restrictions(
                     db,
@@ -1956,12 +1964,12 @@ impl CardId {
         true
     }
 
-    pub(crate) fn can_be_targeted(&self, db: &Database, caster: Controller) -> bool {
+    pub(crate) fn can_be_targeted(&self, db: &Database, caster: &Controller) -> bool {
         if self.shroud(db) {
             return false;
         }
 
-        if self.hexproof(db) && db[self].controller != caster {
+        if self.hexproof(db) && db[self].controller != *caster {
             return false;
         }
 
@@ -2023,7 +2031,7 @@ impl CardId {
         self.apply_modifiers_layered(db);
     }
 
-    pub(crate) fn token_copy_of(&self, db: &mut Database, controller: Controller) -> CardId {
+    pub(crate) fn token_copy_of(&self, db: &mut Database, controller: &Controller) -> CardId {
         let card = clone_card(db, self);
 
         let id = Self::generate();
@@ -2031,8 +2039,8 @@ impl CardId {
             id.clone(),
             CardInPlay {
                 card,
-                controller,
-                owner: controller.into(),
+                controller: controller.clone(),
+                owner: controller.clone().into(),
                 token: true,
                 ..Default::default()
             },
@@ -2189,15 +2197,15 @@ impl CardId {
     }
 
     pub(crate) fn location(&self, db: &Database) -> Option<Location> {
-        if db.battlefield[db[self].controller].contains(self) {
+        if db.battlefield[&db[self].controller].contains(self) {
             Some(Location::ON_BATTLEFIELD)
-        } else if db.graveyard[db[self].owner].contains(self) {
+        } else if db.graveyard[&db[self].owner].contains(self) {
             Some(Location::IN_GRAVEYARD)
-        } else if db.all_players[db[self].owner].library.cards.contains(self) {
+        } else if db.all_players[&db[self].owner].library.cards.contains(self) {
             Some(Location::IN_LIBRARY)
-        } else if db.exile[db[self].owner].contains(self) {
+        } else if db.exile[&db[self].owner].contains(self) {
             Some(Location::IN_EXILE)
-        } else if db.hand[db[self].owner].contains(self) {
+        } else if db.hand[&db[self].owner].contains(self) {
             Some(Location::IN_HAND)
         } else {
             db.stack.find(self).map(|_| Location::IN_STACK)
@@ -2205,15 +2213,15 @@ impl CardId {
     }
 
     pub(crate) fn target_from_location(&self, db: &Database) -> Option<ActiveTarget> {
-        if db.battlefield[db[self].controller].contains(self) {
+        if db.battlefield[&db[self].controller].contains(self) {
             Some(ActiveTarget::Battlefield { id: self.clone() })
-        } else if db.graveyard[db[self].owner].contains(self) {
+        } else if db.graveyard[&db[self].owner].contains(self) {
             Some(ActiveTarget::Graveyard { id: self.clone() })
-        } else if db.all_players[db[self].owner].library.cards.contains(self) {
+        } else if db.all_players[&db[self].owner].library.cards.contains(self) {
             Some(ActiveTarget::Library { id: self.clone() })
-        } else if db.exile[db[self].owner].contains(self) {
+        } else if db.exile[&db[self].owner].contains(self) {
             Some(ActiveTarget::Exile { id: self.clone() })
-        } else if db.hand[db[self].owner].contains(self) {
+        } else if db.hand[&db[self].owner].contains(self) {
             Some(ActiveTarget::Hand { id: self.clone() })
         } else {
             db.stack.find(self).map(|id| ActiveTarget::Stack { id })

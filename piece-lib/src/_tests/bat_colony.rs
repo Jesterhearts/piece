@@ -31,24 +31,24 @@ fn spawns_bats() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let cave1 = CardId::upload(&mut db, &cards, player, "Hidden Courtyard");
+    let cave1 = CardId::upload(&mut db, &cards, player.clone(), "Hidden Courtyard");
     cave1.move_to_battlefield(&mut db);
-    let cave2 = CardId::upload(&mut db, &cards, player, "Hidden Courtyard");
+    let cave2 = CardId::upload(&mut db, &cards, player.clone(), "Hidden Courtyard");
     cave2.move_to_battlefield(&mut db);
-    let cave3 = CardId::upload(&mut db, &cards, player, "Hidden Courtyard");
+    let cave3 = CardId::upload(&mut db, &cards, player.clone(), "Hidden Courtyard");
     cave3.move_to_battlefield(&mut db);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &cave1, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &cave1, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &cave2, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &cave2, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &cave3, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &cave3, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let bat_colony = CardId::upload(&mut db, &cards, player, "Bat Colony");
+    let bat_colony = CardId::upload(&mut db, &cards, player.clone(), "Bat Colony");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, bat_colony, true);
     // Pay white
     let result = results.resolve(&mut db, None);

@@ -34,20 +34,20 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let land = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, land.clone());
+    let land = CardId::upload(&mut db, &cards, player.clone(), "Forest");
+    Library::place_on_top(&mut db, &player, land.clone());
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Abzan Banner");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 1);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 1);
     // Pay banner cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -63,8 +63,8 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db.graveyard[player], IndexSet::from([card]));
-    assert_eq!(db.hand[player], IndexSet::from([land]));
+    assert_eq!(db.graveyard[&player], IndexSet::from([card]));
+    assert_eq!(db.hand[&player], IndexSet::from([land]));
 
     Ok(())
 }
@@ -90,12 +90,12 @@ fn add_mana() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
     db.turn.set_phase(Phase::PreCombatMainPhase);
 
-    let card = CardId::upload(&mut db, &cards, player, "Abzan Banner");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Abzan Banner");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player, &card, 0);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
 
@@ -105,7 +105,7 @@ fn add_mana() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        db.all_players[player].mana_pool.all_mana().collect_vec(),
+        db.all_players[&player].mana_pool.all_mana().collect_vec(),
         [
             (1, Mana::WHITE, ManaSource::ANY, ManaRestriction::NONE),
             (0, Mana::BLUE, ManaSource::ANY, ManaRestriction::NONE),

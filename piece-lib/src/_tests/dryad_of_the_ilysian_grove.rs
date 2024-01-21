@@ -28,21 +28,26 @@ fn adds_land_types() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let land = CardId::upload(&mut db, &cards, player, "Forest");
+    let land = CardId::upload(&mut db, &cards, player.clone(), "Forest");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &land, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
+    let card = CardId::upload(
+        &mut db,
+        &cards,
+        player.clone(),
+        "Dryad of the Ilysian Grove",
+    );
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(Player::lands_per_turn(&mut db, player), 2);
+    assert_eq!(Player::lands_per_turn(&mut db, &player), 2);
 
     assert_eq!(
         db[&land].modified_subtypes,

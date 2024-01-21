@@ -28,27 +28,27 @@ fn replacement() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let deck1 = CardId::upload(&mut db, &cards, player, "Annul");
-    let deck2 = CardId::upload(&mut db, &cards, player, "Annul");
-    Library::place_on_top(&mut db, player, deck1.clone());
-    Library::place_on_top(&mut db, player, deck2.clone());
+    let deck1 = CardId::upload(&mut db, &cards, player.clone(), "Annul");
+    let deck2 = CardId::upload(&mut db, &cards, player.clone(), "Annul");
+    Library::place_on_top(&mut db, &player, deck1.clone());
+    Library::place_on_top(&mut db, &player, deck2.clone());
 
-    let card = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Blood Scrivener");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
     // Hand is empty
-    let mut results = Player::draw(&mut db, player, 1);
+    let mut results = Player::draw(&mut db, &player, 1);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
-    assert_eq!(db.all_players[player].life_total, 19);
+    assert_eq!(db.all_players[&player].life_total, 19);
 
-    assert_eq!(db.hand[player], IndexSet::from([deck2, deck1]));
+    assert_eq!(db.hand[&player], IndexSet::from([deck2, deck1]));
 
     Ok(())
 }

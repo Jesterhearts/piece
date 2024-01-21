@@ -27,7 +27,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         db: &crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         db.all_players
@@ -49,7 +49,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         &self,
         _db: &mut crate::in_play::Database,
         _source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         _results: &mut crate::pending_results::PendingResults,
     ) {
         unreachable!()
@@ -60,7 +60,7 @@ impl EffectBehaviors for CantAttackThisTurn {
         _db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         _source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {

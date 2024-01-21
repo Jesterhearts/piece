@@ -307,8 +307,7 @@ impl Cost {
     ) -> bool {
         match self {
             Cost::SacrificePermanent(sac) => {
-                let controller = db[source].controller;
-                let valid_targets = db.battlefield[controller]
+                let valid_targets = db.battlefield[&db[source].controller]
                     .iter()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield {
@@ -330,8 +329,7 @@ impl Cost {
                 }
             }
             Cost::TapPermanent(tap) => {
-                let controller = db[source].controller;
-                let valid_targets = db.battlefield[controller]
+                let valid_targets = db.battlefield[&db[source].controller]
                     .iter()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield {
@@ -354,8 +352,7 @@ impl Cost {
                 }
             }
             Cost::TapPermanentsPowerXOrMore(tap) => {
-                let controller = db[source].controller;
-                let valid_targets = db.battlefield[controller]
+                let valid_targets = db.battlefield[&db[source].controller]
                     .iter()
                     .filter(|target| {
                         !already_chosen.contains(&ActiveTarget::Battlefield {
@@ -422,8 +419,7 @@ impl Cost {
                     .map(|target| target.id(db).unwrap().faceup_face(db).cost.cmc())
                     .sum::<usize>();
 
-                let controller = db[source].controller;
-                let valid_targets = db.battlefield[controller]
+                let valid_targets = db.battlefield[&db[source].controller]
                     .iter()
                     .filter(|target| {
                         target.passes_restrictions(
@@ -444,12 +440,11 @@ impl Cost {
                 }
             }
             Cost::ExileCards(exile) => {
-                let controller = db[source].controller;
                 let valid_targets = db
                     .cards
                     .keys()
                     .filter(|target| {
-                        db[*target].controller == controller
+                        db[*target].controller == db[source].controller
                             && target.passes_restrictions(
                                 db,
                                 LogId::current(db),
@@ -468,7 +463,6 @@ impl Cost {
                 }
             }
             Cost::ExileCardsSharingType(exile) => {
-                let controller = db[source].controller;
                 let card_types = exile
                     .chosen
                     .iter()
@@ -479,7 +473,7 @@ impl Cost {
                     .cards
                     .keys()
                     .filter(|target| {
-                        db[*target].controller == controller
+                        db[*target].controller == db[source].controller
                             && card_types
                                 .iter()
                                 .all(|types| target.types_intersect(db, types))
@@ -623,7 +617,7 @@ impl Cost {
                     }
 
                     let (mana, source) = spend.paying();
-                    let mut pool_post_pay = db.all_players[db[source_card].controller]
+                    let mut pool_post_pay = db.all_players[&db[source_card].controller]
                         .pool_post_pay(db, &mana, &source, &spend.reason)
                         .unwrap();
                     let Some(first_unpaid) = spend.first_unpaid() else {
@@ -693,7 +687,7 @@ impl Cost {
                 }
 
                 let (mana, sources) = spend.paying();
-                if let Some((_, mana, source, _)) = db.all_players[db[source_card].controller]
+                if let Some((_, mana, source, _)) = db.all_players[&db[source_card].controller]
                     .pool_post_pay(db, &mana, &sources, &spend.reason)
                     .unwrap()
                     .available_mana()
@@ -710,7 +704,7 @@ impl Cost {
                         .or_default() += 1;
 
                     let (mana, sources) = spend.paying();
-                    if db.all_players[db[source_card].controller].can_spend_mana(
+                    if db.all_players[&db[source_card].controller].can_spend_mana(
                         db,
                         &mana,
                         &sources,
@@ -898,7 +892,7 @@ impl PayCost {
                     match first_unpaid {
                         ManaCost::TWO_X | ManaCost::X | ManaCost::GENERIC => return false,
                         unpaid => {
-                            let pool_post_pay = db.all_players[db[&self.source].controller]
+                            let pool_post_pay = db.all_players[&db[&self.source].controller]
                                 .pool_post_pay(db, &mana, &source, &spend.reason)
                                 .unwrap();
                             if !pool_post_pay.can_spend(db, unpaid, ManaSource::ANY, &spend.reason)
@@ -953,82 +947,79 @@ impl PendingResult for PayCost {
     }
 
     fn options(&self, db: &mut Database) -> Options {
-        let options = match &self.cost {
-            Cost::SacrificePermanent(sac) => sac
-                .valid_targets
-                .iter()
-                .enumerate()
-                .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target)))
-                .collect_vec(),
-            Cost::TapPermanent(tap) => tap
-                .valid_targets
-                .iter()
-                .enumerate()
-                .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target)))
-                .collect_vec(),
-            Cost::TapPermanentsPowerXOrMore(tap) => tap
-                .valid_targets
-                .iter()
-                .enumerate()
-                .filter(|(_, chosen)| !tap.chosen.contains(*chosen))
-                .map(|(idx, target)| (idx, target.name(db).clone()))
-                .collect_vec(),
-            Cost::SpendMana(spend) => {
-                let (mana, sources) = spend.paying();
-                let pool_post_paid = db.all_players[db[&self.source].controller].pool_post_pay(
-                    db,
-                    &mana,
-                    &sources,
-                    &spend.reason,
-                );
-                if pool_post_paid.is_none()
-                    || pool_post_paid
-                        .as_ref()
-                        .unwrap()
-                        .max(db, &spend.reason)
-                        .is_none()
-                {
-                    return Options::OptionalList(vec![]);
-                }
-                let pool_post_paid = pool_post_paid.unwrap();
+        let options =
+            match &self.cost {
+                Cost::SacrificePermanent(sac) => sac
+                    .valid_targets
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target)))
+                    .collect_vec(),
+                Cost::TapPermanent(tap) => tap
+                    .valid_targets
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, target)| (idx, format!("{} - ({})", target.name(db), target)))
+                    .collect_vec(),
+                Cost::TapPermanentsPowerXOrMore(tap) => tap
+                    .valid_targets
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, chosen)| !tap.chosen.contains(*chosen))
+                    .map(|(idx, target)| (idx, target.name(db).clone()))
+                    .collect_vec(),
+                Cost::SpendMana(spend) => {
+                    let (mana, sources) = spend.paying();
+                    let pool_post_paid = db.all_players[&db[&self.source].controller]
+                        .pool_post_pay(db, &mana, &sources, &spend.reason);
+                    if pool_post_paid.is_none()
+                        || pool_post_paid
+                            .as_ref()
+                            .unwrap()
+                            .max(db, &spend.reason)
+                            .is_none()
+                    {
+                        return Options::OptionalList(vec![]);
+                    }
+                    let pool_post_paid = pool_post_paid.unwrap();
 
-                match spend.first_unpaid_x_always_unpaid() {
-                    Some(ManaCost::GENERIC | ManaCost::X | ManaCost::TWO_X) => pool_post_paid
-                        .available_pool_display()
-                        .into_iter()
-                        .enumerate()
-                        .collect_vec(),
-                    _ => vec![],
+                    match spend.first_unpaid_x_always_unpaid() {
+                        Some(ManaCost::GENERIC | ManaCost::X | ManaCost::TWO_X) => pool_post_paid
+                            .available_pool_display()
+                            .into_iter()
+                            .enumerate()
+                            .collect_vec(),
+                        _ => vec![],
+                    }
                 }
-            }
-            Cost::ExilePermanentsCmcX(exile) => exile
-                .valid_targets
-                .iter()
-                .enumerate()
-                .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
-                .map(|(idx, target)| (idx, target.name(db).clone()))
-                .collect_vec(),
-            Cost::ExileCards(exile) => {
-                if exile.chosen.len() == exile.maximum {
-                    vec![]
-                } else {
-                    exile
-                        .valid_targets
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
-                        .map(|(idx, target)| (idx, target.name(db).clone()))
-                        .collect_vec()
+                Cost::ExilePermanentsCmcX(exile) => exile
+                    .valid_targets
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
+                    .map(|(idx, target)| (idx, target.name(db).clone()))
+                    .collect_vec(),
+                Cost::ExileCards(exile) => {
+                    if exile.chosen.len() == exile.maximum {
+                        vec![]
+                    } else {
+                        exile
+                            .valid_targets
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
+                            .map(|(idx, target)| (idx, target.name(db).clone()))
+                            .collect_vec()
+                    }
                 }
-            }
-            Cost::ExileCardsSharingType(exile) => exile
-                .valid_targets
-                .iter()
-                .enumerate()
-                .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
-                .map(|(idx, target)| (idx, target.name(db).clone()))
-                .collect_vec(),
-        };
+                Cost::ExileCardsSharingType(exile) => exile
+                    .valid_targets
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, chosen)| !exile.chosen.contains(*chosen))
+                    .map(|(idx, target)| (idx, target.name(db).clone()))
+                    .collect_vec(),
+            };
 
         if self.optional() {
             Options::OptionalList(options)
@@ -1106,12 +1097,13 @@ impl PendingResult for PayCost {
     ) -> bool {
         if choice.is_none() && self.or_else.is_some() {
             let (effects, targets) = self.or_else.as_ref().unwrap();
+            let controller = db[&self.source].controller.clone();
             for effect in effects.iter() {
                 effect.push_behavior_with_targets(
                     db,
                     targets.clone(),
                     &self.source,
-                    db[&self.source].controller,
+                    &controller,
                     results,
                 );
             }

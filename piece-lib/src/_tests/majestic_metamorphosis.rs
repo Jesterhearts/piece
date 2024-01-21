@@ -32,12 +32,12 @@ fn metamorphosis() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
 
-    let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
+    let mantle = CardId::upload(&mut db, &cards, player.clone(), "Paradise Mantle");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &mantle, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
+    let majestic = CardId::upload(&mut db, &cards, player.clone(), "Majestic Metamorphosis");
 
     let mut results = majestic.move_to_stack(
         &mut db,
@@ -87,12 +87,12 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
 
-    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let bear = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &bear, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
+    let majestic = CardId::upload(&mut db, &cards, player.clone(), "Majestic Metamorphosis");
 
     let mut results = majestic.move_to_stack(
         &mut db,

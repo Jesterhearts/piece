@@ -33,7 +33,7 @@ impl EffectBehaviors for Mill {
         db: &crate::in_play::Database,
         _source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         _already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         db.all_players
@@ -50,7 +50,7 @@ impl EffectBehaviors for Mill {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -74,7 +74,7 @@ impl EffectBehaviors for Mill {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid = self

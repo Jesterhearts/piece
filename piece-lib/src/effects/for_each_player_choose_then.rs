@@ -36,12 +36,12 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         db: &Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let already_chosen = already_chosen
             .iter()
-            .map(|target| db[target.id(db).unwrap()].controller)
+            .map(|target| db[target.id(db).unwrap()].controller.clone())
             .collect::<HashSet<_>>();
 
         db.cards
@@ -67,7 +67,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         &self,
         db: &mut Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -89,7 +89,7 @@ impl EffectBehaviors for ForEachPlayerChooseThen {
         db: &mut Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for target in targets {

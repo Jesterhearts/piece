@@ -35,23 +35,23 @@ fn cascades() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let hand1 = CardId::upload(&mut db, &cards, player, "Hexplate Golem");
+    let hand1 = CardId::upload(&mut db, &cards, player.clone(), "Hexplate Golem");
     hand1.move_to_hand(&mut db);
 
-    let deck1 = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
-    Library::place_on_top(&mut db, player, deck1.clone());
-    let deck2 = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, deck2.clone());
-    let deck3 = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
-    Library::place_on_top(&mut db, player, deck3.clone());
-    let deck4 = CardId::upload(&mut db, &cards, player, "Forest");
-    Library::place_on_top(&mut db, player, deck4.clone());
+    let deck1 = CardId::upload(&mut db, &cards, player.clone(), "Majestic Metamorphosis");
+    Library::place_on_top(&mut db, &player, deck1.clone());
+    let deck2 = CardId::upload(&mut db, &cards, player.clone(), "Forest");
+    Library::place_on_top(&mut db, &player, deck2.clone());
+    let deck3 = CardId::upload(&mut db, &cards, player.clone(), "Majestic Metamorphosis");
+    Library::place_on_top(&mut db, &player, deck3.clone());
+    let deck4 = CardId::upload(&mut db, &cards, player.clone(), "Forest");
+    Library::place_on_top(&mut db, &player, deck4.clone());
 
-    let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
+    let zhul = CardId::upload(&mut db, &cards, player.clone(), "Zhulodok, Void Gorger");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &zhul, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
@@ -100,7 +100,7 @@ fn cascades() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert_eq!(
-        db.all_players[player]
+        db.all_players[&player]
             .library
             .cards
             .iter()
@@ -109,14 +109,14 @@ fn cascades() -> anyhow::Result<()> {
         HashSet::from([deck1, deck4])
     );
 
-    assert_eq!(db.hand[player], IndexSet::from([deck2]));
+    assert_eq!(db.hand[&player], IndexSet::from([deck2]));
 
     // Resolve the actual golem
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    assert_eq!(db.battlefield[player], IndexSet::from([zhul, hand1]));
+    assert_eq!(db.battlefield[&player], IndexSet::from([zhul, hand1]));
 
     Ok(())
 }

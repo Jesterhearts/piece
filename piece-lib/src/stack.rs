@@ -22,11 +22,11 @@ use crate::{
         pay_costs::{SacrificePermanent, TapPermanentsPowerXOrMore},
         PendingResults, Source, TargetSource,
     },
-    player::{mana_pool::SpendReason, Owner},
+    player::mana_pool::SpendReason,
     protogen::{
         abilities::TriggeredAbility,
         cost::additional_cost::{self, ExileXOrMoreCards},
-        ids::{CardId, StackId},
+        ids::{CardId, Owner, StackId},
         keywords::Keyword,
         targets::{
             comparison,
@@ -75,7 +75,7 @@ impl ActiveTarget {
             ActiveTarget::Graveyard { id } => id.name(db).clone(),
             ActiveTarget::Exile { id } => id.name(db).clone(),
             ActiveTarget::Library { id } => id.name(db).clone(),
-            ActiveTarget::Player { id } => db.all_players[*id].name.clone(),
+            ActiveTarget::Player { id } => db.all_players[id].name.clone(),
             ActiveTarget::Hand { id } => id.name(db).clone(),
         }
     }
@@ -144,7 +144,7 @@ impl StackEntry {
         source: &CardId,
         restrictions: &[Restriction],
     ) -> bool {
-        let spell_or_ability_controller = db[self.ty.source()].controller;
+        let spell_or_ability_controller = &db[self.ty.source()].controller;
 
         for restriction in restrictions.iter() {
             match restriction.restriction.as_ref().unwrap() {
@@ -193,12 +193,12 @@ impl StackEntry {
                 restriction::Restriction::Controller(controller_restriction) => {
                     match controller_restriction.controller.as_ref().unwrap() {
                         restriction::controller::Controller::Self_(_) => {
-                            if db[source].controller != spell_or_ability_controller {
+                            if db[source].controller != *spell_or_ability_controller {
                                 return false;
                             }
                         }
                         restriction::controller::Controller::Opponent(_) => {
-                            if db[source].controller == spell_or_ability_controller {
+                            if db[source].controller == *spell_or_ability_controller {
                                 return false;
                             }
                         }
@@ -225,7 +225,7 @@ impl StackEntry {
                         let LogEntry::Cast { card } = entry else {
                             return false;
                         };
-                        db[card].controller == spell_or_ability_controller
+                        db[card].controller == *spell_or_ability_controller
                     }) {
                         return false;
                     }
@@ -243,7 +243,7 @@ impl StackEntry {
                     let descended = db
                         .graveyard
                         .descended_this_turn
-                        .get(&Owner::from(spell_or_ability_controller))
+                        .get(&Owner::from(spell_or_ability_controller.clone()))
                         .copied()
                         .unwrap_or_default();
                     if descended < 1 {
@@ -251,7 +251,7 @@ impl StackEntry {
                     }
                 }
                 restriction::Restriction::DuringControllersTurn(_) => {
-                    if spell_or_ability_controller != db.turn.active_player() {
+                    if *spell_or_ability_controller != db.turn.active_player() {
                         return false;
                     }
                 }
@@ -634,7 +634,7 @@ impl Stack {
 
                 (
                     effects,
-                    db[&card].controller,
+                    db[&card].controller.clone(),
                     Some(card.clone()),
                     card.clone(),
                     ResolutionType::Card(card),
@@ -642,7 +642,7 @@ impl Stack {
             }
             Entry::Ability { source, ability } => (
                 ability.effects(db),
-                db[&source].controller,
+                db[&source].controller.clone(),
                 None,
                 source.clone(),
                 ResolutionType::Ability(source),
@@ -661,7 +661,7 @@ impl Stack {
                 db,
                 targets,
                 &source,
-                controller,
+                &controller,
                 &mut results,
             );
         }
@@ -702,11 +702,12 @@ impl Stack {
             .iter()
             .any(|effect| effect.effect.as_ref().unwrap().wants_targets(db, &source) > 0)
         {
+            let controller = db[&source].controller.clone();
             for effect in ability.effects(db).into_iter() {
                 effect.effect.unwrap().push_pending_behavior(
                     db,
                     &source,
-                    db[&source].controller,
+                    &controller,
                     &mut results,
                 );
             }
@@ -834,7 +835,7 @@ pub(crate) fn add_card_to_stack(
 
     results.add_card_to_stack(card.clone(), from);
     if card.wants_targets(db).into_iter().sum::<usize>() > 0 {
-        let controller = db[&card].controller;
+        let controller = &db[&card].controller;
         if card.faceup_face(db).enchant.is_some() {
             results.push_choose_targets(ChooseTargets::new(
                 TargetSource::Aura(card.clone()),
@@ -992,7 +993,7 @@ mod tests {
         let mut all_players = AllPlayers::default();
         let player = all_players.new_player("Player".to_string(), 20);
         let mut db = Database::new(all_players);
-        let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+        let card1 = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
 
         let mut results = card1.move_to_stack(&mut db, Default::default(), None, vec![]);
         let result = results.resolve(&mut db, None);

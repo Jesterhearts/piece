@@ -35,7 +35,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         db: &crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
     ) -> Vec<crate::stack::ActiveTarget> {
         let mut targets = vec![];
@@ -62,7 +62,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -86,7 +86,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let valid = self
@@ -109,7 +109,7 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
                     reason: None,
                 });
                 results.push_settled(ActionResult::ManifestTopOfLibrary(
-                    db[target.id(db).unwrap()].controller,
+                    db[target.id(db).unwrap()].controller.clone(),
                 ));
             }
         }

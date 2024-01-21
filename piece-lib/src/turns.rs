@@ -7,9 +7,9 @@ use crate::{
     in_play::Database,
     log::{Log, LogId},
     pending_results::PendingResults,
-    player::{AllPlayers, Owner, Player},
+    player::{AllPlayers, Player},
     protogen::{
-        ids::{ActivatedAbilityId, CardId},
+        ids::{ActivatedAbilityId, CardId, Owner},
         triggers::TriggerSource,
         types::Type,
     },
@@ -93,7 +93,7 @@ impl Turn {
         match db.turn.phase {
             Phase::Untap => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Upkeep;
 
@@ -101,10 +101,10 @@ impl Turn {
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::UPKEEP) {
-                    if !Owner::from(db[&listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller.clone()).passes_restrictions(
                         db,
                         LogId::current(db),
-                        player.into(),
+                        &player.clone().into(),
                         &trigger.trigger.restrictions,
                     ) {
                         continue;
@@ -117,18 +117,18 @@ impl Turn {
             }
             Phase::Upkeep => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Draw;
                 if db.turn.turn_count != 0 {
                     let player = db.turn.active_player();
-                    return Player::draw(db, player, 1);
+                    return Player::draw(db, &player, 1);
                 }
                 PendingResults::default()
             }
             Phase::Draw => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::PreCombatMainPhase;
 
@@ -138,10 +138,10 @@ impl Turn {
                 for (listener, trigger) in
                     db.active_triggers_of_source(TriggerSource::PRE_COMBAT_MAIN_PHASE)
                 {
-                    if !Owner::from(db[&listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller.clone()).passes_restrictions(
                         db,
                         LogId::current(db),
-                        player.into(),
+                        &player.clone().into(),
                         &trigger.trigger.restrictions,
                     ) {
                         continue;
@@ -154,7 +154,7 @@ impl Turn {
             }
             Phase::PreCombatMainPhase => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::BeginCombat;
                 let mut results = PendingResults::default();
@@ -162,10 +162,10 @@ impl Turn {
                 for (listener, trigger) in
                     db.active_triggers_of_source(TriggerSource::START_OF_COMBAT)
                 {
-                    if !Owner::from(db[&listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller.clone()).passes_restrictions(
                         db,
                         LogId::current(db),
-                        player.into(),
+                        &player.clone().into(),
                         &trigger.trigger.restrictions,
                     ) {
                         continue;
@@ -177,42 +177,43 @@ impl Turn {
             }
             Phase::BeginCombat => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::DeclareAttackers;
                 let mut results = PendingResults::default();
                 let player = db.turn.active_player();
-                results.set_declare_attackers(db, player);
+                results.set_declare_attackers(db, &player);
                 results
             }
             Phase::DeclareAttackers => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::DeclareBlockers;
                 PendingResults::default()
             }
             Phase::DeclareBlockers => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::FirstStrike;
 
                 let mut results = PendingResults::default();
 
-                for (card, target) in db.battlefield[db.turn.active_player()]
+                for (card, target) in db.battlefield[&db.turn.active_player()]
                     .iter()
                     .filter_map(|card| {
                         db[card]
                             .attacking
+                            .as_ref()
                             .filter(|_| card.first_strike(db) || card.double_strike(db))
-                            .map(|attacking| (card.clone(), attacking))
+                            .map(|attacking| (card.clone(), attacking.clone()))
                     })
                     .collect_vec()
                 {
                     if let Some(power) = card.power(db) {
                         if power > 0 {
-                            db.all_players[target].life_total -= power;
+                            db.all_players[&target].life_total -= power;
 
                             for (listener, trigger) in db.active_triggers_of_source(
                                 TriggerSource::DEALS_COMBAT_DAMAGE_TO_PLAYER,
@@ -236,26 +237,27 @@ impl Turn {
             }
             Phase::FirstStrike => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Damage;
 
                 let mut results = PendingResults::default();
 
                 // TODO blocks
-                for (card, target) in db.battlefield[db.turn.active_player()]
+                for (card, target) in db.battlefield[&db.turn.active_player()]
                     .iter()
                     .filter_map(|card| {
                         db[card]
                             .attacking
+                            .as_ref()
                             .filter(|_| !card.first_strike(db))
-                            .map(|attacking| (card.clone(), attacking))
+                            .map(|attacking| (card.clone(), attacking.clone()))
                     })
                     .collect_vec()
                 {
                     if let Some(power) = card.power(db) {
                         if power > 0 {
-                            db.all_players[target].life_total -= power;
+                            db.all_players[&target].life_total -= power;
 
                             for (listener, trigger) in db.active_triggers_of_source(
                                 TriggerSource::DEALS_COMBAT_DAMAGE_TO_PLAYER,
@@ -279,10 +281,10 @@ impl Turn {
             }
             Phase::Damage => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
 
-                for card in db.battlefield[db.turn.active_player()].iter() {
+                for card in db.battlefield[&db.turn.active_player()].iter() {
                     db.cards.get_mut(card).unwrap().attacking = None;
                 }
 
@@ -291,7 +293,7 @@ impl Turn {
             }
             Phase::PostCombatMainPhase => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::EndStep;
 
@@ -299,10 +301,10 @@ impl Turn {
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::END_STEP) {
-                    if !Owner::from(db[&listener].controller).passes_restrictions(
+                    if !Owner::from(db[&listener].controller.clone()).passes_restrictions(
                         db,
                         LogId::current(db),
-                        player.into(),
+                        &player.clone().into(),
                         &trigger.trigger.restrictions,
                     ) || !listener.passes_restrictions(
                         db,
@@ -320,14 +322,14 @@ impl Turn {
             }
             Phase::EndStep => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Cleanup;
 
                 let player = db.turn.active_player();
                 let mut pending = Battlefields::end_turn(db);
-                let hand_size = db.all_players[player].hand_size;
-                let in_hand = &db.hand[player];
+                let hand_size = db.all_players[&player].hand_size;
+                let in_hand = &db.hand[&player];
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
                     pending
@@ -337,7 +339,7 @@ impl Turn {
             }
             Phase::Cleanup => {
                 for player in db.all_players.all_players() {
-                    db.all_players[player].mana_pool.drain();
+                    db.all_players[&player].mana_pool.drain();
                 }
 
                 CardId::cleanup_tokens_in_limbo(db);
@@ -345,7 +347,7 @@ impl Turn {
                 db.turn.number_of_attackers_this_turn = 0;
 
                 for player in db.all_players.all_players() {
-                    let player = &mut db.all_players[player];
+                    let player = &mut db.all_players[&player];
                     player.lands_played_this_turn = 0;
                     player.life_gained_this_turn = 0;
                     player.ban_attacking_this_turn = false;
@@ -361,9 +363,9 @@ impl Turn {
 
                 db.turn.turn_count += 1;
 
-                Log::new_turn(db, db.turn.active_player());
+                Log::new_turn(db, db.turn.active_player().clone());
 
-                Battlefields::untap(db, db.turn.active_player());
+                Battlefields::untap(db, &db.turn.active_player());
                 PendingResults::default()
             }
         }
@@ -392,7 +394,7 @@ impl Turn {
     }
 
     pub fn active_player(&self) -> Owner {
-        self.turn_order[self.active_player]
+        self.turn_order[self.active_player].clone()
     }
 
     pub fn passed_full_priority_round(&self) -> bool {
@@ -404,6 +406,6 @@ impl Turn {
     }
 
     pub fn priority_player(&self) -> Owner {
-        self.turn_order[self.priority_player]
+        self.turn_order[self.priority_player].clone()
     }
 }

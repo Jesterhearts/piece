@@ -21,7 +21,7 @@ impl EffectBehaviors for Transform {
         &self,
         _db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Transform {
@@ -34,7 +34,7 @@ impl EffectBehaviors for Transform {
         _db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Transform {

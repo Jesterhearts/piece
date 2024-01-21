@@ -20,11 +20,11 @@ use crate::{
     hand::Hands,
     library::Library,
     log::Log,
-    player::{AllPlayers, Controller, Owner},
+    player::AllPlayers,
     protogen::{
         abilities::TriggeredAbility,
         effects::{replacement_effect::Replacing, ReplacementEffect},
-        ids::{ActivatedAbilityId, CardId, GainManaAbilityId, ModifierId},
+        ids::{ActivatedAbilityId, CardId, Controller, GainManaAbilityId, ModifierId, Owner},
         triggers::TriggerSource,
     },
     stack::Stack,
@@ -155,10 +155,10 @@ impl Database {
         for player in all_players.all_players() {
             battlefield
                 .battlefields
-                .entry(Controller::from(player))
+                .entry(Controller::from(player.clone()))
                 .or_default();
-            graveyard.graveyards.entry(player).or_default();
-            exile.exile_zones.entry(player).or_default();
+            graveyard.graveyards.entry(player.clone()).or_default();
+            exile.exile_zones.entry(player.clone()).or_default();
             hand.hands.entry(player).or_default();
         }
 
@@ -182,7 +182,7 @@ impl Database {
         }
     }
 
-    pub(crate) fn owner_view_mut(&mut self, owner: Owner) -> OwnerViewMut {
+    pub(crate) fn owner_view_mut(&mut self, owner: &Owner) -> OwnerViewMut {
         OwnerViewMut {
             battlefield: &mut self.battlefield[owner],
             graveyard: &mut self.graveyard[owner],

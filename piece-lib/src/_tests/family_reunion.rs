@@ -21,13 +21,13 @@ fn p1p1() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     creature.move_to_battlefield(&mut db);
 
-    let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Family Reunion");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Choose the mode
     let result = results.resolve(&mut db, Some(0));
@@ -67,13 +67,13 @@ fn hexproof() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     creature.move_to_battlefield(&mut db);
 
-    let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Family Reunion");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Choose the mode
     let result = results.resolve(&mut db, Some(1));

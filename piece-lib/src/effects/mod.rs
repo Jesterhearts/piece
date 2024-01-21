@@ -82,7 +82,7 @@ use crate::{
     in_play::Database,
     log::LogId,
     pending_results::PendingResults,
-    player::{Controller, Owner},
+    protogen::ids::{Controller, Owner},
     protogen::{
         effects::{Mode, ModifyBattlefield, ReplacementEffect},
         ids::CardId,
@@ -183,7 +183,7 @@ pub(crate) trait EffectBehaviors {
         db: &Database,
         source: &CardId,
         log_session: LogId,
-        controller: Controller,
+        controller: &Controller,
         already_chosen: &HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         let _ = db;
@@ -198,7 +198,7 @@ pub(crate) trait EffectBehaviors {
         &self,
         db: &mut Database,
         source: &CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     );
 
@@ -221,16 +221,16 @@ pub(crate) trait EffectBehaviors {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         source: &CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     );
 
     fn replace_draw(
         &self,
         db: &mut Database,
-        player: Owner,
+        player: &Owner,
         replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
-        controller: Controller,
+        controller: &Controller,
         count: usize,
         results: &mut PendingResults,
     ) {

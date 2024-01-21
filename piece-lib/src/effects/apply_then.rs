@@ -29,7 +29,7 @@ impl EffectBehaviors for ApplyThen {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
@@ -43,7 +43,7 @@ impl EffectBehaviors for ApplyThen {
         results.push_settled(ActionResult::ThenApply {
             apply: self.then.clone(),
             source: source.clone(),
-            controller,
+            controller: controller.clone(),
         })
     }
 
@@ -52,7 +52,7 @@ impl EffectBehaviors for ApplyThen {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         for effect in self.apply.iter() {
@@ -68,7 +68,7 @@ impl EffectBehaviors for ApplyThen {
         results.push_settled(ActionResult::ThenApply {
             apply: self.then.clone(),
             source: source.clone(),
-            controller,
+            controller: controller.clone(),
         });
     }
 }

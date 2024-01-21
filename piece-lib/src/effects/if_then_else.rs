@@ -45,7 +45,7 @@ impl EffectBehaviors for IfThenElse {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
@@ -72,7 +72,7 @@ impl EffectBehaviors for IfThenElse {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {

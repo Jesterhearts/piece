@@ -21,13 +21,13 @@ impl EffectBehaviors for Cascade {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
             source: source.clone(),
             cascading: source.faceup_face(db).cost.cmc(),
-            player: controller,
+            player: controller.clone(),
         });
     }
 
@@ -41,7 +41,7 @@ impl EffectBehaviors for Cascade {
         results.push_settled(ActionResult::Cascade {
             source: source.clone(),
             cascading: source.faceup_face(db).cost.cmc(),
-            player: db[source].controller,
+            player: db[source].controller.clone(),
         })
     }
 
@@ -50,13 +50,13 @@ impl EffectBehaviors for Cascade {
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Cascade {
             source: source.clone(),
             cascading: source.faceup_face(db).cost.cmc(),
-            player: controller,
+            player: controller.clone(),
         })
     }
 }

@@ -5,10 +5,9 @@ use tracing::Level;
 use crate::{
     effects::EffectBehaviors,
     in_play::Database,
-    player::{Controller, Owner},
     protogen::{
         counters::Counter,
-        ids::{ActivatedAbilityId, CardId},
+        ids::{ActivatedAbilityId, CardId, Controller, Owner},
         targets::{restriction, Restriction},
     },
 };
@@ -132,7 +131,7 @@ impl Log {
 
     pub(crate) fn ability_resolved(db: &mut Database, source: &CardId) {
         let entry = LogEntry::AbilityResolved {
-            controller: db[source].controller,
+            controller: db[source].controller.clone(),
         };
         let id = LogId::new(db);
         event!(Level::INFO, ?id, ?entry);
@@ -140,7 +139,7 @@ impl Log {
     }
 
     pub(crate) fn spell_resolved(db: &mut Database, spell: CardId) {
-        let controller = db[&spell].controller;
+        let controller = db[&spell].controller.clone();
         let entry = LogEntry::SpellResolved { spell, controller };
         let id = LogId::new(db);
         event!(Level::INFO, ?id, ?entry);

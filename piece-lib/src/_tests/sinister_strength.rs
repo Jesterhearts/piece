@@ -27,12 +27,12 @@ fn aura_works() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let creature = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &creature, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);
 
-    let aura = CardId::upload(&mut db, &cards, player, "Sinister Strength");
+    let aura = CardId::upload(&mut db, &cards, player.clone(), "Sinister Strength");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &aura, Some(&creature));
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, ResolutionResult::Complete);
@@ -41,7 +41,7 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(3));
     assert_eq!(db[&creature].modified_colors, HashSet::from([Color::BLACK]));
 
-    let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    let card2 = CardId::upload(&mut db, &cards, player.clone(), "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card2, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);

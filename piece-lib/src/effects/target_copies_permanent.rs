@@ -6,7 +6,7 @@ use crate::{
     in_play::Database,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{
         effects::{effect::Effect, TargetCopiesPermanent},
         ids::CardId,
@@ -29,7 +29,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
         db: &Database,
         source: &CardId,
         log_session: LogId,
-        _controller: Controller,
+        _controller: &Controller,
         already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         if already_chosen.is_empty() {
@@ -76,7 +76,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
         &self,
         db: &mut Database,
         source: &CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     ) {
         results.push_choose_targets(ChooseTargets::new(
@@ -98,7 +98,7 @@ impl EffectBehaviors for TargetCopiesPermanent {
         db: &mut Database,
         mut targets: Vec<ActiveTarget>,
         _source: &CardId,
-        _controller: Controller,
+        _controller: &Controller,
         results: &mut PendingResults,
     ) {
         assert_eq!(targets.len(), 2);

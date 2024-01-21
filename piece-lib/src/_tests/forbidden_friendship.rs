@@ -22,11 +22,11 @@ fn creates_tokens() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
+    let card = CardId::upload(&mut db, &cards, player.clone(), "Forbidden Friendship");
     let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::Complete);

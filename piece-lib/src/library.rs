@@ -4,7 +4,7 @@ use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
     in_play::{Database, ExileReason},
-    player::Owner,
+    protogen::ids::Owner,
     protogen::{effects::Duration, ids::CardId},
     Cards,
 };
@@ -23,7 +23,7 @@ impl DeckDefinition {
         let mut deck = VecDeque::default();
         for (card, count) in self.cards.iter() {
             for _ in 0..*count {
-                let id = CardId::upload(db, cards, player, card);
+                let id = CardId::upload(db, cards, player.clone(), card);
                 deck.push_back(id);
             }
         }
@@ -52,20 +52,20 @@ impl Library {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
-    pub(crate) fn place_on_top(db: &mut Database, player: Owner, card: CardId) {
+    pub(crate) fn place_on_top(db: &mut Database, player: &Owner, card: CardId) {
         if card.move_to_library(db) {
             db.all_players[player].library.cards.push_back(card);
         }
     }
 
-    pub(crate) fn place_under_top(db: &mut Database, player: Owner, card: CardId, n: usize) {
+    pub(crate) fn place_under_top(db: &mut Database, player: &Owner, card: CardId, n: usize) {
         if card.move_to_library(db) {
             let library = &mut db.all_players[player].library;
             library.cards.insert(library.cards.len() - n, card);
         }
     }
 
-    pub(crate) fn place_on_bottom(db: &mut Database, player: Owner, card: CardId) {
+    pub(crate) fn place_on_bottom(db: &mut Database, player: &Owner, card: CardId) {
         if card.move_to_library(db) {
             db.all_players[player].library.cards.push_front(card);
         }
@@ -73,7 +73,7 @@ impl Library {
 
     pub(crate) fn exile_top_card(
         db: &mut Database,
-        player: Owner,
+        player: &Owner,
         source: &CardId,
         reason: Option<ExileReason>,
     ) -> Option<CardId> {
@@ -85,7 +85,7 @@ impl Library {
         }
     }
 
-    pub(crate) fn reveal_top(db: &mut Database, player: Owner) -> Option<CardId> {
+    pub(crate) fn reveal_top(db: &mut Database, player: &Owner) -> Option<CardId> {
         if let Some(card) = db.all_players[player].library.cards.back().cloned() {
             {
                 db[&card].revealed = true;

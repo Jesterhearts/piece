@@ -3,7 +3,7 @@ use crate::{
     effects::EffectBehaviors,
     in_play::Database,
     pending_results::PendingResults,
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{effects::BattlefieldModifier, ids::ModifierId},
     stack::ActiveTarget,
 };
@@ -29,7 +29,7 @@ impl EffectBehaviors for BattlefieldModifier {
         &self,
         db: &mut Database,
         source: &crate::protogen::ids::CardId,
-        _controller: Controller,
+        _controller: &Controller,
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddModifier {
@@ -42,7 +42,7 @@ impl EffectBehaviors for BattlefieldModifier {
         db: &mut Database,
         _targets: Vec<ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        _controller: Controller,
+        _controller: &Controller,
         results: &mut PendingResults,
     ) {
         if self.apply_to_self {

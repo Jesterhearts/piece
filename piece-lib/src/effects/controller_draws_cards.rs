@@ -31,7 +31,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let count = match self.count.as_ref().unwrap() {
@@ -45,7 +45,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         };
 
         results.push_settled(ActionResult::DrawCards {
-            target: controller,
+            target: controller.clone(),
             count,
         });
     }
@@ -55,7 +55,7 @@ impl EffectBehaviors for ControllerDrawsCards {
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let count = match self.count.as_ref().unwrap() {
@@ -68,7 +68,7 @@ impl EffectBehaviors for ControllerDrawsCards {
                 .count(),
         };
         results.push_settled(ActionResult::DrawCards {
-            target: controller,
+            target: controller.clone(),
             count,
         });
     }
@@ -76,9 +76,9 @@ impl EffectBehaviors for ControllerDrawsCards {
     fn replace_draw(
         &self,
         db: &mut Database,
-        player: crate::player::Owner,
+        player: &crate::protogen::ids::Owner,
         replacements: &mut IntoIter<(crate::protogen::ids::CardId, ReplacementEffect)>,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         _count: usize,
         results: &mut PendingResults,
     ) {

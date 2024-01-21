@@ -3,7 +3,7 @@ use crate::{
     effects::EffectBehaviors,
     in_play::Database,
     pending_results::PendingResults,
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{effects::GainCounters, ids::CardId},
     stack::ActiveTarget,
 };
@@ -21,7 +21,7 @@ impl EffectBehaviors for GainCounters {
         &self,
         _db: &mut Database,
         source: &CardId,
-        _controller: Controller,
+        _controller: &Controller,
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddCounters {
@@ -37,7 +37,7 @@ impl EffectBehaviors for GainCounters {
         _db: &mut Database,
         _targets: Vec<ActiveTarget>,
         source: &CardId,
-        _controller: Controller,
+        _controller: &Controller,
         results: &mut PendingResults,
     ) {
         results.push_settled(ActionResult::AddCounters {

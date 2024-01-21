@@ -58,12 +58,12 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player(String::default(), 20);
-    all_players[player1].infinite_mana();
+    all_players[&player1].infinite_mana();
     let player2 = all_players.new_player(String::default(), 20);
     let mut db = Database::new(all_players);
 
-    let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
-    let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
+    let card = CardId::upload(&mut db, &cards, player1.clone(), "Dauntless Dismantler");
+    let card2 = CardId::upload(&mut db, &cards, player2.clone(), "Abzan Banner");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
@@ -83,7 +83,7 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
         [card.clone(), card2.clone()]
     );
 
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player1, &card, 0);
     // Pay white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::PendingChoice);
@@ -119,8 +119,8 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
             .collect_vec(),
         []
     );
-    assert_eq!(db.graveyard[player1], IndexSet::from([card]));
-    assert_eq!(db.graveyard[player2], IndexSet::from([card2]));
+    assert_eq!(db.graveyard[&player1], IndexSet::from([card]));
+    assert_eq!(db.graveyard[&player2], IndexSet::from([card2]));
 
     Ok(())
 }

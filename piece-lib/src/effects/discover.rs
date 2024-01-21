@@ -30,7 +30,7 @@ impl EffectBehaviors for Discover {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
@@ -42,7 +42,7 @@ impl EffectBehaviors for Discover {
                 },
                 Count::Fixed(fixed) => fixed.count,
             },
-            player: controller,
+            player: controller.clone(),
         })
     }
 
@@ -51,7 +51,7 @@ impl EffectBehaviors for Discover {
         db: &mut crate::in_play::Database,
         targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         results.push_settled(ActionResult::Discover {
@@ -66,7 +66,7 @@ impl EffectBehaviors for Discover {
                 },
                 Count::Fixed(fixed) => fixed.count,
             },
-            player: controller,
+            player: controller.clone(),
         })
     }
 }

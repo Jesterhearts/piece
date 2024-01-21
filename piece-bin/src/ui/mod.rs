@@ -8,7 +8,7 @@ use itertools::Itertools;
 use piece_lib::{
     in_play::Database,
     pending_results::PendingResults,
-    player::Owner,
+    protogen::ids::Owner,
     protogen::{
         ids::{CardId, StackId},
         keywords::Keyword,
@@ -520,7 +520,7 @@ impl Widget for Actions<'_, '_, '_> {
                                 if ability.can_be_activated(
                                     self.db,
                                     card,
-                                    self.player,
+                                    &self.player,
                                     self.pending,
                                 ) {
                                     Some((idx + 1, ability.text(self.db)))
@@ -536,7 +536,7 @@ impl Widget for Actions<'_, '_, '_> {
                     .into_iter()
                     .enumerate()
                     .filter_map(|(idx, (_, ability))| {
-                        if ability.can_be_activated(self.db, card, self.player, self.pending) {
+                        if ability.can_be_activated(self.db, card, &self.player, self.pending) {
                             Some((idx, ability.text(self.db)))
                         } else {
                             None

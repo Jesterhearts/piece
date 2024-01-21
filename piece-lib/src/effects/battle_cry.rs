@@ -35,7 +35,7 @@ impl EffectBehaviors for BattleCry {
         &self,
         db: &mut crate::in_play::Database,
         source: &crate::protogen::ids::CardId,
-        _controller: crate::player::Controller,
+        _controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         let modifier = ModifierId::upload_temporary_modifier(
@@ -92,7 +92,7 @@ impl EffectBehaviors for BattleCry {
         db: &mut crate::in_play::Database,
         _targets: Vec<crate::stack::ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: crate::player::Controller,
+        controller: &crate::protogen::ids::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
         self.push_pending_behavior(db, source, controller, results);

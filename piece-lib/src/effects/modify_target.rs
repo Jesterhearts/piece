@@ -8,7 +8,7 @@ use crate::{
     in_play::Database,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
-    player::Controller,
+    protogen::ids::Controller,
     protogen::{
         effects::{effect::Effect, BattlefieldModifier, Duration, ModifyTarget},
         ids::ModifierId,
@@ -38,7 +38,7 @@ impl EffectBehaviors for ModifyTarget {
         db: &Database,
         source: &crate::protogen::ids::CardId,
         log_session: crate::log::LogId,
-        controller: Controller,
+        controller: &Controller,
         already_chosen: &std::collections::HashSet<ActiveTarget>,
     ) -> Vec<ActiveTarget> {
         let mut targets = vec![];
@@ -66,7 +66,7 @@ impl EffectBehaviors for ModifyTarget {
         &self,
         db: &mut Database,
         source: &crate::protogen::ids::CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     ) {
         let valid_targets = self.valid_targets(
@@ -89,7 +89,7 @@ impl EffectBehaviors for ModifyTarget {
         db: &mut Database,
         targets: Vec<ActiveTarget>,
         source: &crate::protogen::ids::CardId,
-        controller: Controller,
+        controller: &Controller,
         results: &mut PendingResults,
     ) {
         let valid = self

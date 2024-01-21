@@ -4,7 +4,8 @@ use piece_lib::{
     battlefield::Battlefields,
     in_play::Database,
     pending_results::{PendingResults, ResolutionResult},
-    player::{Owner, Player},
+    player::Player,
+    protogen::ids::Owner,
     turns::{Phase, Turn},
 };
 
@@ -20,16 +21,16 @@ impl AI {
     pub fn priority(&self, db: &mut Database, pending: &mut PendingResults) -> PendingResults {
         if pending.is_empty() && db.turn.active_player() == self.player {
             if matches!(db.turn.phase, Phase::PreCombatMainPhase)
-                && Player::can_play_land(db, self.player)
+                && Player::can_play_land(db, &self.player)
             {
                 debug!("Playing land");
-                if let Some(land) = db.hand[self.player].iter().find(|card| card.is_land(db)) {
-                    pending.extend(Player::play_card(db, self.player, &land.clone()));
+                if let Some(land) = db.hand[&self.player].iter().find(|card| card.is_land(db)) {
+                    pending.extend(Player::play_card(db, &self.player, &land.clone()));
                 } else {
                     debug!("Found no lands in hand");
                 }
             } else if matches!(db.turn.phase, Phase::PostCombatMainPhase) {
-                for land in db.battlefield[self.player]
+                for land in db.battlefield[&self.player]
                     .iter()
                     .filter(|card| card.is_land(db))
                     .cloned()
@@ -38,7 +39,7 @@ impl AI {
                     pending.extend(Battlefields::activate_ability(
                         db,
                         &None,
-                        self.player,
+                        &self.player,
                         &land,
                         0,
                     ));
@@ -49,8 +50,8 @@ impl AI {
                 let result = pending.resolve(db, None);
                 assert_eq!(result, ResolutionResult::Complete);
 
-                if let Some(card) = db.hand[self.player].iter().find(|card| !card.is_land(db)) {
-                    pending.extend(Player::play_card(db, self.player, &card.clone()));
+                if let Some(card) = db.hand[&self.player].iter().find(|card| !card.is_land(db)) {
+                    pending.extend(Player::play_card(db, &self.player, &card.clone()));
                 }
             }
         }

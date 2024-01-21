@@ -23,14 +23,14 @@ fn destroys_artifact() -> anyhow::Result<()> {
     let cards = load_cards()?;
     let mut all_players = AllPlayers::default();
     let player1 = all_players.new_player(String::default(), 20);
-    all_players[player1].infinite_mana();
+    all_players[&player1].infinite_mana();
     let player2 = all_players.new_player(String::default(), 20);
     let mut db = Database::new(all_players);
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
-    let card = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
-    let card2 = CardId::upload(&mut db, &cards, player1, "Deconstruction Hammer");
-    let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
+    let card = CardId::upload(&mut db, &cards, player1.clone(), "Alpine Grizzly");
+    let card2 = CardId::upload(&mut db, &cards, player1.clone(), "Deconstruction Hammer");
+    let card3 = CardId::upload(&mut db, &cards, player2.clone(), "Abzan Banner");
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &card, None);
     let result = results.resolve(&mut db, None);
@@ -48,7 +48,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
     db.turn.turn_count += db.turn.turns_per_round();
 
     // Equip the bear
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card2, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player1, &card2, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -65,7 +65,7 @@ fn destroys_artifact() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     // Activate the ability on the bear, targeting the banner
-    let mut results = Battlefields::activate_ability(&mut db, &None, player1, &card, 0);
+    let mut results = Battlefields::activate_ability(&mut db, &None, &player1, &card, 0);
     // Pay the generic mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -89,8 +89,8 @@ fn destroys_artifact() -> anyhow::Result<()> {
             .collect_vec(),
         [card]
     );
-    assert_eq!(db.graveyard[player1], IndexSet::from([card2]));
-    assert_eq!(db.graveyard[player2], IndexSet::from([card3]));
+    assert_eq!(db.graveyard[&player1], IndexSet::from([card2]));
+    assert_eq!(db.graveyard[&player2], IndexSet::from([card3]));
 
     Ok(())
 }

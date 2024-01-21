@@ -22,17 +22,17 @@ fn etb() -> anyhow::Result<()> {
 
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
-    all_players[player].infinite_mana();
+    all_players[&player].infinite_mana();
 
     let mut db = Database::new(all_players);
 
-    let land = CardId::upload(&mut db, &cards, player, "Forest");
-    let nonland = CardId::upload(&mut db, &cards, player, "Annul");
+    let land = CardId::upload(&mut db, &cards, player.clone(), "Forest");
+    let nonland = CardId::upload(&mut db, &cards, player.clone(), "Annul");
 
-    Library::place_on_top(&mut db, player, land);
-    Library::place_on_top(&mut db, player, nonland);
+    Library::place_on_top(&mut db, &player, land);
+    Library::place_on_top(&mut db, &player, nonland);
 
-    let glowspore = CardId::upload(&mut db, &cards, player, "Glowspore Shaman");
+    let glowspore = CardId::upload(&mut db, &cards, player.clone(), "Glowspore Shaman");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, &glowspore, None);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, ResolutionResult::TryAgain);
@@ -52,7 +52,7 @@ fn etb() -> anyhow::Result<()> {
     assert_eq!(result, ResolutionResult::Complete);
 
     assert!(db.stack.is_empty());
-    assert_eq!(db.all_players[player].library.len(), 1);
+    assert_eq!(db.all_players[&player].library.len(), 1);
 
     Ok(())
 }

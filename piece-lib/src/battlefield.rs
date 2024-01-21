@@ -18,7 +18,7 @@ use crate::{
         },
         PendingResults, Source, TargetSource,
     },
-    player::{mana_pool::SpendReason, Controller, Owner},
+    player::mana_pool::SpendReason,
     protogen::{
         color::Color,
         cost::additional_cost::{self, ExileXOrMoreCards, PayLife, RemoveCounters},
@@ -30,7 +30,7 @@ use crate::{
             static_ability::{self, ForceEtbTapped},
             Destination, Duration,
         },
-        ids::CardId,
+        ids::{CardId, Controller, Owner},
         targets::Location,
         triggers::{self, TriggerSource},
         types::Type,
@@ -51,33 +51,35 @@ pub struct Battlefields {
     pub battlefields: IndexMap<Controller, IndexSet<CardId>>,
 }
 
-impl std::ops::Index<Owner> for Battlefields {
+impl std::ops::Index<&Owner> for Battlefields {
     type Output = IndexSet<CardId>;
 
-    fn index(&self, index: Owner) -> &Self::Output {
-        self.battlefields.get(&Controller::from(index)).unwrap()
-    }
-}
-
-impl std::ops::Index<Controller> for Battlefields {
-    type Output = IndexSet<CardId>;
-
-    fn index(&self, index: Controller) -> &Self::Output {
-        self.battlefields.get(&index).unwrap()
-    }
-}
-
-impl std::ops::IndexMut<Owner> for Battlefields {
-    fn index_mut(&mut self, index: Owner) -> &mut Self::Output {
+    fn index(&self, index: &Owner) -> &Self::Output {
         self.battlefields
-            .entry(Controller::from(index))
+            .get(&Controller::from(index.clone()))
+            .unwrap()
+    }
+}
+
+impl std::ops::Index<&Controller> for Battlefields {
+    type Output = IndexSet<CardId>;
+
+    fn index(&self, index: &Controller) -> &Self::Output {
+        self.battlefields.get(index).unwrap()
+    }
+}
+
+impl std::ops::IndexMut<&Owner> for Battlefields {
+    fn index_mut(&mut self, index: &Owner) -> &mut Self::Output {
+        self.battlefields
+            .entry(Controller::from(index.clone()))
             .or_default()
     }
 }
 
-impl std::ops::IndexMut<Controller> for Battlefields {
-    fn index_mut(&mut self, index: Controller) -> &mut Self::Output {
-        self.battlefields.entry(index).or_default()
+impl std::ops::IndexMut<&Controller> for Battlefields {
+    fn index_mut(&mut self, index: &Controller) -> &mut Self::Output {
+        self.battlefields.entry(index.clone()).or_default()
     }
 }
 
@@ -184,12 +186,12 @@ impl Battlefields {
             }
             replaced = true;
 
-            let controller = db[&source].controller;
+            let controller = db[&source].controller.clone();
             for effect in replacement.effects.iter() {
                 effect.effect.as_ref().unwrap().push_pending_behavior(
                     db,
                     &source,
-                    controller,
+                    &controller,
                     &mut results,
                 );
             }
@@ -206,7 +208,7 @@ impl Battlefields {
         PartialAddToBattlefieldResult::Continue(results)
     }
 
-    pub(crate) fn controlled_colors(db: &Database, player: Controller) -> HashSet<Color> {
+    pub(crate) fn controlled_colors(db: &Database, player: &Controller) -> HashSet<Color> {
         let mut colors = HashSet::default();
         for card in db.battlefield[player].as_slice() {
             colors.extend(db[card].modified_colors.iter().copied())
@@ -215,14 +217,14 @@ impl Battlefields {
         colors
     }
 
-    pub(crate) fn untap(db: &mut Database, player: Owner) {
+    pub(crate) fn untap(db: &mut Database, player: &Owner) {
         let cards = db
             .battlefield
             .battlefields
             .iter()
             .flat_map(|(controller, cards)| cards.iter().map(move |card| (controller, card)))
             .filter_map(|(controller, card)| {
-                if *controller == player
+                if controller == player
                     || db[card].modified_static_abilities.iter().any(|ability| {
                         matches!(
                             db[ability].ability,
@@ -354,7 +356,7 @@ impl Battlefields {
     pub fn activate_ability(
         db: &mut Database,
         pending: &Option<PendingResults>,
-        activator: Owner,
+        activator: &Owner,
         source: &CardId,
         index: usize,
     ) -> PendingResults {
@@ -404,7 +406,7 @@ impl Battlefields {
                     }
                     additional_cost::Cost::PayLife(PayLife { count, .. }) => {
                         results.push_settled(ActionResult::LoseLife {
-                            target: db[source].controller,
+                            target: db[source].controller.clone(),
                             count: *count,
                         })
                     }
@@ -505,7 +507,7 @@ impl Battlefields {
             results.add_gain_mana(source.clone(), gain);
         } else {
             results.add_ability_to_stack(source.clone(), ability.clone());
-            let controller = db[source].controller;
+            let controller = &db[source].controller;
 
             for effect in ability.effects(db) {
                 let effect = effect.effect.unwrap();
