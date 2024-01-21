@@ -102,10 +102,10 @@ impl App {
         if sense.changed() || sense.lost_focus() {
             if let Ok(value) = text.parse::<T>() {
                 field.set_singular_field(message, construct_value(value));
-                debug!("Set field in: {:?}", message);
+                info!("Set field in: {:?}", message);
             } else if text.is_empty() {
                 field.clear_field(message);
-                debug!("Set field in: {:?}", message);
+                info!("Cleared field in: {:?}", message);
             }
         }
     }
@@ -149,10 +149,10 @@ impl App {
                     })
                 })
             {
-                for field in proto.fields() {
-                    let target = message_descriptor.field_by_name(oneof_name).unwrap();
-                    let message = target.mut_message(message);
+                let target = message_descriptor.field_by_name(oneof_name).unwrap();
+                let message = target.mut_message(message);
 
+                for field in proto.fields() {
                     Self::render_field(
                         ui,
                         prefix,
@@ -259,15 +259,26 @@ impl App {
                         );
                     }
                     RuntimeType::String => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::String,
-                        );
+                        let key = format!("{}_{}{}", prefix, target, idx);
+                        let text = dynamic_fields.entry(key.clone()).or_default();
+                        let sense = if target.name() == "oracle_text" {
+                            ui.add(TextEdit::multiline(text).id_source(key))
+                        } else {
+                            ui.add(TextEdit::singleline(text).id_source(key))
+                        };
+
+                        if sense.changed() || sense.lost_focus() {
+                            if text.is_empty() {
+                                target.clear_field(message);
+                                info!("Cleared field in: {:?}", message);
+                            } else {
+                                target.set_singular_field(
+                                    message,
+                                    ReflectValueBox::String(text.to_string()),
+                                );
+                                info!("Set field in: {:?}", message);
+                            }
+                        }
                     }
                     RuntimeType::VecU8 => todo!(),
                     RuntimeType::Enum(descriptor) => {
@@ -280,13 +291,13 @@ impl App {
                             .or_default();
 
                         ui.horizontal(|ui| {
-                            ui.label("type:");
+                            ui.label("value:");
                             let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
                             if sense.lost_focus() || sense.changed() {
                                 if let Some(value) =
                                     descriptor.value_by_name(&text.to_case(Case::ScreamingSnake))
                                 {
-                                    debug!("Set field to {}", value.name());
+                                    info!("Set field to {}", value.name());
                                     target.set_singular_field(
                                         message,
                                         ReflectValueBox::Enum(descriptor, value.value()),
@@ -319,7 +330,7 @@ impl App {
                                         popup_all_options(ui, &key, idx, &sense, text, &inputs);
 
                                     if sense.changed() || sense.lost_focus() || changed {
-                                        let oneof_name = text.clone();
+                                        let oneof_name = text.to_case(Case::Snake);
                                         Self::render_oneof(
                                             dynamic_fields,
                                             dynamic_repeated_fields,
@@ -387,7 +398,7 @@ impl App {
 
                             for (idx, text) in text.iter_mut().enumerate() {
                                 ui.horizontal(|ui| {
-                                    ui.label("type:");
+                                    ui.label("value:");
                                     let sense = ui.add(AutoCompleteTextEdit::new(text, &inputs));
 
                                     let changed =
@@ -397,7 +408,7 @@ impl App {
                                         if let Some(value) = descriptor
                                             .value_by_name(&text.to_case(Case::ScreamingSnake))
                                         {
-                                            debug!("Set {} to {}", idx, value.name());
+                                            info!("Set {} to {}", idx, value.name());
                                             repeated.set(
                                                 idx,
                                                 ReflectValueBox::Enum(
@@ -475,7 +486,7 @@ impl App {
                                             dynamic_repeated_fields,
                                             &key,
                                             &descriptor,
-                                            text,
+                                            &text.to_case(Case::Snake),
                                             ui,
                                             idx,
                                             &mut *value,
@@ -595,7 +606,7 @@ impl App {
                                     if let Some(value) = Subtype::enum_descriptor()
                                         .value_by_name(&text.to_case(Case::ScreamingSnake))
                                     {
-                                        debug!("Set key to {}", value.name());
+                                        info!("Set key to {}", value.name());
 
                                         map.insert(
                                             ReflectValueBox::I32(value.value()),
@@ -637,7 +648,7 @@ impl App {
                                     if let Some(value) = Subtype::enum_descriptor()
                                         .value_by_name(&text.to_case(Case::ScreamingSnake))
                                     {
-                                        debug!("Set key to {}", value.name());
+                                        info!("Set key to {}", value.name());
 
                                         map.insert(
                                             ReflectValueBox::I32(value.value()),

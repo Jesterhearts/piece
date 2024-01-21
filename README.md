@@ -7,6 +7,10 @@ Future plans:
 - An AI capable of making interesting matches.
 
 # Adding Cards
+## Editor
+There is a barebones editor which can be used by running `cargo run --release --bin editor`
+
+## YAML
 Cards are written in `yaml` format. You can see examples in the [cards directory](piece-lib/cards).
 The proto schema is defined in the [protos directory](piece-lib/src/protos). In particular, check
 out the [card](piece-lib/src/protos/card.proto#L12),
@@ -71,6 +75,7 @@ then it must be implemented using effects - typically as an activated or trigger
   - The two-stage build process allows the binary proto files to be exported at build time, while
     allowing changes to the yaml & proto card definitions (including changing proto tag numbers -
     normally a nono).
+- Proto reflection allows a minimal editor to be built very easily.
 
 
 ---
