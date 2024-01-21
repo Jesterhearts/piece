@@ -19,7 +19,7 @@ use nucleo_matcher::{
     Config, Matcher,
 };
 use piece_lib::{
-    deserialize_gain_mana, deserialize_mana_cost,
+    deserialize_mana_cost,
     protogen::{
         card::Card,
         cost::ManaCost,
