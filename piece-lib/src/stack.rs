@@ -43,8 +43,10 @@ use crate::{
 
 impl StackId {
     pub(crate) fn generate() -> Self {
+        let (hi, lo) = Uuid::new_v4().as_u64_pair();
         Self {
-            id: Uuid::new_v4().to_string(),
+            hi,
+            lo,
             ..Default::default()
         }
     }

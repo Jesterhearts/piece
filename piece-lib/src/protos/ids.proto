@@ -3,29 +3,36 @@ syntax = "proto3";
 package ids;
 
 message ActivatedAbilityId {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }
 
 message GainManaAbilityId {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }
 
 message CardId {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }
 
 message ModifierId {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }
 
 message StackId {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }
 
 message Controller {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }
 
 message Owner {
-  string id = 1;
+  uint64 hi = 1;
+  uint64 lo = 2;
 }

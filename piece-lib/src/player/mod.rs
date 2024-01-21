@@ -39,7 +39,8 @@ use crate::{
 impl From<Controller> for Owner {
     fn from(value: Controller) -> Self {
         Self {
-            id: value.id.clone(),
+            hi: value.hi,
+            lo: value.lo,
             ..Default::default()
         }
     }
@@ -47,13 +48,13 @@ impl From<Controller> for Owner {
 
 impl PartialEq<Controller> for Owner {
     fn eq(&self, other: &Controller) -> bool {
-        self.id == other.id
+        self.hi == other.hi && self.lo == other.lo
     }
 }
 
 impl PartialEq<Owner> for Controller {
     fn eq(&self, other: &Owner) -> bool {
-        self.id == other.id
+        self.hi == other.hi && self.lo == other.lo
     }
 }
 
@@ -261,7 +262,8 @@ impl Owner {
 impl From<Owner> for Controller {
     fn from(value: Owner) -> Self {
         Self {
-            id: value.id.clone(),
+            hi: value.hi,
+            lo: value.lo,
             ..Default::default()
         }
     }
@@ -320,8 +322,10 @@ pub struct AllPlayers {
 impl AllPlayers {
     #[must_use]
     pub fn new_player(&mut self, name: String, life_total: i32) -> Owner {
+        let (hi, lo) = Uuid::new_v4().as_u64_pair();
         let id = Owner {
-            id: Uuid::new_v4().to_string(),
+            hi,
+            lo,
             ..Default::default()
         };
         self.players.insert(
