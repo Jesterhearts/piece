@@ -277,7 +277,7 @@ where
     )
 }
 
-fn deserialize_mana_cost<'de, D>(
+pub fn deserialize_mana_cost<'de, D>(
     deserializer: D,
 ) -> Result<Vec<protobuf::EnumOrUnknown<ManaCost>>, D::Error>
 where

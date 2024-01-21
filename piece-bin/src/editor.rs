@@ -18,11 +18,16 @@ use nucleo_matcher::{
     pattern::{AtomKind, CaseMatching, Normalization, Pattern},
     Config, Matcher,
 };
-use piece_lib::protogen::{
-    card::Card,
-    empty::Empty,
-    keywords::Keyword,
-    types::{Subtype, Type},
+use piece_lib::{
+    deserialize_gain_mana, deserialize_mana_cost,
+    protogen::{
+        card::Card,
+        cost::ManaCost,
+        empty::Empty,
+        keywords::Keyword,
+        mana::Mana,
+        types::{Subtype, Type},
+    },
 };
 use protobuf::{
     reflect::{ReflectValueBox, RuntimeFieldType, RuntimeType},
@@ -194,172 +199,201 @@ impl App {
         ui.horizontal(|ui| {
             ui.label(target.name().to_case(Case::Title));
 
-            match target.runtime_field_type() {
-                RuntimeFieldType::Singular(single) => match single {
-                    RuntimeType::I32 => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::I32,
-                        );
-                    }
-                    RuntimeType::I64 => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::I64,
-                        );
-                    }
-                    RuntimeType::U32 => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::U32,
-                        );
-                    }
-                    RuntimeType::U64 => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::U64,
-                        );
-                    }
-                    RuntimeType::F32 => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::F32,
-                        );
-                    }
-                    RuntimeType::F64 => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::F64,
-                        );
-                    }
-                    RuntimeType::Bool => {
-                        Self::render_field_descriptor(
-                            prefix,
-                            dynamic_fields,
-                            &target,
-                            idx,
-                            ui,
-                            message,
-                            ReflectValueBox::Bool,
-                        );
-                    }
-                    RuntimeType::String => {
-                        let key = format!("{}_{}{}", prefix, target, idx);
-                        let text = dynamic_fields.entry(key.clone()).or_default();
-                        let sense = if target.name() == "oracle_text" {
-                            ui.add(TextEdit::multiline(text).id_source(key))
-                        } else {
-                            ui.add(TextEdit::singleline(text).id_source(key))
-                        };
+            if target.name() == "reduction" || target.name() == "mana_cost" {
+                let key = format!("{}_{}{}", prefix, target, idx);
+                let text = dynamic_fields.entry(key.clone()).or_default();
 
-                        if sense.changed() || sense.lost_focus() {
-                            if text.is_empty() {
-                                target.clear_field(message);
-                                info!("Cleared field in: {:?}", message);
-                            } else {
-                                target.set_singular_field(
-                                    message,
-                                    ReflectValueBox::String(text.to_string()),
-                                );
-                                info!("Set field in: {:?}", message);
+                let sense = ui.text_edit_singleline(text);
+
+                if sense.changed() || sense.lost_focus() {
+                    let text = format!(r#""{text}""#);
+                    let deserializer = serde_yaml::Deserializer::from_str(&text);
+                    match deserialize_mana_cost(deserializer) {
+                        Ok(values) => {
+                            let mut repeated = target.mut_repeated(message);
+                            repeated.clear();
+                            for value in values {
+                                dbg!(repeated.element_type());
+                                repeated.push(ReflectValueBox::Enum(
+                                    ManaCost::enum_descriptor(),
+                                    value.value(),
+                                ));
                             }
+
+                            info!("set mana cost to {:?}", repeated);
+                        }
+                        Err(e) => {
+                            info!("Failed to parse mana cost {} - {}", text, e.to_string());
                         }
                     }
-                    RuntimeType::VecU8 => todo!(),
-                    RuntimeType::Enum(descriptor) => {
-                        let inputs = descriptor
-                            .values()
-                            .map(|enum_| enum_.name().to_case(Case::Title))
-                            .collect_vec();
-                        let key = format!("{}_{}{}", prefix, target.full_name(), idx);
-                        let text = dynamic_fields.entry(key.clone()).or_default();
-
-                        ui.horizontal(|ui| {
-                            ui.label("value:");
-                            let sense = ui.text_edit_singleline(text);
-                            let changed = popup_all_options(
-                                ui,
-                                dynamic_selections,
-                                &key,
+                }
+            } else {
+                match target.runtime_field_type() {
+                    RuntimeFieldType::Singular(single) => match single {
+                        RuntimeType::I32 => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
                                 idx,
-                                &sense,
-                                text,
-                                &inputs,
+                                ui,
+                                message,
+                                ReflectValueBox::I32,
                             );
-                            if sense.lost_focus() || sense.changed() || changed {
-                                if let Some(value) =
-                                    descriptor.value_by_name(&text.to_case(Case::ScreamingSnake))
-                                {
-                                    info!("Set field to {}", value.name());
+                        }
+                        RuntimeType::I64 => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
+                                idx,
+                                ui,
+                                message,
+                                ReflectValueBox::I64,
+                            );
+                        }
+                        RuntimeType::U32 => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
+                                idx,
+                                ui,
+                                message,
+                                ReflectValueBox::U32,
+                            );
+                        }
+                        RuntimeType::U64 => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
+                                idx,
+                                ui,
+                                message,
+                                ReflectValueBox::U64,
+                            );
+                        }
+                        RuntimeType::F32 => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
+                                idx,
+                                ui,
+                                message,
+                                ReflectValueBox::F32,
+                            );
+                        }
+                        RuntimeType::F64 => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
+                                idx,
+                                ui,
+                                message,
+                                ReflectValueBox::F64,
+                            );
+                        }
+                        RuntimeType::Bool => {
+                            Self::render_field_descriptor(
+                                prefix,
+                                dynamic_fields,
+                                &target,
+                                idx,
+                                ui,
+                                message,
+                                ReflectValueBox::Bool,
+                            );
+                        }
+                        RuntimeType::String => {
+                            let key = format!("{}_{}{}", prefix, target, idx);
+                            let text = dynamic_fields.entry(key.clone()).or_default();
+                            let sense = if target.name() == "oracle_text" {
+                                ui.add(TextEdit::multiline(text).id_source(key))
+                            } else {
+                                ui.add(TextEdit::singleline(text).id_source(key))
+                            };
+
+                            if sense.changed() || sense.lost_focus() {
+                                if text.is_empty() {
+                                    target.clear_field(message);
+                                    info!("Cleared field in: {:?}", message);
+                                } else {
                                     target.set_singular_field(
                                         message,
-                                        ReflectValueBox::Enum(descriptor, value.value()),
+                                        ReflectValueBox::String(text.to_string()),
                                     );
+                                    info!("Set field in: {:?}", message);
                                 }
                             }
-                        });
-                    }
-                    RuntimeType::Message(descriptor) => {
-                        if target.has_field(message) {
-                            let message = target.mut_message(message);
-                            if descriptor.oneofs().any(|_| true) {
-                                let inputs = descriptor
-                                    .all_oneofs()
-                                    .flat_map(|oneof| {
-                                        oneof
-                                            .fields()
-                                            .map(|field| field.name().to_case(Case::Title))
-                                            .collect_vec()
-                                    })
-                                    .collect_vec();
+                        }
+                        RuntimeType::VecU8 => todo!(),
+                        RuntimeType::Enum(descriptor) => {
+                            let inputs = descriptor
+                                .values()
+                                .map(|enum_| enum_.name().to_case(Case::Title))
+                                .collect_vec();
+                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let text = dynamic_fields.entry(key.clone()).or_default();
 
-                                ui.horizontal(|ui| {
-                                    ui.label("type:");
-                                    let key = format!("{}_{}{}", prefix, target.full_name(), idx);
-                                    let text = dynamic_fields.entry(key.clone()).or_default();
-                                    let sense = ui.text_edit_singleline(text);
+                            ui.horizontal(|ui| {
+                                ui.label("value:");
+                                let sense = ui.text_edit_singleline(text);
+                                let changed = popup_all_options(
+                                    ui,
+                                    dynamic_selections,
+                                    &key,
+                                    idx,
+                                    &sense,
+                                    text,
+                                    &inputs,
+                                );
+                                if sense.lost_focus() || sense.changed() || changed {
+                                    if let Some(value) = descriptor
+                                        .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                    {
+                                        info!("Set field to {}", value.name());
+                                        target.set_singular_field(
+                                            message,
+                                            ReflectValueBox::Enum(descriptor, value.value()),
+                                        );
+                                    }
+                                }
+                            });
+                        }
+                        RuntimeType::Message(descriptor) => {
+                            if target.has_field(message) {
+                                let message = target.mut_message(message);
+                                if descriptor.oneofs().any(|_| true) {
+                                    let inputs = descriptor
+                                        .all_oneofs()
+                                        .flat_map(|oneof| {
+                                            oneof
+                                                .fields()
+                                                .map(|field| field.name().to_case(Case::Title))
+                                                .collect_vec()
+                                        })
+                                        .collect_vec();
 
-                                    let changed = popup_all_options(
-                                        ui,
-                                        dynamic_selections,
-                                        &key,
-                                        idx,
-                                        &sense,
-                                        text,
-                                        &inputs,
-                                    );
+                                    ui.horizontal(|ui| {
+                                        ui.label("type:");
+                                        let key =
+                                            format!("{}_{}{}", prefix, target.full_name(), idx);
+                                        let text = dynamic_fields.entry(key.clone()).or_default();
+                                        let sense = ui.text_edit_singleline(text);
 
-                                    if sense.changed() || sense.lost_focus() || changed {
+                                        popup_all_options(
+                                            ui,
+                                            dynamic_selections,
+                                            &key,
+                                            idx,
+                                            &sense,
+                                            text,
+                                            &inputs,
+                                        );
+
                                         let oneof_name = text.to_case(Case::Snake);
                                         Self::render_oneof(
                                             ui,
@@ -377,145 +411,63 @@ impl App {
                                             &oneof_name,
                                             idx,
                                         );
-                                    }
-                                });
-                            } else {
-                                ui.vertical(|ui| {
-                                    for (idx, sub_field) in descriptor.fields().enumerate() {
-                                        Self::render_field(
-                                            ui,
-                                            dynamic_fields,
-                                            dynamic_repeated_fields,
-                                            dynamic_selections,
-                                            message,
-                                            &format!("{}_{}", prefix, target.full_name()),
-                                            sub_field,
-                                            idx,
-                                        );
-                                    }
-                                });
-                            }
-                        } else if ui.button("+").clicked() {
-                            target.mut_message(message);
-                        }
-
-                        ui.separator();
-                        if ui.button("reset").clicked() {
-                            target.clear_field(message);
-                        }
-                    }
-                },
-                RuntimeFieldType::Repeated(repeated) => match repeated {
-                    RuntimeType::I32 => todo!(),
-                    RuntimeType::I64 => todo!(),
-                    RuntimeType::U32 => todo!(),
-                    RuntimeType::U64 => todo!(),
-                    RuntimeType::F32 => todo!(),
-                    RuntimeType::F64 => todo!(),
-                    RuntimeType::Bool => todo!(),
-                    RuntimeType::String => todo!(),
-                    RuntimeType::VecU8 => todo!(),
-                    RuntimeType::Enum(descriptor) => {
-                        ui.vertical(|ui| {
-                            let mut repeated = target.mut_repeated(message);
-
-                            let inputs = descriptor
-                                .values()
-                                .map(|enum_| enum_.name().to_case(Case::Title))
-                                .collect_vec();
-                            let key = format!("{}_repeated_{}{}", prefix, target.full_name(), idx);
-                            let text = dynamic_repeated_fields.entry(key.clone()).or_default();
-
-                            assert_eq!(text.len(), repeated.len());
-
-                            for (idx, text) in text.iter_mut().enumerate() {
-                                ui.horizontal(|ui| {
-                                    ui.label("value:");
-                                    let sense = ui.text_edit_singleline(text);
-
-                                    let changed = popup_all_options(
-                                        ui,
-                                        dynamic_selections,
-                                        &key,
-                                        idx,
-                                        &sense,
-                                        text,
-                                        &inputs,
-                                    );
-
-                                    if sense.changed() || sense.lost_focus() || changed {
-                                        if let Some(value) = descriptor
-                                            .value_by_name(&text.to_case(Case::ScreamingSnake))
-                                        {
-                                            info!("Set {} to {}", idx, value.name());
-                                            repeated.set(
+                                    });
+                                } else {
+                                    ui.vertical(|ui| {
+                                        for (idx, sub_field) in descriptor.fields().enumerate() {
+                                            Self::render_field(
+                                                ui,
+                                                dynamic_fields,
+                                                dynamic_repeated_fields,
+                                                dynamic_selections,
+                                                message,
+                                                &format!("{}_{}", prefix, target.full_name()),
+                                                sub_field,
                                                 idx,
-                                                ReflectValueBox::Enum(
-                                                    descriptor.clone(),
-                                                    value.value(),
-                                                ),
                                             );
                                         }
-                                    }
-                                });
+                                    });
+                                }
+                            } else if ui.button("+").clicked() {
+                                target.mut_message(message);
                             }
 
-                            ui.horizontal(|ui| {
-                                if ui.button("+").clicked() {
-                                    text.push(Default::default());
-                                    repeated.push(ReflectValueBox::Enum(descriptor.clone(), -1));
-                                }
-                                if ui.button("-").clicked() {
-                                    let mut copy = repeated
-                                        .into_iter()
-                                        .map(|v| v.to_enum_value().unwrap())
-                                        .collect_vec();
+                            ui.separator();
+                            if ui.button("reset").clicked() {
+                                target.clear_field(message);
+                            }
+                        }
+                    },
+                    RuntimeFieldType::Repeated(repeated) => match repeated {
+                        RuntimeType::I32 => todo!(),
+                        RuntimeType::I64 => todo!(),
+                        RuntimeType::U32 => todo!(),
+                        RuntimeType::U64 => todo!(),
+                        RuntimeType::F32 => todo!(),
+                        RuntimeType::F64 => todo!(),
+                        RuntimeType::Bool => todo!(),
+                        RuntimeType::String => todo!(),
+                        RuntimeType::VecU8 => todo!(),
+                        RuntimeType::Enum(descriptor) => {
+                            ui.vertical(|ui| {
+                                let mut repeated = target.mut_repeated(message);
 
-                                    text.pop();
-                                    copy.pop();
-
-                                    repeated.clear();
-                                    for value in copy {
-                                        repeated
-                                            .push(ReflectValueBox::Enum(descriptor.clone(), value));
-                                    }
-                                }
-                                if ui.button("reset").clicked() {
-                                    text.clear();
-                                    repeated.clear();
-                                }
-                            });
-                        });
-                    }
-                    RuntimeType::Message(descriptor) => {
-                        let mut repeated = target.mut_repeated(message);
-
-                        ui.vertical(|ui| {
-                            if descriptor.oneofs().any(|_| true) {
                                 let inputs = descriptor
-                                    .all_oneofs()
-                                    .flat_map(|oneof| {
-                                        oneof
-                                            .fields()
-                                            .map(|field| field.name().to_case(Case::Title))
-                                            .collect_vec()
-                                    })
+                                    .values()
+                                    .map(|enum_| enum_.name().to_case(Case::Title))
                                     .collect_vec();
-
                                 let key =
                                     format!("{}_repeated_{}{}", prefix, target.full_name(), idx);
-                                let mut text = dynamic_repeated_fields
-                                    .entry(key.clone())
-                                    .or_default()
-                                    .clone();
+                                let text = dynamic_repeated_fields.entry(key.clone()).or_default();
+
                                 assert_eq!(text.len(), repeated.len());
 
                                 for (idx, text) in text.iter_mut().enumerate() {
                                     ui.horizontal(|ui| {
-                                        ui.label("type:");
+                                        ui.label("value:");
                                         let sense = ui.text_edit_singleline(text);
 
-                                        popup_all_options(
+                                        let changed = popup_all_options(
                                             ui,
                                             dynamic_selections,
                                             &key,
@@ -525,42 +477,44 @@ impl App {
                                             &inputs,
                                         );
 
-                                        let mut value =
-                                            repeated.get(idx).to_message().unwrap().clone_box();
-                                        Self::render_oneof(
-                                            ui,
-                                            dynamic_fields,
-                                            dynamic_repeated_fields,
-                                            dynamic_selections,
-                                            &mut *value,
-                                            &key,
-                                            &descriptor,
-                                            &text.to_case(Case::Snake),
-                                            idx,
-                                        );
-
-                                        repeated.set(idx, ReflectValueBox::Message(value));
+                                        if sense.changed() || sense.lost_focus() || changed {
+                                            if let Some(value) = descriptor
+                                                .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                            {
+                                                info!("Set {} to {}", idx, value.name());
+                                                repeated.set(
+                                                    idx,
+                                                    ReflectValueBox::Enum(
+                                                        descriptor.clone(),
+                                                        value.value(),
+                                                    ),
+                                                );
+                                            }
+                                        }
                                     });
                                 }
 
                                 ui.horizontal(|ui| {
                                     if ui.button("+").clicked() {
                                         text.push(Default::default());
-                                        repeated.push(ReflectValueBox::Message(
-                                            descriptor.new_instance(),
-                                        ));
+                                        repeated
+                                            .push(ReflectValueBox::Enum(descriptor.clone(), -1));
                                     }
                                     if ui.button("-").clicked() {
                                         let mut copy = repeated
                                             .into_iter()
-                                            .map(|m| m.to_message().unwrap().clone_box())
+                                            .map(|v| v.to_enum_value().unwrap())
                                             .collect_vec();
+
                                         text.pop();
                                         copy.pop();
 
                                         repeated.clear();
-                                        for m in copy {
-                                            repeated.push(ReflectValueBox::Message(m));
+                                        for value in copy {
+                                            repeated.push(ReflectValueBox::Enum(
+                                                descriptor.clone(),
+                                                value,
+                                            ));
                                         }
                                     }
                                     if ui.button("reset").clicked() {
@@ -568,218 +522,310 @@ impl App {
                                         repeated.clear();
                                     }
                                 });
+                            });
+                        }
+                        RuntimeType::Message(descriptor) => {
+                            let mut repeated = target.mut_repeated(message);
 
-                                *dynamic_repeated_fields.entry(key).or_default() = text;
-                            } else {
-                                let key =
-                                    format!("{}_repeated_{}{}", prefix, target.full_name(), idx);
-                                let mut text = dynamic_repeated_fields
-                                    .entry(key.clone())
-                                    .or_default()
-                                    .clone();
+                            ui.vertical(|ui| {
+                                if descriptor.oneofs().any(|_| true) {
+                                    let inputs = descriptor
+                                        .all_oneofs()
+                                        .flat_map(|oneof| {
+                                            oneof
+                                                .fields()
+                                                .map(|field| field.name().to_case(Case::Title))
+                                                .collect_vec()
+                                        })
+                                        .collect_vec();
 
-                                for (idx, mut message) in repeated
-                                    .into_iter()
-                                    .map(|m| m.to_message().unwrap().clone_box())
-                                    .enumerate()
-                                    .collect_vec()
-                                {
-                                    for field in descriptor.fields() {
-                                        Self::render_field(
-                                            ui,
-                                            dynamic_fields,
-                                            dynamic_repeated_fields,
-                                            dynamic_selections,
-                                            &mut *message,
-                                            &key,
-                                            field,
-                                            idx,
-                                        );
+                                    let key = format!(
+                                        "{}_repeated_{}{}",
+                                        prefix,
+                                        target.full_name(),
+                                        idx
+                                    );
+                                    let mut text = dynamic_repeated_fields
+                                        .entry(key.clone())
+                                        .or_default()
+                                        .clone();
+                                    assert_eq!(text.len(), repeated.len());
+
+                                    for (idx, text) in text.iter_mut().enumerate() {
+                                        ui.horizontal(|ui| {
+                                            ui.label("type:");
+                                            let sense = ui.text_edit_singleline(text);
+
+                                            popup_all_options(
+                                                ui,
+                                                dynamic_selections,
+                                                &key,
+                                                idx,
+                                                &sense,
+                                                text,
+                                                &inputs,
+                                            );
+
+                                            let mut value =
+                                                repeated.get(idx).to_message().unwrap().clone_box();
+                                            Self::render_oneof(
+                                                ui,
+                                                dynamic_fields,
+                                                dynamic_repeated_fields,
+                                                dynamic_selections,
+                                                &mut *value,
+                                                &key,
+                                                &descriptor,
+                                                &text.to_case(Case::Snake),
+                                                idx,
+                                            );
+
+                                            repeated.set(idx, ReflectValueBox::Message(value));
+                                        });
                                     }
-                                    repeated.set(idx, ReflectValueBox::Message(message));
-                                }
 
+                                    ui.horizontal(|ui| {
+                                        if ui.button("+").clicked() {
+                                            text.push(Default::default());
+                                            repeated.push(ReflectValueBox::Message(
+                                                descriptor.new_instance(),
+                                            ));
+                                        }
+                                        if ui.button("-").clicked() {
+                                            let mut copy = repeated
+                                                .into_iter()
+                                                .map(|m| m.to_message().unwrap().clone_box())
+                                                .collect_vec();
+                                            text.pop();
+                                            copy.pop();
+
+                                            repeated.clear();
+                                            for m in copy {
+                                                repeated.push(ReflectValueBox::Message(m));
+                                            }
+                                        }
+                                        if ui.button("reset").clicked() {
+                                            text.clear();
+                                            repeated.clear();
+                                        }
+                                    });
+
+                                    *dynamic_repeated_fields.entry(key).or_default() = text;
+                                } else {
+                                    let key = format!(
+                                        "{}_repeated_{}{}",
+                                        prefix,
+                                        target.full_name(),
+                                        idx
+                                    );
+                                    let mut text = dynamic_repeated_fields
+                                        .entry(key.clone())
+                                        .or_default()
+                                        .clone();
+
+                                    for (idx, mut message) in repeated
+                                        .into_iter()
+                                        .map(|m| m.to_message().unwrap().clone_box())
+                                        .enumerate()
+                                        .collect_vec()
+                                    {
+                                        for field in descriptor.fields() {
+                                            Self::render_field(
+                                                ui,
+                                                dynamic_fields,
+                                                dynamic_repeated_fields,
+                                                dynamic_selections,
+                                                &mut *message,
+                                                &key,
+                                                field,
+                                                idx,
+                                            );
+                                        }
+                                        repeated.set(idx, ReflectValueBox::Message(message));
+                                    }
+
+                                    ui.horizontal(|ui| {
+                                        if ui.button("+").clicked() {
+                                            text.push(Default::default());
+                                            repeated.push(ReflectValueBox::Message(
+                                                descriptor.new_instance(),
+                                            ));
+                                        }
+                                        if ui.button("-").clicked() {
+                                            let mut copy = repeated
+                                                .into_iter()
+                                                .map(|m| m.to_message().unwrap().clone_box())
+                                                .collect_vec();
+                                            text.pop();
+                                            copy.pop();
+
+                                            repeated.clear();
+                                            for m in copy {
+                                                repeated.push(ReflectValueBox::Message(m));
+                                            }
+                                        }
+                                        if ui.button("reset").clicked() {
+                                            text.clear();
+                                            repeated.clear();
+                                        }
+                                    });
+
+                                    *dynamic_repeated_fields.entry(key).or_default() = text;
+                                }
+                            });
+                        }
+                    },
+                    RuntimeFieldType::Map(_, _) => {
+                        let mut map = target.mut_map(message);
+                        if target.name() == "types"
+                            || target.name() == "add_types"
+                            || target.name() == "remove_types"
+                        {
+                            let inputs = Type::enum_descriptor()
+                                .values()
+                                .map(|enum_| enum_.name().to_case(Case::Title))
+                                .collect_vec();
+                            let text = dynamic_repeated_fields
+                                .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
+                                .or_default();
+
+                            for text in text.iter_mut() {
                                 ui.horizontal(|ui| {
-                                    if ui.button("+").clicked() {
-                                        text.push(Default::default());
-                                        repeated.push(ReflectValueBox::Message(
-                                            descriptor.new_instance(),
-                                        ));
-                                    }
-                                    if ui.button("-").clicked() {
-                                        let mut copy = repeated
-                                            .into_iter()
-                                            .map(|m| m.to_message().unwrap().clone_box())
-                                            .collect_vec();
-                                        text.pop();
-                                        copy.pop();
+                                    ui.label("type:");
+                                    let sense = ui.text_edit_singleline(text);
+                                    let changed = popup_all_options(
+                                        ui,
+                                        dynamic_selections,
+                                        prefix,
+                                        idx,
+                                        &sense,
+                                        text,
+                                        &inputs,
+                                    );
 
-                                        repeated.clear();
-                                        for m in copy {
-                                            repeated.push(ReflectValueBox::Message(m));
+                                    if sense.lost_focus() || sense.changed() || changed {
+                                        if let Some(value) = Subtype::enum_descriptor()
+                                            .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                        {
+                                            info!("Set key to {}", value.name());
+
+                                            map.insert(
+                                                ReflectValueBox::I32(value.value()),
+                                                ReflectValueBox::Message(Box::<Empty>::default()),
+                                            );
                                         }
                                     }
-                                    if ui.button("reset").clicked() {
-                                        text.clear();
-                                        repeated.clear();
+                                });
+                            }
+
+                            ui.horizontal(|ui| {
+                                if ui.button("+").clicked() {
+                                    text.push(Default::default());
+                                }
+                                if ui.button("reset").clicked() {
+                                    text.clear();
+                                    map.clear();
+                                }
+                            });
+                        } else if target.name() == "subtypes"
+                            || target.name() == "add_subtypes"
+                            || target.name() == "remove_subtypes"
+                        {
+                            let inputs = Subtype::enum_descriptor()
+                                .values()
+                                .map(|enum_| enum_.name().to_case(Case::Title))
+                                .collect_vec();
+                            let text = dynamic_repeated_fields
+                                .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
+                                .or_default();
+
+                            for text in text.iter_mut() {
+                                ui.horizontal(|ui| {
+                                    ui.label("subtype:");
+                                    let sense = ui.text_edit_singleline(text);
+                                    let changed = popup_all_options(
+                                        ui,
+                                        dynamic_selections,
+                                        prefix,
+                                        idx,
+                                        &sense,
+                                        text,
+                                        &inputs,
+                                    );
+                                    if sense.lost_focus() || sense.changed() || changed {
+                                        if let Some(value) = Subtype::enum_descriptor()
+                                            .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                        {
+                                            info!("Set key to {}", value.name());
+
+                                            map.insert(
+                                                ReflectValueBox::I32(value.value()),
+                                                ReflectValueBox::Message(Box::<Empty>::default()),
+                                            );
+                                        }
                                     }
                                 });
-
-                                *dynamic_repeated_fields.entry(key).or_default() = text;
                             }
-                        });
-                    }
-                },
-                RuntimeFieldType::Map(_, _) => {
-                    let mut map = target.mut_map(message);
-                    if target.name() == "types"
-                        || target.name() == "add_types"
-                        || target.name() == "remove_types"
-                    {
-                        let inputs = Type::enum_descriptor()
-                            .values()
-                            .map(|enum_| enum_.name().to_case(Case::Title))
-                            .collect_vec();
-                        let text = dynamic_repeated_fields
-                            .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                            .or_default();
 
-                        for text in text.iter_mut() {
                             ui.horizontal(|ui| {
-                                ui.label("type:");
-                                let sense = ui.text_edit_singleline(text);
-                                let changed = popup_all_options(
-                                    ui,
-                                    dynamic_selections,
-                                    prefix,
-                                    idx,
-                                    &sense,
-                                    text,
-                                    &inputs,
-                                );
-
-                                if sense.lost_focus() || sense.changed() || changed {
-                                    if let Some(value) = Subtype::enum_descriptor()
-                                        .value_by_name(&text.to_case(Case::ScreamingSnake))
-                                    {
-                                        info!("Set key to {}", value.name());
-
-                                        map.insert(
-                                            ReflectValueBox::I32(value.value()),
-                                            ReflectValueBox::Message(Box::<Empty>::default()),
-                                        );
-                                    }
+                                if ui.button("+").clicked() {
+                                    text.push(Default::default());
+                                }
+                                if ui.button("reset").clicked() {
+                                    text.clear();
+                                    map.clear();
                                 }
                             });
-                        }
+                        } else if target.name() == "keywords"
+                            || target.name() == "add_keywords"
+                            || target.name() == "remove_keywords"
+                        {
+                            let inputs = Keyword::enum_descriptor()
+                                .values()
+                                .map(|enum_| enum_.name().to_case(Case::Title))
+                                .collect_vec();
+                            let text = dynamic_repeated_fields
+                                .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
+                                .or_default();
 
-                        ui.horizontal(|ui| {
-                            if ui.button("+").clicked() {
-                                text.push(Default::default());
+                            for text in text.iter_mut() {
+                                ui.horizontal(|ui| {
+                                    ui.label("keyword:");
+                                    let sense = ui.text_edit_singleline(text);
+                                    popup_all_options(
+                                        ui,
+                                        dynamic_selections,
+                                        prefix,
+                                        idx,
+                                        &sense,
+                                        text,
+                                        &inputs,
+                                    );
+                                });
                             }
-                            if ui.button("reset").clicked() {
-                                text.clear();
-                                map.clear();
-                            }
-                        });
-                    } else if target.name() == "subtypes"
-                        || target.name() == "add_subtypes"
-                        || target.name() == "remove_subtypes"
-                    {
-                        let inputs = Subtype::enum_descriptor()
-                            .values()
-                            .map(|enum_| enum_.name().to_case(Case::Title))
-                            .collect_vec();
-                        let text = dynamic_repeated_fields
-                            .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                            .or_default();
 
-                        for text in text.iter_mut() {
                             ui.horizontal(|ui| {
-                                ui.label("subtype:");
-                                let sense = ui.text_edit_singleline(text);
-                                let changed = popup_all_options(
-                                    ui,
-                                    dynamic_selections,
-                                    prefix,
-                                    idx,
-                                    &sense,
-                                    text,
-                                    &inputs,
-                                );
-                                if sense.lost_focus() || sense.changed() || changed {
-                                    if let Some(value) = Subtype::enum_descriptor()
-                                        .value_by_name(&text.to_case(Case::ScreamingSnake))
-                                    {
-                                        info!("Set key to {}", value.name());
-
-                                        map.insert(
-                                            ReflectValueBox::I32(value.value()),
-                                            ReflectValueBox::Message(Box::<Empty>::default()),
-                                        );
-                                    }
+                                if ui.button("+").clicked() {
+                                    text.push(Default::default());
+                                }
+                                if ui.button("reset").clicked() {
+                                    text.clear();
+                                    map.clear();
                                 }
                             });
-                        }
 
-                        ui.horizontal(|ui| {
-                            if ui.button("+").clicked() {
-                                text.push(Default::default());
+                            let mut values = HashMap::<i32, u32>::default();
+                            for text in text {
+                                if let Some(value) = Keyword::enum_descriptor()
+                                    .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                {
+                                    *values.entry(value.value()).or_default() += 1
+                                }
                             }
-                            if ui.button("reset").clicked() {
-                                text.clear();
-                                map.clear();
-                            }
-                        });
-                    } else if target.name() == "keywords"
-                        || target.name() == "add_keywords"
-                        || target.name() == "remove_keywords"
-                    {
-                        let inputs = Keyword::enum_descriptor()
-                            .values()
-                            .map(|enum_| enum_.name().to_case(Case::Title))
-                            .collect_vec();
-                        let text = dynamic_repeated_fields
-                            .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                            .or_default();
 
-                        for text in text.iter_mut() {
-                            ui.horizontal(|ui| {
-                                ui.label("keyword:");
-                                let sense = ui.text_edit_singleline(text);
-                                popup_all_options(
-                                    ui,
-                                    dynamic_selections,
-                                    prefix,
-                                    idx,
-                                    &sense,
-                                    text,
-                                    &inputs,
-                                );
-                            });
-                        }
-
-                        ui.horizontal(|ui| {
-                            if ui.button("+").clicked() {
-                                text.push(Default::default());
+                            for (key, value) in values {
+                                map.insert(ReflectValueBox::I32(key), ReflectValueBox::U32(value));
                             }
-                            if ui.button("reset").clicked() {
-                                text.clear();
-                                map.clear();
-                            }
-                        });
-
-                        let mut values = HashMap::<i32, u32>::default();
-                        for text in text {
-                            if let Some(value) = Keyword::enum_descriptor()
-                                .value_by_name(&text.to_case(Case::ScreamingSnake))
-                            {
-                                *values.entry(value.value()).or_default() += 1
-                            }
-                        }
-
-                        for (key, value) in values {
-                            map.insert(ReflectValueBox::I32(key), ReflectValueBox::U32(value));
                         }
                     }
                 }
