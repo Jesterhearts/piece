@@ -465,7 +465,9 @@ impl App {
                                     format!("{}_repeated_{}{}", prefix, target.full_name(), idx);
                                 let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
-                                assert_eq!(text.len(), repeated.len());
+                                if repeated.is_empty() {
+                                    text.clear();
+                                }
 
                                 for (idx, text) in text.iter_mut().enumerate() {
                                     ui.horizontal(|ui| {
@@ -554,7 +556,9 @@ impl App {
                                         .entry(key.clone())
                                         .or_default()
                                         .clone();
-                                    assert_eq!(text.len(), repeated.len());
+                                    if repeated.is_empty() {
+                                        text.clear();
+                                    }
 
                                     for (idx, text) in text.iter_mut().enumerate() {
                                         ui.horizontal(|ui| {
