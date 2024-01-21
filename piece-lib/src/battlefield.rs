@@ -4,7 +4,6 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
-    abilities::Ability,
     action_result::ActionResult,
     effects::EffectBehaviors,
     in_play::{Database, ExileReason},
@@ -20,6 +19,7 @@ use crate::{
     },
     player::mana_pool::SpendReason,
     protogen::{
+        abilities::{ability::Ability, EtbAbility},
         color::Color,
         cost::additional_cost::{self, ExileXOrMoreCards, PayLife, RemoveCounters},
         effects::{
@@ -831,7 +831,10 @@ pub(crate) fn move_card_to_battlefield(
     if !db[source_card_id].modified_etb_abilities.is_empty() {
         results.extend(Stack::move_ability_to_stack(
             db,
-            Ability::EtbOrTriggered(db[source_card_id].modified_etb_abilities.clone()),
+            Ability::Etb(EtbAbility {
+                effects: db[source_card_id].modified_etb_abilities.clone(),
+                ..Default::default()
+            }),
             source_card_id.clone(),
         ));
     }

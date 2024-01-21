@@ -7,7 +7,6 @@ use tracing::Level;
 use uuid::Uuid;
 
 use crate::{
-    abilities::Ability,
     action_result::ActionResult,
     battlefield::Battlefields,
     effects::EffectBehaviors,
@@ -24,7 +23,7 @@ use crate::{
     },
     player::mana_pool::SpendReason,
     protogen::{
-        abilities::TriggeredAbility,
+        abilities::{self, ability::Ability, TriggeredAbility},
         cost::additional_cost::{self, ExileXOrMoreCards},
         ids::{CardId, Owner, StackId},
         keywords::Keyword,
@@ -716,7 +715,10 @@ impl Stack {
             results.add_ability_to_stack(source, ability);
         } else {
             results.push_settled(ActionResult::AddAbilityToStack {
-                ability,
+                ability: abilities::Ability {
+                    ability: Some(ability),
+                    ..Default::default()
+                },
                 source,
                 targets: vec![],
                 x_is: None,
@@ -731,7 +733,7 @@ impl Stack {
         listener: CardId,
         trigger: TriggeredAbility,
     ) -> PendingResults {
-        Self::move_ability_to_stack(db, Ability::EtbOrTriggered(trigger.effects), listener)
+        Self::move_ability_to_stack(db, Ability::Triggered(trigger), listener)
     }
 
     pub(crate) fn move_card_to_stack_from_hand(

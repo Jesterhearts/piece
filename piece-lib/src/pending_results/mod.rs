@@ -18,7 +18,6 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    abilities::Ability,
     action_result::ActionResult,
     effects::EffectBehaviors,
     in_play::{CastFrom, Database},
@@ -30,6 +29,7 @@ use crate::{
         pay_costs::PayCost,
     },
     protogen::{
+        abilities::{self, ability::Ability},
         effects::{
             destination,
             effect::Effect,
@@ -512,7 +512,10 @@ impl PendingResults {
                     Source::Ability { source, ability } => {
                         self.settled_effects.push(ActionResult::AddAbilityToStack {
                             source,
-                            ability,
+                            ability: abilities::Ability {
+                                ability: Some(ability),
+                                ..Default::default()
+                            },
                             targets: self.chosen_targets.clone(),
                             x_is: self.x_is,
                         });
@@ -573,7 +576,10 @@ impl PendingResults {
                             x_is,
                         } => self.settled_effects.push(ActionResult::CopyAbility {
                             source,
-                            ability,
+                            ability: abilities::Ability {
+                                ability: Some(ability),
+                                ..Default::default()
+                            },
                             targets: self.chosen_targets.clone(),
                             x_is,
                         }),

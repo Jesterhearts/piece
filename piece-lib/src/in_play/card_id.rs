@@ -9,7 +9,6 @@ use tracing::Level;
 use uuid::Uuid;
 
 use crate::{
-    abilities::Ability,
     battlefield::Battlefields,
     card::{BasePowerType, BaseToughnessType},
     effects::EffectBehaviors,
@@ -17,7 +16,7 @@ use crate::{
     log::{LeaveReason, Log, LogEntry, LogId},
     pending_results::PendingResults,
     protogen::{
-        abilities::TriggeredAbility,
+        abilities::{ability::Ability, TriggeredAbility},
         card::Card,
         color::Color,
         cost::CastingCost,

@@ -1,9 +1,12 @@
 use crate::{
-    abilities::Ability,
     effects::EffectBehaviors,
     pending_results::pay_costs::{Cost, PayCost, SacrificePermanent, SpendMana, TapPermanent},
     player::mana_pool::SpendReason,
-    protogen::{cost::additional_cost, effects::PayCostThen},
+    protogen::{
+        abilities::{ability::Ability, TriggeredAbility},
+        cost::additional_cost,
+        effects::PayCostThen,
+    },
 };
 
 impl EffectBehaviors for PayCostThen {
@@ -68,7 +71,10 @@ impl EffectBehaviors for PayCostThen {
 
         results.add_ability_to_stack(
             source.clone(),
-            Ability::EtbOrTriggered(self.effects.clone()),
+            Ability::Triggered(TriggeredAbility {
+                effects: self.effects.clone(),
+                ..Default::default()
+            }),
         );
     }
 
@@ -118,7 +124,10 @@ impl EffectBehaviors for PayCostThen {
 
         results.add_ability_to_stack(
             source.clone(),
-            Ability::EtbOrTriggered(self.effects.clone()),
+            Ability::Triggered(TriggeredAbility {
+                effects: self.effects.clone(),
+                ..Default::default()
+            }),
         );
     }
 }

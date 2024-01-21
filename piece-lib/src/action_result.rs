@@ -5,7 +5,6 @@ use rand::{seq::SliceRandom, thread_rng};
 use tracing::Level;
 
 use crate::{
-    abilities::Ability,
     battlefield::{
         complete_add_from_exile, complete_add_from_graveyard, complete_add_from_library,
         complete_add_from_stack_or_hand, move_card_to_battlefield, Battlefields,
@@ -17,7 +16,7 @@ use crate::{
     pending_results::{examine_top_cards::ExamineCards, PendingResults},
     player::{mana_pool::SpendReason, Player},
     protogen::{
-        abilities::TriggeredAbility,
+        abilities::{ability, Ability, TriggeredAbility},
         counters::Counter,
         effects::{
             self, count::dynamic::Dynamic, create_token::Token, effect, examine_top_cards::Dest,
@@ -306,7 +305,12 @@ impl ActionResult {
                 if let Some(x) = x_is {
                     db[source].x_is = *x;
                 }
-                Stack::push_ability(db, source, ability.clone(), targets.clone())
+                Stack::push_ability(
+                    db,
+                    source,
+                    ability.ability.clone().unwrap(),
+                    targets.clone(),
+                )
             }
             ActionResult::AddAbilityToStack {
                 source,
@@ -320,7 +324,7 @@ impl ActionResult {
 
                 let mut results = PendingResults::default();
 
-                if let Ability::Activated(ability) = ability {
+                if let ability::Ability::Activated(ability) = ability.ability.as_ref().unwrap() {
                     Log::activated(db, source.clone(), ability.clone());
                     db.turn.activated_abilities.insert(ability.clone());
 
@@ -335,7 +339,7 @@ impl ActionResult {
                 results.extend(Stack::push_ability(
                     db,
                     source,
-                    ability.clone(),
+                    ability.ability.clone().unwrap(),
                     targets.clone(),
                 ));
 

@@ -9,6 +9,7 @@ use crate::{
     pending_results::PendingResults,
     player::mana_pool::SpendReason,
     protogen::{
+        abilities::ability::Ability,
         cost::{
             ability_restriction,
             additional_cost::{self, ExileXOrMoreCards, RemoveCounters},
@@ -16,7 +17,7 @@ use crate::{
         },
         counters::Counter,
         effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
-        ids::{ActivatedAbilityId, CardId, GainManaAbilityId, Owner},
+        ids::{CardId, Owner},
     },
     turns::Phase,
 };
@@ -122,19 +123,13 @@ impl GainManaAbility {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Ability {
-    Activated(ActivatedAbilityId),
-    Mana(GainManaAbilityId),
-    EtbOrTriggered(Vec<Effect>),
-}
-
 impl Ability {
     pub(crate) fn cost<'db>(&self, db: &'db Database) -> Option<&'db AbilityCost> {
         match self {
             Ability::Activated(id) => Some(&db[id].ability.cost),
             Ability::Mana(id) => Some(&db[id].ability.cost),
-            Ability::EtbOrTriggered(_) => None,
+            Ability::Etb(_) => None,
+            Ability::Triggered(_) => None,
         }
     }
 
@@ -142,7 +137,8 @@ impl Ability {
         match self {
             Ability::Activated(id) => db[id].ability.effects.clone(),
             Ability::Mana(_) => vec![],
-            Ability::EtbOrTriggered(effects) => effects.clone(),
+            Ability::Etb(ability) => ability.effects.clone(),
+            Ability::Triggered(ability) => ability.effects.clone(),
         }
     }
 
@@ -150,9 +146,12 @@ impl Ability {
         match self {
             Ability::Activated(id) => db[id].ability.oracle_text.clone(),
             Ability::Mana(id) => db[id].ability.oracle_text.clone(),
-            Ability::EtbOrTriggered(effects) => {
-                effects.iter().map(|effect| &effect.oracle_text).join("\n")
-            }
+            Ability::Etb(etb) => etb
+                .effects
+                .iter()
+                .map(|effect| &effect.oracle_text)
+                .join("\n"),
+            Ability::Triggered(triggered) => triggered.oracle_text.clone(),
         }
     }
 
@@ -183,7 +182,7 @@ impl Ability {
                     .all(|(needs, has)| has.len() >= needs)
             }
             Ability::Mana(id) => db[id].ability.can_be_activated(db, self, source, activator),
-            Ability::EtbOrTriggered(_) => false,
+            _ => false,
         }
     }
 }
@@ -292,8 +291,7 @@ pub(crate) fn can_pay_costs(
                         return false;
                     }
                 }
-                Ability::Mana(_) => todo!(),
-                Ability::EtbOrTriggered(_) => todo!(),
+                _ => unreachable!(),
             },
         }
     }
