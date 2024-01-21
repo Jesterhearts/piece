@@ -27,7 +27,7 @@ impl EffectBehaviors for GainCounters {
         results.push_settled(ActionResult::AddCounters {
             source: source.clone(),
             target: source.clone(),
-            count: self.count.count.as_ref().unwrap().clone(),
+            count: self.count.clone(),
             counter: self.counter,
         });
     }
@@ -43,7 +43,7 @@ impl EffectBehaviors for GainCounters {
         results.push_settled(ActionResult::AddCounters {
             source: source.clone(),
             target: source.clone(),
-            count: self.count.count.as_ref().unwrap().clone(),
+            count: self.count.clone(),
             counter: self.counter,
         })
     }

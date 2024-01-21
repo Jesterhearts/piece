@@ -44,7 +44,7 @@ pub(crate) enum ActionResult {
     AddCounters {
         source: CardId,
         target: CardId,
-        count: effects::count::Count,
+        count: protobuf::MessageField<effects::Count>,
         counter: protobuf::EnumOrUnknown<Counter>,
     },
     AddModifier {
@@ -538,7 +538,7 @@ impl ActionResult {
                 count,
                 counter,
             } => {
-                match count {
+                match count.count.as_ref().unwrap() {
                     effects::count::Count::Fixed(count) => {
                         *db[target]
                             .counters
