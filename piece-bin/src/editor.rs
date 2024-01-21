@@ -25,7 +25,6 @@ use piece_lib::{
         cost::ManaCost,
         empty::Empty,
         keywords::Keyword,
-        mana::Mana,
         types::{Subtype, Type},
     },
 };
@@ -67,7 +66,13 @@ impl eframe::App for App {
             if ui.button("Save").clicked() {
                 let path = FileDialog::new()
                     .add_filter("YAML files", &["yaml"])
-                    .set_filename(&self.card.name.replace(['-', '\'', ',', '+', '"'], "_"))
+                    .set_filename(
+                        &self
+                            .card
+                            .name
+                            .to_case(Case::Snake)
+                            .replace(['-', '\'', ',', '+', '"'], "_"),
+                    )
                     .set_location(&current_dir().unwrap())
                     .show_save_single_file()
                     .unwrap();
