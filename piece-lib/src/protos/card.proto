@@ -4,6 +4,7 @@ package card;
 
 import "abilities.proto";
 import "color.proto";
+import "comment.proto";
 import "cost.proto";
 import "effects.proto";
 import "targets.proto";
@@ -26,9 +27,10 @@ message Card {
 
   repeated effects.Effect effects = 9;
   repeated effects.Mode modes = 10;
-  // Apply the results of each effect as soon as possible (e.g immediately after
-  // choosing a target) before processing the next effect.
-  bool apply_individually = 11;
+  bool apply_individually = 11 [
+    (comment.comment) =
+        "Apply the results of each effect as soon as possible (e.g immediately after choosing a target) before processing the next effect."
+  ];
 
   repeated effects.Effect etb_abilities = 12;
   repeated effects.StaticAbility static_abilities = 13;

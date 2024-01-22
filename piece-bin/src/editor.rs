@@ -39,6 +39,7 @@ struct App {
     card: Card,
 
     dynamic_fields: HashMap<String, String>,
+    dynamic_boolean_fields: HashMap<String, bool>,
     dynamic_repeated_fields: HashMap<String, Vec<String>>,
     dynamic_selections: HashMap<String, usize>,
 }
@@ -90,6 +91,7 @@ impl eframe::App for App {
                     Self::render_field(
                         ui,
                         &mut self.dynamic_fields,
+                        &mut self.dynamic_boolean_fields,
                         &mut self.dynamic_repeated_fields,
                         &mut self.dynamic_selections,
                         &mut self.card,
@@ -123,10 +125,10 @@ impl App {
         if sense.changed() || sense.lost_focus() {
             if let Ok(value) = text.parse::<T>() {
                 field.set_singular_field(message, construct_value(value));
-                info!("Set field in: {:?}", message);
+                info!("Set field {} in: {:?}", field.name(), message);
             } else if text.is_empty() {
                 field.clear_field(message);
-                info!("Cleared field in: {:?}", message);
+                info!("Cleared field {} in: {:?}", field.name(), message);
             }
         }
     }
@@ -135,6 +137,7 @@ impl App {
     fn render_oneof(
         ui: &mut egui::Ui,
         dynamic_fields: &mut HashMap<String, String>,
+        dynamic_boolean_fields: &mut HashMap<String, bool>,
         dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
         dynamic_selections: &mut HashMap<String, usize>,
         message: &mut dyn MessageDyn,
@@ -153,6 +156,7 @@ impl App {
                 Self::render_field(
                     ui,
                     dynamic_fields,
+                    dynamic_boolean_fields,
                     dynamic_repeated_fields,
                     dynamic_selections,
                     message,
@@ -190,6 +194,7 @@ impl App {
                     Self::render_field(
                         ui,
                         dynamic_fields,
+                        dynamic_boolean_fields,
                         dynamic_repeated_fields,
                         dynamic_selections,
                         message,
@@ -206,6 +211,7 @@ impl App {
     fn render_field(
         ui: &mut egui::Ui,
         dynamic_fields: &mut HashMap<String, String>,
+        dynamic_boolean_fields: &mut HashMap<String, bool>,
         dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
         dynamic_selections: &mut HashMap<String, usize>,
         message: &mut dyn MessageDyn,
@@ -214,7 +220,17 @@ impl App {
         idx: usize,
     ) {
         ui.horizontal(|ui| {
-            ui.label(target.name().to_case(Case::Title));
+            let sense = ui.label(target.name().to_case(Case::Title));
+
+            if let Some(options) = target.proto().options.as_ref() {
+                if let Some(comment) = comment::exts::comment.get(options) {
+                    if sense.hovered() {
+                        egui::show_tooltip(ui.ctx(), egui::Id::new(&comment), |ui| {
+                            ui.label(comment);
+                        });
+                    }
+                }
+            }
 
             if target.name() == "reduction" || target.name() == "mana_cost" {
                 let key = format!("{}_{}{}", prefix, target, idx);
@@ -314,15 +330,19 @@ impl App {
                             );
                         }
                         RuntimeType::Bool => {
-                            Self::render_field_descriptor(
-                                prefix,
-                                dynamic_fields,
-                                &target,
-                                idx,
-                                ui,
-                                message,
-                                ReflectValueBox::Bool,
-                            );
+                            let key = format!("{}_{}{}", prefix, target, idx);
+                            let value = dynamic_boolean_fields.entry(key.clone()).or_default();
+                            let sense = ui
+                                .horizontal(|ui| {
+                                    let sense = ui.radio_value(value, false, "false");
+                                    sense.union(ui.radio_value(value, true, "true"))
+                                })
+                                .inner;
+
+                            if sense.changed() || sense.clicked() {
+                                target.set_singular_field(message, ReflectValueBox::Bool(*value));
+                                info!("Set boolean field {} in: {:?}", target.name(), message);
+                            }
                         }
                         RuntimeType::String => {
                             let key = format!("{}_{}{}", prefix, target, idx);
@@ -416,6 +436,7 @@ impl App {
                                         Self::render_oneof(
                                             ui,
                                             dynamic_fields,
+                                            dynamic_boolean_fields,
                                             dynamic_repeated_fields,
                                             dynamic_selections,
                                             message,
@@ -437,6 +458,7 @@ impl App {
                                             Self::render_field(
                                                 ui,
                                                 dynamic_fields,
+                                                dynamic_boolean_fields,
                                                 dynamic_repeated_fields,
                                                 dynamic_selections,
                                                 message,
@@ -596,6 +618,7 @@ impl App {
                                             Self::render_oneof(
                                                 ui,
                                                 dynamic_fields,
+                                                dynamic_boolean_fields,
                                                 dynamic_repeated_fields,
                                                 dynamic_selections,
                                                 &mut *value,
@@ -659,6 +682,7 @@ impl App {
                                             Self::render_field(
                                                 ui,
                                                 dynamic_fields,
+                                                dynamic_boolean_fields,
                                                 dynamic_repeated_fields,
                                                 dynamic_selections,
                                                 &mut *message,
