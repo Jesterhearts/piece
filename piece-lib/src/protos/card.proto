@@ -23,7 +23,8 @@ message Card {
 
   string oracle_text = 7;
 
-  optional abilities.Enchant enchant = 8;
+  optional abilities.Enchant enchant = 8
+      [(comment.comment) = "The aura modifiers associated with this card."];
 
   repeated effects.Effect effects = 9;
   repeated effects.Mode modes = 10;
