@@ -28,21 +28,21 @@ message Card {
   repeated effects.Effect effects = 9;
   repeated effects.Mode modes = 10;
 
-  repeated effects.Effect etb_abilities = 12;
-  repeated effects.StaticAbility static_abilities = 13;
-  repeated effects.ActivatedAbility activated_abilities = 14;
-  repeated abilities.TriggeredAbility triggered_abilities = 15;
-  repeated effects.GainManaAbility mana_abilities = 16;
-  repeated effects.ReplacementEffect replacement_abilities = 17;
+  repeated effects.Effect etb_abilities = 11;
+  repeated effects.StaticAbility static_abilities = 12;
+  repeated effects.ActivatedAbility activated_abilities = 13;
+  repeated abilities.TriggeredAbility triggered_abilities = 14;
+  repeated effects.GainManaAbility mana_abilities = 15;
+  repeated effects.ReplacementEffect replacement_abilities = 16;
 
-  optional effects.DynamicPowerToughness dynamic_power_toughness = 18;
-  optional int32 power = 19;
-  optional int32 toughness = 20;
-  bool etb_tapped = 21;
+  optional effects.DynamicPowerToughness dynamic_power_toughness = 17;
+  optional int32 power = 18;
+  optional int32 toughness = 19;
+  bool etb_tapped = 20;
 
-  map<int32, uint32> keywords = 22;
+  map<int32, uint32> keywords = 21;
 
-  repeated targets.Restriction restrictions = 23;
+  repeated targets.Restriction restrictions = 22;
 
-  optional Card back_face = 24;
+  optional Card back_face = 23;
 }
