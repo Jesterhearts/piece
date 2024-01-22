@@ -102,11 +102,13 @@ enum XIs {
 }
 
 message CostReducer {
-  message TargetTappedCreature {}
-
-  oneof when {
-    TargetTappedCreature target_tapped_creature = 1;
+  message TargetMatches {
+    repeated targets.Restriction restrictions = 1;
   }
 
-  repeated ManaCost reduction = 2;
+  oneof when {
+    TargetMatches target_matches = 2;
+  }
+
+  repeated ManaCost reduction = 3;
 }

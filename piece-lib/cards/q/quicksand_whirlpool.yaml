@@ -4,7 +4,9 @@ cost:
   mana_cost: '{5}{W}'
 cost_reducer:
   reduction: '{3}'
-  when: !TargetTappedCreature {}
+  when: !TargetMatches
+    restrictions:
+      - restriction: !Tapped {}
 oracle_text: |-
   This spell costs {3} less to cast if it targets a tapped creature
   Exile target creature.

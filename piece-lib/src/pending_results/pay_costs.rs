@@ -380,13 +380,18 @@ impl Cost {
 
                 if let Some(reducer) = source.faceup_face(db).cost_reducer.as_ref() {
                     match reducer.when.as_ref().unwrap() {
-                        When::TargetTappedCreature(_) => {
+                        When::TargetMatches(matches) => {
                             if let Ok(Some(target)) = already_chosen
                                 .iter()
                                 .exactly_one()
                                 .map(|target| target.id(db))
                             {
-                                if target.tapped(db) {
+                                if target.passes_restrictions(
+                                    db,
+                                    LogId::current(db),
+                                    source,
+                                    &matches.restrictions,
+                                ) {
                                     let reduction: ::counter::Counter<ManaCost> = reducer
                                         .reduction
                                         .iter()
