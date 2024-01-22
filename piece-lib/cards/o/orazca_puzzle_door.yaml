@@ -4,20 +4,22 @@ cost:
   mana_cost: '{U}'
 oracle_text: ''
 activated_abilities:
-- cost:
-    mana_cost: '{1}'
-    tap: true
-    additional_costs:
-    - cost: !SacrificeSource {}
-  effects:
-  - oracle_text: ''
-    effect: !ExamineTopCards
-      count: 2
-      destinations:
-      - destination:
-          destination: !Hand {}
-        count: 1
-      - destination:
-          destination: !Graveyard {}
-        count: 1
-  oracle_text: '{1}, {T}, Sacrifice Orazca Puzzle-Door: Look at the top two cards of your library. Put one of those cards into your hand and the other into your graveyard.'
+  - cost:
+      mana_cost: '{1}'
+      tap: true
+      additional_costs:
+        - cost: !SacrificeSource {}
+    effects:
+      - oracle_text: ''
+        effect: !ExamineTopCards
+          count: 2
+          destinations:
+            - destination:
+                destination: !Hand {}
+              count: 1
+            - destination:
+                destination: !Graveyard {}
+              count: 1
+    oracle_text: '{1}, {T}, Sacrifice Orazca Puzzle-Door: Look at the top two cards
+      of your library. Put one of those cards into your hand and the other into your
+      graveyard.'

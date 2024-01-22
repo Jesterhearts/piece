@@ -755,7 +755,7 @@ impl App {
                                     );
 
                                     if sense.lost_focus() || sense.changed() || changed {
-                                        if let Some(value) = Subtype::enum_descriptor()
+                                        if let Some(value) = Type::enum_descriptor()
                                             .value_by_name(&text.to_case(Case::ScreamingSnake))
                                         {
                                             info!("Set key to {}", value.name());

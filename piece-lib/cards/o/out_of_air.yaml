@@ -1,0 +1,16 @@
+name: Out of Air
+typeline: Instant
+cost:
+  mana_cost: '{2}{U}{U}'
+cost_reducer:
+  reduction: '{2}'
+  when: !TargetMatches
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+oracle_text: This spell costs {2} less to cast if it targets a creature spell.
+effects:
+  - oracle_text: |+
+      Counter target spell.
+
+    effect: !CounterSpellOrAbility {}
