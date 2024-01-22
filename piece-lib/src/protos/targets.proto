@@ -3,6 +3,7 @@ syntax = "proto3";
 package targets;
 
 import "color.proto";
+import "comment.proto";
 import "counters.proto";
 import "empty.proto";
 import "mana.proto";
@@ -92,83 +93,95 @@ message Restriction {
   }
 
   oneof restriction {
-    // Did the controller of this card attack this turn.
-    AttackedThisTurn attacked_this_turn = 2;
-    // Is the card currently attacking.
-    Attacking attacking = 3;
-    // Is the card currently attacking or blocking
-    AttackingOrBlocking attacking_or_blocking = 4;
-    // Was the spell cast from the controller's hand.
-    CastFromHand cast_from_hand = 5;
-    // Was the card chosen.
-    Chosen chosen = 6;
-    // Compare against the card's mana value.
-    Cmc cmc = 7;
-    // Is the card controlled by you or your opponent.
-    Controller controller = 8;
-    // Does the controller of the card control permanents of some colors.
-    ControllerControlsColors controller_controls_colors = 9;
-    // Is the controller of the card's hand empty.
-    ControllerHandEmpty controller_hand_empty = 10;
-    // Did the controller of the card just cast a spell.
-    ControllerJustCast controller_just_cast = 11;
-    // Descend some number (e.g. Descend 4)
-    Descend descend = 12;
-    // Did the controller of the card descend this turn.
-    DescendedThisTurn descended_this_turn = 13;
-    // Is it currently the controller of the card's turn.
-    DuringControllersTurn during_controllers_turn = 14;
-    // Did the card enter the battlefield this turn.
-    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 15;
-    // Does the card have an activated ability.
-    HasActivatedAbility has_activated_ability = 16;
-    // Is the card in the graveyard.
-    InGraveyard in_graveyard = 17;
-    // Is the card a permanent.
-    IsPermanent is_permanent = 18;
-    // Was the card just discarded.
-    JustDiscarded just_discarded = 19;
-    // Compare against the amount of life gained this turn.
-    LifeGainedThisTurn life_gained_this_turn = 20;
-    // Is the card in some list of locations.
-    Locations location = 21;
-    // Was the card cast using mana from some source e.g. Treasure.
-    ManaSpentFromSource mana_spent_from_source = 22;
-    // Is the card non-token.
-    NonToken non_token = 23;
-    // Was the card _not_ chosen.
-    NotChosen not_chosen = 24;
-    // The card does not contain a keyword from a list of keywords.
-    NotKeywords not_keywords = 25;
-    // The card does not have any of the listed types.
-    NotOfType not_of_type = 26;
-    // The card is not the same card as the one testing restrictions.
-    NotSelf not_self = 27;
-    // Compare against the number of counters on this card.
-    NumberOfCountersOnThis number_of_counters_on_this = 28;
-    // Is the card a color in a list of colors.
-    OfColor of_color = 29;
-    // Does the card have a type which intersects with a list of types.
-    OfType of_type = 30;
-    // Is the card on the battlefield.
-    OnBattlefield on_battlefield = 31;
-    // Compare against the power of the card.
-    Power power = 32;
-    // Is the card the same as the card testing restrictions.
-    Self self = 33;
-    // Was the card cast at all.
-    SourceCast source_cast = 34;
-    // Was the card just cast.
-    SpellOrAbilityJustCast spell_or_ability_just_cast = 35;
-    // Is the card tapped.
-    Tapped tapped = 36;
-    // Is the card testing restrictions targetted by this card.
-    TargetedBy targeted_by = 37;
-    // Test for the presence of Threshold (seven or more cards are in
-    // controller's graveyard).
-    Threshold threshold = 38;
-    // Compare against the toughness of the card.
-    Toughness toughness = 39;
+    AttackedThisTurn attacked_this_turn = 2
+        [(comment.comment) =
+             "Did the controller of this card attack this turn."];
+    Attacking attacking = 3
+        [(comment.comment) = "Is the card currently attacking."];
+    AttackingOrBlocking attacking_or_blocking = 4
+        [(comment.comment) = "Is the card currently attacking or blocking"];
+    CastFromHand cast_from_hand = 5
+        [(comment.comment) = "Was the spell cast from the controller's hand."];
+    Chosen chosen = 6 [(comment.comment) = "Was the card chosen."];
+    Cmc cmc = 7 [(comment.comment) = "Compare against the card's mana value."];
+    Controller controller = 8
+        [(comment.comment) = "Is the card controlled by you or your opponent."];
+    ControllerControlsColors controller_controls_colors = 9 [
+      (comment.comment) =
+          "Does the controller of the card control permanents of some colors."
+    ];
+    ControllerHandEmpty controller_hand_empty = 10
+        [(comment.comment) = "Is the controller of the card's hand empty."];
+    ControllerJustCast controller_just_cast = 11
+        [(comment.comment) =
+             "Did the controller of the card just cast a spell."];
+    Descend descend = 12
+        [(comment.comment) = "Descend some number (e.g. Descend 4)"];
+    DescendedThisTurn descended_this_turn = 13
+        [(comment.comment) =
+             "Did the controller of the card descend this turn."];
+    DuringControllersTurn during_controllers_turn = 14
+        [(comment.comment) =
+             "Is it currently the controller of the card's turn."];
+    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 15
+        [(comment.comment) = "Did the card enter the battlefield this turn."];
+    HasActivatedAbility has_activated_ability = 16
+        [(comment.comment) = "Does the card have an activated ability."];
+    InGraveyard in_graveyard = 17
+        [(comment.comment) = "Is the card in the graveyard."];
+    IsPermanent is_permanent = 18
+        [(comment.comment) = "Is the card a permanent."];
+    JustDiscarded just_discarded = 19
+        [(comment.comment) = "Was the card just discarded."];
+    LifeGainedThisTurn life_gained_this_turn = 20
+        [(comment.comment) =
+             "Compare against the amount of life gained this turn."];
+    Locations location = 21
+        [(comment.comment) = "Is the card in some list of locations."];
+    ManaSpentFromSource mana_spent_from_source = 22
+        [(comment.comment) =
+             "Was the card cast using mana from some source e.g. Treasure."];
+    NonToken non_token = 23 [(comment.comment) = "Is the card non-token."];
+    NotChosen not_chosen = 24
+        [(comment.comment) = "Was the card _not_ chosen."];
+    NotKeywords not_keywords = 25
+        [(comment.comment) =
+             "The card does not contain a keyword from a list of keywords."];
+    NotOfType not_of_type = 26
+        [(comment.comment) = "The card does not have any of the listed types."];
+    NotSelf not_self = 27
+        [(comment.comment) =
+             "The card is not the same card as the one testing restrictions."];
+    NumberOfCountersOnThis number_of_counters_on_this = 28
+        [(comment.comment) =
+             "Compare against the number of counters on this card."];
+    OfColor of_color = 29
+        [(comment.comment) = "Is the card a color in a list of colors."];
+    OfType of_type = 30 [
+      (comment.comment) =
+          "Does the card have a type which intersects with a list of types."
+    ];
+    OnBattlefield on_battlefield = 31
+        [(comment.comment) = "Is the card on the battlefield."];
+    Power power = 32
+        [(comment.comment) = "Compare against the power of the card."];
+    Self self = 33
+        [(comment.comment) =
+             "Is the card the same as the card testing restrictions."];
+    SourceCast source_cast = 34
+        [(comment.comment) = "Was the card cast at all."];
+    SpellOrAbilityJustCast spell_or_ability_just_cast = 35
+        [(comment.comment) = "Was the card just cast."];
+    Tapped tapped = 36 [(comment.comment) = "Is the card tapped."];
+    TargetedBy targeted_by = 37
+        [(comment.comment) =
+             " Is the card testing restrictions targetted by this card."];
+    Threshold threshold = 38 [
+      (comment.comment) =
+          "Test for the presence of Threshold (seven or more cards are in controller's graveyard)."
+    ];
+    Toughness toughness = 39
+        [(comment.comment) = "Compare against the toughness of the card."];
   }
 }
 

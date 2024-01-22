@@ -22,6 +22,7 @@ use piece_lib::{
     deserialize_mana_cost,
     protogen::{
         card::Card,
+        comment,
         cost::ManaCost,
         empty::Empty,
         keywords::Keyword,
@@ -137,6 +138,7 @@ impl App {
         dynamic_repeated_fields: &mut HashMap<String, Vec<String>>,
         dynamic_selections: &mut HashMap<String, usize>,
         message: &mut dyn MessageDyn,
+        show_tooltip: bool,
         prefix: &str,
         message_descriptor: &protobuf::reflect::MessageDescriptor,
         oneof_name: &str,
@@ -173,6 +175,16 @@ impl App {
             {
                 let target = message_descriptor.field_by_name(oneof_name).unwrap();
                 let message = target.mut_message(message);
+
+                if let Some(options) = target.proto().options.as_ref() {
+                    if let Some(comment) = comment::exts::comment.get(options) {
+                        if show_tooltip {
+                            egui::show_tooltip(ui.ctx(), egui::Id::new(&comment), |ui| {
+                                ui.label(comment);
+                            });
+                        }
+                    }
+                }
 
                 for field in proto.fields() {
                     Self::render_field(
@@ -346,7 +358,7 @@ impl App {
                             ui.horizontal(|ui| {
                                 ui.label("value:");
                                 let sense = ui.text_edit_singleline(text);
-                                let changed = popup_all_options(
+                                let (changed, _) = popup_all_options(
                                     ui,
                                     dynamic_selections,
                                     &key,
@@ -389,7 +401,7 @@ impl App {
                                         let text = dynamic_fields.entry(key.clone()).or_default();
                                         let sense = ui.text_edit_singleline(text);
 
-                                        popup_all_options(
+                                        let (_, popup_text) = popup_all_options(
                                             ui,
                                             dynamic_selections,
                                             &key,
@@ -399,6 +411,7 @@ impl App {
                                             &inputs,
                                         );
 
+                                        let text = popup_text.unwrap_or_else(|| text.clone());
                                         let oneof_name = text.to_case(Case::Snake);
                                         Self::render_oneof(
                                             ui,
@@ -406,6 +419,7 @@ impl App {
                                             dynamic_repeated_fields,
                                             dynamic_selections,
                                             message,
+                                            sense.hovered() || sense.has_focus(),
                                             &format!(
                                                 "{}_{}{}",
                                                 prefix,
@@ -474,7 +488,7 @@ impl App {
                                         ui.label("value:");
                                         let sense = ui.text_edit_singleline(text);
 
-                                        let changed = popup_all_options(
+                                        let (changed, _) = popup_all_options(
                                             ui,
                                             dynamic_selections,
                                             &key,
@@ -565,7 +579,7 @@ impl App {
                                             ui.label("type:");
                                             let sense = ui.text_edit_singleline(text);
 
-                                            popup_all_options(
+                                            let (_, popup_text) = popup_all_options(
                                                 ui,
                                                 dynamic_selections,
                                                 &key,
@@ -575,14 +589,17 @@ impl App {
                                                 &inputs,
                                             );
 
+                                            let text = popup_text.unwrap_or_else(|| text.clone());
                                             let mut value =
                                                 repeated.get(idx).to_message().unwrap().clone_box();
+
                                             Self::render_oneof(
                                                 ui,
                                                 dynamic_fields,
                                                 dynamic_repeated_fields,
                                                 dynamic_selections,
                                                 &mut *value,
+                                                sense.hovered() || sense.has_focus(),
                                                 &key,
                                                 &descriptor,
                                                 &text.to_case(Case::Snake),
@@ -702,7 +719,7 @@ impl App {
                                 ui.horizontal(|ui| {
                                     ui.label("type:");
                                     let sense = ui.text_edit_singleline(text);
-                                    let changed = popup_all_options(
+                                    let (changed, _) = popup_all_options(
                                         ui,
                                         dynamic_selections,
                                         prefix,
@@ -752,7 +769,7 @@ impl App {
                                 ui.horizontal(|ui| {
                                     ui.label("subtype:");
                                     let sense = ui.text_edit_singleline(text);
-                                    let changed = popup_all_options(
+                                    let (changed, _) = popup_all_options(
                                         ui,
                                         dynamic_selections,
                                         prefix,
@@ -851,7 +868,7 @@ fn popup_all_options(
     sense: &egui::Response,
     text: &mut String,
     inputs: &[String],
-) -> bool {
+) -> (bool, Option<String>) {
     static MATCHER: OnceLock<Mutex<Matcher>> = OnceLock::new();
     let matcher_lock = MATCHER.get_or_init(|| Mutex::new(Matcher::new(Config::DEFAULT)));
     let mut matcher = matcher_lock.lock().unwrap();
@@ -887,9 +904,13 @@ fn popup_all_options(
                 *dynamic_selections.entry(key.clone()).or_default() = selected - 1;
             }
         } else if down_pressed {
-            let selected = *dynamic_selections.entry(key.clone()).or_default();
-            *dynamic_selections.entry(key.clone()).or_default() =
-                usize::min(selected + 1, matches.len() - 1);
+            if dynamic_selections.contains_key(&key) {
+                let selected = *dynamic_selections.entry(key.clone()).or_default();
+                *dynamic_selections.entry(key.clone()).or_default() =
+                    usize::min(selected + 1, matches.len() - 1);
+            } else {
+                dynamic_selections.insert(key.clone(), 0);
+            }
         }
 
         ui.memory_mut(|m| m.open_popup(id));
@@ -926,5 +947,10 @@ fn popup_all_options(
         ui.memory_mut(|m| m.close_popup());
     }
 
-    changed
+    (
+        changed,
+        dynamic_selections
+            .get(&key)
+            .and_then(|selected| matches.get(*selected).map(|(s, _)| (*s).clone())),
+    )
 }

@@ -3,6 +3,7 @@ syntax = "proto3";
 package effects;
 
 import "color.proto";
+import "comment.proto";
 import "cost.proto";
 import "counters.proto";
 import "empty.proto";
@@ -12,157 +13,196 @@ import "types.proto";
 
 message Effect {
   oneof effect {
-    // Apply an effect, then apply another effect, allowing another round of
-    // choosing targets. You need to use this if your effects depend on the
-    // results of previous effects. See Glowspore Shaman and Malcom, Alluring
-    // Scoundrel for examples.
-    ApplyThen apply_then = 1;
-    // Apply an effect, then examine the log of results from the effect and
-    // compare it to a list of restrictions. If any log entry resulting from the
-    // applied effects matches, apply another effect. This is used e.g. to apply
-    // an effect if the target that just left the battlefield was tapped.
-    ApplyThenIfWas apply_then_if_was = 2;
-    // Implement the Battle Cry effect. You don't need to use this directly,
-    // specifying the Battle Cry keyword in the keyword list is enough.
-    BattleCry battle_cry = 3;
-    // Apply a modifier to the battlefield without targeting anything. Typically
-    // you will want to set the `entire_battlefield` flag to true for the
-    // modifier.
-    BattlefieldModifier battlefield_modifier = 4;
-    // Prevent target player from attacking this turn.
-    CantAttackThisTurn cant_attack_this_turn = 5;
-    // Implement the keyword Cascade. You probably don't want to use this -
-    // instead use the Cascade keyword in the keywords list.
-    Cascade cascade = 6;
-    // Choose to cast a card from a list of cards narrowed by restrictions.
-    ChooseCast choose_cast = 7;
-    // The controller of the card triggering the effect discards some number of
-    // cards unless they meet some restrictions.
-    ControllerDiscards controller_discards = 8;
-    // The controller of the card triggering the effect draws some number of
-    // cards.
-    ControllerDrawsCards controller_draws_cards = 9;
-    // The controller of the card triggering the effect loses life unless they
-    // meet some restrictions.
-    ControllerLosesLife controller_loses_life = 10;
-    // Copy any creature on the battlefield without checking if it can be
-    // targetted (i.e. ignore hexproof and shroud). This is used to implement
-    // e.g. Clone.
-    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 11;
-    // Copy a spell or ability on the stack
-    CopySpellOrAbility copy_spell_or_ability = 12;
-    // Counter a spell.
-    CounterSpellOrAbility counter_spell_or_ability = 13;
-    // Counter spell unless the spell's controller pays some cost.
-    CounterSpellUnlessPay counter_spell_unless_pay = 14;
-    // Create a token.
-    CreateToken create_token = 15;
-    // Create a token copy of another permanent with some modifiers applied.
-    CreateTokenCopy create_token_copy = 16;
-    // Implement the cycling keyword. If there are restrictions listed for the
-    // effect, it will act as a tutor for matching cards. If no restrictions are
-    // specified, it will default to drawing a card.
-    Cycling cycling = 17;
-    // Deal some amount of damage to any target, narrowed by restrictions.
-    DealDamage deal_damage = 18;
-    // Destroy each permanent matching some set of restrictions.
-    DestroyEach destroy_each = 19;
-    // Destroy a target permanent from a target list narrowed by restrictions.
-    DestroyTarget destroy_target = 20;
-    // Implement the Discover keyword.
-    Discover discover = 21;
-    // Apply modifiers to a target using the Equip mechanics.
-    Equip equip = 22;
-    // Examine the top N cards of the effect controller's library and give the
-    // player a choice of where to move the cards to. This is used to implement
-    // e.g. Confounding Riddle's effect.
-    ExamineTopCards examine_top_cards = 23;
-    // Exile a target from a list narrowed by a set of restrictions.
-    ExileTarget exile_target = 24;
-    // TODO: This should probably be split into two separate effects. It is
-    // currently used to implement just Reality Shift.
+    ApplyThen apply_then = 1 [
+      (comment.comment) =
+          "Apply an effect, then apply another effect, allowing another round of choosing targets. You need to use this if your effects depend on the results of previous effects. See Glowspore Shaman and Malcom, Alluring Scoundrel for examples. "
+    ];
+    ApplyThenIfWas apply_then_if_was = 2 [
+      (comment.comment) =
+          "Apply an effect, then examine the log of results from the effect and compare it to a list of restrictions.If any log entry resulting from the applied effects matches, apply another effect.This is used e.g.to apply an effect if the target that just left the battlefield was tapped."
+    ];
+    BattleCry battle_cry = 3 [
+      (comment.comment) =
+          "Implement the Battle Cry effect. You don't need to use this directly, specifying the Battle Cry keyword in the keyword list is enough."
+    ];
+    BattlefieldModifier battlefield_modifier = 4 [
+      (comment.comment) =
+          "Apply a modifier to the battlefield without targeting anything. Typically you will want to set the `entire_battlefield` flag to true for the modifier."
+    ];
+    CantAttackThisTurn cant_attack_this_turn = 5
+        [(comment.comment) = "Prevent target player from attacking this turn."];
+    Cascade cascade = 6 [
+      (comment.comment) =
+          "Implement the keyword Cascade. You probably don't want to use this - instead use the Cascade keyword in the keywords list."
+    ];
+    ChooseCast choose_cast = 7 [
+      (comment.comment) =
+          "Choose to cast a card from a list of cards narrowed by restrictions."
+    ];
+    ControllerDiscards controller_discards = 8 [
+      (comment.comment) =
+          "The controller of the card triggering the effect discards some number of cards unless they meet some restrictions."
+    ];
+    ControllerDrawsCards controller_draws_cards = 9 [
+      (comment.comment) =
+          "The controller of the card triggering the effect draws some number of cards."
+    ];
+    ControllerLosesLife controller_loses_life = 10 [
+      (comment.comment) =
+          "The controller of the card triggering the effect loses life unless they meet some restrictions."
+    ];
+    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 11 [
+      (comment.comment) =
+          "Copy any creature on the battlefield without checking if it can be targetted (i.e. ignore hexproof and shroud). This is used to implement e.g. Clone."
+    ];
+    CopySpellOrAbility copy_spell_or_ability = 12
+        [(comment.comment) = "Copy a spell or ability on the stack"];
+    CounterSpellOrAbility counter_spell_or_ability = 13
+        [(comment.comment) = "Counter a spell."];
+    CounterSpellUnlessPay counter_spell_unless_pay = 14
+        [(comment.comment) =
+             "Counter spell unless the spell's controller pays some cost."];
+    CreateToken create_token = 15 [(comment.comment) = "Create a token."];
+    CreateTokenCopy create_token_copy = 16 [
+      (comment.comment) =
+          "Create a token copy of another permanent with some modifiers applied."
+    ];
+    Cycling cycling = 17 [
+      (comment.comment) =
+          "Implement the cycling keyword. If there are restrictions listed for the effect, it will act as a tutor for matching cards. If no restrictions are specified, it will default to drawing a card."
+    ];
+    DealDamage deal_damage = 18 [
+      (comment.comment) =
+          "Deal some amount of damage to any target, narrowed by restrictions."
+    ];
+    DestroyEach destroy_each = 19
+        [(comment.comment) =
+             "Destroy each permanent matching some set of restrictions."];
+    DestroyTarget destroy_target = 20 [
+      (comment.comment) =
+          "Destroy a target permanent from a target list narrowed by restrictions."
+    ];
+    Discover discover = 21
+        [(comment.comment) = "Implement the Discover keyword."];
+    Equip equip = 22
+        [(comment.comment) =
+             "Apply modifiers to a target using the Equip mechanics."];
+    ExamineTopCards examine_top_cards = 23 [
+      (comment.comment) =
+          "Examine the top N cards of the effect controller's library and give the player a choice of where to move the cards to. This is used to implement e.g. Confounding Riddle's effect."
+    ];
+    ExileTarget exile_target = 24
+        [(comment.comment) =
+             "Exile a target from a list narrowed by a set of restrictions."];
     ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 25;
-    // Exile the graveyard of target player.
-    ExileTargetGraveyard exile_target_graveyard = 26;
-    // For each mana from a particular source (e.g. cave or treasure) spent on
-    // casting this effect's card, apply some effects.
-    ForEachManaOfSource for_each_mana_of_source = 27;
-    // Choose a permanent matching some list of restrictions for each player,
-    // then apply some effects.
-    ForEachPlayerChooseThen for_each_player_choose_then = 28;
-    // Place some number of counters on a the card triggering the effect.
-    GainCounters gain_counters = 29;
-    // The controller of this effect gains life.
-    GainLife gain_life = 30;
-    // If the source of this effect passes some restrictions, apply some
-    // effects. Otherwise, apply a different set of effects. This is used to
-    // implement e.g. threshold.
-    IfThenElse if_then_else = 31;
-    // Mill some number of cards for a target player.
-    Mill mill = 32;
-    // Offer the controller of this effect a choice between several modes, then
-    // apply the chosen effects.
-    Modes modal = 33;
-    // Apply a modifier to a specific target from a list of valid targets.
-    ModifyTarget modify_target = 34;
-    // Multiply the number of tokens created. This is only applied as a
-    // replacement effect.
-    MultiplyTokens multiply_tokens = 35;
-    // Ask the controller of this effect to pay some cost, then apply some
-    // effects if they paid the cost.
-    PayCostThen pay_cost_then = 36;
-    // Return a card from the graveyard to the battlefield.
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 37;
-    // Return a card from the graveyard to the hand. TODO: This should probably
-    // be merged with ReturnTargetToHand.
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 38;
-    // Return a card from the graveyard to the library. TODO: This should
-    // probably be merged with TargetToTopOfLibrary.
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 39;
-    // Return the card associated with this effect to hand.
-    ReturnSelfToHand return_self_to_hand = 40;
-    // Return target card to the hand.
-    ReturnTargetToHand return_target_to_hand = 41;
-    // Return a card from exile or graveyard to the battlefield transformed.
-    ReturnTransformed return_transformed = 42;
-    // Reveal the top card of each player's library, then apply some effects
-    // depending on the revealed cards.
-    RevealEachTopOfLibrary reveal_each_top_of_library = 43;
-    // Scry some number of cards.
-    Scry scry = 44;
-    // The card with the effect explores.
-    SelfExplores self_explores = 45;
-    // Tap a target permanent. This automatically narrows the list of targets to
-    // targets on the battlefield.
-    TapTarget tap_target = 46;
-    // Tap the card associated with this effect.
-    TapThis tap_this = 47;
-    // The controller of something targetted by another effect gets a token.
-    TargetControllerGainsTokens target_controller_gains_tokens = 48;
-    // A target permanent on battlefield, narrowed by restrictions, becomes a
-    // copy of another permanent spell or on the battlefield, narrowed by
-    // restrictions.
-    TargetCopiesPermanent target_copies_permanent = 49;
-    // The targetted creature explores. This automatically narrows the list of
-    // valid targets to creatures on the battlefield.
-    TargetCreatureExplores target_creature_explores = 50;
-    // Place some number of counters on a target, narrowed by a list of
-    // restrictions.
-    TargetGainsCounters target_gains_counters = 51;
-    // Return target to the top of its owner's library.
-    TargetToTopOfLibrary target_to_top_of_library = 52;
-    // Transform in place on the battlefield. This will preserve equipment and
-    // auras attached to the transformed card.
-    Transform transform = 53;
-    // Search the library for cards matching some set of restrictions and allow
-    // the player to move it to a location.
-    TutorLibrary tutor_library = 54;
-    // Untap the card associated with this effect.
-    UntapThis untap_this = 55;
-    // Untap a target permanent. THis automatically narrows the list of targets
-    // to targets on the battlefield.
-    UntapTarget untap_target = 56;
+        exile_target_creature_manifest_top_of_library = 25 [
+          (comment.comment) =
+              "TODO: This should probably be split into two separate effects. It is currently used to implement just Reality Shift."
+        ];
+    ExileTargetGraveyard exile_target_graveyard = 26
+        [(comment.comment) = "Exile the graveyard of target player."];
+    ForEachManaOfSource for_each_mana_of_source = 27 [
+      (comment.comment) =
+          "For each mana from a particular source (e.g. cave or treasure) spent on casting this effect's card, apply some effects."
+    ];
+    ForEachPlayerChooseThen for_each_player_choose_then = 28 [
+      (comment.comment) =
+          "Choose a permanent matching some list of restrictions for each player, then apply some effects."
+    ];
+    GainCounters gain_counters = 29 [
+      (comment.comment) =
+          "Place some number of counters on a the card triggering the effect."
+    ];
+    GainLife gain_life = 30
+        [(comment.comment) = "The controller of this effect gains life."];
+    IfThenElse if_then_else = 31 [
+      (comment.comment) =
+          "If the source of this effect passes some restrictions, apply some effects. Otherwise, apply a different set of effects. This is used to implement e.g. threshold."
+    ];
+    Mill mill = 32
+        [(comment.comment) = "Mill some number of cards for a target player."];
+    Modes modal = 33 [
+      (comment.comment) =
+          "Offer the controller of this effect a choice between several modes, then apply the chosen effects."
+    ];
+    ModifyTarget modify_target = 34 [
+      (comment.comment) =
+          "Apply a modifier to a specific target from a list of valid targets."
+    ];
+    MultiplyTokens multiply_tokens = 35 [
+      (comment.comment) =
+          "Multiply the number of tokens created. This is only applied as a replacement effect."
+    ];
+    PayCostThen pay_cost_then = 36 [
+      (comment.comment) =
+          "Ask the controller of this effect to pay some cost, then trigger some effects if they paid the cost."
+    ];
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 37
+        [(comment.comment) =
+             "Return a card from the graveyard to the battlefield."];
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 38 [
+      (comment.comment) =
+          "Return a card from the graveyard to the hand. TODO: This should probably be merged with ReturnTargetToHand."
+    ];
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 39 [
+      (comment.comment) =
+          "Return a card from the graveyard to the library. TODO: This should probably be merged with TargetToTopOfLibrary."
+    ];
+    ReturnSelfToHand return_self_to_hand = 40
+        [(comment.comment) =
+             "Return the card associated with this effect to hand."];
+    ReturnTargetToHand return_target_to_hand = 41
+        [(comment.comment) = "Return target card to the hand."];
+    ReturnTransformed return_transformed = 42 [
+      (comment.comment) =
+          "Return a card from exile or graveyard to the battlefield transformed."
+    ];
+    RevealEachTopOfLibrary reveal_each_top_of_library = 43 [
+      (comment.comment) =
+          "Reveal the top card of each player's library, then apply some effects depending on the revealed cards."
+    ];
+    Scry scry = 44 [(comment.comment) = "Scry some number of cards."];
+    SelfExplores self_explores = 45
+        [(comment.comment) = "The card with the effect explores."];
+    TapTarget tap_target = 46 [
+      (comment.comment) =
+          "Tap a target permanent. This automatically narrows the list of targets to targets on the battlefield."
+    ];
+    TapThis tap_this = 47
+        [(comment.comment) = "Tap the card associated with this effect."];
+    TargetControllerGainsTokens target_controller_gains_tokens = 48 [
+      (comment.comment) =
+          "The controller of something targetted by another effect gets a token."
+    ];
+    TargetCopiesPermanent target_copies_permanent = 49 [
+      (comment.comment) =
+          "A target permanent on battlefield, narrowed by restrictions, becomes a copy of another permanent spell or on the battlefield, narrowed by restrictions."
+    ];
+    TargetCreatureExplores target_creature_explores = 50 [
+      (comment.comment) =
+          "The targetted creature explores. This automatically narrows the list of valid targets to creatures on the battlefield."
+    ];
+    TargetGainsCounters target_gains_counters = 51 [
+      (comment.comment) =
+          "Place some number of counters on a target, narrowed by a list of restrictions."
+    ];
+    TargetToTopOfLibrary target_to_top_of_library = 52
+        [(comment.comment) =
+             "Return target to the top of its owner's library."];
+    Transform transform = 53 [
+      (comment.comment) =
+          "Transform in place on the battlefield. This will preserve equipment and auras attached to the transformed card."
+    ];
+    TutorLibrary tutor_library = 54 [
+      (comment.comment) =
+          "Search the library for cards matching some set of restrictions and allow the player to move it to a location."
+    ];
+    UntapThis untap_this = 55
+        [(comment.comment) = "Untap the card associated with this effect."];
+    UntapTarget untap_target = 56 [
+      (comment.comment) =
+          "Untap a target permanent. THis automatically narrows the list of targets to targets on the battlefield."
+    ];
   }
 
   string oracle_text = 57;
