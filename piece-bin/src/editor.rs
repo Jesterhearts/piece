@@ -118,11 +118,7 @@ impl App {
     ) {
         let key = format!("{}_{}{}", prefix, field.full_name(), idx);
         let text = dynamic_fields.entry(key.clone()).or_default();
-        let sense = ui.add(
-            TextEdit::singleline(text)
-                .id_source(key)
-                .desired_width(100.0),
-        );
+        let sense = ui.add(TextEdit::singleline(text).desired_width(200.0));
         if sense.changed() || sense.lost_focus() {
             if let Ok(value) = text.parse::<T>() {
                 field.set_singular_field(message, construct_value(value));
@@ -237,7 +233,7 @@ impl App {
                 let key = format!("{}_{}{}", prefix, target, idx);
                 let text = dynamic_fields.entry(key.clone()).or_default();
 
-                let sense = ui.text_edit_singleline(text);
+                let sense = ui.add(TextEdit::singleline(text).desired_width(200.0));
 
                 if sense.changed() || sense.lost_focus() {
                     let text = format!(r#""{text}""#);
@@ -378,7 +374,7 @@ impl App {
 
                             ui.horizontal(|ui| {
                                 ui.label("value:");
-                                let sense = ui.text_edit_singleline(text);
+                                let sense = ui.add(TextEdit::singleline(text).desired_width(200.0));
                                 let (changed, _) = popup_all_options(
                                     ui,
                                     dynamic_selections,
@@ -420,7 +416,8 @@ impl App {
                                         let key =
                                             format!("{}_{}{}", prefix, target.full_name(), idx);
                                         let text = dynamic_fields.entry(key.clone()).or_default();
-                                        let sense = ui.text_edit_singleline(text);
+                                        let sense =
+                                            ui.add(TextEdit::singleline(text).desired_width(200.0));
 
                                         let (_, popup_text) = popup_all_options(
                                             ui,
@@ -509,7 +506,8 @@ impl App {
                                 for (idx, text) in text.iter_mut().enumerate() {
                                     ui.horizontal(|ui| {
                                         ui.label("value:");
-                                        let sense = ui.text_edit_singleline(text);
+                                        let sense =
+                                            ui.add(TextEdit::singleline(text).desired_width(200.0));
 
                                         let (changed, _) = popup_all_options(
                                             ui,
@@ -600,7 +598,9 @@ impl App {
                                     for (idx, text) in text.iter_mut().enumerate() {
                                         ui.horizontal(|ui| {
                                             ui.label("type:");
-                                            let sense = ui.text_edit_singleline(text);
+                                            let sense = ui.add(
+                                                TextEdit::singleline(text).desired_width(200.0),
+                                            );
 
                                             let (_, popup_text) = popup_all_options(
                                                 ui,
@@ -736,38 +736,42 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let text = dynamic_repeated_fields
-                                .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                                .or_default();
+                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
-                            for text in text.iter_mut() {
-                                ui.horizontal(|ui| {
-                                    ui.label("type:");
-                                    let sense = ui.text_edit_singleline(text);
-                                    let (changed, _) = popup_all_options(
-                                        ui,
-                                        dynamic_selections,
-                                        prefix,
-                                        idx,
-                                        &sense,
-                                        text,
-                                        &inputs,
-                                    );
+                            ui.vertical(|ui| {
+                                for (idx, text) in text.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                        ui.label("type:");
+                                        let sense =
+                                            ui.add(TextEdit::singleline(text).desired_width(200.0));
+                                        let (changed, _) = popup_all_options(
+                                            ui,
+                                            dynamic_selections,
+                                            &key,
+                                            idx,
+                                            &sense,
+                                            text,
+                                            &inputs,
+                                        );
 
-                                    if sense.lost_focus() || sense.changed() || changed {
-                                        if let Some(value) = Type::enum_descriptor()
-                                            .value_by_name(&text.to_case(Case::ScreamingSnake))
-                                        {
-                                            info!("Set key to {}", value.name());
+                                        if sense.lost_focus() || sense.changed() || changed {
+                                            if let Some(value) = Type::enum_descriptor()
+                                                .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                            {
+                                                info!("Set key to {}", value.name());
 
-                                            map.insert(
-                                                ReflectValueBox::I32(value.value()),
-                                                ReflectValueBox::Message(Box::<Empty>::default()),
-                                            );
+                                                map.insert(
+                                                    ReflectValueBox::I32(value.value()),
+                                                    ReflectValueBox::Message(
+                                                        Box::<Empty>::default(),
+                                                    ),
+                                                );
+                                            }
                                         }
-                                    }
-                                });
-                            }
+                                    });
+                                }
+                            });
 
                             ui.horizontal(|ui| {
                                 if ui.button("+").clicked() {
@@ -786,37 +790,41 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let text = dynamic_repeated_fields
-                                .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                                .or_default();
+                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
-                            for text in text.iter_mut() {
-                                ui.horizontal(|ui| {
-                                    ui.label("subtype:");
-                                    let sense = ui.text_edit_singleline(text);
-                                    let (changed, _) = popup_all_options(
-                                        ui,
-                                        dynamic_selections,
-                                        prefix,
-                                        idx,
-                                        &sense,
-                                        text,
-                                        &inputs,
-                                    );
-                                    if sense.lost_focus() || sense.changed() || changed {
-                                        if let Some(value) = Subtype::enum_descriptor()
-                                            .value_by_name(&text.to_case(Case::ScreamingSnake))
-                                        {
-                                            info!("Set key to {}", value.name());
+                            ui.vertical(|ui| {
+                                for (idx, text) in text.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                        ui.label("subtype:");
+                                        let sense =
+                                            ui.add(TextEdit::singleline(text).desired_width(200.0));
+                                        let (changed, _) = popup_all_options(
+                                            ui,
+                                            dynamic_selections,
+                                            &key,
+                                            idx,
+                                            &sense,
+                                            text,
+                                            &inputs,
+                                        );
+                                        if sense.lost_focus() || sense.changed() || changed {
+                                            if let Some(value) = Subtype::enum_descriptor()
+                                                .value_by_name(&text.to_case(Case::ScreamingSnake))
+                                            {
+                                                info!("Set key to {}", value.name());
 
-                                            map.insert(
-                                                ReflectValueBox::I32(value.value()),
-                                                ReflectValueBox::Message(Box::<Empty>::default()),
-                                            );
+                                                map.insert(
+                                                    ReflectValueBox::I32(value.value()),
+                                                    ReflectValueBox::Message(
+                                                        Box::<Empty>::default(),
+                                                    ),
+                                                );
+                                            }
                                         }
-                                    }
-                                });
-                            }
+                                    });
+                                }
+                            });
 
                             ui.horizontal(|ui| {
                                 if ui.button("+").clicked() {
@@ -835,25 +843,27 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let text = dynamic_repeated_fields
-                                .entry(format!("{}_{}{}", prefix, target.full_name(), idx))
-                                .or_default();
+                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
-                            for text in text.iter_mut() {
-                                ui.horizontal(|ui| {
-                                    ui.label("keyword:");
-                                    let sense = ui.text_edit_singleline(text);
-                                    popup_all_options(
-                                        ui,
-                                        dynamic_selections,
-                                        prefix,
-                                        idx,
-                                        &sense,
-                                        text,
-                                        &inputs,
-                                    );
-                                });
-                            }
+                            ui.vertical(|ui| {
+                                for (idx, text) in text.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                        ui.label("keyword:");
+                                        let sense =
+                                            ui.add(TextEdit::singleline(text).desired_width(200.0));
+                                        popup_all_options(
+                                            ui,
+                                            dynamic_selections,
+                                            &key,
+                                            idx,
+                                            &sense,
+                                            text,
+                                            &inputs,
+                                        );
+                                    });
+                                }
+                            });
 
                             ui.horizontal(|ui| {
                                 if ui.button("+").clicked() {
