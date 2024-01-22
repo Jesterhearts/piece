@@ -87,6 +87,7 @@ impl eframe::App for App {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.expand_to_include_rect(ui.max_rect());
                 for (idx, field) in Card::descriptor().fields().enumerate() {
                     Self::render_field(
                         ui,

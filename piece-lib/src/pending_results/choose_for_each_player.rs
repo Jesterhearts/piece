@@ -163,30 +163,28 @@ impl PendingResult for ChooseForEachPlayer {
                     results.chosen_targets.push(choices.clone());
                 }
 
-                if !self.card.faceup_face(db).apply_individually {
-                    let player = db[self.card].controller;
+                let player = db[self.card].controller;
 
-                    let mut effect_or_auras = vec![];
-                    results.pending.retain(|p| {
-                        let Pending::ChooseForEachPlayer(choice) = p else {
-                            return true;
-                        };
-                        effect_or_auras.push(choice.effect());
-                        false
-                    });
+                let mut effect_or_auras = vec![];
+                results.pending.retain(|p| {
+                    let Pending::ChooseForEachPlayer(choice) = p else {
+                        return true;
+                    };
+                    effect_or_auras.push(choice.effect());
+                    false
+                });
 
-                    for effect in effect_or_auras {
-                        if results.add_to_stack.is_empty() {
-                            results.chosen_targets.push(choices.clone());
-                        } else {
-                            effect.push_behavior_with_targets(
-                                db,
-                                choices.clone(),
-                                self.card,
-                                player,
-                                results,
-                            );
-                        }
+                for effect in effect_or_auras {
+                    if results.add_to_stack.is_empty() {
+                        results.chosen_targets.push(choices.clone());
+                    } else {
+                        effect.push_behavior_with_targets(
+                            db,
+                            choices.clone(),
+                            self.card,
+                            player,
+                            results,
+                        );
                     }
                 }
                 true

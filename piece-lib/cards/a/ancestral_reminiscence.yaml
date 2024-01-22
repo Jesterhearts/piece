@@ -9,4 +9,3 @@ effects:
         count: 3
   - effect: !ControllerDiscards
       count: 1
-apply_individually: true

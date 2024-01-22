@@ -195,38 +195,36 @@ impl PendingResult for ChooseTargets {
                     results.chosen_targets.push(choices.clone());
                 }
 
-                if !self.card.faceup_face(db).apply_individually {
-                    let player = db[self.card].controller;
+                let player = db[self.card].controller;
 
-                    let mut effect_or_auras = vec![];
-                    results.pending.retain(|p| {
-                        let Pending::ChooseTargets(choice) = p else {
-                            return true;
-                        };
-                        effect_or_auras.push(choice.effect_or_aura());
-                        false
-                    });
+                let mut effect_or_auras = vec![];
+                results.pending.retain(|p| {
+                    let Pending::ChooseTargets(choice) = p else {
+                        return true;
+                    };
+                    effect_or_auras.push(choice.effect_or_aura());
+                    false
+                });
 
-                    for effect_or_aura in effect_or_auras {
-                        if !results.add_to_stack.is_empty() {
-                            results.chosen_targets.push(choices.clone());
-                        } else {
-                            match effect_or_aura {
-                                TargetSource::Effect(effect) => {
-                                    effect.push_behavior_with_targets(
-                                        db,
-                                        choices.clone(),
-                                        self.card,
-                                        player,
-                                        results,
-                                    );
-                                }
-                                TargetSource::Aura(aura_source) => {
-                                    results.push_settled(ActionResult::ApplyAuraToTarget {
-                                        aura_source,
-                                        target: *choices.iter().exactly_one().unwrap(),
-                                    })
-                                }
+                for effect_or_aura in effect_or_auras {
+                    if !results.add_to_stack.is_empty() {
+                        results.chosen_targets.push(choices.clone());
+                    } else {
+                        match effect_or_aura {
+                            TargetSource::Effect(effect) => {
+                                effect.push_behavior_with_targets(
+                                    db,
+                                    choices.clone(),
+                                    self.card,
+                                    player,
+                                    results,
+                                );
+                            }
+                            TargetSource::Aura(aura_source) => {
+                                results.push_settled(ActionResult::ApplyAuraToTarget {
+                                    aura_source,
+                                    target: *choices.iter().exactly_one().unwrap(),
+                                })
                             }
                         }
                     }

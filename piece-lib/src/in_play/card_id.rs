@@ -2248,7 +2248,6 @@ fn clone_card(db: &mut Database, cloning: CardId) -> Card {
         effects: cloning.faceup_face(db).effects.clone(),
         modes: cloning.faceup_face(db).modes.clone(),
         etb_abilities: cloning.faceup_face(db).etb_abilities.clone(),
-        apply_individually: cloning.faceup_face(db).apply_individually,
         static_abilities: cloning.faceup_face(db).static_abilities.clone(),
         activated_abilities: cloning.faceup_face(db).activated_abilities.clone(),
         triggered_abilities: cloning.faceup_face(db).triggered_abilities.clone(),
