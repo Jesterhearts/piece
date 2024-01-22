@@ -4,11 +4,16 @@ cost:
   mana_cost: '{U}'
 oracle_text: ''
 effects:
-- oracle_text: Until end of turn, target artifact or creature becomes a Dinosaur artifact creature with base power and toughness 4/3 in addition to its other types.
-  effect: !ModifyTarget
-    modifier:
-      base_power: 4
-      base_toughness: 3
-      add_types: Artifact, Creature
-      add_subtypes: Dinosaur
-    duration: until end of turn
+  - oracle_text: Until end of turn, target artifact or creature becomes a Dinosaur
+      artifact creature with base power and toughness 4/3 in addition to its other
+      types.
+    effect: !ModifyTarget
+      modifier:
+        base_power: 4
+        base_toughness: 3
+        add_types: Artifact, Creature
+        add_subtypes: Dinosaur
+      duration: until end of turn
+    restrictions:
+      - restriction: !OfType
+          types: Artifact, Creature
