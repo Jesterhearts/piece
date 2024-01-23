@@ -41,11 +41,14 @@ pub(crate) enum CastFrom {
 }
 
 impl PartialEq<triggers::Location> for CastFrom {
-    fn eq(&self, other: &Location) -> bool {
+    fn eq(&self, other: &triggers::Location) -> bool {
         match self {
-            CastFrom::Hand => matches!(*other, Location::HAND | Location::ANYWHERE),
-            CastFrom::Exile => matches!(*other, Location::ANYWHERE),
-            CastFrom::Graveyard => matches!(*other, Location::ANYWHERE),
+            CastFrom::Hand => matches!(
+                *other,
+                triggers::Location::HAND | triggers::Location::ANYWHERE
+            ),
+            CastFrom::Exile => matches!(*other, triggers::Location::ANYWHERE),
+            CastFrom::Graveyard => matches!(*other, triggers::Location::ANYWHERE),
         }
     }
 }
