@@ -14,6 +14,6 @@ effects:
         add_types: Artifact, Creature
         add_subtypes: Dinosaur
       duration: until end of turn
-    restrictions:
-      - restriction: !OfType
-          types: Artifact, Creature
+      restrictions:
+        - restriction: !OfType
+            types: Artifact, Creature
