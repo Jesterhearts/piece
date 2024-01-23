@@ -17,62 +17,63 @@
 //!   of followon effects in the  same batch. This batching can be circumvented with the
 //!   [PendingResults::apply_in_stages] flag.
 
-pub(crate) mod apply_then;
-pub(crate) mod apply_then_if_was;
-pub(crate) mod battle_cry;
-pub(crate) mod battlefield_modifier;
-pub(crate) mod cant_attack_this_turn;
-pub(crate) mod cascade;
-pub(crate) mod choose_cast;
-pub(crate) mod controller_discards;
-pub(crate) mod controller_draws_cards;
-pub(crate) mod controller_loses_life;
-pub(crate) mod copy_of_any_creature_non_targeting;
-pub(crate) mod copy_spell_or_ability;
-pub(crate) mod counter_spell;
-pub(crate) mod counter_spell_unless_pay;
-pub(crate) mod create_token;
-pub(crate) mod create_token_copy;
-pub(crate) mod cycling;
-pub(crate) mod deal_damage;
-pub(crate) mod destroy_each;
-pub(crate) mod destroy_target;
-pub(crate) mod discover;
-pub(crate) mod equip;
-pub(crate) mod examine_top_cards;
-pub(crate) mod exile_target;
-pub(crate) mod exile_target_creature_manifest_top_of_library;
-pub(crate) mod exile_target_graveyard;
-pub(crate) mod for_each_player_choose_then;
-pub(crate) mod foreach_mana_of_source;
-pub(crate) mod gain_counters;
-pub(crate) mod gain_life;
-pub(crate) mod if_then_else;
-pub(crate) mod mill;
-pub(crate) mod modal;
-pub(crate) mod modify_target;
-pub(crate) mod multiply_tokens;
-pub(crate) mod pay_cost_then;
-pub(crate) mod return_from_graveyard_to_battlefield;
-pub(crate) mod return_from_graveyard_to_hand;
-pub(crate) mod return_from_graveyard_to_library;
-pub(crate) mod return_self_to_hand;
-pub(crate) mod return_target_to_hand;
-pub(crate) mod return_transformed;
-pub(crate) mod reveal_each_top_of_library;
-pub(crate) mod scry;
-pub(crate) mod self_explores;
-pub(crate) mod tap_target;
-pub(crate) mod tap_this;
-pub(crate) mod target_controller_gains_tokens;
-pub(crate) mod target_copies_permanent;
-pub(crate) mod target_creature_explores;
-pub(crate) mod target_gains_counters;
-pub(crate) mod target_to_top_of_library;
-pub(crate) mod transform;
-pub(crate) mod tutor_library;
-pub(crate) mod untap_target;
-pub(crate) mod untap_this;
+mod apply_then;
+mod apply_then_if_was;
+mod battle_cry;
+mod battlefield_modifier;
+mod cant_attack_this_turn;
+mod cascade;
+mod choose_cast;
+mod controller_discards;
+mod controller_draws_cards;
+mod controller_loses_life;
+mod copy_of_any_creature_non_targeting;
+mod copy_spell_or_ability;
+mod counter_spell;
+mod counter_spell_unless_pay;
+mod create_token;
+mod create_token_copy;
+mod cycling;
+mod deal_damage;
+mod destroy_each;
+mod destroy_target;
+mod discover;
+mod equip;
+mod examine_top_cards;
+mod exile_target;
+mod exile_target_creature_manifest_top_of_library;
+mod exile_target_graveyard;
+mod for_each_player_choose_then;
+mod foreach_mana_of_source;
+mod gain_counters;
+mod gain_life;
+mod if_then_else;
+mod mill;
+mod modal;
+mod modify_target;
+mod multiply_tokens;
+mod pay_cost_then;
+mod rebound;
+mod return_from_graveyard_to_battlefield;
+mod return_from_graveyard_to_hand;
+mod return_from_graveyard_to_library;
+mod return_self_to_hand;
+mod return_target_to_hand;
+mod return_transformed;
+mod reveal_each_top_of_library;
+mod scry;
+mod self_explores;
+mod tap_target;
+mod tap_this;
+mod target_controller_gains_tokens;
+mod target_copies_permanent;
+mod target_creature_explores;
+mod target_gains_counters;
+mod target_to_top_of_library;
+mod transform;
+mod tutor_library;
+mod untap_target;
+mod untap_this;
 
 use std::{collections::HashSet, vec::IntoIter};
 
@@ -125,6 +126,7 @@ use crate::{
         ModifyTarget(ModifyTarget),
         MultiplyTokens(MultiplyTokens),
         PayCostThen(PayCostThen),
+        Rebound(Rebound),
         ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
         ReturnFromGraveyardToHand(ReturnFromGraveyardToHand),
         ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),

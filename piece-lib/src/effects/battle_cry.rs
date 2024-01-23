@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use protobuf::Enum;
 
 use crate::{
-    action_result::{add_modifier::AddModifier, ActionResult},
+    action_result::{apply_to_battlefield::ApplyToBattlefield, ActionResult},
     effects::EffectBehaviors,
     in_play::ModifierId,
     protogen::{
@@ -84,7 +84,7 @@ impl EffectBehaviors for BattleCry {
             },
         );
 
-        results.push_settled(ActionResult::from(AddModifier { modifier }));
+        results.push_settled(ActionResult::from(ApplyToBattlefield { modifier }));
     }
 
     fn push_behavior_with_targets(

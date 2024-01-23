@@ -1,7 +1,6 @@
 use crate::{
     action_result::{
-        add_modifier::AddModifier, apply_to_battlefield::ApplyToBattlefield,
-        modify_creatures::ModifyCreatures, ActionResult,
+        apply_to_battlefield::ApplyToBattlefield, modify_creatures::ModifyCreatures, ActionResult,
     },
     effects::EffectBehaviors,
     in_play::{Database, ModifierId},
@@ -35,7 +34,7 @@ impl EffectBehaviors for BattlefieldModifier {
         _controller: Controller,
         results: &mut PendingResults,
     ) {
-        results.push_settled(ActionResult::from(AddModifier {
+        results.push_settled(ActionResult::from(ApplyToBattlefield {
             modifier: ModifierId::upload_temporary_modifier(db, source, self.clone()),
         }));
     }

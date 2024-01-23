@@ -1,6 +1,5 @@
 pub(crate) mod add_ability_to_stack;
 pub(crate) mod add_counters;
-pub(crate) mod add_modifier;
 pub(crate) mod add_to_battlefield;
 pub(crate) mod add_to_battlefield_from_library;
 pub(crate) mod add_to_battlefield_skip_replacement_effects;
@@ -71,7 +70,7 @@ use tracing::Level;
 use crate::{
     action_result::{
         add_ability_to_stack::AddAbilityToStack, add_counters::AddCounters,
-        add_modifier::AddModifier, add_to_battlefield::AddToBattlefield,
+        add_to_battlefield::AddToBattlefield,
         add_to_battlefield_from_library::AddToBattlefieldFromLibrary,
         add_to_battlefield_skip_replacement_effects::AddToBattlefieldSkipReplacementEffects,
         add_to_battlefield_skip_replacement_effects_from_exile::AddToBattlefieldSkipReplacementEffectsFromExile,
@@ -127,7 +126,6 @@ pub(crate) trait Action {
 pub(crate) enum ActionResult {
     AddAbilityToStack(AddAbilityToStack),
     AddCounters(AddCounters),
-    AddModifier(AddModifier),
     AddToBattlefield(AddToBattlefield),
     AddToBattlefieldFromLibrary(AddToBattlefieldFromLibrary),
     AddToBattlefieldSkipReplacementEffects(AddToBattlefieldSkipReplacementEffects),

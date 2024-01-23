@@ -13,7 +13,7 @@ use crate::{
     types::TypeSet,
 };
 
-#[derive(Debug, Default, PartialEq, Eq, strum::AsRefStr)]
+#[derive(Debug, Default, PartialEq, Eq, strum::AsRefStr, Hash)]
 pub enum Phase {
     #[default]
     Untap,

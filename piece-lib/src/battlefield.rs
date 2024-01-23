@@ -6,12 +6,11 @@ use itertools::Itertools;
 use crate::{
     abilities::Ability,
     action_result::{
-        self, add_modifier::AddModifier,
-        add_to_battlefield_skip_replacement_effects::AddToBattlefieldSkipReplacementEffects,
+        self, add_to_battlefield_skip_replacement_effects::AddToBattlefieldSkipReplacementEffects,
         add_to_battlefield_skip_replacement_effects_from_exile::AddToBattlefieldSkipReplacementEffectsFromExile,
         add_to_battlefield_skip_replacement_effects_from_library::AddToBattlefieldSkipReplacementEffectsFromLibrary,
-        discard::Discard, lose_life::LoseLife, permanent_to_graveyard::PermanentToGraveyard,
-        ActionResult,
+        apply_to_battlefield::ApplyToBattlefield, discard::Discard, lose_life::LoseLife,
+        permanent_to_graveyard::PermanentToGraveyard, ActionResult,
     },
     effects::EffectBehaviors,
     in_play::{CardId, Database, ExileReason},
@@ -841,7 +840,7 @@ pub(crate) fn move_card_to_battlefield(
         .iter()
     {
         if let Some(modifier) = db[*ability].owned_modifier {
-            results.push_settled(ActionResult::from(AddModifier { modifier }))
+            results.push_settled(ActionResult::from(ApplyToBattlefield { modifier }))
         }
     }
 

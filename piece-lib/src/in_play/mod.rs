@@ -24,11 +24,11 @@ use crate::{
     player::{AllPlayers, Controller, Owner},
     protogen::{
         abilities::TriggeredAbility,
-        effects::{replacement_effect::Replacing, ReplacementEffect},
+        effects::{replacement_effect::Replacing, Effect, ReplacementEffect},
         triggers::TriggerSource,
     },
     stack::Stack,
-    turns::Turn,
+    turns::{Phase, Turn},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::EnumIter)]
@@ -54,6 +54,10 @@ pub struct Database {
     pub(crate) mana_abilities: IndexMap<GainManaAbilityId, GainManaAbilityInPlay>,
     pub(crate) static_abilities: IndexMap<StaticAbilityId, StaticAbilityInPlay>,
 
+    pub(crate) delayed_triggers: IndexMap<Phase, Vec<Effect>>,
+
+    // Abilities that are no longer referenced by a card and need to be garbage collected at end of turn.
+    // They can't be cleaned up immediately because there may still be references to them on the stack.
     pub(crate) gc_abilities: Vec<ActivatedAbilityId>,
 
     pub battlefield: Battlefields,
@@ -172,6 +176,7 @@ impl Database {
             activated_abilities: Default::default(),
             mana_abilities: Default::default(),
             static_abilities: Default::default(),
+            delayed_triggers: Default::default(),
             gc_abilities: Default::default(),
             battlefield,
             graveyard,

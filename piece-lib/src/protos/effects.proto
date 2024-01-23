@@ -19,7 +19,7 @@ message Effect {
     ];
     ApplyThenIfWas apply_then_if_was = 2 [
       (comment.comment) =
-          "Apply an effect, then examine the log of results from the effect and compare it to a list of restrictions.If any log entry resulting from the applied effects matches, apply another effect.This is used e.g.to apply an effect if the target that just left the battlefield was tapped."
+          "Apply an effect, then examine the log of results from the effect and compare it to a list of restrictions. If any log entry resulting from the applied effects matches, apply another effect.This is used e.g.to apply an effect if the target that just left the battlefield was tapped."
     ];
     BattleCry battle_cry = 3 [
       (comment.comment) =
@@ -137,75 +137,79 @@ message Effect {
       (comment.comment) =
           "Ask the controller of this effect to pay some cost, then trigger some effects if they paid the cost."
     ];
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 37
+    Rebound rebound = 37 [
+      (comment.comment) =
+          "Implement the Rebound keyword. You don't need to specify this, the keyword will work."
+    ];
+    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 38
         [(comment.comment) =
              "Return a card from the graveyard to the battlefield."];
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 38 [
+    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 39 [
       (comment.comment) =
           "Return a card from the graveyard to the hand. TODO: This should probably be merged with ReturnTargetToHand."
     ];
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 39 [
+    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 40 [
       (comment.comment) =
           "Return a card from the graveyard to the library. TODO: This should probably be merged with TargetToTopOfLibrary."
     ];
-    ReturnSelfToHand return_self_to_hand = 40
+    ReturnSelfToHand return_self_to_hand = 41
         [(comment.comment) =
              "Return the card associated with this effect to hand."];
-    ReturnTargetToHand return_target_to_hand = 41
+    ReturnTargetToHand return_target_to_hand = 42
         [(comment.comment) = "Return target card to the hand."];
-    ReturnTransformed return_transformed = 42 [
+    ReturnTransformed return_transformed = 43 [
       (comment.comment) =
           "Return a card from exile or graveyard to the battlefield transformed."
     ];
-    RevealEachTopOfLibrary reveal_each_top_of_library = 43 [
+    RevealEachTopOfLibrary reveal_each_top_of_library = 44 [
       (comment.comment) =
           "Reveal the top card of each player's library, then apply some effects depending on the revealed cards."
     ];
-    Scry scry = 44 [(comment.comment) = "Scry some number of cards."];
-    SelfExplores self_explores = 45
+    Scry scry = 45 [(comment.comment) = "Scry some number of cards."];
+    SelfExplores self_explores = 46
         [(comment.comment) = "The card with the effect explores."];
-    TapTarget tap_target = 46 [
+    TapTarget tap_target = 47 [
       (comment.comment) =
           "Tap a target permanent. This automatically narrows the list of targets to targets on the battlefield."
     ];
-    TapThis tap_this = 47
+    TapThis tap_this = 48
         [(comment.comment) = "Tap the card associated with this effect."];
-    TargetControllerGainsTokens target_controller_gains_tokens = 48 [
+    TargetControllerGainsTokens target_controller_gains_tokens = 49 [
       (comment.comment) =
           "The controller of something targetted by another effect gets a token."
     ];
-    TargetCopiesPermanent target_copies_permanent = 49 [
+    TargetCopiesPermanent target_copies_permanent = 50 [
       (comment.comment) =
           "A target permanent on battlefield, narrowed by restrictions, becomes a copy of another permanent spell or on the battlefield, narrowed by restrictions."
     ];
-    TargetCreatureExplores target_creature_explores = 50 [
+    TargetCreatureExplores target_creature_explores = 51 [
       (comment.comment) =
           "The targetted creature explores. This automatically narrows the list of valid targets to creatures on the battlefield."
     ];
-    TargetGainsCounters target_gains_counters = 51 [
+    TargetGainsCounters target_gains_counters = 52 [
       (comment.comment) =
           "Place some number of counters on a target, narrowed by a list of restrictions."
     ];
-    TargetToTopOfLibrary target_to_top_of_library = 52
+    TargetToTopOfLibrary target_to_top_of_library = 53
         [(comment.comment) =
              "Return target to the top of its owner's library."];
-    Transform transform = 53 [
+    Transform transform = 54 [
       (comment.comment) =
           "Transform in place on the battlefield. This will preserve equipment and auras attached to the transformed card."
     ];
-    TutorLibrary tutor_library = 54 [
+    TutorLibrary tutor_library = 55 [
       (comment.comment) =
           "Search the library for cards matching some set of restrictions and allow the player to move it to a location."
     ];
-    UntapThis untap_this = 55
+    UntapThis untap_this = 56
         [(comment.comment) = "Untap the card associated with this effect."];
-    UntapTarget untap_target = 56 [
+    UntapTarget untap_target = 57 [
       (comment.comment) =
           "Untap a target permanent. THis automatically narrows the list of targets to targets on the battlefield."
     ];
   }
 
-  string oracle_text = 57;
+  string oracle_text = 58;
 }
 
 message ActivatedAbility {
@@ -524,6 +528,8 @@ message PayCostThen {
   cost.AbilityCost cost = 1;
   repeated Effect effects = 2;
 }
+
+message Rebound {}
 
 message ReturnFromGraveyardToBattlefield {
   uint32 count = 1;
