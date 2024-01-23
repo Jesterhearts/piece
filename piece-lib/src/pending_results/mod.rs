@@ -529,18 +529,18 @@ impl PendingResults {
                 self.chosen_modes.clear();
                 self.chosen_targets.clear();
             } else if !self.gain_mana.is_empty() {
-                for (source, gain) in self.gain_mana.drain(..) {
+                for (source, gain) in self.gain_mana.drain(..).collect_vec() {
                     let target = db[source].controller;
-                    let source = db[gain].ability.mana_source;
+                    let mana_source = db[gain].ability.mana_source;
                     let restriction = db[gain].ability.mana_restriction;
                     match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
                         Gain::Specific(specific) => {
                             self.settled_effects.push(ActionResult::from(GainMana {
                                 gain: specific.gain.clone(),
                                 target,
-                                source,
+                                source: mana_source,
                                 restriction,
-                            }))
+                            }));
                         }
                         Gain::Choice(Choice { choices, .. }) => {
                             let option = self.chosen_modes.pop().unwrap();
@@ -548,10 +548,17 @@ impl PendingResults {
                             self.settled_effects.push(ActionResult::from(GainMana {
                                 gain: choices[option].gains.clone(),
                                 target,
-                                source,
+                                source: mana_source,
                                 restriction,
                             }))
                         }
+                    }
+
+                    for effect in db[gain].ability.additional_effects.clone() {
+                        effect
+                            .effect
+                            .unwrap()
+                            .push_pending_behavior(db, source, target, self);
                     }
                 }
             } else if !self.copy_to_stack.is_empty() {

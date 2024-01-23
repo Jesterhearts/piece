@@ -477,6 +477,7 @@ message GainManaAbility {
   mana.ManaSource mana_source = 3;
   mana.ManaRestriction mana_restriction = 4;
   string oracle_text = 5;
+  repeated Effect additional_effects = 6;
 }
 
 message IfThenElse {
