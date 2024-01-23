@@ -96,9 +96,8 @@ impl eframe::App for App {
                         &mut self.dynamic_repeated_fields,
                         &mut self.dynamic_selections,
                         &mut self.card,
-                        "card",
+                        &format!("card_field{}", idx),
                         field,
-                        idx,
                     );
                 }
             });
@@ -111,12 +110,11 @@ impl App {
         prefix: &str,
         dynamic_fields: &mut HashMap<String, String>,
         field: &protobuf::reflect::FieldDescriptor,
-        idx: usize,
         ui: &mut egui::Ui,
         message: &mut dyn MessageDyn,
         construct_value: impl FnOnce(T) -> ReflectValueBox,
     ) {
-        let key = format!("{}_{}{}", prefix, field.full_name(), idx);
+        let key = format!("{}_{}", prefix, field.full_name());
         let text = dynamic_fields.entry(key.clone()).or_default();
         let sense = ui.add(TextEdit::singleline(text).desired_width(200.0));
         if sense.changed() || sense.lost_focus() {
@@ -142,10 +140,9 @@ impl App {
         prefix: &str,
         message_descriptor: &protobuf::reflect::MessageDescriptor,
         oneof_name: &str,
-        idx: usize,
     ) {
         ui.vertical(|ui| {
-            for (field_idx, field) in message_descriptor
+            for (idx, field) in message_descriptor
                 .fields()
                 .filter(|field| field.containing_oneof().is_none())
                 .enumerate()
@@ -157,9 +154,8 @@ impl App {
                     dynamic_repeated_fields,
                     dynamic_selections,
                     message,
-                    &format!("{}{}_oneof_field_{}", prefix, idx, field_idx),
+                    &format!("{}_oneof_field_{}", prefix, idx),
                     field,
-                    field_idx,
                 );
             }
 
@@ -187,7 +183,7 @@ impl App {
                     }
                 }
 
-                for field in proto.fields() {
+                for (idx, field) in proto.fields().enumerate() {
                     Self::render_field(
                         ui,
                         dynamic_fields,
@@ -195,9 +191,8 @@ impl App {
                         dynamic_repeated_fields,
                         dynamic_selections,
                         message,
-                        prefix,
+                        &format!("{}_oneof_subfield_{}", prefix, idx),
                         field,
-                        idx,
                     );
                 }
             }
@@ -214,7 +209,6 @@ impl App {
         message: &mut dyn MessageDyn,
         prefix: &str,
         target: protobuf::reflect::FieldDescriptor,
-        idx: usize,
     ) {
         ui.horizontal(|ui| {
             let sense = ui.label(target.name().to_case(Case::Title));
@@ -230,7 +224,7 @@ impl App {
             }
 
             if target.name() == "reduction" || target.name() == "mana_cost" {
-                let key = format!("{}_{}{}", prefix, target, idx);
+                let key = format!("{}_{}", prefix, target.full_name());
                 let text = dynamic_fields.entry(key.clone()).or_default();
 
                 let sense = ui.add(TextEdit::singleline(text).desired_width(200.0));
@@ -265,7 +259,6 @@ impl App {
                                 prefix,
                                 dynamic_fields,
                                 &target,
-                                idx,
                                 ui,
                                 message,
                                 ReflectValueBox::I32,
@@ -276,7 +269,6 @@ impl App {
                                 prefix,
                                 dynamic_fields,
                                 &target,
-                                idx,
                                 ui,
                                 message,
                                 ReflectValueBox::I64,
@@ -287,7 +279,6 @@ impl App {
                                 prefix,
                                 dynamic_fields,
                                 &target,
-                                idx,
                                 ui,
                                 message,
                                 ReflectValueBox::U32,
@@ -298,7 +289,6 @@ impl App {
                                 prefix,
                                 dynamic_fields,
                                 &target,
-                                idx,
                                 ui,
                                 message,
                                 ReflectValueBox::U64,
@@ -309,7 +299,6 @@ impl App {
                                 prefix,
                                 dynamic_fields,
                                 &target,
-                                idx,
                                 ui,
                                 message,
                                 ReflectValueBox::F32,
@@ -320,14 +309,13 @@ impl App {
                                 prefix,
                                 dynamic_fields,
                                 &target,
-                                idx,
                                 ui,
                                 message,
                                 ReflectValueBox::F64,
                             );
                         }
                         RuntimeType::Bool => {
-                            let key = format!("{}_{}{}", prefix, target, idx);
+                            let key = format!("{}_{}", prefix, target.full_name());
                             let value = dynamic_boolean_fields.entry(key.clone()).or_default();
                             let sense = ui
                                 .horizontal(|ui| {
@@ -342,7 +330,7 @@ impl App {
                             }
                         }
                         RuntimeType::String => {
-                            let key = format!("{}_{}{}", prefix, target, idx);
+                            let key = format!("{}_{}", prefix, target.full_name());
                             let text = dynamic_fields.entry(key.clone()).or_default();
                             let sense = if target.name() == "oracle_text" {
                                 ui.add(TextEdit::multiline(text).id_source(key))
@@ -369,7 +357,7 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let key = format!("{}_{}", prefix, target.full_name());
                             let text = dynamic_fields.entry(key.clone()).or_default();
 
                             ui.horizontal(|ui| {
@@ -379,7 +367,6 @@ impl App {
                                     ui,
                                     dynamic_selections,
                                     &key,
-                                    idx,
                                     &sense,
                                     text,
                                     &inputs,
@@ -413,8 +400,7 @@ impl App {
 
                                     ui.horizontal(|ui| {
                                         ui.label("type:");
-                                        let key =
-                                            format!("{}_{}{}", prefix, target.full_name(), idx);
+                                        let key = format!("{}_{}", prefix, target.full_name());
                                         let text = dynamic_fields.entry(key.clone()).or_default();
                                         let sense =
                                             ui.add(TextEdit::singleline(text).desired_width(200.0));
@@ -423,7 +409,6 @@ impl App {
                                             ui,
                                             dynamic_selections,
                                             &key,
-                                            idx,
                                             &sense,
                                             text,
                                             &inputs,
@@ -439,15 +424,9 @@ impl App {
                                             dynamic_selections,
                                             message,
                                             sense.hovered() || sense.has_focus(),
-                                            &format!(
-                                                "{}_{}{}",
-                                                prefix,
-                                                descriptor.full_name(),
-                                                idx,
-                                            ),
+                                            &format!("{}_{}", prefix, descriptor.full_name()),
                                             &descriptor,
                                             &oneof_name,
-                                            idx,
                                         );
                                     });
                                 } else {
@@ -460,9 +439,13 @@ impl App {
                                                 dynamic_repeated_fields,
                                                 dynamic_selections,
                                                 message,
-                                                &format!("{}_{}", prefix, target.full_name()),
+                                                &format!(
+                                                    "{}_{}_{}",
+                                                    prefix,
+                                                    target.full_name(),
+                                                    idx
+                                                ),
                                                 sub_field,
-                                                idx,
                                             );
                                         }
                                     });
@@ -495,8 +478,7 @@ impl App {
                                     .values()
                                     .map(|enum_| enum_.name().to_case(Case::Title))
                                     .collect_vec();
-                                let key =
-                                    format!("{}_repeated_{}{}", prefix, target.full_name(), idx);
+                                let key = format!("{}_repeated_{}", prefix, target.full_name());
                                 let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
                                 if repeated.is_empty() {
@@ -512,8 +494,7 @@ impl App {
                                         let (changed, _) = popup_all_options(
                                             ui,
                                             dynamic_selections,
-                                            &key,
-                                            idx,
+                                            &format!("{}_{}", key, idx),
                                             &sense,
                                             text,
                                             &inputs,
@@ -581,12 +562,8 @@ impl App {
                                         })
                                         .collect_vec();
 
-                                    let key = format!(
-                                        "{}_repeated_{}{}",
-                                        prefix,
-                                        target.full_name(),
-                                        idx
-                                    );
+                                    let key =
+                                        format!("{}_repeated_{}", prefix, target.full_name(),);
                                     let mut text = dynamic_repeated_fields
                                         .entry(key.clone())
                                         .or_default()
@@ -605,8 +582,7 @@ impl App {
                                             let (_, popup_text) = popup_all_options(
                                                 ui,
                                                 dynamic_selections,
-                                                &key,
-                                                idx,
+                                                &format!("{}_{}", key, idx),
                                                 &sense,
                                                 text,
                                                 &inputs,
@@ -624,10 +600,9 @@ impl App {
                                                 dynamic_selections,
                                                 &mut *value,
                                                 sense.hovered() || sense.has_focus(),
-                                                &key,
+                                                &format!("{}_{}", key, idx),
                                                 &descriptor,
                                                 &text.to_case(Case::Snake),
-                                                idx,
                                             );
 
                                             repeated.set(idx, ReflectValueBox::Message(value));
@@ -662,12 +637,8 @@ impl App {
 
                                     *dynamic_repeated_fields.entry(key).or_default() = text;
                                 } else {
-                                    let key = format!(
-                                        "{}_repeated_{}{}",
-                                        prefix,
-                                        target.full_name(),
-                                        idx
-                                    );
+                                    let key =
+                                        format!("{}_repeated_{}", prefix, target.full_name(),);
                                     let mut text = dynamic_repeated_fields
                                         .entry(key.clone())
                                         .or_default()
@@ -679,7 +650,7 @@ impl App {
                                         .enumerate()
                                         .collect_vec()
                                     {
-                                        for field in descriptor.fields() {
+                                        for (field_idx, field) in descriptor.fields().enumerate() {
                                             Self::render_field(
                                                 ui,
                                                 dynamic_fields,
@@ -687,9 +658,8 @@ impl App {
                                                 dynamic_repeated_fields,
                                                 dynamic_selections,
                                                 &mut *message,
-                                                &key,
+                                                &format!("{}_{}_{}", key, idx, field_idx),
                                                 field,
-                                                idx,
                                             );
                                         }
                                         repeated.set(idx, ReflectValueBox::Message(message));
@@ -736,7 +706,7 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let key = format!("{}_{}", prefix, target.full_name());
                             let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
                             ui.vertical(|ui| {
@@ -748,8 +718,7 @@ impl App {
                                         let (changed, _) = popup_all_options(
                                             ui,
                                             dynamic_selections,
-                                            &key,
-                                            idx,
+                                            &format!("{}_{}", key, idx),
                                             &sense,
                                             text,
                                             &inputs,
@@ -790,7 +759,7 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let key = format!("{}_{}", prefix, target.full_name());
                             let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
                             ui.vertical(|ui| {
@@ -802,8 +771,7 @@ impl App {
                                         let (changed, _) = popup_all_options(
                                             ui,
                                             dynamic_selections,
-                                            &key,
-                                            idx,
+                                            &format!("{}_{}", key, idx),
                                             &sense,
                                             text,
                                             &inputs,
@@ -843,7 +811,7 @@ impl App {
                                 .values()
                                 .map(|enum_| enum_.name().to_case(Case::Title))
                                 .collect_vec();
-                            let key = format!("{}_{}{}", prefix, target.full_name(), idx);
+                            let key = format!("{}_{}", prefix, target.full_name());
                             let text = dynamic_repeated_fields.entry(key.clone()).or_default();
 
                             ui.vertical(|ui| {
@@ -855,8 +823,7 @@ impl App {
                                         popup_all_options(
                                             ui,
                                             dynamic_selections,
-                                            &key,
-                                            idx,
+                                            &format!("{}_{}", key, idx),
                                             &sense,
                                             text,
                                             &inputs,
@@ -899,7 +866,6 @@ fn popup_all_options(
     ui: &mut egui::Ui,
     dynamic_selections: &mut HashMap<String, usize>,
     prefix: &str,
-    idx: usize,
     sense: &egui::Response,
     text: &mut String,
     inputs: &[String],
@@ -910,8 +876,7 @@ fn popup_all_options(
 
     let mut changed = false;
 
-    let key = format!("{}{}", prefix, idx);
-    let id = ui.make_persistent_id(&key);
+    let id = ui.make_persistent_id(prefix);
 
     let matches = Pattern::new(
         text,
@@ -922,7 +887,7 @@ fn popup_all_options(
     .match_list(inputs, &mut matcher);
 
     if sense.changed() {
-        dynamic_selections.remove(&key);
+        dynamic_selections.remove(prefix);
     }
 
     if sense.has_focus() {
@@ -932,19 +897,19 @@ fn popup_all_options(
             ui.input_mut(|input| input.consume_key(Modifiers::default(), Key::ArrowDown));
 
         if up_pressed {
-            let selected = *dynamic_selections.entry(key.clone()).or_default();
+            let selected = *dynamic_selections.entry(prefix.to_string()).or_default();
             if selected == 0 {
-                dynamic_selections.remove(&key);
+                dynamic_selections.remove(prefix);
             } else {
-                *dynamic_selections.entry(key.clone()).or_default() = selected - 1;
+                *dynamic_selections.entry(prefix.to_string()).or_default() = selected - 1;
             }
         } else if down_pressed {
-            if dynamic_selections.contains_key(&key) {
-                let selected = *dynamic_selections.entry(key.clone()).or_default();
-                *dynamic_selections.entry(key.clone()).or_default() =
+            if dynamic_selections.contains_key(prefix) {
+                let selected = *dynamic_selections.entry(prefix.to_string()).or_default();
+                *dynamic_selections.entry(prefix.to_string()).or_default() =
                     usize::min(selected + 1, matches.len() - 1);
             } else {
-                dynamic_selections.insert(key.clone(), 0);
+                dynamic_selections.insert(prefix.to_string(), 0);
             }
         }
 
@@ -955,7 +920,7 @@ fn popup_all_options(
         || ui.input_mut(|input| input.key_pressed(Key::Tab));
     if enter_or_tab && ui.memory(|m| m.is_popup_open(id)) {
         changed = true;
-        let selected = *dynamic_selections.entry(key.clone()).or_default();
+        let selected = *dynamic_selections.entry(prefix.to_string()).or_default();
         info!("Accepted {selected}");
         *text = matches[selected].0.clone();
     }
@@ -963,7 +928,7 @@ fn popup_all_options(
     egui::popup::popup_below_widget(ui, id, sense, |ui| {
         egui::ScrollArea::vertical().id_source(id).show(ui, |ui| {
             for (idx, (input, _)) in matches.iter().enumerate() {
-                let mut selected = if let Some(o) = dynamic_selections.get(&key) {
+                let mut selected = if let Some(o) = dynamic_selections.get(prefix) {
                     *o == idx
                 } else {
                     false
@@ -985,7 +950,7 @@ fn popup_all_options(
     (
         changed,
         dynamic_selections
-            .get(&key)
+            .get(prefix)
             .and_then(|selected| matches.get(*selected).map(|(s, _)| (*s).clone())),
     )
 }
