@@ -42,12 +42,14 @@ impl Action for CastCard {
         card.apply_modifiers_layered(db);
 
         for (listener, trigger) in db.active_triggers_of_source(TriggerSource::CAST) {
-            if card.passes_restrictions(
-                db,
-                LogId::current(db),
-                listener,
-                &trigger.trigger.restrictions,
-            ) {
+            if *from == trigger.trigger.from.enum_value().unwrap()
+                && card.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    listener,
+                    &trigger.trigger.restrictions,
+                )
+            {
                 results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }

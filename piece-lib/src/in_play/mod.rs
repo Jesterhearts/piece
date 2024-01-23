@@ -27,7 +27,7 @@ use crate::{
     protogen::{
         abilities::TriggeredAbility,
         effects::{replacement_effect::Replacing, ReplacementEffect},
-        triggers::TriggerSource,
+        triggers::{self, TriggerSource},
     },
     stack::Stack,
     turns::{Phase, Turn},
@@ -38,6 +38,16 @@ pub(crate) enum CastFrom {
     Hand,
     Exile,
     Graveyard,
+}
+
+impl PartialEq<triggers::Location> for CastFrom {
+    fn eq(&self, other: &Location) -> bool {
+        match self {
+            CastFrom::Hand => matches!(*other, Location::HAND | Location::ANYWHERE),
+            CastFrom::Exile => matches!(*other, Location::ANYWHERE),
+            CastFrom::Graveyard => matches!(*other, Location::ANYWHERE),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
