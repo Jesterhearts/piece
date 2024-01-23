@@ -573,40 +573,51 @@ impl App {
                                     }
 
                                     for (idx, text) in text.iter_mut().enumerate() {
-                                        ui.horizontal(|ui| {
-                                            ui.label("type:");
-                                            let sense = ui.add(
-                                                TextEdit::singleline(text).desired_width(200.0),
-                                            );
+                                        ui.collapsing(
+                                            format!("{}[{}]", target.name(), idx),
+                                            |ui| {
+                                                ui.horizontal(|ui| {
+                                                    ui.label("type:");
+                                                    let sense = ui.add(
+                                                        TextEdit::singleline(text)
+                                                            .desired_width(200.0),
+                                                    );
 
-                                            let (_, popup_text) = popup_all_options(
-                                                ui,
-                                                dynamic_selections,
-                                                &format!("{}_{}", key, idx),
-                                                &sense,
-                                                text,
-                                                &inputs,
-                                            );
+                                                    let (_, popup_text) = popup_all_options(
+                                                        ui,
+                                                        dynamic_selections,
+                                                        &format!("{}_{}", key, idx),
+                                                        &sense,
+                                                        text,
+                                                        &inputs,
+                                                    );
 
-                                            let text = popup_text.unwrap_or_else(|| text.clone());
-                                            let mut value =
-                                                repeated.get(idx).to_message().unwrap().clone_box();
+                                                    let text =
+                                                        popup_text.unwrap_or_else(|| text.clone());
+                                                    let mut value = repeated
+                                                        .get(idx)
+                                                        .to_message()
+                                                        .unwrap()
+                                                        .clone_box();
 
-                                            Self::render_oneof(
-                                                ui,
-                                                dynamic_fields,
-                                                dynamic_boolean_fields,
-                                                dynamic_repeated_fields,
-                                                dynamic_selections,
-                                                &mut *value,
-                                                sense.hovered() || sense.has_focus(),
-                                                &format!("{}_{}", key, idx),
-                                                &descriptor,
-                                                &text.to_case(Case::Snake),
-                                            );
+                                                    Self::render_oneof(
+                                                        ui,
+                                                        dynamic_fields,
+                                                        dynamic_boolean_fields,
+                                                        dynamic_repeated_fields,
+                                                        dynamic_selections,
+                                                        &mut *value,
+                                                        sense.hovered() || sense.has_focus(),
+                                                        &format!("{}_{}", key, idx),
+                                                        &descriptor,
+                                                        &text.to_case(Case::Snake),
+                                                    );
 
-                                            repeated.set(idx, ReflectValueBox::Message(value));
-                                        });
+                                                    repeated
+                                                        .set(idx, ReflectValueBox::Message(value));
+                                                });
+                                            },
+                                        );
                                     }
 
                                     ui.horizontal(|ui| {
@@ -650,18 +661,26 @@ impl App {
                                         .enumerate()
                                         .collect_vec()
                                     {
-                                        for (field_idx, field) in descriptor.fields().enumerate() {
-                                            Self::render_field(
-                                                ui,
-                                                dynamic_fields,
-                                                dynamic_boolean_fields,
-                                                dynamic_repeated_fields,
-                                                dynamic_selections,
-                                                &mut *message,
-                                                &format!("{}_{}_{}", key, idx, field_idx),
-                                                field,
-                                            );
-                                        }
+                                        ui.collapsing(
+                                            format!("{}[{}]", target.name(), idx),
+                                            |ui| {
+                                                for (field_idx, field) in
+                                                    descriptor.fields().enumerate()
+                                                {
+                                                    Self::render_field(
+                                                        ui,
+                                                        dynamic_fields,
+                                                        dynamic_boolean_fields,
+                                                        dynamic_repeated_fields,
+                                                        dynamic_selections,
+                                                        &mut *message,
+                                                        &format!("{}_{}_{}", key, idx, field_idx),
+                                                        field,
+                                                    );
+                                                }
+                                            },
+                                        );
+
                                         repeated.set(idx, ReflectValueBox::Message(message));
                                     }
 
