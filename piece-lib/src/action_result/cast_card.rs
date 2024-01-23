@@ -1,11 +1,12 @@
 use crate::{
     action_result::Action,
+    effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
     log::{Log, LogId},
     pending_results::PendingResults,
     protogen::{
         abilities::TriggeredAbility,
-        effects::{effect, Cascade, Effect},
+        effects::{effect, Cascade, Effect, Rebound},
         targets::{restriction, Restriction},
         triggers::{self, Trigger, TriggerSource},
     },
@@ -81,6 +82,10 @@ impl Action for CastCard {
                     ..Default::default()
                 },
             ));
+        }
+
+        if card.rebound(db) {
+            Rebound::default().push_pending_behavior(db, *card, db[*card].controller, &mut results);
         }
 
         results

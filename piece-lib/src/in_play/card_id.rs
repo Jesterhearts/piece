@@ -2227,6 +2227,12 @@ impl CardId {
             db.stack.find(self).map(|id| ActiveTarget::Stack { id })
         }
     }
+
+    pub(crate) fn rebound(self, db: &mut Database) -> bool {
+        db[self]
+            .modified_keywords
+            .contains_key(&Keyword::REBOUND.value())
+    }
 }
 
 impl Default for CardId {

@@ -91,9 +91,10 @@ impl Turn {
                 for player in db.all_players.all_players() {
                     db.all_players[player].mana_pool.drain();
                 }
-                db.turn.phase = Phase::Upkeep;
 
-                let mut results = PendingResults::default();
+                db.turn.phase = Phase::Upkeep;
+                let mut results = Self::delayed_triggers(db);
+
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::UPKEEP) {
@@ -116,19 +117,20 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Draw;
+                let results = Self::delayed_triggers(db);
                 if db.turn.turn_count != 0 {
                     let player = db.turn.active_player();
                     return Player::draw(db, player, 1);
                 }
-                PendingResults::default()
+                results
             }
             Phase::Draw => {
                 for player in db.all_players.all_players() {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::PreCombatMainPhase;
+                let mut results = Self::delayed_triggers(db);
 
-                let mut results = PendingResults::default();
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in
@@ -153,7 +155,7 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::BeginCombat;
-                let mut results = PendingResults::default();
+                let mut results = Self::delayed_triggers(db);
                 let player = db.turn.active_player();
                 for (listener, trigger) in
                     db.active_triggers_of_source(TriggerSource::START_OF_COMBAT)
@@ -176,7 +178,7 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::DeclareAttackers;
-                let mut results = PendingResults::default();
+                let mut results = Self::delayed_triggers(db);
                 let player = db.turn.active_player();
                 results.set_declare_attackers(db, player);
                 results
@@ -186,7 +188,7 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::DeclareBlockers;
-                PendingResults::default()
+                Self::delayed_triggers(db)
             }
             Phase::DeclareBlockers => {
                 for player in db.all_players.all_players() {
@@ -194,7 +196,7 @@ impl Turn {
                 }
                 db.turn.phase = Phase::FirstStrike;
 
-                let mut results = PendingResults::default();
+                let mut results = Self::delayed_triggers(db);
 
                 for (card, target) in db.battlefield[db.turn.active_player()]
                     .iter()
@@ -236,7 +238,7 @@ impl Turn {
                 }
                 db.turn.phase = Phase::Damage;
 
-                let mut results = PendingResults::default();
+                let mut results = Self::delayed_triggers(db);
 
                 // TODO blocks
                 for (card, target) in db.battlefield[db.turn.active_player()]
@@ -283,7 +285,7 @@ impl Turn {
                 }
 
                 db.turn.phase = Phase::PostCombatMainPhase;
-                PendingResults::default()
+                Self::delayed_triggers(db)
             }
             Phase::PostCombatMainPhase => {
                 for player in db.all_players.all_players() {
@@ -291,7 +293,7 @@ impl Turn {
                 }
                 db.turn.phase = Phase::EndStep;
 
-                let mut results = PendingResults::default();
+                let mut results = Self::delayed_triggers(db);
                 let player = db.turn.active_player();
 
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::END_STEP) {
@@ -319,17 +321,18 @@ impl Turn {
                     db.all_players[player].mana_pool.drain();
                 }
                 db.turn.phase = Phase::Cleanup;
+                let mut results = Self::delayed_triggers(db);
 
                 let player = db.turn.active_player();
-                let mut pending = Battlefields::end_turn(db);
+                results.extend(Battlefields::end_turn(db));
                 let hand_size = db.all_players[player].hand_size;
                 let in_hand = &db.hand[player];
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
-                    pending
+                    results
                         .push_choose_discard(in_hand.iter().copied().collect_vec(), discard as u32);
                 }
-                pending
+                results
             }
             Phase::Cleanup => {
                 for player in db.all_players.all_players() {
@@ -356,13 +359,30 @@ impl Turn {
                 db.turn.priority_player = db.turn.active_player;
 
                 db.turn.turn_count += 1;
+                let results = Self::delayed_triggers(db);
 
                 Log::new_turn(db, db.turn.active_player());
 
                 Battlefields::untap(db, db.turn.active_player());
-                PendingResults::default()
+                results
             }
         }
+    }
+
+    fn delayed_triggers(db: &mut Database) -> PendingResults {
+        let mut results = PendingResults::default();
+        if let Some(triggers) = db
+            .delayed_triggers
+            .entry(db.turn.active_player())
+            .or_default()
+            .remove(&db.turn.phase)
+        {
+            for (listener, trigger) in triggers {
+                results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+            }
+        }
+
+        results
     }
 
     pub fn can_cast(db: &Database, card: CardId) -> bool {

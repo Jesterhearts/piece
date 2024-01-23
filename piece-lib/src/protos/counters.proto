@@ -9,5 +9,6 @@ enum Counter {
   NET = 3;
   P1P1 = 4;
   STUN = 5;
-  M1M1 = 6;
+  TIME = 6;
+  M1M1 = 7;
 }
