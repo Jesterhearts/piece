@@ -4,7 +4,7 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{clone_card::CloneCard, ActionResult},
     effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
@@ -88,8 +88,11 @@ impl EffectBehaviors for CopyOfAnyCreatureNonTargeting {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        if let Ok(target) = targets.into_iter().exactly_one() {
-            results.push_settled(ActionResult::CloneCreatureNonTargeting { source, target })
+        if let Ok(ActiveTarget::Battlefield { id }) = targets.into_iter().exactly_one() {
+            results.push_settled(ActionResult::from(CloneCard {
+                cloning: source,
+                cloned: id,
+            }))
         } else {
             warn!("Skipping targets");
         }

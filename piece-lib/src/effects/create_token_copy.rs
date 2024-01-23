@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{create_token_copy_of::CreateTokenCopyOf, ActionResult},
     effects::EffectBehaviors,
     in_play::{self},
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -85,11 +85,11 @@ impl EffectBehaviors for CreateTokenCopy {
     ) {
         let target = targets.into_iter().exactly_one().unwrap();
         let target = target.id(db);
-        results.push_settled(ActionResult::CreateTokenCopyOf {
+        results.push_settled(ActionResult::from(CreateTokenCopyOf {
             source,
             target: target.unwrap(),
             modifiers: self.modifiers.clone(),
-        });
+        }));
     }
 
     fn push_behavior_from_top_of_library(
@@ -99,10 +99,10 @@ impl EffectBehaviors for CreateTokenCopy {
         target: in_play::CardId,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::CreateTokenCopyOf {
+        results.push_settled(ActionResult::from(CreateTokenCopyOf {
             source,
             target,
             modifiers: self.modifiers.clone(),
-        })
+        }))
     }
 }

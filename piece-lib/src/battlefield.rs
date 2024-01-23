@@ -5,7 +5,14 @@ use itertools::Itertools;
 
 use crate::{
     abilities::Ability,
-    action_result::ActionResult,
+    action_result::{
+        self, add_modifier::AddModifier,
+        add_to_battlefield_skip_replacement_effects::AddToBattlefieldSkipReplacementEffects,
+        add_to_battlefield_skip_replacement_effects_from_exile::AddToBattlefieldSkipReplacementEffectsFromExile,
+        add_to_battlefield_skip_replacement_effects_from_library::AddToBattlefieldSkipReplacementEffectsFromLibrary,
+        discard::Discard, lose_life::LoseLife, permanent_to_graveyard::PermanentToGraveyard,
+        ActionResult,
+    },
     effects::EffectBehaviors,
     in_play::{CardId, Database, ExileReason},
     log::LogId,
@@ -98,7 +105,10 @@ impl Battlefields {
     ) -> PendingResults {
         let mut results =
             match Self::start_adding_to_battlefield(db, source_card_id, false, target, |card, _| {
-                ActionResult::AddToBattlefieldSkipReplacementEffects(card, target)
+                ActionResult::from(AddToBattlefieldSkipReplacementEffects {
+                    card,
+                    aura_target: target,
+                })
             }) {
                 PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
                 PartialAddToBattlefieldResult::Continue(results) => results,
@@ -119,9 +129,11 @@ impl Battlefields {
             source_card_id,
             enters_tapped,
             None,
-            |card, enters_tapped| ActionResult::AddToBattlefieldSkipReplacementEffectsFromLibrary {
-                card,
-                enters_tapped,
+            |card, enters_tapped| {
+                ActionResult::from(AddToBattlefieldSkipReplacementEffectsFromLibrary {
+                    card,
+                    enters_tapped,
+                })
             },
         ) {
             PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
@@ -144,7 +156,12 @@ impl Battlefields {
             source_card_id,
             enters_tapped,
             None,
-            |card, _| ActionResult::AddToBattlefieldSkipReplacementEffectsFromExile(card, target),
+            |card, _| {
+                ActionResult::from(AddToBattlefieldSkipReplacementEffectsFromExile {
+                    card,
+                    aura_target: target,
+                })
+            },
         ) {
             PartialAddToBattlefieldResult::NeedsResolution(results) => return results,
             PartialAddToBattlefieldResult::Continue(results) => results,
@@ -310,7 +327,7 @@ impl Battlefields {
                     || ((toughness.unwrap() - card.marked_damage(db)) <= 0
                         && !card.indestructible(db)))
             {
-                result.push_settled(ActionResult::PermanentToGraveyard(card));
+                result.push_settled(ActionResult::from(PermanentToGraveyard { card }));
             }
 
             let enchanting = db[card].enchanting;
@@ -319,7 +336,7 @@ impl Battlefields {
                     .unwrap()
                     .is_in_location(db, Location::ON_BATTLEFIELD)
             {
-                result.push_settled(ActionResult::PermanentToGraveyard(card));
+                result.push_settled(ActionResult::from(PermanentToGraveyard { card }));
             }
         }
 
@@ -367,7 +384,9 @@ impl Battlefields {
             if cost.tap {
                 assert!(!source.tapped(db));
 
-                results.push_settled(ActionResult::TapPermanent(source));
+                results.push_settled(ActionResult::from(
+                    action_result::tap_permanent::TapPermanent { card: source },
+                ));
             }
 
             let exile_reason = match &ability {
@@ -384,18 +403,22 @@ impl Battlefields {
             for cost in cost.additional_costs.iter() {
                 match cost.cost.as_ref().unwrap() {
                     additional_cost::Cost::DiscardThis(_) => {
-                        results.push_settled(ActionResult::Discard(ability_source));
+                        results.push_settled(ActionResult::from(Discard {
+                            card: ability_source,
+                        }));
                     }
                     additional_cost::Cost::SacrificeSource(_) => {
-                        results.push_settled(ActionResult::PermanentToGraveyard(ability_source));
+                        results.push_settled(ActionResult::from(PermanentToGraveyard {
+                            card: ability_source,
+                        }));
                         results
                             .push_invalid_target(ActiveTarget::Battlefield { id: ability_source })
                     }
                     additional_cost::Cost::PayLife(PayLife { count, .. }) => {
-                        results.push_settled(ActionResult::LoseLife {
+                        results.push_settled(ActionResult::from(LoseLife {
                             target: db[source].controller,
                             count: *count,
-                        })
+                        }))
                     }
                     additional_cost::Cost::SacrificePermanent(sac) => {
                         results.push_pay_costs(PayCost::new(
@@ -467,11 +490,13 @@ impl Battlefields {
                         counter,
                         count,
                         ..
-                    }) => results.push_settled(ActionResult::RemoveCounters {
-                        target: source,
-                        counter: *counter,
-                        count: *count as usize,
-                    }),
+                    }) => results.push_settled(ActionResult::from(
+                        action_result::remove_counters::RemoveCounters {
+                            target: source,
+                            counter: *counter,
+                            count: *count as usize,
+                        },
+                    )),
                 }
             }
 
@@ -816,7 +841,7 @@ pub(crate) fn move_card_to_battlefield(
         .iter()
     {
         if let Some(modifier) = db[*ability].owned_modifier {
-            results.push_settled(ActionResult::AddModifier { modifier })
+            results.push_settled(ActionResult::from(AddModifier { modifier }))
         }
     }
 

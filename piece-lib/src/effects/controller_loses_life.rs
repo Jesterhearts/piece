@@ -1,7 +1,7 @@
 use std::vec::IntoIter;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{lose_life::LoseLife, ActionResult},
     effects::{EffectBehaviors, ReplacementEffect},
     log::LogId,
     pending_results::PendingResults,
@@ -41,10 +41,10 @@ impl EffectBehaviors for ControllerLosesLife {
                 &self.unless,
             )
         {
-            results.push_settled(ActionResult::LoseLife {
+            results.push_settled(ActionResult::from(LoseLife {
                 target: controller,
                 count: self.count,
-            });
+            }));
         }
     }
 
@@ -64,10 +64,10 @@ impl EffectBehaviors for ControllerLosesLife {
                 &self.unless,
             )
         {
-            results.push_settled(ActionResult::LoseLife {
+            results.push_settled(ActionResult::from(LoseLife {
                 target: controller,
                 count: self.count,
-            });
+            }));
         }
     }
 
@@ -88,10 +88,10 @@ impl EffectBehaviors for ControllerLosesLife {
                 &self.unless,
             )
         {
-            results.push_settled(ActionResult::LoseLife {
+            results.push_settled(ActionResult::from(LoseLife {
                 target: controller,
                 count: self.count,
-            });
+            }));
         }
 
         Player::draw_with_replacement(db, player, replacements, count, results);

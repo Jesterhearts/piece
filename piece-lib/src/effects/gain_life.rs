@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::GainLife};
+use crate::{
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::GainLife,
+};
 
 impl EffectBehaviors for GainLife {
     fn needs_targets(
@@ -24,10 +28,10 @@ impl EffectBehaviors for GainLife {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::GainLife {
+        results.push_settled(ActionResult::from(action_result::gain_life::GainLife {
             target: controller,
             count: self.count,
-        });
+        }));
     }
 
     fn push_behavior_with_targets(
@@ -38,9 +42,9 @@ impl EffectBehaviors for GainLife {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::GainLife {
+        results.push_settled(ActionResult::from(action_result::gain_life::GainLife {
             target: controller,
             count: self.count,
-        });
+        }));
     }
 }

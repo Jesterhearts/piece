@@ -4,7 +4,7 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{hand_from_battlefield::HandFromBattlefield, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -103,7 +103,9 @@ impl EffectBehaviors for ReturnTargetToHand {
                 return;
             }
 
-            results.push_settled(ActionResult::HandFromBattlefield(target.id(db).unwrap()))
+            results.push_settled(ActionResult::from(HandFromBattlefield {
+                card: target.id(db).unwrap(),
+            }))
         } else {
             warn!("Skipping targets")
         }

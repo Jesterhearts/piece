@@ -1,7 +1,13 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{
+        add_to_battlefield_from_library::AddToBattlefieldFromLibrary,
+        move_from_library_to_graveyard::MoveFromLibraryToGraveyard,
+        move_from_library_to_top_of_library::MoveFromLibraryToTopOfLibrary,
+        move_to_hand_from_library::MoveToHandFromLibrary, reveal_card::RevealCard,
+        shuffle::Shuffle, ActionResult,
+    },
     effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{
@@ -90,7 +96,7 @@ impl EffectBehaviors for TutorLibrary {
                     unreachable!()
                 };
 
-                results.push_settled(ActionResult::RevealCard(*id))
+                results.push_settled(ActionResult::from(RevealCard { card: *id }))
             }
         }
 
@@ -100,7 +106,7 @@ impl EffectBehaviors for TutorLibrary {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
                     };
-                    results.push_settled(ActionResult::MoveToHandFromLibrary(id))
+                    results.push_settled(ActionResult::from(MoveToHandFromLibrary { card: id }))
                 }
             }
             destination::Destination::TopOfLibrary(_) => {
@@ -108,7 +114,9 @@ impl EffectBehaviors for TutorLibrary {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
                     };
-                    results.push_settled(ActionResult::MoveFromLibraryToTopOfLibrary(id))
+                    results.push_settled(ActionResult::from(MoveFromLibraryToTopOfLibrary {
+                        card: id,
+                    }))
                 }
             }
             destination::Destination::Battlefield(Battlefield { enters_tapped, .. }) => {
@@ -116,10 +124,10 @@ impl EffectBehaviors for TutorLibrary {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
                     };
-                    results.push_settled(ActionResult::AddToBattlefieldFromLibrary {
+                    results.push_settled(ActionResult::from(AddToBattlefieldFromLibrary {
                         card: id,
                         enters_tapped: *enters_tapped,
-                    });
+                    }));
                 }
             }
             destination::Destination::BottomOfLibrary(_) => unreachable!(),
@@ -128,11 +136,14 @@ impl EffectBehaviors for TutorLibrary {
                     let ActiveTarget::Library { id } = target else {
                         unreachable!()
                     };
-                    results.push_settled(ActionResult::MoveFromLibraryToGraveyard(id));
+                    results
+                        .push_settled(ActionResult::from(MoveFromLibraryToGraveyard { card: id }));
                 }
             }
         }
 
-        results.push_settled(ActionResult::Shuffle(controller.into()));
+        results.push_settled(ActionResult::from(Shuffle {
+            player: controller.into(),
+        }));
     }
 }

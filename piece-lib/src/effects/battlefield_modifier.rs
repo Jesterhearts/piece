@@ -1,5 +1,8 @@
 use crate::{
-    action_result::ActionResult,
+    action_result::{
+        add_modifier::AddModifier, apply_to_battlefield::ApplyToBattlefield,
+        modify_creatures::ModifyCreatures, ActionResult,
+    },
     effects::EffectBehaviors,
     in_play::{Database, ModifierId},
     pending_results::PendingResults,
@@ -32,9 +35,9 @@ impl EffectBehaviors for BattlefieldModifier {
         _controller: Controller,
         results: &mut PendingResults,
     ) {
-        results.push_settled(ActionResult::AddModifier {
+        results.push_settled(ActionResult::from(AddModifier {
             modifier: ModifierId::upload_temporary_modifier(db, source, self.clone()),
-        });
+        }));
     }
 
     fn push_behavior_with_targets(
@@ -47,14 +50,14 @@ impl EffectBehaviors for BattlefieldModifier {
     ) {
         if self.apply_to_self {
             let modifier = ModifierId::upload_temporary_modifier(db, source, self.clone());
-            results.push_settled(ActionResult::ModifyCreatures {
+            results.push_settled(ActionResult::from(ModifyCreatures {
                 modifier,
                 targets: vec![ActiveTarget::Battlefield { id: source }],
-            });
+            }));
         } else {
-            results.push_settled(ActionResult::ApplyToBattlefield(
-                ModifierId::upload_temporary_modifier(db, source, self.clone()),
-            ));
+            results.push_settled(ActionResult::from(ApplyToBattlefield {
+                modifier: ModifierId::upload_temporary_modifier(db, source, self.clone()),
+            }));
         }
     }
 }

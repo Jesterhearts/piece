@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::UntapThis};
+use crate::{
+    action_result::{untap::Untap, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::UntapThis,
+};
 
 impl EffectBehaviors for UntapThis {
     fn needs_targets(
@@ -24,7 +28,7 @@ impl EffectBehaviors for UntapThis {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Untap(source));
+        results.push_settled(ActionResult::from(Untap { target: source }));
     }
 
     fn push_behavior_with_targets(
@@ -35,6 +39,6 @@ impl EffectBehaviors for UntapThis {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Untap(source))
+        results.push_settled(ActionResult::from(Untap { target: source }))
     }
 }

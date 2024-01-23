@@ -1,5 +1,7 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, log::LogId,
+    action_result::{if_was_then::IfWasThen, ActionResult},
+    effects::EffectBehaviors,
+    log::LogId,
     protogen::effects::ApplyThenIfWas,
 };
 
@@ -84,11 +86,11 @@ impl EffectBehaviors for ApplyThenIfWas {
                 results,
             );
         }
-        results.push_settled(ActionResult::IfWasThen {
+        results.push_settled(ActionResult::from(IfWasThen {
             if_was: self.then.if_was.clone(),
             then: self.then.apply.clone(),
             source,
             controller,
-        })
+        }))
     }
 }

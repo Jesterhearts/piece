@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{self, ActionResult},
     effects::EffectBehaviors,
     protogen::{
         cost::XIs,
@@ -33,7 +33,7 @@ impl EffectBehaviors for Discover {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Discover {
+        results.push_settled(ActionResult::from(action_result::discover::Discover {
             source,
             count: match self.count.as_ref().unwrap() {
                 Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
@@ -43,7 +43,7 @@ impl EffectBehaviors for Discover {
                 Count::Fixed(fixed) => fixed.count,
             },
             player: controller,
-        })
+        }))
     }
 
     fn push_behavior_with_targets(
@@ -54,7 +54,7 @@ impl EffectBehaviors for Discover {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Discover {
+        results.push_settled(ActionResult::from(action_result::discover::Discover {
             source,
             count: match self.count.as_ref().unwrap() {
                 Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
@@ -67,6 +67,6 @@ impl EffectBehaviors for Discover {
                 Count::Fixed(fixed) => fixed.count,
             },
             player: controller,
-        })
+        }))
     }
 }

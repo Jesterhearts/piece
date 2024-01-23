@@ -19,7 +19,10 @@ use tracing::Level;
 
 use crate::{
     abilities::Ability,
-    action_result::ActionResult,
+    action_result::{
+        add_ability_to_stack::AddAbilityToStack, cast_card::CastCard, copy_ability::CopyAbility,
+        copy_card_in_stack::CopyCardInStack, gain_mana::GainMana, ActionResult,
+    },
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database, GainManaAbilityId},
     pending_results::{
@@ -501,23 +504,24 @@ impl PendingResults {
                 match source {
                     Source::Card(card) => {
                         debug!("Casting card {}", db[card].modified_name);
-                        self.settled_effects.push(ActionResult::CastCard {
+                        self.settled_effects.push(ActionResult::from(CastCard {
                             card,
                             targets: self.chosen_targets.clone(),
                             from: self.cast_from.unwrap(),
                             x_is: self.x_is,
                             chosen_modes: self.chosen_modes.clone(),
-                        });
+                        }));
 
                         self.chosen_modes.clear();
                     }
                     Source::Ability { source, ability } => {
-                        self.settled_effects.push(ActionResult::AddAbilityToStack {
-                            source,
-                            ability,
-                            targets: self.chosen_targets.clone(),
-                            x_is: self.x_is,
-                        });
+                        self.settled_effects
+                            .push(ActionResult::from(AddAbilityToStack {
+                                source,
+                                ability,
+                                targets: self.chosen_targets.clone(),
+                                x_is: self.x_is,
+                            }));
                     }
                     Source::Effect(_, _) => unreachable!(),
                 }
@@ -531,22 +535,22 @@ impl PendingResults {
                     let restriction = db[gain].ability.mana_restriction;
                     match db[gain].ability.gain_mana.gain.as_ref().unwrap() {
                         Gain::Specific(specific) => {
-                            self.settled_effects.push(ActionResult::GainMana {
+                            self.settled_effects.push(ActionResult::from(GainMana {
                                 gain: specific.gain.clone(),
                                 target,
                                 source,
                                 restriction,
-                            })
+                            }))
                         }
                         Gain::Choice(Choice { choices, .. }) => {
                             let option = self.chosen_modes.pop().unwrap();
                             self.chosen_modes.clear();
-                            self.settled_effects.push(ActionResult::GainMana {
+                            self.settled_effects.push(ActionResult::from(GainMana {
                                 gain: choices[option].gains.clone(),
                                 target,
                                 source,
                                 restriction,
-                            })
+                            }))
                         }
                     }
                 }
@@ -559,13 +563,14 @@ impl PendingResults {
                             modes,
                             x_is,
                         } => {
-                            self.settled_effects.push(ActionResult::CopyCardInStack {
-                                card,
-                                controller,
-                                targets: self.chosen_targets.clone(),
-                                x_is,
-                                chosen_modes: modes,
-                            });
+                            self.settled_effects
+                                .push(ActionResult::from(CopyCardInStack {
+                                    card,
+                                    controller,
+                                    targets: self.chosen_targets.clone(),
+                                    x_is,
+                                    chosen_modes: modes,
+                                }));
 
                             self.chosen_modes.clear();
                         }
@@ -573,12 +578,12 @@ impl PendingResults {
                             source,
                             ability,
                             x_is,
-                        } => self.settled_effects.push(ActionResult::CopyAbility {
+                        } => self.settled_effects.push(ActionResult::from(CopyAbility {
                             source,
                             ability,
                             targets: self.chosen_targets.clone(),
                             x_is,
-                        }),
+                        })),
                     }
                 }
 

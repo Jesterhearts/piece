@@ -4,7 +4,7 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{add_counters::AddCounters, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -116,12 +116,12 @@ impl EffectBehaviors for TargetGainsCounters {
                 _ => unreachable!(),
             };
 
-            results.push_settled(ActionResult::AddCounters {
+            results.push_settled(ActionResult::from(AddCounters {
                 source,
                 target,
                 count: self.count.count.as_ref().unwrap().clone(),
                 counter: self.counter,
-            });
+            }));
         } else {
             warn!("Skipping targets");
         }

@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::TapThis};
+use crate::{
+    action_result::{tap_permanent::TapPermanent, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::TapThis,
+};
 
 impl EffectBehaviors for TapThis {
     fn needs_targets(
@@ -24,7 +28,7 @@ impl EffectBehaviors for TapThis {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::TapPermanent(source));
+        results.push_settled(ActionResult::from(TapPermanent { card: source }));
     }
 
     fn push_behavior_with_targets(

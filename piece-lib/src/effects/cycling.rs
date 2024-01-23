@@ -1,7 +1,10 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{
+        draw_cards::DrawCards, move_to_hand_from_library::MoveToHandFromLibrary,
+        reveal_card::RevealCard, ActionResult,
+    },
     effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::{
@@ -74,10 +77,10 @@ impl EffectBehaviors for Cycling {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.types.is_empty() && self.subtypes.is_empty() {
-            results.push_settled(ActionResult::DrawCards {
+            results.push_settled(ActionResult::from(DrawCards {
                 target: controller,
                 count: 1,
-            })
+            }))
         } else {
             let valid_targets = self.valid_targets(
                 db,
@@ -104,18 +107,18 @@ impl EffectBehaviors for Cycling {
         results: &mut crate::pending_results::PendingResults,
     ) {
         if self.types.is_empty() && self.subtypes.is_empty() {
-            results.push_settled(ActionResult::DrawCards {
+            results.push_settled(ActionResult::from(DrawCards {
                 target: controller,
                 count: 1,
-            });
+            }));
         } else {
             for target in targets {
                 let ActiveTarget::Library { id } = target else {
                     unreachable!()
                 };
 
-                results.push_settled(ActionResult::RevealCard(id));
-                results.push_settled(ActionResult::MoveToHandFromLibrary(id));
+                results.push_settled(ActionResult::from(RevealCard { card: id }));
+                results.push_settled(ActionResult::from(MoveToHandFromLibrary { card: id }));
             }
         }
     }

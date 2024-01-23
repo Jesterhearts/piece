@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{self, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -97,12 +97,14 @@ impl EffectBehaviors for ExileTarget {
 
         for target in targets {
             if valid.contains(&target) {
-                results.push_settled(ActionResult::ExileTarget {
-                    source,
-                    target,
-                    duration: self.duration,
-                    reason: None,
-                });
+                results.push_settled(ActionResult::from(
+                    action_result::exile_target::ExileTarget {
+                        source,
+                        target,
+                        duration: self.duration,
+                        reason: None,
+                    },
+                ));
             }
         }
     }

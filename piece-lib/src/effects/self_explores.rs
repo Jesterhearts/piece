@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{explore::Explore, ActionResult},
     effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, SelfExplores},
@@ -66,8 +66,8 @@ impl EffectBehaviors for SelfExplores {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Explore {
+        results.push_settled(ActionResult::from(Explore {
             target: targets.into_iter().exactly_one().unwrap(),
-        })
+        }))
     }
 }

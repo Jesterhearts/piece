@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{modify_creatures::ModifyCreatures, ActionResult},
     effects::EffectBehaviors,
     in_play::{Database, ModifierId},
     log::LogId,
@@ -136,9 +136,9 @@ impl EffectBehaviors for ModifyTarget {
             ),
         };
 
-        results.push_settled(ActionResult::ModifyCreatures {
+        results.push_settled(ActionResult::from(ModifyCreatures {
             targets: final_targets,
             modifier,
-        });
+        }));
     }
 }

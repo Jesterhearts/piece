@@ -1,7 +1,7 @@
 use std::vec::IntoIter;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{draw_cards::DrawCards, ActionResult},
     effects::{EffectBehaviors, ReplacementEffect},
     in_play::Database,
     log::LogId,
@@ -44,10 +44,10 @@ impl EffectBehaviors for ControllerDrawsCards {
                 .count(),
         };
 
-        results.push_settled(ActionResult::DrawCards {
+        results.push_settled(ActionResult::from(DrawCards {
             target: controller,
             count,
-        });
+        }));
     }
 
     fn push_behavior_with_targets(
@@ -67,10 +67,10 @@ impl EffectBehaviors for ControllerDrawsCards {
                 })
                 .count(),
         };
-        results.push_settled(ActionResult::DrawCards {
+        results.push_settled(ActionResult::from(DrawCards {
             target: controller,
             count,
-        });
+        }));
     }
 
     fn replace_draw(

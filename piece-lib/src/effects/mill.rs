@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{self, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -90,10 +90,10 @@ impl EffectBehaviors for Mill {
 
         for target in targets {
             if valid.contains(&target) {
-                results.push_settled(ActionResult::Mill {
+                results.push_settled(ActionResult::from(action_result::mill::Mill {
                     count: self.count,
                     target,
-                });
+                }));
             }
         }
     }

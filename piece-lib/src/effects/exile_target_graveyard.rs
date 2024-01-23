@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{exile_graveyard::ExileGraveyard, ActionResult},
     effects::EffectBehaviors,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
     protogen::effects::{effect::Effect, ExileTargetGraveyard},
@@ -70,9 +70,9 @@ impl EffectBehaviors for ExileTargetGraveyard {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::ExileGraveyard {
+        results.push_settled(ActionResult::from(ExileGraveyard {
             target: targets.into_iter().exactly_one().unwrap(),
             source,
-        });
+        }));
     }
 }

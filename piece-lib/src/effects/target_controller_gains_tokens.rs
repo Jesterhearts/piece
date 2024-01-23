@@ -1,7 +1,8 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors,
+    action_result::{create_token::CreateToken, ActionResult},
+    effects::EffectBehaviors,
     protogen::effects::TargetControllerGainsTokens,
 };
 
@@ -39,9 +40,9 @@ impl EffectBehaviors for TargetControllerGainsTokens {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::CreateToken {
+        results.push_settled(ActionResult::from(CreateToken {
             source: targets.into_iter().exactly_one().unwrap().id(db).unwrap(),
             token: self.create_token.token.as_ref().unwrap().clone(),
-        });
+        }));
     }
 }

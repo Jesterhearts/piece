@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{
+        return_from_battlefield_to_library::ReturnFromBattlefieldToLibrary, ActionResult,
+    },
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -108,10 +110,10 @@ impl EffectBehaviors for TargetToTopOfLibrary {
 
         for target in targets {
             if valid.contains(&target) {
-                results.push_settled(ActionResult::ReturnFromBattlefieldToLibrary {
+                results.push_settled(ActionResult::from(ReturnFromBattlefieldToLibrary {
                     target,
                     under_cards: self.under_cards,
-                });
+                }));
             }
         }
     }

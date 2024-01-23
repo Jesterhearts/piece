@@ -1,7 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::CantAttackThisTurn,
+    action_result::{ban_attacking::BanAttacking, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::CantAttackThisTurn,
     stack::ActiveTarget,
 };
 
@@ -69,7 +71,7 @@ impl EffectBehaviors for CantAttackThisTurn {
                 continue;
             };
 
-            results.push_settled(ActionResult::BanAttacking(id));
+            results.push_settled(ActionResult::from(BanAttacking { banned: id }));
         }
     }
 }

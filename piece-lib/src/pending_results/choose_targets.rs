@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{apply_aura_to_target::ApplyAuraToTarget, ActionResult},
     effects::EffectBehaviors,
     in_play::{CardId, Database},
     log::LogId,
@@ -185,10 +185,10 @@ impl PendingResult for ChooseTargets {
                             );
                         }
                         TargetSource::Aura(aura_source) => {
-                            results.push_settled(ActionResult::ApplyAuraToTarget {
+                            results.push_settled(ActionResult::from(ApplyAuraToTarget {
                                 aura_source,
                                 target: *choices.iter().exactly_one().unwrap(),
-                            });
+                            }));
                         }
                     }
                 } else {
@@ -221,10 +221,10 @@ impl PendingResult for ChooseTargets {
                                 );
                             }
                             TargetSource::Aura(aura_source) => {
-                                results.push_settled(ActionResult::ApplyAuraToTarget {
+                                results.push_settled(ActionResult::from(ApplyAuraToTarget {
                                     aura_source,
                                     target: *choices.iter().exactly_one().unwrap(),
-                                })
+                                }))
                             }
                         }
                     }

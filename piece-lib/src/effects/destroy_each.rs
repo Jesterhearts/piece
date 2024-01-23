@@ -1,5 +1,7 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::DestroyEach,
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::DestroyEach,
 };
 
 impl EffectBehaviors for DestroyEach {
@@ -26,7 +28,12 @@ impl EffectBehaviors for DestroyEach {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::DestroyEach(source, self.restrictions.clone()));
+        results.push_settled(ActionResult::from(
+            action_result::destroy_each::DestroyEach {
+                source,
+                restrictions: self.restrictions.clone(),
+            },
+        ));
     }
 
     fn push_behavior_with_targets(
@@ -37,6 +44,11 @@ impl EffectBehaviors for DestroyEach {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::DestroyEach(source, self.restrictions.clone()));
+        results.push_settled(ActionResult::from(
+            action_result::destroy_each::DestroyEach {
+                source,
+                restrictions: self.restrictions.clone(),
+            },
+        ));
     }
 }

@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Transform};
+use crate::{
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::Transform,
+};
 
 impl EffectBehaviors for Transform {
     fn needs_targets(
@@ -24,7 +28,9 @@ impl EffectBehaviors for Transform {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Transform { target: source })
+        results.push_settled(ActionResult::from(action_result::transform::Transform {
+            target: source,
+        }))
     }
 
     fn push_behavior_with_targets(
@@ -35,6 +41,8 @@ impl EffectBehaviors for Transform {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Transform { target: source })
+        results.push_settled(ActionResult::from(action_result::transform::Transform {
+            target: source,
+        }))
     }
 }

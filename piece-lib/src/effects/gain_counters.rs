@@ -1,5 +1,5 @@
 use crate::{
-    action_result::ActionResult,
+    action_result::{add_counters::AddCounters, ActionResult},
     effects::EffectBehaviors,
     in_play::{CardId, Database},
     pending_results::PendingResults,
@@ -24,12 +24,12 @@ impl EffectBehaviors for GainCounters {
         _controller: Controller,
         results: &mut PendingResults,
     ) {
-        results.push_settled(ActionResult::AddCounters {
+        results.push_settled(ActionResult::from(AddCounters {
             source,
             target: source,
             count: self.count.count.as_ref().unwrap().clone(),
             counter: self.counter,
-        });
+        }));
     }
 
     fn push_behavior_with_targets(
@@ -40,11 +40,11 @@ impl EffectBehaviors for GainCounters {
         _controller: Controller,
         results: &mut PendingResults,
     ) {
-        results.push_settled(ActionResult::AddCounters {
+        results.push_settled(ActionResult::from(AddCounters {
             source,
             target: source,
             count: self.count.count.as_ref().unwrap().clone(),
             counter: self.counter,
-        })
+        }));
     }
 }

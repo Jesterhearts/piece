@@ -1,5 +1,7 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ReturnTransformed,
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::ReturnTransformed,
 };
 
 impl EffectBehaviors for ReturnTransformed {
@@ -26,10 +28,12 @@ impl EffectBehaviors for ReturnTransformed {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::ReturnTransformed {
-            target: source,
-            enters_tapped: self.enters_tapped,
-        })
+        results.push_settled(ActionResult::from(
+            action_result::return_transformed::ReturnTransformed {
+                target: source,
+                enters_tapped: self.enters_tapped,
+            },
+        ))
     }
 
     fn push_behavior_with_targets(
@@ -40,9 +44,11 @@ impl EffectBehaviors for ReturnTransformed {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::ReturnTransformed {
-            target: source,
-            enters_tapped: self.enters_tapped,
-        })
+        results.push_settled(ActionResult::from(
+            action_result::return_transformed::ReturnTransformed {
+                target: source,
+                enters_tapped: self.enters_tapped,
+            },
+        ))
     }
 }

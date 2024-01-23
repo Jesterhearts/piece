@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Scry};
+use crate::{
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::Scry,
+};
 
 impl EffectBehaviors for Scry {
     fn needs_targets(
@@ -24,7 +28,10 @@ impl EffectBehaviors for Scry {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Scry(source, self.count));
+        results.push_settled(ActionResult::from(action_result::scry::Scry {
+            source,
+            count: self.count,
+        }));
     }
 
     fn push_behavior_with_targets(
@@ -35,6 +42,9 @@ impl EffectBehaviors for Scry {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Scry(source, self.count));
+        results.push_settled(ActionResult::from(action_result::scry::Scry {
+            source,
+            count: self.count,
+        }));
     }
 }

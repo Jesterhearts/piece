@@ -1,5 +1,7 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ReturnSelfToHand,
+    action_result::{hand_from_battlefield::HandFromBattlefield, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::ReturnSelfToHand,
 };
 
 impl EffectBehaviors for ReturnSelfToHand {
@@ -26,7 +28,7 @@ impl EffectBehaviors for ReturnSelfToHand {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::HandFromBattlefield(source))
+        results.push_settled(ActionResult::from(HandFromBattlefield { card: source }))
     }
 
     fn push_behavior_with_targets(
@@ -37,6 +39,6 @@ impl EffectBehaviors for ReturnSelfToHand {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::HandFromBattlefield(source))
+        results.push_settled(ActionResult::from(HandFromBattlefield { card: source }))
     }
 }

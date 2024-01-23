@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{clone_card::CloneCard, ActionResult},
     effects::EffectBehaviors,
     in_play::{CardId, Database},
     log::LogId,
@@ -107,9 +107,9 @@ impl EffectBehaviors for TargetCopiesPermanent {
             unreachable!()
         };
 
-        results.push_settled(ActionResult::CloneCard {
+        results.push_settled(ActionResult::from(CloneCard {
             cloning: id,
             cloned,
-        });
+        }));
     }
 }

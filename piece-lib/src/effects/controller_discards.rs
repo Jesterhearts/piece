@@ -1,5 +1,8 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, log::LogId, player::Owner,
+    action_result::{discard_cards::DiscardCards, ActionResult},
+    effects::EffectBehaviors,
+    log::LogId,
+    player::Owner,
     protogen::effects::ControllerDiscards,
 };
 
@@ -35,10 +38,10 @@ impl EffectBehaviors for ControllerDiscards {
                 &self.unless,
             )
         {
-            results.push_settled(ActionResult::DiscardCards {
+            results.push_settled(ActionResult::from(DiscardCards {
                 target: controller,
                 count: self.count,
-            });
+            }));
         }
     }
 
@@ -58,10 +61,10 @@ impl EffectBehaviors for ControllerDiscards {
                 &self.unless,
             )
         {
-            results.push_settled(ActionResult::DiscardCards {
+            results.push_settled(ActionResult::from(DiscardCards {
                 target: controller,
                 count: self.count,
-            });
+            }));
         }
     }
 }

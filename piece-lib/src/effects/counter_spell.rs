@@ -1,5 +1,5 @@
 use crate::{
-    action_result::ActionResult,
+    action_result::{spell_countered::SpellCountered, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -93,7 +93,7 @@ impl EffectBehaviors for CounterSpellOrAbility {
                     unreachable!()
                 };
 
-                results.push_settled(ActionResult::SpellCountered { index: id });
+                results.push_settled(ActionResult::from(SpellCountered { index: id }));
             }
         }
     }

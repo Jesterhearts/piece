@@ -1,5 +1,7 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::CreateToken,
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::CreateToken,
 };
 
 impl EffectBehaviors for CreateToken {
@@ -26,10 +28,12 @@ impl EffectBehaviors for CreateToken {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::CreateToken {
-            source,
-            token: self.token.as_ref().unwrap().clone(),
-        });
+        results.push_settled(ActionResult::from(
+            action_result::create_token::CreateToken {
+                source,
+                token: self.token.as_ref().unwrap().clone(),
+            },
+        ));
     }
 
     fn push_behavior_from_top_of_library(
@@ -39,10 +43,12 @@ impl EffectBehaviors for CreateToken {
         _target: crate::in_play::CardId,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::CreateToken {
-            source,
-            token: self.token.as_ref().unwrap().clone(),
-        });
+        results.push_settled(ActionResult::from(
+            action_result::create_token::CreateToken {
+                source,
+                token: self.token.as_ref().unwrap().clone(),
+            },
+        ));
     }
 
     fn push_behavior_with_targets(
@@ -53,9 +59,11 @@ impl EffectBehaviors for CreateToken {
         _controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::CreateToken {
-            source,
-            token: self.token.as_ref().unwrap().clone(),
-        });
+        results.push_settled(ActionResult::from(
+            action_result::create_token::CreateToken {
+                source,
+                token: self.token.as_ref().unwrap().clone(),
+            },
+        ));
     }
 }

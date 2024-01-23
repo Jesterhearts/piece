@@ -4,7 +4,9 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{
+        self, exile_target::ExileTarget, permanent_to_graveyard::PermanentToGraveyard, ActionResult,
+    },
     effects::EffectBehaviors,
     in_play::{CardId, Database, ExileReason},
     log::LogId,
@@ -730,45 +732,53 @@ impl Cost {
     fn results(&self, db: &mut Database, source: CardId) -> Vec<ActionResult> {
         match self {
             Cost::SacrificePermanent(SacrificePermanent { chosen, .. }) => {
-                vec![ActionResult::PermanentToGraveyard(chosen.unwrap())]
+                vec![ActionResult::from(PermanentToGraveyard {
+                    card: chosen.unwrap(),
+                })]
             }
             Cost::TapPermanent(TapPermanent { chosen, .. }) => {
-                vec![ActionResult::TapPermanent(chosen.unwrap())]
+                vec![ActionResult::from(
+                    action_result::tap_permanent::TapPermanent {
+                        card: chosen.unwrap(),
+                    },
+                )]
             }
             Cost::TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore { chosen, .. }) => chosen
                 .iter()
-                .map(|chosen| ActionResult::TapPermanent(*chosen))
+                .map(|chosen| {
+                    ActionResult::from(action_result::tap_permanent::TapPermanent { card: *chosen })
+                })
                 .collect_vec(),
             Cost::ExilePermanentsCmcX(exile) => {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
-                    results.push(ActionResult::ExileTarget {
+                    results.push(ActionResult::from(ExileTarget {
                         source,
                         target: ActiveTarget::Battlefield { id: *target },
                         duration: Duration::PERMANENTLY.into(),
                         reason: None,
-                    });
+                    }));
                 }
                 results
             }
             Cost::SpendMana(spend) => {
                 let (mana, sources) = spend.paying();
-                vec![ActionResult::SpendMana {
+                vec![ActionResult::from(action_result::spend_mana::SpendMana {
                     card: source,
                     mana,
                     sources,
                     reason: spend.reason,
-                }]
+                })]
             }
             Cost::ExileCards(exile) => {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
-                    results.push(ActionResult::ExileTarget {
+                    results.push(ActionResult::from(ExileTarget {
                         source,
                         target: target.target_from_location(db).unwrap(),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
-                    });
+                    }));
                 }
 
                 results
@@ -776,12 +786,12 @@ impl Cost {
             Cost::ExileCardsSharingType(exile) => {
                 let mut results = vec![];
                 for target in exile.chosen.iter() {
-                    results.push(ActionResult::ExileTarget {
+                    results.push(ActionResult::from(ExileTarget {
                         source,
                         target: target.target_from_location(db).unwrap(),
                         duration: Duration::PERMANENTLY.into(),
                         reason: exile.reason,
-                    });
+                    }));
                 }
 
                 results

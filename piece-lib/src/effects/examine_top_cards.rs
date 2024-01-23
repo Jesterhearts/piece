@@ -1,5 +1,7 @@
 use crate::{
-    action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ExamineTopCards,
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::ExamineTopCards,
 };
 
 impl EffectBehaviors for ExamineTopCards {
@@ -26,11 +28,13 @@ impl EffectBehaviors for ExamineTopCards {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::ExamineTopCards {
-            destinations: self.destinations.clone(),
-            count: self.count,
-            controller,
-        });
+        results.push_settled(ActionResult::from(
+            action_result::examine_top_cards::ExamineTopCards {
+                destinations: self.destinations.clone(),
+                count: self.count,
+                controller,
+            },
+        ));
     }
 
     fn push_behavior_with_targets(

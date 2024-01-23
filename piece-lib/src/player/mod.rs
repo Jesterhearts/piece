@@ -11,7 +11,7 @@ use strum::IntoEnumIterator;
 use uuid::Uuid;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{player_loses::PlayerLoses, ActionResult},
     battlefield::Battlefields,
     effects::EffectBehaviors,
     in_play::{CardId, Database},
@@ -406,7 +406,7 @@ impl Player {
             } else if let Some(card) = db.all_players[player].library.draw() {
                 card.move_to_hand(db);
             } else {
-                results.push_settled(ActionResult::PlayerLoses(player));
+                results.push_settled(ActionResult::from(PlayerLoses { player }));
                 return results;
             }
         }

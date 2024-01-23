@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{update_stack_entries::UpdateStackEntries, ActionResult},
     in_play::Database,
     pending_results::{Options, PendingResult, PendingResults},
     stack::StackEntry,
@@ -72,7 +72,7 @@ impl PendingResult for OrganizingStack {
                     .map(|choice| self.entries[*choice].clone())
                     .collect_vec();
 
-                results.push_settled(ActionResult::UpdateStackEntries(entries));
+                results.push_settled(ActionResult::from(UpdateStackEntries { entries }));
                 true
             } else {
                 false

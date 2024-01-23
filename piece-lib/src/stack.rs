@@ -8,7 +8,10 @@ use uuid::Uuid;
 
 use crate::{
     abilities::Ability,
-    action_result::ActionResult,
+    action_result::{
+        add_ability_to_stack::AddAbilityToStack, add_to_battlefield::AddToBattlefield,
+        stack_to_graveyard::StackToGraveyard, ActionResult,
+    },
     battlefield::Battlefields,
     effects::EffectBehaviors,
     in_play::{CardId, CastFrom, Database},
@@ -670,17 +673,19 @@ impl Stack {
 
         if let Some(resolving_card) = resolving_card {
             if resolving_card.is_permanent(db) {
-                results.push_settled(ActionResult::AddToBattlefield(
-                    resolving_card,
-                    targets.next().and_then(|targets| {
+                results.push_settled(ActionResult::from(AddToBattlefield {
+                    card: resolving_card,
+                    aura_target: targets.next().and_then(|targets| {
                         targets.into_iter().find_map(|target| match target {
                             ActiveTarget::Battlefield { id } => Some(id),
                             _ => None,
                         })
                     }),
-                ));
+                }));
             } else {
-                results.push_settled(ActionResult::StackToGraveyard(resolving_card));
+                results.push_settled(ActionResult::from(StackToGraveyard {
+                    card: resolving_card,
+                }));
             }
         }
 
@@ -714,12 +719,12 @@ impl Stack {
             }
             results.add_ability_to_stack(source, ability);
         } else {
-            results.push_settled(ActionResult::AddAbilityToStack {
+            results.push_settled(ActionResult::from(AddAbilityToStack {
                 ability,
                 source,
                 targets: vec![],
                 x_is: None,
-            });
+            }));
         }
 
         results

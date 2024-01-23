@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{untap::Untap, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -109,6 +109,6 @@ impl EffectBehaviors for UntapTarget {
             unreachable!()
         };
 
-        results.push_settled(ActionResult::Untap(id));
+        results.push_settled(ActionResult::from(Untap { target: id }));
     }
 }

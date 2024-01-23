@@ -4,7 +4,7 @@ use itertools::Itertools;
 use tracing::Level;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{tap_permanent::TapPermanent, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::choose_targets::ChooseTargets,
@@ -101,7 +101,9 @@ impl EffectBehaviors for TapTarget {
                 return;
             }
 
-            results.push_settled(ActionResult::TapPermanent(target.id(db).unwrap()))
+            results.push_settled(ActionResult::from(TapPermanent {
+                card: target.id(db).unwrap(),
+            }))
         } else {
             warn!("Skipping targeting")
         }

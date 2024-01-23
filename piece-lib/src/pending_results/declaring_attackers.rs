@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{declare_attackers::DeclareAttackers, ActionResult},
     in_play::{CardId, Database},
     pending_results::{Options, PendingResult, PendingResults},
     player::Owner,
@@ -86,14 +86,14 @@ impl PendingResult for DeclaringAttackers {
                 false
             }
         } else if self.choices.len() == self.targets.len() {
-            results.push_settled(ActionResult::DeclareAttackers {
+            results.push_settled(ActionResult::from(DeclareAttackers {
                 attackers: self
                     .choices
                     .iter()
                     .map(|choice| self.candidates[*choice])
                     .collect_vec(),
                 targets: self.targets.clone(),
-            });
+            }));
             true
         } else {
             false

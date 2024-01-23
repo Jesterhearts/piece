@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::Cascade};
+use crate::{
+    action_result::{self, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::Cascade,
+};
 
 impl EffectBehaviors for Cascade {
     fn needs_targets(
@@ -24,11 +28,11 @@ impl EffectBehaviors for Cascade {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Cascade {
+        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
             source,
             cascading: source.faceup_face(db).cost.cmc(),
             player: controller,
-        });
+        }));
     }
 
     fn push_behavior_from_top_of_library(
@@ -38,11 +42,11 @@ impl EffectBehaviors for Cascade {
         _target: crate::in_play::CardId,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Cascade {
+        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
             source,
             cascading: source.faceup_face(db).cost.cmc(),
             player: db[source].controller,
-        })
+        }))
     }
 
     fn push_behavior_with_targets(
@@ -53,10 +57,10 @@ impl EffectBehaviors for Cascade {
         controller: crate::player::Controller,
         results: &mut crate::pending_results::PendingResults,
     ) {
-        results.push_settled(ActionResult::Cascade {
+        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
             source,
             cascading: source.faceup_face(db).cost.cmc(),
             player: controller,
-        })
+        }))
     }
 }

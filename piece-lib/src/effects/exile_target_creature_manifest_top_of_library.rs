@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{
+        exile_target::ExileTarget, manifest_top_of_library::ManifestTopOfLibrary, ActionResult,
+    },
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -102,15 +104,15 @@ impl EffectBehaviors for ExileTargetCreatureManifestTopOfLibrary {
 
         for target in targets {
             if valid.contains(&target) {
-                results.push_settled(ActionResult::ExileTarget {
+                results.push_settled(ActionResult::from(ExileTarget {
                     source,
                     target,
                     duration: Duration::PERMANENTLY.into(),
                     reason: None,
-                });
-                results.push_settled(ActionResult::ManifestTopOfLibrary(
-                    db[target.id(db).unwrap()].controller,
-                ));
+                }));
+                results.push_settled(ActionResult::from(ManifestTopOfLibrary {
+                    player: db[target.id(db).unwrap()].controller,
+                }));
             }
         }
     }

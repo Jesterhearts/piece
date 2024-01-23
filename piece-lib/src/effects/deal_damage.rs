@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{damage_target::DamageTarget, ActionResult},
     effects::EffectBehaviors,
     log::LogId,
     pending_results::{choose_targets::ChooseTargets, TargetSource},
@@ -116,10 +116,10 @@ impl EffectBehaviors for DealDamage {
 
         for target in targets {
             if valid.contains(&target) {
-                results.push_settled(ActionResult::DamageTarget {
+                results.push_settled(ActionResult::from(DamageTarget {
                     quantity: self.quantity,
                     target,
-                });
+                }));
             }
         }
     }

@@ -1,4 +1,8 @@
-use crate::{action_result::ActionResult, effects::EffectBehaviors, protogen::effects::ApplyThen};
+use crate::{
+    action_result::{then_apply::ThenApply, ActionResult},
+    effects::EffectBehaviors,
+    protogen::effects::ApplyThen,
+};
 
 impl EffectBehaviors for ApplyThen {
     fn needs_targets(
@@ -40,11 +44,11 @@ impl EffectBehaviors for ApplyThen {
                 .push_pending_behavior(db, source, controller, results);
         }
 
-        results.push_settled(ActionResult::ThenApply {
+        results.push_settled(ActionResult::from(ThenApply {
             apply: self.then.clone(),
             source,
             controller,
-        })
+        }))
     }
 
     fn push_behavior_with_targets(
@@ -65,10 +69,10 @@ impl EffectBehaviors for ApplyThen {
             );
         }
 
-        results.push_settled(ActionResult::ThenApply {
+        results.push_settled(ActionResult::from(ThenApply {
             apply: self.then.clone(),
             source,
             controller,
-        });
+        }));
     }
 }

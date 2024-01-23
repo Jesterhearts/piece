@@ -4,7 +4,7 @@ use itertools::Itertools;
 use protobuf::Enum;
 
 use crate::{
-    action_result::ActionResult,
+    action_result::{modify_creatures::ModifyCreatures, ActionResult},
     effects::EffectBehaviors,
     in_play::ModifierId,
     log::LogId,
@@ -171,10 +171,10 @@ impl EffectBehaviors for Equip {
                 },
             );
 
-            results.push_settled(ActionResult::ModifyCreatures {
+            results.push_settled(ActionResult::from(ModifyCreatures {
                 targets: vec![target],
                 modifier,
-            });
+            }));
         }
     }
 }
