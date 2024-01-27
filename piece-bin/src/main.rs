@@ -13,7 +13,7 @@ use itertools::Itertools;
 use piece_lib::{
     battlefield::Battlefields,
     card::replace_expanded_symbols,
-    effects::{EffectBundle, Options, SelectionResult},
+    effects::{EffectBundle, Options, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     library::DeckDefinition,
     player::{AllPlayers, Owner, Player},
@@ -615,7 +615,7 @@ impl eframe::App for App {
                     items: self.database.stack.entries(),
                     db: &self.database,
                     left_clicked: &mut self.left_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -663,7 +663,7 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut None,
                     right_clicked: &mut self.right_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -688,7 +688,7 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut self.left_clicked,
                     right_clicked: &mut self.right_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -917,7 +917,7 @@ impl eframe::App for App {
                     .open(&mut open)
                     .show(ctx, |ui| {
                         ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                            let rest = match resolving.options(&mut self.database) {
+                            let rest = match resolving.options(&self.database) {
                                 Options::MandatoryList(list) => list,
                                 Options::OptionalList(list) => {
                                     if ui.button("None").clicked() {
@@ -947,7 +947,8 @@ impl eframe::App for App {
                     });
 
                 if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
-                    let can_cancel = matches!(resolving.options(db), Options::OptionalList(_));
+                    let can_cancel =
+                        matches!(resolving.options(&self.database), Options::OptionalList(_));
                     debug!("Can cancel {:?} = {}", resolving, can_cancel);
                     if can_cancel {
                         self.to_resolve = None;
@@ -1163,7 +1164,7 @@ fn maybe_organize_stack(
         let entries = db.stack.entries_unsettled();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.set_organize_stack(db, entries);
+            pending.push_back(EffectBundle::organize_stack(db));
             *to_resolve = Some(pending);
             *organizing_stack = true;
         } else {

@@ -4,16 +4,16 @@ mod attack_selected;
 mod ban_attacking_this_turn;
 mod cascade;
 mod cast_selected;
+mod clear_selected;
 mod clone_selected;
 mod create_token;
 mod create_token_clone_of_selected;
 mod damage_selected;
 mod declare_attacking;
 mod destroy_selected;
+mod discard;
 mod discover;
 mod draw_cards;
-#[allow(clippy::module_inception)]
-mod effects;
 mod equip;
 mod explore;
 mod for_each_mana_of_source;
@@ -32,9 +32,12 @@ mod move_to_top_of_library;
 mod multiply_tokens;
 mod pay_costs;
 mod player_loses;
+mod pop_selected;
+mod push_selected;
 mod remove_counters;
 mod reorder_selected;
 mod reveal;
+mod sacrifice;
 mod scry;
 mod select_all;
 mod select_attackers;
@@ -52,7 +55,7 @@ mod tap;
 mod transform;
 mod untap;
 
-use std::collections::VecDeque;
+use std::{collections::VecDeque, fmt::Debug, vec};
 
 use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
@@ -92,10 +95,17 @@ impl PartialEq<triggers::Location> for Location {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
 pub enum SelectionResult {
     TryAgain,
     Complete,
     PendingChoice,
+}
+
+#[derive(Debug)]
+pub enum ApplyResult {
+    PushFront(EffectBundle),
+    PushBack(EffectBundle),
 }
 
 pub enum Options {
@@ -130,15 +140,16 @@ impl Options {
         BanAttackingThisTurn(BanAttackingThisTurn),
         Cascade(Cascade),
         CastSelected(CastSelected),
+        ClearSelected(ClearSelected),
         CloneSelected(CloneSelected),
         CreateToken(CreateToken),
         CreateTokenCloneOfSelected(CreateTokenCloneOfSelected),
         DamageSelected(DamageSelected),
         DeclareAttacking(DeclareAttacking),
         DestroySelected(DestroySelected),
+        Discard(Discard),
         Discover(Discover),
         DrawCards(DrawCards),
-        Effects(Effects),
         Equip(Equip),
         Explore(Explore),
         ForEachManaOfSource(ForEachManaOfSource),
@@ -157,9 +168,12 @@ impl Options {
         MultiplyTokens(MultiplyTokens),
         PayCosts(PayCosts),
         PlayerLoses(PlayerLoses),
+        PopSelected(PopSelected),
+        PushSelected(PushSelected),
         RemoveCounters(RemoveCounters),
         ReorderSelected(ReorderSelected),
         Reveal(Reveal),
+        Sacrifice(Sacrifice),
         Scry(Scry),
         SelectAll(SelectAll),
         SelectAttackers(SelectAttackers),
@@ -224,6 +238,20 @@ pub(crate) trait EffectBehaviors {
         String::default()
     }
 
+    fn wants_input(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> bool {
+        let _ = db;
+        let _ = source;
+        let _ = already_selected;
+        let _ = modes;
+        false
+    }
+
     /// A textual list of choices represented by this effect. E.g. For SelectTargets, this will be the text list of targets which can be selected.
     fn options(
         &self,
@@ -272,15 +300,15 @@ pub(crate) trait EffectBehaviors {
     }
 
     /// Apply the effect to the database.
+    #[must_use]
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         modes: &[usize],
         skip_replacement: bool,
-    );
+    ) -> Vec<ApplyResult>;
 
     /// Apply the replacement effects to the bundle.
     fn apply_replacement(&self, effect: Effect) -> Vec<Effect> {
@@ -293,7 +321,7 @@ pub(crate) struct SelectedStack {
     #[deref]
     #[deref_mut]
     pub(crate) current: Vec<Selected>,
-    pub(crate) stack: Vec<Vec<Selected>>,
+    pub(crate) stack: VecDeque<Vec<Selected>>,
     pub(crate) crafting: bool,
 }
 
@@ -306,14 +334,23 @@ impl SelectedStack {
     }
 
     pub(crate) fn save(&mut self) {
-        self.stack.push(self.current.clone())
+        self.stack.push_back(self.current.clone())
     }
 
     #[must_use]
     pub(crate) fn restore(&mut self) -> Vec<Selected> {
-        let mut popped = self.stack.pop().unwrap_or_default();
+        let mut popped = self.stack.pop_back().unwrap_or_default();
         std::mem::swap(&mut self.current, &mut popped);
         popped
+    }
+
+    fn push_front(&mut self, mut other: Self) {
+        if self.current.is_empty() {
+            self.current = other.stack.pop_back().unwrap_or_default();
+        }
+        for entry in other.stack.into_iter().rev() {
+            self.stack.push_front(entry)
+        }
     }
 }
 
@@ -351,11 +388,26 @@ impl EffectBundle {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[must_use]
 pub struct PendingEffects {
     bundles: VecDeque<EffectBundle>,
     resolving: usize,
+}
+
+impl Debug for PendingEffects {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PendingEffects")
+            .field("bundles", &self.bundles)
+            .field(
+                "resolving",
+                &self
+                    .bundles
+                    .front()
+                    .map(|front| &front.effects[self.resolving]),
+            )
+            .finish()
+    }
 }
 
 impl PendingEffects {
@@ -365,6 +417,23 @@ impl PendingEffects {
 
     pub(crate) fn push_front(&mut self, effect: EffectBundle) {
         self.bundles.push_front(effect);
+        self.resolving = 0;
+    }
+
+    pub fn apply_result(&mut self, result: ApplyResult) {
+        match result {
+            ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+            ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+        }
+    }
+
+    pub fn apply_results(&mut self, other: impl IntoIterator<Item = ApplyResult>) {
+        for result in other.into_iter() {
+            match result {
+                ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+                ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+            }
+        }
     }
 
     pub fn extend(&mut self, other: PendingEffects) {
@@ -412,35 +481,84 @@ impl PendingEffects {
     }
 
     pub fn resolve(&mut self, db: &mut Database, option: Option<usize>) -> SelectionResult {
+        let mut applied = false;
+        if option.is_none() {
+            loop {
+                let Some(first) = self.bundles.front_mut() else {
+                    break;
+                };
+
+                let mut effect = first.effects[self.resolving].effect.clone().unwrap();
+                if effect.wants_input(db, first.source, &first.selected, &first.modes) {
+                    break;
+                }
+
+                applied = true;
+                let first_len = first.effects.len();
+                let results =
+                    effect.apply(db, first.source, &mut first.selected, &first.modes, false);
+
+                self.resolving += 1;
+                if self.resolving == first_len {
+                    self.resolving = 0;
+                    self.bundles.pop_front();
+                }
+
+                for result in results {
+                    match result {
+                        ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+                        ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+                    }
+                }
+            }
+
+            if applied {
+                return SelectionResult::TryAgain;
+            }
+        }
+
         if let Some(first) = self.bundles.front_mut() {
-            match first.effects[self.resolving]
-                .effect
-                .as_mut()
-                .unwrap()
-                .select(
-                    db,
-                    first.source,
-                    option,
-                    &mut first.selected,
-                    &mut first.modes,
-                ) {
+            let effect = first.effects[self.resolving].effect.as_mut().unwrap();
+            match effect.select(
+                db,
+                first.source,
+                option,
+                &mut first.selected,
+                &mut first.modes,
+            ) {
                 SelectionResult::Complete => {
+                    let results =
+                        effect.apply(db, first.source, &mut first.selected, &first.modes, false);
+
                     self.resolving += 1;
                     if self.resolving == first.effects.len() {
                         self.resolving = 0;
-                        let mut first = self.bundles.pop_front().unwrap();
-                        for mut effect in first.effects {
-                            effect.effect.as_mut().unwrap().apply(
-                                db,
-                                self,
-                                first.source,
-                                &mut first.selected,
-                                &first.modes,
-                                false,
-                            );
+                        let first = self.bundles.pop_front().unwrap();
+
+                        for result in results {
+                            match result {
+                                ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+                                ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+                            }
+                        }
+
+                        if let Some(next) = self.bundles.front_mut() {
+                            next.selected.push_front(first.selected);
+                        }
+                    } else {
+                        for result in results {
+                            match result {
+                                ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+                                ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+                            }
                         }
                     }
-                    SelectionResult::TryAgain
+
+                    if self.bundles.is_empty() {
+                        SelectionResult::Complete
+                    } else {
+                        SelectionResult::TryAgain
+                    }
                 }
                 r => r,
             }
@@ -534,14 +652,14 @@ impl Count {
 
 fn handle_replacements<T: Into<effect::Effect>>(
     db: &Database,
-    pending: &mut PendingEffects,
+    mut selected: SelectedStack,
     source: Option<CardId>,
     replacing: Replacing,
     effect: T,
     passes_restrictions: impl Fn(CardId, &[Restriction]) -> bool,
-) {
+) -> Vec<ApplyResult> {
     let replacements = db.replacement_abilities_watching(replacing);
-    let selected = replacements
+    let replacements = replacements
         .into_iter()
         .filter(|(card, replacing)| passes_restrictions(*card, &replacing.restrictions))
         .map(|(_, replacement)| TargetType::ReplacementAbility(replacement))
@@ -553,8 +671,12 @@ fn handle_replacements<T: Into<effect::Effect>>(
         })
         .collect_vec();
 
-    pending.push_back(EffectBundle {
-        selected: SelectedStack::new(selected),
+    selected.save();
+    selected.clear();
+    selected.extend(replacements);
+
+    vec![ApplyResult::PushFront(EffectBundle {
+        selected,
         effects: vec![Effect {
             effect: Some(
                 ReorderSelected {
@@ -570,5 +692,5 @@ fn handle_replacements<T: Into<effect::Effect>>(
         }],
         source,
         ..Default::default()
-    });
+    })]
 }

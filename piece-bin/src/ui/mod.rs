@@ -10,7 +10,7 @@ use piece_lib::{
     in_play::{CardId, Database},
     player::Owner,
     protogen::{keywords::Keyword, targets::Location},
-    stack::{Selected, StackEntry, StackId},
+    stack::{Selected, StackEntry, StackId, TargetType},
     turns::Turn,
 };
 use protobuf::Enum;
@@ -235,12 +235,13 @@ impl Widget for Stack<'_, '_, '_> {
                             ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
                                 for (idx, (stack_id, entry)) in self.items.iter().rev().enumerate()
                                 {
-                                    let highlight =
-                                        if let Some(Selected::Stack { id }) = self.target {
-                                            id == *stack_id
-                                        } else {
-                                            false
-                                        };
+                                    let highlight = if let Some(TargetType::Stack(id)) =
+                                        self.target.as_ref().map(|target| &target.target_type)
+                                    {
+                                        id == stack_id
+                                    } else {
+                                        false
+                                    };
 
                                     let text = RichText::new(entry.display(self.db));
                                     let text = if highlight {
@@ -443,9 +444,10 @@ impl Widget for Battlefield<'_, '_> {
                         const MIN_HEIGHT: f32 = 300.0;
 
                         for (idx, card) in self.cards {
-                            let highlight = if let Some(Selected::Battlefield { id }) = self.target
+                            let highlight = if let Some(TargetType::Card(id)) =
+                                self.target.as_ref().map(|target| &target.target_type)
                             {
-                                id == card
+                                *id == card
                             } else {
                                 false
                             };

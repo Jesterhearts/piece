@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::{collections::HashMap, marker::PhantomData};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 
 use anyhow::{anyhow, Context};
 
@@ -12,6 +12,7 @@ use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use protobuf::{Enum, MessageDyn, MessageFull};
+use rust_embed::RustEmbed;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
@@ -49,71 +50,39 @@ pub mod stack;
 pub mod turns;
 pub mod types;
 
-#[macro_export]
-macro_rules! initialize_assets {
-    ($relative_path:literal, $absolute_path:literal) => {
-        CardDefs {
-            relative_path: $relative_path,
-            get_bytes: {
-                ::cfg_if::cfg_if! {
-                    if #[cfg(debug_assertions)] {
-                        fn get() -> std::borrow::Cow<'static,[u8]> {
-                            std::borrow::Cow::from(std::fs::read($absolute_path).unwrap())
-                        }
-                        get
-                    } else {
-                        fn get() -> std::borrow::Cow<'static,[u8]> {
-                            std::borrow::Cow::from(&include_bytes!($absolute_path)[..])
-                        }
-                        get
-                    }
-                }
-            },
-        }
-    };
-}
-
-#[iftree::include_file_tree(
-    "
-paths = 'cards/**'
-template.identifiers = false
-template.initializer = 'initialize_assets'
-"
-)]
-pub struct CardDefs {
-    pub relative_path: &'static str,
-    pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
-}
+#[derive(RustEmbed)]
+#[folder = "cards/"]
+pub struct CardDefs;
 
 pub type Cards = IndexMap<String, Card>;
 
-pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static str)>> {
+pub fn load_protos() -> anyhow::Result<Vec<(Card, Cow<'static, str>)>> {
     let mut results = vec![];
 
-    for card_file in ASSETS.iter() {
-        let contents = (card_file.get_bytes)();
+    for card_file in CardDefs::iter() {
+        let contents = CardDefs::get(&card_file).unwrap();
 
-        let card: protogen::card::Card = serde_yaml::from_slice(&contents)
+        let card: protogen::card::Card = serde_yaml::from_slice(&contents.data)
             .map_err(|e| {
                 let location = e.location().unwrap();
-                Report::build(ReportKind::Error, card_file.relative_path, location.index())
+                Report::build(ReportKind::Error, &card_file, location.index())
                     .with_label(Label::new((
-                        card_file.relative_path,
+                        &card_file,
                         location.index()..location.index() + 1,
                     )))
                     .with_message(e.to_string())
                     .finish()
                     .eprint((
-                        card_file.relative_path,
-                        Source::from(std::str::from_utf8(&contents).expect("Invalid utf8")),
+                        &card_file,
+                        Source::from(std::str::from_utf8(&contents.data).expect("Invalid utf8")),
                     ))
                     .unwrap();
 
                 anyhow!(e.to_string())
             })
-            .with_context(|| format!("Parsing file: {}", card_file.relative_path))?;
+            .with_context(|| format!("Parsing file: {}", card_file))?;
 
-        results.push((card, card_file.relative_path));
+        results.push((card, card_file));
     }
 
     Ok(results)

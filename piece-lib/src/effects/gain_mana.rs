@@ -1,11 +1,26 @@
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{
+        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
     protogen::effects::{gain_mana::Gain, GainMana},
     stack::Selected,
 };
 
 impl EffectBehaviors for GainMana {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        match self.gain.as_ref().unwrap() {
+            Gain::Specific(_) => false,
+            Gain::Choice(_) => true,
+        }
+    }
+
     fn options(
         &self,
         _db: &Database,
@@ -49,12 +64,11 @@ impl EffectBehaviors for GainMana {
     fn apply(
         &mut self,
         db: &mut Database,
-        _pending: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         match self.gain.as_ref().unwrap() {
             Gain::Specific(gain) => {
                 let controller = db[source.unwrap()].controller;
@@ -79,5 +93,7 @@ impl EffectBehaviors for GainMana {
                 }
             }
         }
+
+        vec![]
     }
 }

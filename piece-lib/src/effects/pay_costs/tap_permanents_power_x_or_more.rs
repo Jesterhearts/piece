@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::{
-        EffectBehaviors, EffectBundle, Options, PendingEffects, SelectedStack, SelectionResult,
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
     in_play::{CardId, Database},
     log::LogId,
@@ -14,6 +14,16 @@ use crate::{
 };
 
 impl EffectBehaviors for TapPermanentsPowerXOrMore {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -78,13 +88,12 @@ impl EffectBehaviors for TapPermanentsPowerXOrMore {
     fn apply(
         &mut self,
         _db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
-        pending.push_front(EffectBundle {
+    ) -> Vec<ApplyResult> {
+        vec![ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(
                 self.selected
                     .iter()
@@ -102,7 +111,7 @@ impl EffectBehaviors for TapPermanentsPowerXOrMore {
             }],
             source,
             ..Default::default()
-        });
+        })]
     }
 }
 

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -19,14 +19,14 @@ impl EffectBehaviors for Explore {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let mut explored = vec![];
 
+        let mut results = vec![];
         let controller = db[source.unwrap()].controller;
         for target in selected
             .iter()
@@ -64,12 +64,12 @@ impl EffectBehaviors for Explore {
                         listener,
                         &trigger.trigger.restrictions,
                     ) {
-                        pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                        results.push(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
                 });
         }
 
-        pending.push_front(EffectBundle {
+        results.push(ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(explored),
             effects: vec![Effect {
                 effect: Some(
@@ -94,6 +94,8 @@ impl EffectBehaviors for Explore {
             }],
             source,
             ..Default::default()
-        });
+        }));
+
+        results
     }
 }

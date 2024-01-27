@@ -8,11 +8,11 @@ use crate::{
     protogen::effects::Effect,
     protogen::{
         card::Card,
-        cost::{additional_cost, AbilityCost, AdditionalCost, ManaCost},
+        cost::{AbilityCost, ManaCost},
         effects::{
             count::Fixed,
             create_token::{self, Token},
-            ActivatedAbility, Count, Explore, SelectTargets,
+            ActivatedAbility, Count, Explore, Sacrifice, SelectSelf, SelectTargets,
         },
         empty::Empty,
         targets::{restriction::OfType, Restriction},
@@ -76,13 +76,19 @@ impl From<Token> for Card {
                     cost: protobuf::MessageField::some(AbilityCost {
                         mana_cost: vec![ManaCost::GENERIC.into()],
                         tap: true,
-                        additional_costs: vec![AdditionalCost {
-                            cost: Some(additional_cost::Cost::SacrificeSource(Default::default())),
-                            ..Default::default()
-                        }],
                         restrictions: vec![],
                         ..Default::default()
                     }),
+                    to_activate: vec![
+                        Effect {
+                            effect: Some(SelectSelf::default().into()),
+                            ..Default::default()
+                        },
+                        Effect {
+                            effect: Some(Sacrifice::default().into()),
+                            ..Default::default()
+                        },
+                    ],
                     effects: vec![
                         Effect {
                             effect: Some(

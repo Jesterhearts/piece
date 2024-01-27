@@ -1,6 +1,6 @@
 use crate::{
     battlefield::Battlefields,
-    effects::{handle_replacements, EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{handle_replacements, ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -18,28 +18,27 @@ impl EffectBehaviors for MoveToBattlefield {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         skip_replacement: bool,
-    ) {
-        db[source.unwrap()].replacements_active = true;
+    ) -> Vec<ApplyResult> {
         if skip_replacement {
-            let targets = selected.restore();
-            for (target, aura_target) in targets
+            let mut pending = vec![];
+            let adding_to_battlefield = selected.restore();
+            for (add_to_battlefield, aura_target) in adding_to_battlefield
                 .into_iter()
                 .zip(selected.iter().map(Some).chain(std::iter::repeat(None)))
             {
-                if !target.targeted
-                    || target.id(db).unwrap().passes_restrictions(
+                if !add_to_battlefield.targeted
+                    || add_to_battlefield.id(db).unwrap().passes_restrictions(
                         db,
                         LogId::current(db),
                         source.unwrap(),
-                        &target.restrictions,
+                        &add_to_battlefield.restrictions,
                     )
                 {
-                    let target_card = target.id(db).unwrap();
+                    let target_card = add_to_battlefield.id(db).unwrap();
                     if let Some(aura_target) = aura_target {
                         aura_target.id(db).unwrap().apply_aura(db, target_card);
                     }
@@ -47,8 +46,8 @@ impl EffectBehaviors for MoveToBattlefield {
                     for (listener, trigger) in
                         db.active_triggers_of_source(TriggerSource::ENTERS_THE_BATTLEFIELD)
                     {
-                        if (target.location.is_some()
-                            && target.location.unwrap()
+                        if (add_to_battlefield.location.is_some()
+                            && add_to_battlefield.location.unwrap()
                                 == trigger.trigger.from.enum_value().unwrap())
                             && target_card.passes_restrictions(
                                 db,
@@ -57,7 +56,7 @@ impl EffectBehaviors for MoveToBattlefield {
                                 &trigger.trigger.restrictions,
                             )
                         {
-                            pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                            pending.push(Stack::move_trigger_to_stack(db, listener, trigger));
                         }
                     }
 
@@ -85,10 +84,17 @@ impl EffectBehaviors for MoveToBattlefield {
                     target_card.move_to_battlefield(db);
                 }
             }
+
+            pending
         } else {
+            for target in selected.iter() {
+                let card = target.id(db).unwrap();
+                db[card].replacements_active = true;
+            }
+
             handle_replacements(
                 db,
-                pending,
+                selected.clone(),
                 source,
                 Replacing::ETB,
                 self.clone(),
@@ -102,7 +108,7 @@ impl EffectBehaviors for MoveToBattlefield {
                         )
                     })
                 },
-            );
+            )
         }
     }
 }

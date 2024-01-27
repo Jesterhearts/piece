@@ -8,5 +8,5 @@ import "triggers.proto";
 import "types.proto";
 
 message Enchant {
-  repeated effects.ModifyBattlefield modifiers = 1;
+  repeated effects.BattlefieldModifier modifiers = 1;
 }

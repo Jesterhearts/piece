@@ -4,16 +4,19 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
-    effects::{EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBundle, PendingEffects, SelectedStack},
     in_play::{CardId, Database},
     player::{Controller, Owner},
     protogen::{
         color::Color,
         effects::{
             dest::Destination,
+            pay_cost::PayMana,
             static_ability::{self},
-            Dest, Duration, Effect, MoveToBattlefield, MoveToGraveyard, SelectDestinations,
+            Dest, Duration, Effect, MoveToBattlefield, MoveToGraveyard, PayCost, PayCosts,
+            PushSelected, SelectDestinations,
         },
+        mana::{spend_reason::Activating, SpendReason},
         targets::Location,
         types::Type,
     },
@@ -166,7 +169,13 @@ impl Battlefields {
         let mut pending = PendingEffects::default();
 
         let mut legendary_cards: HashMap<String, Vec<CardId>> = HashMap::default();
-        let mut bundle = EffectBundle::default();
+        let mut bundle = EffectBundle {
+            effects: vec![Effect {
+                effect: Some(MoveToGraveyard::default().into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
 
         for card in db
             .battlefield
@@ -211,6 +220,8 @@ impl Battlefields {
                 });
             }
         }
+
+        pending.push_back(bundle);
 
         for legends in legendary_cards.values() {
             if legends.len() > 1 {
@@ -271,18 +282,56 @@ impl Battlefields {
         }
 
         let mut results = PendingEffects::default();
+        let mut bundle = EffectBundle {
+            source: Some(source),
+            ..Default::default()
+        };
         if let Some(to_activate) = ability.to_activate(db) {
-            let mut bundle = EffectBundle {
-                source: Some(source),
-                effects: to_activate.to_vec(),
-                ..Default::default()
-            };
+            bundle.effects.extend(to_activate.iter().cloned());
 
             if ability.is_craft(db) {
                 bundle.selected.crafting = true
             }
-            results.push_back(bundle);
+
+            bundle.effects.push(Effect {
+                effect: Some(PushSelected::default().into()),
+                ..Default::default()
+            });
         }
+
+        if let Some(cost) = ability.cost(db) {
+            bundle.effects.push(Effect {
+                effect: Some(
+                    PayCosts {
+                        pay_costs: vec![PayCost {
+                            cost: Some(
+                                PayMana {
+                                    paying: cost.mana_cost.iter().cloned().sorted().collect_vec(),
+                                    reason: protobuf::MessageField::some(SpendReason {
+                                        reason: Some(
+                                            Activating {
+                                                source: protobuf::MessageField::some(source.into()),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                        ),
+                                        ..Default::default()
+                                    }),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            });
+        }
+
+        results.push_back(bundle);
 
         let mut bundle = EffectBundle {
             source: Some(source),
@@ -315,39 +364,13 @@ impl Battlefields {
         result
     }
 
-    pub(crate) fn maybe_leave_battlefield(db: &mut Database, target: CardId) -> PendingEffects {
+    pub(crate) fn maybe_leave_battlefield(
+        db: &mut Database,
+        target: CardId,
+    ) -> Option<ApplyResult> {
         if !db.battlefield[db[target].controller].contains(&target) {
-            return PendingEffects::default();
+            return None;
         }
-
-        let mut results = PendingEffects::default();
-
-        let selected = db[target]
-            .exiling
-            .iter()
-            .copied()
-            .filter(|card| {
-                matches!(
-                    db[*card].exile_duration,
-                    Some(Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD)
-                )
-            })
-            .map(|card| Selected {
-                location: Some(Location::IN_EXILE),
-                target_type: TargetType::Card(card),
-                targeted: false,
-                restrictions: vec![],
-            })
-            .collect_vec();
-
-        results.push_back(EffectBundle {
-            selected: SelectedStack::new(selected),
-            effects: vec![Effect {
-                effect: Some(MoveToBattlefield::default().into()),
-                ..Default::default()
-            }],
-            ..Default::default()
-        });
 
         for modifier in db
             .modifiers
@@ -374,6 +397,31 @@ impl Battlefields {
 
         db[target].left_battlefield_turn = Some(db.turn.turn_count);
 
-        results
+        let selected = db[target]
+            .exiling
+            .iter()
+            .copied()
+            .filter(|card| {
+                matches!(
+                    db[*card].exile_duration,
+                    Some(Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD)
+                )
+            })
+            .map(|card| Selected {
+                location: Some(Location::IN_EXILE),
+                target_type: TargetType::Card(card),
+                targeted: false,
+                restrictions: vec![],
+            })
+            .collect_vec();
+
+        Some(ApplyResult::PushBack(EffectBundle {
+            selected: SelectedStack::new(selected),
+            effects: vec![Effect {
+                effect: Some(MoveToBattlefield::default().into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }))
     }
 }

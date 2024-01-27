@@ -1,6 +1,6 @@
 use crate::{
     battlefield::Battlefields,
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::MoveToHand,
@@ -10,12 +10,12 @@ impl EffectBehaviors for MoveToHand {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut pending = vec![];
         for target in selected.iter() {
             if !target.targeted
                 || target.id(db).unwrap().passes_restrictions(
@@ -30,5 +30,7 @@ impl EffectBehaviors for MoveToHand {
                 target.move_to_hand(db);
             }
         }
+
+        pending
     }
 }

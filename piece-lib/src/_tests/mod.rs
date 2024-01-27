@@ -1,6 +1,6 @@
-// mod abuelos_awakening;
-// mod abzan_banner;
-// mod abzan_runemark;
+mod abuelos_awakening;
+mod abzan_banner;
+mod abzan_runemark;
 // mod allosuarus_shepherd;
 // mod basic_lands;
 // mod bat_colony;

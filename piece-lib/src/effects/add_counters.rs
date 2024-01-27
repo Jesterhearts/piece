@@ -1,5 +1,5 @@
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::AddCounters,
 };
@@ -8,12 +8,11 @@ impl EffectBehaviors for AddCounters {
     fn apply(
         &mut self,
         db: &mut Database,
-        _pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         for target in selected.iter() {
             if let Some(id) = target.id(db) {
                 *db[id]
@@ -24,5 +23,7 @@ impl EffectBehaviors for AddCounters {
                 todo!("Handle counters on players");
             }
         }
+
+        vec![]
     }
 }

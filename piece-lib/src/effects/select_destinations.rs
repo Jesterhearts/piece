@@ -1,13 +1,25 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{
+        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
     protogen::effects::SelectDestinations,
     stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for SelectDestinations {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -68,12 +80,12 @@ impl EffectBehaviors for SelectDestinations {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         modes: &[usize],
         skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut pending = vec![];
         for dest in self.destinations.iter_mut() {
             for card in dest.cards.iter() {
                 let mut selected = SelectedStack::new(vec![Selected {
@@ -83,15 +95,16 @@ impl EffectBehaviors for SelectDestinations {
                     restrictions: vec![],
                 }]);
 
-                dest.destination.as_mut().unwrap().apply(
+                pending.extend(dest.destination.as_mut().unwrap().apply(
                     db,
-                    pending,
                     source,
                     &mut selected,
                     modes,
                     skip_replacement,
-                )
+                ));
             }
         }
+
+        pending
     }
 }

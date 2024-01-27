@@ -1,5 +1,5 @@
 use crate::{
-    effects::{handle_replacements, EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::{replacement_effect::Replacing, DrawCards, Effect, PlayerLoses},
@@ -9,19 +9,19 @@ impl EffectBehaviors for DrawCards {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut results = vec![];
         let target = selected.first().unwrap().player().unwrap();
         for _ in 0..self.count.count(db, source, selected) {
             if skip_replacement {
                 if let Some(card) = db.all_players[target].library.draw() {
                     card.move_to_hand(db);
                 } else {
-                    pending.push_back(EffectBundle {
+                    results.push(ApplyResult::PushBack(EffectBundle {
                         selected: selected.clone(),
                         effects: vec![Effect {
                             effect: Some(PlayerLoses::default().into()),
@@ -29,12 +29,12 @@ impl EffectBehaviors for DrawCards {
                         }],
                         source,
                         ..Default::default()
-                    })
+                    }));
                 }
             } else {
-                handle_replacements(
+                results.extend(handle_replacements(
                     db,
-                    pending,
+                    selected.clone(),
                     source,
                     Replacing::DRAW,
                     self.clone(),
@@ -46,8 +46,10 @@ impl EffectBehaviors for DrawCards {
                             restrictions,
                         )
                     },
-                );
+                ));
             }
         }
+
+        results
     }
 }

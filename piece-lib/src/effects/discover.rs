@@ -1,7 +1,7 @@
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    effects::{EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     library::Library,
     protogen::{
@@ -15,12 +15,11 @@ impl EffectBehaviors for Discover {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let discover_value = self.count.count(db, source, selected);
         let source = source.unwrap();
 
@@ -49,7 +48,7 @@ impl EffectBehaviors for Discover {
             });
         }
 
-        pending.push_back(EffectBundle {
+        let mut results = vec![ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(casting),
             effects: vec![Effect {
                 effect: Some(
@@ -63,10 +62,10 @@ impl EffectBehaviors for Discover {
             }],
             source: Some(source),
             ..Default::default()
-        });
+        })];
 
         exiled.shuffle(&mut thread_rng());
-        pending.push_back(EffectBundle {
+        results.push(ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(exiled),
             effects: vec![Effect {
                 effect: Some(MoveToBottomOfLibrary::default().into()),
@@ -74,6 +73,8 @@ impl EffectBehaviors for Discover {
             }],
             source: Some(source),
             ..Default::default()
-        })
+        }));
+
+        results
     }
 }

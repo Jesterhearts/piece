@@ -1,11 +1,24 @@
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::PayCost,
     stack::Selected,
 };
 
 impl EffectBehaviors for PayCost {
+    fn wants_input(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> bool {
+        self.cost
+            .as_ref()
+            .unwrap()
+            .wants_input(db, source, already_selected, modes)
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -29,6 +42,7 @@ impl EffectBehaviors for PayCost {
     ) -> SelectionResult {
         if !self.saved_selected {
             selected.save();
+            selected.clear();
             self.saved_selected = true;
         }
 
@@ -41,20 +55,22 @@ impl EffectBehaviors for PayCost {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         modes: &[usize],
         skip_replacement: bool,
-    ) {
-        self.cost
-            .as_mut()
-            .unwrap()
-            .apply(db, pending, source, selected, modes, skip_replacement);
+    ) -> Vec<ApplyResult> {
+        let results =
+            self.cost
+                .as_mut()
+                .unwrap()
+                .apply(db, source, selected, modes, skip_replacement);
 
         if self.saved_selected {
             let _ = selected.restore();
             self.saved_selected = false;
         }
+
+        results
     }
 }

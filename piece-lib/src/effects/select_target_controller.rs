@@ -1,5 +1,5 @@
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::SelectTargetController,
     stack::{Selected, TargetType},
@@ -9,12 +9,11 @@ impl EffectBehaviors for SelectTargetController {
     fn apply(
         &mut self,
         db: &mut Database,
-        _pending: &mut PendingEffects,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let target = selected.first().unwrap().id(db).unwrap();
         selected.clear();
         selected.push(Selected {
@@ -23,5 +22,7 @@ impl EffectBehaviors for SelectTargetController {
             targeted: false,
             restrictions: vec![],
         });
+
+        vec![]
     }
 }

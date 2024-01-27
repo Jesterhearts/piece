@@ -1,13 +1,25 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{
+        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
     protogen::effects::ReorderSelected,
     stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for ReorderSelected {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -51,12 +63,11 @@ impl EffectBehaviors for ReorderSelected {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let mut replaced = vec![(*self.associated_effect).clone()];
         let mut target_stack_index = 0;
         for selected in selected.drain(..) {
@@ -84,12 +95,18 @@ impl EffectBehaviors for ReorderSelected {
             }
         }
 
+        let _ = selected.restore();
+        let mut pending = vec![];
         for mut effect in replaced {
-            effect
-                .effect
-                .as_mut()
-                .unwrap()
-                .apply(db, pending, source, selected, modes, true);
+            pending.extend(
+                effect
+                    .effect
+                    .as_mut()
+                    .unwrap()
+                    .apply(db, source, selected, modes, true),
+            );
         }
+
+        pending
     }
 }

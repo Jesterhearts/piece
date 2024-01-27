@@ -1,7 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{
+        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
     log::{Log, LogId},
     protogen::effects::SelectForEachPlayer,
@@ -9,6 +11,16 @@ use crate::{
 };
 
 impl EffectBehaviors for SelectForEachPlayer {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -94,14 +106,15 @@ impl EffectBehaviors for SelectForEachPlayer {
     fn apply(
         &mut self,
         db: &mut Database,
-        _pending: &mut PendingEffects,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         for target in selected.iter() {
             Log::card_chosen(db, target.id(db).unwrap());
         }
+
+        vec![]
     }
 }

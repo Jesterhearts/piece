@@ -4,7 +4,7 @@ use protobuf::Enum;
 
 use crate::{
     effects::{
-        EffectBehaviors, EffectBundle, Options, PendingEffects, SelectedStack, SelectionResult,
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
     in_play::{CardId, Database},
     protogen::{
@@ -16,6 +16,16 @@ use crate::{
 };
 
 impl EffectBehaviors for PayMana {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        !self.paying.is_empty()
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -89,7 +99,7 @@ impl EffectBehaviors for PayMana {
                 .flat_map(|m| m.source_to_count.values())
                 .sum::<u32>()
                 % 2
-                == 0
+                != 0
             {
                 return SelectionResult::PendingChoice;
             }
@@ -183,10 +193,7 @@ impl EffectBehaviors for PayMana {
                     .entry(source.value())
                     .or_default() += 1;
 
-                return if matches!(
-                    self.first_unpaid_x_always_unpaid(),
-                    Some(ManaCost::X | ManaCost::TWO_X)
-                ) {
+                return if self.first_unpaid_x_always_unpaid().is_some() {
                     SelectionResult::PendingChoice
                 } else {
                     SelectionResult::Complete
@@ -249,17 +256,16 @@ impl EffectBehaviors for PayMana {
     fn apply(
         &mut self,
         db: &mut Database,
-        effects: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         db[source.unwrap()].x_is = self.x_paid() as usize;
 
         let (mana_paid, mana_sources) = self.paying();
 
-        effects.push_back(EffectBundle {
+        vec![ApplyResult::PushBack(EffectBundle {
             effects: vec![Effect {
                 effect: Some(
                     SpendMana {
@@ -274,7 +280,7 @@ impl EffectBehaviors for PayMana {
             }],
             source,
             ..Default::default()
-        });
+        })]
     }
 }
 

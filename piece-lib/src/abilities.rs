@@ -113,6 +113,14 @@ pub enum Ability {
 }
 
 impl Ability {
+    pub(crate) fn cost<'db>(&self, db: &'db Database) -> Option<&'db AbilityCost> {
+        match self {
+            Ability::Activated(id) => Some(&db[*id].ability.cost),
+            Ability::Mana(id) => Some(&db[*id].ability.cost),
+            Ability::EtbOrTriggered(_) => None,
+        }
+    }
+
     pub(crate) fn to_activate<'db>(&self, db: &'db Database) -> Option<&'db [Effect]> {
         match self {
             Ability::Activated(id) => Some(&db[*id].ability.to_activate),

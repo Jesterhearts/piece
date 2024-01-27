@@ -60,6 +60,7 @@ fn main() {
                         default,
                         serialize_with="crate::serialize_oracle_text",
                         deserialize_with="crate::deserialize_oracle_text",
+                        skip_serializing_if="String::is_empty"
                     )]"#,
                 )
             } else if field.name() == "counter" && field.proto().type_() == Type::TYPE_ENUM {

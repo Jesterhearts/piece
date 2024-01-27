@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     player::Controller,
     protogen::{
@@ -13,6 +13,16 @@ use crate::{
 };
 
 impl EffectBehaviors for ExileCardsSharingType {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -76,16 +86,17 @@ impl EffectBehaviors for ExileCardsSharingType {
     fn apply(
         &mut self,
         db: &mut Database,
-        _pending: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         for card in self.selected.iter() {
             let card: CardId = card.clone().into();
             card.move_to_exile(db, source.unwrap(), None, Duration::PERMANENTLY)
         }
+
+        vec![]
     }
 }
 

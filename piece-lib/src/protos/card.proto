@@ -15,6 +15,7 @@ message Card {
   types.Typeline typeline = 2;
 
   cost.CastingCost cost = 3;
+  cost.CostReducer reducer = 4;
 
   bool cannot_be_countered = 5;
 

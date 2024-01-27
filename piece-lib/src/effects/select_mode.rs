@@ -2,7 +2,8 @@ use itertools::Itertools;
 
 use crate::{
     effects::{
-        EffectBehaviors, EffectBundle, Options, PendingEffects, SelectedStack, SelectionResult,
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack,
+        SelectionResult,
     },
     in_play::{CardId, Database},
     protogen::effects::SelectMode,
@@ -10,6 +11,16 @@ use crate::{
 };
 
 impl EffectBehaviors for SelectMode {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         _db: &Database,
@@ -50,19 +61,21 @@ impl EffectBehaviors for SelectMode {
     fn apply(
         &mut self,
         _db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut pending = vec![];
         for mode in modes {
-            pending.push_back(EffectBundle {
+            pending.push(ApplyResult::PushBack(EffectBundle {
                 selected: selected.clone(),
                 source,
                 effects: self.modes[*mode].effects.clone(),
                 ..Default::default()
-            });
+            }));
         }
+
+        pending
     }
 }

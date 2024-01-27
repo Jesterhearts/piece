@@ -1,5 +1,5 @@
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{effects::Tap, triggers::TriggerSource},
@@ -10,12 +10,12 @@ impl EffectBehaviors for Tap {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut pending = vec![];
         for target in selected.iter() {
             let target = target.id(db).unwrap();
             target.tap(db);
@@ -27,9 +27,11 @@ impl EffectBehaviors for Tap {
                     listener,
                     &trigger.trigger.restrictions,
                 ) {
-                    pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    pending.push(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
             }
         }
+
+        pending
     }
 }

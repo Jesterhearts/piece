@@ -36,9 +36,8 @@ fn aura_works() -> anyhow::Result<()> {
     let mut results = PendingEffects::default();
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    MoveToBattlefield::default().apply(
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -48,7 +47,7 @@ fn aura_works() -> anyhow::Result<()> {
         }]),
         &[],
         false,
-    );
+    ));
 
     let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
     let mut selected = SelectedStack::new(vec![Selected {
@@ -58,13 +57,24 @@ fn aura_works() -> anyhow::Result<()> {
         restrictions: aura.faceup_face(&db).restrictions.clone(),
     }]);
     selected.save();
+    selected.clear();
     selected.push(Selected {
         location: Some(Location::IN_STACK),
         target_type: TargetType::Card(aura),
         targeted: false,
         restrictions: vec![],
     });
-    MoveToBattlefield::default().apply(&mut db, &mut results, None, &mut selected, &[], false);
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut selected,
+        &[],
+        false,
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(6));
     assert_eq!(creature.toughness(&db), Some(4));
@@ -76,9 +86,8 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(card2.power(&db), Some(4));
     assert_eq!(card2.toughness(&db), Some(2));
 
-    MoveToGraveyard::default().apply(
+    results.apply_results(MoveToGraveyard::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -88,8 +97,11 @@ fn aura_works() -> anyhow::Result<()> {
         }]),
         &[],
         false,
-    );
-    assert!(results.is_empty());
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));
@@ -122,9 +134,8 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     let mut results = PendingEffects::default();
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    MoveToBattlefield::default().apply(
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -134,7 +145,9 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
         }]),
         &[],
         false,
-    );
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
     let mut selected = SelectedStack::new(vec![Selected {
@@ -144,24 +157,36 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
         restrictions: aura.faceup_face(&db).restrictions.clone(),
     }]);
     selected.save();
+    selected.clear();
     selected.push(Selected {
         location: Some(Location::IN_STACK),
         target_type: TargetType::Card(aura),
         targeted: false,
         restrictions: vec![],
     });
-    MoveToBattlefield::default().apply(&mut db, &mut results, None, &mut selected, &[], false);
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut selected,
+        &[],
+        false,
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(6));
     assert_eq!(creature.toughness(&db), Some(4));
     assert!(creature.vigilance(&db));
 
-    let results = Battlefields::check_sba(&mut db);
-    assert!(results.is_empty());
+    let mut results = Battlefields::check_sba(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
+
     let mut results = PendingEffects::default();
-    MoveToGraveyard::default().apply(
+    results.apply_results(MoveToGraveyard::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -171,14 +196,20 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
         }]),
         &[],
         false,
-    );
-    assert!(results.is_empty());
-    let mut results = Battlefields::check_sba(&mut db);
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
-    assert!(Battlefields::no_modifiers(&db));
+    let mut results = Battlefields::check_sba(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
+
     assert!(db.battlefield.is_empty());
+    assert!(Battlefields::no_modifiers(&db));
 
     Ok(())
 }
@@ -205,9 +236,8 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     let mut results = PendingEffects::default();
 
     let creature = CardId::upload(&mut db, &cards, player, "Recruiter of the Guard");
-    MoveToBattlefield::default().apply(
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -217,7 +247,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
         }]),
         &[],
         false,
-    );
+    ));
 
     let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
     let mut selected = SelectedStack::new(vec![Selected {
@@ -233,16 +263,21 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
         targeted: false,
         restrictions: vec![],
     });
-    MoveToBattlefield::default().apply(&mut db, &mut results, None, &mut selected, &[], false);
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut selected,
+        &[],
+        false,
+    ));
 
     assert_eq!(creature.power(&db), Some(3));
     assert_eq!(creature.toughness(&db), Some(3));
     assert!(!creature.vigilance(&db));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    MoveToBattlefield::default().apply(
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -252,16 +287,15 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
         }]),
         &[],
         false,
-    );
+    ));
 
     assert_eq!(card2.power(&db), Some(4));
     assert_eq!(card2.toughness(&db), Some(2));
     assert!(creature.vigilance(&db));
 
     let mut results = PendingEffects::default();
-    MoveToGraveyard::default().apply(
+    results.apply_results(MoveToGraveyard::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -271,7 +305,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
         }]),
         &[],
         false,
-    );
+    ));
     assert!(results.is_empty());
     assert!(!creature.vigilance(&db));
 

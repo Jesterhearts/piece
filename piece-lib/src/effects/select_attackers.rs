@@ -2,7 +2,8 @@ use itertools::Itertools;
 
 use crate::{
     effects::{
-        EffectBehaviors, EffectBundle, Options, PendingEffects, SelectedStack, SelectionResult,
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack,
+        SelectionResult,
     },
     in_play::{CardId, Database},
     protogen::{
@@ -13,6 +14,16 @@ use crate::{
 };
 
 impl EffectBehaviors for SelectAttackers {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -82,12 +93,11 @@ impl EffectBehaviors for SelectAttackers {
     fn apply(
         &mut self,
         _db: &mut Database,
-        pending: &mut PendingEffects,
         _source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let mut selected = SelectedStack::new(
             self.targets
                 .iter()
@@ -109,14 +119,14 @@ impl EffectBehaviors for SelectAttackers {
             restrictions: vec![],
         }));
 
-        pending.push_back(EffectBundle {
+        vec![ApplyResult::PushBack(EffectBundle {
             selected,
             effects: vec![Effect {
                 effect: Some(DeclareAttacking::default().into()),
                 ..Default::default()
             }],
             ..Default::default()
-        });
+        })]
     }
 }
 

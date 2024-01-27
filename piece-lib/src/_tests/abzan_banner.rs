@@ -45,6 +45,8 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     card.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay banner cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
@@ -53,6 +55,16 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     // End pay banner costs
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -92,9 +104,11 @@ fn add_mana() -> anyhow::Result<()> {
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::TryAgain);
 
     let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);

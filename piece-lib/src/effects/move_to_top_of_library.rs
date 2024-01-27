@@ -1,6 +1,6 @@
 use crate::{
     battlefield::Battlefields,
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     library::Library,
     log::LogId,
@@ -11,12 +11,12 @@ impl EffectBehaviors for MoveToTopOfLibrary {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut pending = vec![];
         for target in selected.iter() {
             if !target.targeted
                 || target.id(db).unwrap().passes_restrictions(
@@ -34,5 +34,7 @@ impl EffectBehaviors for MoveToTopOfLibrary {
                 }
             }
         }
+
+        pending
     }
 }

@@ -40,6 +40,8 @@ fn x_is_zero() -> anyhow::Result<()> {
     non_target.move_to_graveyard(&mut db);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose the target
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
@@ -53,9 +55,13 @@ fn x_is_zero() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -109,6 +115,8 @@ fn x_is_two() -> anyhow::Result<()> {
     non_target.move_to_graveyard(&mut db);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose the target
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
@@ -129,9 +137,13 @@ fn x_is_two() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     // Add card to stack & pay
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

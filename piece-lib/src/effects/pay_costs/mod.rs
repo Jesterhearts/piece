@@ -8,13 +8,23 @@ mod tap_permanent;
 mod tap_permanents_power_x_or_more;
 
 use crate::{
-    effects::{EffectBehaviors, Options, PendingEffects, SelectedStack, SelectionResult},
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::PayCosts,
     stack::Selected,
 };
 
 impl EffectBehaviors for PayCosts {
+    fn wants_input(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> bool {
+        self.pay_costs[self.paying as usize].wants_input(db, source, already_selected, modes)
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -49,14 +59,16 @@ impl EffectBehaviors for PayCosts {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         modes: &[usize],
         skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut results = vec![];
         for pay in self.pay_costs.iter_mut() {
-            pay.apply(db, pending, source, selected, modes, skip_replacement);
+            results.extend(pay.apply(db, source, selected, modes, skip_replacement));
         }
+
+        results
     }
 }

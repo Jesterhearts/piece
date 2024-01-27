@@ -112,7 +112,7 @@ impl Turn {
                         continue;
                     }
 
-                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    results.apply_result(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
 
                 results
@@ -150,7 +150,7 @@ impl Turn {
                         continue;
                     }
 
-                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    results.apply_result(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
 
                 results
@@ -174,7 +174,7 @@ impl Turn {
                         continue;
                     }
 
-                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    results.apply_result(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
                 results
             }
@@ -257,7 +257,7 @@ impl Turn {
                                     listener,
                                     &trigger.trigger.restrictions,
                                 ) {
-                                    results.extend(Stack::move_trigger_to_stack(
+                                    results.apply_result(Stack::move_trigger_to_stack(
                                         db, listener, trigger,
                                     ));
                                 }
@@ -300,7 +300,7 @@ impl Turn {
                                     listener,
                                     &trigger.trigger.restrictions,
                                 ) {
-                                    results.extend(Stack::move_trigger_to_stack(
+                                    results.apply_result(Stack::move_trigger_to_stack(
                                         db, listener, trigger,
                                     ));
                                 }
@@ -347,7 +347,7 @@ impl Turn {
                         continue;
                     }
 
-                    results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                    results.apply_result(Stack::move_trigger_to_stack(db, listener, trigger));
                 }
 
                 results
@@ -441,7 +441,7 @@ impl Turn {
             .remove(&db.turn.phase)
         {
             for (listener, trigger) in triggers {
-                results.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                results.apply_result(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }
 

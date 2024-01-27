@@ -1,5 +1,5 @@
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::{Effect, MultiplyTokens},
 };
@@ -8,12 +8,11 @@ impl EffectBehaviors for MultiplyTokens {
     fn apply(
         &mut self,
         _db: &mut Database,
-        _pending: &mut PendingEffects,
         _source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         unreachable!()
     }
 

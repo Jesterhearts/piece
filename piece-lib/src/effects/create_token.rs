@@ -1,5 +1,5 @@
 use crate::{
-    effects::{handle_replacements, EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{handle_replacements, ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::{replacement_effect::Replacing, CreateToken},
@@ -10,12 +10,11 @@ impl EffectBehaviors for CreateToken {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let owner = selected.first().unwrap().player().unwrap();
         if skip_replacement {
             let card = CardId::upload_token(db, owner, self.token.as_ref().cloned().unwrap());
@@ -27,10 +26,11 @@ impl EffectBehaviors for CreateToken {
                 targeted: false,
                 restrictions: vec![],
             });
+            vec![]
         } else {
             handle_replacements(
                 db,
-                pending,
+                selected.clone(),
                 source,
                 Replacing::TOKEN_CREATION,
                 self.clone(),

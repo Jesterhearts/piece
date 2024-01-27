@@ -1,6 +1,6 @@
 use crate::{
     battlefield::Battlefields,
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     log::LogId,
     protogen::{effects::MoveToExile, triggers::TriggerSource},
@@ -11,12 +11,13 @@ impl EffectBehaviors for MoveToExile {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
+        let mut pending = vec![];
+
         for target in selected.iter() {
             if !target.targeted
                 || target.id(db).unwrap().passes_restrictions(
@@ -41,7 +42,7 @@ impl EffectBehaviors for MoveToExile {
                                 &trigger.trigger.restrictions,
                             )
                         {
-                            pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                            pending.push(Stack::move_trigger_to_stack(db, listener, trigger));
                         }
                     }
                 }
@@ -59,5 +60,7 @@ impl EffectBehaviors for MoveToExile {
                 );
             }
         }
+
+        pending
     }
 }

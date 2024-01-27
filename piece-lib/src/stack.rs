@@ -1,4 +1,4 @@
-use std::{hash::Hash, vec};
+use std::hash::Hash;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -7,16 +7,20 @@ use uuid::Uuid;
 
 use crate::{
     abilities::Ability,
-    effects::{EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
     in_play::{CardId, CastFrom, Database},
     log::{Log, LogId},
     player::Owner,
     protogen::{
         effects::{
-            Effect, MoveToBattlefield, MoveToGraveyard, MoveToStack, ReplacementEffect,
-            TriggeredAbility,
+            pay_cost::PayMana, ClearSelected, Effect, MoveToBattlefield, MoveToGraveyard,
+            MoveToStack, PayCost, PayCosts, PushSelected, ReplacementEffect, TriggeredAbility,
         },
         keywords::Keyword,
+        mana::{
+            spend_reason::{Casting, Reason},
+            SpendReason,
+        },
         targets::{Location, Restriction},
         triggers::TriggerSource,
     },
@@ -55,7 +59,7 @@ pub enum TargetType {
 #[derive(Debug, Clone)]
 pub struct Selected {
     pub(crate) location: Option<Location>,
-    pub(crate) target_type: TargetType,
+    pub target_type: TargetType,
     pub(crate) targeted: bool,
 
     pub(crate) restrictions: Vec<Restriction>,
@@ -231,14 +235,17 @@ impl Stack {
         let mut pending = PendingEffects::default();
         let mut targets = SelectedStack::new(next.targets.clone());
         for effect in effects.into_iter() {
-            effect.effect.unwrap().apply(
-                db,
-                &mut pending,
-                Some(source),
-                &mut targets,
-                &next.mode,
-                false,
-            );
+            for result in
+                effect
+                    .effect
+                    .unwrap()
+                    .apply(db, Some(source), &mut targets, &next.mode, false)
+            {
+                match result {
+                    ApplyResult::PushFront(bundle) => pending.push_front(bundle),
+                    ApplyResult::PushBack(bundle) => pending.push_back(bundle),
+                }
+            }
         }
 
         if let Some(resolving_card) = resolving_card {
@@ -291,14 +298,14 @@ impl Stack {
         _db: &mut Database,
         listener: CardId,
         trigger: TriggeredAbility,
-    ) -> PendingEffects {
+    ) -> ApplyResult {
         let mut to_trigger = trigger.to_trigger;
         to_trigger.push(Effect {
             effect: Some(MoveToStack::default().into()),
             ..Default::default()
         });
 
-        EffectBundle {
+        ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(vec![Selected {
                 location: Some(Location::ON_BATTLEFIELD),
                 target_type: TargetType::Ability {
@@ -310,31 +317,20 @@ impl Stack {
             }]),
             effects: to_trigger,
             ..Default::default()
-        }
-        .into()
+        })
     }
 
     pub(crate) fn move_card_to_stack_from_hand(db: &mut Database, card: CardId) -> PendingEffects {
         db[card].cast_from = Some(CastFrom::Hand);
         card.apply_modifiers_layered(db);
 
-        let mut to_cast = card.faceup_face(db).to_cast.clone();
-        to_cast.push(Effect {
-            effect: Some(MoveToStack::default().into()),
-            ..Default::default()
-        });
-
-        EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
-                location: card.location(db),
-                target_type: TargetType::Card(card),
-                targeted: false,
-                restrictions: vec![],
-            }]),
-            effects: to_cast,
-            ..Default::default()
+        let mut pending = PendingEffects::default();
+        match Stack::prepare_card_for_stack(db, card, true) {
+            ApplyResult::PushFront(bundle) => pending.push_front(bundle),
+            ApplyResult::PushBack(bundle) => pending.push_back(bundle),
         }
-        .into()
+
+        pending
     }
 
     pub(crate) fn push_card(
@@ -342,7 +338,7 @@ impl Stack {
         source: CardId,
         targets: Vec<Selected>,
         chosen_modes: Vec<usize>,
-    ) -> PendingEffects {
+    ) -> Vec<ApplyResult> {
         db.stack.entries.insert(
             StackId::new(),
             StackEntry {
@@ -353,7 +349,7 @@ impl Stack {
             },
         );
 
-        let mut effects = PendingEffects::default();
+        let mut effects = vec![];
 
         for (listener, trigger) in db.active_triggers_of_source(TriggerSource::CAST) {
             if source.passes_restrictions(
@@ -362,7 +358,7 @@ impl Stack {
                 listener,
                 &trigger.trigger.restrictions,
             ) {
-                effects.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                effects.push(Stack::move_trigger_to_stack(db, listener, trigger));
             }
         }
 
@@ -377,7 +373,7 @@ impl Stack {
                             &trigger.trigger.restrictions,
                         )
                     {
-                        effects.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                        effects.push(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
                 }
             }
@@ -391,7 +387,7 @@ impl Stack {
         source: CardId,
         ability: Ability,
         targets: Vec<Selected>,
-    ) -> PendingEffects {
+    ) -> Vec<ApplyResult> {
         db.stack.entries.insert(
             StackId::new(),
             StackEntry {
@@ -402,7 +398,7 @@ impl Stack {
             },
         );
 
-        let mut pending = PendingEffects::default();
+        let mut pending = vec![];
         for target in targets.into_iter() {
             if let Some(Location::ON_BATTLEFIELD) = target.location {
                 for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TARGETED) {
@@ -414,7 +410,7 @@ impl Stack {
                             &trigger.trigger.restrictions,
                         )
                     {
-                        pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
+                        pending.push(Stack::move_trigger_to_stack(db, listener, trigger));
                     }
                 }
             }
@@ -422,14 +418,85 @@ impl Stack {
 
         pending
     }
+
+    pub(crate) fn prepare_card_for_stack(
+        db: &mut Database,
+        card: CardId,
+        pay_costs: bool,
+    ) -> ApplyResult {
+        let mut to_cast = vec![
+            Effect {
+                effect: Some(PushSelected::default().into()),
+                ..Default::default()
+            },
+            Effect {
+                effect: Some(ClearSelected::default().into()),
+                ..Default::default()
+            },
+        ];
+        to_cast.extend(card.faceup_face(db).to_cast.iter().cloned());
+        if pay_costs {
+            to_cast.push(Effect {
+                effect: Some(
+                    PayCosts {
+                        pay_costs: vec![PayCost {
+                            cost: Some(
+                                PayMana {
+                                    paying: db[card]
+                                        .modified_cost
+                                        .mana_cost
+                                        .iter()
+                                        .cloned()
+                                        .sorted()
+                                        .collect_vec(),
+                                    reducer: card.faceup_face(db).reducer.clone(),
+                                    reason: protobuf::MessageField::some(SpendReason {
+                                        reason: Some(Reason::Casting(Casting {
+                                            card: protobuf::MessageField::some(card.into()),
+                                            ..Default::default()
+                                        })),
+                                        ..Default::default()
+                                    }),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            });
+        }
+
+        to_cast.push(Effect {
+            effect: Some(MoveToStack::default().into()),
+            ..Default::default()
+        });
+
+        ApplyResult::PushBack(EffectBundle {
+            selected: SelectedStack::new(vec![Selected {
+                location: Some(Location::IN_HAND),
+                target_type: TargetType::Card(card),
+                targeted: false,
+                restrictions: vec![],
+            }]),
+            effects: to_cast,
+            source: Some(card),
+            ..Default::default()
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
+    use pretty_assertions::assert_eq;
 
     use crate::{
-        effects::SelectionResult,
+        effects::{PendingEffects, SelectionResult},
         in_play::{CardId, CastFrom, Database},
         load_cards,
         player::AllPlayers,
@@ -444,12 +511,20 @@ mod tests {
         let mut db = Database::new(all_players);
         let card1 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
 
-        let mut results = card1.move_to_stack(&mut db, Default::default(), CastFrom::Hand, vec![]);
+        let mut results = PendingEffects::default();
+        results.apply_results(card1.move_to_stack(
+            &mut db,
+            Default::default(),
+            CastFrom::Hand,
+            vec![],
+        ));
         let result = results.resolve(&mut db, None);
         assert_eq!(result, SelectionResult::Complete);
 
         let mut results = Stack::resolve_1(&mut db);
 
+        let result = results.resolve(&mut db, None);
+        assert_eq!(result, SelectionResult::TryAgain);
         let result = results.resolve(&mut db, None);
         assert_eq!(result, SelectionResult::Complete);
 

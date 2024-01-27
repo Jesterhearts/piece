@@ -1,7 +1,7 @@
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    effects::{EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     library::Library,
     protogen::{
@@ -15,12 +15,11 @@ impl EffectBehaviors for Cascade {
     fn apply(
         &mut self,
         db: &mut Database,
-        pending: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let source = source.unwrap();
         let mana_value = db[source].modified_cost.cmc() + source.get_x(db);
 
@@ -49,7 +48,7 @@ impl EffectBehaviors for Cascade {
             });
         }
 
-        pending.push_back(EffectBundle {
+        let mut results = vec![ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(casting),
             effects: vec![Effect {
                 effect: Some(CastSelected::default().into()),
@@ -57,10 +56,10 @@ impl EffectBehaviors for Cascade {
             }],
             source: Some(source),
             ..Default::default()
-        });
+        })];
 
         exiled.shuffle(&mut thread_rng());
-        pending.push_back(EffectBundle {
+        results.push(ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(exiled),
             effects: vec![Effect {
                 effect: Some(MoveToBottomOfLibrary::default().into()),
@@ -68,6 +67,7 @@ impl EffectBehaviors for Cascade {
             }],
             source: Some(source),
             ..Default::default()
-        })
+        }));
+        results
     }
 }

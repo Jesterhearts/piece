@@ -237,7 +237,6 @@ impl App {
                             let mut repeated = target.mut_repeated(message);
                             repeated.clear();
                             for value in values {
-                                dbg!(repeated.element_type());
                                 repeated.push(ReflectValueBox::Enum(
                                     ManaCost::enum_descriptor(),
                                     value.value(),

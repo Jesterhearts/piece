@@ -1,5 +1,5 @@
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{effects::DamageSelected, targets::Location},
@@ -10,12 +10,11 @@ impl EffectBehaviors for DamageSelected {
     fn apply(
         &mut self,
         db: &mut Database,
-        _pending: &mut PendingEffects,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let count = self.count.count(db, source, selected);
         for target in selected.iter().filter(|target| {
             (matches!(target.location, Some(Location::ON_BATTLEFIELD)))
@@ -39,5 +38,7 @@ impl EffectBehaviors for DamageSelected {
                 _ => unreachable!(),
             }
         }
+
+        vec![]
     }
 }

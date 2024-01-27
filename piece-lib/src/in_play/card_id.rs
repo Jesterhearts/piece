@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    effects::PendingEffects,
+    effects::{ApplyResult},
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId,
@@ -31,7 +31,7 @@ use crate::{
             static_ability::{
                 self, AddKeywordsIf, AllAbilitiesOfExiledWith, GreenCannotBeCountered,
             },
-            BattlefieldModifier, Count, Duration, Effect, ReplacementEffect, TriggeredAbility,
+            Count, Duration, Effect, ReplacementEffect, TriggeredAbility,
         },
         ids::UUID,
         keywords::Keyword,
@@ -404,15 +404,15 @@ impl CardId {
         targets: Vec<Selected>,
         from: CastFrom,
         chosen_modes: Vec<usize>,
-    ) -> PendingEffects {
+    ) -> Vec<ApplyResult> {
         if db.stack.split_second(db) {
             warn!("Skipping add to stack (split second)");
-            return PendingEffects::default();
+            return vec![];
         }
 
         if db[self].token {
             self.move_to_limbo(db);
-            PendingEffects::default()
+            vec![]
         } else {
             self.remove_all_modifiers(db);
 
@@ -1844,17 +1844,7 @@ impl CardId {
             .cloned()
             .collect_vec()
         {
-            let modifier = ModifierId::upload_temporary_modifier(
-                db,
-                aura_source,
-                BattlefieldModifier {
-                    modifier: protobuf::MessageField::some(modifier),
-                    duration: protobuf::EnumOrUnknown::new(
-                        Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD,
-                    ),
-                    ..Default::default()
-                },
-            );
+            let modifier = ModifierId::upload_temporary_modifier(db, aura_source, modifier);
             self.apply_modifier(db, modifier);
             db.modifiers
                 .get_mut(&modifier)

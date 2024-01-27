@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::{
-        EffectBehaviors, EffectBundle, Options, PendingEffects, SelectedStack, SelectionResult,
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
     in_play::{CardId, Database},
     log::LogId,
@@ -12,6 +12,16 @@ use crate::{
 };
 
 impl EffectBehaviors for SacrificePermanent {
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
+    }
+
     fn options(
         &self,
         db: &Database,
@@ -62,15 +72,15 @@ impl EffectBehaviors for SacrificePermanent {
     fn apply(
         &mut self,
         db: &mut Database,
-        effects: &mut PendingEffects,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _modes: &[usize],
         _skip_replacement: bool,
-    ) {
+    ) -> Vec<ApplyResult> {
         let _ = _selected;
         let card: CardId = self.selected.as_ref().cloned().unwrap().into();
-        effects.push_front(EffectBundle {
+
+        vec![ApplyResult::PushBack(EffectBundle {
             selected: SelectedStack::new(vec![Selected {
                 location: card.location(db),
                 target_type: TargetType::Card(card),
@@ -83,7 +93,7 @@ impl EffectBehaviors for SacrificePermanent {
             }],
             source,
             ..Default::default()
-        });
+        })]
     }
 }
 
