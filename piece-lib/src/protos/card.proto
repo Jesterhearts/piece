@@ -15,7 +15,6 @@ message Card {
   types.Typeline typeline = 2;
 
   cost.CastingCost cost = 3;
-  optional cost.CostReducer cost_reducer = 4;
 
   bool cannot_be_countered = 5;
 
@@ -26,17 +25,17 @@ message Card {
   optional abilities.Enchant enchant = 8
       [(comment.comment) = "The aura modifiers associated with this card."];
 
-  repeated effects.Effect effects = 9;
-  repeated effects.Mode modes = 10;
+  repeated effects.Effect to_cast = 9;
+  repeated effects.Effect effects = 10;
 
   repeated effects.Effect etb_abilities = 11;
   repeated effects.StaticAbility static_abilities = 12;
   repeated effects.ActivatedAbility activated_abilities = 13;
-  repeated abilities.TriggeredAbility triggered_abilities = 14;
+  repeated effects.TriggeredAbility triggered_abilities = 14;
   repeated effects.GainManaAbility mana_abilities = 15;
   repeated effects.ReplacementEffect replacement_abilities = 16;
 
-  optional effects.DynamicPowerToughness dynamic_power_toughness = 17;
+  optional effects.Count dynamic_power_toughness = 17;
   optional int32 power = 18;
   optional int32 toughness = 19;
   bool etb_tapped = 20;

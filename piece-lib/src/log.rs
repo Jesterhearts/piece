@@ -3,13 +3,9 @@ use std::collections::HashMap;
 use tracing::Level;
 
 use crate::{
-    effects::EffectBehaviors,
     in_play::{ActivatedAbilityId, CardId, Database},
     player::{Controller, Owner},
-    protogen::{
-        counters::Counter,
-        targets::{restriction, Restriction},
-    },
+    protogen::counters::Counter,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,9 +42,7 @@ pub enum LogEntry {
         was_attacking: bool,
         was_token: bool,
         was_tapped: bool,
-        was_enchanted: Option<CardId>,
-        was_equipped: Option<CardId>,
-        had_counters: HashMap<Counter, usize>,
+        had_counters: HashMap<Counter, u32>,
         turn: usize,
     },
     SpellResolved {
@@ -68,7 +62,7 @@ pub enum LogEntry {
         card: CardId,
         ability: ActivatedAbilityId,
     },
-    Triggered {
+    EtbOrTriggered {
         card: CardId,
     },
     CardChosen {
@@ -77,41 +71,6 @@ pub enum LogEntry {
     Discarded {
         card: CardId,
     },
-}
-
-impl LogEntry {
-    pub(crate) fn left_battlefield_passes_restrictions(
-        &self,
-        restrictions: &[Restriction],
-    ) -> bool {
-        match self {
-            LogEntry::LeftBattlefield {
-                was_attacking,
-                was_tapped,
-                ..
-            } => {
-                for restriction in restrictions.iter() {
-                    match restriction.restriction.as_ref().unwrap() {
-                        restriction::Restriction::Attacking(_) => {
-                            if !was_attacking {
-                                return false;
-                            }
-                        }
-                        restriction::Restriction::Tapped(_) => {
-                            if !was_tapped {
-                                return false;
-                            }
-                        }
-                        _ => todo!(),
-                    }
-                }
-            }
-
-            _ => return false,
-        }
-
-        true
-    }
 }
 
 #[derive(Debug, Default)]
@@ -189,23 +148,6 @@ impl Log {
         }
     }
 
-    pub(crate) fn current_session(db: &Database) -> &[(LogId, LogEntry)] {
-        let current = LogId::current(db);
-        if let Some(pos) = db
-            .log
-            .entries
-            .iter()
-            .rev()
-            .position(|(id, _)| *id != current)
-        {
-            let entries = db.log.entries.split_at(db.log.entries.len() - pos).1;
-            event!(Level::DEBUG, ?entries, "{:?}", current,);
-            entries
-        } else {
-            &[]
-        }
-    }
-
     pub(crate) fn tapped(db: &mut Database, card: CardId) {
         let entry = LogEntry::Tapped { card };
 
@@ -228,15 +170,14 @@ impl Log {
         db.log.entries.push((id, entry));
     }
 
-    pub(crate) fn triggered(db: &mut Database, card: CardId) {
-        let entry = LogEntry::Triggered { card };
+    pub(crate) fn etb_or_triggered(db: &mut Database, card: CardId) {
+        let entry = LogEntry::EtbOrTriggered { card };
         let id = LogId::new(db);
         event!(Level::INFO, ?id, ?entry);
         db.log.entries.push((id, entry));
     }
 
     pub(crate) fn left_battlefield(db: &mut Database, reason: LeaveReason, card: CardId) {
-        let modified_by = card.modified_by(db);
         let entry = LogEntry::LeftBattlefield {
             reason,
             name: card.faceup_face(db).name.clone(),
@@ -244,23 +185,6 @@ impl Log {
             was_attacking: db[card].attacking.is_some(),
             was_token: db[card].token,
             was_tapped: card.tapped(db),
-            was_enchanted: modified_by
-                .iter()
-                .copied()
-                .find(|card| card.faceup_face(db).enchant.is_some()),
-            was_equipped: modified_by.iter().copied().find(|card| {
-                db[*card]
-                    .modified_activated_abilities
-                    .iter()
-                    .copied()
-                    .any(|ability| {
-                        db[ability]
-                            .ability
-                            .effects
-                            .iter()
-                            .any(|effect| effect.effect.as_ref().unwrap().is_equip())
-                    })
-            }),
             had_counters: db[card].counters.clone(),
             turn: db.turn.turn_count,
         };

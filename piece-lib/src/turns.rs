@@ -4,12 +4,17 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefields,
+    effects::{EffectBundle, PendingEffects, SelectedStack},
     in_play::{ActivatedAbilityId, CardId, Database},
     log::{Log, LogId},
-    pending_results::PendingResults,
     player::{AllPlayers, Owner, Player},
-    protogen::{triggers::TriggerSource, types::Type},
-    stack::Stack,
+    protogen::{
+        effects::{Dest, Effect, MoveToGraveyard, SelectAttackers, SelectDestinations},
+        targets::Location,
+        triggers::TriggerSource,
+        types::Type,
+    },
+    stack::{Selected, Stack, TargetType},
     types::TypeSet,
 };
 
@@ -76,9 +81,9 @@ impl Turn {
     }
 
     #[instrument(skip(db))]
-    pub fn step(db: &mut Database) -> PendingResults {
+    pub fn step(db: &mut Database) -> PendingEffects {
         if db.turn.passed != 0 {
-            return PendingResults::default();
+            return PendingEffects::default();
         }
 
         db.turn.priority_player = db.turn.active_player;
@@ -120,7 +125,7 @@ impl Turn {
                 let results = Self::delayed_triggers(db);
                 if db.turn.turn_count != 0 {
                     let player = db.turn.active_player();
-                    return Player::draw(db, player, 1);
+                    return Player::draw(player, 1);
                 }
                 results
             }
@@ -180,7 +185,38 @@ impl Turn {
                 db.turn.phase = Phase::DeclareAttackers;
                 let mut results = Self::delayed_triggers(db);
                 let player = db.turn.active_player();
-                results.set_declare_attackers(db, player);
+
+                let mut selected = SelectedStack::new(
+                    db.battlefield[player]
+                        .iter()
+                        .copied()
+                        .filter(|card| card.can_attack(db))
+                        .map(|card| Selected {
+                            location: Some(Location::ON_BATTLEFIELD),
+                            target_type: TargetType::Card(card),
+                            targeted: false,
+                            restrictions: vec![],
+                        })
+                        .collect_vec(),
+                );
+
+                let mut targets = db.all_players.all_players();
+                targets.retain(|target| *target != player);
+                selected.extend(targets.into_iter().map(|target| Selected {
+                    location: None,
+                    target_type: TargetType::Player(target),
+                    targeted: false,
+                    restrictions: vec![],
+                }));
+
+                results.push_back(EffectBundle {
+                    selected,
+                    effects: vec![Effect {
+                        effect: Some(SelectAttackers::default().into()),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                });
                 results
             }
             Phase::DeclareAttackers => {
@@ -329,8 +365,35 @@ impl Turn {
                 let in_hand = &db.hand[player];
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
-                    results
-                        .push_choose_discard(in_hand.iter().copied().collect_vec(), discard as u32);
+                    results.push_back(EffectBundle {
+                        selected: SelectedStack::new(
+                            in_hand
+                                .iter()
+                                .copied()
+                                .map(|card| Selected {
+                                    location: Some(Location::IN_HAND),
+                                    target_type: TargetType::Card(card),
+                                    targeted: false,
+                                    restrictions: vec![],
+                                })
+                                .collect_vec(),
+                        ),
+                        effects: vec![Effect {
+                            effect: Some(
+                                SelectDestinations {
+                                    destinations: vec![Dest {
+                                        count: discard as u32,
+                                        destination: Some(MoveToGraveyard::default().into()),
+                                        ..Default::default()
+                                    }],
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    })
                 }
                 results
             }
@@ -369,8 +432,8 @@ impl Turn {
         }
     }
 
-    fn delayed_triggers(db: &mut Database) -> PendingResults {
-        let mut results = PendingResults::default();
+    fn delayed_triggers(db: &mut Database) -> PendingEffects {
+        let mut results = PendingEffects::default();
         if let Some(triggers) = db
             .delayed_triggers
             .entry(db.turn.active_player())

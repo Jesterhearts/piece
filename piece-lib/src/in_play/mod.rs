@@ -25,8 +25,7 @@ use crate::{
     log::Log,
     player::{AllPlayers, Controller, Owner},
     protogen::{
-        abilities::TriggeredAbility,
-        effects::{replacement_effect::Replacing, ReplacementEffect},
+        effects::{replacement_effect::Replacing, ReplacementEffect, TriggeredAbility},
         triggers::{self, TriggerSource},
     },
     stack::Stack,
@@ -55,7 +54,7 @@ impl PartialEq<triggers::Location> for CastFrom {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ExileReason {
-    Cascade,
+    CascadeOrDiscover,
     Craft,
 }
 

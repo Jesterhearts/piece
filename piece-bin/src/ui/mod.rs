@@ -6,11 +6,11 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 
 use piece_lib::{
+    effects::PendingEffects,
     in_play::{CardId, Database},
-    pending_results::PendingResults,
     player::Owner,
     protogen::{keywords::Keyword, targets::Location},
-    stack::{ActiveTarget, StackEntry, StackId},
+    stack::{Selected, StackEntry, StackId},
     turns::Turn,
 };
 use protobuf::Enum;
@@ -81,20 +81,6 @@ impl Widget for Card<'_> {
             .collect_vec();
         let has_etb_text = !etb_text.is_empty();
 
-        let modes_text = self
-            .card
-            .faceup_face(self.db)
-            .modes
-            .iter()
-            .map(|mode| {
-                format!(
-                    "• {}",
-                    mode.effects.iter().map(|e| &e.oracle_text).join(" ")
-                )
-            })
-            .collect_vec();
-        let has_modes_text = !modes_text.is_empty();
-
         let effects_text = self
             .card
             .faceup_face(self.db)
@@ -141,8 +127,6 @@ impl Widget for Card<'_> {
             .chain(std::iter::once(String::default()).filter(|_| has_oracle_text))
             .chain(etb_text)
             .chain(std::iter::once(String::default()).filter(|_| has_etb_text))
-            .chain(modes_text)
-            .chain(std::iter::once(String::default()).filter(|_| has_modes_text))
             .chain(effects_text)
             .chain(std::iter::once(String::default()).filter(|_| has_effects_text))
             .chain(triggers)
@@ -230,7 +214,7 @@ pub struct Stack<'stack, 'db, 'clicked> {
     pub items: &'stack IndexMap<StackId, StackEntry>,
     pub db: &'db Database,
     pub left_clicked: &'clicked mut Option<usize>,
-    pub target: Option<ActiveTarget>,
+    pub target: Option<Selected>,
 }
 
 impl Widget for Stack<'_, '_, '_> {
@@ -252,7 +236,7 @@ impl Widget for Stack<'_, '_, '_> {
                                 for (idx, (stack_id, entry)) in self.items.iter().rev().enumerate()
                                 {
                                     let highlight =
-                                        if let Some(ActiveTarget::Stack { id }) = self.target {
+                                        if let Some(Selected::Stack { id }) = self.target {
                                             id == *stack_id
                                         } else {
                                             false
@@ -429,7 +413,7 @@ pub struct Battlefield<'db, 'clicked> {
     pub cards: Vec<(usize, CardId)>,
     pub left_clicked: &'clicked mut Option<usize>,
     pub right_clicked: &'clicked mut Option<usize>,
-    pub target: Option<ActiveTarget>,
+    pub target: Option<Selected>,
 }
 
 impl Widget for Battlefield<'_, '_> {
@@ -459,12 +443,12 @@ impl Widget for Battlefield<'_, '_> {
                         const MIN_HEIGHT: f32 = 300.0;
 
                         for (idx, card) in self.cards {
-                            let highlight =
-                                if let Some(ActiveTarget::Battlefield { id }) = self.target {
-                                    id == card
-                                } else {
-                                    false
-                                };
+                            let highlight = if let Some(Selected::Battlefield { id }) = self.target
+                            {
+                                id == card
+                            } else {
+                                false
+                            };
 
                             let (rect, sense) =
                                 ui.allocate_exact_size(vec2(MIN_WIDTH, MIN_HEIGHT), Sense::click());
@@ -495,7 +479,7 @@ pub struct Actions<'db, 'p, 'clicked> {
     pub db: &'db Database,
     pub player: Owner,
     pub card: Option<CardId>,
-    pub pending: &'p Option<PendingResults>,
+    pub pending: &'p Option<PendingEffects>,
     pub left_clicked: &'clicked mut Option<usize>,
 }
 

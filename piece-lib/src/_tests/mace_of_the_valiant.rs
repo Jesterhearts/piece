@@ -2,9 +2,9 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
     turns::Phase,
@@ -33,26 +33,26 @@ fn mace() -> anyhow::Result<()> {
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, mace, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, mace, 0);
     // Pay the cost
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose the default only target
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(2));
@@ -60,11 +60,11 @@ fn mace() -> anyhow::Result<()> {
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(5));
     assert_eq!(bear.toughness(&db), Some(3));

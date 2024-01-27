@@ -1,7 +1,8 @@
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 use aho_corasick::AhoCorasick;
 use itertools::Itertools;
+use protobuf::Enum;
 
 use crate::{
     protogen::effects::Effect,
@@ -9,24 +10,15 @@ use crate::{
         card::Card,
         cost::{additional_cost, AbilityCost, AdditionalCost, ManaCost},
         effects::{
+            count::Fixed,
             create_token::{self, Token},
-            effect, ActivatedAbility, DynamicPowerToughness, TargetCreatureExplores,
+            ActivatedAbility, Count, Explore, SelectTargets,
         },
+        empty::Empty,
+        targets::{restriction::OfType, Restriction},
         types::{Subtype, Type, Typeline},
     },
 };
-
-#[derive(Debug, Clone)]
-pub(crate) enum BasePowerType {
-    Static(i32),
-    Dynamic(DynamicPowerToughness),
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum BaseToughnessType {
-    Static(i32),
-    Dynamic(DynamicPowerToughness),
-}
 
 impl Card {
     pub fn document(&self) -> String {
@@ -36,11 +28,6 @@ impl Card {
             .chain(std::iter::once(cost_text.as_str()))
             .chain(std::iter::once(self.oracle_text.as_str()))
             .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
-            .chain(
-                self.modes
-                    .iter()
-                    .flat_map(|m| m.effects.iter().map(|e| e.oracle_text.as_str())),
-            )
             .chain(self.etb_abilities.iter().map(|e| e.oracle_text.as_str()))
             .chain(
                 self.activated_abilities
@@ -96,12 +83,47 @@ impl From<Token> for Card {
                         restrictions: vec![],
                         ..Default::default()
                     }),
-                    effects: vec![Effect {
-                        effect: Some(effect::Effect::from(TargetCreatureExplores::default())),
-                        oracle_text: String::default(),
-                        ..Default::default()
-                    }],
-                    oracle_text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as sorcery"
+                    effects: vec![
+                        Effect {
+                            effect: Some(
+                                SelectTargets {
+                                    count: protobuf::MessageField::some(Count {
+                                        count: Some(
+                                            Fixed {
+                                                count: 1,
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                        ),
+                                        ..Default::default()
+                                    }),
+                                    restrictions: vec![Restriction {
+                                        restriction: Some(
+                                            OfType {
+                                                types: HashMap::from([(
+                                                    Type::CREATURE.value(),
+                                                    Empty::default(),
+                                                )]),
+                                                ..Default::default()
+                                            }
+                                            .into(),
+                                        ),
+                                        ..Default::default()
+                                    }],
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            ..Default::default()
+                        },
+                        Effect {
+                            effect: Some(Explore::default().into()),
+                            oracle_text: String::default(),
+                            ..Default::default()
+                        },
+                    ],
+                    oracle_text: "{1}, {T}, Sacrifice this artifact: \
+                                    Target creature you control explores. Activate only as sorcery"
                         .to_string(),
                     sorcery_speed: true,
                     craft: false,

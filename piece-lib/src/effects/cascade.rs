@@ -1,66 +1,73 @@
+use rand::{seq::SliceRandom, thread_rng};
+
 use crate::{
-    action_result::{self, ActionResult},
-    effects::EffectBehaviors,
-    protogen::effects::Cascade,
+    effects::{EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    in_play::{CardId, Database, ExileReason},
+    library::Library,
+    protogen::{
+        effects::{Cascade, CastSelected, Effect, MoveToBottomOfLibrary},
+        targets::Location,
+    },
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for Cascade {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        pending: &mut PendingEffects,
+        source: Option<CardId>,
+        _selected: &mut SelectedStack,
+        _modes: &[usize],
+        _skip_replacement: bool,
     ) {
-        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
-            source,
-            cascading: source.faceup_face(db).cost.cmc(),
-            player: controller,
-        }));
-    }
+        let source = source.unwrap();
+        let mana_value = db[source].modified_cost.cmc() + source.get_x(db);
 
-    fn push_behavior_from_top_of_library(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _target: crate::in_play::CardId,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
+        let mut casting = vec![];
+        let mut exiled = vec![];
+        while let Some(card) = Library::exile_top_card(
+            db,
+            db[source].owner,
             source,
-            cascading: source.faceup_face(db).cost.cmc(),
-            player: db[source].controller,
-        }))
-    }
+            Some(ExileReason::CascadeOrDiscover),
+        ) {
+            if !card.is_land(db) && card.faceup_face(db).cost.cmc() < mana_value {
+                casting.push(Selected {
+                    location: Some(Location::IN_EXILE),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                });
+                break;
+            }
+            exiled.push(Selected {
+                location: Some(Location::IN_EXILE),
+                target_type: TargetType::Card(card),
+                targeted: false,
+                restrictions: vec![],
+            });
+        }
 
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
-            source,
-            cascading: source.faceup_face(db).cost.cmc(),
-            player: controller,
-        }))
+        pending.push_back(EffectBundle {
+            selected: SelectedStack::new(casting),
+            effects: vec![Effect {
+                effect: Some(CastSelected::default().into()),
+                ..Default::default()
+            }],
+            source: Some(source),
+            ..Default::default()
+        });
+
+        exiled.shuffle(&mut thread_rng());
+        pending.push_back(EffectBundle {
+            selected: SelectedStack::new(exiled),
+            effects: vec![Effect {
+                effect: Some(MoveToBottomOfLibrary::default().into()),
+                ..Default::default()
+            }],
+            source: Some(source),
+            ..Default::default()
+        })
     }
 }

@@ -5,10 +5,10 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::types::{Subtype, Type},
     stack::Stack,
@@ -51,31 +51,31 @@ fn cascades() -> anyhow::Result<()> {
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, zhul, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1, false);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve the first cascade
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose to cast
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose targets for metamorphosis.
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve majestic metamorphosis
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db[zhul].modified_types,
@@ -89,12 +89,12 @@ fn cascades() -> anyhow::Result<()> {
     // Resolve the first cascade
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose not to cast
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.all_players[player]
@@ -111,7 +111,7 @@ fn cascades() -> anyhow::Result<()> {
     // Resolve the actual golem
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.battlefield[player], IndexSet::from([zhul, hand1]));
 

@@ -3,10 +3,10 @@ use pretty_assertions::assert_eq;
 use protobuf::Enum;
 
 use crate::{
+    effects::SelectionResult,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::{
         keywords::Keyword,
@@ -38,7 +38,7 @@ fn reveals_clones() -> anyhow::Result<()> {
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let mut results = haunting.move_to_stack(&mut db, vec![], None, vec![]);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let land = CardId::upload(&mut db, &cards, player1, "Forest");
     let creature = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
@@ -48,9 +48,9 @@ fn reveals_clones() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let on_battlefield = &mut db.battlefield[player1];
     assert_eq!(on_battlefield.len(), 1);
@@ -93,7 +93,7 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let land1 = CardId::upload(&mut db, &cards, player1, "Forest");
     let land2 = CardId::upload(&mut db, &cards, player2, "Swamp");
@@ -103,9 +103,9 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.battlefield[player1], IndexSet::<CardId>::default());
     assert_eq!(db.hand[player1], IndexSet::from([haunting]));

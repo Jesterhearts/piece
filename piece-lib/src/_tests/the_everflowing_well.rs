@@ -2,9 +2,9 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
 };
@@ -38,36 +38,36 @@ fn copies_permanent() -> anyhow::Result<()> {
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, elesh, true);
     // Spend the white mana
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Spend the myriad pools mana
     let result = results.resolve(&mut db, Some(2));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Fill in the rest of the generic mana
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
 
     // Add the card to the stack
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Add the trigger to the stack
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve the trigger
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db[card].cloned_id, Some(elesh));
 

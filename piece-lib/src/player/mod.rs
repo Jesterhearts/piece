@@ -1,9 +1,6 @@
 pub(crate) mod mana_pool;
 
-use std::{
-    ops::{Index, IndexMut},
-    vec::IntoIter,
-};
+use std::ops::{Index, IndexMut};
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -11,28 +8,27 @@ use strum::IntoEnumIterator;
 use uuid::Uuid;
 
 use crate::{
-    action_result::{player_loses::PlayerLoses, ActionResult},
     battlefield::Battlefields,
-    effects::EffectBehaviors,
+    effects::{EffectBundle, PendingEffects, SelectedStack},
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
-    pending_results::PendingResults,
-    player::mana_pool::{ManaPool, SpendReason},
+    player::mana_pool::ManaPool,
     protogen::{
-        cost::ManaCost,
-        effects::{static_ability, ReplacementEffect},
-        mana::{Mana, ManaRestriction, ManaSource},
-        targets::Location,
-    },
-    protogen::{
-        effects::replacement_effect::Replacing,
+        self,
+        effects::{count::Fixed, Count, DrawCards, Effect, MoveToBattlefield},
         targets::{
             restriction::{self, EnteredBattlefieldThisTurn},
             Restriction,
         },
     },
-    stack::Stack,
+    protogen::{
+        effects::static_ability,
+        ids::UUID,
+        mana::{spend_reason::Reason, Mana, ManaRestriction, ManaSource},
+        targets::Location,
+    },
+    stack::{Selected, Stack, TargetType},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -53,6 +49,28 @@ impl PartialEq<Controller> for Owner {
 impl PartialEq<Owner> for Controller {
     fn eq(&self, other: &Owner) -> bool {
         self.0 == other.0
+    }
+}
+
+impl From<Owner> for protogen::ids::Owner {
+    fn from(value: Owner) -> Self {
+        let (hi, lo) = value.0.as_u64_pair();
+        Self {
+            id: protobuf::MessageField::some(UUID {
+                hi,
+                lo,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<protogen::ids::Owner> for Owner {
+    fn from(value: protogen::ids::Owner) -> Self {
+        let hi = value.id.hi;
+        let lo = value.id.lo;
+        Self(Uuid::from_u64_pair(hi, lo))
     }
 }
 
@@ -390,106 +408,66 @@ impl Player {
         }
     }
 
-    pub fn draw(db: &mut Database, player: Owner, count: usize) -> PendingResults {
-        let mut results = PendingResults::default();
-
-        for _ in 0..count {
-            let replacements = db.replacement_abilities_watching(Replacing::DRAW);
-            if !replacements.is_empty() {
-                Self::draw_with_replacement(
-                    db,
-                    player,
-                    &mut replacements.into_iter(),
-                    1,
-                    &mut results,
-                );
-            } else if let Some(card) = db.all_players[player].library.draw() {
-                card.move_to_hand(db);
-            } else {
-                results.push_settled(ActionResult::from(PlayerLoses { player }));
-                return results;
-            }
-        }
+    pub fn draw(player: Owner, count: u32) -> PendingEffects {
+        let mut results = PendingEffects::default();
+        results.push_back(EffectBundle {
+            selected: SelectedStack::new(vec![Selected {
+                location: None,
+                target_type: TargetType::Player(player),
+                targeted: false,
+                restrictions: vec![],
+            }]),
+            effects: vec![Effect {
+                effect: Some(
+                    DrawCards {
+                        count: protobuf::MessageField::some(Count {
+                            count: Some(
+                                Fixed {
+                                    count: count as i32,
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
 
         results
     }
 
-    pub(crate) fn draw_with_replacement(
-        db: &mut Database,
-        player: Owner,
-        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
-        count: usize,
-        results: &mut PendingResults,
-    ) {
-        for _ in 0..count {
-            if replacements.len() > 0 {
-                while let Some((source, replacement)) = replacements.next() {
-                    if !source.passes_restrictions(
-                        db,
-                        LogId::current(db),
-                        source,
-                        &replacement.restrictions,
-                    ) {
-                        continue;
-                    }
-
-                    for effect in replacement.effects.iter() {
-                        effect.effect.as_ref().unwrap().replace_draw(
-                            db,
-                            player,
-                            replacements,
-                            db[source].controller,
-                            count,
-                            results,
-                        );
-                    }
-                }
-            } else if let Some(card) = db.all_players[player].library.draw() {
-                card.move_to_hand(db);
-            } else {
-                return;
-            }
-        }
-    }
-
-    pub fn play_card(db: &mut Database, player: Owner, card: CardId) -> PendingResults {
+    pub fn play_card(db: &mut Database, player: Owner, card: CardId) -> PendingEffects {
         assert!(db.hand[player].contains(&card));
 
         if card.is_land(db) && !Self::can_play_land(db, player) {
-            return PendingResults::default();
+            return PendingEffects::default();
         }
 
         let mut db = scopeguard::guard(db, |db| db.stack.settle());
         if card.is_land(&db) {
             db.all_players[player].lands_played_this_turn += 1;
-            return Battlefields::add_from_stack_or_hand(&mut db, card, None);
+            return PendingEffects::from(EffectBundle {
+                selected: SelectedStack::new(vec![Selected {
+                    location: Some(Location::IN_HAND),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                }]),
+                effects: vec![Effect {
+                    effect: Some(MoveToBattlefield::default().into()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            });
         }
 
-        Stack::move_card_to_stack_from_hand(&mut db, card, true)
-    }
-
-    pub(crate) fn can_meet_cost(
-        &self,
-        db: &Database,
-        mana: &[protobuf::EnumOrUnknown<ManaCost>],
-        sources: &[ManaSource],
-        reason: SpendReason,
-    ) -> bool {
-        for (cost, source) in mana.iter().copied().zip(
-            sources
-                .iter()
-                .copied()
-                .chain(std::iter::repeat(ManaSource::ANY)),
-        ) {
-            if !self
-                .mana_pool
-                .can_spend(db, cost.enum_value().unwrap(), source, reason)
-            {
-                return false;
-            }
-        }
-
-        true
+        Stack::move_card_to_stack_from_hand(&mut db, card)
     }
 
     pub(crate) fn pool_post_pay(
@@ -497,7 +475,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: SpendReason,
+        reason: &Reason,
     ) -> Option<ManaPool> {
         let mut mana_pool = self.mana_pool.clone();
 
@@ -520,7 +498,7 @@ impl Player {
         db: &Database,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: SpendReason,
+        reason: &Reason,
     ) -> bool {
         self.pool_post_pay(db, mana, sources, reason).is_some()
     }
@@ -530,7 +508,7 @@ impl Player {
         player: Owner,
         mana: &[Mana],
         sources: &[ManaSource],
-        reason: SpendReason,
+        reason: &Reason,
     ) -> bool {
         let mut mana_pool = db.all_players[player].mana_pool.clone();
 
@@ -549,15 +527,25 @@ impl Player {
         true
     }
 
-    pub(crate) fn manifest(db: &mut Database, player: Owner) -> PendingResults {
+    pub(crate) fn manifest(db: &mut Database, player: Owner) -> PendingEffects {
         if let Some(manifested) = db.all_players[player].library.draw() {
-            {
-                db[manifested].manifested = true;
-                db[manifested].facedown = true;
-            };
-            Battlefields::add_from_stack_or_hand(db, manifested, None)
+            db[manifested].manifested = true;
+            db[manifested].facedown = true;
+            PendingEffects::from(EffectBundle {
+                selected: SelectedStack::new(vec![Selected {
+                    location: Some(Location::IN_HAND),
+                    target_type: TargetType::Card(manifested),
+                    targeted: false,
+                    restrictions: vec![],
+                }]),
+                effects: vec![Effect {
+                    effect: Some(MoveToBattlefield::default().into()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })
         } else {
-            PendingResults::default()
+            PendingEffects::default()
         }
     }
 

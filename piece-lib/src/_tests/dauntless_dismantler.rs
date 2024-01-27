@@ -3,8 +3,14 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack,
+    battlefield::Battlefields,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    in_play::CardId,
+    in_play::Database,
+    load_cards,
+    player::AllPlayers,
+    protogen::{effects::MoveToBattlefield, targets::Location},
+    stack::{Selected, Stack, TargetType},
 };
 
 #[test]
@@ -27,15 +33,22 @@ fn opponent_artifact_etb_tappd() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
+    card.move_to_battlefield(&mut db);
+
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    MoveToBattlefield::default().apply(
+        &mut db,
+        &mut PendingEffects::default(),
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(card2),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        &[],
+        false,
+    );
 
     assert!(card2.tapped(&db));
 
@@ -63,15 +76,9 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player1, "Dauntless Dismantler");
+    card.move_to_battlefield(&mut db);
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    card2.move_to_battlefield(&mut db);
 
     assert_eq!(
         db.battlefield
@@ -86,29 +93,29 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
     // Pay white
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Pay 3x2 X mana
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Done paying X
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.battlefield
@@ -117,7 +124,7 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
             .flat_map(|b| b.iter())
             .copied()
             .collect_vec(),
-        []
+        Vec::<CardId>::default()
     );
     assert_eq!(db.graveyard[player1], IndexSet::from([card]));
     assert_eq!(db.graveyard[player2], IndexSet::from([card2]));

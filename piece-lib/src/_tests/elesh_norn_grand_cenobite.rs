@@ -1,8 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers,
+    battlefield::Battlefields, effects::SelectionResult, in_play::CardId, in_play::Database,
+    load_cards, player::AllPlayers,
 };
 
 #[test]
@@ -29,12 +29,12 @@ fn modifies_battlefield() -> anyhow::Result<()> {
     let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, elesh, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(elesh.power(&db), Some(4));
     assert_eq!(elesh.toughness(&db), Some(7));

@@ -2,9 +2,9 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::types::{Subtype, Type},
     stack::Stack,
@@ -39,25 +39,25 @@ fn x_is_zero() -> anyhow::Result<()> {
     target.move_to_graveyard(&mut db);
     non_target.move_to_graveyard(&mut db);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
     // Choose the target
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay the white
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Pay the generic
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Skip the X
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let on_battlefield = db
         .battlefield
@@ -108,32 +108,32 @@ fn x_is_two() -> anyhow::Result<()> {
     target.move_to_graveyard(&mut db);
     non_target.move_to_graveyard(&mut db);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
     // Choose the target
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay the white
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Pay the generic
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // pay 1 for X
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // pay 1 for X
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Skip paying x
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Add card to stack & pay
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let on_battlefield = db
         .battlefield

@@ -86,7 +86,6 @@ message Ward {
 
 message CastingCost {
   repeated ManaCost mana_cost = 1;
-  repeated AdditionalCost additional_costs = 2;
 }
 
 message AbilityCost {

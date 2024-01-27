@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package mana;
 
+import "ids.proto";
+
 enum ManaSource {
   ANY = 0;
   BARRACKS_OF_THE_THOUSAND = 1;
@@ -23,4 +25,20 @@ enum ManaRestriction {
   NONE = 0;
   ACTIVATE_ABILITY = 1;
   ARTIFACT_SPELL_OR_ABILITY = 2;
+}
+
+message SpendReason {
+  message Casting {
+    ids.CardId card = 1;
+  }
+  message Activating {
+    ids.CardId source = 1;
+  }
+  message Other {}
+
+  oneof reason {
+    Casting casting = 1;
+    Activating activating = 2;
+    Other other = 3;
+  }
 }

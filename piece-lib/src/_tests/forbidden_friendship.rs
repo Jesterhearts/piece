@@ -1,9 +1,9 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
 };
@@ -32,11 +32,11 @@ fn creates_tokens() -> anyhow::Result<()> {
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
     let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.battlefield

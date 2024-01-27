@@ -3,9 +3,9 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
     turns::Phase,
@@ -42,27 +42,27 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
     // Compute exile targets
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose exile card
     let result = results.resolve(&mut db, Some(1));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay white
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Pay generic
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose gy target
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Complete
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve ability
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.battlefield[player], IndexSet::from([card, gy]));
     assert_eq!(db.exile[player], IndexSet::from([exiled]));

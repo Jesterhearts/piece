@@ -1,8 +1,8 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
+    battlefield::Battlefields, effects::SelectionResult, in_play::CardId, in_play::Database,
+    load_cards, player::AllPlayers, stack::Stack, turns::Phase,
 };
 
 #[test]
@@ -31,23 +31,23 @@ fn add_p_t_works() -> anyhow::Result<()> {
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade1, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade2, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, shade1, 0);
     // Pay Costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // End pay costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(shade1.power(&db), Some(2));
     assert_eq!(shade1.toughness(&db), Some(3));
@@ -57,7 +57,7 @@ fn add_p_t_works() -> anyhow::Result<()> {
 
     let mut results = Battlefields::end_turn(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(shade1.power(&db), Some(1));
     assert_eq!(shade1.toughness(&db), Some(2));

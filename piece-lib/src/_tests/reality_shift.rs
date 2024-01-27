@@ -3,14 +3,14 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::CardId,
     in_play::Database,
     library::Library,
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::types::Subtype,
-    stack::{ActiveTarget, Stack},
+    stack::{Selected, Stack},
     types::SubtypeSet,
 };
 
@@ -41,26 +41,26 @@ fn resolves_shift() -> anyhow::Result<()> {
 
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear1, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     Library::place_on_top(&mut db, player, bear3);
 
     let shift = CardId::upload(&mut db, &all_cards, player, "Reality Shift");
     let mut results = shift.move_to_stack(
         &mut db,
-        vec![vec![ActiveTarget::Battlefield { id: bear1 }]],
+        vec![vec![Selected::Battlefield { id: bear1 }]],
         None,
         vec![],
     );
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.exile[player], IndexSet::from([bear1]));
 

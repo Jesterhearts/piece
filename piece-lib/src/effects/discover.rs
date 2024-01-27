@@ -1,72 +1,79 @@
-use itertools::Itertools;
+use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    action_result::{self, ActionResult},
-    effects::EffectBehaviors,
+    effects::{EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    in_play::{CardId, Database, ExileReason},
+    library::Library,
     protogen::{
-        cost::XIs,
-        effects::{discover::Count, Discover},
+        effects::{CastSelected, Discover, Effect, MoveToBottomOfLibrary},
+        targets::Location,
     },
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for Discover {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        pending: &mut PendingEffects,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _modes: &[usize],
+        _skip_replacement: bool,
     ) {
-        results.push_settled(ActionResult::from(action_result::discover::Discover {
-            source,
-            count: match self.count.as_ref().unwrap() {
-                Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
-                    XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
-                    XIs::MANA_VALUE_OF_TARGET => unreachable!(),
-                },
-                Count::Fixed(fixed) => fixed.count,
-            },
-            player: controller,
-        }))
-    }
+        let discover_value = self.count.count(db, source, selected);
+        let source = source.unwrap();
 
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::discover::Discover {
+        let mut casting = vec![];
+        let mut exiled = vec![];
+        while let Some(card) = Library::exile_top_card(
+            db,
+            db[source].owner,
             source,
-            count: match self.count.as_ref().unwrap() {
-                Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
-                    XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
-                    XIs::MANA_VALUE_OF_TARGET => {
-                        let card = &db[targets.into_iter().exactly_one().unwrap().id(db).unwrap()];
-                        (card.modified_cost.cmc() + card.x_is) as u32
+            Some(ExileReason::CascadeOrDiscover),
+        ) {
+            if !card.is_land(db) && card.faceup_face(db).cost.cmc() < discover_value as usize {
+                casting.push(Selected {
+                    location: Some(Location::IN_EXILE),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                });
+                break;
+            }
+            exiled.push(Selected {
+                location: Some(Location::IN_EXILE),
+                target_type: TargetType::Card(card),
+                targeted: false,
+                restrictions: vec![],
+            });
+        }
+
+        pending.push_back(EffectBundle {
+            selected: SelectedStack::new(casting),
+            effects: vec![Effect {
+                effect: Some(
+                    CastSelected {
+                        move_to_hand_if_not_cast: true,
+                        ..Default::default()
                     }
-                },
-                Count::Fixed(fixed) => fixed.count,
-            },
-            player: controller,
-        }))
+                    .into(),
+                ),
+                ..Default::default()
+            }],
+            source: Some(source),
+            ..Default::default()
+        });
+
+        exiled.shuffle(&mut thread_rng());
+        pending.push_back(EffectBundle {
+            selected: SelectedStack::new(exiled),
+            effects: vec![Effect {
+                effect: Some(MoveToBottomOfLibrary::default().into()),
+                ..Default::default()
+            }],
+            source: Some(source),
+            ..Default::default()
+        })
     }
 }

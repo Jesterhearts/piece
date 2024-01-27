@@ -1,9 +1,9 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::targets::Location,
     stack::Stack,
@@ -34,30 +34,30 @@ fn cost_reducer() -> anyhow::Result<()> {
     target.move_to_battlefield(&mut db);
     let mut results = target.tap(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
     // Target the bear
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Recompute the cost
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
 
     // Pay white mana
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Pay 2 generic mana
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert!(target.is_in_location(&db, Location::IN_EXILE));
 

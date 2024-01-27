@@ -48,10 +48,11 @@ impl Library {
         Self { cards }
     }
 
-    pub(crate) fn shuffle(&mut self) {
+    pub fn shuffle(&mut self) {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
+    #[cfg(test)]
     pub(crate) fn place_on_top(db: &mut Database, player: Owner, card: CardId) {
         if card.move_to_library(db) {
             db.all_players[player].library.cards.push_back(card);
@@ -85,15 +86,8 @@ impl Library {
         }
     }
 
-    pub(crate) fn reveal_top(db: &mut Database, player: Owner) -> Option<CardId> {
-        if let Some(card) = db.all_players[player].library.cards.back().copied() {
-            {
-                db[card].revealed = true;
-            };
-            Some(card)
-        } else {
-            None
-        }
+    pub(crate) fn top(&mut self) -> Option<CardId> {
+        self.cards.back().copied()
     }
 
     pub(crate) fn draw(&mut self) -> Option<CardId> {

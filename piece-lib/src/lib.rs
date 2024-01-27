@@ -32,7 +32,6 @@ use crate::{
 mod _tests;
 
 pub mod abilities;
-pub mod action_result;
 pub mod battlefield;
 pub mod card;
 pub mod cost;
@@ -44,7 +43,6 @@ pub mod in_play;
 pub mod library;
 pub mod log;
 pub mod mana;
-pub mod pending_results;
 pub mod player;
 pub mod protogen;
 pub mod stack;
@@ -295,40 +293,36 @@ where
         where
             E: serde::de::Error,
         {
-            let split = v
-                .split('}')
-                .map(|s| s.trim_start_matches('{'))
-                .filter(|s| !s.is_empty())
-                .collect_vec();
+            Ok(deserialize_cost(v)?
+                .into_iter()
+                .map(protobuf::EnumOrUnknown::new)
+                .collect_vec())
+        }
+    }
 
-            let mut results = vec![];
-            for symbol in split {
-                if let Ok(count) = symbol.parse::<usize>() {
-                    for _ in 0..count {
-                        results.push(ManaCost::GENERIC);
-                    }
-                } else {
-                    let cost = match symbol {
-                        "W" => ManaCost::WHITE,
-                        "U" => ManaCost::BLUE,
-                        "B" => ManaCost::BLACK,
-                        "R" => ManaCost::RED,
-                        "G" => ManaCost::GREEN,
-                        "X" => ManaCost::X,
-                        "C" => ManaCost::COLORLESS,
-                        s => {
-                            return Err(E::custom(format!("Invalid mana cost {}", s)));
-                        }
-                    };
+    deserializer.deserialize_str(Visit)
+}
 
-                    if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
-                        results.pop();
-                        results.push(ManaCost::TWO_X);
-                    } else {
-                        results.push(cost);
-                    }
-                }
-            }
+pub fn deserialize_paying<'de, D>(
+    deserializer: D,
+) -> Result<Vec<protobuf::EnumOrUnknown<ManaCost>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<protobuf::EnumOrUnknown<ManaCost>>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a sequence of {W}, {U}, {B}, {R}, {G}, {C}, or {#}")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            let mut results = deserialize_cost(v)?;
+            results.sort();
 
             Ok(results
                 .into_iter()
@@ -338,6 +332,47 @@ where
     }
 
     deserializer.deserialize_str(Visit)
+}
+
+fn deserialize_cost<E>(v: &str) -> Result<Vec<ManaCost>, E>
+where
+    E: serde::de::Error,
+{
+    let split = v
+        .split('}')
+        .map(|s| s.trim_start_matches('{'))
+        .filter(|s| !s.is_empty())
+        .collect_vec();
+    let mut results = vec![];
+    for symbol in split {
+        if let Ok(count) = symbol.parse::<usize>() {
+            for _ in 0..count {
+                results.push(ManaCost::GENERIC);
+            }
+        } else {
+            let cost = match symbol {
+                "W" => ManaCost::WHITE,
+                "U" => ManaCost::BLUE,
+                "B" => ManaCost::BLACK,
+                "R" => ManaCost::RED,
+                "G" => ManaCost::GREEN,
+                "X" => ManaCost::X,
+                "C" => ManaCost::COLORLESS,
+                s => {
+                    return Err(E::custom(format!("Invalid mana cost {}", s)));
+                }
+            };
+
+            if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
+                results.pop();
+                results.push(ManaCost::TWO_X);
+            } else {
+                results.push(cost);
+            }
+        }
+    }
+
+    Ok(results)
 }
 
 fn serialize_mana_cost<S>(
@@ -769,6 +804,7 @@ where
     deserializer.deserialize_str(Visit::<T>::default())
 }
 
+#[allow(dead_code)]
 fn serialize_optional_enum<T, S>(
     value: &Option<::protobuf::EnumOrUnknown<T>>,
     serializer: S,
@@ -784,6 +820,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn deserialize_optional_enum<'de, T, D>(
     deserializer: D,
 ) -> Result<Option<::protobuf::EnumOrUnknown<T>>, D::Error>

@@ -1,65 +1,28 @@
 use crate::{
-    action_result::create_token_copy_with_replacements,
-    effects::{EffectBehaviors, ReplacementEffect},
-    protogen::effects::MultiplyTokens,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    in_play::{CardId, Database},
+    protogen::effects::{Effect, MultiplyTokens},
 };
 
 impl EffectBehaviors for MultiplyTokens {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn push_pending_behavior(
-        &self,
-        _db: &mut crate::in_play::Database,
-        _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
-        _results: &mut crate::pending_results::PendingResults,
+    fn apply(
+        &mut self,
+        _db: &mut Database,
+        _pending: &mut PendingEffects,
+        _source: Option<CardId>,
+        _selected: &mut SelectedStack,
+        _modes: &[usize],
+        _skip_replacement: bool,
     ) {
         unreachable!()
     }
 
-    fn push_behavior_with_targets(
-        &self,
-        _db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
-        _results: &mut crate::pending_results::PendingResults,
-    ) {
-        unreachable!()
-    }
-
-    fn replace_token_creation(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        replacements: &mut std::vec::IntoIter<(crate::in_play::CardId, ReplacementEffect)>,
-        token: crate::in_play::CardId,
-        modifiers: &[super::ModifyBattlefield],
-        results: &mut crate::pending_results::PendingResults,
-    ) {
+    fn apply_replacement(&self, effect: Effect) -> Vec<Effect> {
+        let mut replaced = vec![];
         for _ in 0..self.multiplier {
-            create_token_copy_with_replacements(
-                db,
-                source,
-                token,
-                modifiers,
-                &mut replacements.clone(),
-                results,
-            )
+            replaced.push(effect.clone());
         }
+
+        replaced
     }
 }

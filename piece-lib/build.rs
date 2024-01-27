@@ -24,7 +24,9 @@ fn main() {
         }
 
         fn message(&self, message: &MessageDescriptor) -> Customize {
-            if message.fields().any(|field| {
+            if message.name() == "CardId" || message.name() == "UUID" {
+                Customize::default().before("#[derive(::serde::Serialize, ::serde::Deserialize, Eq, Hash)]\n#[serde(deny_unknown_fields)]")
+            } else if message.fields().any(|field| {
                 field.is_repeated_or_map()
                     || field.proto().has_oneof_index()
                     || field.proto().type_() == Type::TYPE_ENUM
@@ -36,24 +38,9 @@ fn main() {
             }
         }
 
-        fn oneof(&self, oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
-            if oneof.name() == "destination" {
-                Customize::default().before(
-                    r#"#[derive(
-                    ::serde::Serialize,
-                    ::serde::Deserialize,
-                    ::strum::EnumIter,
-                    ::strum::EnumString,
-                    ::strum::AsRefStr,
-                    ::derive_more::From,
-                    Eq,
-                    Hash,
-                )]
-                #[strum(ascii_case_insensitive)]"#,
-                )
-            } else {
-                Customize::default().before(
-                    r#"#[derive(
+        fn oneof(&self, _oneof: &protobuf::reflect::OneofDescriptor) -> Customize {
+            Customize::default().before(
+                r#"#[derive(
                     ::serde::Serialize,
                     ::serde::Deserialize,
                     ::strum::EnumIter,
@@ -63,8 +50,7 @@ fn main() {
                     Eq,
                 )]
                 #[strum(ascii_case_insensitive)]"#,
-                )
-            }
+            )
         }
 
         fn field(&self, field: &FieldDescriptor) -> Customize {
@@ -156,6 +142,15 @@ fn main() {
                         skip_serializing_if="Vec::is_empty"
                     )]"#,
                 )
+            } else if field.name() == "paying" && field.containing_message().name() == "PayMana" {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        serialize_with="crate::serialize_mana_cost",
+                        deserialize_with="crate::deserialize_paying",
+                        skip_serializing_if="Vec::is_empty"
+                    )]"#,
+                )
             } else if field.is_repeated() && field.proto().type_() == Type::TYPE_ENUM {
                 Customize::default().before(
                     r#"#[serde(
@@ -168,6 +163,13 @@ fn main() {
             } else if field.is_repeated() {
                 Customize::default()
                     .before("#[serde(default, skip_serializing_if=\"Vec::is_empty\")]")
+            } else if field.is_map() {
+                Customize::default().before(
+                    r#"#[serde(
+                        default,
+                        skip_serializing_if="::std::collections::HashMap::is_empty"
+                    )]"#,
+                )
             } else if !field.is_repeated() && field.proto().type_() == Type::TYPE_MESSAGE {
                 Customize::default().before(
                     r#"#[serde(

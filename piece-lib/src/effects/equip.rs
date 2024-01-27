@@ -1,121 +1,34 @@
-use std::collections::{HashMap, HashSet};
-
 use itertools::Itertools;
-use protobuf::Enum;
 
 use crate::{
-    action_result::{modify_creatures::ModifyCreatures, ActionResult},
-    effects::EffectBehaviors,
-    in_play::ModifierId,
-    log::LogId,
-    pending_results::{choose_targets::ChooseTargets, TargetSource},
+    effects::{EffectBehaviors, PendingEffects, SelectedStack},
+    in_play::{CardId, Database, ModifierId},
     protogen::{
-        effects::{effect::Effect, BattlefieldModifier, Duration, Equip},
-        empty::Empty,
-        targets::{restriction, Restriction},
-        types::Type,
+        effects::{BattlefieldModifier, Duration, Equip},
+        targets::Location,
     },
-    stack::ActiveTarget,
-    types::TypeSet,
 };
 
 impl EffectBehaviors for Equip {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        1
-    }
-
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        1
-    }
-
-    fn is_sorcery_speed(&self) -> bool {
-        true
-    }
-
-    fn is_equip(&self) -> bool {
-        true
-    }
-
-    fn valid_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        log_session: crate::log::LogId,
-        controller: crate::player::Controller,
-        already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
-    ) -> Vec<crate::stack::ActiveTarget> {
-        let mut targets = vec![];
-        for card in db.battlefield[controller].iter() {
-            if card.passes_restrictions(
-                db,
-                log_session,
-                source,
-                &source.faceup_face(db).restrictions,
-            ) && card.types_intersect(db, &TypeSet::from([Type::CREATURE]))
-            {
-                let target = ActiveTarget::Battlefield { id: *card };
-                if already_chosen.contains(&target) {
-                    continue;
-                }
-
-                targets.push(target);
-            }
-        }
-
-        targets
-    }
-
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        _pending: &mut PendingEffects,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _modes: &[usize],
+        _skip_replacement: bool,
     ) {
-        let valid_targets = self.valid_targets(
-            db,
-            source,
-            crate::log::LogId::current(db),
-            controller,
-            results.all_currently_targeted(),
-        );
-        results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(self.clone())),
-            valid_targets,
-            crate::log::LogId::current(db),
-            source,
-        ));
-    }
+        let source = source.unwrap();
+        let Some(target) = selected
+            .first()
+            .filter(|target| matches!(target.location, Some(Location::ON_BATTLEFIELD)))
+        else {
+            return;
+        };
 
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        let target = targets.into_iter().exactly_one().unwrap();
-
-        if !self
-            .valid_targets(
-                db,
-                source,
-                LogId::current(db),
-                controller,
-                &HashSet::default(),
-            )
-            .into_iter()
-            .any(|t| t == target)
-        {
+        let target = target.id(db).unwrap();
+        if !target.can_be_targeted(db, db[source].controller) {
             return;
         }
 
@@ -141,40 +54,13 @@ impl EffectBehaviors for Equip {
                 source,
                 BattlefieldModifier {
                     modifier: protobuf::MessageField::some(modifier.clone()),
-                    duration: Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD.into(),
-                    restrictions: vec![
-                        Restriction {
-                            restriction: Some(restriction::Restriction::from(
-                                restriction::Controller {
-                                    controller: Some(restriction::controller::Controller::Self_(
-                                        Default::default(),
-                                    )),
-                                    ..Default::default()
-                                },
-                            )),
-                            ..Default::default()
-                        },
-                        Restriction {
-                            restriction: Some(restriction::Restriction::from(
-                                restriction::OfType {
-                                    types: HashMap::from([(
-                                        Type::CREATURE.value(),
-                                        Empty::default(),
-                                    )]),
-                                    ..Default::default()
-                                },
-                            )),
-                            ..Default::default()
-                        },
-                    ],
+                    duration: protobuf::EnumOrUnknown::new(
+                        Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD,
+                    ),
                     ..Default::default()
                 },
             );
-
-            results.push_settled(ActionResult::from(ModifyCreatures {
-                targets: vec![target],
-                modifier,
-            }));
+            target.apply_modifier(db, modifier);
         }
     }
 }

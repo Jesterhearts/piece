@@ -2,10 +2,10 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     protogen::targets::Location,
     stack::Stack,
@@ -33,7 +33,7 @@ fn enters_tapped() -> anyhow::Result<()> {
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert!(card.tapped(&db));
 
@@ -72,24 +72,24 @@ fn tutors() -> anyhow::Result<()> {
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
     let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     card.untap(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
 
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert!(forest.is_in_location(&db, Location::ON_BATTLEFIELD));
     assert!(plains.is_in_location(&db, Location::ON_BATTLEFIELD));

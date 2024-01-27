@@ -2,21 +2,33 @@ name: Abuelo's Awakening
 typeline: Sorcery
 cost:
   mana_cost: '{X}{3}{W}'
-oracle_text: Return target artifact or non-aura enchantment from your graveyard to
-  the battlefield with {X} additional +1/+1 counters on it. It's a 1/1 Spirit creature
-  with flying in addition to its other types
-effects:
-  - effect: !ReturnFromGraveyardToBattlefield
+oracle_text:
+  Return target artifact or non-aura enchantment from your graveyard to the
+  battlefield with {X} additional +1/+1 counters on it. It's a 1/1 Spirit
+  creature with flying in addition to its other types
+to_cast:
+  - effect: !SelectTarget
       count: 1
       restrictions:
         - restriction: !Controller
             controller: !Self_ {}
-  - effect: !TargetGainsCounters
+        - restriction: !Location
+            locations: In Graveyard
+        - restriction: !OfType
+            types: Artifact, Enchantment
+        - restriction: !NotOfType
+            subtypes: Aura
+  - effect: !PayCosts
+      pay_costs:
+        - cost: !PayMana
+            paying: '{X}{3}{W}'
+effects:
+  - effect: !MoveToBattlefield {}
+  - effect: !AddCounters
       counter: +1/+1
       count:
-        count: !Dynamic
-          dynamic: !X {}
-  - effect: !ModifyTarget
+        count: !XCost {}
+  - effect: !ApplyModifier
       modifier:
         base_power: 1
         base_toughness: 1
@@ -24,9 +36,3 @@ effects:
         add_subtypes: Spirit
         add_keywords: Flying
       duration: until target leaves battlefield
-restrictions:
-  - restriction: !OfType
-      types: Enchantment, Artifact
-  - restriction: !NotOfType
-      subtypes: Aura
-  - restriction: !InGraveyard {}
