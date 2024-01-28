@@ -3,10 +3,7 @@ use itertools::Itertools;
 use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database, ModifierId},
-    protogen::{
-        effects::{BattlefieldModifier, Duration, Equip},
-        targets::Location,
-    },
+    protogen::effects::{BattlefieldModifier, Duration, Equip},
 };
 
 impl EffectBehaviors for Equip {
@@ -18,10 +15,7 @@ impl EffectBehaviors for Equip {
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let source = source.unwrap();
-        let Some(target) = selected
-            .first()
-            .filter(|target| matches!(target.location, Some(Location::ON_BATTLEFIELD)))
-        else {
+        let Some(target) = selected.first() else {
             return vec![];
         };
 

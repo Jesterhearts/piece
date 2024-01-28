@@ -6,13 +6,13 @@ use crate::{
     },
     in_play::{CardId, Database},
     protogen::{
-        effects::{DeclareAttacking, Effect, SelectAttackers},
+        effects::{ChooseAttackers, DeclareAttacking, Effect},
         targets::Location,
     },
     stack::{Selected, TargetType},
 };
 
-impl EffectBehaviors for SelectAttackers {
+impl EffectBehaviors for ChooseAttackers {
     fn wants_input(
         &self,
         _db: &Database,
@@ -127,7 +127,7 @@ impl EffectBehaviors for SelectAttackers {
     }
 }
 
-impl SelectAttackers {
+impl ChooseAttackers {
     fn valid_attackers<'db>(
         &'db self,
         db: &'db Database,

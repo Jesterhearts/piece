@@ -4,6 +4,7 @@ mod attack_selected;
 mod ban_attacking_this_turn;
 mod cascade;
 mod cast_selected;
+mod choose_attackers;
 mod clear_selected;
 mod clone_selected;
 mod counter_spell;
@@ -44,7 +45,6 @@ mod reveal;
 mod sacrifice;
 mod scry;
 mod select_all;
-mod select_attackers;
 mod select_destinations;
 mod select_for_each_player;
 mod select_mode;
@@ -149,6 +149,7 @@ impl Options {
         BanAttackingThisTurn(BanAttackingThisTurn),
         Cascade(Cascade),
         CastSelected(CastSelected),
+        ChooseAttackers(ChooseAttackers),
         ClearSelected(ClearSelected),
         CloneSelected(CloneSelected),
         CounterSpell(CounterSpell),
@@ -189,7 +190,6 @@ impl Options {
         Sacrifice(Sacrifice),
         Scry(Scry),
         SelectAll(SelectAll),
-        SelectAttackers(SelectAttackers),
         SelectDestinations(SelectDestinations),
         SelectForEachPlayer(SelectForEachPlayer),
         SelectMode(SelectMode),

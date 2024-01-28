@@ -89,6 +89,14 @@ impl eframe::App for App {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.expand_to_include_rect(ui.max_rect());
                 for (idx, field) in Card::descriptor().fields().enumerate() {
+                    if let Some(hidden) =
+                        comments::exts::hidden(field.proto().options.get_or_default())
+                    {
+                        if hidden {
+                            continue;
+                        }
+                    }
+
                     Self::render_field(
                         ui,
                         &mut self.dynamic_fields,
@@ -147,6 +155,13 @@ impl App {
                 .filter(|field| field.containing_oneof().is_none())
                 .enumerate()
             {
+                if let Some(hidden) = comments::exts::hidden(field.proto().options.get_or_default())
+                {
+                    if hidden {
+                        continue;
+                    }
+                }
+
                 Self::render_field(
                     ui,
                     dynamic_fields,
@@ -184,6 +199,14 @@ impl App {
                 }
 
                 for (idx, field) in proto.fields().enumerate() {
+                    if let Some(hidden) =
+                        comments::exts::hidden(field.proto().options.get_or_default())
+                    {
+                        if hidden {
+                            continue;
+                        }
+                    }
+
                     Self::render_field(
                         ui,
                         dynamic_fields,
@@ -431,6 +454,14 @@ impl App {
                                 } else {
                                     ui.vertical(|ui| {
                                         for (idx, sub_field) in descriptor.fields().enumerate() {
+                                            if let Some(hidden) = comments::exts::hidden(
+                                                field.proto().options.get_or_default(),
+                                            ) {
+                                                if hidden {
+                                                    continue;
+                                                }
+                                            }
+
                                             Self::render_field(
                                                 ui,
                                                 dynamic_fields,
@@ -666,6 +697,14 @@ impl App {
                                                 for (field_idx, field) in
                                                     descriptor.fields().enumerate()
                                                 {
+                                                    if let Some(hidden) = comments::exts::hidden(
+                                                        field.proto().options.get_or_default(),
+                                                    ) {
+                                                        if hidden {
+                                                            continue;
+                                                        }
+                                                    }
+
                                                     Self::render_field(
                                                         ui,
                                                         dynamic_fields,

@@ -9,7 +9,7 @@ use crate::{
     log::{Log, LogId},
     player::{AllPlayers, Owner, Player},
     protogen::{
-        effects::{Dest, Effect, MoveToGraveyard, SelectAttackers, SelectDestinations},
+        effects::{ChooseAttackers, Dest, Effect, MoveToGraveyard, SelectDestinations},
         targets::Location,
         triggers::TriggerSource,
         types::Type,
@@ -212,7 +212,7 @@ impl Turn {
                 results.push_back(EffectBundle {
                     selected,
                     effects: vec![Effect {
-                        effect: Some(SelectAttackers::default().into()),
+                        effect: Some(ChooseAttackers::default().into()),
                         ..Default::default()
                     }],
                     ..Default::default()

@@ -31,10 +31,15 @@ message Effect {
              "Ban the selected target from attacking this turn."];
     Cascade cascade = 6 [
       (comment.comment) =
-          "Implement the Cascade effect. You don't need to use this, the Cascade keyword will work."
+          "Implement the Cascade effect. You don't need to use this, the Cascade keyword will work.",
+      (comment.hidden) = true
     ];
     CastSelected cast_selected = 7
         [(comment.comment) = "Cast the selected cards."];
+    ChooseAttackers choose_attackers = 48 [
+      (comment.comment) = "Choose attackers and their targets.",
+      (comment.hidden) = true
+    ];
     ClearSelected clear_selected = 8
         [(comment.comment) = "Clear the current selection."];
     CloneSelected clone_selected = 9 [
@@ -65,8 +70,7 @@ message Effect {
     DrawCards draw_cards = 18
         [(comment.comment) = "The selected target draws some number of cards."];
     Equip equip = 19
-        [(comment.comment) =
-             "Equip the first selected target to the second selected target."];
+        [(comment.comment) = "Equip the source to the selected target."];
     Explore explore = 20
         [(comment.comment) = "The selected target(s) explore(s)."];
     ForEachManaOfSource for_each_mana_of_source = 21 [
@@ -128,8 +132,10 @@ message Effect {
       (comment.comment) =
           "The selected target(s) have some number of counters removed from them."
     ];
-    ReorderSelected reorder_selected = 43
-        [(comment.comment) = "Re-order the list of selected target(s)."];
+    ReorderSelected reorder_selected = 43 [
+      (comment.comment) = "Re-order the list of selected target(s).",
+      (comment.hidden) = true
+    ];
     Reveal reveal = 44 [(comment.comment) = "Reveal the selected target(s)."];
     Sacrifice sacrifice = 45
         [(comment.comment) = "Sacrifice the selecteed target(s)."];
@@ -138,8 +144,6 @@ message Effect {
       (comment.comment) =
           "Select all possible cards/abilities/players matching some criteria."
     ];
-    SelectAttackers select_attackers = 48
-        [(comment.comment) = "Choose attackers and their targets."];
     SelectDestinations select_destinations = 49
         [(comment.comment) = "Select destination(s) for each selected card."];
     SelectForEachPlayer select_for_each_player = 50
@@ -391,6 +395,11 @@ message CastSelected {
   bool pay_costs = 2;
 }
 
+message ChooseAttackers {
+  repeated ids.CardId attackers = 1;
+  repeated ids.Owner targets = 2;
+}
+
 message ClearSelected {}
 
 message CloneSelected {}
@@ -490,7 +499,7 @@ message Mill {
 
 message Modal {
   repeated Effect modes = 1;
-  uint32 applying = 2;
+  uint32 applying = 2 [(comment.hidden) = true];
 }
 
 message MoveToBattlefield {
@@ -517,20 +526,20 @@ message Nothing {}
 message PayCost {
   message ExileCardsSharingType {
     uint32 count = 1;
-    repeated ids.CardId selected = 2;
+    repeated ids.CardId selected = 2 [(comment.hidden) = true];
   }
 
   message ExilePermanents {
     repeated targets.Restriction restrictions = 1;
     uint32 minimum = 2;
     uint32 maximum = 3;
-    repeated ids.CardId selected = 4;
+    repeated ids.CardId selected = 4 [(comment.hidden) = true];
   }
 
   message ExilePermanentsCmcX {
     repeated targets.Restriction restrictions = 1;
     uint32 x_is = 2;
-    repeated ids.CardId selected = 3;
+    repeated ids.CardId selected = 3 [(comment.hidden) = true];
   }
 
   message PayMana {
@@ -543,25 +552,25 @@ message PayCost {
 
     repeated cost.ManaCost paying = 3;
     cost.CostReducer reducer = 4;
-    map<int32, ManaToSource> paid = 5;
+    map<int32, ManaToSource> paid = 5 [(comment.hidden) = true];
     mana.SpendReason reason = 6;
-    bool reduced = 7;
+    bool reduced = 7 [(comment.hidden) = true];
   }
 
   message SacrificePermanent {
     repeated targets.Restriction restrictions = 1;
-    ids.CardId selected = 2;
+    ids.CardId selected = 2 [(comment.hidden) = true];
   }
 
   message TapPermanent {
     repeated targets.Restriction restrictions = 1;
-    ids.CardId selected = 2;
+    ids.CardId selected = 2 [(comment.hidden) = true];
   }
 
   message TapPermanentsPowerXOrMore {
     repeated targets.Restriction restrictions = 1;
     uint32 x_is = 2;
-    repeated ids.CardId selected = 3;
+    repeated ids.CardId selected = 3 [(comment.hidden) = true];
   }
 
   oneof cost {
@@ -573,7 +582,7 @@ message PayCost {
     TapPermanent tap_permanent = 9;
     TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 10;
   }
-  bool saved_selected = 11;
+  bool saved_selected = 11 [(comment.hidden) = true];
 }
 
 message PayCosts {
@@ -585,7 +594,7 @@ message PayCosts {
   uint32 paying = 3;
 
   OrElse or_else = 4;
-  bool apply_or_else = 5;
+  bool apply_or_else = 5 [(comment.hidden) = true];
 }
 
 message PlayerLoses {}
@@ -610,16 +619,11 @@ message Sacrifice {}
 
 message Scry {
   repeated Dest dests = 1;
-  uint32 placing = 2;
+  uint32 placing = 2 [(comment.hidden) = true];
 }
 
 message SelectAll {
   repeated targets.Restriction restrictions = 1;
-}
-
-message SelectAttackers {
-  repeated ids.CardId attackers = 1;
-  repeated ids.Owner targets = 2;
 }
 
 message SelectDestinations {

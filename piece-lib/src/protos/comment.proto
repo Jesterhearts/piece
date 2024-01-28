@@ -6,4 +6,5 @@ import "google/protobuf/descriptor.proto";
 
 extend google.protobuf.FieldOptions {
   optional string comment = 583850;
+  bool hidden = 583851;
 }
