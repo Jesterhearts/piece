@@ -2,12 +2,20 @@ name: Cosmium Blast
 typeline: Instant
 cost:
   mana_cost: '{1}{W}'
-oracle_text: Cosmium Blast deals 4 damage to target attacking or blocking creature.
+oracle_text:
+  Cosmium Blast deals 4 damage to target attacking or blocking creature.
+to_cast:
+  - effect: !SelectTargets
+      count:
+        count: !Fixed
+          count: 1
+      restrictions:
+        - restriction: !OfType
+            types: Creature
+        - restriction: !AttackingOrBlocking {}
+        - restriction: !OnBattlefield {}
 effects:
-  - effect: !DealDamage
-      quantity: 4
-restrictions:
-  - restriction: !OfType
-      types: Creature
-  - restriction: !AttackingOrBlocking {}
-  - restriction: !OnBattlefield {}
+  - effect: !DamageSelected
+      count:
+        count: !Fixed
+          count: 4

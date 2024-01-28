@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
-    },
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::SelectDestinations,
     stack::{Selected, TargetType},
@@ -46,7 +44,6 @@ impl EffectBehaviors for SelectDestinations {
         _source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             let dest = &mut self.destinations[self.placing as usize];
@@ -82,7 +79,6 @@ impl EffectBehaviors for SelectDestinations {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut pending = vec![];
@@ -99,7 +95,6 @@ impl EffectBehaviors for SelectDestinations {
                     db,
                     source,
                     &mut selected,
-                    modes,
                     skip_replacement,
                 ));
             }

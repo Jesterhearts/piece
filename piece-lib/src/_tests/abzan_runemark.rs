@@ -45,7 +45,6 @@ fn aura_works() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
 
@@ -54,7 +53,7 @@ fn aura_works() -> anyhow::Result<()> {
         location: Some(Location::ON_BATTLEFIELD),
         target_type: TargetType::Card(creature),
         targeted: true,
-        restrictions: aura.faceup_face(&db).restrictions.clone(),
+        restrictions: vec![],
     }]);
     selected.save();
     selected.clear();
@@ -64,13 +63,7 @@ fn aura_works() -> anyhow::Result<()> {
         targeted: false,
         restrictions: vec![],
     });
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut selected,
-        &[],
-        false,
-    ));
+    results.apply_results(MoveToBattlefield::default().apply(&mut db, None, &mut selected, false));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -95,7 +88,6 @@ fn aura_works() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
     let result = results.resolve(&mut db, None);
@@ -143,7 +135,6 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
     let result = results.resolve(&mut db, None);
@@ -154,7 +145,7 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
         location: Some(Location::ON_BATTLEFIELD),
         target_type: TargetType::Card(creature),
         targeted: true,
-        restrictions: aura.faceup_face(&db).restrictions.clone(),
+        restrictions: vec![],
     }]);
     selected.save();
     selected.clear();
@@ -164,13 +155,7 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
         targeted: false,
         restrictions: vec![],
     });
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut selected,
-        &[],
-        false,
-    ));
+    results.apply_results(MoveToBattlefield::default().apply(&mut db, None, &mut selected, false));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -194,7 +179,6 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
     let result = results.resolve(&mut db, None);
@@ -245,7 +229,6 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
 
@@ -254,7 +237,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
         location: Some(Location::ON_BATTLEFIELD),
         target_type: TargetType::Card(creature),
         targeted: true,
-        restrictions: aura.faceup_face(&db).restrictions.clone(),
+        restrictions: vec![],
     }]);
     selected.save();
     selected.push(Selected {
@@ -263,13 +246,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
         targeted: false,
         restrictions: vec![],
     });
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut selected,
-        &[],
-        false,
-    ));
+    results.apply_results(MoveToBattlefield::default().apply(&mut db, None, &mut selected, false));
 
     assert_eq!(creature.power(&db), Some(3));
     assert_eq!(creature.toughness(&db), Some(3));
@@ -285,7 +262,6 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
 
@@ -303,7 +279,6 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
     ));
     assert!(results.is_empty());

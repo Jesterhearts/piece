@@ -10,7 +10,6 @@ impl EffectBehaviors for BanAttackingThisTurn {
         db: &mut Database,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         db.all_players[selected.last().unwrap().player().unwrap()].ban_attacking_this_turn = true;

@@ -13,7 +13,6 @@ impl EffectBehaviors for SpendMana {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let player = db[source.unwrap()].controller;

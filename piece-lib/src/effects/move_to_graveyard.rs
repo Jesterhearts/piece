@@ -13,7 +13,6 @@ impl EffectBehaviors for MoveToGraveyard {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         move_card_to_graveyard(db, selected, source)

@@ -5,15 +5,16 @@ cost:
 etb_abilities:
   - oracle_text: When Cogwork Wrestler enters the battlefield, target creature an
       opponent controls gets -2/-0 until end of turn.
-    effect: !ModifyTarget
+    effect: !ApplyModifier
       modifier:
-        add_power: -2
-      duration: until end of turn
-      restrictions:
-        - restriction: !Controller
-            controller: !Opponent {}
-        - restriction: !OfType
-            types: Creature
+        modifier:
+          add_power: -2
+        duration: until end of turn
+        restrictions:
+          - restriction: !Controller
+              controller: !Opponent {}
+          - restriction: !OfType
+              types: Creature
 power: 1
 toughness: 2
 keywords: Flash

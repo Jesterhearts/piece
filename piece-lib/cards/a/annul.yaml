@@ -5,10 +5,13 @@ cost:
 oracle_text: Counter target artifact or enchantment spell.
 to_cast:
   - effect: !SelectTargets
+      count:
+        count: !Fixed
+          count: 1
       restrictions:
         - restriction: !Location
             locations: In Stack
         - restriction: !OfType
             types: Enchantment, Artifact
 effects:
-  - effect: !CounterSpell
+  - effect: !CounterSpell {}

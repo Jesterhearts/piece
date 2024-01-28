@@ -13,7 +13,6 @@ impl EffectBehaviors for MoveToStack {
         db: &mut Database,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
-        modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let targets = selected.restore();
@@ -29,7 +28,7 @@ impl EffectBehaviors for MoveToStack {
         match &casting.target_type {
             TargetType::Card(card) => {
                 Log::cast(db, *card);
-                pending.extend(card.move_to_stack(db, targets, cast_from, modes.to_vec()));
+                pending.extend(card.move_to_stack(db, targets, cast_from, selected.modes.clone()));
             }
             TargetType::Ability { source, ability } => {
                 match ability {

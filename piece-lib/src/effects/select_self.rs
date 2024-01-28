@@ -12,7 +12,6 @@ impl EffectBehaviors for SelectSelf {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         Log::card_chosen(db, source.unwrap());

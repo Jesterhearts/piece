@@ -17,7 +17,6 @@ impl EffectBehaviors for Discover {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let discover_value = self.count.count(db, source, selected);
@@ -61,7 +60,6 @@ impl EffectBehaviors for Discover {
                 ..Default::default()
             }],
             source: Some(source),
-            ..Default::default()
         })];
 
         exiled.shuffle(&mut thread_rng());
@@ -72,7 +70,6 @@ impl EffectBehaviors for Discover {
                 ..Default::default()
             }],
             source: Some(source),
-            ..Default::default()
         }));
 
         results

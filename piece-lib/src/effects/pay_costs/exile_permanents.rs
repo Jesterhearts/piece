@@ -47,7 +47,6 @@ impl EffectBehaviors for ExilePermanents {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             let controller = db[source.unwrap()].controller;
@@ -81,7 +80,6 @@ impl EffectBehaviors for ExilePermanents {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         for card in self.selected.iter() {

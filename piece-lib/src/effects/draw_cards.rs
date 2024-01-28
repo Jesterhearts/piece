@@ -11,7 +11,6 @@ impl EffectBehaviors for DrawCards {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut results = vec![];
@@ -28,7 +27,6 @@ impl EffectBehaviors for DrawCards {
                             ..Default::default()
                         }],
                         source,
-                        ..Default::default()
                     }));
                 }
             } else {

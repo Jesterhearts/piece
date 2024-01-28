@@ -12,7 +12,6 @@ impl EffectBehaviors for CreateToken {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let owner = selected.first().unwrap().player().unwrap();

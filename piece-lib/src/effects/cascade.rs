@@ -17,7 +17,6 @@ impl EffectBehaviors for Cascade {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let source = source.unwrap();
@@ -55,7 +54,6 @@ impl EffectBehaviors for Cascade {
                 ..Default::default()
             }],
             source: Some(source),
-            ..Default::default()
         })];
 
         exiled.shuffle(&mut thread_rng());
@@ -66,7 +64,6 @@ impl EffectBehaviors for Cascade {
                 ..Default::default()
             }],
             source: Some(source),
-            ..Default::default()
         }));
         results
     }

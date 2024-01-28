@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
-    },
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::{Log, LogId},
     protogen::effects::SelectForEachPlayer,
@@ -54,7 +52,6 @@ impl EffectBehaviors for SelectForEachPlayer {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             let card = db
@@ -108,7 +105,6 @@ impl EffectBehaviors for SelectForEachPlayer {
         db: &mut Database,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         for target in selected.iter() {

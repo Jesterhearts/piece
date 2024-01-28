@@ -46,7 +46,6 @@ impl EffectBehaviors for Discard {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> super::SelectionResult {
         if let Some(option) = option {
             let in_hand = &db.hand[selected.first().unwrap().player().unwrap()];
@@ -69,7 +68,6 @@ impl EffectBehaviors for Discard {
         _db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let selected = SelectedStack::new(
@@ -92,7 +90,6 @@ impl EffectBehaviors for Discard {
                 effect: Some(MoveToGraveyard::default().into()),
                 ..Default::default()
             }],
-            ..Default::default()
         })]
     }
 }

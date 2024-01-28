@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
-    },
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::{Dest, MoveToBottomOfLibrary, MoveToTopOfLibrary, Scry},
     stack::{Selected, TargetType},
@@ -46,7 +44,6 @@ impl EffectBehaviors for Scry {
         _source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             if self.dests.len() == self.placing as usize {
@@ -93,7 +90,6 @@ impl EffectBehaviors for Scry {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut pending = vec![];
@@ -111,7 +107,6 @@ impl EffectBehaviors for Scry {
                     db,
                     source,
                     &mut selected,
-                    modes,
                     skip_replacement,
                 ));
             }

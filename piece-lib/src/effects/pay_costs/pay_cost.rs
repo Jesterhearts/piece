@@ -38,7 +38,6 @@ impl EffectBehaviors for PayCost {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if !self.saved_selected {
             selected.save();
@@ -49,7 +48,7 @@ impl EffectBehaviors for PayCost {
         self.cost
             .as_mut()
             .unwrap()
-            .select(db, source, option, selected, modes)
+            .select(db, source, option, selected)
     }
 
     fn apply(
@@ -57,14 +56,13 @@ impl EffectBehaviors for PayCost {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        let results =
-            self.cost
-                .as_mut()
-                .unwrap()
-                .apply(db, source, selected, modes, skip_replacement);
+        let results = self
+            .cost
+            .as_mut()
+            .unwrap()
+            .apply(db, source, selected, skip_replacement);
 
         if self.saved_selected {
             let _ = selected.restore();

@@ -10,7 +10,6 @@ impl EffectBehaviors for GainLife {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let target = selected.first().unwrap().player().unwrap();

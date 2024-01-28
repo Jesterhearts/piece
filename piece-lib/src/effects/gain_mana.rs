@@ -1,7 +1,5 @@
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
-    },
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::{gain_mana::Gain, GainMana},
     stack::Selected,
@@ -50,11 +48,10 @@ impl EffectBehaviors for GainMana {
         _db: &mut Database,
         _source: Option<CardId>,
         option: Option<usize>,
-        _selected: &mut SelectedStack,
-        modes: &mut Vec<usize>,
+        selected: &mut SelectedStack,
     ) -> SelectionResult {
         if let Some(option) = option {
-            modes.push(option);
+            selected.modes.push(option);
             SelectionResult::Complete
         } else {
             SelectionResult::PendingChoice
@@ -65,8 +62,7 @@ impl EffectBehaviors for GainMana {
         &mut self,
         db: &mut Database,
         source: Option<CardId>,
-        _selected: &mut SelectedStack,
-        modes: &[usize],
+        selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         match self.gain.as_ref().unwrap() {
@@ -81,7 +77,7 @@ impl EffectBehaviors for GainMana {
                 }
             }
             Gain::Choice(choice) => {
-                let mode = modes.first().unwrap();
+                let mode = selected.modes.first().unwrap();
                 let chosen = &choice.choices[*mode];
                 let controller = db[source.unwrap()].controller;
                 for gain in chosen.gains.iter() {

@@ -10,7 +10,15 @@ replacement_abilities:
           controller: !Self_ {}
       - restriction: !Self_ {}
     effects:
-      - effect: !CopyOfAnyCreatureNonTargeting {}
+      - effect: !SelectSelf {}
+      - effect: !SelectNonTargeting
+          count: 1
+          restrictions:
+            - restriction: !OfType
+                types: Creature
+            - restriction: !Location
+                locations: On Battlefield
+      - effect: !CloneSelected {}
     replacing: etb
 power: 0
 toughness: 0

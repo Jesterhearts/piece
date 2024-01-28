@@ -12,7 +12,6 @@ impl EffectBehaviors for CreateTokenCloneOfSelected {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let controller = selected.last().unwrap().player().unwrap();

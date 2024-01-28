@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult,
-    },
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::{Log, LogId},
     protogen::effects::SelectTargets,
@@ -28,24 +26,29 @@ impl EffectBehaviors for SelectTargets {
         already_selected: &[Selected],
         _modes: &[usize],
     ) -> Options {
-        Options::OptionalList(
-            db.cards
-                .keys()
-                .copied()
-                .filter(|card| {
-                    card.passes_restrictions(
-                        db,
-                        LogId::current(db),
-                        source.unwrap(),
-                        &self.restrictions,
-                    ) && !already_selected
-                        .iter()
-                        .any(|selected| selected.id(db).unwrap() == *card)
-                })
-                .map(|card| card.name(db).clone())
-                .enumerate()
-                .collect_vec(),
-        )
+        let options = db
+            .cards
+            .keys()
+            .copied()
+            .filter(|card| {
+                card.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    source.unwrap(),
+                    &self.restrictions,
+                ) && !already_selected
+                    .iter()
+                    .any(|selected| selected.id(db).unwrap() == *card)
+            })
+            .map(|card| card.name(db).clone())
+            .enumerate()
+            .collect_vec();
+
+        if self.optional {
+            Options::OptionalList(options)
+        } else {
+            Options::MandatoryList(options)
+        }
     }
 
     fn select(
@@ -54,7 +57,6 @@ impl EffectBehaviors for SelectTargets {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             let card = db
@@ -87,8 +89,10 @@ impl EffectBehaviors for SelectTargets {
             } else {
                 SelectionResult::PendingChoice
             }
-        } else {
+        } else if self.optional {
             SelectionResult::Complete
+        } else {
+            SelectionResult::PendingChoice
         }
     }
 
@@ -97,7 +101,6 @@ impl EffectBehaviors for SelectTargets {
         db: &mut Database,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         for target in selected.iter() {

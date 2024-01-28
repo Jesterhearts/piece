@@ -1,10 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack,
-        SelectionResult,
-    },
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::SelectMode,
     stack::Selected,
@@ -31,12 +28,7 @@ impl EffectBehaviors for SelectMode {
         Options::MandatoryList(
             self.modes
                 .iter()
-                .map(|mode| {
-                    mode.effects
-                        .iter()
-                        .map(|effect| &effect.oracle_text)
-                        .join(" ")
-                })
+                .map(|mode| mode.oracle_text.clone())
                 .enumerate()
                 .collect_vec(),
         )
@@ -47,11 +39,10 @@ impl EffectBehaviors for SelectMode {
         _db: &mut Database,
         _source: Option<CardId>,
         option: Option<usize>,
-        _selected: &mut SelectedStack,
-        modes: &mut Vec<usize>,
+        selected: &mut SelectedStack,
     ) -> SelectionResult {
         if let Some(option) = option {
-            modes.push(option);
+            selected.modes.push(option);
             SelectionResult::Complete
         } else {
             SelectionResult::PendingChoice
@@ -60,20 +51,19 @@ impl EffectBehaviors for SelectMode {
 
     fn apply(
         &mut self,
-        _db: &mut Database,
+        db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        modes: &[usize],
-        _skip_replacement: bool,
+        skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut pending = vec![];
-        for mode in modes {
-            pending.push(ApplyResult::PushBack(EffectBundle {
-                selected: selected.clone(),
+        for mode in selected.modes.clone() {
+            pending.extend(self.modes[mode].effect.as_mut().unwrap().apply(
+                db,
                 source,
-                effects: self.modes[*mode].effects.clone(),
-                ..Default::default()
-            }));
+                selected,
+                skip_replacement,
+            ));
         }
 
         pending

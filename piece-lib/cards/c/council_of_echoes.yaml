@@ -3,10 +3,15 @@ typeline: Creature - Spirit Advisor
 cost:
   mana_cost: '{4}{U}{U}'
 etb_abilities:
-  - oracle_text: When Council of Echoes enters the battlefield, if there are four
-      or more permanent cards in your graveyard, return up to one target nonland permanent
-      other than Council of Echoes to its owner's hand.
-    effect: !ReturnTargetToHand
+  - oracle_text:
+      Descend 4 - When Council of Echoes enters the battlefield, if there are
+      four or more permanent cards in your graveyard, return up to one target
+      nonland permanent other than Council of Echoes to its owner's hand.
+    effect: !SelectTargets
+      optional: true
+      count:
+        count: !Fixed
+          count: 1
       restrictions:
         - restriction: !Location
             locations: On Battlefield

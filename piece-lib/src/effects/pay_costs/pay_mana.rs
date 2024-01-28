@@ -88,7 +88,6 @@ impl EffectBehaviors for PayMana {
         source_card: Option<CardId>,
         option: Option<usize>,
         _selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if option.is_none() {
             if self
@@ -258,7 +257,6 @@ impl EffectBehaviors for PayMana {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         db[source.unwrap()].x_is = self.x_paid() as usize;

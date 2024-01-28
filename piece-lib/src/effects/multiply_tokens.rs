@@ -10,7 +10,6 @@ impl EffectBehaviors for MultiplyTokens {
         _db: &mut Database,
         _source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         unreachable!()

@@ -10,7 +10,6 @@ impl EffectBehaviors for ApplyModifier {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let modifier = ModifierId::upload_temporary_modifier(

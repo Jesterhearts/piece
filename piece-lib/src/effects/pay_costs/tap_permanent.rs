@@ -45,7 +45,6 @@ impl EffectBehaviors for TapPermanent {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             let controller = db[source.unwrap()].controller;
@@ -74,7 +73,6 @@ impl EffectBehaviors for TapPermanent {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let card: CardId = self.selected.as_ref().cloned().unwrap().into();
@@ -90,7 +88,6 @@ impl EffectBehaviors for TapPermanent {
                 ..Default::default()
             }],
             source,
-            ..Default::default()
         })]
     }
 }

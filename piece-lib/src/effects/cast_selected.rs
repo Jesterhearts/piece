@@ -11,7 +11,6 @@ impl EffectBehaviors for CastSelected {
         db: &mut Database,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut results = vec![];

@@ -20,7 +20,6 @@ impl EffectBehaviors for MoveToBattlefield {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         if skip_replacement {

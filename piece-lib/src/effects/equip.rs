@@ -15,7 +15,6 @@ impl EffectBehaviors for Equip {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let source = source.unwrap();

@@ -114,7 +114,7 @@ pub(crate) enum Entry {
 pub struct StackEntry {
     pub(crate) targets: Vec<Selected>,
     pub(crate) ty: Entry,
-    pub(crate) mode: Vec<usize>,
+    pub(crate) modes: Vec<usize>,
     pub(crate) settled: bool,
 }
 
@@ -234,12 +234,12 @@ impl Stack {
 
         let mut pending = PendingEffects::default();
         let mut targets = SelectedStack::new(next.targets.clone());
+        targets.modes = next.modes;
         for effect in effects.into_iter() {
-            for result in
-                effect
-                    .effect
-                    .unwrap()
-                    .apply(db, Some(source), &mut targets, &next.mode, false)
+            for result in effect
+                .effect
+                .unwrap()
+                .apply(db, Some(source), &mut targets, false)
             {
                 match result {
                     ApplyResult::PushFront(bundle) => pending.push_front(bundle),
@@ -345,7 +345,7 @@ impl Stack {
                 ty: Entry::Card(source),
                 targets: targets.clone(),
                 settled: true,
-                mode: chosen_modes,
+                modes: chosen_modes,
             },
         );
 
@@ -393,7 +393,7 @@ impl Stack {
             StackEntry {
                 ty: Entry::Ability { source, ability },
                 targets: targets.clone(),
-                mode: vec![],
+                modes: vec![],
                 settled: true,
             },
         );

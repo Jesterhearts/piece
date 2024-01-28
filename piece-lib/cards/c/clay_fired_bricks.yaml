@@ -4,35 +4,41 @@ cost:
   mana_cost: '{1}{W}'
 etb_abilities:
   - oracle_text: When Clay-Fired bricks enters the battlefield, search your library
-      for a basic plains card reveal it, put it into your hand, then shuffle
+      for a basic plains card reveal it, put it into your hand, then shuffle.
     effect: !TutorLibrary
-      restrictions:
-        - restriction: !OfType
-            types: Basic
-            subtypes: Plains
-      destination:
-        destination: !Hand {}
+      targets:
+        - restrictions:
+            - restriction: !OfType
+                types: Basic
+                subtypes: Plains
+          destination: !MoveToHand {}
       reveal: true
   - oracle_text: You gain 2 life.
     effect: !GainLife
-      count: 2
+      count:
+        count: !Fixed
+          count: 2
 activated_abilities:
-  - cost:
+  - oracle_text: Craft with artifact {5}{W}{W}
+    cost:
       mana_cost: '{5}{W}{W}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    to_activate:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSelf
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
-    oracle_text: Craft with artifact {5}{W}{W}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     sorcery_speed: true
     craft: true
 back_face:

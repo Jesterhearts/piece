@@ -10,7 +10,6 @@ impl EffectBehaviors for PopSelected {
         _db: &mut Database,
         _source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let _ = selected.restore();

@@ -10,7 +10,6 @@ impl EffectBehaviors for ForEachManaOfSource {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut pending = vec![];
@@ -25,7 +24,6 @@ impl EffectBehaviors for ForEachManaOfSource {
                     selected: selected.clone(),
                     effects: self.effects.to_vec(),
                     source: Some(source),
-                    ..Default::default()
                 }));
             }
         }

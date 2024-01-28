@@ -24,6 +24,7 @@ mod if_then_else;
 mod lose_life;
 mod manifest;
 mod mill;
+mod modal;
 mod move_to_battlefield;
 mod move_to_bottom_of_library;
 mod move_to_exile;
@@ -32,6 +33,7 @@ mod move_to_hand;
 mod move_to_stack;
 mod move_to_top_of_library;
 mod multiply_tokens;
+mod nothing;
 mod pay_costs;
 mod player_loses;
 mod pop_selected;
@@ -55,6 +57,8 @@ mod select_top_of_library;
 mod spend_mana;
 mod tap;
 mod transform;
+mod tutor_library;
+mod unless;
 mod untap;
 
 use std::{collections::VecDeque, fmt::Debug, vec};
@@ -162,6 +166,7 @@ impl Options {
         LoseLife(LoseLife),
         Manifest(Manifest),
         Mill(Mill),
+        Modal(Modal),
         MoveToBattlefield(MoveToBattlefield),
         MoveToBottomOfLibrary(MoveToBottomOfLibrary),
         MoveToExile(MoveToExile),
@@ -170,6 +175,7 @@ impl Options {
         MoveToStack(MoveToStack),
         MoveToTopOfLibrary(MoveToTopOfLibrary),
         MultiplyTokens(MultiplyTokens),
+        Nothing(Nothing),
         PayCosts(PayCosts),
         PlayerLoses(PlayerLoses),
         PopSelected(PopSelected),
@@ -193,6 +199,8 @@ impl Options {
         SpendMana(SpendMana),
         Tap(Tap),
         Transform(Transform),
+        TutorLibrary(TutorLibrary),
+        Unless(Unless),
         Untap(Untap),
     }
 )]
@@ -219,7 +227,16 @@ impl Options {
 )]
 pub(crate) trait EffectBehaviors {
     /// Which player has priority for this action.
-    fn priority(&self, db: &Database, source: Option<CardId>) -> Owner {
+    fn priority(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> Owner {
+        let _ = already_selected;
+        let _ = modes;
+
         if let Some(source) = source {
             db[source].controller.into()
         } else {
@@ -276,12 +293,10 @@ pub(crate) trait EffectBehaviors {
         db: &Database,
         source: Option<CardId>,
         already_selected: &[Selected],
-        modes: &[usize],
         option: usize,
     ) -> Option<Selected> {
         let _ = db;
         let _ = source;
-        let _ = modes;
 
         already_selected.get(option).cloned()
     }
@@ -293,13 +308,11 @@ pub(crate) trait EffectBehaviors {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        modes: &mut Vec<usize>,
     ) -> SelectionResult {
         let _ = db;
         let _ = source;
         let _ = option;
         let _ = selected;
-        let _ = modes;
         SelectionResult::Complete
     }
 
@@ -310,7 +323,6 @@ pub(crate) trait EffectBehaviors {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        modes: &[usize],
         skip_replacement: bool,
     ) -> Vec<ApplyResult>;
 
@@ -326,6 +338,10 @@ pub(crate) struct SelectedStack {
     #[deref_mut]
     pub(crate) current: Vec<Selected>,
     pub(crate) stack: VecDeque<Vec<Selected>>,
+
+    pub(crate) modes: Vec<usize>,
+    pub(crate) mode_stack: VecDeque<Vec<usize>>,
+
     pub(crate) crafting: bool,
 }
 
@@ -352,8 +368,16 @@ impl SelectedStack {
         if self.current.is_empty() {
             self.current = other.stack.pop_back().unwrap_or_default();
         }
+        if self.modes.is_empty() {
+            self.modes = other.mode_stack.pop_back().unwrap_or_default();
+        }
+
         for entry in other.stack.into_iter().rev() {
             self.stack.push_front(entry)
+        }
+
+        for entry in other.mode_stack.into_iter().rev() {
+            self.mode_stack.push_front(entry);
         }
     }
 }
@@ -361,7 +385,6 @@ impl SelectedStack {
 #[derive(Debug, Default)]
 pub struct EffectBundle {
     pub(crate) selected: SelectedStack,
-    pub(crate) modes: Vec<usize>,
     pub(crate) source: Option<CardId>,
     pub(crate) effects: Vec<Effect>,
 }
@@ -454,7 +477,7 @@ impl PendingEffects {
                 .effect
                 .as_ref()
                 .unwrap()
-                .target_for_option(db, first.source, &first.selected, &first.modes, option)
+                .target_for_option(db, first.source, &first.selected, option)
         })
     }
 
@@ -466,7 +489,7 @@ impl PendingEffects {
                     .effect
                     .as_ref()
                     .unwrap()
-                    .priority(db, first.source)
+                    .priority(db, first.source, &first.selected, &first.selected.modes)
             })
             .unwrap_or_else(|| db.turn.priority_player())
     }
@@ -479,7 +502,7 @@ impl PendingEffects {
                     .effect
                     .as_ref()
                     .unwrap()
-                    .description(db, first.source, &first.selected, &first.modes)
+                    .description(db, first.source, &first.selected, &first.selected.modes)
             })
             .unwrap_or_default()
     }
@@ -493,14 +516,13 @@ impl PendingEffects {
                 };
 
                 let mut effect = first.effects[self.resolving].effect.clone().unwrap();
-                if effect.wants_input(db, first.source, &first.selected, &first.modes) {
+                if effect.wants_input(db, first.source, &first.selected, &first.selected.modes) {
                     break;
                 }
 
                 applied = true;
                 let first_len = first.effects.len();
-                let results =
-                    effect.apply(db, first.source, &mut first.selected, &first.modes, false);
+                let results = effect.apply(db, first.source, &mut first.selected, false);
 
                 self.resolving += 1;
                 if self.resolving == first_len {
@@ -523,16 +545,9 @@ impl PendingEffects {
 
         if let Some(first) = self.bundles.front_mut() {
             let effect = first.effects[self.resolving].effect.as_mut().unwrap();
-            match effect.select(
-                db,
-                first.source,
-                option,
-                &mut first.selected,
-                &mut first.modes,
-            ) {
+            match effect.select(db, first.source, option, &mut first.selected) {
                 SelectionResult::Complete => {
-                    let results =
-                        effect.apply(db, first.source, &mut first.selected, &first.modes, false);
+                    let results = effect.apply(db, first.source, &mut first.selected, false);
 
                     self.resolving += 1;
                     if self.resolving == first.effects.len() {
@@ -580,7 +595,7 @@ impl PendingEffects {
                     db,
                     front.source,
                     &front.selected,
-                    &front.modes,
+                    &front.selected.modes,
                 )
             })
             .unwrap_or_else(|| Options::OptionalList(vec![]))
@@ -695,6 +710,5 @@ fn handle_replacements<T: Into<effect::Effect>>(
             ..Default::default()
         }],
         source,
-        ..Default::default()
     })]
 }

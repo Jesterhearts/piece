@@ -1,18 +1,17 @@
 use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
-    protogen::effects::ClearSelected,
+    protogen::effects::Nothing,
 };
 
-impl EffectBehaviors for ClearSelected {
+impl EffectBehaviors for Nothing {
     fn apply(
         &mut self,
         _db: &mut Database,
         _source: Option<CardId>,
-        selected: &mut SelectedStack,
+        _selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        selected.clear();
         vec![]
     }
 }

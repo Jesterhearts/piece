@@ -51,7 +51,6 @@ impl EffectBehaviors for ExileCardsSharingType {
         source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             let card_types = self
@@ -88,7 +87,6 @@ impl EffectBehaviors for ExileCardsSharingType {
         db: &mut Database,
         source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         for card in self.selected.iter() {

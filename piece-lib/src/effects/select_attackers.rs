@@ -2,8 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack,
-        SelectionResult,
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
     in_play::{CardId, Database},
     protogen::{
@@ -56,7 +55,6 @@ impl EffectBehaviors for SelectAttackers {
         _source: Option<CardId>,
         option: Option<usize>,
         selected: &mut SelectedStack,
-        _modes: &mut Vec<usize>,
     ) -> SelectionResult {
         if let Some(option) = option {
             if selected.is_empty() {
@@ -95,7 +93,6 @@ impl EffectBehaviors for SelectAttackers {
         _db: &mut Database,
         _source: Option<CardId>,
         _selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut selected = SelectedStack::new(

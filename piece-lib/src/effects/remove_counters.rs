@@ -10,7 +10,6 @@ impl EffectBehaviors for RemoveCounters {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        _modes: &[usize],
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let count = self.count.count(db, source, selected);
