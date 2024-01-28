@@ -7,11 +7,11 @@ activated_abilities:
       mana_cost: '{W}{B}{G}'
       tap: true
     to_activate:
-      - effect: !SelectSelf {}
+      - effect: !SelectSource {}
       - effect: !Sacrifice {}
       - effect: !ClearSelected {}
     effects:
-      - effect: !SelectSelfController {}
+      - effect: !SelectSourceController {}
       - effect: !DrawCards
           count:
             count: !Fixed

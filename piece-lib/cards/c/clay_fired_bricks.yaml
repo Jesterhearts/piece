@@ -34,7 +34,7 @@ activated_abilities:
                   - restriction: !NotSelf {}
                 minimum: 1
                 maximum: 1
-      - effect: !SelectSelf
+      - effect: !SelectSource
       - effect: !MoveToExile
     effects:
       - effect: !Transform {}

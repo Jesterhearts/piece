@@ -4,7 +4,7 @@ cost:
   mana_cost: '{2}{U}'
 etb_abilities:
   - oracle_text: Braided Net enters the battlefield with three net counters on it.
-    effect: !SelectSelf {}
+    effect: !SelectSource {}
   - effect: !AddCounters
       counter: net
       count:
@@ -28,7 +28,7 @@ activated_abilities:
                 locations: On Battlefield
       - effect: !PushSelected {}
       - effect: !ClearSelected {}
-      - effect: !SelectSelf {}
+      - effect: !SelectSource {}
       - effect: !RemoveCounters
           counter: Net
           count:
@@ -58,7 +58,7 @@ activated_abilities:
                   - restriction: !NotSelf {}
                 minimum: 1
                 maximum: 1
-      - effect: !SelectSelf
+      - effect: !SelectSource
       - effect: !MoveToExile
     effects:
       - effect: !Transform {}
@@ -74,7 +74,7 @@ back_face:
         mana_cost: '{3}{U}'
         tap: true
       effects:
-        - effect: !SelectSelfController
+        - effect: !SelectSourceController
         - effect: !DrawCards
             count:
               count: !NumberOfPermanentsMatching
@@ -84,7 +84,7 @@ back_face:
                   - restriction: !Controller
                       controller: !Self_ {}
         - effect: !ClearSelected {}
-        - effect: !SelectSelf {}
+        - effect: !SelectSource {}
         - effect: !MoveToTopOfLibrary
             under: 2
       oracle_text: "{3}{U}, {T}: Draw a card for each artifact you control, then put

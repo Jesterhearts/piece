@@ -1,11 +1,12 @@
 use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
-    protogen::effects::SelectSelfController,
+    log::Log,
+    protogen::effects::SelectSource,
     stack::{Selected, TargetType},
 };
 
-impl EffectBehaviors for SelectSelfController {
+impl EffectBehaviors for SelectSource {
     fn apply(
         &mut self,
         db: &mut Database,
@@ -13,10 +14,11 @@ impl EffectBehaviors for SelectSelfController {
         selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
+        Log::card_chosen(db, source.unwrap());
         selected.push(Selected {
-            location: None,
-            target_type: TargetType::Player(db[source.unwrap()].controller.into()),
-            targeted: true,
+            location: source.unwrap().location(db),
+            target_type: TargetType::Card(source.unwrap()),
+            targeted: false,
             restrictions: vec![],
         });
 

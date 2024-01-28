@@ -12,7 +12,7 @@ use crate::{
         effects::{
             count::Fixed,
             create_token::{self, Token},
-            ActivatedAbility, Count, Explore, Sacrifice, SelectSelf, SelectTargets,
+            ActivatedAbility, Count, Explore, Sacrifice, SelectSource, SelectTargets,
         },
         empty::Empty,
         targets::{restriction::OfType, Restriction},
@@ -81,7 +81,7 @@ impl From<Token> for Card {
                     }),
                     to_activate: vec![
                         Effect {
-                            effect: Some(SelectSelf::default().into()),
+                            effect: Some(SelectSource::default().into()),
                             ..Default::default()
                         },
                         Effect {

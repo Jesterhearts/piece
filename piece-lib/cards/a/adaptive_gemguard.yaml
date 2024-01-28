@@ -15,7 +15,7 @@ activated_abilities:
       - effect: !Tap {}
     effects:
       - effect: !ClearSelected {}
-      - effect: !SelectSelf {}
+      - effect: !SelectSource {}
       - effect: !AddCounters
           counter: any
           count:

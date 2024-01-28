@@ -6,9 +6,11 @@ oracle_text: Descend 4 - Didact Echo has flying as long as there are four or mor
   permanent cards in your graveyard.
 etb_abilities:
   - oracle_text: When Didact Echo enters the battlefield, draw a card.
-    effect: !ControllerDrawsCards
-      count: !Fixed
-        count: 1
+    effect: !SelectSourceController
+  - effect: !DrawCards
+      count:
+        count: !Fixed
+          count: 1
 static_abilities:
   - ability: !AddKeywordsIf
       keywords: Flying

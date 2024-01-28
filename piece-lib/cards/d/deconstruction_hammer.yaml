@@ -16,13 +16,18 @@ activated_abilities:
                 cost:
                   mana_cost: '{3}'
                   tap: true
-                  additional_costs:
-                    - cost: !SacrificeSource {}
-                effects:
-                  - effect: !DestroyTarget
+                to_activate:
+                  - effect: !SelectTargets
+                      count:
+                        count: !Fixed
+                          count: 1
                       restrictions:
                         - restriction: !OfType
-                            types: Enchantment, Artifact
+                            types: Artifact, Enchantment
+                  - effect: !SelectSource {}
+                  - effect: !Sacrifice {}
+                effects:
+                  - effect: !DestroySelected
                 oracle_text: '{3}, {T}, Sacrifice Deconstruction Hammer: Destroy Target
                   artifact or enchantment.'
     oracle_text: Equip {3}

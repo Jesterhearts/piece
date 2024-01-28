@@ -10,7 +10,7 @@ replacement_abilities:
           controller: !Self_ {}
       - restriction: !Self_ {}
     effects:
-      - effect: !SelectSelf {}
+      - effect: !SelectSource {}
       - effect: !SelectNonTargeting
           count: 1
           restrictions:

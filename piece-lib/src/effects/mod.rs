@@ -49,8 +49,8 @@ mod select_destinations;
 mod select_for_each_player;
 mod select_mode;
 mod select_non_targeting;
-mod select_self;
-mod select_self_controller;
+mod select_source;
+mod select_source_controller;
 mod select_target_controller;
 mod select_targets;
 mod select_top_of_library;
@@ -191,8 +191,8 @@ impl Options {
         SelectForEachPlayer(SelectForEachPlayer),
         SelectMode(SelectMode),
         SelectNonTargeting(SelectNonTargeting),
-        SelectSelf(SelectSelf),
-        SelectSelfController(SelectSelfController),
+        SelectSource(SelectSource),
+        SelectSourceController(SelectSourceController),
         SelectTargetController(SelectTargetController),
         SelectTargets(SelectTargets),
         SelectTopOfLibrary(SelectTopOfLibrary),

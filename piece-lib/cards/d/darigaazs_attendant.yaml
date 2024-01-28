@@ -5,11 +5,13 @@ cost:
 mana_abilities:
   - cost:
       mana_cost: '{1}'
-      additional_costs:
-        - cost: !SacrificeSource {}
-    gain_mana:
-      gain: !Specific
-        gain: '{B}{R}{G}'
-    mana_source: any
-    mana_restriction: none
-    oracle_text: '{1}, Sacrifice Darigaaz''s Attendant: Add {B}{R}{G}.'
+    to_activate:
+      - !SelectSource {}
+      - !Sacrifice {}
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{B}{R}{G}'
+          mana_source: any
+          mana_restriction: none
+    oracle_text: "{1}, Sacrifice Darigaaz's Attendant: Add {B}{R}{G}."

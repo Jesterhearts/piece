@@ -151,9 +151,9 @@ message Effect {
       (comment.comment) =
           "Select some cards without checking if they can be targetted (e.g. ignore Shroud/Hexproof)."
     ];
-    SelectSelf select_self = 53
+    SelectSource select_source = 53
         [(comment.comment) = "Select the card associated with this effect."];
-    SelectSelfController select_self_controller = 54
+    SelectSourceController select_source_controller = 54
         [(comment.comment) =
              "Select the controller of the card associated with this effect."];
     SelectTargetController select_target_controller = 55
@@ -620,9 +620,9 @@ message SelectNonTargeting {
   repeated targets.Restriction restrictions = 2;
 }
 
-message SelectSelf {}
+message SelectSource {}
 
-message SelectSelfController {}
+message SelectSourceController {}
 
 message SelectTargetController {}
 

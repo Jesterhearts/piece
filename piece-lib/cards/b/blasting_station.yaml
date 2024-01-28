@@ -37,7 +37,7 @@ triggered_abilities:
         - restriction: !OfType
             types: Creature
     effects:
-      - effect: !SelectSelf {}
+      - effect: !SelectSource {}
       - effect: !Untap {}
     oracle_text: Whenever a creature enters the battlefield you may untap blasting
       station.
