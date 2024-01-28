@@ -26,15 +26,15 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !OfType
             subtypes: Cave
-    to_trigger:
-      - effect: !SelectTargets
-          count:
-            count: !Fixed
-              count: 1
-          restrictions:
-            - restriction: !OfType
-                types: Creature
-            - restriction: !OnBattlefield {}
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !OfType
+              types: Creature
+          - restriction: !OnBattlefield {}
     effects:
       - effect: !AddCounters
           counter: +1/+1

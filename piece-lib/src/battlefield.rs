@@ -13,8 +13,8 @@ use crate::{
             dest::Destination,
             pay_cost::PayMana,
             static_ability::{self},
-            Dest, Duration, Effect, MoveToBattlefield, MoveToGraveyard, PayCost, PayCosts,
-            PushSelected, SelectDestinations,
+            ClearSelected, Dest, Duration, Effect, MoveToBattlefield, MoveToGraveyard, MoveToStack,
+            PayCost, PayCosts, PushSelected, SelectDestinations,
         },
         mana::{spend_reason::Activating, SpendReason},
         targets::Location,
@@ -283,9 +283,22 @@ impl Battlefields {
 
         let mut results = PendingEffects::default();
         let mut bundle = EffectBundle {
+            selected: SelectedStack::new(vec![Selected {
+                location: Some(Location::ON_BATTLEFIELD),
+                target_type: TargetType::Ability {
+                    source,
+                    ability: ability.clone(),
+                },
+                targeted: false,
+                restrictions: vec![],
+            }]),
             source: Some(source),
-            ..Default::default()
+            effects: vec![
+                PushSelected::default().into(),
+                ClearSelected::default().into(),
+            ],
         };
+
         if let Some(targets) = ability.targets(db) {
             bundle.effects.push(targets.clone().into());
 
@@ -332,16 +345,7 @@ impl Battlefields {
             });
         }
 
-        results.push_back(bundle);
-
-        let mut bundle = EffectBundle {
-            source: Some(source),
-            effects: ability.effects(db),
-            ..Default::default()
-        };
-        if ability.is_craft(db) {
-            bundle.selected.crafting = true
-        }
+        bundle.effects.push(MoveToStack::default().into());
         results.push_back(bundle);
 
         results

@@ -7,6 +7,7 @@ mod cast_selected;
 mod choose_attackers;
 mod clear_selected;
 mod clone_selected;
+mod copy_spell_or_ability;
 mod counter_spell;
 mod create_token;
 mod create_token_clone_of_selected;
@@ -152,6 +153,7 @@ impl Options {
         ChooseAttackers(ChooseAttackers),
         ClearSelected(ClearSelected),
         CloneSelected(CloneSelected),
+        CopySpellOrAbility(CopySpellOrAbility),
         CounterSpell(CounterSpell),
         CreateToken(CreateToken),
         CreateTokenCloneOfSelected(CreateTokenCloneOfSelected),

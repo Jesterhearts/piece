@@ -36,154 +36,156 @@ message Effect {
     ];
     CastSelected cast_selected = 7
         [(comment.comment) = "Cast the selected cards."];
-    ChooseAttackers choose_attackers = 48 [
+    ChooseAttackers choose_attackers = 8 [
       (comment.comment) = "Choose attackers and their targets.",
       (comment.hidden) = true
     ];
-    ClearSelected clear_selected = 8
+    ClearSelected clear_selected = 9
         [(comment.comment) = "Clear the current selection."];
-    CloneSelected clone_selected = 9 [
+    CloneSelected clone_selected = 10 [
       (comment.comment) =
           "Take two selected targets and make the first target a clone of the second."
     ];
-    CounterSpell counter_spell = 10
+    CopySpellOrAbility copy_spell_or_ability = 11
+        [(comment.comment) = "Copy the selected spell or ability."];
+    CounterSpell counter_spell = 12
         [(comment.comment) = "Counter the selected spell(s)."];
-    CreateToken create_token = 11 [
+    CreateToken create_token = 13 [
       (comment.comment) =
           "Create a token under the control of the selected player and select it. It will still need to be moved to the battlefield."
     ];
-    CreateTokenCloneOfSelected create_token_clone_of_selected = 12 [
+    CreateTokenCloneOfSelected create_token_clone_of_selected = 14 [
       (comment.comment) =
           "Create a token clone of the selected target and place it under the control of the second selected target and select it. It will still need to be moved to the appropriate location."
     ];
-    DamageSelected damage_selected = 13
+    DamageSelected damage_selected = 15
         [(comment.comment) = "Apply damage to the selected target(s)."];
-    DeclareAttacking declare_attacking = 14
+    DeclareAttacking declare_attacking = 16
         [(comment.comment) = "Declare the selected card(s) as attacking."];
-    DestroySelected destroy_selected = 15
+    DestroySelected destroy_selected = 17
         [(comment.comment) = "Destroy the selected target(s)."];
-    Discard discard = 16
+    Discard discard = 18
         [(comment.comment) =
              "The selected target(s) discard some number of cards."];
-    Discover discover = 17
+    Discover discover = 19
         [(comment.comment) = "Implement the Discover mechanic."];
-    DrawCards draw_cards = 18
+    DrawCards draw_cards = 20
         [(comment.comment) = "The selected target draws some number of cards."];
-    Equip equip = 19
+    Equip equip = 21
         [(comment.comment) = "Equip the source to the selected target."];
-    Explore explore = 20
+    Explore explore = 22
         [(comment.comment) = "The selected target(s) explore(s)."];
-    ForEachManaOfSource for_each_mana_of_source = 21 [
+    ForEachManaOfSource for_each_mana_of_source = 23 [
       (comment.comment) =
           "For each mana from a particular source used in the activation of this ability or casting of this spell, apply some effects."
     ];
-    GainLife gain_life = 22
+    GainLife gain_life = 24
         [(comment.comment) = "The selected target(s) gain life."];
-    GainMana gain_mana = 23
+    GainMana gain_mana = 25
         [(comment.comment) = "The selected target gains mana."];
-    IfThenElse if_then_else = 24 [
+    IfThenElse if_then_else = 26 [
       (comment.comment) =
           "If the selected target(s) match some criteria, apply an effect. Otherwise apply a different effect."
     ];
-    LoseLife lose_life = 25
+    LoseLife lose_life = 27
         [(comment.comment) = "The selected target(s) lose life."];
-    Manifest manifest = 26
+    Manifest manifest = 28
         [(comment.comment) =
              "The selected target manifests the top card of their library."];
-    Mill mill = 27 [(comment.comment) = "Mill some number of cards"];
-    Modal modal = 28
+    Mill mill = 29 [(comment.comment) = "Mill some number of cards"];
+    Modal modal = 30
         [(comment.comment) =
              "Apply some effects according to the selected mode(s)."];
-    MoveToBattlefield move_to_battlefield = 29
+    MoveToBattlefield move_to_battlefield = 31
         [(comment.comment) = "Move the selected card(s) to the battlefield."];
-    MoveToBottomOfLibrary move_to_bottom_of_library = 30
+    MoveToBottomOfLibrary move_to_bottom_of_library = 32
         [(comment.comment) =
              "Move the selected card(s) to their owner's library."];
-    MoveToExile move_to_exile = 31
+    MoveToExile move_to_exile = 33
         [(comment.comment) = "Move the selected card(s) to exile."];
-    MoveToGraveyard move_to_graveyard = 32
+    MoveToGraveyard move_to_graveyard = 34
         [(comment.comment) = "Move the selected card(s) to the graveyard."];
-    MoveToHand move_to_hand = 33
+    MoveToHand move_to_hand = 35
         [(comment.comment) =
              "Move the selected card(s) to their owner's hand."];
-    MoveToStack move_to_stack = 34 [
+    MoveToStack move_to_stack = 36 [
       (comment.comment) =
-          "Move the first selected target to the stack, with the remaining selected targets as its targets."
+          "Pop the current selection and use them as targets to the restored selection, casting the restored value."
     ];
-    MoveToTopOfLibrary move_to_top_of_library = 35
+    MoveToTopOfLibrary move_to_top_of_library = 37
         [(comment.comment) =
              "Move the selected card(s) to their owner's library."];
-    MultiplyTokens multiply_tokens = 36 [
+    MultiplyTokens multiply_tokens = 38 [
       (comment.comment) =
           "Multiply the number of tokens created. Used for replacement effects."
     ];
-    Nothing nothing = 37
+    Nothing nothing = 39
         [(comment.comment) = "Take no action. Used to pad modes."];
-    PayCosts pay_costs = 38 [(comment.comment) = "Pay some costs."];
-    PlayerLoses player_loses = 39
+    PayCosts pay_costs = 40 [(comment.comment) = "Pay some costs."];
+    PlayerLoses player_loses = 41
         [(comment.comment) = "The selected player loses the game."];
-    PopSelected pop_selected = 40 [
+    PopSelected pop_selected = 42 [
       (comment.comment) =
           "Clear the current selection and restore the previously pushed selection."
     ];
-    PushSelected push_selected = 41
+    PushSelected push_selected = 43
         [(comment.comment) = "Save the current selection."];
-    RemoveCounters remove_counters = 42 [
+    RemoveCounters remove_counters = 44 [
       (comment.comment) =
           "The selected target(s) have some number of counters removed from them."
     ];
-    ReorderSelected reorder_selected = 43 [
+    ReorderSelected reorder_selected = 45 [
       (comment.comment) = "Re-order the list of selected target(s).",
       (comment.hidden) = true
     ];
-    Reveal reveal = 44 [(comment.comment) = "Reveal the selected target(s)."];
-    Sacrifice sacrifice = 45
+    Reveal reveal = 46 [(comment.comment) = "Reveal the selected target(s)."];
+    Sacrifice sacrifice = 47
         [(comment.comment) = "Sacrifice the selecteed target(s)."];
-    Scry scry = 46 [(comment.comment) = "Scry some number of cards."];
-    SelectAll select_all = 47 [
+    Scry scry = 48 [(comment.comment) = "Scry some number of cards."];
+    SelectAll select_all = 49 [
       (comment.comment) =
           "Select all possible cards/abilities/players matching some criteria."
     ];
-    SelectDestinations select_destinations = 49
+    SelectDestinations select_destinations = 50
         [(comment.comment) = "Select destination(s) for each selected card."];
-    SelectForEachPlayer select_for_each_player = 50
+    SelectForEachPlayer select_for_each_player = 51
         [(comment.comment) =
              "For each player, select a target matching some criteria."];
-    SelectMode select_mode = 51
+    SelectMode select_mode = 52
         [(comment.comment) = "Select from among a set of modal effects."];
-    SelectNonTargeting select_non_targeting = 52 [
+    SelectNonTargeting select_non_targeting = 53 [
       (comment.comment) =
           "Select some cards without checking if they can be targetted (e.g. ignore Shroud/Hexproof)."
     ];
-    SelectSource select_source = 53
+    SelectSource select_source = 54
         [(comment.comment) = "Select the card associated with this effect."];
-    SelectSourceController select_source_controller = 54
+    SelectSourceController select_source_controller = 55
         [(comment.comment) =
              "Select the controller of the card associated with this effect."];
-    SelectTargetController select_target_controller = 55
+    SelectTargetController select_target_controller = 56
         [(comment.comment) =
              "Select the controller of the currently selected target."];
-    SelectTargets select_targets = 56 [
+    SelectTargets select_targets = 57 [
       (comment.comment) =
           "Select some cards, abilities, or players, validating that they can be targetted."
     ];
-    SelectTopOfLibrary select_top_of_library = 57 [
+    SelectTopOfLibrary select_top_of_library = 58 [
       (comment.comment) =
           "Select some number of cards from the top of the selected target(s) librar(y|ies)."
     ];
-    SpendMana spend_mana = 58 [
+    SpendMana spend_mana = 59 [
       (comment.comment) =
           "Spend some mana on the first selected target from the controlling player's mana pool."
     ];
-    Tap tap = 59 [(comment.comment) = "Tap the selected target(s)."];
-    Transform transform = 60
+    Tap tap = 60 [(comment.comment) = "Tap the selected target(s)."];
+    Transform transform = 61
         [(comment.comment) = "Transform the selected card."];
-    TutorLibrary tutor_library = 61
+    TutorLibrary tutor_library = 62
         [(comment.comment) = "Search the target's library for some cards."];
-    Unless unless = 62
+    Unless unless = 63
         [(comment.comment) =
              "Apply an effect unless the selection matches some restrictions."];
-    Untap untap = 63 [(comment.comment) = "Untap the selected target(s)."];
+    Untap untap = 64 [(comment.comment) = "Untap the selected target(s)."];
   };
 }
 
@@ -367,8 +369,8 @@ message StaticAbility {
 }
 
 message TriggeredAbility {
-  repeated Effect to_trigger = 1;
-  triggers.Trigger trigger = 2;
+  triggers.Trigger trigger = 1;
+  TargetSelection targets = 2;
   repeated effects.Effect effects = 3;
   string oracle_text = 4;
 }
@@ -403,6 +405,8 @@ message ChooseAttackers {
 message ClearSelected {}
 
 message CloneSelected {}
+
+message CopySpellOrAbility {}
 
 message CounterSpell {}
 

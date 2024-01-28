@@ -51,9 +51,10 @@ back_face:
         source: ability activated
         from: anywhere
       effects:
+        - effect: !SelectAll
+            restrictions:
+              - restriction: !SpellOrAbilityJustCast {}
         - oracle_text:
             Whenever you activate an ability that isn't a mana ability, copy it.
             You may choose new targets for the copy.
-          effect: !CopySpellOrAbility
-            restrictions:
-              - restriction: !SpellOrAbilityJustCast {}
+          effect: !CopySpellOrAbility {}

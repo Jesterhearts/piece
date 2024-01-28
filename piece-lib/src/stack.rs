@@ -299,7 +299,11 @@ impl Stack {
         listener: CardId,
         trigger: TriggeredAbility,
     ) -> ApplyResult {
-        let mut to_trigger = trigger.to_trigger;
+        let mut to_trigger = vec![
+            Effect::from(PushSelected::default()),
+            Effect::from(ClearSelected::default()),
+        ];
+        to_trigger.push(trigger.targets.get_or_default().clone().into());
         to_trigger.push(Effect {
             effect: Some(MoveToStack::default().into()),
             ..Default::default()
