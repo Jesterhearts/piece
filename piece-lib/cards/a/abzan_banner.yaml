@@ -6,19 +6,24 @@ activated_abilities:
   - cost:
       mana_cost: '{W}{B}{G}'
       tap: true
-      additional_costs:
-        - cost: !SacrificeSource {}
+    to_activate:
+      - effect: !SelectSelf {}
+      - effect: !Sacrifice {}
+      - effect: !ClearSelected {}
     effects:
-      - effect: !ControllerDrawsCards
-          count: !Fixed
-            count: 1
+      - effect: !SelectSelfController {}
+      - effect: !DrawCards
+          count:
+            count: !Fixed
+              count: 1
     oracle_text: '{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card'
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Choice
-        choices: '{W}, {B}, {G}'
-    mana_source: any
-    mana_restriction: none
+    effects:
+      - effect: !GainMana
+          gain: !Choice
+            choices: '{W}, {B}, {G}'
+          mana_source: any
+          mana_restriction: none
     oracle_text: '{T}: Add {W}, {B}, or {G}'

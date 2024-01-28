@@ -41,129 +41,131 @@ message Effect {
       (comment.comment) =
           "Take two selected targets and make the first target a clone of the second."
     ];
-    CreateToken create_token = 10 [
+    CounterSpell counter_spell = 10
+        [(comment.comment) = "Counter the selected spell(s)."];
+    CreateToken create_token = 11 [
       (comment.comment) =
           "Create a token under the control of the selected player and select it. It will still need to be moved to the battlefield."
     ];
-    CreateTokenCloneOfSelected create_token_clone_of_selected = 11 [
+    CreateTokenCloneOfSelected create_token_clone_of_selected = 12 [
       (comment.comment) =
           "Create a token clone of the selected target and place it under the control of the second selected target and select it. It will still need to be moved to the appropriate location."
     ];
-    DamageSelected damage_selected = 12
+    DamageSelected damage_selected = 13
         [(comment.comment) = "Apply damage to the selected target(s)."];
-    DeclareAttacking declare_attacking = 13
+    DeclareAttacking declare_attacking = 14
         [(comment.comment) = "Declare the selected card(s) as attacking."];
-    DestroySelected destroy_selected = 14
+    DestroySelected destroy_selected = 15
         [(comment.comment) = "Destroy the selected target(s)."];
-    Discard discard = 15
+    Discard discard = 16
         [(comment.comment) =
              "The selected target(s) discard some number of cards."];
-    Discover discover = 16
+    Discover discover = 17
         [(comment.comment) = "Implement the Discover mechanic."];
-    DrawCards draw_cards = 17
+    DrawCards draw_cards = 18
         [(comment.comment) = "The selected target draws some number of cards."];
-    Equip equip = 18
+    Equip equip = 19
         [(comment.comment) =
              "Equip the first selected target to the second selected target."];
-    Explore explore = 19
+    Explore explore = 20
         [(comment.comment) = "The selected target(s) explore(s)."];
-    ForEachManaOfSource for_each_mana_of_source = 20 [
+    ForEachManaOfSource for_each_mana_of_source = 21 [
       (comment.comment) =
           "For each mana from a particular source used in the activation of this ability or casting of this spell, apply some effects."
     ];
-    GainLife gain_life = 21
+    GainLife gain_life = 22
         [(comment.comment) = "The selected target(s) gain life."];
-    GainMana gain_mana = 22
+    GainMana gain_mana = 23
         [(comment.comment) = "The selected target gains mana."];
-    LoseLife lose_life = 23
+    LoseLife lose_life = 24
         [(comment.comment) = "The selected target(s) lose life."];
-    Manifest manifest = 24
+    Manifest manifest = 25
         [(comment.comment) =
              "The selected target manifests the top card of their library."];
-    Mill mill = 25 [(comment.comment) = "Mill some number of cards"];
-    MoveToBattlefield move_to_battlefield = 26
+    Mill mill = 26 [(comment.comment) = "Mill some number of cards"];
+    MoveToBattlefield move_to_battlefield = 27
         [(comment.comment) = "Move the selected card(s) to the battlefield."];
-    MoveToBottomOfLibrary move_to_bottom_of_library = 27
+    MoveToBottomOfLibrary move_to_bottom_of_library = 28
         [(comment.comment) =
              "Move the selected card(s) to their owner's library."];
-    MoveToExile move_to_exile = 28
+    MoveToExile move_to_exile = 29
         [(comment.comment) = "Move the selected card(s) to exile."];
-    MoveToGraveyard move_to_graveyard = 29
+    MoveToGraveyard move_to_graveyard = 30
         [(comment.comment) = "Move the selected card(s) to the graveyard."];
-    MoveToHand move_to_hand = 30
+    MoveToHand move_to_hand = 31
         [(comment.comment) =
              "Move the selected card(s) to their owner's hand."];
-    MoveToStack move_to_stack = 31 [
+    MoveToStack move_to_stack = 32 [
       (comment.comment) =
           "Move the first selected target to the stack, with the remaining selected targets as its targets."
     ];
-    MoveToTopOfLibrary move_to_top_of_library = 32
+    MoveToTopOfLibrary move_to_top_of_library = 33
         [(comment.comment) =
              "Move the selected card(s) to their owner's library."];
-    MultiplyTokens multiply_tokens = 33 [
+    MultiplyTokens multiply_tokens = 34 [
       (comment.comment) =
           "Multiply the number of tokens created. Used for replacement effects."
     ];
-    PayCosts pay_costs = 34 [(comment.comment) = "Pay some costs."];
-    PlayerLoses player_loses = 35
+    PayCosts pay_costs = 35 [(comment.comment) = "Pay some costs."];
+    PlayerLoses player_loses = 36
         [(comment.comment) = "The selected player loses the game."];
-    PopSelected pop_selected = 36 [
+    PopSelected pop_selected = 37 [
       (comment.comment) =
           "Clear the current selection and restore the previously pushed selection."
     ];
-    PushSelected push_selected = 37
+    PushSelected push_selected = 38
         [(comment.comment) = "Save the current selection."];
-    RemoveCounters remove_counters = 38 [
+    RemoveCounters remove_counters = 39 [
       (comment.comment) =
           "The selected target(s) have some number of counters removed from them."
     ];
-    ReorderSelected reorder_selected = 39
+    ReorderSelected reorder_selected = 40
         [(comment.comment) = "Re-order the list of selected target(s)."];
-    Reveal reveal = 40 [(comment.comment) = "Reveal the selected target(s)."];
-    Sacrifice sacrifice = 41
+    Reveal reveal = 41 [(comment.comment) = "Reveal the selected target(s)."];
+    Sacrifice sacrifice = 42
         [(comment.comment) = "Sacrifice the selecteed target(s)."];
-    Scry scry = 42 [(comment.comment) = "Scry some number of cards."];
-    SelectAll select_all = 43 [
+    Scry scry = 43 [(comment.comment) = "Scry some number of cards."];
+    SelectAll select_all = 44 [
       (comment.comment) =
           "Select all possible cards/abilities/players matching some criteria."
     ];
-    SelectAttackers select_attackers = 44
+    SelectAttackers select_attackers = 45
         [(comment.comment) = "Select attackers and their targets."];
-    SelectDestinations select_destinations = 45
+    SelectDestinations select_destinations = 46
         [(comment.comment) = "Select destination(s) for each selected card."];
-    SelectForEachPlayer select_for_each_player = 46
+    SelectForEachPlayer select_for_each_player = 47
         [(comment.comment) =
              "For each player, select a target matching some criteria."];
-    SelectMode select_mode = 47
+    SelectMode select_mode = 48
         [(comment.comment) = "Select from among a set of modal effects."];
-    SelectNonTargeting select_non_targeting = 48 [
+    SelectNonTargeting select_non_targeting = 49 [
       (comment.comment) =
           "Select some cards without checking if they can be targetted (e.g. ignore Shroud/Hexproof)."
     ];
-    SelectSelf select_self = 49
+    SelectSelf select_self = 50
         [(comment.comment) = "Select the card associated with this effect."];
-    SelectSelfController select_self_controller = 50
+    SelectSelfController select_self_controller = 51
         [(comment.comment) =
              "Select the controller of the card associated with this effect."];
-    SelectTargetController select_target_controller = 51
+    SelectTargetController select_target_controller = 52
         [(comment.comment) =
              "Select the controller of the currently selected target."];
-    SelectTargets select_targets = 52 [
+    SelectTargets select_targets = 53 [
       (comment.comment) =
           "Select some cards, abilities, or players, validating that they can be targetted."
     ];
-    SelectTopOfLibrary select_top_of_library = 53 [
+    SelectTopOfLibrary select_top_of_library = 54 [
       (comment.comment) =
           "Select some number of cards from the top of the selected target(s) librar(y|ies)."
     ];
-    SpendMana spend_mana = 54 [
+    SpendMana spend_mana = 55 [
       (comment.comment) =
           "Spend some mana on the first selected target from the controlling player's mana pool."
     ];
-    Tap tap = 55 [(comment.comment) = "Tap the selected target(s)."];
-    Transform transform = 56
+    Tap tap = 56 [(comment.comment) = "Tap the selected target(s)."];
+    Transform transform = 57
         [(comment.comment) = "Transform the selected card."];
-    Untap untap = 57 [(comment.comment) = "Untap the selected target(s)."];
+    Untap untap = 58 [(comment.comment) = "Untap the selected target(s)."];
   };
 }
 
@@ -358,6 +360,8 @@ message CastSelected {
 message ClearSelected {}
 
 message CloneSelected {}
+
+message CounterSpell {}
 
 message CreateToken {
   message Creature {
@@ -558,9 +562,8 @@ message Reveal {}
 message Sacrifice {}
 
 message Scry {
-  Count count = 1;
-  repeated Dest dests = 2;
-  uint32 placing = 3;
+  repeated Dest dests = 1;
+  uint32 placing = 2;
 }
 
 message SelectAll {

@@ -6,6 +6,7 @@ mod cascade;
 mod cast_selected;
 mod clear_selected;
 mod clone_selected;
+mod counter_spell;
 mod create_token;
 mod create_token_clone_of_selected;
 mod damage_selected;
@@ -142,6 +143,7 @@ impl Options {
         CastSelected(CastSelected),
         ClearSelected(ClearSelected),
         CloneSelected(CloneSelected),
+        CounterSpell(CounterSpell),
         CreateToken(CreateToken),
         CreateTokenCloneOfSelected(CreateTokenCloneOfSelected),
         DamageSelected(DamageSelected),

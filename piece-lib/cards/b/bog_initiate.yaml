@@ -5,9 +5,10 @@ cost:
 mana_abilities:
   - cost:
       mana_cost: '{1}'
-    gain_mana:
-      gain: !Specific
-        gain: '{B}'
-    mana_source: any
-    mana_restriction: none
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{B}'
+          mana_source: any
+          mana_restriction: none
     oracle_text: '{1}: Add {B}'

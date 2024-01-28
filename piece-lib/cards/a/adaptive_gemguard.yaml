@@ -2,26 +2,27 @@ name: Adaptive Gemguard
 typeline: Artifact Creature - Gnome
 cost:
   mana_cost: '{3}{W}'
+oracle_text: ''
 activated_abilities:
-  - cost:
-      additional_costs:
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature
+  - to_activate:
+      - effect: !SelectTargets
+          count:
+            count: !Fixed
+              count: 2
+          restrictions:
+            - restriction: !OfType
+                types: Artifact, Creature
+      - effect: !Tap {}
     effects:
-      - effect: !GainCounters
-          counter: +1/+1
+      - effect: !ClearSelected {}
+      - effect: !SelectSelf {}
+      - effect: !AddCounters
+          counter: any
           count:
             count: !Fixed
               count: 1
-    oracle_text: |-
-      Tap two untapped artifacts and/or creatures you control: Put a +1/+1 counter on Adpative Gemguard.
-      Activate only as sorcery.
+    oracle_text: 'Tap two untapped artifacts and/or creatures you control: Put a +1/+1
+      counter on Adaptive Gemguard. Activate only as a sorcery.'
     sorcery_speed: true
 power: 3
 toughness: 3

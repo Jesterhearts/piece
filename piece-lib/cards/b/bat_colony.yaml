@@ -7,14 +7,14 @@ etb_abilities:
       token with flying for each mana from a Cave spent to cast it.
     effect: !ForEachManaOfSource
       source: cave
-      effect:
-        effect: !CreateToken
-          token: !Creature
-            name: Bat
-            typeline: Creature - Bat
-            colors: Black
-            power: 1
-            toughness: 1
+      effects:
+        - effect: !CreateToken
+            token: !Creature
+              name: Bat
+              typeline: Creature - Bat
+              colors: Black
+              power: 1
+              toughness: 1
 triggered_abilities:
   - trigger:
       source: enters the battlefield
@@ -24,13 +24,18 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !OfType
             subtypes: Cave
-    effects:
-      - effect: !TargetGainsCounters
-          counter: +1/+1
+    to_trigger:
+      - effect: !SelectTargets
+          count:
+            count: !Fixed
+              count: 1
           restrictions:
             - restriction: !OfType
                 types: Creature
             - restriction: !OnBattlefield {}
+    effects:
+      - effect: !AddCounters
+          counter: +1/+1
           count:
             count: !Fixed
               count: 1

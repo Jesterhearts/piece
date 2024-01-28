@@ -3,7 +3,8 @@ typeline: Basic Land - Forest
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{G}'
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{G}'
     oracle_text: '{T}: Add {G}.'

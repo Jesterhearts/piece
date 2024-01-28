@@ -3,8 +3,12 @@ typeline: Instant
 cost:
   mana_cost: '{U}{U}'
 oracle_text: Counter target artifact or enchantment spell.
-effects:
-  - effect: !CounterSpellOrAbility
+to_cast:
+  - effect: !SelectTargets
       restrictions:
+        - restriction: !Location
+            locations: In Stack
         - restriction: !OfType
             types: Enchantment, Artifact
+effects:
+  - effect: !CounterSpell

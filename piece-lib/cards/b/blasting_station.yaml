@@ -5,14 +5,28 @@ cost:
 activated_abilities:
   - cost:
       tap: true
-      additional_costs:
-        - cost: !SacrificePermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Creature
+    to_activate:
+      - effect: !SelectTargets
+          count:
+            count: !Fixed
+              count: 1
+          restrictions:
+            - restriction: !OfType
+                types: Creature
+      - effect: !PushSelected {}
+      - effect: !ClearSelected {}
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !SacrificePermanent
+                restrictions:
+                  - restriction: !OfType
+                      types: Creature
+      - effect: !PopSelected {}
     effects:
-      - effect: !DealDamage
-          quantity: 1
+      - effect: !DamageSelected
+          count:
+            count: !Fixed
+              count: 1
     oracle_text: '{T}, sacrifice a creature: Blasting Station deals 1 daamage to target
       creature or player.'
 triggered_abilities:
@@ -23,6 +37,7 @@ triggered_abilities:
         - restriction: !OfType
             types: Creature
     effects:
-      - effect: !UntapThis {}
+      - effect: !SelectSelf {}
+      - effect: !Untap {}
     oracle_text: Whenever a creature enters the battlefield you may untap blasting
       station.
