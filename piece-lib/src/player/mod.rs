@@ -87,6 +87,9 @@ impl Owner {
                 restriction::Restriction::AttackingOrBlocking(_) => {
                     return false;
                 }
+                &restriction::Restriction::CanBeDamaged(_) => {
+                    return true;
+                }
                 restriction::Restriction::NotSelf(_) => {
                     if self == controller {
                         return false;

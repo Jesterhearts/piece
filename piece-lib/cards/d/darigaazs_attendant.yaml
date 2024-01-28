@@ -5,7 +5,7 @@ cost:
 mana_abilities:
   - cost:
       mana_cost: '{1}'
-    to_activate:
+    additional_costs:
       - !SelectSource {}
       - !Sacrifice {}
     effects:

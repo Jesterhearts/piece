@@ -286,17 +286,18 @@ impl Battlefields {
             source: Some(source),
             ..Default::default()
         };
-        if let Some(to_activate) = ability.to_activate(db) {
-            bundle.effects.extend(to_activate.iter().cloned());
+        if let Some(targets) = ability.targets(db) {
+            bundle.effects.push(targets.clone().into());
 
             if ability.is_craft(db) {
                 bundle.selected.crafting = true
             }
 
-            bundle.effects.push(Effect {
-                effect: Some(PushSelected::default().into()),
-                ..Default::default()
-            });
+            bundle.effects.push(PushSelected::default().into());
+        }
+
+        if let Some(additional_costs) = ability.additional_costs(db) {
+            bundle.effects.extend(additional_costs.iter().cloned());
         }
 
         if let Some(cost) = ability.cost(db) {

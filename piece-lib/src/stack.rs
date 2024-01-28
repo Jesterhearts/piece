@@ -434,7 +434,8 @@ impl Stack {
                 ..Default::default()
             },
         ];
-        to_cast.extend(card.faceup_face(db).to_cast.iter().cloned());
+        to_cast.push(card.faceup_face(db).targets.get_or_default().clone().into());
+        to_cast.extend(card.faceup_face(db).additional_costs.iter().cloned());
         if pay_costs {
             to_cast.push(Effect {
                 effect: Some(
@@ -485,7 +486,6 @@ impl Stack {
             }]),
             effects: to_cast,
             source: Some(card),
-            ..Default::default()
         })
     }
 }

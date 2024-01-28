@@ -31,7 +31,7 @@ use crate::{
             static_ability::{
                 self, AddKeywordsIf, AllAbilitiesOfExiledWith, GreenCannotBeCountered,
             },
-            Count, Duration, Effect, ReplacementEffect, TriggeredAbility,
+            Count, Duration, EtbAbility, ReplacementEffect, TriggeredAbility,
         },
         ids::UUID,
         keywords::Keyword,
@@ -148,7 +148,7 @@ pub struct CardInPlay {
     pub modified_keywords: HashMap<i32, u32>,
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementEffect>>,
     pub modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
-    pub modified_etb_abilities: Vec<Effect>,
+    pub modified_etb_ability: protobuf::MessageField<EtbAbility>,
     pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
     pub(crate) modified_activated_abilities: IndexSet<ActivatedAbilityId>,
     pub(crate) modified_mana_abilities: IndexSet<GainManaAbilityId>,
@@ -750,10 +750,10 @@ impl CardId {
             triggers
         };
 
-        let mut etb_abilities = if facedown {
-            vec![]
+        let mut etb_ability = if facedown {
+            protobuf::MessageField::none()
         } else {
-            source.etb_abilities.clone()
+            source.etb_ability.clone()
         };
 
         let mut static_abilities = if facedown {
@@ -1125,7 +1125,7 @@ impl CardId {
                 applied_modifiers.insert(id);
 
                 triggers.clear();
-                etb_abilities.clear();
+                etb_ability.clear();
                 static_abilities.clear();
                 activated_abilities.clear();
                 mana_abilities.clear();
@@ -1300,7 +1300,7 @@ impl CardId {
         db[self].modified_subtypes = subtypes;
         db[self].modified_triggers = triggers;
         db[self].modified_keywords = keywords;
-        db[self].modified_etb_abilities = etb_abilities;
+        db[self].modified_etb_ability = etb_ability;
         db[self].modified_mana_abilities = mana_abilities;
         db[self].modified_activated_abilities = activated_abilities;
         db[self].modified_replacement_abilities = replacement_abilities;
@@ -1490,6 +1490,11 @@ impl CardId {
                 restriction::Restriction::AttackingOrBlocking(_) => {
                     /*TODO blocking */
                     if db[self].attacking.is_none() {
+                        return false;
+                    }
+                }
+                restriction::Restriction::CanBeDamaged(_) => {
+                    if self.toughness(db).is_none() {
                         return false;
                     }
                 }
@@ -2210,27 +2215,59 @@ impl Default for CardId {
 }
 
 fn clone_card(db: &mut Database, cloning: CardId) -> Card {
+    let Card {
+        name,
+        typeline,
+        cost,
+        reducer,
+        cannot_be_countered,
+        colors,
+        oracle_text,
+        enchant,
+        modes,
+        additional_costs,
+        targets,
+        effects,
+        static_abilities,
+        etb_ability,
+        activated_abilities,
+        triggered_abilities,
+        mana_abilities,
+        replacement_abilities,
+        dynamic_power_toughness,
+        power,
+        toughness,
+        etb_tapped,
+        keywords,
+        back_face,
+        special_fields,
+    } = cloning.faceup_face(db);
+
     Card {
-        name: cloning.faceup_face(db).name.clone(),
-        typeline: cloning.faceup_face(db).typeline.clone(),
-        cost: cloning.faceup_face(db).cost.clone(),
-        cannot_be_countered: false,
-        colors: cloning.faceup_face(db).colors.clone(),
-        oracle_text: String::default(),
-        enchant: cloning.faceup_face(db).enchant.clone(),
-        effects: cloning.faceup_face(db).effects.clone(),
-        etb_abilities: cloning.faceup_face(db).etb_abilities.clone(),
-        static_abilities: cloning.faceup_face(db).static_abilities.clone(),
-        activated_abilities: cloning.faceup_face(db).activated_abilities.clone(),
-        triggered_abilities: cloning.faceup_face(db).triggered_abilities.clone(),
-        replacement_abilities: cloning.faceup_face(db).replacement_abilities.clone(),
-        mana_abilities: cloning.faceup_face(db).mana_abilities.clone(),
-        dynamic_power_toughness: cloning.faceup_face(db).dynamic_power_toughness.clone(),
-        power: cloning.faceup_face(db).power,
-        toughness: cloning.faceup_face(db).toughness,
-        etb_tapped: cloning.faceup_face(db).etb_tapped,
-        keywords: cloning.faceup_face(db).keywords.clone(),
-        back_face: protobuf::MessageField::none(),
-        ..Default::default()
+        name: name.clone(),
+        typeline: typeline.clone(),
+        cost: cost.clone(),
+        reducer: reducer.clone(),
+        cannot_be_countered: *cannot_be_countered,
+        colors: colors.clone(),
+        oracle_text: oracle_text.clone(),
+        enchant: enchant.clone(),
+        modes: modes.clone(),
+        additional_costs: additional_costs.clone(),
+        targets: targets.clone(),
+        effects: effects.clone(),
+        static_abilities: static_abilities.clone(),
+        etb_ability: etb_ability.clone(),
+        activated_abilities: activated_abilities.clone(),
+        triggered_abilities: triggered_abilities.clone(),
+        mana_abilities: mana_abilities.clone(),
+        replacement_abilities: replacement_abilities.clone(),
+        dynamic_power_toughness: dynamic_power_toughness.clone(),
+        power: *power,
+        toughness: *toughness,
+        etb_tapped: *etb_tapped,
+        keywords: keywords.clone(),
+        back_face: back_face.clone(),
+        special_fields: special_fields.clone(),
     }
 }

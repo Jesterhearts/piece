@@ -3,7 +3,7 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    effects::SelectionResult,
+    effects::{PendingEffects, SelectionResult},
     in_play::Database,
     in_play::{CardId, CastFrom},
     load_cards,
@@ -101,11 +101,12 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = card.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(card.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
     let targets = vec![db.stack.target_nth(0)];
-    let mut results = counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]);
+    results.apply_results(counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -161,11 +162,13 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = card2.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(card2.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
+
     let targets = vec![db.stack.target_nth(0)];
-    let mut results = counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]);
+    results.apply_results(counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -222,11 +225,13 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = card2.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(card2.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
+
     let targets = vec![db.stack.target_nth(0)];
-    let mut results = counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]);
+    results.apply_results(counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

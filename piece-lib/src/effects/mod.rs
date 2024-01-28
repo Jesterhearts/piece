@@ -71,7 +71,10 @@ use crate::{
     log::LogId,
     player::Owner,
     protogen::{
-        effects::{count, effect, replacement_effect::Replacing, Count, Effect, ReorderSelected},
+        effects::{
+            count, effect, replacement_effect::Replacing, target_selection::Selector, Count,
+            Effect, ReorderSelected, TargetSelection,
+        },
         targets::{Location, Restriction},
         triggers,
     },
@@ -386,6 +389,7 @@ impl SelectedStack {
 pub struct EffectBundle {
     pub(crate) selected: SelectedStack,
     pub(crate) source: Option<CardId>,
+
     pub(crate) effects: Vec<Effect>,
 }
 
@@ -711,4 +715,22 @@ fn handle_replacements<T: Into<effect::Effect>>(
         }],
         source,
     })]
+}
+
+impl From<TargetSelection> for effect::Effect {
+    fn from(val: TargetSelection) -> Self {
+        match val.selector.unwrap() {
+            Selector::SelectTargets(targets) => targets.into(),
+            Selector::SelectNonTargeting(targets) => targets.into(),
+        }
+    }
+}
+
+impl<T: Into<effect::Effect>> From<T> for Effect {
+    fn from(value: T) -> Self {
+        Self {
+            effect: Some(value.into()),
+            ..Default::default()
+        }
+    }
 }

@@ -17,13 +17,13 @@ triggered_abilities:
           cost: !Fixed
             count: 1
     oracle_text: Ward {1}
-etb_abilities:
+etb_ability:
   - oracle_text: >-
-      When Kitesail Larcenist enters the battlefield, for each player, choose up to
-      one other target artifact or creature that player controls. For as long as Kitesail
-      Larcenist remains on the battlefield, the chosen permanents become Treasure
-      artifacts with “{T}, Sacrifice this artifact: Add one mana of any color” and
-      lose all other abilities.
+      When Kitesail Larcenist enters the battlefield, for each player, choose up
+      to one other target artifact or creature that player controls. For as long
+      as Kitesail Larcenist remains on the battlefield, the chosen permanents
+      become Treasure artifacts with “{T}, Sacrifice this artifact: Add one mana
+      of any color” and lose all other abilities.
     effect: !ForEachPlayerChooseThen
       is_optional: true
       restrictions:
@@ -52,7 +52,8 @@ etb_abilities:
                 gain_mana:
                   gain: !Choice
                     choices: '{W}, {U}, {B}, {R}, {G}'
-                oracle_text: '{T}, Sacrifice this artifact: Add one mana of any color.'
+                oracle_text:
+                  '{T}, Sacrifice this artifact: Add one mana of any color.'
             duration: until source leaves battlefield
             restrictions:
               - restriction: !Chosen {}

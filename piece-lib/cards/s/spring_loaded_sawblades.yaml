@@ -2,9 +2,10 @@ name: Spring-Loaded Sawblades
 typeline: Artifact
 cost:
   mana_cost: '{1}{W}'
-etb_abilities:
-  - oracle_text: When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage
-      to target tapped creature an opponent controls.
+etb_ability:
+  - oracle_text:
+      When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage to
+      target tapped creature an opponent controls.
     effect: !DealDamage
       quantity: 5
       restrictions:
@@ -60,7 +61,8 @@ back_face:
             restrictions:
               - restriction: !Controller
                   controller: !Self_ {}
-      oracle_text: 'Tap two other untapped artifacts you control: Bladewheel Chariot
+      oracle_text:
+        'Tap two other untapped artifacts you control: Bladewheel Chariot
         becomes an artifact creature until end of turn.'
     - cost:
         additional_costs:

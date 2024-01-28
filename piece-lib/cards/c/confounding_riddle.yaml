@@ -2,28 +2,29 @@ name: Confounding Riddle
 typeline: Instant
 cost:
   mana_cost: '{2}{U}'
-to_cast:
-  - effect: !SelectMode
-      modes:
-        - oracle_text: Look at the top four cards of your library. Put one of them
-            into your hand and the rest into your graveyard.
-          effect: !SelectTopOfLibrary
-            count:
-              count: !Fixed
-                count: 4
-        - oracle_text: Counter target spell unless its controller pays {4}.
-          effect: !SelectTargets
-            count:
-              count: !Fixed
-                count: 1
-            restrictions:
-              - restriction: !Location
-                  locations: In Stack
+modes:
+  modes:
+    - oracle_text:
+        Look at the top four cards of your library. Put one of them into your
+        hand and the rest into your graveyard.
+      effect: !SelectTopOfLibrary
+        count:
+          count: !Fixed
+            count: 4
+    - oracle_text: Counter target spell unless its controller pays {4}.
+      effect: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !Location
+              locations: In Stack
 effects:
   - effect: !Modal
       modes:
-        - oracle_text: Look at the top four cards of your library. Put one of them
-            into your hand and the rest into your graveyard.
+        - oracle_text:
+            Look at the top four cards of your library. Put one of them into
+            your hand and the rest into your graveyard.
           effect: !SelectDestinations
             destinations:
               - destination: !MoveToHand {}

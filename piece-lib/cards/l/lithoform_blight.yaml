@@ -36,7 +36,7 @@ enchant:
           mana_restriction: none
           oracle_text: '{T}, Pay 1 life: Add one mana of any color.'
       duration: until source leaves battlefield
-etb_abilities:
+etb_ability:
   - effect: !ControllerDrawsCards
       count: !Fixed
         count: 2

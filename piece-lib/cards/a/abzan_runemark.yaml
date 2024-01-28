@@ -6,15 +6,15 @@ oracle_text: |-
   Enchant creature
   Enchanted creature gets +2/+2
   Enchanted creature has vigilance as long as you control a black or green permanent.
-to_cast:
-  - effect: !SelectTargets
-      count:
-        count: !Fixed
-          count: 1
-      restrictions:
-        - restriction: !OfType
-            types: Creature
-        - restriction: !OnBattlefield {}
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !OnBattlefield {}
 enchant:
   modifiers:
     - modifier:

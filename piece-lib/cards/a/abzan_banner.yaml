@@ -6,7 +6,7 @@ activated_abilities:
   - cost:
       mana_cost: '{W}{B}{G}'
       tap: true
-    to_activate:
+    additional_costs:
       - effect: !SelectSource {}
       - effect: !Sacrifice {}
       - effect: !ClearSelected {}

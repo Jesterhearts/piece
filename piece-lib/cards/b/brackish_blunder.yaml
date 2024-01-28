@@ -2,18 +2,19 @@ name: Brackish Blunder
 typeline: Instant
 cost:
   mana_cost: '{1}{U}'
-oracle_text: Return target creature to its owner's hand. If it was tapped, create
-  a map token.
-to_cast:
-  - effect: !SelectTargets
-      count:
-        count: !Fixed
-          count: 1
-      restrictions:
-        - restriction: !OfType
-            types: Creature
-        - restriction: !Location
-            locations: On Battlefield
+oracle_text:
+  Return target creature to its owner's hand. If it was tapped, create a map
+  token.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !Location
+          locations: On Battlefield
 effects:
   - effect: !IfThenElse
       if_:

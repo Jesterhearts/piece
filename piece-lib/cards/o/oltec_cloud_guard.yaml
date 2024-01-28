@@ -2,8 +2,9 @@ name: Oltec Cloud Guard
 typeline: Creature - Human Soldier
 cost:
   mana_cost: '{3}{W}'
-etb_abilities:
-  - oracle_text: When Oltec Cloud Guard enters the battlefield, create a 1/1 colorless
+etb_ability:
+  - oracle_text:
+      When Oltec Cloud Guard enters the battlefield, create a 1/1 colorless
       Gnome artifact creature token.
     effect: !CreateToken
       token: !Creature

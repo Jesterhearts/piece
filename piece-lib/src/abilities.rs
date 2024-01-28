@@ -6,7 +6,7 @@ use crate::{
     player::Owner,
     protogen::{
         cost::{ability_restriction, AbilityCost},
-        effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
+        effects::{static_ability, ActivatedAbility, Effect, GainManaAbility, TargetSelection},
     },
     turns::Phase,
 };
@@ -121,10 +121,18 @@ impl Ability {
         }
     }
 
-    pub(crate) fn to_activate<'db>(&self, db: &'db Database) -> Option<&'db [Effect]> {
+    pub(crate) fn targets<'db>(&self, db: &'db Database) -> Option<&'db TargetSelection> {
         match self {
-            Ability::Activated(id) => Some(&db[*id].ability.to_activate),
-            Ability::Mana(id) => Some(&db[*id].ability.to_activate),
+            Ability::Activated(id) => Some(&db[*id].ability.targets),
+            Ability::Mana(_) => None,
+            Ability::EtbOrTriggered(_) => None,
+        }
+    }
+
+    pub(crate) fn additional_costs<'db>(&self, db: &'db Database) -> Option<&'db [Effect]> {
+        match self {
+            Ability::Activated(id) => Some(&db[*id].ability.additional_costs),
+            Ability::Mana(id) => Some(&db[*id].ability.additional_costs),
             Ability::EtbOrTriggered(_) => None,
         }
     }

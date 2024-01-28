@@ -2,19 +2,21 @@ name: Bat Colony
 typeline: Enchantment
 cost:
   mana_cost: '{2}{W}'
-etb_abilities:
-  - oracle_text: When Bat Colony enters the battlefield, create a 1/1 black Bat creature
-      token with flying for each mana from a Cave spent to cast it.
-    effect: !ForEachManaOfSource
-      source: cave
-      effects:
-        - effect: !CreateToken
-            token: !Creature
-              name: Bat
-              typeline: Creature - Bat
-              colors: Black
-              power: 1
-              toughness: 1
+etb_ability:
+  oracle_text:
+    When Bat Colony enters the battlefield, create a 1/1 black Bat creature
+    token with flying for each mana from a Cave spent to cast it.
+  effects:
+    - effect: !ForEachManaOfSource
+        source: cave
+        effects:
+          - effect: !CreateToken
+              token: !Creature
+                name: Bat
+                typeline: Creature - Bat
+                colors: Black
+                power: 1
+                toughness: 1
 triggered_abilities:
   - trigger:
       source: enters the battlefield
@@ -39,5 +41,6 @@ triggered_abilities:
           count:
             count: !Fixed
               count: 1
-    oracle_text: Whenever a Cave enters the battlefield under your control, put a
-      +1/+1 counter on target creature you control.
+    oracle_text:
+      Whenever a Cave enters the battlefield under your control, put a +1/+1
+      counter on target creature you control.

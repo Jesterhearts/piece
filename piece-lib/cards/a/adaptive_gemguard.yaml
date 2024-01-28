@@ -4,7 +4,7 @@ cost:
   mana_cost: '{3}{W}'
 oracle_text: ''
 activated_abilities:
-  - to_activate:
+  - additional_costs:
       - effect: !SelectTargets
           count:
             count: !Fixed
@@ -21,7 +21,8 @@ activated_abilities:
           count:
             count: !Fixed
               count: 1
-    oracle_text: 'Tap two untapped artifacts and/or creatures you control: Put a +1/+1
+    oracle_text:
+      'Tap two untapped artifacts and/or creatures you control: Put a +1/+1
       counter on Adaptive Gemguard. Activate only as a sorcery.'
     sorcery_speed: true
 power: 3

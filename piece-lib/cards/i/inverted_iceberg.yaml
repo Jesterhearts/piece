@@ -2,13 +2,14 @@ name: Inverted Iceberg
 cost:
   mana_cost: '{1}{U}'
 typeline: Artifact
-etb_abilities:
+etb_ability:
   - effect: !Mill
       count: 1
       restrictions:
         - restriction: !Self_ {}
-    oracle_text: When Inverted Iceberg enters the battlefield, mill a card, then draw
-      a card.
+    oracle_text:
+      When Inverted Iceberg enters the battlefield, mill a card, then draw a
+      card.
   - effect: !ControllerDrawsCards
       count: !Fixed
         count: 1
@@ -44,8 +45,9 @@ back_face:
           - restriction: !Controller
               controller: !Self_ {}
           - restriction: !Self_ {}
-      oracle_text: Whenever Iceberg Titan attacks, you may tap or untap target artifact
-        or creature.
+      oracle_text:
+        Whenever Iceberg Titan attacks, you may tap or untap target artifact or
+        creature.
       effects:
         - effect: !Modal
             modes:

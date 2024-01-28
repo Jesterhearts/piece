@@ -3,7 +3,7 @@ typeline: Creature - Merfolk Scout
 cost:
   mana_cost: '{1}{U}'
 oracle_text: ''
-etb_abilities:
+etb_ability:
   - oracle_text: When River Herald Scout enters the battlefield, it explores.
     effect: !SelfExplores {}
 power: 1

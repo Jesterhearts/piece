@@ -3,7 +3,7 @@ cost:
   mana_cost: '{1}{U}'
 typeline: Artifact
 keywords: Flash
-etb_abilities:
+etb_ability:
   - effect: !TargetGainsCounters
       counter: Stun
       count:

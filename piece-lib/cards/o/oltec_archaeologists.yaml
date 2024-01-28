@@ -6,7 +6,7 @@ oracle_text: |
   When Oltec Archaeologists enters the battlefield, choose one -
   - Return target artifact card from your graveyard to your hand.
   - Scry 3.
-etb_abilities:
+etb_ability:
   - effect: !Modal
       modes:
         - effects:

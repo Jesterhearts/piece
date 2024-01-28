@@ -26,22 +26,26 @@ message Card {
   optional abilities.Enchant enchant = 8
       [(comment.comment) = "The aura modifiers associated with this card."];
 
-  repeated effects.Effect to_cast = 9;
-  repeated effects.Effect effects = 10;
+  effects.SelectMode modes = 9;
+  repeated effects.Effect additional_costs = 10;
+  effects.TargetSelection targets = 11;
+  repeated effects.Effect effects = 12;
 
-  repeated effects.Effect etb_abilities = 11;
-  repeated effects.StaticAbility static_abilities = 12;
-  repeated effects.ActivatedAbility activated_abilities = 13;
-  repeated effects.TriggeredAbility triggered_abilities = 14;
-  repeated effects.GainManaAbility mana_abilities = 15;
-  repeated effects.ReplacementEffect replacement_abilities = 16;
+  repeated effects.StaticAbility static_abilities = 13;
 
-  optional effects.Count dynamic_power_toughness = 17;
-  optional int32 power = 18;
-  optional int32 toughness = 19;
-  bool etb_tapped = 20;
+  effects.EtbAbility etb_ability = 14;
+  repeated effects.ActivatedAbility activated_abilities = 15;
+  repeated effects.TriggeredAbility triggered_abilities = 16;
+  repeated effects.GainManaAbility mana_abilities = 17;
 
-  map<int32, uint32> keywords = 21;
+  repeated effects.ReplacementEffect replacement_abilities = 18;
 
-  optional Card back_face = 22;
+  optional effects.Count dynamic_power_toughness = 19;
+  optional int32 power = 20;
+  optional int32 toughness = 21;
+  bool etb_tapped = 22;
+
+  map<int32, uint32> keywords = 23;
+
+  optional Card back_face = 24;
 }

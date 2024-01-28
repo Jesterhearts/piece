@@ -6,6 +6,16 @@ oracle_text: |-
   Flash
   Enchant creature
   Enchanted creature loses all abilities and is a black Skeleton creature with base power and toughness 1/1.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !Location
+          locations: On Battlefield
 enchant:
   modifiers:
     - modifier:
@@ -20,8 +30,3 @@ enchant:
         add_subtypes: Skeleton
       duration: until source leaves battlefield
 keywords: Flash
-restrictions:
-  - restriction: !OfType
-      types: Creature
-  - restriction: !Location
-      locations: On Battlefield

@@ -139,7 +139,7 @@ message Effect {
           "Select all possible cards/abilities/players matching some criteria."
     ];
     SelectAttackers select_attackers = 48
-        [(comment.comment) = "Select attackers and their targets."];
+        [(comment.comment) = "Choose attackers and their targets."];
     SelectDestinations select_destinations = 49
         [(comment.comment) = "Select destination(s) for each selected card."];
     SelectForEachPlayer select_for_each_player = 50
@@ -272,22 +272,42 @@ enum SimpleDestination {
   TOP_OF_LIBRARY = 5;
 }
 
+message TargetSelection {
+  oneof selector {
+    SelectTargets select_targets = 1;
+    SelectNonTargeting select_non_targeting = 2;
+  }
+}
+
 /// Abilities
 
 message ActivatedAbility {
   cost.AbilityCost cost = 1;
-  repeated Effect to_activate = 2;
-  repeated Effect effects = 3;
-  string oracle_text = 4;
-  bool sorcery_speed = 5;
-  bool craft = 6;
-  bool can_activate_in_hand = 7;
+
+  TargetSelection targets = 2;
+  repeated Effect additional_costs = 3;
+  repeated Effect effects = 4;
+
+  string oracle_text = 5;
+  bool sorcery_speed = 6;
+  bool craft = 7;
+  bool can_activate_in_hand = 8;
+}
+
+message EtbAbility {
+  string oracle_text = 1;
+  SelectMode modes = 2;
+  TargetSelection targets = 3;
+  repeated Effect additional_costs = 4;
+  repeated effects.Effect effects = 5;
 }
 
 message GainManaAbility {
   cost.AbilityCost cost = 1;
-  repeated Effect to_activate = 2;
+
+  repeated Effect additional_costs = 2;
   repeated Effect effects = 3;
+
   string oracle_text = 4;
 }
 

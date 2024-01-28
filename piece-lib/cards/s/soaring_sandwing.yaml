@@ -2,7 +2,7 @@ name: Soaring Sandwing
 typeline: Creature - Dinosaur
 cost:
   mana_cost: '{4}{W}{W}'
-etb_abilities:
+etb_ability:
   - oracle_text: When Soaring Sandwing enters the battlefield, you gain 3 life.
     effect: !GainLife
       count: 3

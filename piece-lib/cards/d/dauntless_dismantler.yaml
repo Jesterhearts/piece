@@ -13,7 +13,7 @@ static_abilities:
 activated_abilities:
   - cost:
       mana_cost: '{X}{X}{W}'
-    to_activate:
+    additional_costs:
       - effect: !SelectSource {}
       - effect: !Sacrifice {}
     effects:
@@ -25,7 +25,8 @@ activated_abilities:
             - restriction: !OfType
                 types: Artifact
       - effect: !DestroySelected
-    oracle_text: '{X}{X}{W}, Sacrifice Dauntless Dismantler: Destroy each artifact
-      with mana value X'
+    oracle_text:
+      '{X}{X}{W}, Sacrifice Dauntless Dismantler: Destroy each artifact with
+      mana value X'
 power: 1
 toughness: 4

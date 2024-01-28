@@ -2,7 +2,7 @@ name: Oteclan Landmark
 typeline: Artifact
 cost:
   mana_cost: '{W}'
-etb_abilities:
+etb_ability:
   - oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
     effect: !Scry
       count: 2
@@ -50,7 +50,8 @@ back_face:
                   types: Creature
               - restriction: !NotKeywords
                   keywords: Flying
-      oracle_text: Whenever Oteclan Levitator attacks, target attacking creature without
+      oracle_text:
+        Whenever Oteclan Levitator attacks, target attacking creature without
         flying gains flying until end of turn.
   power: 1
   toughness: 4

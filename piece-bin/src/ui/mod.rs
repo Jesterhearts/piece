@@ -73,7 +73,7 @@ impl Widget for Card<'_> {
         let has_oracle_text = !oracle_text.is_empty();
 
         let etb_text = source
-            .modified_etb_abilities
+            .modified_etb_ability
             .iter()
             .map(|ability| &ability.oracle_text)
             .filter(|text| !text.is_empty())

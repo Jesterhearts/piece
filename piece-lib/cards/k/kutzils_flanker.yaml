@@ -2,7 +2,7 @@ name: Kutzil's Flanker
 typeline: Creature - Cat Warrior
 cost:
   mana_cost: '{2}{W}'
-etb_abilities:
+etb_ability:
   - oracle_text: |-
       When Kutzil's Flanker enters the battlefield choose one -
       - Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
@@ -11,8 +11,9 @@ etb_abilities:
     effect: !Modal
       modes:
         - effects:
-            - oracle_text: Put a +1/+1 counter on Kutzil's Flanker for each creature
-                that left the battlefield under your control this turn.
+            - oracle_text:
+                Put a +1/+1 counter on Kutzil's Flanker for each creature that
+                left the battlefield under your control this turn.
               effect: !GainCounters
                 counter: +1/+1
                 count:
