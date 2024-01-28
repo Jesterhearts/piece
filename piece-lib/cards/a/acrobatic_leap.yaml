@@ -8,6 +8,10 @@ to_cast:
       count:
         count: !Fixed
           count: 1
+      restrictions:
+        - restriction: !OfType
+            types: Creature
+        - restriction: !OnBattlefield {}
 effects:
   - effect: !ApplyModifier
       modifier:
@@ -17,7 +21,3 @@ effects:
           add_keywords: Flying
         duration: until end of turn
   - effect: !Untap {}
-restrictions:
-  - restriction: !OfType
-      types: Creature
-  - restriction: !OnBattlefield {}

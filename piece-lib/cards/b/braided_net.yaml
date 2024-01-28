@@ -3,52 +3,70 @@ typeline: Artifact
 cost:
   mana_cost: '{2}{U}'
 etb_abilities:
-  - oracle_text: Braided Net enters the battlefield with three net counters on it.
-    effect: !GainCounters
+  - oracle_text:
+      Braided Net enters the battlefield with three net counters on it.
+    effect: !SelectSelf {}
+  - effect: !AddCounters
       counter: net
       count:
         count: !Fixed
           count: 3
 activated_abilities:
   - oracle_text: >-
-      {T}, Remove a net counter from Braided Net: Tap another target nonland permanent.
-      Its activated abilities can't be activated for as long as it remains tapped.
+      {T}, Remove a net counter from Braided Net: Tap another target nonland
+      permanent. Its activated abilities can't be activated for as long as it
+      remains tapped.
     cost:
       tap: true
-      additional_costs:
-        - cost: !RemoveCounters
-            counter: net
-            count: 1
+    to_activate:
+      - effect: !SelectTargets
+          count:
+            count: !Fixed
+              count: 1
+          restrictions:
+            - restriction: !NotOfType
+                types: Land
+            - restriction: !Location
+                locations: On Battlefield
+      - effect: !PushSelected {}
+      - effect: !ClearSelected {}
+      - effect: !SelectSelf {}
+      - effect: !RemoveCounters
+          counter: Net
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !PopSelected {}
     effects:
-      - effect: !TapTarget {}
-      - effect: !ModifyTarget
+      - effect: !Tap {}
+      - effect: !ApplyModifier
           modifier:
-            add_static_abilities:
-              - ability: !PreventAbilityActivation {}
-          duration: until untapped
-  - cost:
+            modifier:
+              add_static_abilities:
+                - ability: !PreventAbilityActivation {}
+            duration: until untapped
+  - oracle_text: Craft with artifact {1}{U}
+    cost:
       mana_cost: '{1}{U}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    to_activate:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSelf
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
-    oracle_text: Craft with artifact {1}{U}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     sorcery_speed: true
     craft: true
-restrictions:
-  - restriction: !NotOfType
-      types: Land
-  - restriction: !Location
-      locations: On Battlefield
 back_face:
   name: Braided Quipu
   typeline: Artifact
@@ -58,16 +76,19 @@ back_face:
         mana_cost: '{3}{U}'
         tap: true
       effects:
-        - effect: !ControllerDrawsCards
-            count: !NumberOfPermanentsMatching
-              restrictions:
-                - restriction: !OfType
-                    types: Artifact
-                - restriction: !Controller
-                    controller: !Self_ {}
-        - effect: !TargetToTopOfLibrary
-            under_cards: 2
-            restrictions:
-              - restriction: !Self_ {}
-      oracle_text: "{3}{U}, {T}: Draw a card for each artifact you control, then put
+        - effect: !SelectSelfController
+        - effect: !DrawCards
+            count:
+              count: !NumberOfPermanentsMatching
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Controller
+                      controller: !Self_ {}
+        - effect: !ClearSelected {}
+        - effect: !SelectSelf {}
+        - effect: !MoveToTopOfLibrary
+            under: 2
+      oracle_text:
+        "{3}{U}, {T}: Draw a card for each artifact you control, then put
         Braided Quipu into its owner's library third from the top."

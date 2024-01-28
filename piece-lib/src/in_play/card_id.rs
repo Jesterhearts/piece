@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    effects::{ApplyResult},
+    effects::ApplyResult,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId,
@@ -2230,7 +2230,6 @@ fn clone_card(db: &mut Database, cloning: CardId) -> Card {
         toughness: cloning.faceup_face(db).toughness,
         etb_tapped: cloning.faceup_face(db).etb_tapped,
         keywords: cloning.faceup_face(db).keywords.clone(),
-        restrictions: cloning.faceup_face(db).restrictions.clone(),
         back_face: protobuf::MessageField::none(),
         ..Default::default()
     }

@@ -77,95 +77,99 @@ message Effect {
         [(comment.comment) = "The selected target(s) gain life."];
     GainMana gain_mana = 23
         [(comment.comment) = "The selected target gains mana."];
-    LoseLife lose_life = 24
+    IfThenElse if_then_else = 24 [
+      (comment.comment) =
+          "If the selected target(s) match some criteria, apply an effect. Otherwise apply a different effect."
+    ];
+    LoseLife lose_life = 25
         [(comment.comment) = "The selected target(s) lose life."];
-    Manifest manifest = 25
+    Manifest manifest = 26
         [(comment.comment) =
              "The selected target manifests the top card of their library."];
-    Mill mill = 26 [(comment.comment) = "Mill some number of cards"];
-    MoveToBattlefield move_to_battlefield = 27
+    Mill mill = 27 [(comment.comment) = "Mill some number of cards"];
+    MoveToBattlefield move_to_battlefield = 28
         [(comment.comment) = "Move the selected card(s) to the battlefield."];
-    MoveToBottomOfLibrary move_to_bottom_of_library = 28
+    MoveToBottomOfLibrary move_to_bottom_of_library = 29
         [(comment.comment) =
              "Move the selected card(s) to their owner's library."];
-    MoveToExile move_to_exile = 29
+    MoveToExile move_to_exile = 30
         [(comment.comment) = "Move the selected card(s) to exile."];
-    MoveToGraveyard move_to_graveyard = 30
+    MoveToGraveyard move_to_graveyard = 31
         [(comment.comment) = "Move the selected card(s) to the graveyard."];
-    MoveToHand move_to_hand = 31
+    MoveToHand move_to_hand = 32
         [(comment.comment) =
              "Move the selected card(s) to their owner's hand."];
-    MoveToStack move_to_stack = 32 [
+    MoveToStack move_to_stack = 33 [
       (comment.comment) =
           "Move the first selected target to the stack, with the remaining selected targets as its targets."
     ];
-    MoveToTopOfLibrary move_to_top_of_library = 33
+    MoveToTopOfLibrary move_to_top_of_library = 34
         [(comment.comment) =
              "Move the selected card(s) to their owner's library."];
-    MultiplyTokens multiply_tokens = 34 [
+    MultiplyTokens multiply_tokens = 35 [
       (comment.comment) =
           "Multiply the number of tokens created. Used for replacement effects."
     ];
-    PayCosts pay_costs = 35 [(comment.comment) = "Pay some costs."];
-    PlayerLoses player_loses = 36
+    PayCosts pay_costs = 36 [(comment.comment) = "Pay some costs."];
+    PlayerLoses player_loses = 37
         [(comment.comment) = "The selected player loses the game."];
-    PopSelected pop_selected = 37 [
+    PopSelected pop_selected = 38 [
       (comment.comment) =
           "Clear the current selection and restore the previously pushed selection."
     ];
-    PushSelected push_selected = 38
+    PushSelected push_selected = 39
         [(comment.comment) = "Save the current selection."];
-    RemoveCounters remove_counters = 39 [
+    RemoveCounters remove_counters = 40 [
       (comment.comment) =
           "The selected target(s) have some number of counters removed from them."
     ];
-    ReorderSelected reorder_selected = 40
+    ReorderSelected reorder_selected = 41
         [(comment.comment) = "Re-order the list of selected target(s)."];
-    Reveal reveal = 41 [(comment.comment) = "Reveal the selected target(s)."];
-    Sacrifice sacrifice = 42
+    Reveal reveal = 42 [(comment.comment) = "Reveal the selected target(s)."];
+    Sacrifice sacrifice = 43
         [(comment.comment) = "Sacrifice the selecteed target(s)."];
-    Scry scry = 43 [(comment.comment) = "Scry some number of cards."];
-    SelectAll select_all = 44 [
+    Scry scry = 44 [(comment.comment) = "Scry some number of cards."];
+    SelectAll select_all = 45 [
       (comment.comment) =
           "Select all possible cards/abilities/players matching some criteria."
     ];
-    SelectAttackers select_attackers = 45
+    SelectAttackers select_attackers = 46
         [(comment.comment) = "Select attackers and their targets."];
-    SelectDestinations select_destinations = 46
+    SelectDestinations select_destinations = 47
         [(comment.comment) = "Select destination(s) for each selected card."];
-    SelectForEachPlayer select_for_each_player = 47
+    SelectForEachPlayer select_for_each_player = 48
         [(comment.comment) =
              "For each player, select a target matching some criteria."];
-    SelectMode select_mode = 48
+    SelectMode select_mode = 49
         [(comment.comment) = "Select from among a set of modal effects."];
-    SelectNonTargeting select_non_targeting = 49 [
+    SelectNonTargeting select_non_targeting = 50 [
       (comment.comment) =
           "Select some cards without checking if they can be targetted (e.g. ignore Shroud/Hexproof)."
     ];
-    SelectSelf select_self = 50
+    SelectSelf select_self = 51
         [(comment.comment) = "Select the card associated with this effect."];
-    SelectSelfController select_self_controller = 51
+    SelectSelfController select_self_controller = 52
         [(comment.comment) =
              "Select the controller of the card associated with this effect."];
-    SelectTargetController select_target_controller = 52
+    SelectTargetController select_target_controller = 53
         [(comment.comment) =
              "Select the controller of the currently selected target."];
-    SelectTargets select_targets = 53 [
+    SelectTargets select_targets = 54 [
       (comment.comment) =
           "Select some cards, abilities, or players, validating that they can be targetted."
     ];
-    SelectTopOfLibrary select_top_of_library = 54 [
+    SelectTopOfLibrary select_top_of_library = 55 [
       (comment.comment) =
           "Select some number of cards from the top of the selected target(s) librar(y|ies)."
     ];
-    SpendMana spend_mana = 55 [
+    SpendMana spend_mana = 56 [
       (comment.comment) =
           "Spend some mana on the first selected target from the controlling player's mana pool."
     ];
-    Tap tap = 56 [(comment.comment) = "Tap the selected target(s)."];
-    Transform transform = 57
+    Tap tap = 57 [(comment.comment) = "Tap the selected target(s)."];
+    Transform transform = 58
         [(comment.comment) = "Transform the selected card."];
-    Untap untap = 58 [(comment.comment) = "Untap the selected target(s)."];
+    Untap untap = 59 [(comment.comment) = "Untap the selected target(s)."];
   };
 }
 
@@ -436,6 +440,12 @@ message GainMana {
 
   mana.ManaSource mana_source = 4;
   mana.ManaRestriction mana_restriction = 5;
+}
+
+message IfThenElse {
+  repeated targets.Restriction if = 1;
+  repeated Effect then = 2;
+  repeated Effect else = 3;
 }
 
 message LoseLife {

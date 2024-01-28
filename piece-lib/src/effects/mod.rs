@@ -20,6 +20,7 @@ mod explore;
 mod for_each_mana_of_source;
 mod gain_life;
 mod gain_mana;
+mod if_then_else;
 mod lose_life;
 mod manifest;
 mod mill;
@@ -157,6 +158,7 @@ impl Options {
         ForEachManaOfSource(ForEachManaOfSource),
         GainLife(GainLife),
         GainMana(GainMana),
+        IfThenElse(IfThenElse),
         LoseLife(LoseLife),
         Manifest(Manifest),
         Mill(Mill),

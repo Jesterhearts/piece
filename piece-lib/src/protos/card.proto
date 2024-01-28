@@ -43,7 +43,5 @@ message Card {
 
   map<int32, uint32> keywords = 21;
 
-  repeated targets.Restriction restrictions = 22;
-
-  optional Card back_face = 23;
+  optional Card back_face = 22;
 }
