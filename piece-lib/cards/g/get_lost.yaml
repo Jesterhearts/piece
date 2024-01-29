@@ -2,16 +2,21 @@ name: Get Lost
 typeline: Instant
 cost:
   mana_cost: '{1}{W}'
-oracle_text: Destroy target creature, enchantment, or planeswalker. Its controller
-  creates two map tokens.
+oracle_text:
+  Destroy target creature, enchantment, or planeswalker. Its controller creates
+  two map tokens.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Enchantment, Creature, Planeswalker
 effects:
-  - effect: !DestroyTarget
-      restrictions:
-        - restriction: !OfType
-            types: Enchantment, Creature, Planeswalker
-  - effect: !TargetControllerGainsTokens
-      create_token:
-        token: !Map {}
-  - effect: !TargetControllerGainsTokens
-      create_token:
-        token: !Map {}
+  - effect: !DestroySelected {}
+  - effect: !SelectTargetController {}
+  - effect: !CreateToken
+      token: !Map {}
+  - effect: !CreateToken
+      token: !Map {}

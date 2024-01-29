@@ -4,20 +4,25 @@ activated_abilities:
   - cost:
       mana_cost: '{4}{W}'
       tap: true
-      additional_costs:
-        - cost: !SacrificeSource {}
+    additional_costs:
+      - effect: !SelectSource {}
+      - effect: !Sacrifice {}
     effects:
       - effect: !Discover
-          count: !Fixed
-            count: 4
-    oracle_text: '{4}{W}: Discover 4. Activate only as Sorcery.'
+          count:
+            count: !Fixed
+              count: 4
+    oracle_text:
+      '{4}{W}, {T}, Sacrifice Hidden Courtyard: Discover 4. Activate only as
+      Sorcery.'
     sorcery_speed: true
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{W}'
-    mana_source: cave
-    mana_restriction: none
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{W}'
+          mana_source: cave
+          mana_restriction: none
 etb_tapped: true

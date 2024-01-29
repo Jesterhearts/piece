@@ -1,12 +1,29 @@
 name: Guardian of the Great Door
 typeline: Creature - Angel
+oracle_text:
+  As an additional cost to cast this spell, tap four untapped artifacts,
+  creatures, and/or lands you control.
 cost:
   mana_cost: '{W}{W}'
-  additional_costs:
-    - cost: !TapPermanent
-        restrictions:
-          - restriction: !OfType
-              types: Artifact, Creature, Land
+additional_costs:
+  - effect: !PayCosts
+      pay_costs:
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature, Land
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature, Land
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature, Land
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature, Land
 power: 4
 toughness: 4
 keywords: Flying

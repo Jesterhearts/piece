@@ -1421,6 +1421,7 @@ impl CardId {
                 })
                 .count() as i32,
             count::Count::XCost(_) => unreachable!(),
+            count::Count::X(_) => unreachable!(),
         }
     }
 

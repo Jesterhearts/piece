@@ -6,15 +6,16 @@ activated_abilities:
   - cost:
       mana_cost: '{B}'
     effects:
-      - effect: !BattlefieldModifier
-          apply_to_self: true
+      - effect: !SelectSource {}
+      - effect: !ApplyModifier
           modifier:
-            add_power: 1
-            add_toughness: 1
-          duration: until end of turn
-          restrictions:
-            - restriction: !Controller
-                controller: !Self_ {}
+            modifier:
+              add_power: 1
+              add_toughness: 1
+            duration: until end of turn
+            restrictions:
+              - restriction: !Controller
+                  controller: !Self_ {}
     oracle_text: |
       {B}: Hoar Shade gets +1/+1 until end of turn
 power: 1

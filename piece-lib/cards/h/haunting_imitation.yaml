@@ -3,23 +3,37 @@ typeline: Sorcery
 cost:
   mana_cost: '{2}{U}'
 effects:
-  - oracle_text: Each player reveals the top card of their library. For each creature
-      card revealed this way, create a token that's a copy of that card, except it's
-      1/1, it's a Spirit in addition to its other types, and it has flying. If no
-      creature cards were revealed this way, return Haunting Imitation to its owner's
-      hand.
-    effect: !RevealEachTopOfLibrary
-      for_each:
-        restrictions:
-          - restriction: !OfType
-              types: Creature
-        effects:
-          - effect: !CreateTokenCopy
-              modifiers:
-                - base_power: 1
-                  base_toughness: 1
-                  add_subtypes: Spirit
-                  add_keywords: Flying
-        if_none:
-          effects:
-            - effect: !ReturnSelfToHand {}
+  - oracle_text:
+      Each player reveals the top card of their library. For each creature card
+      revealed this way, create a token that's a copy of that card, except it's
+      1/1, it's a Spirit in addition to its other types, and it has flying. If
+      no creature cards were revealed this way, return Haunting Imitation to its
+      owner's hand.
+    effect: !SelectAllPlayers {}
+  - effect: !SelectTopOfLibrary
+      count:
+        count: !Fixed
+          count: 1
+  - effect: !ApplyToEachTarget
+      effects:
+        - effect: !IfThenElse
+            if_:
+              - restriction: !OfType
+                  types: Creature
+            then:
+              - effect: !CreateTokenCloneOfSelected
+              - effect: !ApplyModifier
+                  modifier:
+                    modifier:
+                      base_power: 1
+                      base_toughness: 1
+                      add_subtypes: Spirit
+                      add_keywords: Flying
+                    duration: until target leaves battlefield
+  - effect: !Unless
+      unless:
+        - restriction: !OfType
+            types: Creature
+      then:
+        - !SelectSource {}
+        - !MoveToHand {}

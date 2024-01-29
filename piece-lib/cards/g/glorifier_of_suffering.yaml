@@ -3,37 +3,36 @@ typeline: Creature - Vampire Soldier
 cost:
   mana_cost: '{2}{W}'
 etb_ability:
-  - oracle_text:
-      When Glorifier of Suffering enters the battlefield, you may sacrifice
-      another creature or artifact. When you do, put a +1/+1 counter on each of
-      up to two target creatures.
-    effect: !PayCostThen
-      cost:
-        additional_costs:
+  oracle_text:
+    When Glorifier of Suffering enters the battlefield, you may sacrifice
+    another creature or artifact. When you do, put a +1/+1 counter on each of up
+    to two target creatures.
+  targets:
+    selector: !SelectTargets
+      optional: true
+      count:
+        count: !Fixed
+          count: 2
+      restrictions:
+        - restriction: !OfType
+            types: Creature
+        - restriction: !OnBattlefield {}
+  additional_costs:
+    - effect: !PayCosts
+        pay_costs:
           - cost: !SacrificePermanent
               restrictions:
                 - restriction: !OfType
                     types: Artifact, Creature
-      effects:
-        - oracle_text: Put a +1/+1 counter on target creature
-          effect: !TargetGainsCounters
-            counter: +1/+1
-            restrictions:
-              - restriction: !OfType
-                  types: Creature
-              - restriction: !OnBattlefield {}
-            count:
-              count: !Fixed
-                count: 1
-        - oracle_text: Put a +1/+1 counter on target creature
-          effect: !TargetGainsCounters
-            counter: +1/+1
-            restrictions:
-              - restriction: !OfType
-                  types: Creature
-              - restriction: !OnBattlefield {}
-            count:
-              count: !Fixed
-                count: 1
+                - restriction: !Self_ {}
+  effects:
+    - oracle_text: Put a +1/+1 counter on target creature
+      effect: !ApplyToEachTarget
+        effects:
+          - effect: !AddCounters
+              counter: +1/+1
+              count:
+                count: !Fixed
+                  count: 1
 power: 3
 toughness: 2

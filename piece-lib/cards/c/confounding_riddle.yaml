@@ -7,10 +7,7 @@ modes:
     - oracle_text:
         Look at the top four cards of your library. Put one of them into your
         hand and the rest into your graveyard.
-      effect: !SelectTopOfLibrary
-        count:
-          count: !Fixed
-            count: 4
+      effect: !SelectSourceController {}
     - oracle_text: Counter target spell unless its controller pays {4}.
       effect: !SelectTargets
         count:
@@ -25,17 +22,20 @@ effects:
         - oracle_text:
             Look at the top four cards of your library. Put one of them into
             your hand and the rest into your graveyard.
-          effect: !SelectDestinations
+          effect: !SelectTopOfLibrary
+            count:
+              count: !Fixed
+                count: 4
+        - oracle_text: Counter target spell unless its controller pays {4}.
+          effect: !PushSelected {}
+  - effect: !Modal
+      modes:
+        - effect: !SelectDestinations
             destinations:
               - destination: !MoveToHand {}
                 count: 1
               - destination: !MoveToGraveyard {}
                 count: 3
-        - oracle_text: Counter target spell unless its controller pays {4}.
-          effect: !PushSelected {}
-  - effect: !Modal
-      modes:
-        - effect: !Nothing {}
         - effect: !SelectTargetController {}
   - effect: !Modal
       modes:

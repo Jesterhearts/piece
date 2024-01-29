@@ -16,8 +16,6 @@ impl EffectBehaviors for SelectAll {
         selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        selected.clear();
-
         for card in db.cards.keys().copied().collect_vec() {
             if card.passes_restrictions(db, LogId::current(db), source.unwrap(), &self.restrictions)
             {

@@ -1,5 +1,6 @@
 mod add_counters;
 mod apply_modifier;
+mod apply_to_each_target;
 mod attack_selected;
 mod ban_attacking_this_turn;
 mod cascade;
@@ -46,6 +47,7 @@ mod reveal;
 mod sacrifice;
 mod scry;
 mod select_all;
+mod select_all_players;
 mod select_destinations;
 mod select_for_each_player;
 mod select_mode;
@@ -72,6 +74,7 @@ use crate::{
     log::LogId,
     player::Owner,
     protogen::{
+        cost::XIs,
         effects::{
             count, effect, replacement_effect::Replacing, target_selection::Selector, Count,
             Effect, ReorderSelected, TargetSelection,
@@ -146,6 +149,7 @@ impl Options {
     enum Effect {
         AddCounters(AddCounters),
         ApplyModifier(ApplyModifier),
+        ApplyToEachTarget(ApplyToEachTarget),
         AttackSelected(AttackSelected),
         BanAttackingThisTurn(BanAttackingThisTurn),
         Cascade(Cascade),
@@ -192,6 +196,7 @@ impl Options {
         Sacrifice(Sacrifice),
         Scry(Scry),
         SelectAll(SelectAll),
+        SelectAllPlayers(SelectAllPlayers),
         SelectDestinations(SelectDestinations),
         SelectForEachPlayer(SelectForEachPlayer),
         SelectMode(SelectMode),
@@ -670,6 +675,11 @@ impl Count {
                     )
                 })
                 .count() as i32,
+            count::Count::X(x) => match x.x_is.enum_value().unwrap() {
+                XIs::MANA_VALUE_OF_SELECTED => db[selected.first().unwrap().id(db).unwrap()]
+                    .modified_cost
+                    .cmc() as i32,
+            },
             count::Count::XCost(_) => db[source.unwrap()].x_is as i32,
         }
     }
