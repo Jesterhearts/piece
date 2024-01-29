@@ -4,7 +4,10 @@ use crate::{
     effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::LogId,
-    protogen::effects::{pay_cost::ExilePermanentsCmcX, Duration},
+    protogen::{
+        cost::XIs,
+        effects::{pay_cost::ExilePermanentsCmcX, Duration},
+    },
     stack::{Selected, TargetType},
 };
 
@@ -38,7 +41,13 @@ impl EffectBehaviors for ExilePermanentsCmcX {
             .iter()
             .map(|card| db[CardId::from(card.clone())].modified_cost.cmc())
             .sum::<usize>();
-        if exiled >= (self.x_is as usize) {
+
+        let x_is = match self.x_is.enum_value().unwrap() {
+            XIs::MANA_VALUE_OF_SELECTED => db[already_selected.first().unwrap().id(db).unwrap()]
+                .modified_cost
+                .cmc(),
+        };
+        if exiled >= x_is {
             Options::OptionalList(targets)
         } else {
             Options::MandatoryList(targets)
@@ -72,7 +81,13 @@ impl EffectBehaviors for ExilePermanentsCmcX {
             .iter()
             .map(|card| db[CardId::from(card.clone())].modified_cost.cmc())
             .sum::<usize>();
-        if exiled >= (self.x_is as usize) {
+
+        let x_is = match self.x_is.enum_value().unwrap() {
+            XIs::MANA_VALUE_OF_SELECTED => db[selected.first().unwrap().id(db).unwrap()]
+                .modified_cost
+                .cmc(),
+        };
+        if exiled >= x_is {
             SelectionResult::Complete
         } else {
             SelectionResult::PendingChoice

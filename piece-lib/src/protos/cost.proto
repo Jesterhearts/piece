@@ -45,10 +45,7 @@ message AbilityCost {
   repeated AbilityRestriction restrictions = 3;
 }
 
-enum XIs {
-  MANA_VALUE = 0;
-  MANA_VALUE_OF_TARGET = 1;
-}
+enum XIs { MANA_VALUE_OF_SELECTED = 0; }
 
 message CostReducer {
   message TargetMatches {

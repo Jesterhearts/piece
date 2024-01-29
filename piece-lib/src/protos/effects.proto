@@ -542,7 +542,7 @@ message PayCost {
 
   message ExilePermanentsCmcX {
     repeated targets.Restriction restrictions = 1;
-    uint32 x_is = 2;
+    cost.XIs x_is = 2;
     repeated ids.CardId selected = 3 [(comment.hidden) = true];
   }
 

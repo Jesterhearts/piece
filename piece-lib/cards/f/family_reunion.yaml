@@ -3,28 +3,32 @@ typeline: Instant
 cost:
   mana_cost: '{1}{W}'
 modes:
-  - effects:
-      - oracle_text: Creatures you control get +1/+1 until end of turn.
-        effect: !BattlefieldModifier
-          modifier:
-            add_power: 1
-            add_toughness: 1
-            entire_battlefield: true
-          duration: until end of turn
-          restrictions:
-            - restriction: !Controller
-                controller: !Self_ {}
-            - restriction: !OfType
-                types: Creature
-  - effects:
-      - oracle_text: Creatures you control gain hexproof until end of turn.
-        effect: !BattlefieldModifier
-          modifier:
-            entire_battlefield: true
-            add_keywords: Hexproof
-          duration: until end of turn
-          restrictions:
-            - restriction: !Controller
-                controller: !Self_ {}
-            - restriction: !OfType
-                types: Creature
+  modes:
+    - oracle_text: Creatures you control get +1/+1 until end of turn.
+    - oracle_text: Creatures you control gain hexproof until end of turn.
+effects:
+  - effect: !Modal
+      modes:
+        - effect: !ApplyModifier
+            modifier:
+              modifier:
+                add_power: 1
+                add_toughness: 1
+                entire_battlefield: true
+              duration: until end of turn
+              restrictions:
+                - restriction: !Controller
+                    controller: !Self_ {}
+                - restriction: !OfType
+                    types: Creature
+        - effect: !ApplyModifier
+            modifier:
+              modifier:
+                entire_battlefield: true
+                add_keywords: Hexproof
+              duration: until end of turn
+              restrictions:
+                - restriction: !Controller
+                    controller: !Self_ {}
+                - restriction: !OfType
+                    types: Creature

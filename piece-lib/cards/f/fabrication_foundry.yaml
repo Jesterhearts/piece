@@ -6,31 +6,44 @@ activated_abilities:
   - cost:
       mana_cost: '{2}{W}'
       tap: true
-      additional_costs:
-        - cost: !ExileCardsCmcX
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !Controller
+              controller: !Self_ {}
+          - restriction: !Location
+              locations: In Graveyard
+          - restriction: !OfType
+              types: Artifact
+    additional_costs:
+      - effect: !PushSelected {}
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanentsCmcX
+                x_is: mana value of selected
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
     effects:
-      - effect: !ReturnFromGraveyardToBattlefield
-          count: 1
-          restrictions:
-            - restriction: !Controller
-                controller: !Self_ {}
-            - restriction: !OfType
-                types: Artifact
-          x_is: mana value of target
-    oracle_text: '{2}{W}, {T}, Exile one of more other artifacts you conrol with total
-      mana value {X}: Return target artifact card with mana value {X} or less from
+      - effect: !PopSelected {}
+      - effect: !MoveToBattlefield {}
+    oracle_text:
+      '{2}{W}, {T}, Exile one of more other artifacts you conrol with total mana
+      value {X}: Return target artifact card with mana value {X} or less from
       your graveyard to the battlefield. Activate only as sorcery.'
     sorcery_speed: true
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{W}'
-    mana_source: any
-    mana_restriction: artifact spell or ability
-    oracle_text: '{T}: Add {W}. Spend this mana only to cast an artifact spell or
-      activate an ability of an artifact source.'
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{W}'
+          mana_source: any
+          mana_restriction: artifact spell or ability
+    oracle_text:
+      '{T}: Add {W}. Spend this mana only to cast an artifact spell or activate
+      an ability of an artifact source.'
