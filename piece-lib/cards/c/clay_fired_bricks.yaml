@@ -3,10 +3,9 @@ typeline: Artifact
 cost:
   mana_cost: '{1}{W}'
 etb_ability:
-  oracle_text:
-    When Clay-Fired bricks enters the battlefield, search your library for a
-    basic plains card reveal it, put it into your hand, then shuffle. You gain 2
-    life.
+  oracle_text: When Clay-Fired bricks enters the battlefield, search your library
+    for a basic plains card reveal it, put it into your hand, then shuffle. You gain
+    2 life.
   effects:
     - effect: !TutorLibrary
         targets:
@@ -49,9 +48,8 @@ back_face:
   colors: White
   oracle_text: Creatures you control get +1/+1
   etb_ability:
-    oracle_text:
-      When Cosmium Kiln enters the battlefield, create two 1/1 colorless Gnome
-      artifact creature tokens.
+    oracle_text: When Cosmium Kiln enters the battlefield, create two 1/1 colorless
+      Gnome artifact creature tokens.
     effects:
       - effect: !CreateToken
           token: !Creature

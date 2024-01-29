@@ -36,9 +36,9 @@ fn opponent_artifact_etb_tappd() -> anyhow::Result<()> {
     card.move_to_battlefield(&mut db);
 
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
-    MoveToBattlefield::default().apply(
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut PendingEffects::default(),
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -46,9 +46,10 @@ fn opponent_artifact_etb_tappd() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
-    );
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert!(card2.tapped(&db));
 

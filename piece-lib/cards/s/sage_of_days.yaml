@@ -4,9 +4,8 @@ cost:
   mana_cost: '{2}{U}'
 oracle_text: ''
 etb_ability:
-  - oracle_text:
-      When Sage of Days enters the battlefield, look at the top three cards of
-      your library. You may put one of those cards back on top of your library.
+  - oracle_text: When Sage of Days enters the battlefield, look at the top three cards
+      of your library. You may put one of those cards back on top of your library.
       Put the rest into your graveyard.
     effect: !ExamineTopCards
       count: 3

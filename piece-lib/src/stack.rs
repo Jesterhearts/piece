@@ -14,7 +14,8 @@ use crate::{
     protogen::{
         effects::{
             pay_cost::PayMana, ClearSelected, Effect, MoveToBattlefield, MoveToGraveyard,
-            MoveToStack, PayCost, PayCosts, PushSelected, ReplacementEffect, TriggeredAbility,
+            MoveToStack, PayCost, PayCosts, PopSelected, PushSelected, ReplacementEffect,
+            TriggeredAbility,
         },
         keywords::Keyword,
         mana::{
@@ -232,14 +233,14 @@ impl Stack {
             ),
         };
 
-        let mut pending = PendingEffects::default();
-        let mut targets = SelectedStack::new(next.targets.clone());
-        targets.modes = next.modes;
+        let mut pending = PendingEffects::new(SelectedStack::new(next.targets.clone()));
+        pending.selected.modes = next.modes;
         for effect in effects.into_iter() {
-            for result in effect
-                .effect
-                .unwrap()
-                .apply(db, Some(source), &mut targets, false)
+            for result in
+                effect
+                    .effect
+                    .unwrap()
+                    .apply(db, Some(source), &mut pending.selected, false)
             {
                 match result {
                     ApplyResult::PushFront(bundle) => pending.push_front(bundle),
@@ -250,11 +251,13 @@ impl Stack {
 
         if let Some(resolving_card) = resolving_card {
             if resolving_card.is_permanent(db) {
-                let mut selected = SelectedStack::new(next.targets);
+                pending.selected.save();
+                pending.selected.clear();
+                pending.selected.extend(next.targets);
 
-                selected.save();
-                selected.clear();
-                selected.push(Selected {
+                pending.selected.save();
+                pending.selected.clear();
+                pending.selected.push(Selected {
                     location: Some(Location::IN_STACK),
                     target_type: TargetType::Card(resolving_card),
                     targeted: false,
@@ -262,25 +265,26 @@ impl Stack {
                 });
 
                 pending.push_front(EffectBundle {
-                    selected,
-                    effects: vec![Effect {
-                        effect: Some(MoveToBattlefield::default().into()),
-                        ..Default::default()
-                    }],
+                    effects: vec![
+                        MoveToBattlefield::default().into(),
+                        PopSelected::default().into(),
+                    ],
                     ..Default::default()
                 });
             } else {
+                pending.selected.save();
+                pending.selected.clear();
+                pending.selected.push(Selected {
+                    location: Some(Location::IN_STACK),
+                    target_type: TargetType::Card(resolving_card),
+                    targeted: false,
+                    restrictions: vec![],
+                });
                 pending.push_front(EffectBundle {
-                    selected: SelectedStack::new(vec![Selected {
-                        location: Some(Location::IN_STACK),
-                        target_type: TargetType::Card(resolving_card),
-                        targeted: false,
-                        restrictions: vec![],
-                    }]),
-                    effects: vec![Effect {
-                        effect: Some(MoveToGraveyard::default().into()),
-                        ..Default::default()
-                    }],
+                    effects: vec![
+                        MoveToGraveyard::default().into(),
+                        PopSelected::default().into(),
+                    ],
                     ..Default::default()
                 });
             }
@@ -303,15 +307,18 @@ impl Stack {
             Effect::from(PushSelected::default()),
             Effect::from(ClearSelected::default()),
         ];
-        to_trigger.push(trigger.targets.get_or_default().clone().into());
-        to_trigger.push(trigger.modes.get_or_default().clone().into());
+        if let Some(targets) = trigger.targets.as_ref() {
+            to_trigger.push(targets.clone().into());
+        }
+        if let Some(modes) = trigger.modes.as_ref() {
+            to_trigger.push(modes.clone().into());
+        }
         to_trigger.push(Effect {
             effect: Some(MoveToStack::default().into()),
             ..Default::default()
         });
-
         ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
+            push_on_enter: Some(vec![Selected {
                 location: Some(Location::ON_BATTLEFIELD),
                 target_type: TargetType::Ability {
                     source: listener,
@@ -439,7 +446,9 @@ impl Stack {
                 ..Default::default()
             },
         ];
-        to_cast.push(card.faceup_face(db).targets.get_or_default().clone().into());
+        if let Some(target) = card.faceup_face(db).targets.as_ref() {
+            to_cast.push(target.clone().into());
+        }
         to_cast.extend(card.faceup_face(db).additional_costs.iter().cloned());
         if pay_costs {
             to_cast.push(Effect {
@@ -483,7 +492,7 @@ impl Stack {
         });
 
         ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
+            push_on_enter: Some(vec![Selected {
                 location: Some(Location::IN_HAND),
                 target_type: TargetType::Card(card),
                 targeted: false,
@@ -491,6 +500,7 @@ impl Stack {
             }]),
             effects: to_cast,
             source: Some(card),
+            ..Default::default()
         })
     }
 }

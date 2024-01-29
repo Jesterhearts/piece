@@ -7,7 +7,7 @@ use crate::{
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
-        effects::{pay_cost::TapPermanentsPowerXOrMore, Effect, Tap},
+        effects::{pay_cost::TapPermanentsPowerXOrMore, PopSelected, Tap},
         targets::Location,
     },
     stack::{Selected, TargetType},
@@ -92,7 +92,7 @@ impl EffectBehaviors for TapPermanentsPowerXOrMore {
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         vec![ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(
+            push_on_enter: Some(
                 self.selected
                     .iter()
                     .map(|card| Selected {
@@ -103,11 +103,9 @@ impl EffectBehaviors for TapPermanentsPowerXOrMore {
                     })
                     .collect_vec(),
             ),
-            effects: vec![Effect {
-                effect: Some(Tap::default().into()),
-                ..Default::default()
-            }],
+            effects: vec![Tap::default().into(), PopSelected::default().into()],
             source,
+            ..Default::default()
         })]
     }
 }

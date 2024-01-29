@@ -3,7 +3,7 @@ use crate::{
     effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::{
-        effects::{ClearSelected, CopySpellOrAbility, Effect, MoveToStack, PushSelected},
+        effects::{ClearSelected, CopySpellOrAbility, MoveToStack, PopSelected, PushSelected},
         targets::Location,
     },
     stack::{Entry, Selected, TargetType},
@@ -32,7 +32,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                 db[copy].x_is = db[card].x_is;
 
                 results.push(ApplyResult::PushBack(EffectBundle {
-                    selected: SelectedStack::new(vec![Selected {
+                    push_on_enter: Some(vec![Selected {
                         location: Some(Location::IN_STACK),
                         target_type: TargetType::Card(copy),
                         targeted: false,
@@ -40,23 +40,19 @@ impl EffectBehaviors for CopySpellOrAbility {
                     }]),
                     source: Some(copy),
                     effects: vec![
-                        Effect {
-                            effect: Some(PushSelected::default().into()),
-                            ..Default::default()
-                        },
-                        Effect {
-                            effect: Some(ClearSelected::default().into()),
-                            ..Default::default()
-                        },
+                        PushSelected::default().into(),
+                        ClearSelected::default().into(),
                         card.faceup_face(db).targets.get_or_default().clone().into(),
                         MoveToStack::default().into(),
+                        PopSelected::default().into(),
                     ],
+                    ..Default::default()
                 }));
             }
             Entry::Ability { source, ability } => match &ability {
                 Ability::Activated(activated) => {
                     results.push(ApplyResult::PushBack(EffectBundle {
-                        selected: SelectedStack::new(vec![Selected {
+                        push_on_enter: Some(vec![Selected {
                             location: Some(Location::IN_STACK),
                             target_type: TargetType::Ability {
                                 source,
@@ -67,14 +63,8 @@ impl EffectBehaviors for CopySpellOrAbility {
                         }]),
                         source: Some(source),
                         effects: vec![
-                            Effect {
-                                effect: Some(PushSelected::default().into()),
-                                ..Default::default()
-                            },
-                            Effect {
-                                effect: Some(ClearSelected::default().into()),
-                                ..Default::default()
-                            },
+                            PushSelected::default().into(),
+                            ClearSelected::default().into(),
                             db[*activated]
                                 .ability
                                 .targets
@@ -82,7 +72,9 @@ impl EffectBehaviors for CopySpellOrAbility {
                                 .clone()
                                 .into(),
                             MoveToStack::default().into(),
+                            PopSelected::default().into(),
                         ],
+                        ..Default::default()
                     }));
                 }
                 Ability::EtbOrTriggered(_) => todo!(),

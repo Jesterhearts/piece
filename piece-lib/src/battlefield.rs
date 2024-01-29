@@ -4,6 +4,7 @@ use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 
 use crate::{
+    abilities::Ability,
     effects::{ApplyResult, EffectBundle, PendingEffects, SelectedStack},
     in_play::{CardId, Database},
     player::{Controller, Owner},
@@ -13,8 +14,8 @@ use crate::{
             dest::Destination,
             pay_cost::PayMana,
             static_ability::{self},
-            ClearSelected, Dest, Duration, Effect, MoveToBattlefield, MoveToGraveyard, MoveToStack,
-            PayCost, PayCosts, PushSelected, SelectDestinations,
+            ClearSelected, Dest, Duration, MoveToBattlefield, MoveToGraveyard, MoveToStack,
+            PayCost, PayCosts, PopSelected, PushSelected, SelectDestinations, SelectSource, Tap,
         },
         mana::{spend_reason::Activating, SpendReason},
         targets::Location,
@@ -128,11 +129,11 @@ impl Battlefields {
             .collect_vec();
 
         results.push_back(EffectBundle {
-            selected: SelectedStack::new(returning),
-            effects: vec![Effect {
-                effect: Some(MoveToBattlefield::default().into()),
-                ..Default::default()
-            }],
+            push_on_enter: Some(returning),
+            effects: vec![
+                MoveToBattlefield::default().into(),
+                PopSelected::default().into(),
+            ],
             ..Default::default()
         });
 
@@ -169,11 +170,12 @@ impl Battlefields {
         let mut pending = PendingEffects::default();
 
         let mut legendary_cards: HashMap<String, Vec<CardId>> = HashMap::default();
+        let mut push_on_enter = vec![];
         let mut bundle = EffectBundle {
-            effects: vec![Effect {
-                effect: Some(MoveToGraveyard::default().into()),
-                ..Default::default()
-            }],
+            effects: vec![
+                MoveToGraveyard::default().into(),
+                PopSelected::default().into(),
+            ],
             ..Default::default()
         };
 
@@ -198,7 +200,7 @@ impl Battlefields {
                     || ((toughness.unwrap() - card.marked_damage(db)) <= 0
                         && !card.indestructible(db)))
             {
-                bundle.selected.push(Selected {
+                push_on_enter.push(Selected {
                     location: Some(Location::ON_BATTLEFIELD),
                     target_type: TargetType::Card(card),
                     targeted: false,
@@ -212,7 +214,7 @@ impl Battlefields {
                     .unwrap()
                     .is_in_location(db, Location::ON_BATTLEFIELD)
             {
-                bundle.selected.push(Selected {
+                push_on_enter.push(Selected {
                     location: Some(Location::ON_BATTLEFIELD),
                     target_type: TargetType::Card(card),
                     targeted: false,
@@ -221,12 +223,13 @@ impl Battlefields {
             }
         }
 
+        bundle.push_on_enter = Some(push_on_enter);
         pending.push_back(bundle);
 
         for legends in legendary_cards.values() {
             if legends.len() > 1 {
                 pending.push_back(EffectBundle {
-                    selected: SelectedStack::new(
+                    push_on_enter: Some(
                         legends
                             .iter()
                             .copied()
@@ -238,22 +241,18 @@ impl Battlefields {
                             })
                             .collect_vec(),
                     ),
-                    effects: vec![Effect {
-                        effect: Some(
-                            SelectDestinations {
-                                destinations: vec![Dest {
-                                    count: (legends.len() - 1) as u32,
-                                    destination: Some(
-                                        Destination::from(MoveToGraveyard::default()),
-                                    ),
-                                    ..Default::default()
-                                }],
+                    effects: vec![
+                        SelectDestinations {
+                            destinations: vec![Dest {
+                                count: (legends.len() - 1) as u32,
+                                destination: Some(Destination::from(MoveToGraveyard::default())),
                                 ..Default::default()
-                            }
-                            .into(),
-                        ),
-                        ..Default::default()
-                    }],
+                            }],
+                            ..Default::default()
+                        }
+                        .into(),
+                        PopSelected::default().into(),
+                    ],
                     ..Default::default()
                 });
             }
@@ -281,32 +280,33 @@ impl Battlefields {
             return PendingEffects::default();
         }
 
-        let mut results = PendingEffects::default();
+        let mut results = PendingEffects::new(SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Ability {
+                source,
+                ability: ability.clone(),
+            },
+            targeted: false,
+            restrictions: vec![],
+        }]));
+
+        if ability.is_craft(db) {
+            results.selected.crafting = true
+        }
+
         let mut bundle = EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
-                location: Some(Location::ON_BATTLEFIELD),
-                target_type: TargetType::Ability {
-                    source,
-                    ability: ability.clone(),
-                },
-                targeted: false,
-                restrictions: vec![],
-            }]),
             source: Some(source),
             effects: vec![
                 PushSelected::default().into(),
                 ClearSelected::default().into(),
             ],
+            ..Default::default()
         };
 
         if let Some(targets) = ability.targets(db) {
-            bundle.effects.push(targets.clone().into());
-
-            if ability.is_craft(db) {
-                bundle.selected.crafting = true
+            if targets.selector.is_some() {
+                bundle.effects.push(targets.clone().into());
             }
-
-            bundle.effects.push(PushSelected::default().into());
         }
 
         if let Some(additional_costs) = ability.additional_costs(db) {
@@ -314,38 +314,49 @@ impl Battlefields {
         }
 
         if let Some(cost) = ability.cost(db) {
-            bundle.effects.push(Effect {
-                effect: Some(
-                    PayCosts {
-                        pay_costs: vec![PayCost {
-                            cost: Some(
-                                PayMana {
-                                    paying: cost.mana_cost.iter().cloned().sorted().collect_vec(),
-                                    reason: protobuf::MessageField::some(SpendReason {
-                                        reason: Some(
-                                            Activating {
-                                                source: protobuf::MessageField::some(source.into()),
-                                                ..Default::default()
-                                            }
-                                            .into(),
-                                        ),
-                                        ..Default::default()
-                                    }),
+            bundle.effects.push(
+                PayCosts {
+                    pay_costs: vec![PayCost {
+                        cost: Some(
+                            PayMana {
+                                paying: cost.mana_cost.iter().cloned().sorted().collect_vec(),
+                                reason: protobuf::MessageField::some(SpendReason {
+                                    reason: Some(
+                                        Activating {
+                                            source: protobuf::MessageField::some(source.into()),
+                                            ..Default::default()
+                                        }
+                                        .into(),
+                                    ),
                                     ..Default::default()
-                                }
-                                .into(),
-                            ),
-                            ..Default::default()
-                        }],
+                                }),
+                                ..Default::default()
+                            }
+                            .into(),
+                        ),
                         ..Default::default()
-                    }
-                    .into(),
-                ),
-                ..Default::default()
-            });
+                    }],
+                    ..Default::default()
+                }
+                .into(),
+            );
+            if cost.tap {
+                bundle.effects.push(PushSelected::default().into());
+                bundle.effects.push(ClearSelected::default().into());
+                bundle.effects.push(SelectSource::default().into());
+                bundle.effects.push(Tap::default().into());
+                bundle.effects.push(PopSelected::default().into());
+            }
         }
 
-        bundle.effects.push(MoveToStack::default().into());
+        if let Ability::Mana(id) = ability {
+            bundle
+                .effects
+                .extend(db[id].ability.effects.iter().cloned());
+        } else {
+            bundle.effects.push(MoveToStack::default().into());
+        }
+
         results.push_back(bundle);
 
         results
@@ -401,6 +412,7 @@ impl Battlefields {
         }
 
         db[target].left_battlefield_turn = Some(db.turn.turn_count);
+        db[target].replacements_active = false;
 
         let selected = db[target]
             .exiling
@@ -421,11 +433,11 @@ impl Battlefields {
             .collect_vec();
 
         Some(ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(selected),
-            effects: vec![Effect {
-                effect: Some(MoveToBattlefield::default().into()),
-                ..Default::default()
-            }],
+            push_on_enter: Some(selected),
+            effects: vec![
+                MoveToBattlefield::default().into(),
+                PopSelected::default().into(),
+            ],
             ..Default::default()
         }))
     }

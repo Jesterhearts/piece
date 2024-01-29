@@ -4,12 +4,12 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefields,
-    effects::{EffectBundle, PendingEffects, SelectedStack},
+    effects::{EffectBundle, PendingEffects},
     in_play::{ActivatedAbilityId, CardId, Database},
     log::{Log, LogId},
     player::{AllPlayers, Owner, Player},
     protogen::{
-        effects::{ChooseAttackers, Dest, Effect, MoveToGraveyard, SelectDestinations},
+        effects::{ChooseAttackers, Dest, MoveToGraveyard, PopSelected, SelectDestinations},
         targets::Location,
         triggers::TriggerSource,
         types::Type,
@@ -186,35 +186,42 @@ impl Turn {
                 let mut results = Self::delayed_triggers(db);
                 let player = db.turn.active_player();
 
-                let mut selected = SelectedStack::new(
-                    db.battlefield[player]
-                        .iter()
-                        .copied()
-                        .filter(|card| card.can_attack(db))
-                        .map(|card| Selected {
-                            location: Some(Location::ON_BATTLEFIELD),
-                            target_type: TargetType::Card(card),
-                            targeted: false,
-                            restrictions: vec![],
-                        })
-                        .collect_vec(),
-                );
+                results.push_back(EffectBundle {
+                    push_on_enter: Some(
+                        db.battlefield[player]
+                            .iter()
+                            .copied()
+                            .filter(|card| card.can_attack(db))
+                            .map(|card| Selected {
+                                location: Some(Location::ON_BATTLEFIELD),
+                                target_type: TargetType::Card(card),
+                                targeted: false,
+                                restrictions: vec![],
+                            })
+                            .collect_vec(),
+                    ),
+                    ..Default::default()
+                });
 
                 let mut targets = db.all_players.all_players();
                 targets.retain(|target| *target != player);
-                selected.extend(targets.into_iter().map(|target| Selected {
-                    location: None,
-                    target_type: TargetType::Player(target),
-                    targeted: false,
-                    restrictions: vec![],
-                }));
 
                 results.push_back(EffectBundle {
-                    selected,
-                    effects: vec![Effect {
-                        effect: Some(ChooseAttackers::default().into()),
-                        ..Default::default()
-                    }],
+                    push_on_enter: Some(
+                        targets
+                            .into_iter()
+                            .map(|target| Selected {
+                                location: None,
+                                target_type: TargetType::Player(target),
+                                targeted: false,
+                                restrictions: vec![],
+                            })
+                            .collect_vec(),
+                    ),
+                    effects: vec![
+                        ChooseAttackers::default().into(),
+                        PopSelected::default().into(),
+                    ],
                     ..Default::default()
                 });
                 results
@@ -366,7 +373,7 @@ impl Turn {
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
                     results.push_back(EffectBundle {
-                        selected: SelectedStack::new(
+                        push_on_enter: Some(
                             in_hand
                                 .iter()
                                 .copied()
@@ -378,20 +385,18 @@ impl Turn {
                                 })
                                 .collect_vec(),
                         ),
-                        effects: vec![Effect {
-                            effect: Some(
-                                SelectDestinations {
-                                    destinations: vec![Dest {
-                                        count: discard as u32,
-                                        destination: Some(MoveToGraveyard::default().into()),
-                                        ..Default::default()
-                                    }],
+                        effects: vec![
+                            SelectDestinations {
+                                destinations: vec![Dest {
+                                    count: discard as u32,
+                                    destination: Some(MoveToGraveyard::default().into()),
                                     ..Default::default()
-                                }
-                                .into(),
-                            ),
-                            ..Default::default()
-                        }],
+                                }],
+                                ..Default::default()
+                            }
+                            .into(),
+                            PopSelected::default().into(),
+                        ],
                         ..Default::default()
                     })
                 }

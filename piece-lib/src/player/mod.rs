@@ -9,21 +9,21 @@ use uuid::Uuid;
 
 use crate::{
     battlefield::Battlefields,
-    effects::{ApplyResult, EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBundle, PendingEffects},
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
     player::mana_pool::ManaPool,
     protogen::{
         self,
-        effects::{count::Fixed, Count, DrawCards, Effect, MoveToBattlefield},
+        effects::{count::Fixed, Count, DrawCards, MoveToBattlefield},
         targets::{
             restriction::{self, EnteredBattlefieldThisTurn},
             Restriction,
         },
     },
     protogen::{
-        effects::static_ability,
+        effects::{static_ability, PopSelected},
         ids::UUID,
         mana::{spend_reason::Reason, Mana, ManaRestriction, ManaSource},
         targets::Location,
@@ -414,31 +414,29 @@ impl Player {
     pub fn draw(player: Owner, count: u32) -> PendingEffects {
         let mut results = PendingEffects::default();
         results.push_back(EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
+            push_on_enter: Some(vec![Selected {
                 location: None,
                 target_type: TargetType::Player(player),
                 targeted: false,
                 restrictions: vec![],
             }]),
-            effects: vec![Effect {
-                effect: Some(
-                    DrawCards {
-                        count: protobuf::MessageField::some(Count {
-                            count: Some(
-                                Fixed {
-                                    count: count as i32,
-                                    ..Default::default()
-                                }
-                                .into(),
-                            ),
-                            ..Default::default()
-                        }),
+            effects: vec![
+                DrawCards {
+                    count: protobuf::MessageField::some(Count {
+                        count: Some(
+                            Fixed {
+                                count: count as i32,
+                                ..Default::default()
+                            }
+                            .into(),
+                        ),
                         ..Default::default()
-                    }
-                    .into(),
-                ),
-                ..Default::default()
-            }],
+                    }),
+                    ..Default::default()
+                }
+                .into(),
+                PopSelected::default().into(),
+            ],
             ..Default::default()
         });
 
@@ -456,16 +454,16 @@ impl Player {
         if card.is_land(&db) {
             db.all_players[player].lands_played_this_turn += 1;
             return PendingEffects::from(EffectBundle {
-                selected: SelectedStack::new(vec![Selected {
+                push_on_enter: Some(vec![Selected {
                     location: Some(Location::IN_HAND),
                     target_type: TargetType::Card(card),
                     targeted: false,
                     restrictions: vec![],
                 }]),
-                effects: vec![Effect {
-                    effect: Some(MoveToBattlefield::default().into()),
-                    ..Default::default()
-                }],
+                effects: vec![
+                    MoveToBattlefield::default().into(),
+                    PopSelected::default().into(),
+                ],
                 ..Default::default()
             });
         }
@@ -535,16 +533,16 @@ impl Player {
             db[manifested].manifested = true;
             db[manifested].facedown = true;
             Some(ApplyResult::PushBack(EffectBundle {
-                selected: SelectedStack::new(vec![Selected {
+                push_on_enter: Some(vec![Selected {
                     location: Some(Location::IN_HAND),
                     target_type: TargetType::Card(manifested),
                     targeted: false,
                     restrictions: vec![],
                 }]),
-                effects: vec![Effect {
-                    effect: Some(MoveToBattlefield::default().into()),
-                    ..Default::default()
-                }],
+                effects: vec![
+                    MoveToBattlefield::default().into(),
+                    PopSelected::default().into(),
+                ],
                 ..Default::default()
             }))
         } else {

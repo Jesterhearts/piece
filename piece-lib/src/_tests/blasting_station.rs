@@ -32,24 +32,34 @@ fn untaps() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Blasting Station");
-    card.move_to_battlefield(&mut db);
+    let mut results = PendingEffects::new(SelectedStack::new(vec![Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(card),
+        targeted: false,
+        restrictions: vec![],
+    }]));
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
+
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     creature.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
-    // Compute targets for sacrifice
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    // Target the player
+    let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, SelectionResult::TryAgain);
     // Choose to sacrifice the bear
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
-    // Recompute the targets
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Choose the default only target
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Apply everything
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -60,20 +70,16 @@ fn untaps() -> anyhow::Result<()> {
     assert!(card.tapped(&db));
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = PendingEffects::default();
-    MoveToBattlefield::default().apply(
-        &mut db,
-        &mut results,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(creature),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        &[],
-        false,
-    );
+    let mut results = PendingEffects::new(SelectedStack::new(vec![Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(creature),
+        targeted: false,
+        restrictions: vec![],
+    }]));
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

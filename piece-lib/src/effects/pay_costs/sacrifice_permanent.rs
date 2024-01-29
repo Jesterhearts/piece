@@ -7,7 +7,7 @@ use crate::{
     in_play::{CardId, Database},
     log::LogId,
     player::Controller,
-    protogen::effects::{pay_cost::SacrificePermanent, Effect, MoveToGraveyard},
+    protogen::effects::{pay_cost::SacrificePermanent, MoveToGraveyard, PopSelected},
     stack::{Selected, TargetType},
 };
 
@@ -75,21 +75,21 @@ impl EffectBehaviors for SacrificePermanent {
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        let _ = _selected;
         let card: CardId = self.selected.as_ref().cloned().unwrap().into();
 
         vec![ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
+            push_on_enter: Some(vec![Selected {
                 location: card.location(db),
                 target_type: TargetType::Card(card),
                 targeted: false,
                 restrictions: vec![],
             }]),
-            effects: vec![Effect {
-                effect: Some(MoveToGraveyard::default().into()),
-                ..Default::default()
-            }],
+            effects: vec![
+                MoveToGraveyard::default().into(),
+                PopSelected::default().into(),
+            ],
             source,
+            ..Default::default()
         })]
     }
 }

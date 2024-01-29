@@ -11,7 +11,7 @@ activated_abilities:
       - effect: !Sacrifice {}
       - effect: !ClearSelected {}
     effects:
-      - effect: !SelectSourceController {}
+      - effect: !SelectEffectController {}
       - effect: !DrawCards
           count:
             count: !Fixed

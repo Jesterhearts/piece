@@ -5,7 +5,7 @@ use crate::{
     in_play::{CardId, Database, ExileReason},
     library::Library,
     protogen::{
-        effects::{Cascade, CastSelected, Effect, MoveToBottomOfLibrary},
+        effects::{Cascade, CastSelected, MoveToBottomOfLibrary, PopSelected},
         targets::Location,
     },
     stack::{Selected, TargetType},
@@ -48,23 +48,26 @@ impl EffectBehaviors for Cascade {
         }
 
         let mut results = vec![ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(casting),
-            effects: vec![Effect {
-                effect: Some(CastSelected::default().into()),
-                ..Default::default()
-            }],
+            push_on_enter: Some(casting),
+            effects: vec![
+                CastSelected::default().into(),
+                PopSelected::default().into(),
+            ],
             source: Some(source),
+            ..Default::default()
         })];
 
         exiled.shuffle(&mut thread_rng());
         results.push(ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(exiled),
-            effects: vec![Effect {
-                effect: Some(MoveToBottomOfLibrary::default().into()),
-                ..Default::default()
-            }],
+            push_on_enter: Some(exiled),
+            effects: vec![
+                MoveToBottomOfLibrary::default().into(),
+                PopSelected::default().into(),
+            ],
             source: Some(source),
+            ..Default::default()
         }));
+
         results
     }
 }

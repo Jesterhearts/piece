@@ -3,11 +3,10 @@ typeline: Creature - Elf Shaman
 cost:
   mana_cost: '{B}{G}'
 etb_ability:
-  oracle_text:
-    When Glowspore Shaman enters the battlefield, mill three cards. You may put
-    a land card from your graveyard on top of your library.
+  oracle_text: When Glowspore Shaman enters the battlefield, mill three cards. You
+    may put a land card from your graveyard on top of your library.
   effects:
-    - effect: !SelectSourceController {}
+    - effect: !SelectEffectController {}
     - effect: !Mill
         count:
           count: !Fixed

@@ -3,8 +3,8 @@ use pretty_assertions::assert_eq;
 use protobuf::Enum;
 
 use crate::{
-    effects::SelectionResult,
-    in_play::{CardId, Database},
+    effects::{PendingEffects, SelectionResult},
+    in_play::{CardId, CastFrom, Database},
     library::Library,
     load_cards,
     player::AllPlayers,
@@ -36,7 +36,8 @@ fn reveals_clones() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let mut results = haunting.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(haunting.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -91,7 +92,8 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let haunting = CardId::upload(&mut db, &cards, player1, "Haunting Imitation");
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, haunting, false);
+    let mut results = PendingEffects::default();
+    results.apply_results(haunting.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

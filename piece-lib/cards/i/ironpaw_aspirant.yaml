@@ -3,9 +3,8 @@ typeline: Creature - Cat Warrior
 cost:
   mana_cost: '{1}{W}'
 etb_ability:
-  oracle_text:
-    When Ironpaw Aspirant enters the battlefield, put a +1/+1 counter on target
-    creature.
+  oracle_text: When Ironpaw Aspirant enters the battlefield, put a +1/+1 counter on
+    target creature.
   targets:
     selector: !SelectTargets
       count:

@@ -37,6 +37,7 @@ mod move_to_stack;
 mod move_to_top_of_library;
 mod multiply_tokens;
 mod nothing;
+mod ovewrite;
 mod pay_costs;
 mod player_loses;
 mod pop_selected;
@@ -49,11 +50,11 @@ mod scry;
 mod select_all;
 mod select_all_players;
 mod select_destinations;
+mod select_effect_controller;
 mod select_for_each_player;
 mod select_mode;
 mod select_non_targeting;
 mod select_source;
-mod select_source_controller;
 mod select_target_controller;
 mod select_targets;
 mod select_top_of_library;
@@ -186,6 +187,7 @@ impl Options {
         MoveToTopOfLibrary(MoveToTopOfLibrary),
         MultiplyTokens(MultiplyTokens),
         Nothing(Nothing),
+        Overwrite(Overwrite),
         PayCosts(PayCosts),
         PlayerLoses(PlayerLoses),
         PopSelected(PopSelected),
@@ -202,7 +204,7 @@ impl Options {
         SelectMode(SelectMode),
         SelectNonTargeting(SelectNonTargeting),
         SelectSource(SelectSource),
-        SelectSourceController(SelectSourceController),
+        SelectEffectController(SelectEffectController),
         SelectTargetController(SelectTargetController),
         SelectTargets(SelectTargets),
         SelectTopOfLibrary(SelectTopOfLibrary),
@@ -350,7 +352,6 @@ pub(crate) struct SelectedStack {
     pub(crate) stack: VecDeque<Vec<Selected>>,
 
     pub(crate) modes: Vec<usize>,
-    pub(crate) mode_stack: VecDeque<Vec<usize>>,
 
     pub(crate) crafting: bool,
 }
@@ -373,35 +374,48 @@ impl SelectedStack {
         std::mem::swap(&mut self.current, &mut popped);
         popped
     }
-
-    fn push_front(&mut self, mut other: Self) {
-        if self.current.is_empty() {
-            self.current = other.stack.pop_back().unwrap_or_default();
-        }
-        if self.modes.is_empty() {
-            self.modes = other.mode_stack.pop_back().unwrap_or_default();
-        }
-
-        for entry in other.stack.into_iter().rev() {
-            self.stack.push_front(entry)
-        }
-
-        for entry in other.mode_stack.into_iter().rev() {
-            self.mode_stack.push_front(entry);
-        }
-    }
 }
 
 #[derive(Debug, Default)]
 pub struct EffectBundle {
-    pub(crate) selected: SelectedStack,
+    pub(crate) push_on_enter: Option<Vec<Selected>>,
     pub(crate) source: Option<CardId>,
 
     pub(crate) effects: Vec<Effect>,
+    pub(crate) resolving: usize,
 }
 
-impl EffectBundle {
-    pub fn organize_stack(db: &Database) -> Self {
+#[derive(Default)]
+#[must_use]
+pub struct PendingEffects {
+    pub(crate) selected: SelectedStack,
+    bundles: VecDeque<EffectBundle>,
+}
+
+impl Debug for PendingEffects {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PendingEffects")
+            .field("selected", &self.selected)
+            .field(
+                "resolving",
+                &self
+                    .bundles
+                    .front()
+                    .map(|front| &front.effects[front.resolving]),
+            )
+            .finish()
+    }
+}
+
+impl PendingEffects {
+    pub(crate) fn new(selected: SelectedStack) -> Self {
+        Self {
+            selected,
+            ..Default::default()
+        }
+    }
+
+    pub fn organize_stack(db: &Database) -> PendingEffects {
         let selected = db
             .stack
             .entries
@@ -417,45 +431,22 @@ impl EffectBundle {
 
         Self {
             selected: SelectedStack::new(selected),
-            effects: vec![Effect {
-                effect: Some(ReorderSelected::default().into()),
+            bundles: VecDeque::from([EffectBundle {
+                effects: vec![Effect {
+                    effect: Some(ReorderSelected::default().into()),
+                    ..Default::default()
+                }],
                 ..Default::default()
-            }],
-            ..Default::default()
+            }]),
         }
     }
-}
 
-#[derive(Default)]
-#[must_use]
-pub struct PendingEffects {
-    bundles: VecDeque<EffectBundle>,
-    resolving: usize,
-}
-
-impl Debug for PendingEffects {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PendingEffects")
-            .field("bundles", &self.bundles)
-            .field(
-                "resolving",
-                &self
-                    .bundles
-                    .front()
-                    .map(|front| &front.effects[self.resolving]),
-            )
-            .finish()
-    }
-}
-
-impl PendingEffects {
     pub fn push_back(&mut self, bundle: EffectBundle) {
         self.bundles.push_back(bundle);
     }
 
     pub(crate) fn push_front(&mut self, effect: EffectBundle) {
         self.bundles.push_front(effect);
-        self.resolving = 0;
     }
 
     pub fn apply_result(&mut self, result: ApplyResult) {
@@ -484,11 +475,11 @@ impl PendingEffects {
 
     pub fn target_for_option(&self, db: &Database, option: usize) -> Option<Selected> {
         self.bundles.front().and_then(|first| {
-            first.effects[self.resolving]
+            first.effects[first.resolving]
                 .effect
                 .as_ref()
                 .unwrap()
-                .target_for_option(db, first.source, &first.selected, option)
+                .target_for_option(db, first.source, &self.selected, option)
         })
     }
 
@@ -496,11 +487,11 @@ impl PendingEffects {
         self.bundles
             .front()
             .map(|first| {
-                first.effects[self.resolving]
+                first.effects[first.resolving]
                     .effect
                     .as_ref()
                     .unwrap()
-                    .priority(db, first.source, &first.selected, &first.selected.modes)
+                    .priority(db, first.source, &self.selected, &self.selected.modes)
             })
             .unwrap_or_else(|| db.turn.priority_player())
     }
@@ -509,11 +500,11 @@ impl PendingEffects {
         self.bundles
             .front()
             .map(|first| {
-                first.effects[self.resolving]
+                first.effects[first.resolving]
                     .effect
                     .as_ref()
                     .unwrap()
-                    .description(db, first.source, &first.selected, &first.selected.modes)
+                    .description(db, first.source, &self.selected, &self.selected.modes)
             })
             .unwrap_or_default()
     }
@@ -526,54 +517,67 @@ impl PendingEffects {
                     break;
                 };
 
-                let mut effect = first.effects[self.resolving].effect.clone().unwrap();
-                if effect.wants_input(db, first.source, &first.selected, &first.selected.modes) {
+                let mut effect = first.effects[first.resolving].effect.clone().unwrap();
+                if effect.wants_input(db, first.source, &self.selected, &self.selected.modes) {
                     break;
+                }
+
+                if first.resolving == 0 && first.push_on_enter.is_some() {
+                    self.selected.save();
+                    self.selected.clear();
+                    self.selected.extend(first.push_on_enter.take().unwrap());
                 }
 
                 applied = true;
                 let first_len = first.effects.len();
-                let results = effect.apply(db, first.source, &mut first.selected, false);
+                let results = effect.apply(db, first.source, &mut self.selected, false);
 
-                self.resolving += 1;
-                if self.resolving == first_len {
-                    self.resolving = 0;
+                first.resolving += 1;
+                if first.resolving == first_len {
                     self.bundles.pop_front();
                 }
 
                 for result in results {
                     match result {
-                        ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+                        ApplyResult::PushFront(bundle) => {
+                            self.bundles.push_front(bundle);
+                        }
                         ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
                     }
                 }
             }
 
             if applied {
-                return SelectionResult::TryAgain;
+                if self.bundles.is_empty() {
+                    return SelectionResult::Complete;
+                } else {
+                    return SelectionResult::TryAgain;
+                }
             }
         }
 
         if let Some(first) = self.bundles.front_mut() {
-            let effect = first.effects[self.resolving].effect.as_mut().unwrap();
-            match effect.select(db, first.source, option, &mut first.selected) {
-                SelectionResult::Complete => {
-                    let results = effect.apply(db, first.source, &mut first.selected, false);
+            let effect = first.effects[first.resolving].effect.as_mut().unwrap();
 
-                    self.resolving += 1;
-                    if self.resolving == first.effects.len() {
-                        self.resolving = 0;
-                        let first = self.bundles.pop_front().unwrap();
+            if first.resolving == 0 && first.push_on_enter.is_some() {
+                self.selected.save();
+                self.selected.clear();
+                self.selected.extend(first.push_on_enter.take().unwrap());
+            }
+
+            match effect.select(db, first.source, option, &mut self.selected) {
+                SelectionResult::Complete => {
+                    let results = effect.apply(db, first.source, &mut self.selected, false);
+
+                    first.resolving += 1;
+                    if first.resolving == first.effects.len() {
+                        let _ = self.bundles.pop_front().unwrap();
 
                         for result in results {
                             match result {
                                 ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
                                 ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
                             }
-                        }
-
-                        if let Some(next) = self.bundles.front_mut() {
-                            next.selected.push_front(first.selected);
                         }
                     } else {
                         for result in results {
@@ -601,12 +605,12 @@ impl PendingEffects {
         self.bundles
             .front()
             .map(|front| {
-                let effect = &front.effects[self.resolving];
+                let effect = &front.effects[front.resolving];
                 effect.effect.as_ref().unwrap().options(
                     db,
                     front.source,
-                    &front.selected,
-                    &front.selected.modes,
+                    &self.selected,
+                    &self.selected.modes,
                 )
             })
             .unwrap_or_else(|| Options::OptionalList(vec![]))
@@ -687,7 +691,6 @@ impl Count {
 
 fn handle_replacements<T: Into<effect::Effect>>(
     db: &Database,
-    mut selected: SelectedStack,
     source: Option<CardId>,
     replacing: Replacing,
     effect: T,
@@ -706,26 +709,18 @@ fn handle_replacements<T: Into<effect::Effect>>(
         })
         .collect_vec();
 
-    selected.save();
-    selected.clear();
-    selected.extend(replacements);
-
     vec![ApplyResult::PushFront(EffectBundle {
-        selected,
-        effects: vec![Effect {
-            effect: Some(
-                ReorderSelected {
-                    associated_effect: protobuf::MessageField::some(Effect {
-                        effect: Some(effect.into()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }
-                .into(),
-            ),
+        push_on_enter: Some(replacements),
+        effects: vec![ReorderSelected {
+            associated_effect: protobuf::MessageField::some(Effect {
+                effect: Some(effect.into()),
+                ..Default::default()
+            }),
             ..Default::default()
-        }],
+        }
+        .into()],
         source,
+        ..Default::default()
     })]
 }
 

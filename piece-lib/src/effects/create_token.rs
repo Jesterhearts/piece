@@ -1,8 +1,10 @@
 use crate::{
-    effects::{handle_replacements, ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
-    protogen::effects::{replacement_effect::Replacing, CreateToken},
+    protogen::effects::{
+        replacement_effect::Replacing, CreateToken, MoveToBattlefield, PopSelected,
+    },
     stack::{Selected, TargetType},
 };
 
@@ -18,18 +20,23 @@ impl EffectBehaviors for CreateToken {
         if skip_replacement {
             let card = CardId::upload_token(db, owner, self.token.as_ref().cloned().unwrap());
 
-            selected.clear();
-            selected.push(Selected {
-                location: None,
-                target_type: TargetType::Card(card),
-                targeted: false,
-                restrictions: vec![],
-            });
-            vec![]
+            vec![ApplyResult::PushBack(EffectBundle {
+                push_on_enter: Some(vec![Selected {
+                    location: None,
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                }]),
+                source,
+                effects: vec![
+                    MoveToBattlefield::default().into(),
+                    PopSelected::default().into(),
+                ],
+                ..Default::default()
+            })]
         } else {
             handle_replacements(
                 db,
-                selected.clone(),
                 source,
                 Replacing::TOKEN_CREATION,
                 self.clone(),

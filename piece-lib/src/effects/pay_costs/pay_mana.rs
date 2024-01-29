@@ -262,6 +262,7 @@ impl EffectBehaviors for PayMana {
         db[source.unwrap()].x_is = self.x_paid() as usize;
 
         let (mana_paid, mana_sources) = self.paying();
+        source.unwrap().mana_from_source(db, &mana_sources);
 
         vec![ApplyResult::PushBack(EffectBundle {
             effects: vec![Effect {

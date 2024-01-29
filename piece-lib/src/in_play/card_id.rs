@@ -2158,10 +2158,14 @@ impl CardId {
         db[self].x_is
     }
 
-    pub(crate) fn mana_from_source(self, db: &mut Database, sources: &[ManaSource]) {
+    pub(crate) fn mana_from_source(
+        self,
+        db: &mut Database,
+        sources: &[protobuf::EnumOrUnknown<ManaSource>],
+    ) {
         let mut sourced = HashMap::default();
-        for source in sources.iter().copied() {
-            *sourced.entry(source).or_default() += 1
+        for source in sources {
+            *sourced.entry(source.enum_value().unwrap()).or_default() += 1
         }
 
         db[self].sourced_mana = sourced;

@@ -9,13 +9,10 @@ additional_costs:
             restrictions:
               - restriction: !OfType
                   types: Creature, Artifact
-oracle_text:
-  As an additional cost to cast this spell, sacrifice an artifact or creature.
+oracle_text: As an additional cost to cast this spell, sacrifice an artifact or creature.
 etb_ability:
-  oracle_text:
-    When Dusk Rose Reliquary enters the battlefield, exile target artifact or
-    creature an opponent controls until Dusk Rose Reliquary leaves the
-    battlefield.
+  oracle_text: When Dusk Rose Reliquary enters the battlefield, exile target artifact
+    or creature an opponent controls until Dusk Rose Reliquary leaves the battlefield.
   targets:
     selector: !SelectTargets
       count:

@@ -6,7 +6,7 @@ use crate::{
     },
     in_play::{CardId, Database},
     protogen::{
-        effects::{ChooseAttackers, DeclareAttacking, Effect},
+        effects::{ChooseAttackers, DeclareAttacking, PopSelected},
         targets::Location,
     },
     stack::{Selected, TargetType},
@@ -95,35 +95,40 @@ impl EffectBehaviors for ChooseAttackers {
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        let mut selected = SelectedStack::new(
-            self.targets
-                .iter()
-                .map(|target| Selected {
-                    location: None,
-                    target_type: TargetType::Player(target.clone().into()),
-                    targeted: false,
-                    restrictions: vec![],
-                })
-                .collect_vec(),
-        );
-
-        selected.save();
-        selected.clear();
-        selected.extend(self.attackers.iter().map(|attacker| Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(attacker.clone().into()),
-            targeted: false,
-            restrictions: vec![],
-        }));
-
-        vec![ApplyResult::PushBack(EffectBundle {
-            selected,
-            effects: vec![Effect {
-                effect: Some(DeclareAttacking::default().into()),
+        vec![
+            ApplyResult::PushBack(EffectBundle {
+                push_on_enter: Some(
+                    self.targets
+                        .iter()
+                        .map(|target| Selected {
+                            location: None,
+                            target_type: TargetType::Player(target.clone().into()),
+                            targeted: false,
+                            restrictions: vec![],
+                        })
+                        .collect_vec(),
+                ),
                 ..Default::default()
-            }],
-            ..Default::default()
-        })]
+            }),
+            ApplyResult::PushBack(EffectBundle {
+                push_on_enter: Some(
+                    self.attackers
+                        .iter()
+                        .map(|attacker| Selected {
+                            location: Some(Location::ON_BATTLEFIELD),
+                            target_type: TargetType::Card(attacker.clone().into()),
+                            targeted: false,
+                            restrictions: vec![],
+                        })
+                        .collect_vec(),
+                ),
+                effects: vec![
+                    DeclareAttacking::default().into(),
+                    PopSelected::default().into(),
+                ],
+                ..Default::default()
+            }),
+        ]
     }
 }
 

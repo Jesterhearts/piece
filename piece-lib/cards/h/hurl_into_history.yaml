@@ -2,9 +2,8 @@ name: Hurl into History
 cost:
   mana_cost: '{3}{U}{U}'
 typeline: Instant
-oracle_text:
-  Counter target artifact or creature spell. Discover X where X is that spell's
-  mana value.
+oracle_text: Counter target artifact or creature spell. Discover X where X is that
+  spell's mana value.
 targets:
   selector: !SelectTargets
     count:

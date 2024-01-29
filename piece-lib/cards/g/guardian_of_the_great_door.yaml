@@ -1,7 +1,6 @@
 name: Guardian of the Great Door
 typeline: Creature - Angel
-oracle_text:
-  As an additional cost to cast this spell, tap four untapped artifacts,
+oracle_text: As an additional cost to cast this spell, tap four untapped artifacts,
   creatures, and/or lands you control.
 cost:
   mana_cost: '{W}{W}'

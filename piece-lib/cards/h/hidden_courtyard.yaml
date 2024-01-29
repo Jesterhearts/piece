@@ -12,9 +12,8 @@ activated_abilities:
           count:
             count: !Fixed
               count: 4
-    oracle_text:
-      '{4}{W}, {T}, Sacrifice Hidden Courtyard: Discover 4. Activate only as
-      Sorcery.'
+    oracle_text: '{4}{W}, {T}, Sacrifice Hidden Courtyard: Discover 4. Activate only
+      as Sorcery.'
     sorcery_speed: true
 mana_abilities:
   - cost:

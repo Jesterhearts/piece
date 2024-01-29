@@ -1,7 +1,7 @@
 use crate::{
     effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
-    protogen::effects::{CounterSpell, Effect, MoveToGraveyard},
+    protogen::effects::{CounterSpell, MoveToGraveyard},
 };
 
 impl EffectBehaviors for CounterSpell {
@@ -9,16 +9,12 @@ impl EffectBehaviors for CounterSpell {
         &mut self,
         _db: &mut Database,
         source: Option<CardId>,
-        selected: &mut SelectedStack,
+        _selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        selected.save();
         vec![ApplyResult::PushBack(EffectBundle {
             source,
-            effects: vec![Effect {
-                effect: Some(MoveToGraveyard::default().into()),
-                ..Default::default()
-            }],
+            effects: vec![MoveToGraveyard::default().into()],
             ..Default::default()
         })]
     }

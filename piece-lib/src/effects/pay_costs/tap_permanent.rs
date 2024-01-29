@@ -7,7 +7,7 @@ use crate::{
     in_play::{CardId, Database},
     log::LogId,
     player::Controller,
-    protogen::effects::{pay_cost::TapPermanent, Effect, Tap},
+    protogen::effects::{pay_cost::TapPermanent, PopSelected, Tap},
     stack::{Selected, TargetType},
 };
 
@@ -76,18 +76,17 @@ impl EffectBehaviors for TapPermanent {
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let card: CardId = self.selected.as_ref().cloned().unwrap().into();
+
         vec![ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(vec![Selected {
+            push_on_enter: Some(vec![Selected {
                 location: card.location(db),
                 target_type: TargetType::Card(card),
                 targeted: false,
                 restrictions: vec![],
             }]),
-            effects: vec![Effect {
-                effect: Some(Tap::default().into()),
-                ..Default::default()
-            }],
+            effects: vec![Tap::default().into(), PopSelected::default().into()],
             source,
+            ..Default::default()
         })]
     }
 }

@@ -115,15 +115,15 @@ pub enum Ability {
 impl Ability {
     pub(crate) fn cost<'db>(&self, db: &'db Database) -> Option<&'db AbilityCost> {
         match self {
-            Ability::Activated(id) => Some(&db[*id].ability.cost),
-            Ability::Mana(id) => Some(&db[*id].ability.cost),
+            Ability::Activated(id) => db[*id].ability.cost.as_ref(),
+            Ability::Mana(id) => db[*id].ability.cost.as_ref(),
             Ability::EtbOrTriggered(_) => None,
         }
     }
 
     pub(crate) fn targets<'db>(&self, db: &'db Database) -> Option<&'db TargetSelection> {
         match self {
-            Ability::Activated(id) => Some(&db[*id].ability.targets),
+            Ability::Activated(id) => db[*id].ability.targets.as_ref(),
             Ability::Mana(_) => None,
             Ability::EtbOrTriggered(_) => None,
         }

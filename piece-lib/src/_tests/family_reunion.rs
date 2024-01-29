@@ -31,7 +31,7 @@ fn p1p1() -> anyhow::Result<()> {
     creature.move_to_battlefield(&mut db);
 
     let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
     // Choose the mode
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
@@ -77,7 +77,7 @@ fn hexproof() -> anyhow::Result<()> {
     creature.move_to_battlefield(&mut db);
 
     let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
     // Choose the mode
     let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, SelectionResult::TryAgain);

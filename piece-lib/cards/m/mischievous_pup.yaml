@@ -3,9 +3,8 @@ typeline: Creature - Dog
 cost:
   mana_cost: '{2}{W}'
 etb_ability:
-  - oracle_text:
-      When Mischievous Pup enters the battlefield, return up to one other target
-      permanent you control to its owner's hand.
+  - oracle_text: When Mischievous Pup enters the battlefield, return up to one other
+      target permanent you control to its owner's hand.
     effect: !ReturnTargetToHand
       restrictions:
         - restriction: !Controller

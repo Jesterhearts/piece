@@ -6,6 +6,11 @@ activated_abilities:
   - cost:
       mana_cost: '{1}{U}'
       tap: true
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
     effects:
       - effect: !TargetToTopOfLibrary
           restrictions:

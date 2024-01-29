@@ -11,26 +11,21 @@ activated_abilities:
           count: !Fixed
             count: 1
         restrictions:
-          - restriction: !OfType
-              types: Creature
+          - restriction: !CanBeDamaged {}
     additional_costs:
-      - effect: !PushSelected {}
-      - effect: !ClearSelected {}
       - effect: !PayCosts
           pay_costs:
             - cost: !SacrificePermanent
                 restrictions:
                   - restriction: !OfType
                       types: Creature
-      - effect: !PopSelected {}
     effects:
       - effect: !DamageSelected
           count:
             count: !Fixed
               count: 1
-    oracle_text:
-      '{T}, sacrifice a creature: Blasting Station deals 1 daamage to target
-      creature or player.'
+    oracle_text: '{T}, sacrifice a creature: Blasting Station deals 1 damage to any
+      target.'
 triggered_abilities:
   - trigger:
       source: enters the battlefield
@@ -41,5 +36,5 @@ triggered_abilities:
     effects:
       - effect: !SelectSource {}
       - effect: !Untap {}
-    oracle_text:
-      Whenever a creature enters the battlefield you may untap blasting station.
+    oracle_text: Whenever a creature enters the battlefield you may untap blasting
+      station.

@@ -37,9 +37,8 @@ fn adds_land_types() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
     let mut results = PendingEffects::default();
-    MoveToBattlefield::default().apply(
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -47,9 +46,8 @@ fn adds_land_types() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
-    );
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

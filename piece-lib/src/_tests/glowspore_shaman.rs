@@ -1,8 +1,14 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, effects::SelectionResult, in_play::CardId, in_play::Database,
-    library::Library, load_cards, player::AllPlayers, stack::Stack,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    in_play::CardId,
+    in_play::Database,
+    library::Library,
+    load_cards,
+    player::AllPlayers,
+    protogen::{effects::MoveToBattlefield, targets::Location},
+    stack::{Selected, Stack, TargetType},
 };
 
 #[test]
@@ -33,7 +39,18 @@ fn etb() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, nonland);
 
     let glowspore = CardId::upload(&mut db, &cards, player, "Glowspore Shaman");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, glowspore, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(glowspore),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);

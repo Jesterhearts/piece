@@ -22,5 +22,4 @@ activated_abilities:
           count:
             count: !Fixed
               count: 2
-    oracle_text:
-      '{R}, Sacrifice a Zombie: Deadapult deals 2 damage to any target.'
+    oracle_text: '{R}, Sacrifice a Zombie: Deadapult deals 2 damage to any target.'

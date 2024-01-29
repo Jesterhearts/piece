@@ -3,9 +3,8 @@ typeline: Legendary Creature - Elemental
 cost:
   mana_cost: '{3}{G}{G}'
 etb_ability:
-  - oracle_text:
-      When Titania, Protector of Argoth enters the battlefield, return target
-      land card from your graveyard to the battlefield.
+  - oracle_text: When Titania, Protector of Argoth enters the battlefield, return
+      target land card from your graveyard to the battlefield.
     effect: !ReturnFromGraveyardToBattlefield
       count: 1
       restrictions:
@@ -30,8 +29,7 @@ triggered_abilities:
             colors: Green
             power: 5
             toughness: 3
-    oracle_text:
-      Whenever a land you control is put into a graveyard from the battlefield,
+    oracle_text: Whenever a land you control is put into a graveyard from the battlefield,
       create a 5/3 green Elemental creature token.
 power: 5
 toughness: 3

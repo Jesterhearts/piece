@@ -3,10 +3,9 @@ typeline: Artifact
 cost:
   mana_cost: '{3}{W}{W}'
 etb_ability:
-  - oracle_text:
-      When Unstable Glyphbridge enters the battlefield, if you cast it, for each
-      player, choose a creature with power 2 or less that player controls. Then
-      destroy all creatures except creatures chosen this way.
+  - oracle_text: When Unstable Glyphbridge enters the battlefield, if you cast it,
+      for each player, choose a creature with power 2 or less that player controls.
+      Then destroy all creatures except creatures chosen this way.
     effect: !ForEachPlayerChooseThen
       restrictions:
         - restriction: !SourceCast {}

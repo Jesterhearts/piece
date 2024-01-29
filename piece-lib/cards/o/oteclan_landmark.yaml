@@ -50,8 +50,7 @@ back_face:
                   types: Creature
               - restriction: !NotKeywords
                   keywords: Flying
-      oracle_text:
-        Whenever Oteclan Levitator attacks, target attacking creature without
+      oracle_text: Whenever Oteclan Levitator attacks, target attacking creature without
         flying gains flying until end of turn.
   power: 1
   toughness: 4

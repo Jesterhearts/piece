@@ -23,8 +23,7 @@ activated_abilities:
     effects:
       - effect: !Transform {}
       - effect: !MoveToBattlefield {}
-    oracle_text:
-      Craft with four or more nonlands with activated abilities {8}{U}
+    oracle_text: Craft with four or more nonlands with activated abilities {8}{U}
     sorcery_speed: true
     craft: true
 mana_abilities:
@@ -54,7 +53,6 @@ back_face:
         - effect: !SelectAll
             restrictions:
               - restriction: !SpellOrAbilityJustCast {}
-        - oracle_text:
-            Whenever you activate an ability that isn't a mana ability, copy it.
-            You may choose new targets for the copy.
+        - oracle_text: Whenever you activate an ability that isn't a mana ability,
+            copy it. You may choose new targets for the copy.
           effect: !CopySpellOrAbility {}

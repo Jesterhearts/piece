@@ -1,17 +1,21 @@
+use itertools::Itertools;
+
 use crate::{
+    abilities::Ability,
     battlefield::Battlefields,
-    effects::{handle_replacements, ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
         effects::{
             replacement_effect::Replacing,
             static_ability::{self, ForceEtbTapped},
-            MoveToBattlefield,
+            ClearSelected, Effect, MoveToBattlefield, MoveToStack, PopSelected, PushSelected,
         },
+        targets::Location,
         triggers::TriggerSource,
     },
-    stack::Stack,
+    stack::{Selected, Stack, TargetType},
 };
 
 impl EffectBehaviors for MoveToBattlefield {
@@ -40,6 +44,35 @@ impl EffectBehaviors for MoveToBattlefield {
                     let target_card = add_to_battlefield.id(db).unwrap();
                     if let Some(aura_target) = aura_target {
                         aura_target.id(db).unwrap().apply_aura(db, target_card);
+                    }
+
+                    if let Some(etb) = db[target_card].modified_etb_ability.as_ref() {
+                        let mut to_trigger = vec![
+                            Effect::from(PushSelected::default()),
+                            Effect::from(ClearSelected::default()),
+                        ];
+                        if let Some(targets) = etb.targets.as_ref() {
+                            to_trigger.push(targets.clone().into());
+                        }
+                        if let Some(modes) = etb.modes.as_ref() {
+                            to_trigger.push(modes.clone().into());
+                        }
+                        to_trigger.push(MoveToStack::default().into());
+                        to_trigger.push(PopSelected::default().into());
+
+                        pending.push(ApplyResult::PushBack(EffectBundle {
+                            push_on_enter: Some(vec![Selected {
+                                location: Some(Location::ON_BATTLEFIELD),
+                                target_type: TargetType::Ability {
+                                    source: target_card,
+                                    ability: Ability::EtbOrTriggered(etb.effects.clone()),
+                                },
+                                targeted: false,
+                                restrictions: vec![],
+                            }]),
+                            effects: to_trigger,
+                            ..Default::default()
+                        }));
                     }
 
                     for (listener, trigger) in
@@ -84,6 +117,10 @@ impl EffectBehaviors for MoveToBattlefield {
                 }
             }
 
+            for card in db.cards.keys().copied().collect_vec() {
+                card.apply_modifiers_layered(db);
+            }
+
             pending
         } else {
             for target in selected.iter() {
@@ -93,7 +130,6 @@ impl EffectBehaviors for MoveToBattlefield {
 
             handle_replacements(
                 db,
-                selected.clone(),
                 source,
                 Replacing::ETB,
                 self.clone(),

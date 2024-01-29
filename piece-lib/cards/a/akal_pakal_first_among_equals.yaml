@@ -15,7 +15,7 @@ triggered_abilities:
               - restriction: !OfType
                   types: Artifact
     effects:
-      - effect: !SelectSourceController {}
+      - effect: !SelectEffectController {}
       - effect: !SelectTopOfLibrary
           count:
             count: !Fixed

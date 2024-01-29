@@ -2,7 +2,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    effects::SelectionResult,
+    effects::{PendingEffects, SelectionResult},
     in_play::Database,
     in_play::{CardId, CastFrom},
     load_cards,
@@ -33,12 +33,18 @@ fn resolves_counterspells() -> anyhow::Result<()> {
     let counterspell_1 = CardId::upload(&mut db, &cards, player, "Counterspell");
     let counterspell_2 = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results =
-        counterspell_1.move_to_stack(&mut db, Default::default(), CastFrom::Hand, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(counterspell_1.move_to_stack(
+        &mut db,
+        Default::default(),
+        CastFrom::Hand,
+        vec![],
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
+
     let targets = vec![db.stack.target_nth(0)];
-    let mut results = counterspell_2.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]);
+    results.apply_results(counterspell_2.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

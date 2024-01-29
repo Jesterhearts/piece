@@ -6,7 +6,9 @@ use crate::{
     log::LogId,
     protogen::{
         counters::Counter,
-        effects::{Dest, Effect, Explore, MoveToGraveyard, MoveToTopOfLibrary, SelectDestinations},
+        effects::{
+            Dest, Explore, MoveToGraveyard, MoveToTopOfLibrary, PopSelected, SelectDestinations,
+        },
         targets::Location,
         triggers::TriggerSource,
         types::Type,
@@ -68,30 +70,32 @@ impl EffectBehaviors for Explore {
                 });
         }
 
+        selected.save();
+        selected.clear();
+        selected.extend(explored);
+
         results.push(ApplyResult::PushBack(EffectBundle {
-            selected: SelectedStack::new(explored),
-            effects: vec![Effect {
-                effect: Some(
-                    SelectDestinations {
-                        destinations: vec![
-                            Dest {
-                                count: 1,
-                                destination: Some(MoveToGraveyard::default().into()),
-                                ..Default::default()
-                            },
-                            Dest {
-                                count: 1,
-                                destination: Some(MoveToTopOfLibrary::default().into()),
-                                ..Default::default()
-                            },
-                        ],
-                        ..Default::default()
-                    }
-                    .into(),
-                ),
-                ..Default::default()
-            }],
+            effects: vec![
+                SelectDestinations {
+                    destinations: vec![
+                        Dest {
+                            count: 1,
+                            destination: Some(MoveToGraveyard::default().into()),
+                            ..Default::default()
+                        },
+                        Dest {
+                            count: 1,
+                            destination: Some(MoveToTopOfLibrary::default().into()),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }
+                .into(),
+                PopSelected::default().into(),
+            ],
             source,
+            ..Default::default()
         }));
 
         results

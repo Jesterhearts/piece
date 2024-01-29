@@ -21,18 +21,17 @@ impl EffectBehaviors for DrawCards {
                     card.move_to_hand(db);
                 } else {
                     results.push(ApplyResult::PushBack(EffectBundle {
-                        selected: selected.clone(),
                         effects: vec![Effect {
                             effect: Some(PlayerLoses::default().into()),
                             ..Default::default()
                         }],
                         source,
+                        ..Default::default()
                     }));
                 }
             } else {
                 results.extend(handle_replacements(
                     db,
-                    selected.clone(),
                     source,
                     Replacing::DRAW,
                     self.clone(),

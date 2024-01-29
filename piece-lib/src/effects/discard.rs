@@ -7,7 +7,7 @@ use crate::{
     },
     in_play::{CardId, Database},
     protogen::{
-        effects::{Discard, Effect, MoveToGraveyard},
+        effects::{Discard, MoveToGraveyard, PopSelected},
         targets::Location,
     },
     stack::{Selected, TargetType},
@@ -67,10 +67,12 @@ impl EffectBehaviors for Discard {
         &mut self,
         _db: &mut Database,
         source: Option<CardId>,
-        _selected: &mut SelectedStack,
+        selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        let selected = SelectedStack::new(
+        selected.save();
+        selected.clear();
+        selected.extend(
             self.cards
                 .iter()
                 .map(|card| card.clone().into())
@@ -79,17 +81,16 @@ impl EffectBehaviors for Discard {
                     target_type: TargetType::Card(card),
                     targeted: false,
                     restrictions: vec![],
-                })
-                .collect_vec(),
+                }),
         );
 
         vec![ApplyResult::PushBack(EffectBundle {
-            selected,
             source,
-            effects: vec![Effect {
-                effect: Some(MoveToGraveyard::default().into()),
-                ..Default::default()
-            }],
+            effects: vec![
+                MoveToGraveyard::default().into(),
+                PopSelected::default().into(),
+            ],
+            ..Default::default()
         })]
     }
 }

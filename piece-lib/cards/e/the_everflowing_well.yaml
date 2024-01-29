@@ -4,14 +4,13 @@ cost:
 typeline: Legendary Artifact
 etb_ability:
   effects:
-    - effect: !SelectSourceController
+    - effect: !SelectEffectController
     - effect: !Mill
         count:
           count: !Fixed
             count: 2
-      oracle_text:
-        When The Everflowing Well enters the battlefield, mill two cards, then
-        draw two cards.
+      oracle_text: When The Everflowing Well enters the battlefield, mill two cards,
+        then draw two cards.
     - effect: !DrawCards
         count:
           count: !Fixed
@@ -26,9 +25,8 @@ triggered_abilities:
             controller: !Self_ {}
     effects:
       - effect: !Transform {}
-    oracle_text:
-      Descend 8 - At the beginning of your upkeep, if there are eight or more
-      permanent cards in your graveyard, transform The Everflowing Well.
+    oracle_text: Descend 8 - At the beginning of your upkeep, if there are eight or
+      more permanent cards in your graveyard, transform The Everflowing Well.
 back_face:
   name: The Myriad Pools
   typeline: Legendary Artifact Land
@@ -61,7 +59,6 @@ back_face:
             restrictions:
               - restriction: !SpellOrAbilityJustCast {}
         - effect: !CloneSelected
-          oracle_text:
-            Whenever you cast a permanent spell using mana produced by The
-            Myriad Pools, up to one other target permanent you control becomes a
-            copy of that spell until end of turn.
+          oracle_text: Whenever you cast a permanent spell using mana produced by
+            The Myriad Pools, up to one other target permanent you control becomes
+            a copy of that spell until end of turn.

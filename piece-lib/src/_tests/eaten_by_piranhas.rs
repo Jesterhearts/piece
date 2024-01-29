@@ -1,8 +1,16 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, effects::SelectionResult, in_play::CardId, in_play::Database,
-    load_cards, player::AllPlayers,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    in_play::CardId,
+    in_play::Database,
+    load_cards,
+    player::AllPlayers,
+    protogen::{
+        effects::{MoveToBattlefield, MoveToGraveyard},
+        targets::Location,
+    },
+    stack::{Selected, TargetType},
 };
 
 #[test]
@@ -27,14 +35,24 @@ fn remove_abilities() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, elesh, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(elesh),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    bear.move_to_battlefield(&mut db);
+    bear.apply_modifiers_layered(&mut db);
 
     assert_eq!(elesh.power(&db), Some(4));
     assert_eq!(elesh.toughness(&db), Some(7));
@@ -42,16 +60,38 @@ fn remove_abilities() -> anyhow::Result<()> {
     assert_eq!(bear.power(&db), Some(6));
     assert_eq!(bear.toughness(&db), Some(4));
 
+    let mut results = PendingEffects::default();
     let enchant = CardId::upload(&mut db, &cards, player, "Eaten by Piranhas");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, enchant, Some(elesh));
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(enchant),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
 
+    assert_eq!(elesh.power(&db), Some(1));
+    assert_eq!(elesh.toughness(&db), Some(1));
     assert!(db[elesh].modified_static_abilities.is_empty());
+
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(2));
 
-    let mut results = Battlefields::permanent_to_graveyard(&mut db, enchant);
+    results.apply_results(MoveToGraveyard::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(enchant),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

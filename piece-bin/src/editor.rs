@@ -90,7 +90,7 @@ impl eframe::App for App {
                 ui.expand_to_include_rect(ui.max_rect());
                 for (idx, field) in Card::descriptor().fields().enumerate() {
                     if let Some(hidden) =
-                        comments::exts::hidden(field.proto().options.get_or_default())
+                        comment::exts::hidden.get(field.proto().options.get_or_default())
                     {
                         if hidden {
                             continue;
@@ -155,7 +155,8 @@ impl App {
                 .filter(|field| field.containing_oneof().is_none())
                 .enumerate()
             {
-                if let Some(hidden) = comments::exts::hidden(field.proto().options.get_or_default())
+                if let Some(hidden) =
+                    comment::exts::hidden.get(field.proto().options.get_or_default())
                 {
                     if hidden {
                         continue;
@@ -195,12 +196,17 @@ impl App {
                                 ui.label(comment);
                             });
                         }
+                        if let Some(hidden) = comment::exts::hidden.get(options) {
+                            if hidden {
+                                return;
+                            }
+                        }
                     }
                 }
 
                 for (idx, field) in proto.fields().enumerate() {
                     if let Some(hidden) =
-                        comments::exts::hidden(field.proto().options.get_or_default())
+                        comment::exts::hidden.get(field.proto().options.get_or_default())
                     {
                         if hidden {
                             continue;
@@ -454,9 +460,9 @@ impl App {
                                 } else {
                                     ui.vertical(|ui| {
                                         for (idx, sub_field) in descriptor.fields().enumerate() {
-                                            if let Some(hidden) = comments::exts::hidden(
-                                                field.proto().options.get_or_default(),
-                                            ) {
+                                            if let Some(hidden) = comment::exts::hidden
+                                                .get(sub_field.proto().options.get_or_default())
+                                            {
                                                 if hidden {
                                                     continue;
                                                 }
@@ -697,9 +703,9 @@ impl App {
                                                 for (field_idx, field) in
                                                     descriptor.fields().enumerate()
                                                 {
-                                                    if let Some(hidden) = comments::exts::hidden(
-                                                        field.proto().options.get_or_default(),
-                                                    ) {
+                                                    if let Some(hidden) = comment::exts::hidden
+                                                        .get(field.proto().options.get_or_default())
+                                                    {
                                                         if hidden {
                                                             continue;
                                                         }

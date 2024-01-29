@@ -27,15 +27,9 @@ fn add_p_t_works() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let shade1 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
+    shade1.move_to_battlefield(&mut db);
     let shade2 = CardId::upload(&mut db, &cards, player, "Hoar Shade");
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade1, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, shade2, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    shade2.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, shade1, 0);
     // Pay Costs

@@ -37,9 +37,8 @@ fn etb_clones() -> anyhow::Result<()> {
 
     let mut results = PendingEffects::default();
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    MoveToBattlefield::default().apply(
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -47,9 +46,8 @@ fn etb_clones() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
-    );
+    ));
 
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
@@ -81,11 +79,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
 
     let mut db = Database::new(all_players);
 
-    let mut results = PendingEffects::default();
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    MoveToBattlefield::default().apply(
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
         &mut db,
-        &mut results,
         None,
         &mut SelectedStack::new(vec![Selected {
             location: Some(Location::ON_BATTLEFIELD),
@@ -93,9 +90,10 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
             targeted: false,
             restrictions: vec![],
         }]),
-        &[],
         false,
-    );
+    ));
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
