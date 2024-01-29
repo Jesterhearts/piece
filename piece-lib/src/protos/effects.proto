@@ -378,9 +378,10 @@ message StaticAbility {
 
 message TriggeredAbility {
   triggers.Trigger trigger = 1;
-  TargetSelection targets = 2;
-  repeated effects.Effect effects = 3;
-  string oracle_text = 4;
+  SelectMode modes = 2;
+  TargetSelection targets = 3;
+  repeated effects.Effect effects = 4;
+  string oracle_text = 5;
 }
 
 /// Effects

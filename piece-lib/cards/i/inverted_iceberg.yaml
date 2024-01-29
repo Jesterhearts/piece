@@ -3,32 +3,38 @@ cost:
   mana_cost: '{1}{U}'
 typeline: Artifact
 etb_ability:
-  - effect: !Mill
-      count: 1
-      restrictions:
-        - restriction: !Self_ {}
-    oracle_text:
-      When Inverted Iceberg enters the battlefield, mill a card, then draw a
-      card.
-  - effect: !ControllerDrawsCards
-      count: !Fixed
-        count: 1
+  oracle_text:
+    When Inverted Iceberg enters the battlefield, mill a card, then draw a card.
+  effects:
+    - effect: !SelectSourceController {}
+    - effect: !Mill
+        count:
+          count: !Fixed
+            count: 1
+    - effect: !DrawCards
+        count:
+          count: !Fixed
+            count: 1
 activated_abilities:
   - cost:
       mana_cost: '{4}{U}{U}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSource
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     oracle_text: Craft with artifact {4}{U}{U}
     sorcery_speed: true
     craft: true
@@ -48,16 +54,16 @@ back_face:
       oracle_text:
         Whenever Iceberg Titan attacks, you may tap or untap target artifact or
         creature.
-      effects:
-        - effect: !Modal
-            modes:
-              - effects:
-                  - effect: !TapTarget
-                      restrictions:
-                        - restriction: !OfType
-                            types: Artifact, Creature
-              - effects:
-                  - effect: !UntapTarget
-                      restrictions:
-                        - restriction: !OfType
-                            types: Artifact, Creature
+      targets:
+        selector: !SelectTargets
+          count:
+            count: !Fixed
+              count: 1
+          restrictions:
+            - restriction: !OfType
+                types: Artifact, Creature
+            - restriction: !OnBattlefield {}
+      modes:
+        modes:
+          - effect: !Tap {}
+          - effect: !Untap {}

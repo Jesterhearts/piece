@@ -304,6 +304,7 @@ impl Stack {
             Effect::from(ClearSelected::default()),
         ];
         to_trigger.push(trigger.targets.get_or_default().clone().into());
+        to_trigger.push(trigger.modes.get_or_default().clone().into());
         to_trigger.push(Effect {
             effect: Some(MoveToStack::default().into()),
             ..Default::default()

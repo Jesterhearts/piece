@@ -28,7 +28,7 @@ impl Card {
             .chain(std::iter::once(cost_text.as_str()))
             .chain(std::iter::once(self.oracle_text.as_str()))
             .chain(self.effects.iter().map(|e| e.oracle_text.as_str()))
-            .chain(self.etb_ability.iter().map(|e| e.oracle_text.as_str()))
+            .chain(std::iter::once(self.etb_ability.oracle_text.as_str()))
             .chain(
                 self.activated_abilities
                     .iter()
