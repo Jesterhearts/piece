@@ -464,7 +464,7 @@ impl Stack {
                                         .cloned()
                                         .sorted()
                                         .collect_vec(),
-                                    reducer: card.faceup_face(db).reducer.clone(),
+                                    reducer: card.faceup_face(db).cost_reducer.clone(),
                                     reason: protobuf::MessageField::some(SpendReason {
                                         reason: Some(Reason::Casting(Casting {
                                             card: protobuf::MessageField::some(card.into()),

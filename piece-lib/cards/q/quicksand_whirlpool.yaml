@@ -10,11 +10,16 @@ cost_reducer:
 oracle_text: |-
   This spell costs {3} less to cast if it targets a tapped creature
   Exile target creature.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !OnBattlefield {}
 effects:
   - oracle_text: Exile target creature.
-    effect: !ExileTarget
+    effect: !MoveToExile
       duration: permanently
-      restrictions:
-        - restriction: !OfType
-            types: Creature
-        - restriction: !OnBattlefield {}

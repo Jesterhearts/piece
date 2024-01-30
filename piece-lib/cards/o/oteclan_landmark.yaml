@@ -3,25 +3,33 @@ typeline: Artifact
 cost:
   mana_cost: '{W}'
 etb_ability:
-  - oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
-    effect: !Scry
-      count: 2
+  oracle_text: When Oteclan Landmark enters the battlefield, scry 2.
+  effects:
+    - effect: !SelectTopOfLibrary
+        count:
+          count: !Fixed
+            count: 2
+    - effect: !Scry {}
 activated_abilities:
   - cost:
       mana_cost: '{2}{W}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSource
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     oracle_text: Craft with artifact {2}{W}
     sorcery_speed: true
     craft: true
@@ -37,19 +45,25 @@ back_face:
           - restriction: !Controller
               controller: !Self_ {}
           - restriction: !Self_ {}
+      targets:
+        selector: !SelectTargets
+          count:
+            count: !Fixed
+              count: 1
+          restrictions:
+            - restriction: !Controller
+                controller: !Self_ {}
+            - restriction: !Attacking {}
+            - restriction: !OfType
+                types: Creature
+            - restriction: !NotKeywords
+                keywords: Flying
       effects:
-        - effect: !ModifyTarget
+        - effect: !ApplyModifier
             modifier:
-              add_keywords: Flying
-            duration: until end of turn
-            restrictions:
-              - restriction: !Controller
-                  controller: !Self_ {}
-              - restriction: !Attacking {}
-              - restriction: !OfType
-                  types: Creature
-              - restriction: !NotKeywords
-                  keywords: Flying
+              modifier:
+                add_keywords: Flying
+              duration: until end of turn
       oracle_text: Whenever Oteclan Levitator attacks, target attacking creature without
         flying gains flying until end of turn.
   power: 1

@@ -2,18 +2,24 @@ name: Relic's Roar
 typeline: Instant
 cost:
   mana_cost: '{U}'
-oracle_text: ''
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OnBattlefield {}
+      - restriction: !OfType
+          types: Artifact, Creature
 effects:
   - oracle_text: Until end of turn, target artifact or creature becomes a Dinosaur
       artifact creature with base power and toughness 4/3 in addition to its other
       types.
-    effect: !ModifyTarget
+    effect: !ApplyModifier
       modifier:
-        base_power: 4
-        base_toughness: 3
-        add_types: Artifact, Creature
-        add_subtypes: Dinosaur
-      duration: until end of turn
-      restrictions:
-        - restriction: !OfType
-            types: Artifact, Creature
+        modifier:
+          base_power: 4
+          base_toughness: 3
+          add_types: Artifact, Creature
+          add_subtypes: Dinosaur
+        duration: until end of turn

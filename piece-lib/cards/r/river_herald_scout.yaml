@@ -4,7 +4,9 @@ cost:
   mana_cost: '{1}{U}'
 oracle_text: ''
 etb_ability:
-  - oracle_text: When River Herald Scout enters the battlefield, it explores.
-    effect: !SelfExplores {}
+  oracle_text: When River Herald Scout enters the battlefield, it explores.
+  effects:
+    - effect: !SelectSource {}
+    - effect: !Explore {}
 power: 1
 toughness: 2

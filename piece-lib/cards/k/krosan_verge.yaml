@@ -9,6 +9,7 @@ activated_abilities:
       - effect: !Sacrifice {}
       - effect: !ClearSelected {}
     effects:
+      - effect: !SelectEffectController {}
       - effect: !TutorLibrary
           targets:
             - restrictions:
@@ -16,8 +17,6 @@ activated_abilities:
                     subtypes: Forest
               destination: !MoveToBattlefield
                 enters_tapped: true
-      - effect: !TutorLibrary
-          targets:
             - restrictions:
                 - restriction: !OfType
                     subtypes: Plains

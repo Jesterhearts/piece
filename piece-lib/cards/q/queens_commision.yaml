@@ -4,6 +4,7 @@ cost:
   mana_cost: '{2}{W}'
 oracle_text: Create two 1/1 white Vampire creature tokens with lifelink.
 effects:
+  - effect: !SelectEffectController {}
   - effect: !CreateToken
       token: !Creature
         name: Vampire
@@ -11,6 +12,7 @@ effects:
         colors: White
         power: 1
         toughness: 1
+        keywords: Lifelink
   - effect: !CreateToken
       token: !Creature
         name: Vampire
@@ -18,3 +20,4 @@ effects:
         colors: White
         power: 1
         toughness: 1
+        keywords: Lifelink

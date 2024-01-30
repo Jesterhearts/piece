@@ -7,8 +7,9 @@ use crate::{
         ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
     in_play::{CardId, Database},
+    log::LogId,
     protogen::{
-        cost::ManaCost,
+        cost::{cost_reducer::When, ManaCost},
         effects::{pay_cost::PayMana, Effect, SpendMana},
         mana::{Mana, ManaSource},
     },
@@ -87,8 +88,60 @@ impl EffectBehaviors for PayMana {
         db: &mut Database,
         source_card: Option<CardId>,
         option: Option<usize>,
-        _selected: &mut SelectedStack,
+        selected: &mut SelectedStack,
     ) -> SelectionResult {
+        if !self.reduced {
+            self.reduced = true;
+            match self.reducer.when.as_ref().unwrap() {
+                When::TargetMatches(matcher) => {
+                    if selected
+                        .iter()
+                        .filter_map(|target| target.id(db))
+                        .any(|target| {
+                            target.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                source_card.unwrap(),
+                                &matcher.restrictions,
+                            )
+                        })
+                    {
+                        let mut paying = self
+                            .paying
+                            .iter()
+                            .map(|pay| pay.enum_value().unwrap())
+                            .fold(IndexMap::<_, u32>::default(), |mut map, e| {
+                                *map.entry(e).or_default() += 1;
+                                map
+                            });
+
+                        for reduction in self
+                            .reducer
+                            .reduction
+                            .iter()
+                            .map(|e| e.enum_value().unwrap())
+                        {
+                            *paying.entry(reduction).or_default() =
+                                paying.entry(reduction).or_default().saturating_sub(1);
+                        }
+
+                        if *paying.entry(ManaCost::GENERIC).or_default() == 0 {
+                            *paying.entry(ManaCost::GENERIC).or_default() = 1
+                        }
+
+                        let mut new_pay = vec![];
+                        for (pay, amount) in paying {
+                            for _ in 0..amount {
+                                new_pay.push(protobuf::EnumOrUnknown::new(pay));
+                            }
+                        }
+
+                        self.paying = new_pay;
+                    }
+                }
+            }
+        }
+
         if option.is_none() {
             if self
                 .paid
