@@ -4,32 +4,35 @@ activated_abilities:
   - cost:
       mana_cost: '{2}'
       tap: true
-      additional_costs:
-        - cost: !SacrificeSource {}
+    additional_costs:
+      - effect: !SelectSource {}
+      - effect: !Sacrifice {}
+      - effect: !ClearSelected {}
     effects:
       - effect: !TutorLibrary
-          restrictions:
-            - restriction: !OfType
-                subtypes: Forest
-          destination:
-            destination: !Battlefield
-              enters_tapped: true
+          targets:
+            - restrictions:
+                - restriction: !OfType
+                    subtypes: Forest
+              destination: !MoveToBattlefield
+                enters_tapped: true
       - effect: !TutorLibrary
-          restrictions:
-            - restriction: !OfType
-                subtypes: Plains
-          destination:
-            destination: !Battlefield
-              enters_tapped: true
+          targets:
+            - restrictions:
+                - restriction: !OfType
+                    subtypes: Plains
+              destination: !MoveToBattlefield
+                enters_tapped: true
     oracle_text: '{2}, {T}, Sacrifice Krosan Verge: Search your library for a Forest
       card and a Plains cards, put them onto the battlefield tapped, then shuffle.'
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{C}'
-    mana_source: any
-    mana_restriction: none
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{C}'
+          mana_source: any
+          mana_restriction: none
     oracle_text: '{T}: Add {C}.'
 etb_tapped: true

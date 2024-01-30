@@ -25,13 +25,7 @@ impl EffectBehaviors for SelectMode {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> Options {
-        Options::MandatoryList(
-            self.modes
-                .iter()
-                .map(|mode| mode.oracle_text.clone())
-                .enumerate()
-                .collect_vec(),
-        )
+        Options::MandatoryList(self.descriptions.iter().cloned().enumerate().collect_vec())
     }
 
     fn select(
@@ -51,21 +45,12 @@ impl EffectBehaviors for SelectMode {
 
     fn apply(
         &mut self,
-        db: &mut Database,
-        source: Option<CardId>,
-        selected: &mut SelectedStack,
-        skip_replacement: bool,
+        _db: &mut Database,
+        _source: Option<CardId>,
+        _selected: &mut SelectedStack,
+        _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        let mut pending = vec![];
-        for mode in selected.modes.clone() {
-            pending.extend(self.modes[mode].effect.as_mut().unwrap().apply(
-                db,
-                source,
-                selected,
-                skip_replacement,
-            ));
-        }
-
-        pending
+        // Already selected modes
+        vec![]
     }
 }

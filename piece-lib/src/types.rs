@@ -1,10 +1,28 @@
+use std::collections::HashMap;
+
 use derive_more::{Deref, DerefMut};
 use indexmap::IndexSet;
+use protobuf::Enum;
 
-use crate::protogen::types::{Subtype, Type};
+use crate::protogen::{
+    empty::Empty,
+    types::{Subtype, Type},
+};
 
 #[derive(Debug, Clone, Deref, DerefMut, PartialEq, Eq, Default)]
 pub struct TypeSet(IndexSet<Type>);
+
+impl From<&HashMap<i32, Empty>> for TypeSet {
+    fn from(value: &HashMap<i32, Empty>) -> Self {
+        Self(
+            value
+                .keys()
+                .copied()
+                .map(|k| Type::from_i32(k).unwrap())
+                .collect(),
+        )
+    }
+}
 
 impl From<&Vec<Type>> for TypeSet {
     fn from(values: &Vec<Type>) -> Self {
@@ -38,6 +56,18 @@ impl<const C: usize> From<[Type; C]> for TypeSet {
 
 #[derive(Debug, Clone, Deref, DerefMut, PartialEq, Eq, Default)]
 pub struct SubtypeSet(IndexSet<Subtype>);
+
+impl From<&HashMap<i32, Empty>> for SubtypeSet {
+    fn from(value: &HashMap<i32, Empty>) -> Self {
+        Self(
+            value
+                .keys()
+                .copied()
+                .map(|k| Subtype::from_i32(k).unwrap())
+                .collect(),
+        )
+    }
+}
 
 impl From<&Vec<Subtype>> for SubtypeSet {
     fn from(values: &Vec<Subtype>) -> Self {

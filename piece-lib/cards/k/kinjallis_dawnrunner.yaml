@@ -3,7 +3,10 @@ typeline: Creature - Human Scout
 cost:
   mana_cost: '{3}{W}'
 etb_ability:
-  - effect: !SelfExplores {}
+  oracle_text: When Kinjalli's Dawnrunner enters the battlefield, it explores.
+  effects:
+    - effect: !SelectSource {}
+    - effect: !Explore {}
 power: 1
 toughness: 1
 keywords: Double Strike

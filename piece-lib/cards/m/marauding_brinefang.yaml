@@ -5,25 +5,31 @@ typeline: Creature - Dinosaur
 activated_abilities:
   - cost:
       mana_cost: '{2}'
-      additional_costs:
-        - cost: !DiscardThis {}
+    additional_costs:
+      - effect: !SelectSource {}
+      - effect: !DiscardSelected {}
     effects:
       - effect: !Cycling
           subtypes: Island
     oracle_text: Islandcycling {2}
+    can_activate_in_hand: true
 triggered_abilities:
   - trigger:
       source: targeted
       from: anywhere
-      restrictions:
-        - restriction: !TargetedBy {}
     effects:
       - oracle_text: Counter spell or ability unless its controller pays {3}
-        effect: !CounterSpellUnlessPay
+        effect: !SelectAll
           restrictions:
             - restriction: !TargetedBy {}
-          cost: !Fixed
-            count: 2
+      - effect: !PushSelected {}
+      - effect: !SelectTargetController {}
+      - effect: !PayCosts
+          or_else:
+            effects:
+              - effect: !PopSelected {}
+              - effect: !CounterSpell {}
+          pay_costs:
+            - cost: !PayMana
+                paying: '{3}'
     oracle_text: Ward {3}
-power: 6
-toughness: 7

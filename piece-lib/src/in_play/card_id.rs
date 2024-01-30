@@ -1627,6 +1627,9 @@ impl CardId {
                         return false;
                     }
                 }
+                restriction::Restriction::IsPlayer(_) => {
+                    return false;
+                }
                 restriction::Restriction::InGraveyard(_) => {
                     if !self.is_in_location(db, Location::IN_GRAVEYARD) {
                         return false;

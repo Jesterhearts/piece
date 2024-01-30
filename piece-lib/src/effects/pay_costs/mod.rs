@@ -2,6 +2,7 @@ mod exile_cards_sharing_type;
 mod exile_permanents;
 mod exile_permanents_cmc_x;
 mod pay_cost;
+mod pay_life;
 mod pay_mana;
 mod sacrifice_permanent;
 mod tap_permanent;

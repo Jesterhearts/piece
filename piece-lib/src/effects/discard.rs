@@ -6,6 +6,7 @@ use crate::{
         ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
     in_play::{CardId, Database},
+    log::Log,
     protogen::{
         effects::{Discard, MoveToGraveyard, PopSelected},
         targets::Location,
@@ -65,7 +66,7 @@ impl EffectBehaviors for Discard {
 
     fn apply(
         &mut self,
-        _db: &mut Database,
+        db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
@@ -83,6 +84,10 @@ impl EffectBehaviors for Discard {
                     restrictions: vec![],
                 }),
         );
+
+        for target in self.cards.iter().map(|card| card.clone().into()) {
+            Log::discarded(db, target)
+        }
 
         vec![ApplyResult::PushBack(EffectBundle {
             source,

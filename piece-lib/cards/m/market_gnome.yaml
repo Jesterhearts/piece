@@ -14,11 +14,15 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !Self_ {}
     effects:
+      - effect: !SelectEffectController {}
       - effect: !GainLife
-          count: 1
-      - effect: !ControllerDrawsCards
-          count: !Fixed
-            count: 1
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !DrawCards
+          count:
+            count: !Fixed
+              count: 1
   - trigger:
       source: exiled during craft
       from: battlefield
@@ -27,10 +31,14 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !Self_ {}
     effects:
+      - effect: !SelectEffectController {}
       - effect: !GainLife
-          count: 1
-      - effect: !ControllerDrawsCards
-          count: !Fixed
-            count: 1
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !DrawCards
+          count:
+            count: !Fixed
+              count: 1
 power: 0
 toughness: 3

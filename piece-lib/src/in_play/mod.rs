@@ -86,11 +86,11 @@ pub struct Database {
 }
 
 pub struct OwnerViewMut<'db> {
-    battlefield: &'db mut IndexSet<CardId>,
-    graveyard: &'db mut IndexSet<CardId>,
-    exile: &'db mut IndexSet<CardId>,
-    hand: &'db mut IndexSet<CardId>,
-    library: &'db mut Library,
+    pub(crate) battlefield: &'db mut IndexSet<CardId>,
+    pub(crate) graveyard: &'db mut IndexSet<CardId>,
+    pub(crate) exile: &'db mut IndexSet<CardId>,
+    pub(crate) hand: &'db mut IndexSet<CardId>,
+    pub(crate) library: &'db mut Library,
 }
 
 impl std::ops::Index<CardId> for Database {

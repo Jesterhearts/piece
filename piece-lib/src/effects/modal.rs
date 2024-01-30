@@ -13,7 +13,9 @@ impl EffectBehaviors for Modal {
         already_selected: &[Selected],
         modes: &[usize],
     ) -> crate::player::Owner {
-        self.modes[modes[self.applying as usize]]
+        let mode = modes[self.applying as usize];
+        let mode = &self.modes[mode];
+        mode.effects[mode.applying as usize]
             .effect
             .as_ref()
             .unwrap()
@@ -27,7 +29,9 @@ impl EffectBehaviors for Modal {
         already_selected: &[Selected],
         modes: &[usize],
     ) -> bool {
-        self.modes[modes[self.applying as usize]]
+        let mode = modes[self.applying as usize];
+        let mode = &self.modes[mode];
+        mode.effects[mode.applying as usize]
             .effect
             .as_ref()
             .unwrap()
@@ -41,7 +45,9 @@ impl EffectBehaviors for Modal {
         already_selected: &[Selected],
         modes: &[usize],
     ) -> Options {
-        self.modes[modes[self.applying as usize]]
+        let mode = modes[self.applying as usize];
+        let mode = &self.modes[mode];
+        mode.effects[mode.applying as usize]
             .effect
             .as_ref()
             .unwrap()
@@ -55,14 +61,20 @@ impl EffectBehaviors for Modal {
         option: Option<usize>,
         selected: &mut SelectedStack,
     ) -> SelectionResult {
-        match self.modes[selected.modes[self.applying as usize]]
+        let mode = selected.modes[self.applying as usize];
+        let mode = &mut self.modes[mode];
+
+        match mode.effects[mode.applying as usize]
             .effect
             .as_mut()
             .unwrap()
             .select(db, source, option, selected)
         {
             SelectionResult::Complete => {
-                self.applying += 1;
+                mode.applying += 1;
+                if (mode.applying as usize) == mode.effects.len() {
+                    self.applying += 1;
+                }
 
                 if (self.applying as usize) == selected.modes.len() {
                     SelectionResult::Complete
@@ -84,12 +96,14 @@ impl EffectBehaviors for Modal {
         let mut results = vec![];
 
         for mode in selected.modes.clone() {
-            results.extend(self.modes[mode].effect.as_mut().unwrap().apply(
-                db,
-                source,
-                selected,
-                skip_replacement,
-            ))
+            for effect in self.modes[mode].effects.iter_mut() {
+                results.extend(effect.effect.as_mut().unwrap().apply(
+                    db,
+                    source,
+                    selected,
+                    skip_replacement,
+                ));
+            }
         }
 
         results

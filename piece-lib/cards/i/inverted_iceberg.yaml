@@ -53,6 +53,10 @@ back_face:
           - restriction: !Self_ {}
       oracle_text: Whenever Iceberg Titan attacks, you may tap or untap target artifact
         or creature.
+      modes:
+        descriptions:
+          - Tap target artifact or creature.
+          - Untap target artifact or creature.
       targets:
         selector: !SelectTargets
           count:
@@ -62,7 +66,10 @@ back_face:
             - restriction: !OfType
                 types: Artifact, Creature
             - restriction: !OnBattlefield {}
-      modes:
-        modes:
-          - effect: !Tap {}
-          - effect: !Untap {}
+      effects:
+        - effect: !Modal
+            modes:
+              - effects:
+                  - effect: !Tap {}
+              - effects:
+                  - effect: !Untap {}

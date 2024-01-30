@@ -12,13 +12,16 @@ mod copy_spell_or_ability;
 mod counter_spell;
 mod create_token;
 mod create_token_clone_of_selected;
+mod cycling;
 mod damage_selected;
 mod declare_attacking;
 mod destroy_selected;
 mod discard;
+mod discard_selected;
 mod discover;
 mod draw_cards;
 mod equip;
+mod exile_graveyard;
 mod explore;
 mod for_each_mana_of_source;
 mod gain_life;
@@ -162,13 +165,16 @@ impl Options {
         CounterSpell(CounterSpell),
         CreateToken(CreateToken),
         CreateTokenCloneOfSelected(CreateTokenCloneOfSelected),
+        Cycling(Cycling),
         DamageSelected(DamageSelected),
         DeclareAttacking(DeclareAttacking),
         DestroySelected(DestroySelected),
         Discard(Discard),
+        DiscardSelected(DiscardSelected),
         Discover(Discover),
         DrawCards(DrawCards),
         Equip(Equip),
+        ExileGraveyard(ExileGraveyard),
         Explore(Explore),
         ForEachManaOfSource(ForEachManaOfSource),
         GainLife(GainLife),
@@ -231,6 +237,7 @@ impl Options {
         ExileCardsSharingType(ExileCardsSharingType),
         ExilePermanents(ExilePermanents),
         ExilePermanentsCmcX(ExilePermanentsCmcX),
+        PayLife(PayLife),
         PayMana(PayMana),
         SacrificePermanent(SacrificePermanent),
         TapPermanent(TapPermanent),
@@ -727,6 +734,7 @@ fn handle_replacements<T: Into<effect::Effect>>(
 impl From<TargetSelection> for effect::Effect {
     fn from(val: TargetSelection) -> Self {
         match val.selector.unwrap() {
+            Selector::Modal(modal) => modal.into(),
             Selector::SelectTargets(targets) => targets.into(),
             Selector::SelectNonTargeting(targets) => targets.into(),
         }

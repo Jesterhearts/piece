@@ -26,24 +26,17 @@ impl EffectBehaviors for SelectForEachPlayer {
         already_selected: &[Selected],
         _modes: &[usize],
     ) -> Options {
-        Options::MandatoryList(
-            db.cards
-                .keys()
-                .copied()
-                .filter(|card| {
-                    !already_selected.iter().any(|selected| {
-                        db[selected.id(db).unwrap()].controller == db[*card].controller
-                    }) && card.passes_restrictions(
-                        db,
-                        LogId::current(db),
-                        source.unwrap(),
-                        &self.restrictions,
-                    )
-                })
-                .map(|card| card.name(db).clone())
-                .enumerate()
-                .collect_vec(),
-        )
+        let list = self
+            .valid_targets(db, already_selected, source)
+            .map(|card| card.name(db).clone())
+            .enumerate()
+            .collect_vec();
+
+        if self.optional {
+            Options::OptionalList(list)
+        } else {
+            Options::MandatoryList(list)
+        }
     }
 
     fn select(
@@ -54,27 +47,15 @@ impl EffectBehaviors for SelectForEachPlayer {
         selected: &mut SelectedStack,
     ) -> SelectionResult {
         if let Some(option) = option {
-            let card = db
-                .cards
-                .keys()
-                .copied()
-                .filter(|card| {
-                    !selected.iter().any(|selected| {
-                        db[selected.id(db).unwrap()].controller == db[*card].controller
-                    }) && card.passes_restrictions(
-                        db,
-                        LogId::current(db),
-                        source.unwrap(),
-                        &self.restrictions,
-                    )
-                })
+            let card = self
+                .valid_targets(db, selected, source)
                 .nth(option)
                 .unwrap();
 
             selected.push(Selected {
                 location: card.location(db),
                 target_type: TargetType::Card(card),
-                targeted: false,
+                targeted: self.targeted,
                 restrictions: self.restrictions.clone(),
             });
 
@@ -83,17 +64,20 @@ impl EffectBehaviors for SelectForEachPlayer {
             } else {
                 SelectionResult::PendingChoice
             }
-        } else if !db.cards.keys().copied().any(|card| {
-            !selected
-                .iter()
-                .any(|selected| db[selected.id(db).unwrap()].controller == db[card].controller)
-                && card.passes_restrictions(
-                    db,
-                    LogId::current(db),
-                    source.unwrap(),
-                    &self.restrictions,
-                )
-        }) {
+        } else if self.optional
+            || !db.cards.keys().copied().any(|card| {
+                !selected
+                    .iter()
+                    .any(|selected| db[selected.id(db).unwrap()].controller == db[card].controller)
+                    && card.passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        source.unwrap(),
+                        &self.restrictions,
+                    )
+                    && (!self.targeted || card.can_be_targeted(db, db[source.unwrap()].controller))
+            })
+        {
             SelectionResult::Complete
         } else {
             SelectionResult::PendingChoice
@@ -112,5 +96,27 @@ impl EffectBehaviors for SelectForEachPlayer {
         }
 
         vec![]
+    }
+}
+
+impl SelectForEachPlayer {
+    fn valid_targets<'db>(
+        &'db self,
+        db: &'db Database,
+        already_selected: &'db [Selected],
+        source: Option<CardId>,
+    ) -> impl Iterator<Item = CardId> + 'db {
+        db.cards.keys().copied().filter(move |card| {
+            !already_selected
+                .iter()
+                .any(|selected| db[selected.id(db).unwrap()].controller == db[*card].controller)
+                && card.passes_restrictions(
+                    db,
+                    LogId::current(db),
+                    source.unwrap(),
+                    &self.restrictions,
+                )
+                && (!self.targeted || card.can_be_targeted(db, db[source.unwrap()].controller))
+        })
     }
 }

@@ -84,39 +84,40 @@ impl Owner {
     ) -> bool {
         for restriction in restrictions {
             match restriction.restriction.as_ref().unwrap() {
+                &restriction::Restriction::CanBeDamaged(_) => {}
+                restriction::Restriction::AttackedThisTurn(_) => {
+                    if db.turn.number_of_attackers_this_turn < 1 {
+                        return false;
+                    }
+                }
+                restriction::Restriction::Attacking(_) => {
+                    return false;
+                }
                 restriction::Restriction::AttackingOrBlocking(_) => {
-                    return false;
-                }
-                &restriction::Restriction::CanBeDamaged(_) => {
-                    return true;
-                }
-                restriction::Restriction::NotSelf(_) => {
-                    if self == controller {
-                        return false;
-                    }
-                }
-                restriction::Restriction::Self_(_) => {
-                    if self != controller {
-                        return false;
-                    }
-                }
-                restriction::Restriction::OfColor(_) => {
-                    return false;
-                }
-                restriction::Restriction::OfType(_) => {
-                    return false;
-                }
-                restriction::Restriction::NotOfType(_) => {
                     return false;
                 }
                 restriction::Restriction::CastFromHand(_) => {
                     return false;
                 }
+                restriction::Restriction::Chosen(_) => {
+                    return false;
+                }
                 restriction::Restriction::Cmc(_) => {
                     return false;
                 }
-                restriction::Restriction::Toughness(_) => {
-                    return false;
+                restriction::Restriction::Controller(controller_restriction) => {
+                    match controller_restriction.controller.as_ref().unwrap() {
+                        restriction::controller::Controller::Self_(_) => {
+                            if self != controller {
+                                return false;
+                            }
+                        }
+                        restriction::controller::Controller::Opponent(_) => {
+                            if self == controller {
+                                return false;
+                            }
+                        }
+                    }
                 }
                 restriction::Restriction::ControllerControlsColors(colors) => {
                     let controlled_colors = Battlefields::controlled_colors(db, controller);
@@ -133,24 +134,14 @@ impl Owner {
                         return false;
                     }
                 }
-                restriction::Restriction::InGraveyard(_) => {
-                    return false;
-                }
-                restriction::Restriction::OnBattlefield(_) => {
-                    return false;
-                }
-                restriction::Restriction::Location(_) => {
-                    return false;
-                }
-                restriction::Restriction::Attacking(_) => {
-                    return false;
-                }
-                restriction::Restriction::NotKeywords(_) => {
-                    return false;
-                }
-                restriction::Restriction::LifeGainedThisTurn(count) => {
-                    let life_gained = db.all_players[self].life_gained_this_turn;
-                    if life_gained < count.count {
+                restriction::Restriction::ControllerJustCast(_) => {
+                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
+                        if let LogEntry::Cast { card } = entry {
+                            db[*card].controller == self
+                        } else {
+                            false
+                        }
+                    }) {
                         return false;
                     }
                 }
@@ -174,54 +165,10 @@ impl Owner {
                         return false;
                     }
                 }
-                restriction::Restriction::Tapped(_) => {
-                    return false;
-                }
-                restriction::Restriction::ManaSpentFromSource(_) => {
-                    return false;
-                }
-                restriction::Restriction::Power(_) => {
-                    return false;
-                }
-                restriction::Restriction::NotChosen(_) => {
-                    return false;
-                }
-                restriction::Restriction::SourceCast(_) => {
-                    return false;
-                }
                 restriction::Restriction::DuringControllersTurn(_) => {
                     if self != db.turn.active_player() {
                         return false;
                     }
-                }
-                restriction::Restriction::ControllerJustCast(_) => {
-                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
-                        if let LogEntry::Cast { card } = entry {
-                            db[*card].controller == self
-                        } else {
-                            false
-                        }
-                    }) {
-                        return false;
-                    }
-                }
-                restriction::Restriction::Controller(controller_restriction) => {
-                    match controller_restriction.controller.as_ref().unwrap() {
-                        restriction::controller::Controller::Self_(_) => {
-                            if self != controller {
-                                return false;
-                            }
-                        }
-                        restriction::controller::Controller::Opponent(_) => {
-                            if self == controller {
-                                return false;
-                            }
-                        }
-                    }
-                }
-                restriction::Restriction::NumberOfCountersOnThis(_) => {
-                    // TODO: Poison counters
-                    return false;
                 }
                 restriction::Restriction::EnteredBattlefieldThisTurn(
                     EnteredBattlefieldThisTurn {
@@ -239,36 +186,88 @@ impl Owner {
                         return false;
                     }
                 }
-                restriction::Restriction::AttackedThisTurn(_) => {
-                    if db.turn.number_of_attackers_this_turn < 1 {
+                restriction::Restriction::HasActivatedAbility(_) => {
+                    return false;
+                }
+                restriction::Restriction::InGraveyard(_) => {
+                    return false;
+                }
+                restriction::Restriction::IsPermanent(_) => {
+                    return false;
+                }
+                restriction::Restriction::IsPlayer(_) => {}
+                restriction::Restriction::JustDiscarded(_) => {
+                    return false;
+                }
+                restriction::Restriction::LifeGainedThisTurn(count) => {
+                    let life_gained = db.all_players[self].life_gained_this_turn;
+                    if life_gained < count.count {
                         return false;
                     }
+                }
+                restriction::Restriction::Location(_) => {
+                    return false;
+                }
+                restriction::Restriction::ManaSpentFromSource(_) => {
+                    return false;
+                }
+                restriction::Restriction::NonToken(_) => {
+                    return false;
+                }
+                restriction::Restriction::NotChosen(_) => {
+                    return false;
+                }
+                restriction::Restriction::NotKeywords(_) => {
+                    return false;
+                }
+                restriction::Restriction::NotOfType(_) => {
+                    return false;
+                }
+                restriction::Restriction::NotSelf(_) => {
+                    if self == controller {
+                        return false;
+                    }
+                }
+                restriction::Restriction::NumberOfCountersOnThis(_) => {
+                    /* TODO: Poison counters */
+                    return false;
+                }
+                restriction::Restriction::OfColor(_) => {
+                    return false;
+                }
+                restriction::Restriction::OfType(_) => {
+                    return false;
+                }
+                restriction::Restriction::OnBattlefield(_) => {
+                    return false;
+                }
+                restriction::Restriction::Power(_) => {
+                    return false;
+                }
+                restriction::Restriction::Self_(_) => {
+                    if self != controller {
+                        return false;
+                    }
+                }
+                restriction::Restriction::SourceCast(_) => {
+                    return false;
+                }
+                restriction::Restriction::SpellOrAbilityJustCast(_) => {
+                    return false;
+                }
+                restriction::Restriction::Tapped(_) => {
+                    return false;
+                }
+                restriction::Restriction::TargetedBy(_) => {
+                    /* TODO*/
+                    return false;
                 }
                 restriction::Restriction::Threshold(_) => {
                     if db.graveyard[self].len() < 7 {
                         return false;
                     }
                 }
-                restriction::Restriction::NonToken(_) => {
-                    return false;
-                }
-                restriction::Restriction::TargetedBy(_) => {
-                    // TODO
-                    return false;
-                }
-                restriction::Restriction::HasActivatedAbility(_) => {
-                    return false;
-                }
-                restriction::Restriction::SpellOrAbilityJustCast(_) => {
-                    return false;
-                }
-                restriction::Restriction::IsPermanent(_) => {
-                    return false;
-                }
-                restriction::Restriction::Chosen(_) => {
-                    return false;
-                }
-                restriction::Restriction::JustDiscarded(_) => {
+                restriction::Restriction::Toughness(_) => {
                     return false;
                 }
             }
