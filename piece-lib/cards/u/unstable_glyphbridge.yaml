@@ -3,10 +3,11 @@ typeline: Artifact
 cost:
   mana_cost: '{3}{W}{W}'
 etb_ability:
-  - oracle_text: When Unstable Glyphbridge enters the battlefield, if you cast it,
-      for each player, choose a creature with power 2 or less that player controls.
-      Then destroy all creatures except creatures chosen this way.
-    effect: !ForEachPlayerChooseThen
+  oracle_text: When Unstable Glyphbridge enters the battlefield, if you cast it, for
+    each player, choose a creature with power 2 or less that player controls. Then
+    destroy all creatures except creatures chosen this way.
+  targets:
+    selector: !SelectForEachPlayer
       restrictions:
         - restriction: !SourceCast {}
         - restriction: !OfType
@@ -16,26 +17,35 @@ etb_ability:
             comparison:
               value: !LessThanOrEqual
                 value: 2
-      effects:
-        - effect: !DestroyEach
-            restrictions:
-              - restriction: !NotChosen {}
+  effects:
+    - effect: !ClearSelected
+    - effect: !SelectAll
+        restrictions:
+          - restriction: !NotChosen {}
+          - restriction: !OfType
+              types: Creature
+          - restriction: !OnBattlefield {}
+    - effect: !DestroySelected
 activated_abilities:
   - cost:
       mana_cost: '{3}{W}{W}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !NotSelf {}
-              - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSource
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     oracle_text: Craft with artifact {3}{W}{W}
     sorcery_speed: true
     craft: true
@@ -57,10 +67,11 @@ back_face:
               controller: !Opponent {}
           - restriction: !DuringControllersTurn {}
       effects:
-        - effect: !CantAttackThisTurn
+        - effect: !SelectAll
             restrictions:
               - restriction: !ControllerJustCast {}
               - restriction: !NotSelf {}
+        - effect: !BanAttackingThisTurn
   power: 5
   toughness: 3
   keywords: Flying

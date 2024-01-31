@@ -308,6 +308,7 @@ message TargetSelection {
     Modal modal = 1;
     SelectTargets select_targets = 2;
     SelectNonTargeting select_non_targeting = 3;
+    SelectForEachPlayer select_for_each_player = 4;
   }
 }
 

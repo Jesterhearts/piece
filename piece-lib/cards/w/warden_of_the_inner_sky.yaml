@@ -14,28 +14,34 @@ static_abilities:
               value: !GreaterThanOrEqual
                 value: 3
 activated_abilities:
-  - cost:
-      additional_costs:
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature
+  - additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !TapPermanent
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact, Creature
+            - cost: !TapPermanent
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact, Creature
+            - cost: !TapPermanent
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact, Creature
     effects:
-      - effect: !GainCounters
+      - effect: !SelectSource {}
+      - effect: !AddCounters
           counter: +1/+1
           count:
             count: !Fixed
               count: 1
+      - effect: !SelectTargetController
+      - effect: !SelectTopOfLibrary
+          count:
+            count: !Fixed
+              count: 1
       - effect: !Scry
-          count: 1
     oracle_text: 'Tap three untapped artifacts and/or creatures you control: Put a
       +1/+1 counter on Warden of the Inner Sky. Scry 1. Activate only as sorcery.'
     sorcery_speed: true

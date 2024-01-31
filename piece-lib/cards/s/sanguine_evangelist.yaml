@@ -3,15 +3,17 @@ typeline: Creature - Vampire Cleric
 cost:
   mana_cost: '{2}{W}'
 etb_ability:
-  - oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a
-      1/1 black Bat creature token with flying.
-    effect: !CreateToken
-      token: !Creature
-        name: Bat
-        typeline: Creature - Bat
-        colors: Black
-        power: 1
-        toughness: 1
+  oracle_text: When Sanguine Evangelist enters the battlefield or dies, create a 1/1
+    black Bat creature token with flying.
+  effects:
+    - effect: !SelectEffectController {}
+    - effect: !CreateToken
+        token: !Creature
+          name: Bat
+          typeline: Creature - Bat
+          colors: Black
+          power: 1
+          toughness: 1
 triggered_abilities:
   - trigger:
       source: put into graveyard
@@ -21,6 +23,7 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !Self_ {}
     effects:
+      - effect: !SelectEffectController {}
       - effect: !CreateToken
           token: !Creature
             name: Bat

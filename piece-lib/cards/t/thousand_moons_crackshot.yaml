@@ -10,15 +10,21 @@ triggered_abilities:
         - restriction: !Controller
             controller: !Self_ {}
         - restriction: !Self_ {}
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !OnBattlefield {}
+          - restriction: !OfType
+              types: Creature
     effects:
-      - effect: !PayCostThen
-          cost:
-            mana_cost: '{2}{W}'
-          effects:
-            - effect: !TapTarget
-                restrictions:
-                  - restriction: !OfType
-                      types: Creature
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !PayMana
+                paying: '{2}{W}'
+      - effect: !Tap
     oracle_text: Whenever Thousand Moons Crackshot attacks, you may pay {2}{W}. When
       you do, tap target creature.
 power: 2

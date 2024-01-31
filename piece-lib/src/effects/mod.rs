@@ -737,6 +737,7 @@ impl From<TargetSelection> for effect::Effect {
             Selector::Modal(modal) => modal.into(),
             Selector::SelectTargets(targets) => targets.into(),
             Selector::SelectNonTargeting(targets) => targets.into(),
+            Selector::SelectForEachPlayer(targets) => targets.into(),
         }
     }
 }

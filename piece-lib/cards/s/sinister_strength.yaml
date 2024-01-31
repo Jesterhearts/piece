@@ -5,6 +5,15 @@ cost:
 oracle_text: |-
   Enchant creature
   Enchanted creature gets +3/+1 and is black.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !OnBattlefield {}
 enchant:
   modifiers:
     - modifier:
@@ -15,7 +24,3 @@ enchant:
     - modifier:
         add_colors: Black
       duration: until source leaves battlefield
-restrictions:
-  - restriction: !OfType
-      types: Creature
-  - restriction: !OnBattlefield {}
