@@ -1,13 +1,12 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
     effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
     protogen::types::{Subtype, Type},
-    stack::{Selected, Stack},
+    stack::Stack,
     types::{SubtypeSet, TypeSet},
 };
 
@@ -28,20 +27,13 @@ fn metamorphosis() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
+    db.all_players[player].infinite_mana();
 
     let mantle = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, mantle, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    mantle.move_to_battlefield(&mut db);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
-
-    let mut results = majestic.move_to_stack(
-        &mut db,
-        vec![vec![Selected::Battlefield { id: mantle }]],
-        None,
-        vec![],
-    );
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, majestic);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -85,18 +77,10 @@ fn metamorphosis_bear() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    bear.move_to_battlefield(&mut db);
 
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
-
-    let mut results = majestic.move_to_stack(
-        &mut db,
-        vec![vec![Selected::Battlefield { id: bear }]],
-        None,
-        vec![],
-    );
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, majestic);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

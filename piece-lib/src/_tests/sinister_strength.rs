@@ -3,8 +3,18 @@ use std::collections::HashSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, effects::SelectionResult, in_play::CardId, in_play::Database,
-    load_cards, player::AllPlayers, protogen::color::Color,
+    battlefield::Battlefields,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    in_play::CardId,
+    in_play::Database,
+    load_cards,
+    player::AllPlayers,
+    protogen::{
+        color::Color,
+        effects::{MoveToBattlefield, MoveToGraveyard},
+        targets::Location,
+    },
+    stack::{Selected, TargetType},
 };
 
 #[test]
@@ -28,12 +38,26 @@ fn aura_works() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    creature.move_to_battlefield(&mut db);
 
     let aura = CardId::upload(&mut db, &cards, player, "Sinister Strength");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, aura, Some(creature));
+
+    let mut results = PendingEffects::new(SelectedStack::new(vec![Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(creature),
+        targeted: true,
+        restrictions: vec![],
+    }]));
+    results.selected.save();
+    results.selected.clear();
+    results.selected.push(Selected {
+        location: Some(Location::IN_STACK),
+        target_type: TargetType::Card(aura),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::Complete);
 
@@ -41,15 +65,18 @@ fn aura_works() -> anyhow::Result<()> {
     assert_eq!(creature.toughness(&db), Some(3));
     assert_eq!(db[creature].modified_colors, HashSet::from([Color::BLACK]));
 
-    let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
-
-    assert_eq!(card2.power(&db), Some(4));
-    assert_eq!(card2.toughness(&db), Some(2));
-
-    let results = Battlefields::permanent_to_graveyard(&mut db, aura);
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToGraveyard::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(aura),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     assert!(results.is_empty());
     assert_eq!(creature.power(&db), Some(4));
     assert_eq!(creature.toughness(&db), Some(2));

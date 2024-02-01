@@ -27,10 +27,10 @@ fn adds_ability() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let equipment = CardId::upload(&mut db, &cards, player, "Paradise Mantle");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, equipment, None);
+    equipment.move_to_battlefield(&mut db);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let _ = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
+    creature.move_to_battlefield(&mut db);
 
     assert!(db[creature].abilities(&db).is_empty());
 

@@ -2,13 +2,13 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    effects::SelectionResult,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     library::Library,
     load_cards,
     player::AllPlayers,
-    protogen::targets::Location,
-    stack::Stack,
+    protogen::{effects::MoveToBattlefield, targets::Location},
+    stack::{Selected, Stack, TargetType},
     turns::Phase,
 };
 
@@ -31,7 +31,18 @@ fn enters_tapped() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(card),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -70,7 +81,18 @@ fn tutors() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, annul);
 
     let card = CardId::upload(&mut db, &cards, player, "Krosan Verge");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(card),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

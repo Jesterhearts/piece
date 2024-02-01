@@ -2,15 +2,14 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
-    effects::SelectionResult,
-    in_play::CardId,
+    effects::{PendingEffects, SelectionResult},
     in_play::Database,
+    in_play::{CardId, CastFrom},
     library::Library,
     load_cards,
     player::AllPlayers,
-    protogen::types::Subtype,
-    stack::{Selected, Stack},
+    protogen::{targets::Location, types::Subtype},
+    stack::{Selected, Stack, TargetType},
     types::SubtypeSet,
 };
 
@@ -36,25 +35,28 @@ fn resolves_shift() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let bear1 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
-    let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
-    let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
+    bear1.move_to_battlefield(&mut db);
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear1, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    let bear2 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
+    bear2.move_to_battlefield(&mut db);
+
+    let bear3 = CardId::upload(&mut db, &all_cards, player, "Alpine Grizzly");
 
     Library::place_on_top(&mut db, player, bear3);
 
     let shift = CardId::upload(&mut db, &all_cards, player, "Reality Shift");
-    let mut results = shift.move_to_stack(
+    let mut results = PendingEffects::default();
+    results.apply_results(shift.move_to_stack(
         &mut db,
-        vec![vec![Selected::Battlefield { id: bear1 }]],
-        None,
+        vec![Selected {
+            location: Some(Location::IN_HAND),
+            target_type: TargetType::Card(bear1),
+            targeted: true,
+            restrictions: vec![],
+        }],
+        CastFrom::Hand,
         vec![],
-    );
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

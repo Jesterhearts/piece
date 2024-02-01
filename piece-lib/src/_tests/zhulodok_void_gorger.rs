@@ -4,14 +4,17 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
-    effects::SelectionResult,
+    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     library::Library,
     load_cards,
     player::AllPlayers,
-    protogen::types::{Subtype, Type},
-    stack::Stack,
+    protogen::{
+        effects::MoveToBattlefield,
+        targets::Location,
+        types::{Subtype, Type},
+    },
+    stack::{Selected, Stack, TargetType},
     types::{SubtypeSet, TypeSet},
 };
 
@@ -49,11 +52,22 @@ fn cascades() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, deck4);
 
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, zhul, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(MoveToBattlefield::default().apply(
+        &mut db,
+        None,
+        &mut SelectedStack::new(vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(zhul),
+            targeted: false,
+            restrictions: vec![],
+        }]),
+        false,
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1, false);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);

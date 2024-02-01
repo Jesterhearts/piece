@@ -32,11 +32,9 @@ fn cost_reducer() -> anyhow::Result<()> {
 
     let target = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     target.move_to_battlefield(&mut db);
-    let mut results = target.tap(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::Complete);
+    target.tap(&mut db);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
     // Target the bear
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);

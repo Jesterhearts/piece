@@ -3,12 +3,13 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    effects::SelectionResult,
-    in_play::CardId,
+    effects::{PendingEffects, SelectionResult},
     in_play::Database,
+    in_play::{CardId, CastFrom},
     load_cards,
     player::AllPlayers,
-    stack::{Selected, Stack},
+    protogen::targets::Location,
+    stack::{Selected, Stack, TargetType},
 };
 
 #[test]
@@ -36,12 +37,18 @@ fn damages_target() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    let mut results = blast.move_to_stack(
+    let mut results = PendingEffects::default();
+    results.apply_results(blast.move_to_stack(
         &mut db,
-        vec![vec![Selected::Battlefield { id: bear }]],
-        None,
+        vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(bear),
+            targeted: true,
+            restrictions: vec![],
+        }],
+        CastFrom::Hand,
         vec![],
-    );
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -60,7 +67,7 @@ fn damages_target() -> anyhow::Result<()> {
             .flat_map(|b| b.iter())
             .copied()
             .collect_vec(),
-        []
+        Vec::<CardId>::default()
     );
 
     Ok(())
@@ -96,12 +103,18 @@ fn damages_target_threshold() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    let mut results = blast.move_to_stack(
+    let mut results = PendingEffects::default();
+    results.apply_results(blast.move_to_stack(
         &mut db,
-        vec![vec![Selected::Battlefield { id: bear }]],
-        None,
+        vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(bear),
+            targeted: true,
+            restrictions: vec![],
+        }],
+        CastFrom::Hand,
         vec![],
-    );
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -121,7 +134,7 @@ fn damages_target_threshold() -> anyhow::Result<()> {
             .flat_map(|b| b.iter())
             .copied()
             .collect_vec(),
-        []
+        Vec::<CardId>::default()
     );
 
     Ok(())
@@ -158,12 +171,18 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let blast = CardId::upload(&mut db, &cards, player, "Thermal Blast");
-    let mut results = blast.move_to_stack(
+    let mut results = PendingEffects::default();
+    results.apply_results(blast.move_to_stack(
         &mut db,
-        vec![vec![Selected::Battlefield { id: bear }]],
-        None,
+        vec![Selected {
+            location: Some(Location::ON_BATTLEFIELD),
+            target_type: TargetType::Card(bear),
+            targeted: true,
+            restrictions: vec![],
+        }],
+        CastFrom::Hand,
         vec![],
-    );
+    ));
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -183,7 +202,7 @@ fn damages_target_threshold_other_player() -> anyhow::Result<()> {
             .flat_map(|b| b.iter())
             .copied()
             .collect_vec(),
-        []
+        Vec::<CardId>::default()
     );
 
     Ok(())
