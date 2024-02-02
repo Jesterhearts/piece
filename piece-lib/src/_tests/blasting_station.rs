@@ -57,10 +57,6 @@ fn untaps() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     // Apply everything
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
@@ -78,8 +74,6 @@ fn untaps() -> anyhow::Result<()> {
     }]));
     let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
     results.apply_results(to_apply);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

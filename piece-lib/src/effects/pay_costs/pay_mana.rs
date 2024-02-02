@@ -90,7 +90,7 @@ impl EffectBehaviors for PayMana {
         option: Option<usize>,
         selected: &mut SelectedStack,
     ) -> SelectionResult {
-        if !self.reduced {
+        if !self.reduced && self.reducer.when.is_some() {
             self.reduced = true;
             match self.reducer.when.as_ref().unwrap() {
                 When::TargetMatches(matcher) => {
@@ -391,7 +391,8 @@ impl PayMana {
                 .mana_to_source
                 .values()
                 .flat_map(|m| m.source_to_count.values())
-                .sum::<u32>(),
+                .sum::<u32>()
+                / 2,
         )
     }
 

@@ -53,6 +53,8 @@ fn sacrifice_gain_mana() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(

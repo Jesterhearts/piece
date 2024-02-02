@@ -1985,11 +1985,6 @@ impl CardId {
         true
     }
 
-    pub(crate) fn can_be_sacrificed(self, _db: &Database) -> bool {
-        // TODO
-        true
-    }
-
     pub fn tapped(self, db: &Database) -> bool {
         db[self].tapped
     }
@@ -2145,16 +2140,6 @@ impl CardId {
             .get(&Keyword::CASCADE.value())
             .copied()
             .unwrap_or_default()
-    }
-
-    pub(crate) fn exiled_with_cascade(db: &mut Database) -> Vec<CardId> {
-        db.exile
-            .exile_zones
-            .values()
-            .flat_map(|e| e.iter())
-            .copied()
-            .filter(|card| matches!(db[*card].exile_reason, Some(ExileReason::CascadeOrDiscover)))
-            .collect_vec()
     }
 
     pub(crate) fn get_x(self, db: &Database) -> usize {

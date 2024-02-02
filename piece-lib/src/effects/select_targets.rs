@@ -72,50 +72,50 @@ impl EffectBehaviors for SelectTargets {
         option: Option<usize>,
         selected: &mut SelectedStack,
     ) -> SelectionResult {
-        if let Some(option) = option {
-            let target = db
-                .cards
-                .keys()
-                .copied()
-                .filter(|card| {
-                    {
-                        card.passes_restrictions(
+        let mut targets = db
+            .cards
+            .keys()
+            .copied()
+            .filter(|card| {
+                {
+                    card.passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        source.unwrap(),
+                        &self.restrictions,
+                    ) && !selected
+                        .iter()
+                        .any(|selected| selected.id(db).unwrap() == *card)
+                }
+            })
+            .map(|card| Selected {
+                location: card.location(db),
+                target_type: TargetType::Card(card),
+                targeted: true,
+                restrictions: self.restrictions.clone(),
+            })
+            .chain(
+                db.all_players
+                    .all_players()
+                    .into_iter()
+                    .filter(|player| {
+                        player.passes_restrictions(
                             db,
                             LogId::current(db),
-                            source.unwrap(),
+                            db[source.unwrap()].controller,
                             &self.restrictions,
-                        ) && !selected
-                            .iter()
-                            .any(|selected| selected.id(db).unwrap() == *card)
-                    }
-                })
-                .map(|card| Selected {
-                    location: card.location(db),
-                    target_type: TargetType::Card(card),
-                    targeted: true,
-                    restrictions: self.restrictions.clone(),
-                })
-                .chain(
-                    db.all_players
-                        .all_players()
-                        .into_iter()
-                        .filter(|player| {
-                            player.passes_restrictions(
-                                db,
-                                LogId::current(db),
-                                db[source.unwrap()].controller,
-                                &self.restrictions,
-                            )
-                        })
-                        .map(|player| Selected {
-                            location: None,
-                            target_type: TargetType::Player(player),
-                            targeted: true,
-                            restrictions: self.restrictions.clone(),
-                        }),
-                )
-                .nth(option)
-                .unwrap();
+                        )
+                    })
+                    .map(|player| Selected {
+                        location: None,
+                        target_type: TargetType::Player(player),
+                        targeted: true,
+                        restrictions: self.restrictions.clone(),
+                    }),
+            );
+
+        if let Some(option) = option {
+            let target = targets.nth(option).unwrap();
 
             selected.push(target);
 
@@ -126,6 +126,8 @@ impl EffectBehaviors for SelectTargets {
                 SelectionResult::PendingChoice
             }
         } else if self.optional {
+            SelectionResult::Complete
+        } else if targets.next().is_none() {
             SelectionResult::Complete
         } else {
             SelectionResult::PendingChoice

@@ -3,7 +3,10 @@ use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, CastFrom, Database},
     log::Log,
-    protogen::{effects::MoveToStack, targets::Location},
+    protogen::{
+        effects::{Cascade, MoveToStack},
+        targets::Location,
+    },
     stack::{Stack, TargetType},
 };
 
@@ -28,7 +31,17 @@ impl EffectBehaviors for MoveToStack {
                     loc => unreachable!("{}", loc.as_ref()),
                 };
                 Log::cast(db, *card);
+
                 pending.extend(card.move_to_stack(db, targets, cast_from, selected.modes.clone()));
+
+                for _ in 0..card.cascade(db) {
+                    pending.extend(Stack::push_ability(
+                        db,
+                        *card,
+                        Ability::EtbOrTriggered(vec![Cascade::default().into()]),
+                        vec![],
+                    ));
+                }
             }
             TargetType::Ability { source, ability } => {
                 match ability {

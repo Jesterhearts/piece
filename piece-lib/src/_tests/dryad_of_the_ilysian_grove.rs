@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -37,17 +37,14 @@ fn adds_land_types() -> anyhow::Result<()> {
 
     let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
     let mut results = PendingEffects::default();
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(card),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        false,
-    ));
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(card),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

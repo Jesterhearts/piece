@@ -87,10 +87,6 @@ fn aura_works() -> anyhow::Result<()> {
     let to_apply = MoveToGraveyard::default().apply(&mut db, None, &mut results.selected, false);
     results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(4));
@@ -175,17 +171,9 @@ fn aura_leaves_battlefield_enchanting_leaves_battlefield() -> anyhow::Result<()>
     let to_apply = MoveToGraveyard::default().apply(&mut db, None, &mut results.selected, false);
     results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Battlefields::check_sba(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -228,8 +216,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::Complete);
 
     let aura = CardId::upload(&mut db, &cards, player, "Abzan Runemark");
-    results.selected.clear();
-    results.selected.stack.clear();
+    let mut results = PendingEffects::default();
     results.selected.push(Selected {
         location: Some(Location::ON_BATTLEFIELD),
         target_type: TargetType::Card(creature),
@@ -254,8 +241,7 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     assert!(!creature.vigilance(&db));
 
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    results.selected.clear();
-    results.selected.stack.clear();
+    let mut results = PendingEffects::default();
     results.selected.push(Selected {
         location: Some(Location::ON_BATTLEFIELD),
         target_type: TargetType::Card(card2),
@@ -264,14 +250,14 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     });
     let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
     results.apply_results(to_apply);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(card2.power(&db), Some(4));
     assert_eq!(card2.toughness(&db), Some(2));
     assert!(creature.vigilance(&db));
 
     let mut results = PendingEffects::default();
-    results.selected.clear();
-    results.selected.stack.clear();
     results.selected.push(Selected {
         location: Some(Location::ON_BATTLEFIELD),
         target_type: TargetType::Card(card2),
@@ -280,7 +266,8 @@ fn vigilance_is_lost_no_green_permanent() -> anyhow::Result<()> {
     });
     let to_apply = MoveToGraveyard::default().apply(&mut db, None, &mut results.selected, false);
     results.apply_results(to_apply);
-    assert!(results.is_empty());
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
     assert!(!creature.vigilance(&db));
 
     Ok(())

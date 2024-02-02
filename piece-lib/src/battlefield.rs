@@ -273,7 +273,7 @@ impl Battlefields {
             return PendingEffects::default();
         }
 
-        let (_, ability) = db[source].abilities(db).into_iter().nth(index).unwrap();
+        let (ability_source, ability) = db[source].abilities(db).into_iter().nth(index).unwrap();
 
         if !ability.can_be_activated(db, source, activator, pending) {
             debug!("Can't activate ability (can't meet costs)");
@@ -295,11 +295,8 @@ impl Battlefields {
         }
 
         let mut bundle = EffectBundle {
-            source: Some(source),
-            effects: vec![
-                PushSelected::default().into(),
-                ClearSelected::default().into(),
-            ],
+            push_on_enter: Some(vec![]),
+            source: Some(ability_source),
             ..Default::default()
         };
 
@@ -432,13 +429,17 @@ impl Battlefields {
             })
             .collect_vec();
 
-        Some(ApplyResult::PushBack(EffectBundle {
-            push_on_enter: Some(selected),
-            effects: vec![
-                MoveToBattlefield::default().into(),
-                PopSelected::default().into(),
-            ],
-            ..Default::default()
-        }))
+        if selected.is_empty() {
+            None
+        } else {
+            Some(ApplyResult::PushBack(EffectBundle {
+                push_on_enter: Some(selected),
+                effects: vec![
+                    MoveToBattlefield::default().into(),
+                    PopSelected::default().into(),
+                ],
+                ..Default::default()
+            }))
+        }
     }
 }

@@ -4,7 +4,7 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
@@ -37,17 +37,15 @@ fn opponent_artifact_etb_tappd() -> anyhow::Result<()> {
 
     let card2 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
     let mut results = PendingEffects::default();
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(card2),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        false,
-    ));
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(card2),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply =
+        MoveToBattlefield::default().apply(&mut db, Some(card2), &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -92,6 +90,8 @@ fn opponent_artifact_destroys_artifacts() -> anyhow::Result<()> {
     );
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);

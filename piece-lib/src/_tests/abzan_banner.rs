@@ -56,10 +56,6 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     // End pay banner costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);

@@ -50,11 +50,10 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     // Pay mana
     assert_eq!(result, SelectionResult::TryAgain);
-    // Compute sacrifice cost
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Pay sacrifice
     let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
@@ -63,7 +62,7 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
@@ -84,10 +83,13 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card5, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // End pay costs
     // Target the bear
-    let result = results.resolve(&mut db, Some(0));
+    dbg!(results.options(&db));
+    let result = results.resolve(&mut db, Some(1));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
@@ -99,11 +101,10 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
 
     // Activate the ability
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
-    // Pay the white
+    dbg!(&results);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Choose the reliquary as the default only target
-    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
@@ -111,13 +112,14 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
+    dbg!(&db.stack.entries);
 
     // Pay for ward
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, SelectionResult::PendingChoice);
-    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::Complete);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

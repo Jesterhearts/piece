@@ -125,6 +125,7 @@ pub enum ApplyResult {
     PushBack(EffectBundle),
 }
 
+#[derive(Debug)]
 pub enum Options {
     MandatoryList(Vec<(usize, String)>),
     OptionalList(Vec<(usize, String)>),
@@ -388,6 +389,7 @@ pub struct EffectBundle {
     pub(crate) push_on_enter: Option<Vec<Selected>>,
     pub(crate) source: Option<CardId>,
 
+    pub(crate) skip_replacement: bool,
     pub(crate) effects: Vec<Effect>,
     pub(crate) resolving: usize,
 }
@@ -403,13 +405,7 @@ impl Debug for PendingEffects {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PendingEffects")
             .field("selected", &self.selected)
-            .field(
-                "resolving",
-                &self
-                    .bundles
-                    .front()
-                    .map(|front| &front.effects[front.resolving]),
-            )
+            .field("resolving", &self.bundles.front())
             .finish()
     }
 }
@@ -452,13 +448,15 @@ impl PendingEffects {
         self.bundles.push_back(bundle);
     }
 
-    pub(crate) fn push_front(&mut self, effect: EffectBundle) {
-        self.bundles.push_front(effect);
+    pub(crate) fn push_front(&mut self, bundle: EffectBundle) {
+        self.bundles.push_front(bundle);
     }
 
     pub fn apply_result(&mut self, result: ApplyResult) {
         match result {
-            ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
+            ApplyResult::PushFront(bundle) => {
+                self.bundles.push_front(bundle);
+            }
             ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
         }
     }
@@ -466,8 +464,12 @@ impl PendingEffects {
     pub fn apply_results(&mut self, other: impl IntoIterator<Item = ApplyResult>) {
         for result in other.into_iter() {
             match result {
-                ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
-                ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+                ApplyResult::PushFront(bundle) => {
+                    self.bundles.push_front(bundle);
+                }
+                ApplyResult::PushBack(bundle) => {
+                    self.bundles.push_back(bundle);
+                }
             }
         }
     }
@@ -493,12 +495,19 @@ impl PendingEffects {
     pub fn priority(&self, db: &Database) -> Owner {
         self.bundles
             .front()
-            .map(|first| {
-                first.effects[first.resolving]
-                    .effect
-                    .as_ref()
-                    .unwrap()
-                    .priority(db, first.source, &self.selected, &self.selected.modes)
+            .and_then(|first| {
+                first
+                    .effects
+                    .get(first.resolving)
+                    .map(|effect| (first.source, effect))
+            })
+            .map(|(source, first)| {
+                first.effect.as_ref().unwrap().priority(
+                    db,
+                    source,
+                    &self.selected,
+                    &self.selected.modes,
+                )
             })
             .unwrap_or_else(|| db.turn.priority_player())
     }
@@ -524,7 +533,17 @@ impl PendingEffects {
                     break;
                 };
 
-                let mut effect = first.effects[first.resolving].effect.clone().unwrap();
+                let first_len = first.effects.len();
+                let Some(effect) = first.effects.get_mut(first.resolving) else {
+                    self.bundles.pop_front();
+                    continue;
+                };
+
+                let Some(effect) = effect.effect.as_mut() else {
+                    first.resolving += 1;
+                    continue;
+                };
+
                 if effect.wants_input(db, first.source, &self.selected, &self.selected.modes) {
                     break;
                 }
@@ -536,22 +555,15 @@ impl PendingEffects {
                 }
 
                 applied = true;
-                let first_len = first.effects.len();
-                let results = effect.apply(db, first.source, &mut self.selected, false);
+                let results =
+                    effect.apply(db, first.source, &mut self.selected, first.skip_replacement);
 
                 first.resolving += 1;
                 if first.resolving == first_len {
                     self.bundles.pop_front();
                 }
 
-                for result in results {
-                    match result {
-                        ApplyResult::PushFront(bundle) => {
-                            self.bundles.push_front(bundle);
-                        }
-                        ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
-                    }
-                }
+                self.apply_results(results);
             }
 
             if applied {
@@ -574,26 +586,15 @@ impl PendingEffects {
 
             match effect.select(db, first.source, option, &mut self.selected) {
                 SelectionResult::Complete => {
-                    let results = effect.apply(db, first.source, &mut self.selected, false);
+                    let results =
+                        effect.apply(db, first.source, &mut self.selected, first.skip_replacement);
 
                     first.resolving += 1;
                     if first.resolving == first.effects.len() {
                         let _ = self.bundles.pop_front().unwrap();
-
-                        for result in results {
-                            match result {
-                                ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
-                                ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
-                            }
-                        }
-                    } else {
-                        for result in results {
-                            match result {
-                                ApplyResult::PushFront(bundle) => self.bundles.push_front(bundle),
-                                ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
-                            }
-                        }
                     }
+
+                    self.apply_results(results);
 
                     if self.bundles.is_empty() {
                         SelectionResult::Complete
@@ -611,11 +612,16 @@ impl PendingEffects {
     pub fn options(&self, db: &Database) -> Options {
         self.bundles
             .front()
-            .map(|front| {
-                let effect = &front.effects[front.resolving];
+            .and_then(|first| {
+                first
+                    .effects
+                    .get(first.resolving)
+                    .map(|effect| (first.source, effect))
+            })
+            .map(|(source, effect)| {
                 effect.effect.as_ref().unwrap().options(
                     db,
-                    front.source,
+                    source,
                     &self.selected,
                     &self.selected.modes,
                 )

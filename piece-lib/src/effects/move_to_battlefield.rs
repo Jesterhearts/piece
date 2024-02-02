@@ -70,6 +70,7 @@ impl EffectBehaviors for MoveToBattlefield {
                                 targeted: false,
                                 restrictions: vec![],
                             }]),
+                            source,
                             effects: to_trigger,
                             ..Default::default()
                         }));

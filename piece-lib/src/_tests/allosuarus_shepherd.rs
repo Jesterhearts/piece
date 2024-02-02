@@ -51,8 +51,6 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     // end pay costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
@@ -67,8 +65,6 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     );
 
     let mut results = Battlefields::end_turn(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -119,15 +115,11 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 1);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -185,15 +177,11 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 1);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -251,8 +239,6 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     assert_eq!(db.stack.entries.len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

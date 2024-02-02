@@ -39,19 +39,16 @@ fn ability() -> anyhow::Result<()> {
     bear.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Choose to sacrifice the zombie
-    let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Recompute targets
-    let result = results.resolve(&mut db, None);
+    // Choose the bear as the target
+    let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, SelectionResult::TryAgain);
     // Pay the generic mana
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Choose the bear as the target
+    assert_eq!(result, SelectionResult::PendingChoice);
+    // Choose to sacrifice the zombie
     let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);

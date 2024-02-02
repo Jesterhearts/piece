@@ -13,7 +13,7 @@ use itertools::Itertools;
 use piece_lib::{
     battlefield::Battlefields,
     card::replace_expanded_symbols,
-    effects::{EffectBundle, Options, PendingEffects, SelectionResult},
+    effects::{Options, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     library::DeckDefinition,
     player::{AllPlayers, Owner, Player},
@@ -968,9 +968,7 @@ impl eframe::App for App {
                                 if pending.is_empty() {
                                     let entries = self.database.stack.entries_unsettled();
                                     if !self.organizing_stack && entries.len() > 1 {
-                                        resolving.push_back(EffectBundle::organize_stack(
-                                            &self.database,
-                                        ));
+                                        *resolving = PendingEffects::organize_stack(&self.database);
                                         self.organizing_stack = true;
                                     } else {
                                         debug!("Stepping priority");
@@ -1153,7 +1151,7 @@ fn cleanup_stack(
 
 fn maybe_organize_stack(
     db: &mut Database,
-    mut pending: PendingEffects,
+    pending: PendingEffects,
     to_resolve: &mut Option<PendingEffects>,
     organizing_stack: &mut bool,
 ) {
@@ -1164,8 +1162,7 @@ fn maybe_organize_stack(
         let entries = db.stack.entries_unsettled();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.push_back(EffectBundle::organize_stack(db));
-            *to_resolve = Some(pending);
+            *to_resolve = Some(PendingEffects::organize_stack(db));
             *organizing_stack = true;
         } else {
             *to_resolve = None;

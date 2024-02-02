@@ -1,7 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
     protogen::effects::ReorderSelected,
     stack::{Selected, TargetType},
@@ -12,10 +14,10 @@ impl EffectBehaviors for ReorderSelected {
         &self,
         _db: &Database,
         _source: Option<CardId>,
-        _already_selected: &[Selected],
+        already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        already_selected.len() > 1
     }
 
     fn options(
@@ -25,6 +27,10 @@ impl EffectBehaviors for ReorderSelected {
         already_selected: &[Selected],
         _modes: &[usize],
     ) -> Options {
+        if already_selected.len() <= 1 {
+            return Options::OptionalList(vec![]);
+        }
+
         let start_at = self.reordering as usize;
         let (_, options) = already_selected.split_at(start_at);
 
@@ -92,17 +98,11 @@ impl EffectBehaviors for ReorderSelected {
         }
 
         let _ = selected.restore();
-        let mut pending = vec![];
-        for mut effect in replaced {
-            pending.extend(
-                effect
-                    .effect
-                    .as_mut()
-                    .unwrap()
-                    .apply(db, source, selected, true),
-            );
-        }
-
-        pending
+        vec![ApplyResult::PushFront(EffectBundle {
+            source,
+            effects: replaced,
+            skip_replacement: true,
+            ..Default::default()
+        })]
     }
 }

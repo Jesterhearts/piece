@@ -59,8 +59,6 @@ fn x_is_zero() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let on_battlefield = db
@@ -138,8 +136,6 @@ fn x_is_two() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

@@ -265,6 +265,7 @@ impl Stack {
                 });
 
                 pending.push_front(EffectBundle {
+                    source: Some(resolving_card),
                     effects: vec![
                         MoveToBattlefield::default().into(),
                         PopSelected::default().into(),
@@ -281,6 +282,7 @@ impl Stack {
                     restrictions: vec![],
                 });
                 pending.push_front(EffectBundle {
+                    source: Some(resolving_card),
                     effects: vec![
                         MoveToGraveyard::default().into(),
                         PopSelected::default().into(),
@@ -327,6 +329,7 @@ impl Stack {
                 targeted: false,
                 restrictions: vec![],
             }]),
+            source: Some(listener),
             effects: to_trigger,
             ..Default::default()
         })

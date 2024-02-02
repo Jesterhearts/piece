@@ -39,12 +39,6 @@ impl EffectBehaviors for PayCost {
         option: Option<usize>,
         selected: &mut SelectedStack,
     ) -> SelectionResult {
-        if !self.saved_selected {
-            selected.save();
-            selected.clear();
-            self.saved_selected = true;
-        }
-
         self.cost
             .as_mut()
             .unwrap()
@@ -63,11 +57,6 @@ impl EffectBehaviors for PayCost {
             .as_mut()
             .unwrap()
             .apply(db, source, selected, skip_replacement);
-
-        if self.saved_selected {
-            let _ = selected.restore();
-            self.saved_selected = false;
-        }
 
         results
     }

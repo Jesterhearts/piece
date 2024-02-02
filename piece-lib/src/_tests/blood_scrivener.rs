@@ -2,7 +2,12 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    effects::SelectionResult, in_play::{CardId, Database}, library::Library, load_cards, player::{AllPlayers, Player}, stack::Stack
+    effects::SelectionResult,
+    in_play::{CardId, Database},
+    library::Library,
+    load_cards,
+    player::{AllPlayers, Player},
+    stack::Stack,
 };
 
 #[test]
@@ -45,18 +50,10 @@ fn replacement() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     // Hand is empty
     let mut results = Player::draw(player, 1);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
     assert_eq!(db.all_players[player].life_total, 19);
