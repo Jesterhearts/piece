@@ -38,7 +38,8 @@ impl EffectBehaviors for SelectTargets {
                     &self.restrictions,
                 ) && !already_selected
                     .iter()
-                    .any(|selected| selected.id(db).unwrap() == *card)
+                    .filter_map(|selected| selected.id(db))
+                    .any(|selected| selected == *card)
             })
             .map(|card| card.name(db).clone())
             .chain(
@@ -85,7 +86,8 @@ impl EffectBehaviors for SelectTargets {
                         &self.restrictions,
                     ) && !selected
                         .iter()
-                        .any(|selected| selected.id(db).unwrap() == *card)
+                        .filter_map(|target| target.id(db))
+                        .any(|target| target == *card)
                 }
             })
             .map(|card| Selected {
@@ -125,9 +127,7 @@ impl EffectBehaviors for SelectTargets {
             } else {
                 SelectionResult::PendingChoice
             }
-        } else if self.optional {
-            SelectionResult::Complete
-        } else if targets.next().is_none() {
+        } else if self.optional || targets.next().is_none() {
             SelectionResult::Complete
         } else {
             SelectionResult::PendingChoice

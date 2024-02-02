@@ -42,8 +42,8 @@ impl EffectBehaviors for MoveToBattlefield {
                     )
                 {
                     let target_card = add_to_battlefield.id(db).unwrap();
-                    if let Some(aura_target) = aura_target {
-                        aura_target.id(db).unwrap().apply_aura(db, target_card);
+                    if let Some(aura_target) = aura_target.and_then(|target| target.id(db)) {
+                        aura_target.apply_aura(db, target_card);
                     }
 
                     if let Some(etb) = db[target_card].modified_etb_ability.as_ref() {

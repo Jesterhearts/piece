@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database, ModifierId},
@@ -18,8 +20,19 @@ impl EffectBehaviors for ApplyModifier {
             self.modifier.as_ref().cloned().unwrap(),
         );
 
-        for target in selected.iter() {
-            target.id(db).unwrap().apply_modifier(db, modifier)
+        if self.modifier.modifier.entire_battlefield {
+            db[modifier].active = true;
+            for card in db.battlefield[db[source.unwrap()].controller]
+                .iter()
+                .copied()
+                .collect_vec()
+            {
+                card.apply_modifiers_layered(db);
+            }
+        } else {
+            for target in selected.iter() {
+                target.id(db).unwrap().apply_modifier(db, modifier)
+            }
         }
 
         vec![]

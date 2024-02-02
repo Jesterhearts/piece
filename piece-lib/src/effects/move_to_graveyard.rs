@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::{
     battlefield::Battlefields,
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
@@ -15,7 +17,12 @@ impl EffectBehaviors for MoveToGraveyard {
         selected: &mut SelectedStack,
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        move_card_to_graveyard(db, selected, source)
+        let results = move_card_to_graveyard(db, selected, source);
+        for card in db.cards.keys().copied().collect_vec() {
+            card.apply_modifiers_layered(db);
+        }
+
+        results
     }
 }
 

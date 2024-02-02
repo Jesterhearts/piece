@@ -235,7 +235,25 @@ impl Stack {
 
         let mut pending = PendingEffects::new(SelectedStack::new(next.targets.clone()));
         pending.selected.modes = next.modes;
-        for effect in effects.into_iter() {
+        let mut effects = effects.into_iter();
+        while let Some(effect) = effects.next() {
+            if effect.effect.as_ref().unwrap().wants_input(
+                db,
+                Some(source),
+                &pending.selected.current,
+                &pending.selected.modes,
+            ) {
+                let mut remaining_effects = vec![effect];
+                remaining_effects.extend(effects);
+
+                pending.push_front(EffectBundle {
+                    source: Some(source),
+                    effects: remaining_effects,
+                    ..Default::default()
+                });
+                break;
+            }
+
             for result in
                 effect
                     .effect
@@ -449,6 +467,9 @@ impl Stack {
                 ..Default::default()
             },
         ];
+        if let Some(modes) = card.faceup_face(db).modes.as_ref() {
+            to_cast.push(modes.clone().into());
+        }
         if let Some(target) = card.faceup_face(db).targets.as_ref() {
             to_cast.push(target.clone().into());
         }

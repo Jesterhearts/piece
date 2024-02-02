@@ -36,17 +36,14 @@ fn remove_abilities() -> anyhow::Result<()> {
 
     let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
     let mut results = PendingEffects::default();
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(elesh),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        false,
-    ));
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(elesh),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -60,19 +57,26 @@ fn remove_abilities() -> anyhow::Result<()> {
     assert_eq!(bear.power(&db), Some(6));
     assert_eq!(bear.toughness(&db), Some(4));
 
-    let mut results = PendingEffects::default();
     let enchant = CardId::upload(&mut db, &cards, player, "Eaten by Piranhas");
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(enchant),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        false,
-    ));
+    let mut results = PendingEffects::default();
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(elesh),
+        targeted: false,
+        restrictions: vec![],
+    });
+    results.selected.save();
+    results.selected.clear();
+    results.selected.push(Selected {
+        location: Some(Location::IN_STACK),
+        target_type: TargetType::Card(enchant),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(elesh.power(&db), Some(1));
     assert_eq!(elesh.toughness(&db), Some(1));

@@ -40,22 +40,20 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     exiled.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
-    // Compute exile targets
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Choose exile card
-    let result = results.resolve(&mut db, Some(1));
-    assert_eq!(result, SelectionResult::TryAgain);
-    // Pay white
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::PendingChoice);
-    // Pay generic
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Choose gy target
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
+    // Pay white
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    // Choose exiled card
+    let result = results.resolve(&mut db, Some(1));
+    assert_eq!(result, SelectionResult::TryAgain);
     // Complete
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

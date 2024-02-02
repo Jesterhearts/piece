@@ -11,6 +11,7 @@ etb_ability:
         count:
           count: !Fixed
             count: 3
+    - effect: !ClearSelected {}
     - effect: !SelectTargets
         optional: true
         count:

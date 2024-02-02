@@ -4,7 +4,10 @@ use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database},
     player::Player,
-    protogen::effects::SpendMana,
+    protogen::{
+        effects::SpendMana,
+        mana::spend_reason::{Other, Reason},
+    },
 };
 
 impl EffectBehaviors for SpendMana {
@@ -29,7 +32,10 @@ impl EffectBehaviors for SpendMana {
                 .iter()
                 .map(|source| source.enum_value().unwrap())
                 .collect_vec(),
-            self.reason.reason.as_ref().unwrap(),
+            self.reason
+                .reason
+                .as_ref()
+                .unwrap_or(&Reason::Other(Other::default())),
         );
 
         assert!(

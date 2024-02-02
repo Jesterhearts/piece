@@ -3,7 +3,11 @@ use crate::{
     effects::{ApplyResult, EffectBehaviors, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     log::LogId,
-    protogen::{effects::MoveToExile, triggers::TriggerSource},
+    protogen::{
+        effects::{Duration, MoveToExile},
+        targets::Location,
+        triggers::TriggerSource,
+    },
     stack::Stack,
 };
 
@@ -26,6 +30,12 @@ impl EffectBehaviors for MoveToExile {
                     &target.restrictions,
                 )
             {
+                if self.duration.enum_value().unwrap() == Duration::UNTIL_SOURCE_LEAVES_BATTLEFIELD
+                    && !source.unwrap().is_in_location(db, Location::ON_BATTLEFIELD)
+                {
+                    return vec![];
+                }
+
                 let card = target.id(db).unwrap();
                 if selected.crafting {
                     for (listener, trigger) in

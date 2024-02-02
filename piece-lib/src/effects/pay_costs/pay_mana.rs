@@ -11,7 +11,10 @@ use crate::{
     protogen::{
         cost::{cost_reducer::When, ManaCost},
         effects::{pay_cost::PayMana, Effect, SpendMana},
-        mana::{Mana, ManaSource},
+        mana::{
+            spend_reason::{Other, Reason},
+            Mana, ManaSource,
+        },
     },
     stack::Selected,
 };
@@ -264,7 +267,10 @@ impl EffectBehaviors for PayMana {
                     .iter()
                     .map(|e| e.enum_value().unwrap())
                     .collect_vec(),
-                self.reason.reason.as_ref().unwrap(),
+                self.reason
+                    .reason
+                    .as_ref()
+                    .unwrap_or(&Reason::Other(Other::default())),
             )
             .unwrap()
             .available_mana()
@@ -290,7 +296,10 @@ impl EffectBehaviors for PayMana {
                     .iter()
                     .map(|e| e.enum_value().unwrap())
                     .collect_vec(),
-                self.reason.reason.as_ref().unwrap(),
+                self.reason
+                    .reason
+                    .as_ref()
+                    .unwrap_or(&Reason::Other(Other::default())),
             ) {
                 if self.first_unpaid_x_always_unpaid().is_none() {
                     SelectionResult::Complete
