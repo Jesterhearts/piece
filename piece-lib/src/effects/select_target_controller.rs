@@ -14,6 +14,8 @@ impl EffectBehaviors for SelectTargetController {
         _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let target = selected.first().unwrap().id(db).unwrap();
+        selected.save();
+        selected.clear();
         selected.push(Selected {
             location: None,
             target_type: TargetType::Player(db[target].controller.into()),

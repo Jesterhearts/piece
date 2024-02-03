@@ -138,12 +138,6 @@ pub struct Stack {
 }
 
 impl Stack {
-    pub(crate) fn contains(&self, card: CardId) -> bool {
-        self.entries
-            .iter()
-            .any(|(_, entry)| matches!(entry.ty, Entry::Card(entry) if entry == card))
-    }
-
     pub(crate) fn find(&self, card: CardId) -> Option<StackId> {
         self.entries
             .iter()

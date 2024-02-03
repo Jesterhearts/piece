@@ -20,6 +20,10 @@ impl LogId {
     pub(crate) fn current(db: &Database) -> Self {
         Self(db.log.current_id)
     }
+
+    pub(crate) fn previous(&self) -> Self {
+        Self(self.0.saturating_sub(1))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

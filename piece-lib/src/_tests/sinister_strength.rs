@@ -58,7 +58,7 @@ fn aura_works() -> anyhow::Result<()> {
     });
     let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
     results.apply_results(to_apply);
-    let result = results.resolve(&mut db, Some(0));
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(7));

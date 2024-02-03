@@ -54,6 +54,7 @@ back_face:
           restrictions:
             - restriction: !IsPermanent {}
             - restriction: !OnBattlefield {}
+            - restriction: !NotSelf {}
       effects:
         - effect: !SelectAll
             restrictions:

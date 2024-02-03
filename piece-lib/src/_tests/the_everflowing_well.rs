@@ -34,13 +34,20 @@ fn copies_permanent() -> anyhow::Result<()> {
     card.move_to_battlefield(&mut db);
     card.transform(&mut db);
 
+    let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
+    bear.move_to_battlefield(&mut db);
+
     let elesh = CardId::upload(&mut db, &cards, player, "Elesh Norn, Grand Cenobite");
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, elesh);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Spend the white mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
@@ -58,8 +65,6 @@ fn copies_permanent() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     // Add the trigger to the stack
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, SelectionResult::PendingChoice);
-    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
@@ -69,7 +74,7 @@ fn copies_permanent() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
-    assert_eq!(db[card].cloned_id, Some(elesh));
+    assert_eq!(db[bear].cloned_id, Some(elesh));
 
     Ok(())
 }

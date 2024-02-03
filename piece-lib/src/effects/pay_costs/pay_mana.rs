@@ -27,7 +27,7 @@ impl EffectBehaviors for PayMana {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        !self.paying.is_empty()
+        true
     }
 
     fn options(
@@ -288,24 +288,8 @@ impl EffectBehaviors for PayMana {
                 .entry(source.value())
                 .or_default() += 1;
 
-            let (mana, sources) = self.paying();
-            if db.all_players[db[source_card.unwrap()].controller].can_spend_mana(
-                db,
-                &mana.iter().map(|e| e.enum_value().unwrap()).collect_vec(),
-                &sources
-                    .iter()
-                    .map(|e| e.enum_value().unwrap())
-                    .collect_vec(),
-                self.reason
-                    .reason
-                    .as_ref()
-                    .unwrap_or(&Reason::Other(Other::default())),
-            ) {
-                if self.first_unpaid_x_always_unpaid().is_none() {
-                    SelectionResult::Complete
-                } else {
-                    SelectionResult::PendingChoice
-                }
+            if self.first_unpaid_x_always_unpaid().is_none() {
+                SelectionResult::Complete
             } else {
                 SelectionResult::PendingChoice
             }

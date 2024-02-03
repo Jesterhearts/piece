@@ -1672,13 +1672,16 @@ impl CardId {
                     }
                 }
                 restriction::Restriction::SpellOrAbilityJustCast(_) => {
-                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
-                        if let LogEntry::Cast { card } = entry {
-                            *card == self
-                        } else {
-                            false
-                        }
-                    }) {
+                    if !Log::session(db, log_session.previous())
+                        .iter()
+                        .any(|(_, entry)| {
+                            if let LogEntry::Cast { card } = entry {
+                                *card == self
+                            } else {
+                                false
+                            }
+                        })
+                    {
                         return false;
                     }
                 }

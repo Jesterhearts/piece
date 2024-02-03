@@ -35,17 +35,15 @@ fn cost_reducer() -> anyhow::Result<()> {
     target.tap(&mut db);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Target the bear
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
-    // Recompute the cost
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-
     // Pay white mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
-    // Pay 2 generic mana
+    // Pay generic mana
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, Some(0));

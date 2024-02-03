@@ -518,7 +518,7 @@ impl PendingEffects {
             .unwrap_or_default()
     }
 
-    pub fn wants_input(&mut self, db: &mut Database) -> bool {
+    pub fn wants_input(&self, db: &Database) -> bool {
         self.bundles
             .front()
             .and_then(|front| {

@@ -493,16 +493,6 @@ impl Player {
         Some(mana_pool)
     }
 
-    pub(crate) fn can_spend_mana(
-        &self,
-        db: &Database,
-        mana: &[Mana],
-        sources: &[ManaSource],
-        reason: &Reason,
-    ) -> bool {
-        self.pool_post_pay(db, mana, sources, reason).is_some()
-    }
-
     pub(crate) fn spend_mana(
         db: &mut Database,
         player: Owner,
