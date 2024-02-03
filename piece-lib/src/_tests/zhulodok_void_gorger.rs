@@ -71,6 +71,8 @@ fn cascades() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     // Resolve the first cascade
@@ -100,7 +102,7 @@ fn cascades() -> anyhow::Result<()> {
         SubtypeSet::from([Subtype::ELDRAZI, Subtype::ANGEL])
     );
 
-    // Resolve the first cascade
+    // Resolve the second cascade
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
