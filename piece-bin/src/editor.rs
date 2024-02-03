@@ -419,6 +419,19 @@ impl App {
                                                 .map(|field| field.name().to_case(Case::Title))
                                                 .collect_vec()
                                         })
+                                        .filter(|oneof| {
+                                            let field = descriptor
+                                                .field_by_name(&oneof.to_case(Case::Snake))
+                                                .unwrap();
+                                            let options = field.proto().options.get_or_default();
+
+                                            if let Some(hidden) = comment::exts::hidden.get(options)
+                                            {
+                                                !hidden
+                                            } else {
+                                                true
+                                            }
+                                        })
                                         .collect_vec();
 
                                     ui.horizontal(|ui| {
