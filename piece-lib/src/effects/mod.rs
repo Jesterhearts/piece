@@ -8,6 +8,7 @@ mod cast_selected;
 mod choose_attackers;
 mod clear_selected;
 mod clone_selected;
+mod complete_spell_resolution;
 mod copy_spell_or_ability;
 mod counter_spell;
 mod create_token;
@@ -80,8 +81,8 @@ use crate::{
     protogen::{
         cost::XIs,
         effects::{
-            count, effect, replacement_effect::Replacing, target_selection::Selector, Count,
-            Effect, ReorderSelected, TargetSelection,
+            count, effect, replacement_effect::Replacing, target_selection::Selector,
+            tutor_library::target::Destination, Count, Effect, ReorderSelected, TargetSelection,
         },
         targets::{Location, Restriction},
         triggers,
@@ -162,6 +163,7 @@ impl Options {
         ChooseAttackers(ChooseAttackers),
         ClearSelected(ClearSelected),
         CloneSelected(CloneSelected),
+        CompleteSpellResolution(CompleteSpellResolution),
         CopySpellOrAbility(CopySpellOrAbility),
         CounterSpell(CounterSpell),
         CreateToken(CreateToken),
@@ -394,20 +396,11 @@ pub struct EffectBundle {
     pub(crate) resolving: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 #[must_use]
 pub struct PendingEffects {
     pub(crate) selected: SelectedStack,
     bundles: VecDeque<EffectBundle>,
-}
-
-impl Debug for PendingEffects {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PendingEffects")
-            .field("selected", &self.selected)
-            .field("resolving", &self.bundles.front())
-            .finish()
-    }
 }
 
 impl PendingEffects {
@@ -525,6 +518,22 @@ impl PendingEffects {
             .unwrap_or_default()
     }
 
+    pub fn wants_input(&mut self, db: &mut Database) -> bool {
+        self.bundles
+            .front()
+            .and_then(|front| {
+                front
+                    .effects
+                    .get(front.resolving)
+                    .and_then(|first| first.effect.as_ref())
+                    .map(|first| (first, front.source))
+            })
+            .map(|(first, source)| {
+                first.wants_input(db, source, &self.selected, &self.selected.modes)
+            })
+            .unwrap_or_default()
+    }
+
     pub fn resolve(&mut self, db: &mut Database, option: Option<usize>) -> SelectionResult {
         let mut applied = false;
         if option.is_none() {
@@ -532,6 +541,12 @@ impl PendingEffects {
                 let Some(first) = self.bundles.front_mut() else {
                     break;
                 };
+
+                if first.resolving == 0 && first.push_on_enter.is_some() {
+                    self.selected.save();
+                    self.selected.clear();
+                    self.selected.extend(first.push_on_enter.take().unwrap());
+                }
 
                 let first_len = first.effects.len();
                 let Some(effect) = first.effects.get_mut(first.resolving) else {
@@ -546,12 +561,6 @@ impl PendingEffects {
 
                 if effect.wants_input(db, first.source, &self.selected, &self.selected.modes) {
                     break;
-                }
-
-                if first.resolving == 0 && first.push_on_enter.is_some() {
-                    self.selected.save();
-                    self.selected.clear();
-                    self.selected.extend(first.push_on_enter.take().unwrap());
                 }
 
                 applied = true;
@@ -576,13 +585,13 @@ impl PendingEffects {
         }
 
         if let Some(first) = self.bundles.front_mut() {
-            let effect = first.effects[first.resolving].effect.as_mut().unwrap();
-
             if first.resolving == 0 && first.push_on_enter.is_some() {
                 self.selected.save();
                 self.selected.clear();
                 self.selected.extend(first.push_on_enter.take().unwrap());
             }
+
+            let effect = first.effects[first.resolving].effect.as_mut().unwrap();
 
             match effect.select(db, first.source, option, &mut self.selected) {
                 SelectionResult::Complete => {
@@ -744,6 +753,19 @@ impl From<TargetSelection> for effect::Effect {
             Selector::SelectTargets(targets) => targets.into(),
             Selector::SelectNonTargeting(targets) => targets.into(),
             Selector::SelectForEachPlayer(targets) => targets.into(),
+        }
+    }
+}
+
+impl From<Destination> for effect::Effect {
+    fn from(value: Destination) -> Self {
+        match value {
+            Destination::MoveToBattlefield(dest) => dest.into(),
+            Destination::MoveToExile(dest) => dest.into(),
+            Destination::MoveToGraveyard(dest) => dest.into(),
+            Destination::MoveToHand(dest) => dest.into(),
+            Destination::MoveToBottomOfLibrary(dest) => dest.into(),
+            Destination::MoveToTopOfLibrary(dest) => dest.into(),
         }
     }
 }

@@ -26,6 +26,7 @@ fn works() -> anyhow::Result<()> {
     let mut all_players = AllPlayers::default();
     let player = all_players.new_player("Player".to_string(), 20);
     let mut db = Database::new(all_players);
+    db.all_players[player].infinite_mana();
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
     land.move_to_battlefield(&mut db);
@@ -34,12 +35,16 @@ fn works() -> anyhow::Result<()> {
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, lithoform);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

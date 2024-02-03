@@ -20,7 +20,6 @@ targets:
       - restriction: !NotOfType
           subtypes: Aura
 effects:
-  - effect: !MoveToBattlefield {}
   - effect: !AddCounters
       counter: +1/+1
       count:
@@ -34,3 +33,4 @@ effects:
           add_subtypes: Spirit
           add_keywords: Flying
         duration: until target leaves battlefield
+  - effect: !MoveToBattlefield {}

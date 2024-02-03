@@ -2,7 +2,7 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
-    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     load_cards,
     player::AllPlayers,
@@ -40,8 +40,9 @@ fn mace() -> anyhow::Result<()> {
     let mut results = Battlefields::activate_ability(&mut db, &None, player, mace, 0);
     // Pay the cost
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
-    // Choose the default only target
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -56,21 +57,22 @@ fn mace() -> anyhow::Result<()> {
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let mut results = PendingEffects::default();
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::IN_HAND),
-            target_type: TargetType::Card(bear2),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        false,
-    ));
+    results.selected.push(Selected {
+        location: Some(Location::IN_HAND),
+        target_type: TargetType::Card(bear2),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
+
+    let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

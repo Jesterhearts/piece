@@ -7,15 +7,14 @@ use uuid::Uuid;
 
 use crate::{
     abilities::Ability,
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, PendingEffects, SelectedStack},
+    effects::{ApplyResult, EffectBundle, PendingEffects, SelectedStack, SelectionResult},
     in_play::{CardId, CastFrom, Database},
     log::{Log, LogId},
     player::Owner,
     protogen::{
         effects::{
-            pay_cost::PayMana, ClearSelected, Effect, MoveToBattlefield, MoveToGraveyard,
-            MoveToStack, PayCost, PayCosts, PopSelected, PushSelected, ReplacementEffect,
-            TriggeredAbility,
+            pay_cost::PayMana, ClearSelected, CompleteSpellResolution, Effect, MoveToStack,
+            PayCost, PayCosts, PushSelected, ReplacementEffect, TriggeredAbility,
         },
         keywords::Keyword,
         mana::{
@@ -235,84 +234,52 @@ impl Stack {
 
         let mut pending = PendingEffects::new(SelectedStack::new(next.targets.clone()));
         pending.selected.modes = next.modes;
-        let mut effects = effects.into_iter();
-        while let Some(effect) = effects.next() {
-            if effect.effect.as_ref().unwrap().wants_input(
-                db,
-                Some(source),
-                &pending.selected.current,
-                &pending.selected.modes,
-            ) {
-                let mut remaining_effects = vec![effect];
-                remaining_effects.extend(effects);
+        pending.push_front(EffectBundle {
+            effects,
+            source: Some(source),
+            ..Default::default()
+        });
 
-                pending.push_front(EffectBundle {
-                    source: Some(source),
-                    effects: remaining_effects,
-                    ..Default::default()
-                });
+        while !pending.wants_input(db) {
+            if let SelectionResult::Complete = pending.resolve(db, None) {
                 break;
-            }
-
-            for result in
-                effect
-                    .effect
-                    .unwrap()
-                    .apply(db, Some(source), &mut pending.selected, false)
-            {
-                match result {
-                    ApplyResult::PushFront(bundle) => pending.push_front(bundle),
-                    ApplyResult::PushBack(bundle) => pending.push_back(bundle),
-                }
             }
         }
 
         if let Some(resolving_card) = resolving_card {
             if resolving_card.is_permanent(db) {
-                pending.selected.save();
-                pending.selected.clear();
-                pending.selected.extend(next.targets);
-
-                pending.selected.save();
-                pending.selected.clear();
-                pending.selected.push(Selected {
-                    location: Some(Location::IN_STACK),
-                    target_type: TargetType::Card(resolving_card),
-                    targeted: false,
-                    restrictions: vec![],
+                pending.push_back(EffectBundle {
+                    push_on_enter: Some(next.targets),
+                    ..Default::default()
                 });
-
-                pending.push_front(EffectBundle {
+                pending.push_back(EffectBundle {
+                    push_on_enter: Some(vec![Selected {
+                        location: Some(Location::IN_STACK),
+                        target_type: TargetType::Card(resolving_card),
+                        targeted: false,
+                        restrictions: vec![],
+                    }]),
                     source: Some(resolving_card),
-                    effects: vec![
-                        MoveToBattlefield::default().into(),
-                        PopSelected::default().into(),
-                    ],
+                    effects: vec![CompleteSpellResolution::default().into()],
                     ..Default::default()
                 });
             } else {
-                pending.selected.save();
-                pending.selected.clear();
-                pending.selected.push(Selected {
-                    location: Some(Location::IN_STACK),
-                    target_type: TargetType::Card(resolving_card),
-                    targeted: false,
-                    restrictions: vec![],
-                });
-                pending.push_front(EffectBundle {
+                pending.push_back(EffectBundle {
+                    push_on_enter: Some(vec![Selected {
+                        location: Some(Location::IN_STACK),
+                        target_type: TargetType::Card(resolving_card),
+                        targeted: false,
+                        restrictions: vec![],
+                    }]),
                     source: Some(resolving_card),
-                    effects: vec![
-                        MoveToGraveyard::default().into(),
-                        PopSelected::default().into(),
-                    ],
+                    effects: vec![CompleteSpellResolution::default().into()],
                     ..Default::default()
                 });
             }
-        }
 
-        match ty {
-            ResolutionType::Card(card) => Log::spell_resolved(db, card),
-            ResolutionType::Ability(source) => Log::ability_resolved(db, source),
+            if let ResolutionType::Ability(_) = ty {
+                Log::ability_resolved(db, source);
+            }
         }
 
         pending

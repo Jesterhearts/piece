@@ -82,6 +82,6 @@ impl EffectBehaviors for CopySpellOrAbility {
             },
         }
 
-        vec![]
+        results
     }
 }

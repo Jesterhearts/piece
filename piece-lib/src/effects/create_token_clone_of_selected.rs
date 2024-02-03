@@ -3,7 +3,7 @@ use crate::{
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::{
-        replacement_effect::Replacing, CreateTokenCloneOfSelected, MoveToBattlefield, PopSelected,
+        replacement_effect::Replacing, CreateTokenCloneOfSelected, MoveToBattlefield,
     },
     stack::{Selected, TargetType},
 };
@@ -21,20 +21,23 @@ impl EffectBehaviors for CreateTokenCloneOfSelected {
             let copying = selected.first().unwrap().id(db).unwrap();
             let copy = copying.token_copy_of(db, controller.into());
 
-            vec![ApplyResult::PushBack(EffectBundle {
-                push_on_enter: Some(vec![Selected {
-                    location: None,
-                    target_type: TargetType::Card(copy),
-                    targeted: false,
-                    restrictions: vec![],
-                }]),
-                source,
-                effects: vec![
-                    MoveToBattlefield::default().into(),
-                    PopSelected::default().into(),
-                ],
-                ..Default::default()
-            })]
+            vec![
+                ApplyResult::PushFront(EffectBundle {
+                    push_on_enter: Some(vec![Selected {
+                        location: None,
+                        target_type: TargetType::Card(copy),
+                        targeted: false,
+                        restrictions: vec![],
+                    }]),
+                    source,
+                    effects: vec![MoveToBattlefield::default().into()],
+                    ..Default::default()
+                }),
+                ApplyResult::PushFront(EffectBundle {
+                    push_on_enter: Some(vec![]),
+                    ..Default::default()
+                }),
+            ]
         } else {
             handle_replacements(
                 db,

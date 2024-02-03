@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::IfThenElse,
@@ -11,9 +11,8 @@ impl EffectBehaviors for IfThenElse {
         db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        skip_replacement: bool,
+        _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
-        let mut results = vec![];
         if selected.iter().all(|selected| match &selected.target_type {
             crate::stack::TargetType::Card(card) => {
                 card.passes_restrictions(db, LogId::current(db), source.unwrap(), &self.if_)
@@ -28,25 +27,17 @@ impl EffectBehaviors for IfThenElse {
                 &self.if_,
             ),
         }) {
-            for effect in self.then.iter_mut() {
-                results.extend(effect.effect.as_mut().unwrap().apply(
-                    db,
-                    source,
-                    selected,
-                    skip_replacement,
-                ));
-            }
+            vec![ApplyResult::PushFront(EffectBundle {
+                source,
+                effects: self.then.clone(),
+                ..Default::default()
+            })]
         } else {
-            for effect in self.else_.iter_mut() {
-                results.extend(effect.effect.as_mut().unwrap().apply(
-                    db,
-                    source,
-                    selected,
-                    skip_replacement,
-                ));
-            }
+            vec![ApplyResult::PushFront(EffectBundle {
+                source,
+                effects: self.else_.clone(),
+                ..Default::default()
+            })]
         }
-
-        results
     }
 }

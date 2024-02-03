@@ -1,13 +1,12 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
     log::LogId,
-    protogen::{
-        effects::{tutor_library::target::Destination, TutorLibrary},
-        targets::Location,
-    },
+    protogen::{effects::TutorLibrary, targets::Location},
     stack::{Selected, TargetType},
 };
 
@@ -70,38 +69,32 @@ impl EffectBehaviors for TutorLibrary {
     ) -> Vec<ApplyResult> {
         let mut results = vec![];
 
-        for (card, dest) in self.selected.iter().zip(
-            self.targets
-                .iter_mut()
-                .map(|target| target.destination.as_mut().unwrap()),
-        ) {
+        for (card, dest) in self
+            .selected
+            .iter()
+            .zip(
+                self.targets
+                    .iter_mut()
+                    .map(|target| target.destination.as_mut().unwrap()),
+            )
+            .rev()
+        {
             let card: CardId = card.clone().into();
             if self.reveal {
                 db[card].revealed = true;
             }
 
-            let mut selected = SelectedStack::new(vec![Selected {
-                location: Some(Location::IN_LIBRARY),
-                target_type: TargetType::Card(card),
-                targeted: false,
-                restrictions: vec![],
-            }]);
-
-            match dest {
-                Destination::MoveToBattlefield(dest) => {
-                    results.extend(dest.apply(db, source, &mut selected, false));
-                }
-                Destination::MoveToExile(dest) => {
-                    results.extend(dest.apply(db, source, &mut selected, false));
-                }
-                Destination::MoveToGraveyard(dest) => {
-                    results.extend(dest.apply(db, source, &mut selected, false));
-                }
-                Destination::MoveToHand(dest) => {
-                    results.extend(dest.apply(db, source, &mut selected, false));
-                }
-                _ => unreachable!(),
-            }
+            results.push(ApplyResult::PushFront(EffectBundle {
+                push_on_enter: Some(vec![Selected {
+                    location: Some(Location::IN_LIBRARY),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                }]),
+                source,
+                effects: vec![dest.clone().into()],
+                ..Default::default()
+            }));
         }
 
         results

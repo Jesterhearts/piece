@@ -34,15 +34,18 @@ pub(crate) fn move_card_to_graveyard(
     let mut pending = vec![];
 
     for target in selected.iter() {
+        let Some(card) = target.id(db) else {
+            continue;
+        };
+
         if !target.targeted
-            || target.id(db).unwrap().passes_restrictions(
+            || card.passes_restrictions(
                 db,
                 LogId::current(db),
                 source.unwrap(),
                 &target.restrictions,
             )
         {
-            let card = target.id(db).unwrap();
             for (listener, trigger) in
                 db.active_triggers_of_source(TriggerSource::PUT_INTO_GRAVEYARD)
             {

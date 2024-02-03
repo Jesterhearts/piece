@@ -35,11 +35,17 @@ fn metamorphosis() -> anyhow::Result<()> {
     let majestic = CardId::upload(&mut db, &cards, player, "Majestic Metamorphosis");
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, majestic);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

@@ -30,7 +30,7 @@ impl EffectBehaviors for MoveToBattlefield {
             let mut pending = vec![];
             let adding_to_battlefield = selected.restore();
             for (add_to_battlefield, aura_target) in adding_to_battlefield
-                .into_iter()
+                .iter()
                 .zip(selected.iter().map(Some).chain(std::iter::repeat(None)))
             {
                 if !add_to_battlefield.targeted
@@ -121,6 +121,10 @@ impl EffectBehaviors for MoveToBattlefield {
             for card in db.cards.keys().copied().collect_vec() {
                 card.apply_modifiers_layered(db);
             }
+
+            selected.save();
+            selected.clear();
+            selected.extend(adding_to_battlefield);
 
             pending
         } else {

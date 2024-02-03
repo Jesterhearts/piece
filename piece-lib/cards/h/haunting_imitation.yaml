@@ -20,6 +20,7 @@ effects:
               - restriction: !OfType
                   types: Creature
             then:
+              - effect: !SelectEffectController
               - effect: !CreateTokenCloneOfSelected
               - effect: !ApplyModifier
                   modifier:
@@ -34,5 +35,6 @@ effects:
         - restriction: !OfType
             types: Creature
       then:
-        - !SelectSource {}
-        - !MoveToHand {}
+        - effect: !ClearSelected
+        - effect: !SelectSource {}
+        - effect: !MoveToHand {}

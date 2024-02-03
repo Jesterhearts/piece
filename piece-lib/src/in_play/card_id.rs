@@ -104,6 +104,9 @@ pub struct CardInPlay {
     pub cloning: Option<Card>,
     pub(crate) cloned_id: Option<CardId>,
 
+    pub(crate) object_id: usize,
+    pub(crate) location: Option<Location>,
+
     pub(crate) static_abilities: HashSet<StaticAbilityId>,
     pub(crate) activated_abilities: IndexSet<ActivatedAbilityId>,
     pub(crate) mana_abilities: IndexSet<GainManaAbilityId>,
@@ -161,6 +164,8 @@ pub struct CardInPlay {
 
 impl CardInPlay {
     fn reset(&mut self, preserve_exiled: bool) {
+        let object_id = self.object_id;
+
         let mut card = Card::default();
         std::mem::swap(&mut card, &mut self.card);
 
@@ -181,6 +186,7 @@ impl CardInPlay {
         let owner = self.owner;
         *self = Self {
             card,
+            object_id,
             owner,
             static_abilities,
             activated_abilities,
@@ -282,14 +288,7 @@ impl CardId {
     }
 
     pub fn is_in_location(self, db: &Database, location: Location) -> bool {
-        match location {
-            Location::ON_BATTLEFIELD => db.battlefield[db[self].controller].contains(&self),
-            Location::IN_GRAVEYARD => db.graveyard[db[self].owner].contains(&self),
-            Location::IN_EXILE => db.exile[db[self].owner].contains(&self),
-            Location::IN_LIBRARY => db.all_players[db[self].owner].library.cards.contains(&self),
-            Location::IN_HAND => db.hand[db[self].owner].contains(&self),
-            Location::IN_STACK => db.stack.contains(self),
-        }
+        db[self].location == Some(location)
     }
 
     pub(crate) fn transform(self, db: &mut Database) {
@@ -363,6 +362,8 @@ impl CardId {
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::ReturnedToHand, self);
         }
@@ -373,6 +374,7 @@ impl CardId {
             self.remove_all_modifiers(db);
 
             db[self].reset(false);
+            db[self].location = Some(Location::IN_HAND);
             db.stack.remove(self);
 
             let view = db.owner_view_mut(db[self].owner);
@@ -410,12 +412,15 @@ impl CardId {
             return vec![];
         }
 
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if db[self].token {
             self.move_to_limbo(db);
             vec![]
         } else {
             self.remove_all_modifiers(db);
 
+            db[self].location = Some(Location::IN_STACK);
             db[self].replacements_active = false;
             db[self].cast_from = Some(from);
 
@@ -431,6 +436,9 @@ impl CardId {
     }
 
     pub(crate) fn move_to_battlefield(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+        db[self].location = Some(Location::ON_BATTLEFIELD);
+
         db.stack.remove(self);
 
         let view = db.owner_view_mut(db[self].controller.into());
@@ -457,6 +465,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
         } else if self.is_in_location(db, Location::IN_HAND) {
@@ -469,6 +479,7 @@ impl CardId {
             self.remove_all_modifiers(db);
 
             db[self].reset(false);
+            db[self].location = Some(Location::IN_GRAVEYARD);
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.exile.shift_remove(&self);
@@ -498,6 +509,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::ReturnedToLibrary, self);
         }
@@ -509,6 +522,7 @@ impl CardId {
             self.remove_all_modifiers(db);
 
             db[self].reset(false);
+            db[self].location = Some(Location::IN_LIBRARY);
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.exile.shift_remove(&self);
@@ -539,6 +553,8 @@ impl CardId {
         reason: Option<ExileReason>,
         duration: Duration,
     ) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::Exiled, self);
         }
@@ -551,6 +567,7 @@ impl CardId {
             db[source].exiling.insert(self);
 
             db[self].reset(matches!(reason, Some(ExileReason::Craft)));
+            db[self].location = Some(Location::IN_EXILE);
 
             db[self].exile_reason = reason;
             db[self].exile_duration = Some(duration);
@@ -580,6 +597,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_limbo(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         self.remove_all_modifiers(db);
 
         db[self].reset(false);
@@ -2179,19 +2198,7 @@ impl CardId {
     }
 
     pub(crate) fn location(self, db: &Database) -> Option<Location> {
-        if db.battlefield[db[self].controller].contains(&self) {
-            Some(Location::ON_BATTLEFIELD)
-        } else if db.graveyard[db[self].owner].contains(&self) {
-            Some(Location::IN_GRAVEYARD)
-        } else if db.all_players[db[self].owner].library.cards.contains(&self) {
-            Some(Location::IN_LIBRARY)
-        } else if db.exile[db[self].owner].contains(&self) {
-            Some(Location::IN_EXILE)
-        } else if db.hand[db[self].owner].contains(&self) {
-            Some(Location::IN_HAND)
-        } else {
-            db.stack.find(self).map(|_| Location::IN_STACK)
-        }
+        db[self].location
     }
 
     pub(crate) fn rebound(self, db: &mut Database) -> bool {

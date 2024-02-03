@@ -20,7 +20,7 @@ impl EffectBehaviors for ForEachManaOfSource {
             .copied()
         {
             for _ in 0..from_source {
-                pending.push(ApplyResult::PushBack(EffectBundle {
+                pending.push(ApplyResult::PushFront(EffectBundle {
                     effects: self.effects.to_vec(),
                     source: Some(source),
                     ..Default::default()

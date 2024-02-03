@@ -49,8 +49,6 @@ fn reveals_clones() -> anyhow::Result<()> {
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let on_battlefield = &mut db.battlefield[player1];
@@ -104,8 +102,6 @@ fn no_reveals_returns_to_hand() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player2, land2);
 
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 

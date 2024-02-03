@@ -1,27 +1,27 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
-    protogen::effects::ApplyToEachTarget,
+    protogen::effects::{ApplyToEachTarget, PopSelected},
 };
 
 impl EffectBehaviors for ApplyToEachTarget {
     fn apply(
         &mut self,
-        db: &mut Database,
+        _db: &mut Database,
         source: Option<CardId>,
         selected: &mut SelectedStack,
-        skip_replacement: bool,
+        _skip_replacement: bool,
     ) -> Vec<ApplyResult> {
         let mut results = vec![];
-        for selected in selected.iter() {
-            for effect in self.effects.iter_mut() {
-                results.extend(effect.effect.as_mut().unwrap().apply(
-                    db,
-                    source,
-                    &mut SelectedStack::new(vec![selected.clone()]),
-                    skip_replacement,
-                ));
-            }
+        for target in selected.current.clone().into_iter().rev() {
+            let mut effects = self.effects.clone();
+            effects.push(PopSelected::default().into());
+            results.push(ApplyResult::PushFront(EffectBundle {
+                push_on_enter: Some(vec![target]),
+                effects,
+                source,
+                ..Default::default()
+            }));
         }
 
         results
