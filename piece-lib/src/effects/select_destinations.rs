@@ -60,11 +60,14 @@ impl EffectBehaviors for SelectDestinations {
             } else {
                 SelectionResult::PendingChoice
             }
-        } else if (self.placing as usize) < self.destinations.len() - 2 {
+        } else if (self.placing as usize) < self.destinations.len().saturating_sub(2) {
             self.placing += 1;
             SelectionResult::PendingChoice
         } else {
-            for card in selected.drain(..) {
+            for card in selected
+                .drain(..)
+                .take(self.destinations[self.placing as usize].count as usize)
+            {
                 self.destinations[self.placing as usize]
                     .cards
                     .push(card.id(db).unwrap().into());

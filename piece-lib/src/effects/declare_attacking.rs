@@ -4,20 +4,20 @@ use itertools::Itertools;
 use protobuf::Enum;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
         effects::{
             ApplyModifier, BattlefieldModifier, DeclareAttacking, Duration, Effect,
-            ModifyBattlefield, SelectAll, TriggeredAbility,
+            ModifyBattlefield, SelectAll, Tap, TriggeredAbility,
         },
         empty::Empty,
-        targets::{restriction, Restriction},
+        targets::{restriction, Location, Restriction},
         triggers::TriggerSource,
         types::Type,
     },
-    stack::Stack,
+    stack::{Selected, Stack, TargetType},
 };
 
 impl EffectBehaviors for DeclareAttacking {
@@ -129,7 +129,21 @@ impl EffectBehaviors for DeclareAttacking {
                 ))
             }
 
-            db[attacker].attacking = Some(target)
+            db[attacker].attacking = Some(target);
+
+            if !attacker.vigilance(db) {
+                results.push(ApplyResult::PushFront(EffectBundle {
+                    push_on_enter: Some(vec![Selected {
+                        location: Some(Location::ON_BATTLEFIELD),
+                        target_type: TargetType::Card(attacker),
+                        targeted: false,
+                        restrictions: vec![],
+                    }]),
+                    source: Some(attacker),
+                    effects: vec![Tap::default().into()],
+                    ..Default::default()
+                }));
+            }
         }
 
         results

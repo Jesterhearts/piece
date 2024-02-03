@@ -27,7 +27,7 @@ impl EffectBehaviors for PayMana {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        !self.paying.is_empty()
     }
 
     fn options(
