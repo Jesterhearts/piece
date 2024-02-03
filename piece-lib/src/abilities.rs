@@ -1,12 +1,13 @@
-use itertools::Itertools;
-
 use crate::{
     effects::PendingEffects,
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
     player::Owner,
     protogen::{
         cost::{ability_restriction, AbilityCost},
-        effects::{static_ability, ActivatedAbility, Effect, GainManaAbility, TargetSelection},
+        effects::{
+            static_ability, ActivatedAbility, Effect, EtbAbility, GainManaAbility, TargetSelection,
+            TriggeredAbility,
+        },
     },
     turns::Phase,
 };
@@ -109,7 +110,8 @@ impl GainManaAbility {
 pub enum Ability {
     Activated(ActivatedAbilityId),
     Mana(GainManaAbilityId),
-    EtbOrTriggered(Vec<Effect>),
+    Etb(EtbAbility),
+    TriggeredAbility(TriggeredAbility),
 }
 
 impl Ability {
@@ -117,15 +119,16 @@ impl Ability {
         match self {
             Ability::Activated(id) => db[*id].ability.cost.as_ref(),
             Ability::Mana(id) => db[*id].ability.cost.as_ref(),
-            Ability::EtbOrTriggered(_) => None,
+            Ability::Etb(_) | Ability::TriggeredAbility(_) => None,
         }
     }
 
-    pub(crate) fn targets<'db>(&self, db: &'db Database) -> Option<&'db TargetSelection> {
+    pub(crate) fn targets<'db>(&'db self, db: &'db Database) -> Option<&'db TargetSelection> {
         match self {
             Ability::Activated(id) => db[*id].ability.targets.as_ref(),
             Ability::Mana(_) => None,
-            Ability::EtbOrTriggered(_) => None,
+            Ability::Etb(etb) => etb.targets.as_ref(),
+            Ability::TriggeredAbility(triggered) => triggered.targets.as_ref(),
         }
     }
 
@@ -133,7 +136,7 @@ impl Ability {
         match self {
             Ability::Activated(id) => Some(&db[*id].ability.additional_costs),
             Ability::Mana(id) => Some(&db[*id].ability.additional_costs),
-            Ability::EtbOrTriggered(_) => None,
+            Ability::Etb(_) | Ability::TriggeredAbility(_) => None,
         }
     }
 
@@ -141,7 +144,8 @@ impl Ability {
         match self {
             Ability::Activated(id) => db[*id].ability.effects.clone(),
             Ability::Mana(id) => db[*id].ability.effects.clone(),
-            Ability::EtbOrTriggered(effects) => effects.clone(),
+            Ability::Etb(etb) => etb.effects.clone(),
+            Ability::TriggeredAbility(triggered) => triggered.effects.clone(),
         }
     }
 
@@ -149,9 +153,8 @@ impl Ability {
         match self {
             Ability::Activated(id) => db[*id].ability.oracle_text.clone(),
             Ability::Mana(id) => db[*id].ability.oracle_text.clone(),
-            Ability::EtbOrTriggered(effects) => {
-                effects.iter().map(|effect| &effect.oracle_text).join("\n")
-            }
+            Ability::Etb(etb) => etb.oracle_text.clone(),
+            Ability::TriggeredAbility(triggered) => triggered.oracle_text.clone(),
         }
     }
 
@@ -176,7 +179,7 @@ impl Ability {
             Ability::Mana(id) => db[*id]
                 .ability
                 .can_be_activated(db, self, source, activator),
-            Ability::EtbOrTriggered(_) => false,
+            _ => false,
         }
     }
 
@@ -212,7 +215,7 @@ pub(crate) fn passes_restrictions(
                     }
                 }
                 Ability::Mana(_) => todo!(),
-                Ability::EtbOrTriggered(_) => todo!(),
+                _ => return false,
             },
         }
     }

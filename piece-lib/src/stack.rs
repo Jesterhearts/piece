@@ -304,7 +304,7 @@ impl Stack {
                 location: Some(Location::ON_BATTLEFIELD),
                 target_type: TargetType::Ability {
                     source: listener,
-                    ability: Ability::EtbOrTriggered(trigger.effects),
+                    ability: Ability::TriggeredAbility(trigger),
                 },
                 targeted: false,
                 restrictions: vec![],

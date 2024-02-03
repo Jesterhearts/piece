@@ -77,8 +77,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                         ..Default::default()
                     }));
                 }
-                Ability::EtbOrTriggered(_) => todo!(),
-                _ => unreachable!(),
+                _ => todo!(),
             },
         }
 

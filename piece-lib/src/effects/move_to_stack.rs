@@ -4,7 +4,7 @@ use crate::{
     in_play::{CardId, CastFrom, Database},
     log::Log,
     protogen::{
-        effects::{Cascade, MoveToStack},
+        effects::{Cascade, MoveToStack, TriggeredAbility},
         targets::Location,
     },
     stack::{Stack, TargetType},
@@ -39,7 +39,11 @@ impl EffectBehaviors for MoveToStack {
                     pending.extend(Stack::push_ability(
                         db,
                         *card,
-                        Ability::EtbOrTriggered(vec![Cascade::default().into()]),
+                        Ability::TriggeredAbility(TriggeredAbility {
+                            effects: vec![Cascade::default().into()],
+                            oracle_text: "Cascade".to_string(),
+                            ..Default::default()
+                        }),
                         vec![],
                     ));
                 }
@@ -49,7 +53,7 @@ impl EffectBehaviors for MoveToStack {
                     Ability::Activated(activated) => {
                         Log::activated(db, *source, *activated);
                     }
-                    Ability::EtbOrTriggered(_) => {
+                    Ability::Etb(_) | Ability::TriggeredAbility(_) => {
                         Log::etb_or_triggered(db, *source);
                     }
                     _ => {}

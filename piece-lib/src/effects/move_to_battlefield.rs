@@ -65,7 +65,7 @@ impl EffectBehaviors for MoveToBattlefield {
                                 location: Some(Location::ON_BATTLEFIELD),
                                 target_type: TargetType::Ability {
                                     source: target_card,
-                                    ability: Ability::EtbOrTriggered(etb.effects.clone()),
+                                    ability: Ability::Etb(etb.clone()),
                                 },
                                 targeted: false,
                                 restrictions: vec![],
