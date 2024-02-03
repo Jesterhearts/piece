@@ -1,125 +1,108 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::{
-        draw_cards::DrawCards, move_to_hand_from_library::MoveToHandFromLibrary,
-        reveal_card::RevealCard, ActionResult,
-    },
-    effects::EffectBehaviors,
-    pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::{
-        effects::{effect::Effect, Cycling},
-        targets::{restriction, Restriction},
-    },
-    stack::ActiveTarget,
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    in_play::{CardId, Database},
+    protogen::{effects::Cycling, targets::Location},
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for Cycling {
-    fn needs_targets(
+    fn wants_input(
         &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        !self.types.is_empty() || !self.subtypes.is_empty()
     }
 
-    fn wants_targets(
+    fn options(
         &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        if !self.types.is_empty() || !self.subtypes.is_empty() {
-            1
-        } else {
-            0
-        }
-    }
-
-    fn cycling(&self) -> bool {
-        true
-    }
-
-    fn valid_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        log_session: crate::log::LogId,
-        controller: crate::player::Controller,
-        _already_chosen: &std::collections::HashSet<crate::stack::ActiveTarget>,
-    ) -> Vec<crate::stack::ActiveTarget> {
+        db: &Database,
+        source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> Options {
         if self.types.is_empty() && self.subtypes.is_empty() {
-            return vec![];
+            Options::OptionalList(vec![])
+        } else {
+            Options::MandatoryList(
+                self.valid_targets(db, source)
+                    .map(|card| card.name(db).clone())
+                    .enumerate()
+                    .collect_vec(),
+            )
+        }
+    }
+
+    fn select(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        option: Option<usize>,
+        selected: &mut SelectedStack,
+    ) -> SelectionResult {
+        if !self.types.is_empty() || !self.subtypes.is_empty() {
+            let mut valid_targets = self.valid_targets(db, source);
+            if let Some(option) = option {
+                selected.save();
+                selected.clear();
+                selected.push(Selected {
+                    location: Some(Location::IN_LIBRARY),
+                    target_type: TargetType::Card(valid_targets.nth(option).unwrap()),
+                    targeted: false,
+                    restrictions: vec![],
+                });
+
+                SelectionResult::Complete
+            } else if valid_targets.next().is_none() {
+                SelectionResult::Complete
+            } else {
+                SelectionResult::PendingChoice
+            }
+        } else {
+            SelectionResult::Complete
+        }
+    }
+
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        _source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        if !self.types.is_empty() || !self.subtypes.is_empty() {
+            let tutoring = selected
+                .restore()
+                .into_iter()
+                .exactly_one()
+                .unwrap()
+                .id(db)
+                .unwrap();
+            tutoring.move_to_hand(db);
         }
 
-        let restrictions = [Restriction {
-            restriction: Some(restriction::Restriction::from(restriction::OfType {
-                types: self.types.clone(),
-                subtypes: self.subtypes.clone(),
-                ..Default::default()
-            })),
-            ..Default::default()
-        }];
+        vec![]
+    }
+}
 
-        db.all_players[controller]
+impl Cycling {
+    fn valid_targets<'db>(
+        &'db self,
+        db: &'db Database,
+        source: Option<CardId>,
+    ) -> impl Iterator<Item = CardId> + 'db {
+        db.all_players[db[source.unwrap()].controller]
             .library
             .cards
             .iter()
-            .filter(|card| card.passes_restrictions(db, log_session, source, &restrictions))
-            .map(|card| ActiveTarget::Library { id: *card })
-            .collect_vec()
-    }
-
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        if self.types.is_empty() && self.subtypes.is_empty() {
-            results.push_settled(ActionResult::from(DrawCards {
-                target: controller,
-                count: 1,
-            }))
-        } else {
-            let valid_targets = self.valid_targets(
-                db,
-                source,
-                crate::log::LogId::current(db),
-                controller,
-                results.all_currently_targeted(),
-            );
-            results.push_choose_targets(ChooseTargets::new(
-                TargetSource::Effect(Effect::from(self.clone())),
-                valid_targets,
-                crate::log::LogId::current(db),
-                source,
-            ));
-        }
-    }
-
-    fn push_behavior_with_targets(
-        &self,
-        _db: &mut crate::in_play::Database,
-        targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        if self.types.is_empty() && self.subtypes.is_empty() {
-            results.push_settled(ActionResult::from(DrawCards {
-                target: controller,
-                count: 1,
-            }));
-        } else {
-            for target in targets {
-                let ActiveTarget::Library { id } = target else {
-                    unreachable!()
-                };
-
-                results.push_settled(ActionResult::from(RevealCard { card: id }));
-                results.push_settled(ActionResult::from(MoveToHandFromLibrary { card: id }));
-            }
-        }
+            .copied()
+            .filter(move |card| {
+                card.types_intersect(db, &(&self.types).into())
+                    && card.subtypes_intersect(db, &(&self.subtypes).into())
+            })
     }
 }

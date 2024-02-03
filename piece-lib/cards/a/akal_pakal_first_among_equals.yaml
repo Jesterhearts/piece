@@ -15,14 +15,16 @@ triggered_abilities:
               - restriction: !OfType
                   types: Artifact
     effects:
-      - effect: !ExamineTopCards
-          count: 2
+      - effect: !SelectEffectController {}
+      - effect: !SelectTopOfLibrary
+          count:
+            count: !Fixed
+              count: 2
+      - effect: !SelectDestinations
           destinations:
-            - destination:
-                destination: !Hand {}
+            - destination: !MoveToHand {}
               count: 1
-            - destination:
-                destination: !Graveyard {}
+            - destination: !MoveToGraveyard {}
               count: 1
     oracle_text: At the beginning of each player's end step, if an artifact entered
       the battlefield under your control this turn, look at the top two cards of your

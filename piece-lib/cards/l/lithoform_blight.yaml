@@ -4,43 +4,56 @@ cost:
   mana_cost: '{1}{B}'
 oracle_text: |-
   Enchant land
-  When Lithoform Blight enters the battlefield, draw a card.
   Enchanted land loses all land types and abilities and has "{T}: Add {C}" and "{T}, Pay 1 life: Add one mana of any color."
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Land
+      - restriction: !OnBattlefield {}
 enchant:
   modifiers:
     - modifier:
         remove_subtypes: Forest, Island, Mountain, Plains, Swamp
       duration: until source leaves battlefield
     - modifier:
+        remove_all_abilities: true
+      duration: until source leaves battlefield
+    - modifier:
         mana_ability:
           cost:
             tap: true
-          gain_mana:
-            gain: !Specific
-              gain: '{C}'
-          mana_source: any
-          mana_restriction: none
+          effects:
+            - effect: !GainMana
+                gain: !Specific
+                  gain: '{C}'
           oracle_text: '{T}: Add {C}.'
       duration: until source leaves battlefield
     - modifier:
         mana_ability:
           cost:
             tap: true
-            additional_costs:
-              - cost: !PayLife
-                  count: 1
-          gain_mana:
-            gain: !Choice
-              choices: '{W}, {U}, {B}, {R}, {G}'
-          mana_source: any
-          mana_restriction: none
+          additional_costs:
+            - effect: !PayCosts
+                pay_costs:
+                  - cost: !PayLife
+                      count:
+                        count: !Fixed
+                          count: 1
+          effects:
+            - effect: !GainMana
+                gain: !Choice
+                  choices: '{W}, {U}, {B}, {R}, {G}'
           oracle_text: '{T}, Pay 1 life: Add one mana of any color.'
       duration: until source leaves battlefield
-etb_abilities:
-  - effect: !ControllerDrawsCards
-      count: !Fixed
-        count: 2
-restrictions:
-  - restriction: !OfType
-      types: Land
-  - restriction: !OnBattlefield {}
+etb_ability:
+  oracle_text: When Lithoform Blight enters the battlefield, draw a card.
+  effects:
+    - effect: !SelectEffectController {}
+    - effect: !DrawCards
+        count:
+          count: !Fixed
+            count: 2

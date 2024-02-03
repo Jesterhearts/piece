@@ -1,24 +1,17 @@
-use piece_lib::{initialize_assets, Cards};
+use piece_lib::Cards;
 use protobuf::CodedInputStream;
+use rust_embed::RustEmbed;
 
-#[iftree::include_file_tree(
-    "
-paths = 'cards_binpb/**'
-template.identifiers = false
-template.initializer = 'initialize_assets'
-"
-)]
-pub struct CardDefs {
-    pub relative_path: &'static str,
-    pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
-}
+#[derive(RustEmbed)]
+#[folder = "cards_binpb/"]
+pub struct CardDefs;
 
 pub fn load_protos() -> anyhow::Result<Vec<piece_lib::protogen::card::Card>> {
     let mut results = vec![];
-    for card_file in ASSETS.iter() {
-        let contents = (card_file.get_bytes)();
+    for card_file in CardDefs::iter() {
+        let contents = CardDefs::get(&card_file).unwrap();
 
-        let mut input = CodedInputStream::from_bytes(&contents);
+        let mut input = CodedInputStream::from_bytes(&contents.data);
         let card = input.read_message::<piece_lib::protogen::card::Card>()?;
 
         results.push(card);

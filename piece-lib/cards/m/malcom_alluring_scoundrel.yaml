@@ -13,32 +13,33 @@ triggered_abilities:
       or more chorus counters on Malcolm, you may cast the discarded card without
       paying its mana cost.
     effects:
-      - effect: !ApplyThen
-          apply:
-            - effect: !GainCounters
+      - effect: !SelectSource {}
+      - effect: !AddCounters
+          counter: chorus
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !SelectTargetController {}
+      - effect: !DrawCards
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !Discard
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !IfThenElse
+          if_:
+            - restriction: !NumberOfCountersOnThis
                 counter: chorus
-                count:
-                  count: !Fixed
-                    count: 1
+                comparison:
+                  value: !GreaterThanOrEqual
+                    value: 4
           then:
-            - effect: !ApplyThen
-                apply:
-                  - effect: !ControllerDrawsCards
-                      count: !Fixed
-                        count: 1
-                  - effect: !ControllerDiscards
-                      count: 1
-                then:
-                  - effect: !IfThenElse
-                      if_:
-                        - restriction: !NumberOfCountersOnThis
-                            counter: chorus
-                            comparison:
-                              value: !GreaterThanOrEqual
-                                value: 4
-                      then:
-                        - effect: !ChooseCast
-                            restrictions:
-                              - restriction: !JustDiscarded {}
+            - effect: !ClearSelected {}
+            - effect: !SelectAll
+                restrictions:
+                  - restriction: !JustDiscarded {}
+            - effect: !CastSelected {}
 power: 2
 toughness: 1

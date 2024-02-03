@@ -6,11 +6,17 @@ activated_abilities:
   - cost:
       mana_cost: '{1}{U}'
       tap: true
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !OnBattlefield {}
+          - restriction: !OfType
+              types: Creature
+          - restriction: !OfColor
+              colors: Green
     effects:
-      - effect: !TargetToTopOfLibrary
-          restrictions:
-            - restriction: !OfType
-                types: Creature
-            - restriction: !OfColor
-                colors: Green
-    oracle_text: '{1}{U}, {T}: Put target green creature on top of its owner''s library'
+      - effect: !MoveToTopOfLibrary {}
+    oracle_text: "{1}{U}, {T}: Put target green creature on top of its owner's library"

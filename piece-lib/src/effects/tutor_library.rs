@@ -1,149 +1,125 @@
 use itertools::Itertools;
 
 use crate::{
-    action_result::{
-        add_to_battlefield_from_library::AddToBattlefieldFromLibrary,
-        move_from_library_to_graveyard::MoveFromLibraryToGraveyard,
-        move_from_library_to_top_of_library::MoveFromLibraryToTopOfLibrary,
-        move_to_hand_from_library::MoveToHandFromLibrary, reveal_card::RevealCard,
-        shuffle::Shuffle, ActionResult,
+    effects::{
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
     },
-    effects::EffectBehaviors,
-    pending_results::{choose_targets::ChooseTargets, TargetSource},
-    protogen::effects::{
-        destination::{self, Battlefield},
-        effect::Effect,
-        TutorLibrary,
-    },
-    stack::ActiveTarget,
+    in_play::{CardId, Database},
+    log::LogId,
+    protogen::{effects::TutorLibrary, targets::Location},
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for TutorLibrary {
-    fn needs_targets(
+    fn wants_input(
         &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        1
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
     }
 
-    fn wants_targets(
+    fn options(
         &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        1
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> Options {
+        Options::MandatoryList(
+            self.valid_targets(db, source, already_selected)
+                .map(|card| card.name(db).clone())
+                .enumerate()
+                .collect_vec(),
+        )
     }
 
-    fn valid_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        log_session: crate::log::LogId,
-        controller: crate::player::Controller,
-        _already_chosen: &std::collections::HashSet<ActiveTarget>,
-    ) -> Vec<ActiveTarget> {
-        db.all_players[controller]
+    fn select(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        option: Option<usize>,
+        selected: &mut SelectedStack,
+    ) -> SelectionResult {
+        if let Some(option) = option {
+            let card = self
+                .valid_targets(db, source, selected)
+                .nth(option)
+                .unwrap();
+            self.selected.push(card.into());
+
+            if self.selected.len() == self.targets.len() {
+                SelectionResult::Complete
+            } else {
+                SelectionResult::PendingChoice
+            }
+        } else {
+            SelectionResult::PendingChoice
+        }
+    }
+
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        _selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let mut results = vec![];
+
+        for (card, dest) in self
+            .selected
+            .iter()
+            .zip(
+                self.targets
+                    .iter_mut()
+                    .map(|target| target.destination.as_mut().unwrap()),
+            )
+            .rev()
+        {
+            let card: CardId = card.clone().into();
+            if self.reveal {
+                db[card].revealed = true;
+            }
+
+            results.push(ApplyResult::PushFront(EffectBundle {
+                push_on_enter: Some(vec![Selected {
+                    location: Some(Location::IN_LIBRARY),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                }]),
+                source,
+                effects: vec![dest.clone().into()],
+                ..Default::default()
+            }));
+        }
+
+        results
+    }
+}
+
+impl TutorLibrary {
+    fn valid_targets<'db>(
+        &'db self,
+        db: &'db Database,
+        source: Option<CardId>,
+        selected: &'db [Selected],
+    ) -> impl Iterator<Item = CardId> + 'db {
+        db.all_players[selected.first().unwrap().player().unwrap()]
             .library
             .cards
             .iter()
-            .filter(|card| {
+            .copied()
+            .filter(move |card| {
                 card.passes_restrictions(
                     db,
-                    log_session,
-                    source,
-                    &source.faceup_face(db).restrictions,
-                ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
+                    LogId::current(db),
+                    source.unwrap(),
+                    &self.targets[self.selected.len()].restrictions,
+                ) && !self.selected.iter().any(|selected| selected == card)
             })
-            .map(|card| ActiveTarget::Library { id: *card })
-            .collect_vec()
-    }
-
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        let valid_targets = self.valid_targets(
-            db,
-            source,
-            crate::log::LogId::current(db),
-            controller,
-            results.all_currently_targeted(),
-        );
-
-        results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(self.clone())),
-            valid_targets,
-            crate::log::LogId::current(db),
-            source,
-        ));
-    }
-
-    fn push_behavior_with_targets(
-        &self,
-        _db: &mut crate::in_play::Database,
-        targets: Vec<crate::stack::ActiveTarget>,
-        _source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        if self.reveal {
-            for target in targets.iter() {
-                let ActiveTarget::Library { id } = target else {
-                    unreachable!()
-                };
-
-                results.push_settled(ActionResult::from(RevealCard { card: *id }))
-            }
-        }
-
-        match self.destination.destination.as_ref().unwrap() {
-            destination::Destination::Hand(_) => {
-                for target in targets {
-                    let ActiveTarget::Library { id } = target else {
-                        unreachable!()
-                    };
-                    results.push_settled(ActionResult::from(MoveToHandFromLibrary { card: id }))
-                }
-            }
-            destination::Destination::TopOfLibrary(_) => {
-                for target in targets {
-                    let ActiveTarget::Library { id } = target else {
-                        unreachable!()
-                    };
-                    results.push_settled(ActionResult::from(MoveFromLibraryToTopOfLibrary {
-                        card: id,
-                    }))
-                }
-            }
-            destination::Destination::Battlefield(Battlefield { enters_tapped, .. }) => {
-                for target in targets {
-                    let ActiveTarget::Library { id } = target else {
-                        unreachable!()
-                    };
-                    results.push_settled(ActionResult::from(AddToBattlefieldFromLibrary {
-                        card: id,
-                        enters_tapped: *enters_tapped,
-                    }));
-                }
-            }
-            destination::Destination::BottomOfLibrary(_) => unreachable!(),
-            destination::Destination::Graveyard(_) => {
-                for target in targets {
-                    let ActiveTarget::Library { id } = target else {
-                        unreachable!()
-                    };
-                    results
-                        .push_settled(ActionResult::from(MoveFromLibraryToGraveyard { card: id }));
-                }
-            }
-        }
-
-        results.push_settled(ActionResult::from(Shuffle {
-            player: controller.into(),
-        }));
     }
 }

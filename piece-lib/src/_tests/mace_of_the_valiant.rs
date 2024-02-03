@@ -2,11 +2,12 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     battlefield::Battlefields,
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
-    stack::Stack,
+    protogen::{effects::MoveToBattlefield, targets::Location},
+    stack::{Selected, Stack, TargetType},
     turns::Phase,
 };
 
@@ -31,40 +32,49 @@ fn mace() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let bear = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    bear.move_to_battlefield(&mut db);
 
     let mace = CardId::upload(&mut db, &cards, player, "Mace of the Valiant");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, mace, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    mace.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, mace, 0);
     // Pay the cost
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
-    // Choose the default only target
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(4));
     assert_eq!(bear.toughness(&db), Some(2));
 
     let bear2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, bear2, None);
+    let mut results = PendingEffects::default();
+    results.selected.push(Selected {
+        location: Some(Location::IN_HAND),
+        target_type: TargetType::Card(bear2),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
+
+    let mut results = Battlefields::check_sba(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(bear.power(&db), Some(5));
     assert_eq!(bear.toughness(&db), Some(3));

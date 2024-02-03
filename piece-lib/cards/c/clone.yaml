@@ -6,11 +6,20 @@ oracle_text: You may have Clone enter the battlefield as a copy of any creature 
   the battlefield.
 replacement_abilities:
   - restrictions:
-      - restriction: !Controller
-          controller: !Self_ {}
       - restriction: !Self_ {}
     effects:
-      - effect: !CopyOfAnyCreatureNonTargeting {}
+      - effect: !Overwrite
+          effects:
+            - effect: !SelectSource {}
+            - effect: !SelectNonTargeting
+                count: 1
+                restrictions:
+                  - restriction: !OfType
+                      types: Creature
+                  - restriction: !Location
+                      locations: On Battlefield
+            - effect: !CloneSelected {}
+            - effect: !MoveToBattlefield {}
     replacing: etb
 power: 0
 toughness: 0

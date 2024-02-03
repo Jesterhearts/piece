@@ -1,140 +1,87 @@
-use std::collections::HashSet;
-
-use itertools::Itertools;
-
 use crate::{
-    effects::EffectBehaviors,
+    abilities::Ability,
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
-    log::LogId,
-    pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
-    player::Controller,
-    protogen::effects::{effect::Effect, CopySpellOrAbility},
-    stack::{ActiveTarget, Entry},
+    protogen::{
+        effects::{ClearSelected, CopySpellOrAbility, MoveToStack, PopSelected, PushSelected},
+        targets::Location,
+    },
+    stack::{Entry, Selected, TargetType},
 };
 
 impl EffectBehaviors for CopySpellOrAbility {
-    fn needs_targets(&self, _db: &Database, _source: CardId) -> usize {
-        1
-    }
-
-    fn wants_targets(&self, _db: &Database, _source: CardId) -> usize {
-        1
-    }
-
-    fn valid_targets(
-        &self,
-        db: &Database,
-        source: CardId,
-        log_session: LogId,
-        _controller: Controller,
-        _already_chosen: &HashSet<ActiveTarget>,
-    ) -> Vec<ActiveTarget> {
-        db.stack
-            .entries
-            .iter()
-            .filter_map(|(id, entry)| {
-                if entry.passes_restrictions(db, log_session, source, &self.restrictions) {
-                    Some(ActiveTarget::Stack { id: *id })
-                } else {
-                    None
-                }
-            })
-            .collect_vec()
-    }
-
-    fn push_pending_behavior(
-        &self,
+    fn apply(
+        &mut self,
         db: &mut Database,
-        source: CardId,
-        controller: Controller,
-        results: &mut PendingResults,
-    ) {
-        let valid_targets = self.valid_targets(
-            db,
-            source,
-            LogId::current(db),
-            controller,
-            results.all_currently_targeted(),
-        );
+        _source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let target = selected.first().unwrap();
 
-        results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(self.clone())),
-            valid_targets,
-            crate::log::LogId::current(db),
-            source,
-        ));
-    }
+        let TargetType::Stack(target) = target.target_type else {
+            unreachable!()
+        };
 
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut Database,
-        targets: Vec<ActiveTarget>,
-        _source: CardId,
-        controller: Controller,
-        results: &mut PendingResults,
-    ) {
-        for target in targets {
-            let ActiveTarget::Stack { id } = target else {
-                unreachable!()
-            };
+        let mut results = vec![];
 
-            match &db.stack.entries.get(&id).unwrap().ty {
-                Entry::Card(source) => {
-                    results.copy_card_to_stack(
-                        *source,
-                        controller,
-                        db.stack.entries.get(&id).unwrap().mode.clone(),
-                        Some(db[*source].x_is),
-                    );
+        match db.stack.entries[&target].ty.clone() {
+            Entry::Card(card) => {
+                let controller = db[card].controller;
+                let copy = card.token_copy_of(db, controller);
+                db[copy].x_is = db[card].x_is;
 
-                    for effect in source.faceup_face(db).effects.iter() {
-                        let valid_targets = effect.effect.as_ref().unwrap().valid_targets(
-                            db,
-                            *source,
-                            crate::log::LogId::current(db),
-                            controller,
-                            results.all_currently_targeted(),
-                        );
-
-                        if !valid_targets.is_empty() {
-                            results.push_choose_targets(ChooseTargets::new(
-                                TargetSource::Effect(effect.effect.as_ref().unwrap().clone()),
-                                valid_targets,
-                                crate::log::LogId::current(db),
-                                *source,
-                            ));
-                        }
-                    }
-                }
-                Entry::Ability { source, ability } => {
-                    results.copy_ability_to_stack(
-                        *source,
-                        ability.clone(),
-                        controller,
-                        Some(db[*source].x_is),
-                    );
-
-                    for effect in ability.effects(db) {
-                        let effect = effect.effect.unwrap();
-                        let valid_targets = effect.valid_targets(
-                            db,
-                            *source,
-                            crate::log::LogId::current(db),
-                            controller,
-                            results.all_currently_targeted(),
-                        );
-
-                        if !valid_targets.is_empty() {
-                            results.push_choose_targets(ChooseTargets::new(
-                                TargetSource::Effect(effect),
-                                valid_targets,
-                                crate::log::LogId::current(db),
-                                *source,
-                            ));
-                        }
-                    }
-                }
+                results.push(ApplyResult::PushBack(EffectBundle {
+                    push_on_enter: Some(vec![Selected {
+                        location: Some(Location::IN_STACK),
+                        target_type: TargetType::Card(copy),
+                        targeted: false,
+                        restrictions: vec![],
+                    }]),
+                    source: Some(copy),
+                    effects: vec![
+                        PushSelected::default().into(),
+                        ClearSelected::default().into(),
+                        card.faceup_face(db).targets.get_or_default().clone().into(),
+                        MoveToStack::default().into(),
+                        PopSelected::default().into(),
+                    ],
+                    ..Default::default()
+                }));
             }
+            Entry::Ability { source, ability } => match &ability {
+                Ability::Activated(activated) => {
+                    results.push(ApplyResult::PushBack(EffectBundle {
+                        push_on_enter: Some(vec![Selected {
+                            location: Some(Location::IN_STACK),
+                            target_type: TargetType::Ability {
+                                source,
+                                ability: ability.clone(),
+                            },
+                            targeted: false,
+                            restrictions: vec![],
+                        }]),
+                        source: Some(source),
+                        effects: vec![
+                            PushSelected::default().into(),
+                            ClearSelected::default().into(),
+                            db[*activated]
+                                .ability
+                                .targets
+                                .get_or_default()
+                                .clone()
+                                .into(),
+                            MoveToStack::default().into(),
+                            PopSelected::default().into(),
+                        ],
+                        ..Default::default()
+                    }));
+                }
+                Ability::EtbOrTriggered(_) => todo!(),
+                _ => unreachable!(),
+            },
         }
+
+        results
     }
 }

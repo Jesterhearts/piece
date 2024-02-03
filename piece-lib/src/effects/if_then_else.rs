@@ -1,100 +1,43 @@
-use crate::{effects::EffectBehaviors, log::LogId, protogen::effects::IfThenElse};
+use crate::{
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    in_play::{CardId, Database},
+    log::LogId,
+    protogen::effects::IfThenElse,
+};
 
 impl EffectBehaviors for IfThenElse {
-    fn needs_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-    ) -> usize {
-        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            self.then
-                .iter()
-                .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
-                .max()
-                .unwrap()
-        } else {
-            self.else_
-                .iter()
-                .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
-                .max()
-                .unwrap_or_default()
-        }
-    }
-
-    fn wants_targets(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-    ) -> usize {
-        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            self.then
-                .iter()
-                .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source))
-                .max()
-                .unwrap()
-        } else {
-            self.else_
-                .iter()
-                .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, source))
-                .max()
-                .unwrap_or_default()
-        }
-    }
-
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            for effect in self.then.iter() {
-                effect
-                    .effect
-                    .as_ref()
-                    .unwrap()
-                    .push_pending_behavior(db, source, controller, results);
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        if selected.iter().all(|selected| match &selected.target_type {
+            crate::stack::TargetType::Card(card) => {
+                card.passes_restrictions(db, LogId::current(db), source.unwrap(), &self.if_)
             }
+            crate::stack::TargetType::Stack(_) => todo!(),
+            crate::stack::TargetType::Ability { .. } => todo!(),
+            crate::stack::TargetType::ReplacementAbility(_) => todo!(),
+            crate::stack::TargetType::Player(player) => player.passes_restrictions(
+                db,
+                LogId::current(db),
+                db[source.unwrap()].controller,
+                &self.if_,
+            ),
+        }) {
+            vec![ApplyResult::PushFront(EffectBundle {
+                source,
+                effects: self.then.clone(),
+                ..Default::default()
+            })]
         } else {
-            for effect in self.else_.iter() {
-                effect
-                    .effect
-                    .as_ref()
-                    .unwrap()
-                    .push_pending_behavior(db, source, controller, results);
-            }
-        }
-    }
-
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        if source.passes_restrictions(db, LogId::current(db), source, &self.if_) {
-            for effect in self.then.iter() {
-                effect.effect.as_ref().unwrap().push_behavior_with_targets(
-                    db,
-                    targets.clone(),
-                    source,
-                    controller,
-                    results,
-                );
-            }
-        } else {
-            for effect in self.else_.iter() {
-                effect.effect.as_ref().unwrap().push_behavior_with_targets(
-                    db,
-                    targets.clone(),
-                    source,
-                    controller,
-                    results,
-                );
-            }
+            vec![ApplyResult::PushFront(EffectBundle {
+                source,
+                effects: self.else_.clone(),
+                ..Default::default()
+            })]
         }
     }
 }

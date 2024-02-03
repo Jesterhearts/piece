@@ -6,7 +6,16 @@ oracle_text: Exile targt creature. Its controller manifests the top card of thei
   library. (That player puts the top card of their library onto the battlefield face
   down as a 2/2 creature. If it's a creature card, it can be turned face up any time
   for its mana cost.)
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OnBattlefield {}
+      - restriction: !OfType
+          types: Creature
 effects:
-  - effect: !ExileTargetCreatureManifestTopOfLibrary {}
-restrictions:
-  - restriction: !OnBattlefield {}
+  - effect: !MoveToExile {}
+  - effect: !SelectTargetController {}
+  - effect: !Manifest {}

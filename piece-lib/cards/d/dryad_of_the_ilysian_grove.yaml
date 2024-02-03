@@ -21,9 +21,10 @@ static_abilities:
         mana_ability:
           cost:
             tap: true
-          gain_mana:
-            gain: !Specific
-              gain: '{W}'
+          effects:
+            - effect: !GainMana
+                gain: !Specific
+                  gain: '{W}'
           oracle_text: '{T}: Add {W}.'
         entire_battlefield: true
       duration: until source leaves battlefield
@@ -37,9 +38,10 @@ static_abilities:
         mana_ability:
           cost:
             tap: true
-          gain_mana:
-            gain: !Specific
-              gain: '{U}'
+          effects:
+            - effect: !GainMana
+                gain: !Specific
+                  gain: '{U}'
           oracle_text: '{T}: Add {U}.'
         entire_battlefield: true
       duration: until source leaves battlefield
@@ -53,9 +55,10 @@ static_abilities:
         mana_ability:
           cost:
             tap: true
-          gain_mana:
-            gain: !Specific
-              gain: '{B}'
+          effects:
+            - effect: !GainMana
+                gain: !Specific
+                  gain: '{B}'
           oracle_text: '{T}: Add {B}.'
         entire_battlefield: true
       duration: until source leaves battlefield
@@ -69,9 +72,10 @@ static_abilities:
         mana_ability:
           cost:
             tap: true
-          gain_mana:
-            gain: !Specific
-              gain: '{R}'
+          effects:
+            - effect: !GainMana
+                gain: !Specific
+                  gain: '{R}'
           oracle_text: '{T}: Add {R}.'
         entire_battlefield: true
       duration: until source leaves battlefield
@@ -85,9 +89,10 @@ static_abilities:
         mana_ability:
           cost:
             tap: true
-          gain_mana:
-            gain: !Specific
-              gain: '{G}'
+          effects:
+            - effect: !GainMana
+                gain: !Specific
+                  gain: '{G}'
           oracle_text: '{T}: Add {G}.'
         entire_battlefield: true
       duration: until source leaves battlefield

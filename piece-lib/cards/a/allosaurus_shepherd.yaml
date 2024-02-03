@@ -15,18 +15,20 @@ activated_abilities:
   - cost:
       mana_cost: '{4}{G}{G}'
     effects:
-      - effect: !BattlefieldModifier
-          modifier:
-            base_power: 5
-            base_toughness: 5
-            add_subtypes: Dinosaur
-            entire_battlefield: true
-          duration: until end of turn
+      - effect: !SelectAll
           restrictions:
             - restriction: !Controller
                 controller: !Self_ {}
             - restriction: !OfType
                 subtypes: Elf
+      - effect: !ApplyModifier
+          modifier:
+            modifier:
+              base_power: 5
+              base_toughness: 5
+              add_subtypes: Dinosaur
+              entire_battlefield: true
+            duration: until end of turn
     oracle_text: '{4}{G}{G}: Until end of turn, each Elf creature you control has
       base power and toughness 5/5 and becomes a dinosaur in addition to its other
       creature types.'

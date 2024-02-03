@@ -1,262 +1,786 @@
-//! The lifetime of an effect:
-//! - First the effect is moved into a set of [PendingResults] by calling either
-//!   [EffectBehaviors::push_pending_behavior] or [EffectBehaviors::push_behavior_with_targets].
-//!     - [EffectBehaviors::push_pending_behavior] is intended to be used when the list of targets
-//!       for the effect is unknown. This delegates to the specific effect implementation to decide
-//!       how it wants the [PendingResults] to present options to the end user, or if it wants to
-//!       choose targets at all. This is typically the entrypoint for most effects.
-//!     - [EffectBehaviors::push_behavior_with_targets] is intended to be called when the list of
-//!       targets for the effect is known, and the effect should tell [PendingResults] how to handle
-//!       resolving the effect.
-//! - Then [PendingResults] handles optional target selection for the effect. If targets are
-//!   selected, [PendingResults] calls back into [EffectBehaviors::push_behavior_with_targets] to
-//!   get the final set of behaviors from the effect.
-//! - Then [crate::action_result::ActionResult::apply_action_results] is called on the aggregated
-//!   list of actions to take for the effect. These are deferred so that [PendingResults] can
-//!   cancel taking action and so that the results of effects don't interfere with the application
-//!   of followon effects in the  same batch. This batching can be circumvented with the
-//!   [PendingResults::apply_in_stages] flag.
-
-mod apply_then;
-mod apply_then_if_was;
-mod battle_cry;
-mod battlefield_modifier;
-mod cant_attack_this_turn;
+mod add_counters;
+mod apply_modifier;
+mod apply_to_each_target;
+mod attack_selected;
+mod ban_attacking_this_turn;
 mod cascade;
+mod cast_selected;
+mod choose_attackers;
 mod choose_cast;
-mod controller_discards;
-mod controller_draws_cards;
-mod controller_loses_life;
-mod copy_of_any_creature_non_targeting;
+mod clear_selected;
+mod clone_selected;
+mod complete_spell_resolution;
 mod copy_spell_or_ability;
 mod counter_spell;
-mod counter_spell_unless_pay;
 mod create_token;
-mod create_token_copy;
+mod create_token_clone_of_selected;
 mod cycling;
-mod deal_damage;
-mod destroy_each;
-mod destroy_target;
+mod damage_selected;
+mod declare_attacking;
+mod destroy_selected;
+mod discard;
+mod discard_selected;
 mod discover;
+mod draw_cards;
 mod equip;
-mod examine_top_cards;
-mod exile_target;
-mod exile_target_creature_manifest_top_of_library;
-mod exile_target_graveyard;
-mod for_each_player_choose_then;
-mod foreach_mana_of_source;
-mod gain_counters;
+mod exile_graveyard;
+mod explore;
+mod for_each_mana_of_source;
 mod gain_life;
+mod gain_mana;
 mod if_then_else;
+mod lose_life;
+mod manifest;
 mod mill;
 mod modal;
-mod modify_target;
+mod move_to_battlefield;
+mod move_to_bottom_of_library;
+mod move_to_exile;
+mod move_to_graveyard;
+mod move_to_hand;
+mod move_to_stack;
+mod move_to_top_of_library;
 mod multiply_tokens;
-mod pay_cost_then;
-mod rebound;
-mod return_from_graveyard_to_battlefield;
-mod return_from_graveyard_to_hand;
-mod return_from_graveyard_to_library;
-mod return_self_to_hand;
-mod return_target_to_hand;
-mod return_transformed;
-mod reveal_each_top_of_library;
+mod nothing;
+mod ovewrite;
+mod pay_costs;
+mod player_loses;
+mod pop_selected;
+mod push_selected;
+mod remove_counters;
+mod reorder_selected;
+mod reveal;
+mod sacrifice;
 mod scry;
-mod self_explores;
-mod tap_target;
-mod tap_this;
-mod target_controller_gains_tokens;
-mod target_copies_permanent;
-mod target_creature_explores;
-mod target_gains_counters;
-mod target_to_top_of_library;
+mod select_all;
+mod select_all_players;
+mod select_destinations;
+mod select_effect_controller;
+mod select_exiled_with_cascade_or_discover;
+mod select_for_each_player;
+mod select_mode;
+mod select_non_targeting;
+mod select_source;
+mod select_target_controller;
+mod select_targets;
+mod select_top_of_library;
+mod shuffle_selected;
+mod spend_mana;
+mod tap;
 mod transform;
 mod tutor_library;
-mod untap_target;
-mod untap_this;
+mod unless;
+mod untap;
 
-use std::{collections::HashSet, vec::IntoIter};
+use std::{collections::VecDeque, fmt::Debug, vec};
 
+use derive_more::{Deref, DerefMut};
 use itertools::Itertools;
 
 use crate::{
     in_play::{CardId, Database},
     log::LogId,
-    pending_results::PendingResults,
-    player::{Controller, Owner},
-    protogen::effects::{Mode, ModifyBattlefield, ReplacementEffect},
-    stack::ActiveTarget,
+    player::Owner,
+    protogen::{
+        cost::XIs,
+        effects::{
+            count, effect, replacement_effect::Replacing, target_selection::Selector,
+            tutor_library::target::Destination, Count, Effect, ReorderSelected, TargetSelection,
+        },
+        targets::{Location, Restriction},
+        triggers,
+    },
+    stack::{Selected, TargetType},
 };
+
+impl PartialEq<triggers::Location> for Location {
+    fn eq(&self, other: &triggers::Location) -> bool {
+        match self {
+            Location::ON_BATTLEFIELD => matches!(
+                other,
+                triggers::Location::ANYWHERE | triggers::Location::BATTLEFIELD
+            ),
+            Location::IN_HAND => matches!(
+                other,
+                triggers::Location::ANYWHERE | triggers::Location::HAND
+            ),
+            Location::IN_LIBRARY => matches!(
+                other,
+                triggers::Location::ANYWHERE | triggers::Location::LIBRARY
+            ),
+            Location::IN_GRAVEYARD => matches!(other, triggers::Location::ANYWHERE),
+            Location::IN_EXILE => matches!(other, triggers::Location::ANYWHERE),
+            Location::IN_STACK => matches!(other, triggers::Location::ANYWHERE),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub enum SelectionResult {
+    TryAgain,
+    Complete,
+    PendingChoice,
+}
+
+#[derive(Debug)]
+pub enum ApplyResult {
+    PushFront(EffectBundle),
+    PushBack(EffectBundle),
+}
+
+#[derive(Debug)]
+pub enum Options {
+    MandatoryList(Vec<(usize, String)>),
+    OptionalList(Vec<(usize, String)>),
+    ListWithDefault(Vec<(usize, String)>),
+}
+
+impl Options {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Options::MandatoryList(opts)
+            | Options::OptionalList(opts)
+            | Options::ListWithDefault(opts) => opts.is_empty(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Options::MandatoryList(opts)
+            | Options::OptionalList(opts)
+            | Options::ListWithDefault(opts) => opts.len(),
+        }
+    }
+}
 
 #[enum_delegate::implement_for(crate::protogen::effects::effect::Effect,
     enum Effect {
-        ApplyThen(ApplyThen),
-        ApplyThenIfWas(ApplyThenIfWas),
-        BattleCry(BattleCry),
-        BattlefieldModifier(BattlefieldModifier),
-        CantAttackThisTurn(CantAttackThisTurn),
+        AddCounters(AddCounters),
+        ApplyModifier(ApplyModifier),
+        ApplyToEachTarget(ApplyToEachTarget),
+        AttackSelected(AttackSelected),
+        BanAttackingThisTurn(BanAttackingThisTurn),
         Cascade(Cascade),
+        CastSelected(CastSelected),
+        ChooseAttackers(ChooseAttackers),
         ChooseCast(ChooseCast),
-        ControllerDiscards(ControllerDiscards),
-        ControllerDrawsCards(ControllerDrawsCards),
-        ControllerLosesLife(ControllerLosesLife),
-        CopyOfAnyCreatureNonTargeting(CopyOfAnyCreatureNonTargeting),
+        ClearSelected(ClearSelected),
+        CloneSelected(CloneSelected),
+        CompleteSpellResolution(CompleteSpellResolution),
         CopySpellOrAbility(CopySpellOrAbility),
-        CounterSpellOrAbility(CounterSpellOrAbility),
-        CounterSpellUnlessPay(CounterSpellUnlessPay),
+        CounterSpell(CounterSpell),
         CreateToken(CreateToken),
-        CreateTokenCopy(CreateTokenCopy),
+        CreateTokenCloneOfSelected(CreateTokenCloneOfSelected),
         Cycling(Cycling),
-        DealDamage(DealDamage),
-        DestroyEach(DestroyEach),
-        DestroyTarget(DestroyTarget),
+        DamageSelected(DamageSelected),
+        DeclareAttacking(DeclareAttacking),
+        DestroySelected(DestroySelected),
+        Discard(Discard),
+        DiscardSelected(DiscardSelected),
         Discover(Discover),
+        DrawCards(DrawCards),
         Equip(Equip),
-        ExamineTopCards(ExamineTopCards),
-        ExileTarget(ExileTarget),
-        ExileTargetCreatureManifestTopOfLibrary(ExileTargetCreatureManifestTopOfLibrary),
-        ExileTargetGraveyard(ExileTargetGraveyard),
-        ForEachPlayerChooseThen(ForEachPlayerChooseThen),
+        ExileGraveyard(ExileGraveyard),
+        Explore(Explore),
         ForEachManaOfSource(ForEachManaOfSource),
-        GainCounters(GainCounters),
         GainLife(GainLife),
+        GainMana(GainMana),
         IfThenElse(IfThenElse),
+        LoseLife(LoseLife),
+        Manifest(Manifest),
         Mill(Mill),
         Modal(Modal),
-        ModifyTarget(ModifyTarget),
+        MoveToBattlefield(MoveToBattlefield),
+        MoveToBottomOfLibrary(MoveToBottomOfLibrary),
+        MoveToExile(MoveToExile),
+        MoveToGraveyard(MoveToGraveyard),
+        MoveToHand(MoveToHand),
+        MoveToStack(MoveToStack),
+        MoveToTopOfLibrary(MoveToTopOfLibrary),
         MultiplyTokens(MultiplyTokens),
-        PayCostThen(PayCostThen),
-        Rebound(Rebound),
-        ReturnFromGraveyardToBattlefield(ReturnFromGraveyardToBattlefield),
-        ReturnFromGraveyardToHand(ReturnFromGraveyardToHand),
-        ReturnFromGraveyardToLibrary(ReturnFromGraveyardToLibrary),
-        ReturnSelfToHand(ReturnSelfToHand),
-        ReturnTargetToHand(ReturnTargetToHand),
-        ReturnTransformed(ReturnTransformed),
-        RevealEachTopOfLibrary(RevealEachTopOfLibrary),
+        Nothing(Nothing),
+        Overwrite(Overwrite),
+        PayCosts(PayCosts),
+        PlayerLoses(PlayerLoses),
+        PopSelected(PopSelected),
+        PushSelected(PushSelected),
+        RemoveCounters(RemoveCounters),
+        ReorderSelected(ReorderSelected),
+        Reveal(Reveal),
+        Sacrifice(Sacrifice),
         Scry(Scry),
-        SelfExplores(SelfExplores),
-        TapTarget(TapTarget),
-        TapThis(TapThis),
-        TargetControllerGainsTokens(TargetControllerGainsTokens),
-        TargetCopiesPermanent(TargetCopiesPermanent),
-        TargetCreatureExplores(TargetCreatureExplores),
-        TargetGainsCounters(TargetGainsCounters),
-        TargetToTopOfLibrary(TargetToTopOfLibrary),
+        SelectAll(SelectAll),
+        SelectAllPlayers(SelectAllPlayers),
+        SelectDestinations(SelectDestinations),
+        SelectForEachPlayer(SelectForEachPlayer),
+        SelectMode(SelectMode),
+        SelectNonTargeting(SelectNonTargeting),
+        SelectSource(SelectSource),
+        SelectEffectController(SelectEffectController),
+        SelectExiledWithCascadeOrDiscover(SelectExiledWithCascadeOrDiscover),
+        SelectTargetController(SelectTargetController),
+        SelectTargets(SelectTargets),
+        SelectTopOfLibrary(SelectTopOfLibrary),
+        ShuffleSelected(ShuffleSelected),
+        SpendMana(SpendMana),
+        Tap(Tap),
         Transform(Transform),
         TutorLibrary(TutorLibrary),
-        UntapTarget(UntapTarget),
-        UntapThis(UntapThis),
+        Unless(Unless),
+        Untap(Untap),
+    }
+)]
+#[enum_delegate::implement_for(crate::protogen::effects::dest::Destination,
+    enum Destination {
+        MoveToBattlefield(MoveToBattlefield),
+        MoveToBottomOfLibrary(MoveToBottomOfLibrary),
+        MoveToExile(MoveToExile),
+        MoveToGraveyard(MoveToGraveyard),
+        MoveToHand(MoveToHand),
+        MoveToTopOfLibrary(MoveToTopOfLibrary),
+    }
+)]
+#[enum_delegate::implement_for(crate::protogen::effects::pay_cost::Cost,
+    enum Cost {
+        ExileCardsSharingType(ExileCardsSharingType),
+        ExilePermanents(ExilePermanents),
+        ExilePermanentsCmcX(ExilePermanentsCmcX),
+        PayLife(PayLife),
+        PayMana(PayMana),
+        SacrificePermanent(SacrificePermanent),
+        TapPermanent(TapPermanent),
+        TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore),
     }
 )]
 pub(crate) trait EffectBehaviors {
-    fn choices(&self, db: &Database, targets: &[ActiveTarget]) -> Vec<String> {
-        targets
-            .iter()
-            .map(|target| target.display(db))
-            .collect_vec()
-    }
-
-    fn modes(&self) -> Vec<Mode> {
-        vec![]
-    }
-
-    fn is_sorcery_speed(&self) -> bool {
-        false
-    }
-
-    fn is_equip(&self) -> bool {
-        false
-    }
-
-    fn cycling(&self) -> bool {
-        false
-    }
-
-    fn needs_targets(&self, db: &Database, source: CardId) -> usize;
-
-    fn wants_targets(&self, db: &Database, source: CardId) -> usize;
-
-    fn valid_targets(
+    /// Which player has priority for this action.
+    fn priority(
         &self,
         db: &Database,
-        source: CardId,
-        log_session: LogId,
-        controller: Controller,
-        already_chosen: &HashSet<ActiveTarget>,
-    ) -> Vec<ActiveTarget> {
-        let _ = db;
-        let _ = source;
-        let _ = log_session;
-        let _ = controller;
-        let _ = already_chosen;
-        vec![]
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> Owner {
+        let _ = already_selected;
+        let _ = modes;
+
+        if let Some(source) = source {
+            db[source].controller.into()
+        } else {
+            db.turn.priority_player()
+        }
     }
 
-    fn push_pending_behavior(
-        &self,
-        db: &mut Database,
-        source: CardId,
-        controller: Controller,
-        results: &mut PendingResults,
-    );
-
-    fn push_behavior_from_top_of_library(
+    fn description(
         &self,
         db: &Database,
-        source: CardId,
-        target_card: CardId,
-        results: &mut PendingResults,
-    ) {
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> String {
         let _ = db;
         let _ = source;
-        let _ = target_card;
-        let _ = results;
-        unreachable!()
+        let _ = already_selected;
+        let _ = modes;
+
+        String::default()
     }
 
-    fn push_behavior_with_targets(
+    fn wants_input(
         &self,
-        db: &mut Database,
-        targets: Vec<ActiveTarget>,
-        source: CardId,
-        controller: Controller,
-        results: &mut PendingResults,
-    );
-
-    fn replace_draw(
-        &self,
-        db: &mut Database,
-        player: Owner,
-        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
-        controller: Controller,
-        count: usize,
-        results: &mut PendingResults,
-    ) {
-        let _ = db;
-        let _ = player;
-        let _ = replacements;
-        let _ = controller;
-        let _ = count;
-        let _ = results;
-        unreachable!()
-    }
-
-    fn replace_token_creation(
-        &self,
-        db: &mut Database,
-        source: CardId,
-        replacements: &mut IntoIter<(CardId, ReplacementEffect)>,
-        token: CardId,
-        modifiers: &[ModifyBattlefield],
-        results: &mut PendingResults,
-    ) {
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> bool {
         let _ = db;
         let _ = source;
-        let _ = replacements;
-        let _ = token;
-        let _ = modifiers;
-        let _ = results;
-        unreachable!()
+        let _ = already_selected;
+        let _ = modes;
+        false
+    }
+
+    /// A textual list of choices represented by this effect. E.g. For SelectTargets, this will be the text list of targets which can be selected.
+    fn options(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> Options {
+        let _ = db;
+        let _ = source;
+        let _ = already_selected;
+        let _ = modes;
+        Options::OptionalList(vec![])
+    }
+
+    fn target_for_option(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        option: usize,
+    ) -> Option<Selected> {
+        let _ = db;
+        let _ = source;
+
+        already_selected.get(option).cloned()
+    }
+
+    /// Select the nth option.
+    fn select(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        option: Option<usize>,
+        selected: &mut SelectedStack,
+    ) -> SelectionResult {
+        let _ = db;
+        let _ = source;
+        let _ = option;
+        let _ = selected;
+        SelectionResult::Complete
+    }
+
+    /// Apply the effect to the database.
+    #[must_use]
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        skip_replacement: bool,
+    ) -> Vec<ApplyResult>;
+
+    /// Apply the replacement effects to the bundle.
+    fn apply_replacement(&self, effect: Effect) -> Vec<Effect> {
+        vec![effect]
+    }
+}
+
+#[derive(Debug, Clone, Default, Deref, DerefMut)]
+pub(crate) struct SelectedStack {
+    #[deref]
+    #[deref_mut]
+    pub(crate) current: Vec<Selected>,
+    pub(crate) stack: VecDeque<Vec<Selected>>,
+
+    pub(crate) modes: Vec<usize>,
+
+    pub(crate) crafting: bool,
+}
+
+impl SelectedStack {
+    pub(crate) fn new(current: Vec<Selected>) -> Self {
+        Self {
+            current,
+            ..Default::default()
+        }
+    }
+
+    pub(crate) fn save(&mut self) {
+        self.stack.push_back(self.current.clone())
+    }
+
+    #[must_use]
+    pub(crate) fn restore(&mut self) -> Vec<Selected> {
+        let mut popped = self.stack.pop_back().unwrap_or_default();
+        std::mem::swap(&mut self.current, &mut popped);
+        popped
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct EffectBundle {
+    pub(crate) push_on_enter: Option<Vec<Selected>>,
+    pub(crate) source: Option<CardId>,
+
+    pub(crate) skip_replacement: bool,
+    pub(crate) effects: Vec<Effect>,
+    pub(crate) resolving: usize,
+}
+
+#[derive(Default, Debug)]
+#[must_use]
+pub struct PendingEffects {
+    pub(crate) selected: SelectedStack,
+    bundles: VecDeque<EffectBundle>,
+}
+
+impl PendingEffects {
+    pub(crate) fn new(selected: SelectedStack) -> Self {
+        Self {
+            selected,
+            ..Default::default()
+        }
+    }
+
+    pub fn organize_stack(db: &Database) -> PendingEffects {
+        let selected = db
+            .stack
+            .entries
+            .keys()
+            .copied()
+            .map(|entry| Selected {
+                location: Some(Location::IN_STACK),
+                target_type: TargetType::Stack(entry),
+                targeted: false,
+                restrictions: vec![],
+            })
+            .collect_vec();
+
+        Self {
+            selected: SelectedStack::new(selected),
+            bundles: VecDeque::from([EffectBundle {
+                effects: vec![Effect {
+                    effect: Some(ReorderSelected::default().into()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }]),
+        }
+    }
+
+    pub fn push_back(&mut self, bundle: EffectBundle) {
+        self.bundles.push_back(bundle);
+    }
+
+    pub(crate) fn push_front(&mut self, bundle: EffectBundle) {
+        self.bundles.push_front(bundle);
+    }
+
+    pub fn apply_result(&mut self, result: ApplyResult) {
+        match result {
+            ApplyResult::PushFront(bundle) => {
+                self.bundles.push_front(bundle);
+            }
+            ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
+        }
+    }
+
+    pub fn apply_results(&mut self, other: impl IntoIterator<Item = ApplyResult>) {
+        for result in other.into_iter() {
+            match result {
+                ApplyResult::PushFront(bundle) => {
+                    self.bundles.push_front(bundle);
+                }
+                ApplyResult::PushBack(bundle) => {
+                    self.bundles.push_back(bundle);
+                }
+            }
+        }
+    }
+
+    pub fn extend(&mut self, other: PendingEffects) {
+        self.bundles.extend(other.bundles);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bundles.is_empty()
+    }
+
+    pub fn target_for_option(&self, db: &Database, option: usize) -> Option<Selected> {
+        self.bundles.front().and_then(|first| {
+            first.effects[first.resolving]
+                .effect
+                .as_ref()
+                .unwrap()
+                .target_for_option(db, first.source, &self.selected, option)
+        })
+    }
+
+    pub fn priority(&self, db: &Database) -> Owner {
+        self.bundles
+            .front()
+            .and_then(|first| {
+                first
+                    .effects
+                    .get(first.resolving)
+                    .map(|effect| (first.source, effect))
+            })
+            .map(|(source, first)| {
+                first.effect.as_ref().unwrap().priority(
+                    db,
+                    source,
+                    &self.selected,
+                    &self.selected.modes,
+                )
+            })
+            .unwrap_or_else(|| db.turn.priority_player())
+    }
+
+    pub fn description(&self, db: &Database) -> String {
+        self.bundles
+            .front()
+            .map(|first| {
+                first.effects[first.resolving]
+                    .effect
+                    .as_ref()
+                    .unwrap()
+                    .description(db, first.source, &self.selected, &self.selected.modes)
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn wants_input(&self, db: &Database) -> bool {
+        self.bundles
+            .front()
+            .and_then(|front| {
+                front
+                    .effects
+                    .get(front.resolving)
+                    .and_then(|first| first.effect.as_ref())
+                    .map(|first| (first, front.source))
+            })
+            .map(|(first, source)| {
+                first.wants_input(db, source, &self.selected, &self.selected.modes)
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn resolve(&mut self, db: &mut Database, option: Option<usize>) -> SelectionResult {
+        let mut applied = false;
+        if option.is_none() {
+            loop {
+                let Some(first) = self.bundles.front_mut() else {
+                    break;
+                };
+
+                if first.resolving == 0 && first.push_on_enter.is_some() {
+                    self.selected.save();
+                    self.selected.clear();
+                    self.selected.extend(first.push_on_enter.take().unwrap());
+                }
+
+                let first_len = first.effects.len();
+                let Some(effect) = first.effects.get_mut(first.resolving) else {
+                    self.bundles.pop_front();
+                    continue;
+                };
+
+                let Some(effect) = effect.effect.as_mut() else {
+                    first.resolving += 1;
+                    continue;
+                };
+
+                if effect.wants_input(db, first.source, &self.selected, &self.selected.modes) {
+                    break;
+                }
+
+                applied = true;
+                let results =
+                    effect.apply(db, first.source, &mut self.selected, first.skip_replacement);
+
+                first.resolving += 1;
+                if first.resolving == first_len {
+                    self.bundles.pop_front();
+                }
+
+                self.apply_results(results);
+            }
+
+            if applied {
+                if self.bundles.is_empty() {
+                    return SelectionResult::Complete;
+                } else {
+                    return SelectionResult::TryAgain;
+                }
+            }
+        }
+
+        if let Some(first) = self.bundles.front_mut() {
+            if first.resolving == 0 && first.push_on_enter.is_some() {
+                self.selected.save();
+                self.selected.clear();
+                self.selected.extend(first.push_on_enter.take().unwrap());
+            }
+
+            let effect = first.effects[first.resolving].effect.as_mut().unwrap();
+
+            match effect.select(db, first.source, option, &mut self.selected) {
+                SelectionResult::Complete => {
+                    let results =
+                        effect.apply(db, first.source, &mut self.selected, first.skip_replacement);
+
+                    first.resolving += 1;
+                    if first.resolving == first.effects.len() {
+                        let _ = self.bundles.pop_front().unwrap();
+                    }
+
+                    self.apply_results(results);
+
+                    if self.bundles.is_empty() {
+                        SelectionResult::Complete
+                    } else {
+                        SelectionResult::TryAgain
+                    }
+                }
+                r => r,
+            }
+        } else {
+            SelectionResult::Complete
+        }
+    }
+
+    pub fn options(&self, db: &Database) -> Options {
+        self.bundles
+            .front()
+            .and_then(|first| {
+                first
+                    .effects
+                    .get(first.resolving)
+                    .map(|effect| (first.source, effect))
+            })
+            .map(|(source, effect)| {
+                effect.effect.as_ref().unwrap().options(
+                    db,
+                    source,
+                    &self.selected,
+                    &self.selected.modes,
+                )
+            })
+            .unwrap_or_else(|| Options::OptionalList(vec![]))
+    }
+}
+
+impl From<EffectBundle> for PendingEffects {
+    fn from(value: EffectBundle) -> Self {
+        Self {
+            bundles: VecDeque::from([value]),
+            ..Default::default()
+        }
+    }
+}
+
+impl Count {
+    pub(crate) fn count(
+        &self,
+        db: &mut Database,
+        source: Option<CardId>,
+        selected: &[Selected],
+    ) -> i32 {
+        match self.count.as_ref().unwrap() {
+            count::Count::Fixed(count) => count.count,
+            count::Count::LeftBattlefieldThisTurn(left) => {
+                if let Some(first) = selected.first().and_then(|first| first.id(db)) {
+                    CardId::left_battlefield_this_turn(db)
+                        .filter(|card| {
+                            card.passes_restrictions(
+                                db,
+                                LogId::current(db),
+                                first,
+                                &left.restrictions,
+                            )
+                        })
+                        .count() as i32
+                } else {
+                    warn!("No card selected when determining number of counters to place. Did you forget to select targets?");
+                    0
+                }
+            }
+            count::Count::NumberOfCountersOnSelected(counters) => {
+                if let Some(first) = selected.first() {
+                    if let Some(card) = first.id(db) {
+                        *db[card]
+                            .counters
+                            .entry(counters.type_.enum_value().unwrap())
+                            .or_default() as i32
+                    } else {
+                        todo!("number of counters on players")
+                    }
+                } else {
+                    warn!("No card selected when determining number of counters to place. Did you forget to select targets?");
+                    0
+                }
+            }
+            count::Count::NumberOfPermanentsMatching(matching) => db
+                .cards
+                .keys()
+                .filter(|card| {
+                    card.passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        source.unwrap(),
+                        &matching.restrictions,
+                    )
+                })
+                .count() as i32,
+            count::Count::X(x) => match x.x_is.enum_value().unwrap() {
+                XIs::MANA_VALUE_OF_SELECTED => db[selected.first().unwrap().id(db).unwrap()]
+                    .modified_cost
+                    .cmc() as i32,
+            },
+            count::Count::XCost(_) => db[source.unwrap()].x_is as i32,
+        }
+    }
+}
+
+fn handle_replacements<T: Into<effect::Effect>>(
+    db: &Database,
+    source: Option<CardId>,
+    replacing: Replacing,
+    effect: T,
+    passes_restrictions: impl Fn(CardId, &[Restriction]) -> bool,
+) -> Vec<ApplyResult> {
+    let replacements = db.replacement_abilities_watching(replacing);
+    let replacements = replacements
+        .into_iter()
+        .filter(|(card, replacing)| passes_restrictions(*card, &replacing.restrictions))
+        .map(|(_, replacement)| TargetType::ReplacementAbility(replacement))
+        .map(|target| Selected {
+            location: None,
+            target_type: target,
+            targeted: false,
+            restrictions: vec![],
+        })
+        .collect_vec();
+
+    vec![ApplyResult::PushFront(EffectBundle {
+        push_on_enter: Some(replacements),
+        effects: vec![ReorderSelected {
+            associated_effect: protobuf::MessageField::some(Effect {
+                effect: Some(effect.into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+        .into()],
+        source,
+        ..Default::default()
+    })]
+}
+
+impl From<TargetSelection> for effect::Effect {
+    fn from(val: TargetSelection) -> Self {
+        match val.selector.unwrap() {
+            Selector::Modal(modal) => modal.into(),
+            Selector::SelectTargets(targets) => targets.into(),
+            Selector::SelectNonTargeting(targets) => targets.into(),
+            Selector::SelectForEachPlayer(targets) => targets.into(),
+        }
+    }
+}
+
+impl From<Destination> for effect::Effect {
+    fn from(value: Destination) -> Self {
+        match value {
+            Destination::MoveToBattlefield(dest) => dest.into(),
+            Destination::MoveToExile(dest) => dest.into(),
+            Destination::MoveToGraveyard(dest) => dest.into(),
+            Destination::MoveToHand(dest) => dest.into(),
+            Destination::MoveToBottomOfLibrary(dest) => dest.into(),
+            Destination::MoveToTopOfLibrary(dest) => dest.into(),
+        }
+    }
+}
+
+impl<T: Into<effect::Effect>> From<T> for Effect {
+    fn from(value: T) -> Self {
+        Self {
+            effect: Some(value.into()),
+            ..Default::default()
+        }
     }
 }

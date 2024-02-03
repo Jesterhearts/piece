@@ -5,6 +5,7 @@ cost:
 oracle_text: 'Create a 1/1 red Dinosaur creature token with haste and a 1/1 white
   Human Soldier creature token. '
 effects:
+  - effect: !SelectEffectController {}
   - effect: !CreateToken
       token: !Creature
         name: Dinosaur
@@ -13,6 +14,7 @@ effects:
         power: 1
         toughness: 1
         keywords: Haste
+  - effect: !SelectEffectController {}
   - effect: !CreateToken
       token: !Creature
         name: Human Soldier

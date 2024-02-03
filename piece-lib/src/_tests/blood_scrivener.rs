@@ -2,12 +2,12 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
+    effects::SelectionResult,
     in_play::{CardId, Database},
     library::Library,
     load_cards,
-    pending_results::ResolutionResult,
     player::{AllPlayers, Player},
+    stack::Stack,
 };
 
 #[test]
@@ -37,14 +37,25 @@ fn replacement() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, deck2);
 
     let card = CardId::upload(&mut db, &cards, player, "Blood Scrivener");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
+    card.move_to_hand(&mut db);
+    let mut results = Player::play_card(&mut db, player, card);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
+
+    let mut results = Stack::resolve_1(&mut db);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Hand is empty
-    let mut results = Player::draw(&mut db, player, 1);
+    let mut results = Player::draw(player, 1);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
     assert_eq!(db.all_players[player].life_total, 19);
 
     assert_eq!(db.hand[player], IndexSet::from([deck2, deck1]));

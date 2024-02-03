@@ -2,11 +2,14 @@ name: Spring-Loaded Sawblades
 typeline: Artifact
 cost:
   mana_cost: '{1}{W}'
-etb_abilities:
-  - oracle_text: When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage
-      to target tapped creature an opponent controls.
-    effect: !DealDamage
-      quantity: 5
+etb_ability:
+  oracle_text: When Spring-Loaded Sawblades enters the battlefield, it deals 5 damage
+    to target tapped creature an opponent controls.
+  targets:
+    selector: !SelectTargets
+      count:
+        count: !Fixed
+          count: 1
       restrictions:
         - restriction: !Controller
             controller: !Opponent {}
@@ -14,22 +17,31 @@ etb_abilities:
         - restriction: !OfType
             types: Creature
         - restriction: !OnBattlefield {}
+  effects:
+    - effect: !DamageSelected
+        count:
+          count: !Fixed
+            count: 5
 activated_abilities:
   - cost:
       mana_cost: '{3}{W}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSource
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     oracle_text: Craft with artifact {3}{W}
     sorcery_speed: true
     craft: true
@@ -39,46 +51,41 @@ back_face:
   typeline: Artifact - Vehicle
   colors: White
   activated_abilities:
-    - cost:
-        additional_costs:
-          - cost: !TapPermanent
-              restrictions:
-                - restriction: !OfType
-                    types: Artifact
-                - restriction: !NotSelf {}
-          - cost: !TapPermanent
-              restrictions:
-                - restriction: !OfType
-                    types: Artifact
-                - restriction: !NotSelf {}
+    - additional_costs:
+        - effect: !PayCosts
+            pay_costs:
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact
+              - cost: !TapPermanent
+                  restrictions:
+                    - restriction: !OfType
+                        types: Artifact
       effects:
-        - effect: !BattlefieldModifier
-            apply_to_self: true
+        - !SelectSource {}
+        - effect: !ApplyModifier
             modifier:
-              add_types: Artifact, Creature
-            duration: until end of turn
-            restrictions:
-              - restriction: !Controller
-                  controller: !Self_ {}
+              modifier:
+                add_types: Artifact, Creature
+              duration: until end of turn
       oracle_text: 'Tap two other untapped artifacts you control: Bladewheel Chariot
         becomes an artifact creature until end of turn.'
-    - cost:
-        additional_costs:
-          - cost: !TapPermanentsPowerXOrMore
-              x_is: 1
-              restrictions:
-                - restriction: !OfType
-                    types: Creature
-                - restriction: !NotSelf {}
+    - additional_costs:
+        - effect: !PayCosts
+            pay_costs:
+              - cost: !TapPermanentsPowerXOrMore
+                  x_is: 1
+                  restrictions:
+                    - restriction: !OfType
+                        types: Creature
+                    - restriction: !NotSelf {}
       effects:
-        - effect: !BattlefieldModifier
-            apply_to_self: true
+        - effect: !ApplyModifier
             modifier:
-              add_types: Artifact, Creature
-            duration: until end of turn
-            restrictions:
-              - restriction: !Controller
-                  controller: !Self_ {}
+              modifier:
+                add_types: Artifact, Creature
+              duration: until end of turn
       oracle_text: Crew 1
   power: 5
   toughness: 5

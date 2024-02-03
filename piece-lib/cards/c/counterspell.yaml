@@ -3,5 +3,13 @@ typeline: Instant
 cost:
   mana_cost: '{U}{U}'
 oracle_text: Counter target spell.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !Location
+          locations: In Stack
 effects:
-  - effect: !CounterSpellOrAbility {}
+  - effect: !CounterSpell {}

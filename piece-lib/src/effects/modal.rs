@@ -1,58 +1,111 @@
 use crate::{
-    effects::{EffectBehaviors, Mode},
-    pending_results::Source,
-    protogen::effects::{effect::Effect, Modes},
+    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    in_play::{CardId, Database},
+    protogen::effects::Modal,
+    stack::Selected,
 };
 
-impl EffectBehaviors for Modes {
-    fn modes(&self) -> Vec<Mode> {
-        self.modes.clone()
+impl EffectBehaviors for Modal {
+    fn priority(
+        &self,
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> crate::player::Owner {
+        let mode = modes[self.applying as usize];
+        let mode = &self.modes[mode];
+        mode.effects[mode.applying as usize]
+            .effect
+            .as_ref()
+            .unwrap()
+            .priority(db, source, already_selected, modes)
     }
 
-    fn needs_targets(
+    fn wants_input(
         &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> bool {
+        let mode = modes[self.applying as usize];
+        let mode = &self.modes[mode];
+        mode.effects[mode.applying as usize]
+            .effect
+            .as_ref()
+            .unwrap()
+            .wants_input(db, source, already_selected, modes)
     }
 
-    fn wants_targets(
+    fn options(
         &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
+        db: &Database,
+        source: Option<CardId>,
+        already_selected: &[Selected],
+        modes: &[usize],
+    ) -> Options {
+        let mode = modes[self.applying as usize];
+        let mode = &self.modes[mode];
+        mode.effects[mode.applying as usize]
+            .effect
+            .as_ref()
+            .unwrap()
+            .options(db, source, already_selected, modes)
     }
 
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        if let Some(mode) = results.chosen_modes().pop() {
-            for effect in self.modes[mode].effects.iter() {
-                effect
-                    .effect
-                    .as_ref()
-                    .unwrap()
-                    .push_pending_behavior(db, source, controller, results);
+    fn select(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        option: Option<usize>,
+        selected: &mut SelectedStack,
+    ) -> SelectionResult {
+        let mode = selected.modes[self.applying as usize];
+        let mode = &mut self.modes[mode];
+
+        match mode.effects[mode.applying as usize]
+            .effect
+            .as_mut()
+            .unwrap()
+            .select(db, source, option, selected)
+        {
+            SelectionResult::Complete => {
+                mode.applying += 1;
+                if (mode.applying as usize) == mode.effects.len() {
+                    self.applying += 1;
+                }
+
+                if (self.applying as usize) == selected.modes.len() {
+                    SelectionResult::Complete
+                } else {
+                    SelectionResult::TryAgain
+                }
             }
-        } else {
-            results.push_choose_mode(Source::Effect(Effect::from(self.clone()), source));
+            s => s,
         }
     }
 
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        self.push_pending_behavior(db, source, controller, results);
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let mut results = vec![];
+
+        for mode in selected.modes.clone() {
+            for effect in self.modes[mode].effects.iter_mut() {
+                results.extend(effect.effect.as_mut().unwrap().apply(
+                    db,
+                    source,
+                    selected,
+                    skip_replacement,
+                ));
+            }
+        }
+
+        results
     }
 }

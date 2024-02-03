@@ -1,13 +1,13 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::CardId,
     in_play::Database,
     load_cards,
-    pending_results::ResolutionResult,
     player::{AllPlayers, Player},
-    protogen::types::Subtype,
+    protogen::{effects::MoveToBattlefield, targets::Location, types::Subtype},
+    stack::{Selected, TargetType},
     types::SubtypeSet,
 };
 
@@ -33,14 +33,20 @@ fn adds_land_types() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let land = CardId::upload(&mut db, &cards, player, "Forest");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, land, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    land.move_to_battlefield(&mut db);
 
     let card = CardId::upload(&mut db, &cards, player, "Dryad of the Ilysian Grove");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
+    let mut results = PendingEffects::default();
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(card),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(Player::lands_per_turn(&mut db, player), 2);
 

@@ -6,10 +6,11 @@ keywords: Flying, Vigilance
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{U}'
-    mana_restriction: artifact spell or ability
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{U}'
+          mana_restriction: artifact spell or ability
     oracle_text: >-
       {T}: Add {U}. Spend this mana only to cast an artifact spell or activate an
       ability of an artifact source.

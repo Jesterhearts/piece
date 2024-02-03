@@ -2,16 +2,19 @@ name: The Everflowing Well
 cost:
   mana_cost: '{2}{U}'
 typeline: Legendary Artifact
-etb_abilities:
-  - effect: !Mill
-      count: 2
-      restrictions:
-        - restriction: !Self_ {}
-    oracle_text: When The Everflowing Well enters the battlefield, mill two cards,
-      then draw two cards.
-  - effect: !ControllerDrawsCards
-      count: !Fixed
-        count: 2
+etb_ability:
+  effects:
+    - effect: !SelectEffectController
+    - effect: !Mill
+        count:
+          count: !Fixed
+            count: 2
+      oracle_text: When The Everflowing Well enters the battlefield, mill two cards,
+        then draw two cards.
+    - effect: !DrawCards
+        count:
+          count: !Fixed
+            count: 2
 triggered_abilities:
   - trigger:
       source: upkeep
@@ -30,10 +33,11 @@ back_face:
   mana_abilities:
     - cost:
         tap: true
-      gain_mana:
-        gain: !Specific
-          gain: '{U}'
-      mana_source: the myriad pools
+      effects:
+        - effect: !GainMana
+            gain: !Specific
+              gain: '{U}'
+            mana_source: the myriad pools
       oracle_text: '{T}: Add {U}.'
   triggered_abilities:
     - trigger:
@@ -42,10 +46,20 @@ back_face:
           - restriction: !ManaSpentFromSource
               source: the myriad pools
           - restriction: !IsPermanent {}
+      targets:
+        selector: !SelectTargets
+          count:
+            count: !Fixed
+              count: 1
+          restrictions:
+            - restriction: !IsPermanent {}
+            - restriction: !OnBattlefield {}
+            - restriction: !NotSelf {}
       effects:
-        - effect: !TargetCopiesPermanent
-            copy_restrictions:
+        - effect: !SelectAll
+            restrictions:
               - restriction: !SpellOrAbilityJustCast {}
+        - effect: !CloneSelected
           oracle_text: Whenever you cast a permanent spell using mana produced by
             The Myriad Pools, up to one other target permanent you control becomes
             a copy of that spell until end of turn.

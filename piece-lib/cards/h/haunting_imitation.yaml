@@ -8,18 +8,33 @@ effects:
       1/1, it's a Spirit in addition to its other types, and it has flying. If no
       creature cards were revealed this way, return Haunting Imitation to its owner's
       hand.
-    effect: !RevealEachTopOfLibrary
-      for_each:
-        restrictions:
-          - restriction: !OfType
-              types: Creature
-        effects:
-          - effect: !CreateTokenCopy
-              modifiers:
-                - base_power: 1
-                  base_toughness: 1
-                  add_subtypes: Spirit
-                  add_keywords: Flying
-        if_none:
-          effects:
-            - effect: !ReturnSelfToHand {}
+    effect: !SelectAllPlayers {}
+  - effect: !SelectTopOfLibrary
+      count:
+        count: !Fixed
+          count: 1
+  - effect: !ApplyToEachTarget
+      effects:
+        - effect: !IfThenElse
+            if_:
+              - restriction: !OfType
+                  types: Creature
+            then:
+              - effect: !SelectEffectController
+              - effect: !CreateTokenCloneOfSelected
+              - effect: !ApplyModifier
+                  modifier:
+                    modifier:
+                      base_power: 1
+                      base_toughness: 1
+                      add_subtypes: Spirit
+                      add_keywords: Flying
+                    duration: until target leaves battlefield
+  - effect: !Unless
+      unless:
+        - restriction: !OfType
+            types: Creature
+      then:
+        - effect: !ClearSelected
+        - effect: !SelectSource {}
+        - effect: !MoveToHand {}

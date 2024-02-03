@@ -2,8 +2,8 @@ use itertools::Itertools;
 
 use piece_lib::{
     battlefield::Battlefields,
+    effects::{PendingEffects, SelectionResult},
     in_play::Database,
-    pending_results::{PendingResults, ResolutionResult},
     player::{Owner, Player},
     turns::{Phase, Turn},
 };
@@ -17,7 +17,7 @@ impl AI {
         Self { player }
     }
 
-    pub fn priority(&self, db: &mut Database, pending: &mut PendingResults) -> PendingResults {
+    pub fn priority(&self, db: &mut Database, pending: &mut PendingEffects) -> PendingEffects {
         if pending.is_empty() && db.turn.active_player() == self.player {
             if matches!(db.turn.phase, Phase::PreCombatMainPhase)
                 && Player::can_play_land(db, self.player)
@@ -44,10 +44,10 @@ impl AI {
                     ));
                 }
 
-                assert!(pending.only_immediate_results(db));
+                assert!(pending.options(db).is_empty());
 
                 let result = pending.resolve(db, None);
-                assert_eq!(result, ResolutionResult::Complete);
+                assert_eq!(result, SelectionResult::Complete);
 
                 if let Some(card) = db.hand[self.player].iter().find(|card| !card.is_land(db)) {
                     pending.extend(Player::play_card(db, self.player, *card));
@@ -58,12 +58,9 @@ impl AI {
         while pending.priority(db) == self.player {
             let result = if pending.options(db).is_empty() {
                 let result = pending.resolve(db, None);
-                if result == ResolutionResult::PendingChoice
-                    && pending.options(db).is_empty()
-                    && pending.can_cancel(db)
-                {
+                if result == SelectionResult::PendingChoice && pending.options(db).is_empty() {
                     debug!("Cancelling pending");
-                    ResolutionResult::Complete
+                    SelectionResult::Complete
                 } else {
                     result
                 }
@@ -71,7 +68,7 @@ impl AI {
                 pending.resolve(db, Some(0))
             };
 
-            if result == ResolutionResult::Complete {
+            if result == SelectionResult::Complete {
                 break;
             }
         }
@@ -93,7 +90,7 @@ impl AI {
         } else if db.turn.priority_player() == self.player {
             return self.priority(db, pending);
         } else {
-            PendingResults::default()
+            PendingEffects::default()
         }
     }
 }

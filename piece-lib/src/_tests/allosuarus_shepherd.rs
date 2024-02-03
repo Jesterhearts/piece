@@ -2,9 +2,16 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, protogen::types::Subtype, stack::Stack,
-    turns::Phase, types::SubtypeSet,
+    battlefield::Battlefields,
+    effects::{PendingEffects, SelectionResult},
+    in_play::Database,
+    in_play::{CardId, CastFrom},
+    load_cards,
+    player::AllPlayers,
+    protogen::types::Subtype,
+    stack::Stack,
+    turns::Phase,
+    types::SubtypeSet,
 };
 
 #[test]
@@ -30,26 +37,25 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    card.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
-
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     // end pay costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(card.power(&db), Some(5));
     assert_eq!(card.toughness(&db), Some(5));
@@ -60,7 +66,7 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
 
     let mut results = Battlefields::end_turn(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(card.power(&db), Some(1));
     assert_eq!(card.toughness(&db), Some(1));
@@ -96,25 +102,26 @@ fn does_not_resolve_counterspells_respecting_uncounterable() -> anyhow::Result<(
     let card = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(card.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-    let targets = vec![vec![db.stack.target_nth(0)]];
-    let mut results = counterspell.move_to_stack(&mut db, targets, None, vec![]);
+    assert_eq!(result, SelectionResult::Complete);
+    let targets = vec![db.stack.target_nth(0)];
+    results.apply_results(counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 1);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.battlefield
@@ -151,31 +158,32 @@ fn does_not_resolve_counterspells_respecting_green_uncounterable() -> anyhow::Re
     let mut db = Database::new(all_players);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
+    card1.move_to_battlefield(&mut db);
+
     let card2 = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card1, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(card2.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-    let mut results = card2.move_to_stack(&mut db, vec![], None, vec![]);
+    assert_eq!(result, SelectionResult::Complete);
+
+    let targets = vec![db.stack.target_nth(0)];
+    results.apply_results(counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-    let targets = vec![vec![db.stack.target_nth(0)]];
-    let mut results = counterspell.move_to_stack(&mut db, targets, None, vec![]);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 1);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.battlefield
@@ -213,25 +221,26 @@ fn resolves_counterspells_respecting_green_uncounterable_other_player() -> anyho
     let mut db = Database::new(all_players);
 
     let card1 = CardId::upload(&mut db, &cards, player, "Allosaurus Shepherd");
+    card1.move_to_battlefield(&mut db);
+
     let card2 = CardId::upload(&mut db, &cards, player2, "Alpine Grizzly");
     let counterspell = CardId::upload(&mut db, &cards, player, "Counterspell");
 
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card1, None);
+    let mut results = PendingEffects::default();
+    results.apply_results(card2.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-    let mut results = card2.move_to_stack(&mut db, vec![], None, vec![]);
+    assert_eq!(result, SelectionResult::Complete);
+
+    let targets = vec![db.stack.target_nth(0)];
+    results.apply_results(counterspell.move_to_stack(&mut db, targets, CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-    let targets = vec![vec![db.stack.target_nth(0)]];
-    let mut results = counterspell.move_to_stack(&mut db, targets, None, vec![]);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.stack.entries.len(), 2);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert!(db.stack.is_empty());
     assert_eq!(

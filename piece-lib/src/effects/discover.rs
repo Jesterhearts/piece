@@ -1,72 +1,75 @@
-use itertools::Itertools;
-
 use crate::{
-    action_result::{self, ActionResult},
-    effects::EffectBehaviors,
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    in_play::{CardId, Database, ExileReason},
     protogen::{
-        cost::XIs,
-        effects::{discover::Count, Discover},
+        effects::{
+            ChooseCast, ClearSelected, Discover, Duration, MoveToBottomOfLibrary, PopSelected,
+            PushSelected, SelectExiledWithCascadeOrDiscover, ShuffleSelected,
+        },
+        targets::Location,
     },
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for Discover {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let discover_value = self.count.count(db, source, selected);
+        let source = source.unwrap();
+        let owner = db[source].owner;
 
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
+        let mut casting = vec![];
+        while let Some(card) = db.all_players[owner].library.draw() {
+            card.move_to_exile(
+                db,
+                source,
+                Some(ExileReason::CascadeOrDiscover),
+                Duration::PERMANENTLY,
+            );
 
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::discover::Discover {
-            source,
-            count: match self.count.as_ref().unwrap() {
-                Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
-                    XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
-                    XIs::MANA_VALUE_OF_TARGET => unreachable!(),
-                },
-                Count::Fixed(fixed) => fixed.count,
-            },
-            player: controller,
-        }))
-    }
+            if !card.is_land(db) && card.faceup_face(db).cost.cmc() < discover_value as usize {
+                casting.push(Selected {
+                    location: Some(Location::IN_EXILE),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                });
+                break;
+            }
+        }
 
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::discover::Discover {
-            source,
-            count: match self.count.as_ref().unwrap() {
-                Count::X(x_is) => match x_is.x_is.enum_value().unwrap() {
-                    XIs::MANA_VALUE => db[source].modified_cost.cmc() as u32,
-                    XIs::MANA_VALUE_OF_TARGET => {
-                        let card = &db[targets.into_iter().exactly_one().unwrap().id(db).unwrap()];
-                        (card.modified_cost.cmc() + card.x_is) as u32
-                    }
-                },
-                Count::Fixed(fixed) => fixed.count,
-            },
-            player: controller,
-        }))
+        let mut results = vec![ApplyResult::PushFront(EffectBundle {
+            effects: vec![
+                PushSelected::default().into(),
+                ClearSelected::default().into(),
+                SelectExiledWithCascadeOrDiscover::default().into(),
+                ShuffleSelected::default().into(),
+                MoveToBottomOfLibrary::default().into(),
+                PopSelected::default().into(),
+            ],
+            source: Some(source),
+            ..Default::default()
+        })];
+
+        results.push(ApplyResult::PushBack(EffectBundle {
+            push_on_enter: Some(casting),
+            effects: vec![
+                ChooseCast {
+                    discovering: true,
+                    ..Default::default()
+                }
+                .into(),
+                PopSelected::default().into(),
+            ],
+            source: Some(source),
+            ..Default::default()
+        }));
+
+        results
     }
 }

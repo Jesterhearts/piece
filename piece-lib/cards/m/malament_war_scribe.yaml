@@ -2,18 +2,21 @@ name: Malamet War Scribe
 typeline: Creature - Cat Warrior
 cost:
   mana_cost: '{3}{W}{W}'
-etb_abilities:
-  - oracle_text: When Malamet War Scribe enters the battlefield, creatures you control
-      get +2/+1 until end of turn.
-    effect: !BattlefieldModifier
-      modifier:
-        add_power: 2
-        add_toughness: 1
-      duration: until end of turn
-      restrictions:
-        - restriction: !Controller
-            controller: !Self_ {}
-        - restriction: !OfType
-            types: Creature
+etb_ability:
+  oracle_text: When Malamet War Scribe enters the battlefield, creatures you control
+    get +2/+1 until end of turn.
+  effects:
+    - effect: !ApplyModifier
+        modifier:
+          modifier:
+            add_power: 2
+            add_toughness: 1
+            entire_battlefield: true
+          duration: until end of turn
+          restrictions:
+            - restriction: !Controller
+                controller: !Self_ {}
+            - restriction: !OfType
+                types: Creature
 power: 4
 toughness: 3

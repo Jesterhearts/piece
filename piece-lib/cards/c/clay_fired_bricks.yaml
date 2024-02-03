@@ -2,37 +2,45 @@ name: Clay-Fired Bricks
 typeline: Artifact
 cost:
   mana_cost: '{1}{W}'
-etb_abilities:
-  - oracle_text: When Clay-Fired bricks enters the battlefield, search your library
-      for a basic plains card reveal it, put it into your hand, then shuffle
-    effect: !TutorLibrary
-      restrictions:
-        - restriction: !OfType
-            types: Basic
-            subtypes: Plains
-      destination:
-        destination: !Hand {}
-      reveal: true
-  - oracle_text: You gain 2 life.
-    effect: !GainLife
-      count: 2
-activated_abilities:
-  - cost:
-      mana_cost: '{5}{W}{W}'
-      additional_costs:
-        - cost: !ExileCard
-            restrictions:
+etb_ability:
+  oracle_text: When Clay-Fired bricks enters the battlefield, search your library
+    for a basic plains card reveal it, put it into your hand, then shuffle. You gain
+    2 life.
+  effects:
+    - effect: !SelectEffectController {}
+    - effect: !TutorLibrary
+        targets:
+          - restrictions:
               - restriction: !OfType
-                  types: Artifact
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+                  types: Basic
+                  subtypes: Plains
+            destination: !MoveToHand {}
+        reveal: true
+    - effect: !GainLife
+        count:
+          count: !Fixed
+            count: 2
+activated_abilities:
+  - oracle_text: Craft with artifact {5}{W}{W}
+    cost:
+      mana_cost: '{5}{W}{W}'
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                restrictions:
+                  - restriction: !OfType
+                      types: Artifact
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+                minimum: 1
+                maximum: 1
+      - effect: !SelectSource
+      - effect: !MoveToExile
     effects:
-      - effect: !ReturnTransformed {}
-    oracle_text: Craft with artifact {5}{W}{W}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     sorcery_speed: true
     craft: true
 back_face:
@@ -40,21 +48,22 @@ back_face:
   typeline: Artifact
   colors: White
   oracle_text: Creatures you control get +1/+1
-  etb_abilities:
-    - effect: !CreateToken
-        token: !Creature
-          name: Gnome
-          typeline: Artifact Creature - Gnome
-          power: 1
-          toughness: 1
-    - oracle_text: When Cosmium Kiln enters the battlefield, create two 1/1 colorless
-        Gnome artifact creature tokens.
-      effect: !CreateToken
-        token: !Creature
-          name: Gnome
-          typeline: Artifact Creature - Gnome
-          power: 1
-          toughness: 1
+  etb_ability:
+    oracle_text: When Cosmium Kiln enters the battlefield, create two 1/1 colorless
+      Gnome artifact creature tokens.
+    effects:
+      - effect: !CreateToken
+          token: !Creature
+            name: Gnome
+            typeline: Artifact Creature - Gnome
+            power: 1
+            toughness: 1
+      - effect: !CreateToken
+          token: !Creature
+            name: Gnome
+            typeline: Artifact Creature - Gnome
+            power: 1
+            toughness: 1
   static_abilities:
     - ability: !BattlefieldModifier
         modifier:

@@ -6,11 +6,12 @@ triggered_abilities:
   - trigger:
       source: creature explores
     effects:
-      - effect: !BattlefieldModifier
-          apply_to_self: true
+      - effect: !SelectSource {}
+      - effect: !ApplyModifier
           modifier:
-            add_power: 1
-            unblockable: true
-          duration: until end of turn
+            modifier:
+              add_power: 1
+              unblockable: true
+            duration: until end of turn
 power: 2
 toughness: 4

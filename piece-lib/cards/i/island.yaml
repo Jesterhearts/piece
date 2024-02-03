@@ -3,7 +3,8 @@ typeline: Basic Land - Island
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{U}'
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{U}'
     oracle_text: '{T}: Add {U}.'

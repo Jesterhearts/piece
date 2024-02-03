@@ -5,6 +5,14 @@ cost:
 oracle_text: |
   Enchant artifact or creature
   Enchanted permanent can't attack or block, and its activated abilities can't be activated.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Artifact, Creature
 enchant:
   modifiers:
     - modifier:
@@ -13,6 +21,3 @@ enchant:
           - ability: !PreventBlocks {}
           - ability: !PreventAbilityActivation {}
       duration: until source leaves battlefield
-restrictions:
-  - restriction: !OfType
-      types: Artifact, Creature

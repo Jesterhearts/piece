@@ -6,32 +6,35 @@ oracle_text: The Enigma Jewel enters the battlefield tapped.
 activated_abilities:
   - cost:
       mana_cost: '{8}{U}'
-      additional_costs:
-        - cost: !ExileXOrMoreCards
-            minimum: 4
-            restrictions:
-              - restriction: !NotOfType
-                  types: Land
-              - restriction: !HasActivatedAbility {}
-              - restriction: !Location
-                  locations: On Battlefield, In Graveyard
-              - restriction: !NotSelf {}
-        - cost: !ExileCard
-            restrictions:
-              - restriction: !Self_ {}
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !ExilePermanents
+                minimum: 4
+                restrictions:
+                  - restriction: !NotOfType
+                      types: Land
+                  - restriction: !HasActivatedAbility {}
+                  - restriction: !Location
+                      locations: On Battlefield, In Graveyard
+                  - restriction: !NotSelf {}
+      - effect: !SelectSource {}
+      - effect: !MoveToExile {}
     effects:
-      - effect: !ReturnTransformed {}
+      - effect: !Transform {}
+      - effect: !MoveToBattlefield {}
     oracle_text: Craft with four or more nonlands with activated abilities {8}{U}
     sorcery_speed: true
     craft: true
 mana_abilities:
   - cost:
       tap: true
-    gain_mana:
-      gain: !Specific
-        gain: '{C}{C}'
-    mana_source: any
-    mana_restriction: activate ability
+    effects:
+      - effect: !GainMana
+          gain: !Specific
+            gain: '{C}{C}'
+          mana_source: any
+          mana_restriction: activate ability
     oracle_text: '{T}: Add {C}{C}. Spend this mana only to activate abilities.'
 etb_tapped: true
 back_face:
@@ -47,8 +50,9 @@ back_face:
         source: ability activated
         from: anywhere
       effects:
-        - oracle_text: Whenever you activate an ability that isn't a mana ability,
-            copy it. You may choose new targets for the copy.
-          effect: !CopySpellOrAbility
+        - effect: !SelectAll
             restrictions:
               - restriction: !SpellOrAbilityJustCast {}
+        - oracle_text: Whenever you activate an ability that isn't a mana ability,
+            copy it. You may choose new targets for the copy.
+          effect: !CopySpellOrAbility {}

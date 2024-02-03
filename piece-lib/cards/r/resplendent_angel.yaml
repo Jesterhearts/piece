@@ -6,17 +6,14 @@ activated_abilities:
   - cost:
       mana_cost: '{3}{W}{W}{W}'
     effects:
-      - effect: !BattlefieldModifier
-          apply_to_self: true
+      - effect: !SelectSource {}
+      - effect: !ApplyModifier
           modifier:
-            add_power: 2
-            add_toughness: 2
-            add_keywords: Lifelink
-          duration: until end of turn
-          restrictions:
-            - restriction: !Controller
-                controller: !Self_ {}
-            - restriction: !Self_ {}
+            modifier:
+              add_power: 2
+              add_toughness: 2
+              add_keywords: Lifelink
+            duration: until end of turn
     oracle_text: '{3}{W}{W}{W}: Until end of turn, Resplendent Angel gets +2/+2 and
       gains lifelink.'
 triggered_abilities:
@@ -27,6 +24,7 @@ triggered_abilities:
         - restriction: !LifeGainedThisTurn
             count: 5
     effects:
+      - effect: !SelectEffectController {}
       - effect: !CreateToken
           token: !Creature
             name: Angel

@@ -6,18 +6,38 @@ oracle_text: |
   When Oltec Archaeologists enters the battlefield, choose one -
   - Return target artifact card from your graveyard to your hand.
   - Scry 3.
-etb_abilities:
-  - effect: !Modal
+etb_ability:
+  modes:
+    descriptions:
+      - Return target artifact card from your graveyard to your hand.
+      - Scry 3.
+  targets:
+    selector: !Modal
       modes:
         - effects:
-            - effect: !ReturnFromGraveyardToHand
+            - effect: !SelectTargets
+                count:
+                  count: !Fixed
+                    count: 1
                 restrictions:
+                  - restriction: !Location
+                      locations: In Graveyard
                   - restriction: !Controller
                       controller: !Self_ {}
                   - restriction: !OfType
                       types: Artifact
         - effects:
-            - effect: !Scry
-                count: 3
+            - effect: !SelectEffectController {}
+  effects:
+    - effect: !Modal
+        modes:
+          - effects:
+              - effect: !MoveToHand {}
+          - effects:
+              - effect: !SelectTopOfLibrary
+                  count:
+                    count: !Fixed
+                      count: 3
+              - effect: !Scry {}
 power: 4
 toughness: 4

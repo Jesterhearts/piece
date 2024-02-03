@@ -3,20 +3,49 @@ typeline: Instant
 cost:
   mana_cost: '{2}{U}'
 modes:
-  - effects:
-      - oracle_text: Look at the top four cards of your library. Put one of them into
-          your hand and the rest into your graveyard.
-        effect: !ExamineTopCards
-          count: 4
-          destinations:
-            - destination:
-                destination: !Hand {}
-              count: 1
-            - destination:
-                destination: !Graveyard {}
-              count: 3
-  - effects:
-      - oracle_text: Counter target spell unless its controller pays {4}.
-        effect: !CounterSpellUnlessPay
-          cost: !Fixed
-            count: 4
+  descriptions:
+    - Look at the top four cards of your library. Put one of them into your hand and
+      the rest into your graveyard.
+    - Counter target spell unless its controller pays {4}.
+targets:
+  selector: !Modal
+    modes:
+      - effects:
+          - effect: !Nothing {}
+      - effects:
+          - effect: !SelectTargets
+              count:
+                count: !Fixed
+                  count: 1
+              restrictions:
+                - restriction: !Location
+                    locations: In Stack
+effects:
+  - effect: !Modal
+      modes:
+        - effects:
+            - oracle_text: Look at the top four cards of your library. Put one of
+                them into your hand and the rest into your graveyard.
+              effect: !SelectEffectController {}
+            - effect: !SelectTopOfLibrary
+                count:
+                  count: !Fixed
+                    count: 4
+            - effect: !SelectDestinations
+                destinations:
+                  - destination: !MoveToHand {}
+                    count: 1
+                  - destination: !MoveToGraveyard {}
+                    count: 3
+        - effects:
+            - oracle_text: Counter target spell unless its controller pays {4}.
+              effect: !PushSelected {}
+            - effect: !SelectTargetController {}
+            - effect: !PayCosts
+                or_else:
+                  effects:
+                    - effect: !PopSelected {}
+                    - effect: !CounterSpell {}
+                pay_costs:
+                  - cost: !PayMana
+                      paying: '{4}'

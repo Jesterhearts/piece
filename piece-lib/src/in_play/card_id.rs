@@ -11,30 +11,29 @@ use uuid::Uuid;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    card::{BasePowerType, BaseToughnessType},
-    effects::EffectBehaviors,
+    effects::ApplyResult,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId,
     },
     log::{LeaveReason, Log, LogEntry, LogId},
-    pending_results::PendingResults,
     player::{Controller, Owner},
     protogen::{
-        abilities::TriggeredAbility,
+        self,
         card::Card,
         color::Color,
         cost::CastingCost,
         counters::Counter,
         effects::{
+            count::{self, Fixed},
             create_token::Token,
-            dynamic_power_toughness,
             replacement_effect::Replacing,
             static_ability::{
                 self, AddKeywordsIf, AllAbilitiesOfExiledWith, GreenCannotBeCountered,
             },
-            Duration, DynamicPowerToughness, Effect, ReplacementEffect,
+            Count, Duration, EtbAbility, ReplacementEffect, TriggeredAbility,
         },
+        ids::UUID,
         keywords::Keyword,
         mana::ManaSource,
         targets::{
@@ -49,7 +48,7 @@ use crate::{
         triggers::TriggerSource,
         types::{Subtype, Type},
     },
-    stack::{ActiveTarget, Stack},
+    stack::{Selected, Stack},
     types::{SubtypeSet, TypeSet},
     Cards,
 };
@@ -63,11 +62,50 @@ impl std::fmt::Display for CardId {
     }
 }
 
+impl From<CardId> for protogen::ids::CardId {
+    fn from(value: CardId) -> Self {
+        let (hi, lo) = value.0.as_u64_pair();
+        Self {
+            id: protobuf::MessageField::some(UUID {
+                hi,
+                lo,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<protogen::ids::CardId> for CardId {
+    fn from(value: protogen::ids::CardId) -> Self {
+        let hi = value.id.hi;
+        let lo = value.id.lo;
+        Self(Uuid::from_u64_pair(hi, lo))
+    }
+}
+
+impl PartialEq<protogen::ids::CardId> for CardId {
+    fn eq(&self, other: &protogen::ids::CardId) -> bool {
+        let (hi, lo) = self.0.as_u64_pair();
+        hi == other.id.hi && lo == other.id.lo
+    }
+}
+
+impl PartialEq<CardId> for protogen::ids::CardId {
+    fn eq(&self, other: &CardId) -> bool {
+        let (hi, lo) = other.0.as_u64_pair();
+        self.id.hi == hi && self.id.lo == lo
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct CardInPlay {
     pub card: Card,
     pub cloning: Option<Card>,
     pub(crate) cloned_id: Option<CardId>,
+
+    pub(crate) object_id: usize,
+    pub(crate) location: Option<Location>,
 
     pub(crate) static_abilities: HashSet<StaticAbilityId>,
     pub(crate) activated_abilities: IndexSet<ActivatedAbilityId>,
@@ -103,8 +141,8 @@ pub struct CardInPlay {
 
     pub modified_name: String,
     pub modified_cost: CastingCost,
-    pub(crate) modified_base_power: Option<BasePowerType>,
-    pub(crate) modified_base_toughness: Option<BaseToughnessType>,
+    pub(crate) modified_base_power: Option<Count>,
+    pub(crate) modified_base_toughness: Option<Count>,
     pub(crate) add_power: i32,
     pub(crate) add_toughness: i32,
     pub modified_types: TypeSet,
@@ -113,7 +151,7 @@ pub struct CardInPlay {
     pub modified_keywords: HashMap<i32, u32>,
     pub(crate) modified_replacement_abilities: HashMap<Replacing, Vec<ReplacementEffect>>,
     pub modified_triggers: HashMap<TriggerSource, Vec<TriggeredAbility>>,
-    pub modified_etb_abilities: Vec<Effect>,
+    pub modified_etb_ability: protobuf::MessageField<EtbAbility>,
     pub(crate) modified_static_abilities: HashSet<StaticAbilityId>,
     pub(crate) modified_activated_abilities: IndexSet<ActivatedAbilityId>,
     pub(crate) modified_mana_abilities: IndexSet<GainManaAbilityId>,
@@ -121,11 +159,13 @@ pub struct CardInPlay {
 
     pub(crate) marked_damage: i32,
 
-    pub(crate) counters: HashMap<Counter, usize>,
+    pub(crate) counters: HashMap<Counter, u32>,
 }
 
 impl CardInPlay {
     fn reset(&mut self, preserve_exiled: bool) {
+        let object_id = self.object_id;
+
         let mut card = Card::default();
         std::mem::swap(&mut card, &mut self.card);
 
@@ -146,6 +186,7 @@ impl CardInPlay {
         let owner = self.owner;
         *self = Self {
             card,
+            object_id,
             owner,
             static_abilities,
             activated_abilities,
@@ -247,14 +288,7 @@ impl CardId {
     }
 
     pub fn is_in_location(self, db: &Database, location: Location) -> bool {
-        match location {
-            Location::ON_BATTLEFIELD => db.battlefield[db[self].controller].contains(&self),
-            Location::IN_GRAVEYARD => db.graveyard[db[self].owner].contains(&self),
-            Location::IN_EXILE => db.exile[db[self].owner].contains(&self),
-            Location::IN_LIBRARY => db.all_players[db[self].owner].library.cards.contains(&self),
-            Location::IN_HAND => db.hand[db[self].owner].contains(&self),
-            Location::IN_STACK => db.stack.contains(self),
-        }
+        db[self].location == Some(location)
     }
 
     pub(crate) fn transform(self, db: &mut Database) {
@@ -328,6 +362,8 @@ impl CardId {
     }
 
     pub fn move_to_hand(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::ReturnedToHand, self);
         }
@@ -338,6 +374,7 @@ impl CardId {
             self.remove_all_modifiers(db);
 
             db[self].reset(false);
+            db[self].location = Some(Location::IN_HAND);
             db.stack.remove(self);
 
             let view = db.owner_view_mut(db[self].owner);
@@ -366,23 +403,26 @@ impl CardId {
     pub(crate) fn move_to_stack(
         self,
         db: &mut Database,
-        targets: Vec<Vec<ActiveTarget>>,
-        from: Option<CastFrom>,
+        targets: Vec<Selected>,
+        from: CastFrom,
         chosen_modes: Vec<usize>,
-    ) -> PendingResults {
+    ) -> Vec<ApplyResult> {
         if db.stack.split_second(db) {
             warn!("Skipping add to stack (split second)");
-            return PendingResults::default();
+            return vec![];
         }
+
+        db[self].object_id = db[self].object_id.wrapping_add(1);
 
         if db[self].token {
             self.move_to_limbo(db);
-            PendingResults::default()
+            vec![]
         } else {
             self.remove_all_modifiers(db);
 
+            db[self].location = Some(Location::IN_STACK);
             db[self].replacements_active = false;
-            db[self].cast_from = from;
+            db[self].cast_from = Some(from);
 
             let view = db.owner_view_mut(db[self].owner);
             view.battlefield.shift_remove(&self);
@@ -396,6 +436,9 @@ impl CardId {
     }
 
     pub(crate) fn move_to_battlefield(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+        db[self].location = Some(Location::ON_BATTLEFIELD);
+
         db.stack.remove(self);
 
         let view = db.owner_view_mut(db[self].controller.into());
@@ -422,6 +465,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_graveyard(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::PutIntoGraveyard, self);
         } else if self.is_in_location(db, Location::IN_HAND) {
@@ -434,6 +479,7 @@ impl CardId {
             self.remove_all_modifiers(db);
 
             db[self].reset(false);
+            db[self].location = Some(Location::IN_GRAVEYARD);
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.exile.shift_remove(&self);
@@ -463,6 +509,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_library(self, db: &mut Database) -> bool {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::ReturnedToLibrary, self);
         }
@@ -474,6 +522,7 @@ impl CardId {
             self.remove_all_modifiers(db);
 
             db[self].reset(false);
+            db[self].location = Some(Location::IN_LIBRARY);
             db.stack.remove(self);
             let view = db.owner_view_mut(db[self].owner);
             view.exile.shift_remove(&self);
@@ -504,6 +553,8 @@ impl CardId {
         reason: Option<ExileReason>,
         duration: Duration,
     ) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         if self.is_in_location(db, Location::ON_BATTLEFIELD) {
             Log::left_battlefield(db, LeaveReason::Exiled, self);
         }
@@ -516,6 +567,7 @@ impl CardId {
             db[source].exiling.insert(self);
 
             db[self].reset(matches!(reason, Some(ExileReason::Craft)));
+            db[self].location = Some(Location::IN_EXILE);
 
             db[self].exile_reason = reason;
             db[self].exile_duration = Some(duration);
@@ -545,6 +597,8 @@ impl CardId {
     }
 
     pub(crate) fn move_to_limbo(self, db: &mut Database) {
+        db[self].object_id = db[self].object_id.wrapping_add(1);
+
         self.remove_all_modifiers(db);
 
         db[self].reset(false);
@@ -622,19 +676,55 @@ impl CardId {
         };
 
         let mut base_power = if facedown {
-            Some(BasePowerType::Static(2))
+            Some(Count {
+                count: Some(
+                    Fixed {
+                        count: 2,
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            })
         } else if let Some(dynamic) = source.dynamic_power_toughness.as_ref() {
-            Some(BasePowerType::Dynamic(dynamic.clone()))
+            Some(dynamic.clone())
         } else {
-            source.power.map(BasePowerType::Static)
+            source.power.map(|power| Count {
+                count: Some(
+                    Fixed {
+                        count: power,
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            })
         };
 
         let mut base_toughness = if facedown {
-            Some(BaseToughnessType::Static(2))
+            Some(Count {
+                count: Some(
+                    Fixed {
+                        count: 2,
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            })
         } else if let Some(dynamic) = source.dynamic_power_toughness.as_ref() {
-            Some(BaseToughnessType::Dynamic(dynamic.clone()))
+            Some(dynamic.clone())
         } else {
-            source.toughness.map(BaseToughnessType::Static)
+            source.toughness.map(|toughness| Count {
+                count: Some(
+                    Fixed {
+                        count: toughness,
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                ..Default::default()
+            })
         };
 
         let mut types = if facedown {
@@ -679,10 +769,10 @@ impl CardId {
             triggers
         };
 
-        let mut etb_abilities = if facedown {
-            vec![]
+        let mut etb_ability = if facedown {
+            protobuf::MessageField::none()
         } else {
-            source.etb_abilities.clone()
+            source.etb_ability.clone()
         };
 
         let mut static_abilities = if facedown {
@@ -724,11 +814,10 @@ impl CardId {
         for id in modifiers.iter().copied() {
             let modifier = &db[id];
             if !applied_modifiers.contains(&id) {
-                let power = base_power.as_ref().map(|base| match base {
-                    BasePowerType::Static(value) => *value,
-                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                let power = base_power.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
                         db,
-                        dynamic,
+                        base,
                         modifier.source,
                         db[self].controller,
                         &types,
@@ -736,23 +825,20 @@ impl CardId {
                         &keywords,
                         &colors,
                         &activated_abilities,
-                    ) as i32,
+                    )
                 });
-                let toughness = base_toughness.as_ref().map(|base| match base {
-                    BaseToughnessType::Static(value) => *value,
-                    BaseToughnessType::Dynamic(dynamic) => {
-                        self.dynamic_power_toughness_given_types(
-                            db,
-                            dynamic,
-                            modifier.source,
-                            db[self].controller,
-                            &types,
-                            &subtypes,
-                            &keywords,
-                            &colors,
-                            &activated_abilities,
-                        ) as i32
-                    }
+                let toughness = base_toughness.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
+                        db,
+                        base,
+                        modifier.source,
+                        db[self].controller,
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
+                        &activated_abilities,
+                    )
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
@@ -837,11 +923,10 @@ impl CardId {
         for id in modifiers.iter().copied() {
             let modifier = &db[id];
             if !applied_modifiers.contains(&id) {
-                let power = base_power.as_ref().map(|base| match base {
-                    BasePowerType::Static(value) => *value,
-                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                let power = base_power.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
                         db,
-                        dynamic,
+                        base,
                         modifier.source,
                         db[self].controller,
                         &types,
@@ -849,23 +934,20 @@ impl CardId {
                         &keywords,
                         &colors,
                         &activated_abilities,
-                    ) as i32,
+                    )
                 });
-                let toughness = base_toughness.as_ref().map(|base| match base {
-                    BaseToughnessType::Static(value) => *value,
-                    BaseToughnessType::Dynamic(dynamic) => {
-                        self.dynamic_power_toughness_given_types(
-                            db,
-                            dynamic,
-                            modifier.source,
-                            db[self].controller,
-                            &types,
-                            &subtypes,
-                            &keywords,
-                            &colors,
-                            &activated_abilities,
-                        ) as i32
-                    }
+                let toughness = base_toughness.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
+                        db,
+                        base,
+                        modifier.source,
+                        db[self].controller,
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
+                        &activated_abilities,
+                    )
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
@@ -916,36 +998,31 @@ impl CardId {
                     ..
                 }) = &db[*sa].ability
                 {
-                    let power = base_power.as_ref().map(|base| match base {
-                        BasePowerType::Static(value) => *value,
-                        BasePowerType::Dynamic(dynamic) => {
-                            self.dynamic_power_toughness_given_types(
-                                db,
-                                dynamic,
-                                self,
-                                db[self].controller,
-                                &types,
-                                &subtypes,
-                                &keywords,
-                                &colors,
-                                &activated_abilities,
-                            ) as i32
-                        }
+                    let power = base_power.as_ref().map(|base| {
+                        self.dynamic_power_toughness_given_types(
+                            db,
+                            base,
+                            self,
+                            db[self].controller,
+                            &types,
+                            &subtypes,
+                            &keywords,
+                            &colors,
+                            &activated_abilities,
+                        )
                     });
-                    let toughness = base_toughness.as_ref().map(|base| match base {
-                        BaseToughnessType::Static(value) => *value,
-                        BaseToughnessType::Dynamic(dynamic) => self
-                            .dynamic_power_toughness_given_types(
-                                db,
-                                dynamic,
-                                self,
-                                db[self].controller,
-                                &types,
-                                &subtypes,
-                                &keywords,
-                                &colors,
-                                &activated_abilities,
-                            ) as i32,
+                    let toughness = base_toughness.as_ref().map(|base| {
+                        self.dynamic_power_toughness_given_types(
+                            db,
+                            base,
+                            self,
+                            db[self].controller,
+                            &types,
+                            &subtypes,
+                            &keywords,
+                            &colors,
+                            &activated_abilities,
+                        )
                     });
                     if self.passes_restrictions_given_attributes(
                         db,
@@ -1014,11 +1091,10 @@ impl CardId {
         for id in modifiers.iter().copied() {
             let modifier = &db[id];
             if !applied_modifiers.contains(&id) {
-                let power = base_power.as_ref().map(|base| match base {
-                    BasePowerType::Static(value) => *value,
-                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                let power = base_power.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
                         db,
-                        dynamic,
+                        base,
                         modifier.source,
                         db[self].controller,
                         &types,
@@ -1026,23 +1102,20 @@ impl CardId {
                         &keywords,
                         &colors,
                         &activated_abilities,
-                    ) as i32,
+                    )
                 });
-                let toughness = base_toughness.as_ref().map(|base| match base {
-                    BaseToughnessType::Static(value) => *value,
-                    BaseToughnessType::Dynamic(dynamic) => {
-                        self.dynamic_power_toughness_given_types(
-                            db,
-                            dynamic,
-                            modifier.source,
-                            db[self].controller,
-                            &types,
-                            &subtypes,
-                            &keywords,
-                            &colors,
-                            &activated_abilities,
-                        ) as i32
-                    }
+                let toughness = base_toughness.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
+                        db,
+                        base,
+                        modifier.source,
+                        db[self].controller,
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
+                        &activated_abilities,
+                    )
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
@@ -1071,7 +1144,7 @@ impl CardId {
                 applied_modifiers.insert(id);
 
                 triggers.clear();
-                etb_abilities.clear();
+                etb_ability.clear();
                 static_abilities.clear();
                 activated_abilities.clear();
                 mana_abilities.clear();
@@ -1116,11 +1189,10 @@ impl CardId {
         for id in modifiers.iter().copied() {
             let modifier = &db[id];
             if !applied_modifiers.contains(&id) {
-                let power = base_power.as_ref().map(|base| match base {
-                    BasePowerType::Static(value) => *value,
-                    BasePowerType::Dynamic(dynamic) => self.dynamic_power_toughness_given_types(
+                let power = base_power.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
                         db,
-                        dynamic,
+                        base,
                         modifier.source,
                         db[self].controller,
                         &types,
@@ -1128,23 +1200,20 @@ impl CardId {
                         &keywords,
                         &colors,
                         &activated_abilities,
-                    ) as i32,
+                    )
                 });
-                let toughness = base_toughness.as_ref().map(|base| match base {
-                    BaseToughnessType::Static(value) => *value,
-                    BaseToughnessType::Dynamic(dynamic) => {
-                        self.dynamic_power_toughness_given_types(
-                            db,
-                            dynamic,
-                            modifier.source,
-                            db[self].controller,
-                            &types,
-                            &subtypes,
-                            &keywords,
-                            &colors,
-                            &activated_abilities,
-                        ) as i32
-                    }
+                let toughness = base_toughness.as_ref().map(|base| {
+                    self.dynamic_power_toughness_given_types(
+                        db,
+                        base,
+                        modifier.source,
+                        db[self].controller,
+                        &types,
+                        &subtypes,
+                        &keywords,
+                        &colors,
+                        &activated_abilities,
+                    )
                 });
                 if !self.passes_restrictions_given_attributes(
                     db,
@@ -1167,13 +1236,31 @@ impl CardId {
             if let Some(base) = modifier.modifier.modifier.base_power {
                 applied_modifiers.insert(id);
 
-                base_power = Some(BasePowerType::Static(base));
+                base_power = Some(Count {
+                    count: Some(
+                        Fixed {
+                            count: base,
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                    ..Default::default()
+                });
             }
 
             if let Some(base) = modifier.modifier.modifier.base_toughness {
                 applied_modifiers.insert(id);
 
-                base_toughness = Some(BaseToughnessType::Static(base));
+                base_toughness = Some(Count {
+                    count: Some(
+                        Fixed {
+                            count: base,
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                    ..Default::default()
+                });
             }
 
             if let Some(add) = modifier.modifier.modifier.add_power {
@@ -1204,7 +1291,7 @@ impl CardId {
                     &keywords,
                     &colors,
                     &activated_abilities,
-                ) as i32;
+                );
 
                 add_power += to_add;
                 add_toughness += to_add;
@@ -1232,7 +1319,7 @@ impl CardId {
         db[self].modified_subtypes = subtypes;
         db[self].modified_triggers = triggers;
         db[self].modified_keywords = keywords;
-        db[self].modified_etb_abilities = etb_abilities;
+        db[self].modified_etb_ability = etb_ability;
         db[self].modified_mana_abilities = mana_abilities;
         db[self].modified_activated_abilities = activated_abilities;
         db[self].modified_replacement_abilities = replacement_abilities;
@@ -1303,7 +1390,7 @@ impl CardId {
     fn dynamic_power_toughness_given_types(
         self,
         db: &Database,
-        dynamic: &DynamicPowerToughness,
+        dynamic: &Count,
         source: CardId,
         self_controller: Controller,
         self_types: &TypeSet,
@@ -1311,20 +1398,26 @@ impl CardId {
         self_keywords: &HashMap<i32, u32>,
         self_colors: &HashSet<Color>,
         self_activated_abilities: &IndexSet<ActivatedAbilityId>,
-    ) -> usize {
-        match dynamic.source.as_ref().unwrap() {
-            dynamic_power_toughness::Source::NumberOfCountersOnThis(counter) => {
-                if let Counter::ANY = counter.counter.enum_value().unwrap() {
-                    db[source].counters.values().sum::<usize>()
+    ) -> i32 {
+        match dynamic.count.as_ref().unwrap() {
+            count::Count::Fixed(fixed) => fixed.count,
+            count::Count::LeftBattlefieldThisTurn(left) => Self::left_battlefield_this_turn(db)
+                .filter(|card| {
+                    card.passes_restrictions(db, LogId::current(db), self, &left.restrictions)
+                })
+                .count() as i32,
+            count::Count::NumberOfCountersOnSelected(counter) => {
+                if let Counter::ANY = counter.type_.enum_value().unwrap() {
+                    db[source].counters.values().sum::<u32>() as i32
                 } else {
                     db[source]
                         .counters
-                        .get(&counter.counter.enum_value().unwrap())
+                        .get(&counter.type_.enum_value().unwrap())
                         .copied()
-                        .unwrap_or_default()
+                        .unwrap_or_default() as i32
                 }
             }
-            dynamic_power_toughness::Source::NumberOfPermanentsMatching(matching) => db
+            count::Count::NumberOfPermanentsMatching(matching) => db
                 .battlefield
                 .battlefields
                 .values()
@@ -1345,7 +1438,9 @@ impl CardId {
                         None,
                     )
                 })
-                .count(),
+                .count() as i32,
+            count::Count::XCost(_) => unreachable!(),
+            count::Count::X(_) => unreachable!(),
         }
     }
 
@@ -1357,37 +1452,6 @@ impl CardId {
             .insert(self);
         modifier.activate(&mut db.modifiers);
         self.apply_modifiers_layered(db);
-    }
-
-    pub(crate) fn has_modes(self, db: &mut Database) -> bool {
-        !self.faceup_face(db).modes.is_empty()
-    }
-
-    #[allow(unused)]
-    pub(crate) fn needs_targets(self, db: &mut Database) -> Vec<usize> {
-        let effects = &self.faceup_face(db).effects;
-        let aura_targets = self.faceup_face(db).enchant.as_ref().map(|_| 1);
-        std::iter::once(())
-            .filter_map(|()| aura_targets)
-            .chain(
-                effects
-                    .iter()
-                    .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, self)),
-            )
-            .collect_vec()
-    }
-
-    pub(crate) fn wants_targets(self, db: &mut Database) -> Vec<usize> {
-        let effects = self.faceup_face(db).effects.clone();
-        let aura_targets = self.faceup_face(db).enchant.as_ref().map(|_| 1);
-        std::iter::once(())
-            .filter_map(|()| aura_targets)
-            .chain(
-                effects
-                    .into_iter()
-                    .map(|effect| effect.effect.as_ref().unwrap().wants_targets(db, self)),
-            )
-            .collect_vec()
     }
 
     pub(crate) fn passes_restrictions(
@@ -1446,6 +1510,11 @@ impl CardId {
                 restriction::Restriction::AttackingOrBlocking(_) => {
                     /*TODO blocking */
                     if db[self].attacking.is_none() {
+                        return false;
+                    }
+                }
+                restriction::Restriction::CanBeDamaged(_) => {
+                    if self.toughness(db).is_none() {
                         return false;
                     }
                 }
@@ -1577,6 +1646,9 @@ impl CardId {
                         return false;
                     }
                 }
+                restriction::Restriction::IsPlayer(_) => {
+                    return false;
+                }
                 restriction::Restriction::InGraveyard(_) => {
                     if !self.is_in_location(db, Location::IN_GRAVEYARD) {
                         return false;
@@ -1600,13 +1672,16 @@ impl CardId {
                     }
                 }
                 restriction::Restriction::SpellOrAbilityJustCast(_) => {
-                    if !Log::session(db, log_session).iter().any(|(_, entry)| {
-                        if let LogEntry::Cast { card } = entry {
-                            *card == self
-                        } else {
-                            false
-                        }
-                    }) {
+                    if !Log::session(db, log_session.previous())
+                        .iter()
+                        .any(|(_, entry)| {
+                            if let LogEntry::Cast { card } = entry {
+                                *card == self
+                            } else {
+                                false
+                            }
+                        })
+                    {
                         return false;
                     }
                 }
@@ -1674,7 +1749,7 @@ impl CardId {
                     ..
                 }) => {
                     let count = if let Counter::ANY = counter.enum_value().unwrap() {
-                        db[self].counters.values().sum::<usize>()
+                        db[self].counters.values().sum::<u32>()
                     } else {
                         db[self]
                             .counters
@@ -1758,7 +1833,6 @@ impl CardId {
                         .iter()
                         .flat_map(|stackid| db.stack.entries.get(stackid))
                         .flat_map(|entry| entry.targets.iter())
-                        .flat_map(|t| t.iter())
                         .flat_map(|t| t.id(db))
                         .any(|target| target == source)
                     {
@@ -1822,37 +1896,39 @@ impl CardId {
     }
 
     pub(crate) fn power(self, db: &Database) -> Option<i32> {
-        db[self].modified_base_power.as_ref().map(|power| match power {
-                    BasePowerType::Static(value) => *value,
-                    BasePowerType::Dynamic(dynamic) => {
-                        self.dynamic_power_toughness(db, dynamic) as i32
-                    }
-                } + db[self].add_power)
+        db[self]
+            .modified_base_power
+            .as_ref()
+            .map(|power| self.dynamic_power_toughness(db, power) + db[self].add_power)
     }
 
     pub(crate) fn toughness(self, db: &Database) -> Option<i32> {
-        db[self].modified_base_toughness.as_ref().map(|toughness| match toughness {
-                    BaseToughnessType::Static(value) => *value,
-                    BaseToughnessType::Dynamic(dynamic) => {
-                        self.dynamic_power_toughness(db, dynamic) as i32
-                    }
-                } + db[self].add_toughness)
+        db[self]
+            .modified_base_toughness
+            .as_ref()
+            .map(|toughness| self.dynamic_power_toughness(db, toughness) + db[self].add_toughness)
     }
 
-    fn dynamic_power_toughness(self, db: &Database, dynamic: &DynamicPowerToughness) -> usize {
-        match dynamic.source.as_ref().unwrap() {
-            dynamic_power_toughness::Source::NumberOfCountersOnThis(counter) => {
-                if let Counter::ANY = counter.counter.enum_value().unwrap() {
-                    db[self].counters.values().sum::<usize>()
+    fn dynamic_power_toughness(self, db: &Database, dynamic: &Count) -> i32 {
+        match dynamic.count.as_ref().unwrap() {
+            count::Count::Fixed(fixed) => fixed.count,
+            count::Count::LeftBattlefieldThisTurn(left) => Self::left_battlefield_this_turn(db)
+                .filter(|card| {
+                    card.passes_restrictions(db, LogId::current(db), self, &left.restrictions)
+                })
+                .count() as i32,
+            count::Count::NumberOfCountersOnSelected(counter) => {
+                if let Counter::ANY = counter.type_.enum_value().unwrap() {
+                    db[self].counters.values().sum::<u32>() as i32
                 } else {
                     db[self]
                         .counters
-                        .get(&counter.counter.enum_value().unwrap())
+                        .get(&counter.type_.enum_value().unwrap())
                         .copied()
-                        .unwrap_or_default()
+                        .unwrap_or_default() as i32
                 }
             }
-            dynamic_power_toughness::Source::NumberOfPermanentsMatching(matching) => db
+            count::Count::NumberOfPermanentsMatching(matching) => db
                 .battlefield
                 .battlefields
                 .values()
@@ -1860,7 +1936,8 @@ impl CardId {
                 .filter(|card| {
                     card.passes_restrictions(db, LogId::current(db), self, &matching.restrictions)
                 })
-                .count(),
+                .count() as i32,
+            _ => unreachable!(),
         }
     }
 
@@ -1879,53 +1956,6 @@ impl CardId {
                 .modified_subtypes
                 .iter()
                 .any(|subtype| subtypes.contains(subtype))
-    }
-
-    pub(crate) fn targets_for_ability(
-        self,
-        db: &Database,
-        ability: &Ability,
-        already_chosen: &HashSet<ActiveTarget>,
-    ) -> Vec<Vec<ActiveTarget>> {
-        let mut targets = vec![];
-        let controller = db[self].controller;
-        for effect in ability.effects(db).iter() {
-            targets.push(effect.effect.as_ref().unwrap().valid_targets(
-                db,
-                self,
-                LogId::current(db),
-                controller,
-                already_chosen,
-            ));
-        }
-
-        targets
-    }
-
-    pub(crate) fn targets_for_aura(self, db: &Database) -> Option<Vec<ActiveTarget>> {
-        if self.faceup_face(db).enchant.is_some() {
-            let mut targets = vec![];
-            let controller = db[self].controller;
-            for card in db.battlefield[controller].iter() {
-                if !card.passes_restrictions(
-                    db,
-                    LogId::current(db),
-                    self,
-                    &self.faceup_face(db).restrictions,
-                ) {
-                    continue;
-                }
-
-                if !card.can_be_targeted(db, controller) {
-                    continue;
-                }
-
-                targets.push(ActiveTarget::Battlefield { id: *card });
-            }
-            Some(targets)
-        } else {
-            None
-        }
     }
 
     #[instrument(level = Level::DEBUG, skip(db))]
@@ -1977,33 +2007,13 @@ impl CardId {
         true
     }
 
-    pub(crate) fn can_be_sacrificed(self, _db: &Database) -> bool {
-        // TODO
-        true
-    }
-
     pub fn tapped(self, db: &Database) -> bool {
         db[self].tapped
     }
 
-    pub(crate) fn tap(self, db: &mut Database) -> PendingResults {
+    pub(crate) fn tap(self, db: &mut Database) {
         Log::tapped(db, self);
-
         db[self].tapped = true;
-
-        let mut pending = PendingResults::default();
-        for (listener, trigger) in db.active_triggers_of_source(TriggerSource::TAPPED) {
-            if self.passes_restrictions(
-                db,
-                LogId::current(db),
-                listener,
-                &trigger.trigger.restrictions,
-            ) {
-                pending.extend(Stack::move_trigger_to_stack(db, listener, trigger));
-            }
-        }
-
-        pending
     }
 
     pub fn untap(self, db: &mut Database) {
@@ -2154,24 +2164,18 @@ impl CardId {
             .unwrap_or_default()
     }
 
-    pub(crate) fn exiled_with_cascade(db: &mut Database) -> Vec<CardId> {
-        db.exile
-            .exile_zones
-            .values()
-            .flat_map(|e| e.iter())
-            .copied()
-            .filter(|card| matches!(db[*card].exile_reason, Some(ExileReason::Cascade)))
-            .collect_vec()
-    }
-
     pub(crate) fn get_x(self, db: &Database) -> usize {
         db[self].x_is
     }
 
-    pub(crate) fn mana_from_source(self, db: &mut Database, sources: &[ManaSource]) {
+    pub(crate) fn mana_from_source(
+        self,
+        db: &mut Database,
+        sources: &[protobuf::EnumOrUnknown<ManaSource>],
+    ) {
         let mut sourced = HashMap::default();
-        for source in sources.iter().copied() {
-            *sourced.entry(source).or_default() += 1
+        for source in sources {
+            *sourced.entry(source.enum_value().unwrap()).or_default() += 1
         }
 
         db[self].sourced_mana = sourced;
@@ -2197,35 +2201,7 @@ impl CardId {
     }
 
     pub(crate) fn location(self, db: &Database) -> Option<Location> {
-        if db.battlefield[db[self].controller].contains(&self) {
-            Some(Location::ON_BATTLEFIELD)
-        } else if db.graveyard[db[self].owner].contains(&self) {
-            Some(Location::IN_GRAVEYARD)
-        } else if db.all_players[db[self].owner].library.cards.contains(&self) {
-            Some(Location::IN_LIBRARY)
-        } else if db.exile[db[self].owner].contains(&self) {
-            Some(Location::IN_EXILE)
-        } else if db.hand[db[self].owner].contains(&self) {
-            Some(Location::IN_HAND)
-        } else {
-            db.stack.find(self).map(|_| Location::IN_STACK)
-        }
-    }
-
-    pub(crate) fn target_from_location(self, db: &Database) -> Option<ActiveTarget> {
-        if db.battlefield[db[self].controller].contains(&self) {
-            Some(ActiveTarget::Battlefield { id: self })
-        } else if db.graveyard[db[self].owner].contains(&self) {
-            Some(ActiveTarget::Graveyard { id: self })
-        } else if db.all_players[db[self].owner].library.cards.contains(&self) {
-            Some(ActiveTarget::Library { id: self })
-        } else if db.exile[db[self].owner].contains(&self) {
-            Some(ActiveTarget::Exile { id: self })
-        } else if db.hand[db[self].owner].contains(&self) {
-            Some(ActiveTarget::Hand { id: self })
-        } else {
-            db.stack.find(self).map(|id| ActiveTarget::Stack { id })
-        }
+        db[self].location
     }
 
     pub(crate) fn rebound(self, db: &mut Database) -> bool {
@@ -2242,30 +2218,59 @@ impl Default for CardId {
 }
 
 fn clone_card(db: &mut Database, cloning: CardId) -> Card {
+    let Card {
+        name,
+        typeline,
+        cost,
+        cost_reducer,
+        cannot_be_countered,
+        colors,
+        oracle_text,
+        enchant,
+        modes,
+        additional_costs,
+        targets,
+        effects,
+        static_abilities,
+        etb_ability,
+        activated_abilities,
+        triggered_abilities,
+        mana_abilities,
+        replacement_abilities,
+        dynamic_power_toughness,
+        power,
+        toughness,
+        etb_tapped,
+        keywords,
+        back_face,
+        special_fields,
+    } = cloning.faceup_face(db);
+
     Card {
-        name: cloning.faceup_face(db).name.clone(),
-        typeline: cloning.faceup_face(db).typeline.clone(),
-        cost: cloning.faceup_face(db).cost.clone(),
-        cost_reducer: Default::default(),
-        cannot_be_countered: false,
-        colors: cloning.faceup_face(db).colors.clone(),
-        oracle_text: String::default(),
-        enchant: cloning.faceup_face(db).enchant.clone(),
-        effects: cloning.faceup_face(db).effects.clone(),
-        modes: cloning.faceup_face(db).modes.clone(),
-        etb_abilities: cloning.faceup_face(db).etb_abilities.clone(),
-        static_abilities: cloning.faceup_face(db).static_abilities.clone(),
-        activated_abilities: cloning.faceup_face(db).activated_abilities.clone(),
-        triggered_abilities: cloning.faceup_face(db).triggered_abilities.clone(),
-        replacement_abilities: cloning.faceup_face(db).replacement_abilities.clone(),
-        mana_abilities: cloning.faceup_face(db).mana_abilities.clone(),
-        dynamic_power_toughness: cloning.faceup_face(db).dynamic_power_toughness.clone(),
-        power: cloning.faceup_face(db).power,
-        toughness: cloning.faceup_face(db).toughness,
-        etb_tapped: cloning.faceup_face(db).etb_tapped,
-        keywords: cloning.faceup_face(db).keywords.clone(),
-        restrictions: cloning.faceup_face(db).restrictions.clone(),
-        back_face: protobuf::MessageField::none(),
-        ..Default::default()
+        name: name.clone(),
+        typeline: typeline.clone(),
+        cost: cost.clone(),
+        cost_reducer: cost_reducer.clone(),
+        cannot_be_countered: *cannot_be_countered,
+        colors: colors.clone(),
+        oracle_text: oracle_text.clone(),
+        enchant: enchant.clone(),
+        modes: modes.clone(),
+        additional_costs: additional_costs.clone(),
+        targets: targets.clone(),
+        effects: effects.clone(),
+        static_abilities: static_abilities.clone(),
+        etb_ability: etb_ability.clone(),
+        activated_abilities: activated_abilities.clone(),
+        triggered_abilities: triggered_abilities.clone(),
+        mana_abilities: mana_abilities.clone(),
+        replacement_abilities: replacement_abilities.clone(),
+        dynamic_power_toughness: dynamic_power_toughness.clone(),
+        power: *power,
+        toughness: *toughness,
+        etb_tapped: *etb_tapped,
+        keywords: keywords.clone(),
+        back_face: back_face.clone(),
+        special_fields: special_fields.clone(),
     }
 }

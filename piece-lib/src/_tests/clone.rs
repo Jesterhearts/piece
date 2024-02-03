@@ -2,8 +2,14 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers,
+    battlefield::Battlefields,
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
+    in_play::CardId,
+    in_play::Database,
+    load_cards,
+    player::AllPlayers,
+    protogen::{effects::MoveToBattlefield, targets::Location},
+    stack::{Selected, TargetType},
 };
 
 #[test]
@@ -27,17 +33,28 @@ fn etb_clones() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let creature = CardId::upload(&mut db, &cards, player, "Alpine Grizzly");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, creature, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    creature.move_to_battlefield(&mut db);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, clone, None);
+    let mut results = PendingEffects::default();
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(clone),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply =
+        MoveToBattlefield::default().apply(&mut db, Some(clone), &mut results.selected, false);
+    results.apply_results(to_apply);
 
-    let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db[clone].cloned_id, Some(creature));
 
@@ -65,15 +82,26 @@ fn etb_no_targets_dies() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let clone = CardId::upload(&mut db, &cards, player, "Clone");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, clone, None);
+    let mut results = PendingEffects::default();
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(clone),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply =
+        MoveToBattlefield::default().apply(&mut db, Some(clone), &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Battlefields::check_sba(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
     assert_eq!(db.graveyard[player], IndexSet::from([clone]));
 
     Ok(())

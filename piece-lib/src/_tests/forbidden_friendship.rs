@@ -1,9 +1,9 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
-    in_play::{CardId, Database},
+    effects::{PendingEffects, SelectionResult},
+    in_play::{CardId, CastFrom, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
 };
@@ -30,13 +30,22 @@ fn creates_tokens() -> anyhow::Result<()> {
     let mut db = Database::new(all_players);
 
     let card = CardId::upload(&mut db, &cards, player, "Forbidden Friendship");
-    let mut results = card.move_to_stack(&mut db, vec![], None, vec![]);
+    let mut results = PendingEffects::default();
+    results.apply_results(card.move_to_stack(&mut db, vec![], CastFrom::Hand, vec![]));
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.battlefield

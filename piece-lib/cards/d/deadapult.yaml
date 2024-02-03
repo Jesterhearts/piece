@@ -3,12 +3,23 @@ typeline: Enchantment
 activated_abilities:
   - cost:
       mana_cost: '{R}'
-      additional_costs:
-        - cost: !SacrificePermanent
-            restrictions:
-              - restriction: !OfType
-                  subtypes: Zombie
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !CanBeDamaged {}
+    additional_costs:
+      - effect: !PayCosts
+          pay_costs:
+            - cost: !SacrificePermanent
+                restrictions:
+                  - restriction: !OfType
+                      subtypes: Zombie
     effects:
-      - effect: !DealDamage
-          quantity: 2
-    oracle_text: '{R}, Sacrifice a Zombie: Deadpult deals 2 damage to any target.'
+      - effect: !DamageSelected
+          count:
+            count: !Fixed
+              count: 2
+    oracle_text: '{R}, Sacrifice a Zombie: Deadapult deals 2 damage to any target.'

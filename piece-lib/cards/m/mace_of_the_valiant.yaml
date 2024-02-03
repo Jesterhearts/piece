@@ -7,12 +7,20 @@ oracle_text: Equipped creature gets +1/+1 for each charge counter on Mace of the
 activated_abilities:
   - cost:
       mana_cost: '{3}'
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !OfType
+              types: Creature
     effects:
       - effect: !Equip
           modifiers:
             - add_dynamic_power_toughness:
-                source: !NumberOfCountersOnThis
-                  counter: charge
+                count: !NumberOfCountersOnSelected
+                  type_: charge
     oracle_text: |
       Equip {3}
 triggered_abilities:
@@ -25,7 +33,8 @@ triggered_abilities:
         - restriction: !OfType
             types: Creature
     effects:
-      - effect: !GainCounters
+      - effect: !SelectSource {}
+      - effect: !AddCounters
           counter: charge
           count:
             count: !Fixed

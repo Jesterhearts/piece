@@ -3,15 +3,21 @@ typeline: Instant
 cost:
   mana_cost: '{W}'
 oracle_text: Target creatures gets +1/+3 and gains flying until end of turn.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !OnBattlefield {}
 effects:
-  - effect: !ModifyTarget
+  - effect: !ApplyModifier
       modifier:
-        add_power: 1
-        add_toughness: 3
-        add_keywords: Flying
-      duration: until end of turn
-  - effect: !UntapTarget {}
-restrictions:
-  - restriction: !OfType
-      types: Creature
-  - restriction: !OnBattlefield {}
+        modifier:
+          add_power: 1
+          add_toughness: 3
+          add_keywords: Flying
+        duration: until end of turn
+  - effect: !Untap {}

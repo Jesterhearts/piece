@@ -19,55 +19,6 @@ enum ManaCost {
   TWO_X = 8;
 }
 
-message AdditionalCost {
-  message DiscardThis {}
-  message ExileCard {
-    repeated targets.Restriction restrictions = 1;
-  }
-  message ExileCardsCmcX {
-    repeated targets.Restriction restrictions = 1;
-  }
-  message ExileSharingCardType {
-    uint32 count = 1;
-  }
-  message ExileXOrMoreCards {
-    uint32 minimum = 1;
-    repeated targets.Restriction restrictions = 2;
-  }
-  message PayLife {
-    uint32 count = 1;
-  }
-  message RemoveCounters {
-    counters.Counter counter = 1;
-    uint32 count = 2;
-  }
-  message SacrificePermanent {
-    repeated targets.Restriction restrictions = 1;
-  }
-  message SacrificeSource {}
-  message TapPermanent {
-    repeated targets.Restriction restrictions = 1;
-  }
-  message TapPermanentsPowerXOrMore {
-    uint32 x_is = 1;
-    repeated targets.Restriction restrictions = 2;
-  }
-
-  oneof cost {
-    DiscardThis discard_this = 1;
-    ExileCard exile_card = 2;
-    ExileCardsCmcX exile_cards_cmc_x = 3;
-    ExileSharingCardType exile_sharing_card_type = 4;
-    ExileXOrMoreCards exile_x_or_more_cards = 5;
-    PayLife pay_life = 6;
-    RemoveCounters remove_counters = 7;
-    SacrificePermanent sacrifice_permanent = 8;
-    SacrificeSource sacrifice_source = 9;
-    TapPermanent tap_permanent = 10;
-    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 11;
-  }
-}
-
 message AbilityRestriction {
   message AttackedWithXOrMoreCreatures {
     uint32 x_is = 1;
@@ -86,20 +37,15 @@ message Ward {
 
 message CastingCost {
   repeated ManaCost mana_cost = 1;
-  repeated AdditionalCost additional_costs = 2;
 }
 
 message AbilityCost {
   repeated ManaCost mana_cost = 1;
   bool tap = 2;
-  repeated AdditionalCost additional_costs = 3;
-  repeated AbilityRestriction restrictions = 4;
+  repeated AbilityRestriction restrictions = 3;
 }
 
-enum XIs {
-  MANA_VALUE = 0;
-  MANA_VALUE_OF_TARGET = 1;
-}
+enum XIs { MANA_VALUE_OF_SELECTED = 0; }
 
 message CostReducer {
   message TargetMatches {

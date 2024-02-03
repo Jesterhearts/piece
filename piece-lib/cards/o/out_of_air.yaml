@@ -9,7 +9,15 @@ cost_reducer:
       - restriction: !OfType
           types: Creature
 oracle_text: This spell costs {2} less to cast if it targets a creature spell.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !Location
+          locations: In Stack
 effects:
   - oracle_text: >-
       Counter target spell.
-    effect: !CounterSpellOrAbility {}
+    effect: !CounterSpell {}

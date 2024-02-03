@@ -13,6 +13,7 @@ message Restriction {
   message AttackedThisTurn {}
   message Attacking {}
   message AttackingOrBlocking {}
+  message CanBeDamaged {}
   message CastFromHand {}
   message Chosen {}
   message Cmc {
@@ -47,6 +48,7 @@ message Restriction {
   message HasActivatedAbility {}
   message InGraveyard {}
   message IsPermanent {}
+  message IsPlayer {}
   message JustDiscarded {}
   message LifeGainedThisTurn {
     uint32 count = 1;
@@ -100,87 +102,90 @@ message Restriction {
         [(comment.comment) = "Is the card currently attacking."];
     AttackingOrBlocking attacking_or_blocking = 4
         [(comment.comment) = "Is the card currently attacking or blocking"];
-    CastFromHand cast_from_hand = 5
+    CanBeDamaged can_be_damaged = 5
+        [(comment.comment) = "Can the target be damaged."];
+    CastFromHand cast_from_hand = 6
         [(comment.comment) = "Was the spell cast from the controller's hand."];
-    Chosen chosen = 6 [(comment.comment) = "Was the card chosen."];
-    Cmc cmc = 7 [(comment.comment) = "Compare against the card's mana value."];
-    Controller controller = 8
+    Chosen chosen = 7 [(comment.comment) = "Was the card chosen."];
+    Cmc cmc = 8 [(comment.comment) = "Compare against the card's mana value."];
+    Controller controller = 9
         [(comment.comment) = "Is the card controlled by you or your opponent."];
-    ControllerControlsColors controller_controls_colors = 9 [
+    ControllerControlsColors controller_controls_colors = 10 [
       (comment.comment) =
           "Does the controller of the card control permanents of some colors."
     ];
-    ControllerHandEmpty controller_hand_empty = 10
+    ControllerHandEmpty controller_hand_empty = 11
         [(comment.comment) = "Is the controller of the card's hand empty."];
-    ControllerJustCast controller_just_cast = 11
+    ControllerJustCast controller_just_cast = 12
         [(comment.comment) =
              "Did the controller of the card just cast a spell."];
-    Descend descend = 12
+    Descend descend = 13
         [(comment.comment) = "Descend some number (e.g. Descend 4)"];
-    DescendedThisTurn descended_this_turn = 13
+    DescendedThisTurn descended_this_turn = 14
         [(comment.comment) =
              "Did the controller of the card descend this turn."];
-    DuringControllersTurn during_controllers_turn = 14
+    DuringControllersTurn during_controllers_turn = 15
         [(comment.comment) =
              "Is it currently the controller of the card's turn."];
-    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 15
+    EnteredBattlefieldThisTurn entered_battlefield_this_turn = 16
         [(comment.comment) = "Did the card enter the battlefield this turn."];
-    HasActivatedAbility has_activated_ability = 16
+    HasActivatedAbility has_activated_ability = 17
         [(comment.comment) = "Does the card have an activated ability."];
-    InGraveyard in_graveyard = 17
+    InGraveyard in_graveyard = 18
         [(comment.comment) = "Is the card in the graveyard."];
-    IsPermanent is_permanent = 18
+    IsPermanent is_permanent = 19
         [(comment.comment) = "Is the card a permanent."];
-    JustDiscarded just_discarded = 19
+    IsPlayer is_player = 20 [(comment.comment) = "Is the target a player."];
+    JustDiscarded just_discarded = 21
         [(comment.comment) = "Was the card just discarded."];
-    LifeGainedThisTurn life_gained_this_turn = 20
+    LifeGainedThisTurn life_gained_this_turn = 22
         [(comment.comment) =
              "Compare against the amount of life gained this turn."];
-    Locations location = 21
+    Locations location = 23
         [(comment.comment) = "Is the card in some list of locations."];
-    ManaSpentFromSource mana_spent_from_source = 22
+    ManaSpentFromSource mana_spent_from_source = 24
         [(comment.comment) =
              "Was the card cast using mana from some source e.g. Treasure."];
-    NonToken non_token = 23 [(comment.comment) = "Is the card non-token."];
-    NotChosen not_chosen = 24
+    NonToken non_token = 25 [(comment.comment) = "Is the card non-token."];
+    NotChosen not_chosen = 26
         [(comment.comment) = "Was the card _not_ chosen."];
-    NotKeywords not_keywords = 25
+    NotKeywords not_keywords = 27
         [(comment.comment) =
              "The card does not contain a keyword from a list of keywords."];
-    NotOfType not_of_type = 26
+    NotOfType not_of_type = 28
         [(comment.comment) = "The card does not have any of the listed types."];
-    NotSelf not_self = 27
+    NotSelf not_self = 29
         [(comment.comment) =
              "The card is not the same card as the one testing restrictions."];
-    NumberOfCountersOnThis number_of_counters_on_this = 28
+    NumberOfCountersOnThis number_of_counters_on_this = 30
         [(comment.comment) =
              "Compare against the number of counters on this card."];
-    OfColor of_color = 29
+    OfColor of_color = 31
         [(comment.comment) = "Is the card a color in a list of colors."];
-    OfType of_type = 30 [
+    OfType of_type = 32 [
       (comment.comment) =
           "Does the card have a type which intersects with a list of types."
     ];
-    OnBattlefield on_battlefield = 31
+    OnBattlefield on_battlefield = 33
         [(comment.comment) = "Is the card on the battlefield."];
-    Power power = 32
+    Power power = 34
         [(comment.comment) = "Compare against the power of the card."];
-    Self self = 33
+    Self self = 35
         [(comment.comment) =
              "Is the card the same as the card testing restrictions."];
-    SourceCast source_cast = 34
+    SourceCast source_cast = 36
         [(comment.comment) = "Was the card cast at all."];
-    SpellOrAbilityJustCast spell_or_ability_just_cast = 35
+    SpellOrAbilityJustCast spell_or_ability_just_cast = 37
         [(comment.comment) = "Was the card just cast."];
-    Tapped tapped = 36 [(comment.comment) = "Is the card tapped."];
-    TargetedBy targeted_by = 37
+    Tapped tapped = 38 [(comment.comment) = "Is the card tapped."];
+    TargetedBy targeted_by = 39
         [(comment.comment) =
              " Is the card testing restrictions targetted by this card."];
-    Threshold threshold = 38 [
+    Threshold threshold = 40 [
       (comment.comment) =
           "Test for the presence of Threshold (seven or more cards are in controller's graveyard)."
     ];
-    Toughness toughness = 39
+    Toughness toughness = 41
         [(comment.comment) = "Compare against the toughness of the card."];
   }
 }

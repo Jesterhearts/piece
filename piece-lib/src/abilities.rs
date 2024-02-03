@@ -1,30 +1,19 @@
-use std::collections::HashSet;
-
 use itertools::Itertools;
 
 use crate::{
-    effects::EffectBehaviors,
+    effects::PendingEffects,
     in_play::{ActivatedAbilityId, CardId, Database, GainManaAbilityId},
-    log::LogId,
-    pending_results::PendingResults,
-    player::{mana_pool::SpendReason, Owner},
+    player::Owner,
     protogen::{
-        cost::{
-            ability_restriction,
-            additional_cost::{self, ExileXOrMoreCards, RemoveCounters},
-            AbilityCost,
-        },
-        counters::Counter,
-        effects::{static_ability, ActivatedAbility, Effect, GainManaAbility},
+        cost::{ability_restriction, AbilityCost},
+        effects::{static_ability, ActivatedAbility, Effect, GainManaAbility, TargetSelection},
     },
     turns::Phase,
 };
 
 impl ActivatedAbility {
     pub(crate) fn can_be_played_from_hand(&self) -> bool {
-        self.effects
-            .iter()
-            .any(|effect| effect.effect.as_ref().unwrap().cycling())
+        self.can_activate_in_hand
     }
 
     pub(crate) fn can_be_activated(
@@ -33,7 +22,7 @@ impl ActivatedAbility {
         source: CardId,
         id: &Ability,
         activator: crate::player::Owner,
-        pending: &Option<PendingResults>,
+        pending: &Option<PendingEffects>,
     ) -> bool {
         let banned = db[source].modified_static_abilities.iter().any(|ability| {
             matches!(
@@ -71,12 +60,7 @@ impl ActivatedAbility {
             return false;
         }
 
-        let is_sorcery = self.sorcery_speed
-            || self
-                .effects
-                .iter()
-                .any(|effect| effect.effect.as_ref().unwrap().is_sorcery_speed());
-        if is_sorcery {
+        if self.sorcery_speed {
             if controller != db.turn.active_player() {
                 return false;
             }
@@ -93,7 +77,7 @@ impl ActivatedAbility {
             }
         }
 
-        if !can_pay_costs(db, id, self.cost.get_or_default(), source) {
+        if !passes_restrictions(db, id, self.cost.get_or_default(), source) {
             return false;
         }
 
@@ -117,7 +101,7 @@ impl GainManaAbility {
             return false;
         }
 
-        can_pay_costs(db, id, &self.cost, source)
+        passes_restrictions(db, id, &self.cost, source)
     }
 }
 
@@ -131,8 +115,24 @@ pub enum Ability {
 impl Ability {
     pub(crate) fn cost<'db>(&self, db: &'db Database) -> Option<&'db AbilityCost> {
         match self {
-            Ability::Activated(id) => Some(&db[*id].ability.cost),
-            Ability::Mana(id) => Some(&db[*id].ability.cost),
+            Ability::Activated(id) => db[*id].ability.cost.as_ref(),
+            Ability::Mana(id) => db[*id].ability.cost.as_ref(),
+            Ability::EtbOrTriggered(_) => None,
+        }
+    }
+
+    pub(crate) fn targets<'db>(&self, db: &'db Database) -> Option<&'db TargetSelection> {
+        match self {
+            Ability::Activated(id) => db[*id].ability.targets.as_ref(),
+            Ability::Mana(_) => None,
+            Ability::EtbOrTriggered(_) => None,
+        }
+    }
+
+    pub(crate) fn additional_costs<'db>(&self, db: &'db Database) -> Option<&'db [Effect]> {
+        match self {
+            Ability::Activated(id) => Some(&db[*id].ability.additional_costs),
+            Ability::Mana(id) => Some(&db[*id].ability.additional_costs),
             Ability::EtbOrTriggered(_) => None,
         }
     }
@@ -140,7 +140,7 @@ impl Ability {
     pub(crate) fn effects(&self, db: &Database) -> Vec<Effect> {
         match self {
             Ability::Activated(id) => db[*id].ability.effects.clone(),
-            Ability::Mana(_) => vec![],
+            Ability::Mana(id) => db[*id].ability.effects.clone(),
             Ability::EtbOrTriggered(effects) => effects.clone(),
         }
     }
@@ -160,7 +160,7 @@ impl Ability {
         db: &Database,
         source: CardId,
         activator: crate::player::Owner,
-        pending: &Option<PendingResults>,
+        pending: &Option<PendingEffects>,
     ) -> bool {
         match self {
             Ability::Activated(activated) => {
@@ -171,15 +171,7 @@ impl Ability {
                     return false;
                 }
 
-                let targets = source.targets_for_ability(db, self, &HashSet::default());
-
-                db[*activated]
-                    .ability
-                    .effects
-                    .iter()
-                    .map(|effect| effect.effect.as_ref().unwrap().needs_targets(db, source))
-                    .zip(targets)
-                    .all(|(needs, has)| has.len() >= needs)
+                true
             }
             Ability::Mana(id) => db[*id]
                 .ability
@@ -187,9 +179,16 @@ impl Ability {
             Ability::EtbOrTriggered(_) => false,
         }
     }
+
+    pub(crate) fn is_craft(&self, db: &Database) -> bool {
+        match self {
+            Ability::Activated(id) => db[*id].ability.craft,
+            _ => false,
+        }
+    }
 }
 
-pub(crate) fn can_pay_costs(
+pub(crate) fn passes_restrictions(
     db: &Database,
     id: &Ability,
     cost: &AbilityCost,
@@ -197,87 +196,6 @@ pub(crate) fn can_pay_costs(
 ) -> bool {
     if cost.tap && (db[source].tapped || source.summoning_sick(db)) {
         return false;
-    }
-    let controller = db[source].controller;
-
-    for cost in cost.additional_costs.iter() {
-        match cost.cost.as_ref().unwrap() {
-            additional_cost::Cost::SacrificeSource(_) => {
-                if !source.can_be_sacrificed(db) {
-                    return false;
-                }
-            }
-            additional_cost::Cost::PayLife(life) => {
-                if db.all_players[controller].life_total <= life.count as i32 {
-                    return false;
-                }
-            }
-            additional_cost::Cost::SacrificePermanent(sac) => {
-                let any_target = db.battlefield[controller].iter().any(|card| {
-                    card.passes_restrictions(db, LogId::current(db), source, &sac.restrictions)
-                });
-                if !any_target {
-                    return false;
-                }
-            }
-            additional_cost::Cost::TapPermanent(tap) => {
-                let any_target = db.battlefield[controller].iter().any(|card| {
-                    card.passes_restrictions(db, LogId::current(db), source, &tap.restrictions)
-                });
-                if !any_target {
-                    return false;
-                }
-            }
-            additional_cost::Cost::ExileCard(exile) => {
-                let any_target = db.battlefield[controller].iter().any(|card| {
-                    card.passes_restrictions(db, LogId::current(db), source, &exile.restrictions)
-                });
-                if !any_target {
-                    return false;
-                }
-            }
-            additional_cost::Cost::ExileXOrMoreCards(ExileXOrMoreCards {
-                minimum,
-                restrictions,
-                ..
-            }) => {
-                let targets = db.battlefield[controller]
-                    .iter()
-                    .filter(|card| {
-                        card.passes_restrictions(db, LogId::current(db), source, restrictions)
-                    })
-                    .count() as u32;
-
-                if targets < *minimum {
-                    return false;
-                }
-            }
-            additional_cost::Cost::DiscardThis(_) => {
-                if !db.hand[controller].contains(&source) {
-                    return false;
-                }
-            }
-            additional_cost::Cost::RemoveCounters(RemoveCounters { counter, count, .. }) => {
-                let counters = if let Counter::ANY = counter.enum_value().unwrap() {
-                    db[source].counters.values().sum::<usize>()
-                } else {
-                    db[source]
-                        .counters
-                        .get(&counter.enum_value().unwrap())
-                        .copied()
-                        .unwrap_or_default()
-                };
-
-                if counters < *count as usize {
-                    return false;
-                }
-            }
-
-            // These are too complicated to compute, so just give up. The user can cancel if they can't actually pay.
-            additional_cost::Cost::ExileCardsCmcX(_) => {}
-            additional_cost::Cost::ExileSharingCardType { .. } => {}
-            additional_cost::Cost::TapPermanentsPowerXOrMore { .. } => {}
-        }
     }
 
     for restriction in cost.restrictions.iter() {
@@ -297,15 +215,6 @@ pub(crate) fn can_pay_costs(
                 Ability::EtbOrTriggered(_) => todo!(),
             },
         }
-    }
-
-    if !db.all_players[controller].can_meet_cost(
-        db,
-        &cost.mana_cost,
-        &[],
-        SpendReason::Activating(source),
-    ) {
-        return false;
     }
 
     true

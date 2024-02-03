@@ -2,37 +2,59 @@ name: Kutzil's Flanker
 typeline: Creature - Cat Warrior
 cost:
   mana_cost: '{2}{W}'
-etb_abilities:
-  - oracle_text: |-
-      When Kutzil's Flanker enters the battlefield choose one -
-      - Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
+etb_ability:
+  oracle_text: |-
+    When Kutzil's Flanker enters the battlefield choose one -
+    - Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield under your control this turn.
+    - You gain 2 life and scry 2.
+    - Exile target player's graveyard.
+  modes:
+    descriptions:
+      - Put a +1/+1 counter on Kutzil's Flanker for each creature that left the battlefield
+        under your control this turn.
       - You gain 2 life and scry 2.
       - Exile target player's graveyard.
-    effect: !Modal
+  targets:
+    selector: !Modal
       modes:
         - effects:
-            - oracle_text: Put a +1/+1 counter on Kutzil's Flanker for each creature
-                that left the battlefield under your control this turn.
-              effect: !GainCounters
-                counter: +1/+1
+            - effect: !Nothing {}
+        - effects:
+            - effect: !Nothing {}
+        - effects:
+            - effect: !SelectTargets
                 count:
-                  count: !Dynamic
-                    dynamic: !LeftBattlefieldThisTurn
+                  count: !Fixed
+                    count: 1
+                restrictions:
+                  - restriction: !IsPlayer {}
+  effects:
+    - effect: !Modal
+        modes:
+          - effects:
+              - effect: !SelectSource {}
+              - effect: !AddCounters
+                  counter: +1/+1
+                  count:
+                    count: !LeftBattlefieldThisTurn
                       restrictions:
                         - restriction: !OfType
                             types: Creature
                         - restriction: !Controller
                             controller: !Self_ {}
-        - effects:
-            - oracle_text: You gain 2 life
-              effect: !GainLife
-                count: 2
-            - oracle_text: You scry 2
-              effect: !Scry
-                count: 2
-        - effects:
-            - oracle_text: Exile target player's graveyard.
-              effect: !ExileTargetGraveyard {}
+          - effects:
+              - effect: !SelectEffectController {}
+              - effect: !GainLife
+                  count:
+                    count: !Fixed
+                      count: 2
+              - effect: !SelectTopOfLibrary
+                  count:
+                    count: !Fixed
+                      count: 2
+              - effect: !Scry {}
+          - effects:
+              - effect: !ExileGraveyard {}
 power: 3
 toughness: 1
 keywords: Flash

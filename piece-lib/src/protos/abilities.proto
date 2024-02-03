@@ -10,9 +10,3 @@ import "types.proto";
 message Enchant {
   repeated effects.BattlefieldModifier modifiers = 1;
 }
-
-message TriggeredAbility {
-  triggers.Trigger trigger = 1;
-  repeated effects.Effect effects = 2;
-  string oracle_text = 3;
-}

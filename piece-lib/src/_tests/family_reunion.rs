@@ -1,9 +1,9 @@
 use pretty_assertions::assert_eq;
 
 use crate::{
+    effects::SelectionResult,
     in_play::{CardId, Database},
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
     stack::Stack,
 };
@@ -31,22 +31,24 @@ fn p1p1() -> anyhow::Result<()> {
     creature.move_to_battlefield(&mut db);
 
     let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Choose the mode
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
-    // Pay the white
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
-    // Pay the generic
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(creature.power(&db), Some(5));
     assert_eq!(creature.toughness(&db), Some(3));
@@ -77,22 +79,24 @@ fn hexproof() -> anyhow::Result<()> {
     creature.move_to_battlefield(&mut db);
 
     let card = CardId::upload(&mut db, &cards, player, "Family Reunion");
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card, true);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, card);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // Choose the mode
     let result = results.resolve(&mut db, Some(1));
-    assert_eq!(result, ResolutionResult::TryAgain);
-    // Pay the white
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::PendingChoice);
-    // Pay the generic
+    assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert!(creature.hexproof(&db));
 

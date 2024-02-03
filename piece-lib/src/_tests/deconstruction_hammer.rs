@@ -3,8 +3,8 @@ use itertools::Itertools;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields, in_play::CardId, in_play::Database, load_cards,
-    pending_results::ResolutionResult, player::AllPlayers, stack::Stack, turns::Phase,
+    battlefield::Battlefields, effects::SelectionResult, in_play::CardId, in_play::Database,
+    load_cards, player::AllPlayers, stack::Stack, turns::Phase,
 };
 
 #[test]
@@ -29,20 +29,11 @@ fn destroys_artifact() -> anyhow::Result<()> {
 
     db.turn.set_phase(Phase::PreCombatMainPhase);
     let card = CardId::upload(&mut db, &cards, player1, "Alpine Grizzly");
+    card.move_to_battlefield(&mut db);
     let card2 = CardId::upload(&mut db, &cards, player1, "Deconstruction Hammer");
+    card2.move_to_battlefield(&mut db);
     let card3 = CardId::upload(&mut db, &cards, player2, "Abzan Banner");
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card2, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
-
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, card3, None);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    card3.move_to_battlefield(&mut db);
 
     // Get rid of summoning sickness
     db.turn.turn_count += db.turn.turns_per_round();
@@ -51,34 +42,39 @@ fn destroys_artifact() -> anyhow::Result<()> {
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card2, 0);
     // Pay the costs
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::PendingChoice);
     // End pay costs
     // Target the bear
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve the equip
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Activate the ability on the bear, targeting the banner
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
     // Pay the generic mana
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
-    // Choose the default only target
+    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(1));
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve the ability
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.battlefield

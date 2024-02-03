@@ -7,386 +7,268 @@ import "comment.proto";
 import "cost.proto";
 import "counters.proto";
 import "empty.proto";
+import "ids.proto";
 import "mana.proto";
 import "targets.proto";
+import "triggers.proto";
 import "types.proto";
 
 message Effect {
+  string oracle_text = 1;
+
   oneof effect {
-    ApplyThen apply_then = 1 [
-      (comment.comment) =
-          "Apply an effect, then apply another effect, allowing another round of choosing targets. You need to use this if your effects depend on the results of previous effects. See Glowspore Shaman and Malcom, Alluring Scoundrel for examples. "
-    ];
-    ApplyThenIfWas apply_then_if_was = 2 [
-      (comment.comment) =
-          "Apply an effect, then examine the log of results from the effect and compare it to a list of restrictions. If any log entry resulting from the applied effects matches, apply another effect.This is used e.g.to apply an effect if the target that just left the battlefield was tapped."
-    ];
-    BattleCry battle_cry = 3 [
-      (comment.comment) =
-          "Implement the Battle Cry effect. You don't need to use this directly, specifying the Battle Cry keyword in the keyword list is enough."
-    ];
-    BattlefieldModifier battlefield_modifier = 4 [
-      (comment.comment) =
-          "Apply a modifier to the battlefield without targeting anything. Typically you will want to set the `entire_battlefield` flag to true for the modifier."
-    ];
-    CantAttackThisTurn cant_attack_this_turn = 5
-        [(comment.comment) = "Prevent target player from attacking this turn."];
-    Cascade cascade = 6 [
-      (comment.comment) =
-          "Implement the keyword Cascade. You probably don't want to use this - instead use the Cascade keyword in the keywords list."
-    ];
-    ChooseCast choose_cast = 7 [
-      (comment.comment) =
-          "Choose to cast a card from a list of cards narrowed by restrictions."
-    ];
-    ControllerDiscards controller_discards = 8 [
-      (comment.comment) =
-          "The controller of the card triggering the effect discards some number of cards unless they meet some restrictions."
-    ];
-    ControllerDrawsCards controller_draws_cards = 9 [
-      (comment.comment) =
-          "The controller of the card triggering the effect draws some number of cards."
-    ];
-    ControllerLosesLife controller_loses_life = 10 [
-      (comment.comment) =
-          "The controller of the card triggering the effect loses life unless they meet some restrictions."
-    ];
-    CopyOfAnyCreatureNonTargeting copy_of_any_creature_non_targeting = 11 [
-      (comment.comment) =
-          "Copy any creature on the battlefield without checking if it can be targetted (i.e. ignore hexproof and shroud). This is used to implement e.g. Clone."
-    ];
-    CopySpellOrAbility copy_spell_or_ability = 12
-        [(comment.comment) = "Copy a spell or ability on the stack"];
-    CounterSpellOrAbility counter_spell_or_ability = 13
-        [(comment.comment) = "Counter a spell."];
-    CounterSpellUnlessPay counter_spell_unless_pay = 14
+    AddCounters add_counters = 2
         [(comment.comment) =
-             "Counter spell unless the spell's controller pays some cost."];
-    CreateToken create_token = 15 [(comment.comment) = "Create a token."];
-    CreateTokenCopy create_token_copy = 16 [
+             "Add some number of counters to the selected target(s)."];
+    ApplyModifier apply_modifier = 3
+        [(comment.comment) = "Apply a modifier to the selected target(s)."];
+    ApplyToEachTarget apply_to_each_target = 4
+        [(comment.comment) = "Apply some effects to each selected target."];
+    AttackSelected attack_selected = 5 [
       (comment.comment) =
-          "Create a token copy of another permanent with some modifiers applied."
+          "Take the last selected target and set it as attacking the first selected target."
     ];
-    Cycling cycling = 17 [
-      (comment.comment) =
-          "Implement the cycling keyword. If there are restrictions listed for the effect, it will act as a tutor for matching cards. If no restrictions are specified, it will default to drawing a card."
-    ];
-    DealDamage deal_damage = 18 [
-      (comment.comment) =
-          "Deal some amount of damage to any target, narrowed by restrictions."
-    ];
-    DestroyEach destroy_each = 19
+    BanAttackingThisTurn ban_attacking_this_turn = 6
         [(comment.comment) =
-             "Destroy each permanent matching some set of restrictions."];
-    DestroyTarget destroy_target = 20 [
+             "Ban the selected target from attacking this turn."];
+    Cascade cascade = 7 [
       (comment.comment) =
-          "Destroy a target permanent from a target list narrowed by restrictions."
+          "Implement the Cascade effect. You don't need to use this, the Cascade keyword will work.",
+      (comment.hidden) = true
     ];
-    Discover discover = 21
-        [(comment.comment) = "Implement the Discover keyword."];
-    Equip equip = 22
+    CastSelected cast_selected = 8
+        [(comment.comment) = "Cast the selected cards."];
+    ChooseAttackers choose_attackers = 9 [
+      (comment.comment) = "Choose attackers and their targets.",
+      (comment.hidden) = true
+    ];
+    ChooseCast choose_cast = 10
         [(comment.comment) =
-             "Apply modifiers to a target using the Equip mechanics."];
-    ExamineTopCards examine_top_cards = 23 [
+             "Choose whether or not to cast the selected spell(s)."];
+    ClearSelected clear_selected = 11
+        [(comment.comment) = "Clear the current selection."];
+    CloneSelected clone_selected = 12 [
       (comment.comment) =
-          "Examine the top N cards of the effect controller's library and give the player a choice of where to move the cards to. This is used to implement e.g. Confounding Riddle's effect."
+          "Take two selected targets and make the first target a clone of the second."
     ];
-    ExileTarget exile_target = 24
+    CompleteSpellResolution complete_spell_resolution = 13 [
+      (comment.comment) =
+          "Complete resolving a spell, adding it to the battlefield or moving it to the graveyard. Used internally.",
+      (comment.hidden) = true
+    ];
+    CopySpellOrAbility copy_spell_or_ability = 14
+        [(comment.comment) = "Copy the selected spell or ability."];
+    CounterSpell counter_spell = 15
+        [(comment.comment) = "Counter the selected spell(s)."];
+    CreateToken create_token = 16 [
+      (comment.comment) =
+          "Create a token under the control of the selected player and select it."
+    ];
+    CreateTokenCloneOfSelected create_token_clone_of_selected = 17 [
+      (comment.comment) =
+          "Create a token clone of the selected target and place it under the control of the second selected target and select it."
+    ];
+    Cycling cycling = 18 [
+      (comment.comment) =
+          "Implement the Cycling keyword. If no restrictions are specified, draw a card. Otherwise, tutor the controlling player's library for a card."
+    ];
+    DamageSelected damage_selected = 19
+        [(comment.comment) = "Apply damage to the selected target(s)."];
+    DeclareAttacking declare_attacking = 20
+        [(comment.comment) = "Declare the selected card(s) as attacking."];
+    DestroySelected destroy_selected = 21
+        [(comment.comment) = "Destroy the selected target(s)."];
+    Discard discard = 22
         [(comment.comment) =
-             "Exile a target from a list narrowed by a set of restrictions."];
-    ExileTargetCreatureManifestTopOfLibrary
-        exile_target_creature_manifest_top_of_library = 25 [
-          (comment.comment) =
-              "TODO: This should probably be split into two separate effects. It is currently used to implement just Reality Shift."
-        ];
-    ExileTargetGraveyard exile_target_graveyard = 26
-        [(comment.comment) = "Exile the graveyard of target player."];
-    ForEachManaOfSource for_each_mana_of_source = 27 [
+             "The selected target(s) discard some number of cards."];
+    DiscardSelected discard_selected = 23
+        [(comment.comment) = "Discard the selected card(s)."];
+    Discover discover = 24
+        [(comment.comment) = "Implement the Discover mechanic."];
+    DrawCards draw_cards = 25
+        [(comment.comment) = "The selected target draws some number of cards."];
+    Equip equip = 26
+        [(comment.comment) = "Equip the source to the selected target."];
+    ExileGraveyard exile_graveyard = 27
+        [(comment.comment) = "Exile the selected target's graveyard."];
+    Explore explore = 28
+        [(comment.comment) = "The selected target(s) explore(s)."];
+    ForEachManaOfSource for_each_mana_of_source = 29 [
       (comment.comment) =
-          "For each mana from a particular source (e.g. cave or treasure) spent on casting this effect's card, apply some effects."
-    ];
-    ForEachPlayerChooseThen for_each_player_choose_then = 28 [
-      (comment.comment) =
-          "Choose a permanent matching some list of restrictions for each player, then apply some effects."
-    ];
-    GainCounters gain_counters = 29 [
-      (comment.comment) =
-          "Place some number of counters on a the card triggering the effect."
+          "For each mana from a particular source used in the activation of this ability or casting of this spell, apply some effects."
     ];
     GainLife gain_life = 30
-        [(comment.comment) = "The controller of this effect gains life."];
-    IfThenElse if_then_else = 31 [
+        [(comment.comment) = "The selected target(s) gain life."];
+    GainMana gain_mana = 31
+        [(comment.comment) = "The selected target gains mana."];
+    IfThenElse if_then_else = 32 [
       (comment.comment) =
-          "If the source of this effect passes some restrictions, apply some effects. Otherwise, apply a different set of effects. This is used to implement e.g. threshold."
+          "If the selected target(s) match some criteria, apply an effect. Otherwise apply a different effect."
     ];
-    Mill mill = 32
-        [(comment.comment) = "Mill some number of cards for a target player."];
-    Modes modal = 33 [
-      (comment.comment) =
-          "Offer the controller of this effect a choice between several modes, then apply the chosen effects."
-    ];
-    ModifyTarget modify_target = 34 [
-      (comment.comment) =
-          "Apply a modifier to a specific target from a list of valid targets."
-    ];
-    MultiplyTokens multiply_tokens = 35 [
-      (comment.comment) =
-          "Multiply the number of tokens created. This is only applied as a replacement effect."
-    ];
-    PayCostThen pay_cost_then = 36 [
-      (comment.comment) =
-          "Ask the controller of this effect to pay some cost, then trigger some effects if they paid the cost."
-    ];
-    Rebound rebound = 37 [
-      (comment.comment) =
-          "Implement the Rebound keyword. You don't need to specify this, the keyword will work."
-    ];
-    ReturnFromGraveyardToBattlefield return_from_graveyard_to_battlefield = 38
+    LoseLife lose_life = 33
+        [(comment.comment) = "The selected target(s) lose life."];
+    Manifest manifest = 34
         [(comment.comment) =
-             "Return a card from the graveyard to the battlefield."];
-    ReturnFromGraveyardToHand return_from_graveyard_to_hand = 39 [
-      (comment.comment) =
-          "Return a card from the graveyard to the hand. TODO: This should probably be merged with ReturnTargetToHand."
-    ];
-    ReturnFromGraveyardToLibrary return_from_graveyard_to_library = 40 [
-      (comment.comment) =
-          "Return a card from the graveyard to the library. TODO: This should probably be merged with TargetToTopOfLibrary."
-    ];
-    ReturnSelfToHand return_self_to_hand = 41
+             "The selected target manifests the top card of their library."];
+    Mill mill = 35 [(comment.comment) = "Mill some number of cards"];
+    Modal modal = 36
         [(comment.comment) =
-             "Return the card associated with this effect to hand."];
-    ReturnTargetToHand return_target_to_hand = 42
-        [(comment.comment) = "Return target card to the hand."];
-    ReturnTransformed return_transformed = 43 [
-      (comment.comment) =
-          "Return a card from exile or graveyard to the battlefield transformed."
-    ];
-    RevealEachTopOfLibrary reveal_each_top_of_library = 44 [
-      (comment.comment) =
-          "Reveal the top card of each player's library, then apply some effects depending on the revealed cards."
-    ];
-    Scry scry = 45 [(comment.comment) = "Scry some number of cards."];
-    SelfExplores self_explores = 46
-        [(comment.comment) = "The card with the effect explores."];
-    TapTarget tap_target = 47 [
-      (comment.comment) =
-          "Tap a target permanent. This automatically narrows the list of targets to targets on the battlefield."
-    ];
-    TapThis tap_this = 48
-        [(comment.comment) = "Tap the card associated with this effect."];
-    TargetControllerGainsTokens target_controller_gains_tokens = 49 [
-      (comment.comment) =
-          "The controller of something targetted by another effect gets a token."
-    ];
-    TargetCopiesPermanent target_copies_permanent = 50 [
-      (comment.comment) =
-          "A target permanent on battlefield, narrowed by restrictions, becomes a copy of another permanent spell or on the battlefield, narrowed by restrictions."
-    ];
-    TargetCreatureExplores target_creature_explores = 51 [
-      (comment.comment) =
-          "The targetted creature explores. This automatically narrows the list of valid targets to creatures on the battlefield."
-    ];
-    TargetGainsCounters target_gains_counters = 52 [
-      (comment.comment) =
-          "Place some number of counters on a target, narrowed by a list of restrictions."
-    ];
-    TargetToTopOfLibrary target_to_top_of_library = 53
+             "Apply some effects according to the selected mode(s)."];
+    MoveToBattlefield move_to_battlefield = 37
+        [(comment.comment) = "Move the selected card(s) to the battlefield."];
+    MoveToBottomOfLibrary move_to_bottom_of_library = 38
         [(comment.comment) =
-             "Return target to the top of its owner's library."];
-    Transform transform = 54 [
+             "Move the selected card(s) to their owner's library."];
+    MoveToExile move_to_exile = 39
+        [(comment.comment) = "Move the selected card(s) to exile."];
+    MoveToGraveyard move_to_graveyard = 40
+        [(comment.comment) = "Move the selected card(s) to the graveyard."];
+    MoveToHand move_to_hand = 41
+        [(comment.comment) =
+             "Move the selected card(s) to their owner's hand."];
+    MoveToStack move_to_stack = 42 [
       (comment.comment) =
-          "Transform in place on the battlefield. This will preserve equipment and auras attached to the transformed card."
+          "Pop the current selection and use them as targets to the restored selection, casting the restored value."
     ];
-    TutorLibrary tutor_library = 55 [
+    MoveToTopOfLibrary move_to_top_of_library = 43
+        [(comment.comment) =
+             "Move the selected card(s) to their owner's library."];
+    MultiplyTokens multiply_tokens = 44 [
       (comment.comment) =
-          "Search the library for cards matching some set of restrictions and allow the player to move it to a location."
+          "Multiply the number of tokens created. Used for replacement effects."
     ];
-    UntapThis untap_this = 56
-        [(comment.comment) = "Untap the card associated with this effect."];
-    UntapTarget untap_target = 57 [
+    Nothing nothing = 45
+        [(comment.comment) = "Take no action. Used to pad modes."];
+    Overwrite overwrite = 46 [
       (comment.comment) =
-          "Untap a target permanent. THis automatically narrows the list of targets to targets on the battlefield."
+          "Replace an effect by overwriting it with another set of effects."
     ];
-  }
-
-  string oracle_text = 58;
+    PayCosts pay_costs = 47 [(comment.comment) = "Pay some costs."];
+    PlayerLoses player_loses = 48
+        [(comment.comment) = "The selected player loses the game."];
+    PopSelected pop_selected = 49 [
+      (comment.comment) =
+          "Clear the current selection and restore the previously pushed selection."
+    ];
+    PushSelected push_selected = 50
+        [(comment.comment) = "Save the current selection."];
+    RemoveCounters remove_counters = 51 [
+      (comment.comment) =
+          "The selected target(s) have some number of counters removed from them."
+    ];
+    ReorderSelected reorder_selected = 52 [
+      (comment.comment) = "Re-order the list of selected target(s).",
+      (comment.hidden) = true
+    ];
+    Reveal reveal = 53 [(comment.comment) = "Reveal the selected target(s)."];
+    Sacrifice sacrifice = 54
+        [(comment.comment) = "Sacrifice the selecteed target(s)."];
+    Scry scry = 55 [(comment.comment) = "Scry some number of cards."];
+    SelectAll select_all = 56 [
+      (comment.comment) =
+          "Select all possible cards/abilities/players matching some criteria."
+    ];
+    SelectAllPlayers select_all_players = 57
+        [(comment.comment) = "Select all players."];
+    SelectDestinations select_destinations = 58
+        [(comment.comment) = "Select destination(s) for each selected card."];
+    SelectEffectController select_effect_controller = 59
+        [(comment.comment) =
+             "Select the controller of the card associated with this effect."];
+    SelectExiledWithCascadeOrDiscover select_exiled_with_cascade_or_discover =
+        60 [
+          (comment.comment) =
+              "Select all cards exiled with a cascade or discover mechanic.",
+          (comment.hidden) = true
+        ];
+    SelectForEachPlayer select_for_each_player = 61
+        [(comment.comment) =
+             "For each player, select a target matching some criteria."];
+    SelectMode select_mode = 62
+        [(comment.comment) = "Select from among a set of modal effects."];
+    SelectNonTargeting select_non_targeting = 63 [
+      (comment.comment) =
+          "Select some cards without checking if they can be targetted (e.g. ignore Shroud/Hexproof)."
+    ];
+    SelectSource select_source = 64
+        [(comment.comment) = "Select the card associated with this effect."];
+    SelectTargetController select_target_controller = 65
+        [(comment.comment) =
+             "Select the controller of the currently selected target."];
+    SelectTargets select_targets = 66 [
+      (comment.comment) =
+          "Select some cards, abilities, or players, validating that they can be targetted."
+    ];
+    SelectTopOfLibrary select_top_of_library = 67 [
+      (comment.comment) =
+          "Select some number of cards from the top of the selected target(s) librar(y|ies)."
+    ];
+    ShuffleSelected shuffle_selected = 68
+        [(comment.comment) = "Randomize the selected card(s)."];
+    SpendMana spend_mana = 69 [
+      (comment.comment) =
+          "Spend some mana on the first selected target from the controlling player's mana pool."
+    ];
+    Tap tap = 70 [(comment.comment) = "Tap the selected target(s)."];
+    Transform transform = 71
+        [(comment.comment) = "Transform the selected card."];
+    TutorLibrary tutor_library = 72
+        [(comment.comment) = "Search the target's library for some cards."];
+    Unless unless = 73
+        [(comment.comment) =
+             "Apply an effect unless the selection matches some restrictions."];
+    Untap untap = 74 [(comment.comment) = "Untap the selected target(s)."];
+  };
 }
 
-message ActivatedAbility {
-  cost.AbilityCost cost = 1;
-  repeated Effect effects = 2;
-  string oracle_text = 3;
-  bool sorcery_speed = 4;
-  bool craft = 5;
-}
-
-message ApplyThen {
-  repeated Effect apply = 1;
-  repeated Effect then = 2;
-}
-
-message ApplyThenIfWas {
-  message Then {
-    repeated targets.Restriction if_was = 1;
-    repeated Effect apply = 2;
-  }
-
-  repeated Effect apply = 3;
-  Then then = 4;
-}
-
-message BattleCry {}
+/// Enums and common utilities.
 
 message BattlefieldModifier {
   ModifyBattlefield modifier = 1;
   Duration duration = 2;
   repeated targets.Restriction restrictions = 3;
-  bool apply_to_self = 4;
-}
-
-message CantAttackThisTurn {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message Cascade {}
-
-message ChooseCast {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message ControllerDiscards {
-  uint32 count = 1;
-  repeated targets.Restriction unless = 2;
-}
-
-message ControllerDrawsCards {
-  message Fixed {
-    int32 count = 1;
-  }
-
-  oneof count {
-    Fixed fixed = 2;
-    NumberOfPermanentsMatching number_of_permanents_matching = 3;
-  }
-}
-
-message ControllerLosesLife {
-  uint32 count = 1;
-  repeated targets.Restriction unless = 2;
-}
-
-message CopyOfAnyCreatureNonTargeting {}
-
-message CopySpellOrAbility {
-  repeated targets.Restriction restrictions = 1;
 }
 
 message Count {
   message Fixed {
-    uint32 count = 1;
-  }
-  message Dynamic {
-    message X {}
-    message LeftBattlefieldThisTurn {
-      repeated targets.Restriction restrictions = 1;
-    }
-
-    oneof dynamic {
-      LeftBattlefieldThisTurn left_battlefield_this_turn = 2;
-      X x = 3;
-    }
-  }
-
-  oneof count {
-    Fixed fixed = 4;
-    Dynamic dynamic = 5;
-  }
-}
-
-message CounterSpellOrAbility {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message CounterSpellUnlessPay {
-  message Fixed {
     int32 count = 1;
   }
-
-  oneof cost {
-    Fixed fixed = 2;
+  message LeftBattlefieldThisTurn {
+    repeated targets.Restriction restrictions = 1;
   }
-
-  repeated targets.Restriction restrictions = 3;
-}
-
-message CreateToken {
-  message Creature {
-    string name = 1;
-    types.Typeline typeline = 2;
-    repeated color.Color colors = 3;
-    optional DynamicPowerToughness dynamic_power_toughness = 4;
-    int32 power = 5;
-    int32 toughness = 6;
-    map<int32, uint32> keywords = 7;
+  message NumberOfCountersOnSelected {
+    counters.Counter type = 1;
   }
-  message Map {}
-
-  oneof token {
-    Creature creature = 1;
-    Map map = 2;
+  message NumberOfPermanentsMatching {
+    repeated targets.Restriction restrictions = 1;
   }
-}
-
-message CreateTokenCopy {
-  repeated ModifyBattlefield modifiers = 1;
-}
-
-message Cycling {
-  map<int32, empty.Empty> types = 1;
-  map<int32, empty.Empty> subtypes = 2;
-}
-
-message DealDamage {
-  uint32 quantity = 1;
-  repeated targets.Restriction restrictions = 2;
-}
-
-message Destination {
-  message Hand {}
-  message TopOfLibrary {}
-  message BottomOfLibrary {}
-  message Graveyard {}
-  message Battlefield {
-    bool enters_tapped = 1;
-  }
-  oneof destination {
-    Hand hand = 2;
-    TopOfLibrary top_of_library = 3;
-    BottomOfLibrary bottom_of_library = 4;
-    Graveyard graveyard = 5;
-    Battlefield battlefield = 6;
-  }
-}
-
-message DestroyEach {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message DestroyTarget {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message Discover {
+  message XCost {}
   message X {
     cost.XIs x_is = 1;
   }
-  message Fixed {
-    uint32 count = 1;
-  }
+
   oneof count {
-    X x = 2;
-    Fixed fixed = 3;
+    Fixed fixed = 2;
+    LeftBattlefieldThisTurn left_battlefield_this_turn = 3;
+    NumberOfCountersOnSelected number_of_counters_on_selected = 4;
+    NumberOfPermanentsMatching number_of_permanents_matching = 5;
+    XCost x_cost = 6;
+    X x = 7;
   }
+}
+
+message Dest {
+  oneof destination {
+    MoveToBattlefield move_to_battlefield = 1;
+    MoveToExile move_to_exile = 2;
+    MoveToGraveyard move_to_graveyard = 3;
+    MoveToHand move_to_hand = 4;
+    MoveToBottomOfLibrary move_to_bottom_of_library = 5;
+    MoveToTopOfLibrary move_to_top_of_library = 6;
+  }
+
+  uint32 count = 7;
+  repeated ids.CardId cards = 8;
 }
 
 enum Duration {
@@ -397,104 +279,15 @@ enum Duration {
   UNTIL_UNTAPPED = 4;
 }
 
-message DynamicPowerToughness {
-  oneof source {
-    NumberOfCountersOnThis number_of_counters_on_this = 1;
-    NumberOfPermanentsMatching number_of_permanents_matching = 2;
-  }
-
-  message NumberOfCountersOnThis {
-    counters.Counter counter = 1;
-  }
-}
-
-message Equip {
-  repeated ModifyBattlefield modifiers = 1;
-}
-
-message ExamineTopCards {
-  message Dest {
-    Destination destination = 1;
-    uint32 count = 2;
-  }
-
-  uint32 count = 3;
-  repeated Dest destinations = 4;
-}
-
-message ExileTarget {
-  Duration duration = 1;
-  repeated targets.Restriction restrictions = 2;
-}
-
-message ExileTargetCreatureManifestTopOfLibrary {}
-
-message ExileTargetGraveyard {}
-
-message ExtraLandsPerTurn {
-  uint32 count = 1;
-}
-
-message ForEachManaOfSource {
-  mana.ManaSource source = 1;
-  Effect effect = 2;
-}
-
-message ForEachPlayerChooseThen {
-  repeated targets.Restriction restrictions = 1;
-  bool is_optional = 2;
-  repeated Effect effects = 3;
-}
-
-message GainCounters {
-  Count count = 1;
-  counters.Counter counter = 2;
-}
-
-message GainLife {
-  uint32 count = 1;
-}
-
-message GainMana {
-  message Specific {
-    repeated mana.Mana gain = 1;
-  }
-  message GainMana {
-    repeated mana.Mana gains = 1;
-  }
-  message Choice {
-    repeated GainMana choices = 1;
-  }
-  oneof gain {
-    Specific specific = 2;
-    Choice choice = 3;
-  }
-}
-
-message GainManaAbility {
-  cost.AbilityCost cost = 1;
-  GainMana gain_mana = 2;
-  mana.ManaSource mana_source = 3;
-  mana.ManaRestriction mana_restriction = 4;
-  string oracle_text = 5;
-  repeated Effect additional_effects = 6;
-}
-
-message IfThenElse {
-  repeated targets.Restriction if = 1;
-  repeated Effect then = 2;
-  repeated Effect else = 3;
-}
-
-message Mill {
-  uint32 count = 1;
-  repeated targets.Restriction restrictions = 2;
+message Mode {
+  repeated Effect effects = 1;
+  uint32 applying = 2 [(comment.hidden) = true];
 }
 
 message ModifyBattlefield {
   optional int32 base_power = 1;
   optional int32 base_toughness = 2;
-  optional DynamicPowerToughness add_dynamic_power_toughness = 3;
+  optional Count add_dynamic_power_toughness = 3;
   map<int32, empty.Empty> add_types = 4;
   map<int32, empty.Empty> add_subtypes = 5;
   map<int32, empty.Empty> remove_types = 6;
@@ -517,61 +310,68 @@ message ModifyBattlefield {
   map<int32, uint32> remove_keywords = 23;
 }
 
-message MultiplyTokens {
-  uint32 multiplier = 1;
+enum SimpleDestination {
+  BATTLEFIELD = 0;
+  GRAVEYARD = 1;
+  EXILE = 2;
+  HAND = 3;
+  BOTTOM_OF_LIBRARY = 4;
+  TOP_OF_LIBRARY = 5;
 }
 
-message NumberOfPermanentsMatching {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message PayCostThen {
-  cost.AbilityCost cost = 1;
-  repeated Effect effects = 2;
-}
-
-message Rebound {}
-
-message ReturnFromGraveyardToBattlefield {
-  uint32 count = 1;
-  repeated targets.Restriction restrictions = 2;
-  optional cost.XIs x_is = 3;
-  bool enters_tapped = 4;
-}
-
-message ReturnFromGraveyardToHand {
-  uint32 count = 1;
-  repeated targets.Restriction restrictions = 2;
-}
-
-message ReturnFromGraveyardToLibrary {
-  uint32 count = 1;
-  repeated targets.Restriction restrictions = 2;
-}
-
-message ReturnSelfToHand {}
-
-message ReturnTargetToHand {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message RevealEachTopOfLibrary {
-  message ForEach {
-    message IfNone {
-      repeated Effect effects = 1;
-    }
-    repeated targets.Restriction restrictions = 2;
-    repeated Effect effects = 3;
-    IfNone if_none = 4;
+message TargetSelection {
+  oneof selector {
+    Modal modal = 1;
+    SelectTargets select_targets = 2;
+    SelectNonTargeting select_non_targeting = 3;
+    SelectForEachPlayer select_for_each_player = 4;
   }
-  ForEach for_each = 5;
 }
 
-message Scry {
-  uint32 count = 1;
+/// Abilities
+
+message ActivatedAbility {
+  cost.AbilityCost cost = 1;
+
+  TargetSelection targets = 2;
+  repeated Effect additional_costs = 3;
+  repeated Effect effects = 4;
+
+  string oracle_text = 5;
+  bool sorcery_speed = 6;
+  bool craft = 7;
+  bool can_activate_in_hand = 8;
 }
 
-message SelfExplores {}
+message EtbAbility {
+  string oracle_text = 1;
+  SelectMode modes = 2;
+  TargetSelection targets = 3;
+  repeated Effect additional_costs = 4;
+  repeated effects.Effect effects = 5;
+}
+
+message GainManaAbility {
+  cost.AbilityCost cost = 1;
+
+  repeated Effect additional_costs = 2;
+  repeated Effect effects = 3;
+
+  string oracle_text = 4;
+}
+
+message ReplacementEffect {
+  enum Replacing {
+    DRAW = 0;
+    ETB = 1;
+    TOKEN_CREATION = 2;
+  }
+
+  Replacing replacing = 3;
+  repeated targets.Restriction restrictions = 4;
+  bool can_activate_in_hand = 5;
+  repeated Effect effects = 6;
+}
 
 message StaticAbility {
   message AddKeywordsIf {
@@ -582,6 +382,9 @@ message StaticAbility {
     repeated cost.AbilityRestriction activation_restrictions = 1;
   }
   message CantCastIfAttacked {}
+  message ExtraLandsPerTurn {
+    uint32 count = 1;
+  }
   message ForceEtbTapped {
     repeated targets.Restriction restrictions = 1;
   }
@@ -608,75 +411,371 @@ message StaticAbility {
   }
 }
 
-message TapTarget {
+message TriggeredAbility {
+  triggers.Trigger trigger = 1;
+  SelectMode modes = 2;
+  TargetSelection targets = 3;
+  repeated effects.Effect effects = 4;
+  string oracle_text = 5;
+}
+
+/// Effects
+
+message AddCounters {
+  counters.Counter counter = 1;
+  Count count = 2;
+}
+
+message ApplyModifier {
+  BattlefieldModifier modifier = 1;
+}
+
+message ApplyToEachTarget {
+  repeated Effect effects = 1;
+}
+
+message AttackSelected {}
+
+message BanAttackingThisTurn {}
+
+message Cascade {}
+
+message CastSelected {
+  bool pay_costs = 1;
+}
+
+message ChooseAttackers {
+  repeated ids.CardId attackers = 1;
+  repeated ids.Owner targets = 2;
+}
+
+message ChooseCast {
+  repeated ids.CardId chosen = 1 [(comment.hidden) = true];
+  bool discovering = 2 [(comment.hidden) = true];
+  bool pay_costs = 3;
+}
+
+message ClearSelected {}
+
+message CloneSelected {}
+
+message CompleteSpellResolution {}
+
+message CopySpellOrAbility {}
+
+message CounterSpell {}
+
+message CreateToken {
+  message Creature {
+    string name = 1;
+    types.Typeline typeline = 2;
+    repeated color.Color colors = 3;
+    optional Count dynamic_power_toughness = 4;
+    int32 power = 5;
+    int32 toughness = 6;
+    map<int32, uint32> keywords = 7;
+  }
+  message Map {}
+
+  oneof token {
+    Creature creature = 1;
+    Map map = 2;
+  }
+}
+
+message CreateTokenCloneOfSelected {}
+
+message Cycling {
+  map<int32, empty.Empty> types = 1;
+  map<int32, empty.Empty> subtypes = 2;
+}
+
+message DamageSelected {
+  Count count = 1;
+}
+
+message DeclareAttacking {}
+
+message DestroySelected {}
+
+message Discard {
+  Count count = 1;
+  repeated ids.CardId cards = 2;
+}
+
+message DiscardSelected {}
+
+message Discover {
+  Count count = 1;
+}
+
+message DrawCards {
+  Count count = 1;
+}
+
+message Equip {
+  repeated ModifyBattlefield modifiers = 1;
+}
+
+message ExileGraveyard {}
+
+message Explore {}
+
+message ForEachManaOfSource {
+  mana.ManaSource source = 1;
+  repeated Effect effects = 2;
+}
+
+message GainLife {
+  Count count = 1;
+}
+
+message GainMana {
+  message Specific {
+    repeated mana.Mana gain = 1;
+  }
+  message GainMana {
+    repeated mana.Mana gains = 1;
+  }
+  message Choice {
+    repeated GainMana choices = 1;
+  }
+  oneof gain {
+    Specific specific = 2;
+    Choice choice = 3;
+  }
+
+  mana.ManaSource mana_source = 4;
+  mana.ManaRestriction mana_restriction = 5;
+}
+
+message IfThenElse {
+  repeated targets.Restriction if = 1;
+  repeated Effect then = 2;
+  repeated Effect else = 3;
+}
+
+message LoseLife {
+  Count count = 1;
+}
+
+message Manifest {}
+
+message Mill {
+  Count count = 1;
+}
+
+message Modal {
+  repeated Mode modes = 1;
+  uint32 applying = 2 [(comment.hidden) = true];
+}
+
+message MoveToBattlefield {
+  bool enters_tapped = 1;
+}
+message MoveToBottomOfLibrary {}
+message MoveToExile {
+  Duration duration = 1;
+}
+message MoveToGraveyard {}
+message MoveToHand {}
+message MoveToStack {}
+message MoveToTopOfLibrary {
+  uint32 under = 1;
+}
+
+message MultiplyTokens {
+  uint32 multiplier = 1;
+  repeated targets.Restriction restrictions = 2;
+}
+
+message Nothing {}
+
+message Overwrite {
+  repeated Effect effects = 1;
+}
+
+message PayCost {
+  message ExileCardsSharingType {
+    uint32 count = 1;
+    repeated ids.CardId selected = 2 [(comment.hidden) = true];
+  }
+
+  message ExilePermanents {
+    repeated targets.Restriction restrictions = 1;
+    uint32 minimum = 2;
+    uint32 maximum = 3;
+    repeated ids.CardId selected = 4 [(comment.hidden) = true];
+  }
+
+  message ExilePermanentsCmcX {
+    repeated targets.Restriction restrictions = 1;
+    cost.XIs x_is = 2;
+    repeated ids.CardId selected = 3 [(comment.hidden) = true];
+  }
+
+  message PayLife {
+    Count count = 1;
+  }
+
+  message PayMana {
+    message ManaToSource {
+      message SourceToCount {
+        map<int32, uint32> source_to_count = 1;
+      }
+      map<int32, SourceToCount> mana_to_source = 2;
+    }
+
+    repeated cost.ManaCost paying = 3;
+    cost.CostReducer reducer = 4;
+    map<int32, ManaToSource> paid = 5 [(comment.hidden) = true];
+    mana.SpendReason reason = 6;
+    bool reduced = 7 [(comment.hidden) = true];
+  }
+
+  message SacrificePermanent {
+    repeated targets.Restriction restrictions = 1;
+    ids.CardId selected = 2 [(comment.hidden) = true];
+  }
+
+  message TapPermanent {
+    repeated targets.Restriction restrictions = 1;
+    ids.CardId selected = 2 [(comment.hidden) = true];
+  }
+
+  message TapPermanentsPowerXOrMore {
+    repeated targets.Restriction restrictions = 1;
+    uint32 x_is = 2;
+    repeated ids.CardId selected = 3 [(comment.hidden) = true];
+  }
+
+  oneof cost {
+    ExileCardsSharingType exile_cards_sharing_type = 4;
+    ExilePermanents exile_permanents = 5;
+    ExilePermanentsCmcX exile_permanents_cmc_x = 6;
+    PayLife pay_life = 7;
+    PayMana pay_mana = 8;
+    SacrificePermanent sacrifice_permanent = 9;
+    TapPermanent tap_permanent = 10;
+    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 11;
+  }
+}
+
+message PayCosts {
+  message OrElse {
+    repeated Effect effects = 1;
+  }
+
+  repeated PayCost pay_costs = 2;
+  uint32 paying = 3;
+
+  OrElse or_else = 4;
+  bool apply_or_else = 5 [(comment.hidden) = true];
+}
+
+message PlayerLoses {}
+
+message PopSelected {}
+
+message PushSelected {}
+
+message RemoveCounters {
+  counters.Counter counter = 1;
+  Count count = 2;
+}
+
+message ReorderSelected {
+  Effect associated_effect = 1;
+  uint32 reordering = 2;
+}
+
+message Reveal {}
+
+message Sacrifice {}
+
+message Scry {
+  repeated Dest dests = 1;
+  uint32 placing = 2 [(comment.hidden) = true];
+}
+
+message SelectAll {
   repeated targets.Restriction restrictions = 1;
 }
 
-message TapThis {}
+message SelectAllPlayers {}
 
-message TargetControllerGainsTokens {
-  CreateToken create_token = 1;
+message SelectDestinations {
+  repeated Dest destinations = 1;
+  uint32 placing = 2;
 }
 
-message TargetCopiesPermanent {
-  repeated targets.Restriction target_restrictions = 1;
-  repeated targets.Restriction copy_restrictions = 2;
+message SelectEffectController {}
+
+message SelectExiledWithCascadeOrDiscover {}
+
+message SelectForEachPlayer {
+  repeated targets.Restriction restrictions = 1;
+  bool targeted = 2;
+  bool optional = 3;
 }
 
-message TargetCreatureExplores {}
-
-message TargetGainsCounters {
-  Count count = 1;
-  counters.Counter counter = 2;
-  repeated targets.Restriction restrictions = 3;
-  bool is_optional = 4;
+message SelectMode {
+  repeated string descriptions = 1;
 }
 
-message TargetToTopOfLibrary {
-  uint32 under_cards = 1;
+message SelectNonTargeting {
+  uint32 count = 1;
   repeated targets.Restriction restrictions = 2;
 }
+
+message SelectSource {}
+
+message SelectTargetController {}
+
+message SelectTargets {
+  bool optional = 1;
+  Count count = 2;
+  repeated targets.Restriction restrictions = 3;
+}
+
+message SelectTopOfLibrary {
+  Count count = 1;
+}
+
+message ShuffleSelected {}
+
+message SpendMana {
+  repeated mana.Mana mana = 1;
+  repeated mana.ManaSource mana_sources = 2;
+  mana.SpendReason reason = 3;
+}
+
+message Tap {}
 
 message Transform {}
 
 message TutorLibrary {
-  repeated targets.Restriction restrictions = 1;
-  Destination destination = 2;
-  bool reveal = 3;
-}
+  message Target {
+    repeated targets.Restriction restrictions = 1;
 
-message ReturnTransformed {
-  bool enters_tapped = 1;
-}
-
-message UntapTarget {
-  repeated targets.Restriction restrictions = 1;
-}
-
-message UntapThis {}
-
-message Mode {
-  repeated Effect effects = 1;
-}
-
-message Modes {
-  repeated Mode modes = 1;
-}
-
-message ModifyTarget {
-  ModifyBattlefield modifier = 1;
-  Duration duration = 2;
-  repeated targets.Restriction restrictions = 3;
-}
-
-message ReplacementEffect {
-  enum Replacing {
-    DRAW = 0;
-    ETB = 1;
-    TOKEN_CREATION = 2;
+    oneof destination {
+      MoveToBattlefield move_to_battlefield = 2;
+      MoveToExile move_to_exile = 3;
+      MoveToGraveyard move_to_graveyard = 4;
+      MoveToHand move_to_hand = 5;
+      MoveToBottomOfLibrary move_to_bottom_of_library = 6;
+      MoveToTopOfLibrary move_to_top_of_library = 7;
+    }
   }
 
-  Replacing replacing = 3;
-  repeated targets.Restriction restrictions = 4;
-  repeated Effect effects = 5;
+  repeated Target targets = 8;
+  repeated ids.CardId selected = 9;
+  bool reveal = 10;
 }
+
+message Unless {
+  repeated targets.Restriction unless = 1;
+  repeated Effect then = 2;
+}
+
+message Untap {}

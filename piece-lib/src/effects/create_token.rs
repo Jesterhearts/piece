@@ -1,69 +1,55 @@
 use crate::{
-    action_result::{self, ActionResult},
-    effects::EffectBehaviors,
-    protogen::effects::CreateToken,
+    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    in_play::{CardId, Database},
+    log::LogId,
+    protogen::effects::{replacement_effect::Replacing, CreateToken, MoveToBattlefield},
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for CreateToken {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        selected: &mut SelectedStack,
+        skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let owner = selected.first().unwrap().player().unwrap();
+        if skip_replacement {
+            let card = CardId::upload_token(db, owner, self.token.as_ref().cloned().unwrap());
 
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
-
-    fn push_pending_behavior(
-        &self,
-        _db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(
-            action_result::create_token::CreateToken {
+            vec![
+                ApplyResult::PushFront(EffectBundle {
+                    push_on_enter: Some(vec![Selected {
+                        location: None,
+                        target_type: TargetType::Card(card),
+                        targeted: false,
+                        restrictions: vec![],
+                    }]),
+                    source,
+                    effects: vec![MoveToBattlefield::default().into()],
+                    ..Default::default()
+                }),
+                ApplyResult::PushFront(EffectBundle {
+                    push_on_enter: Some(vec![]),
+                    ..Default::default()
+                }),
+            ]
+        } else {
+            handle_replacements(
+                db,
                 source,
-                token: self.token.as_ref().unwrap().clone(),
-            },
-        ));
-    }
-
-    fn push_behavior_from_top_of_library(
-        &self,
-        _db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _target: crate::in_play::CardId,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(
-            action_result::create_token::CreateToken {
-                source,
-                token: self.token.as_ref().unwrap().clone(),
-            },
-        ));
-    }
-
-    fn push_behavior_with_targets(
-        &self,
-        _db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        _controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(
-            action_result::create_token::CreateToken {
-                source,
-                token: self.token.as_ref().unwrap().clone(),
-            },
-        ));
+                Replacing::TOKEN_CREATION,
+                self.clone(),
+                |source, restrictions| {
+                    owner.passes_restrictions(
+                        db,
+                        LogId::current(db),
+                        db[source].controller,
+                        restrictions,
+                    )
+                },
+            )
+        }
     }
 }

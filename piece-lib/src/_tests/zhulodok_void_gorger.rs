@@ -4,14 +4,17 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    battlefield::Battlefields,
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     library::Library,
     load_cards,
-    pending_results::ResolutionResult,
     player::AllPlayers,
-    protogen::types::{Subtype, Type},
-    stack::Stack,
+    protogen::{
+        effects::MoveToBattlefield,
+        targets::Location,
+        types::{Subtype, Type},
+    },
+    stack::{Selected, Stack, TargetType},
     types::{SubtypeSet, TypeSet},
 };
 
@@ -49,33 +52,43 @@ fn cascades() -> anyhow::Result<()> {
     Library::place_on_top(&mut db, player, deck4);
 
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
-    let mut results = Battlefields::add_from_stack_or_hand(&mut db, zhul, None);
+    let mut results = PendingEffects::default();
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(zhul),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
-    let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1, false);
+    let mut results = Stack::move_card_to_stack_from_hand(&mut db, hand1);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve the first cascade
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
     // Choose to cast
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Choose targets for metamorphosis.
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     // Resolve majestic metamorphosis
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db[zhul].modified_types,
@@ -86,15 +99,23 @@ fn cascades() -> anyhow::Result<()> {
         SubtypeSet::from([Subtype::ELDRAZI, Subtype::ANGEL])
     );
 
-    // Resolve the first cascade
+    assert_eq!(
+        db.all_players[player]
+            .library
+            .cards
+            .iter()
+            .copied()
+            .collect::<HashSet<_>>(),
+        HashSet::from([deck1, deck4])
+    );
+
+    // Resolve the second cascade
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
     // Choose not to cast
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::TryAgain);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(
         db.all_players[player]
@@ -111,7 +132,7 @@ fn cascades() -> anyhow::Result<()> {
     // Resolve the actual golem
     let mut results = Stack::resolve_1(&mut db);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, ResolutionResult::Complete);
+    assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(db.battlefield[player], IndexSet::from([zhul, hand1]));
 

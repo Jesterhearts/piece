@@ -13,12 +13,12 @@ use itertools::Itertools;
 use piece_lib::{
     battlefield::Battlefields,
     card::replace_expanded_symbols,
+    effects::{Options, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     library::DeckDefinition,
-    pending_results::{Options, PendingResults, ResolutionResult},
     player::{AllPlayers, Owner, Player},
     protogen::{keywords::Keyword, targets::Location},
-    stack::{ActiveTarget, Stack},
+    stack::{Selected, Stack},
     turns::Turn,
     Cards,
 };
@@ -50,7 +50,7 @@ struct App {
     name: Field,
 
     adding_card: Option<String>,
-    to_resolve: Option<PendingResults>,
+    to_resolve: Option<PendingEffects>,
     organizing_stack: bool,
 
     hovered: Option<usize>,
@@ -58,7 +58,7 @@ struct App {
     right_clicked: Option<usize>,
     selected_card: Option<CardId>,
     inspecting_card: Option<CardId>,
-    hovering_target: Option<ActiveTarget>,
+    hovering_target: Option<Selected>,
 }
 
 impl App {
@@ -440,11 +440,11 @@ impl eframe::App for App {
             debug!("Giving ai priority");
             let mut pending = self
                 .ai
-                .priority(&mut self.database, &mut PendingResults::default());
+                .priority(&mut self.database, &mut PendingEffects::default());
 
-            while pending.only_immediate_results(&self.database) {
+            while pending.options(&self.database).is_empty() {
                 let result = pending.resolve(&mut self.database, None);
-                if result == ResolutionResult::Complete {
+                if result == SelectionResult::Complete {
                     break;
                 }
             }
@@ -485,9 +485,9 @@ impl eframe::App for App {
 
                         if self.database.turn.passed_full_priority_round() {
                             let mut pending = Turn::step(&mut self.database);
-                            while pending.only_immediate_results(&self.database) {
+                            while pending.options(&self.database).is_empty() {
                                 let result = pending.resolve(&mut self.database, None);
-                                if result == ResolutionResult::Complete {
+                                if result == SelectionResult::Complete {
                                     break;
                                 }
                             }
@@ -529,10 +529,10 @@ impl eframe::App for App {
                         || (ui.is_enabled()
                             && ctx.input(|input| input.key_released(egui::Key::Num4)))
                     {
-                        let mut pending = Player::draw(&mut self.database, self.player1, 1);
-                        while pending.only_immediate_results(&self.database) {
+                        let mut pending = Player::draw(self.player1, 1);
+                        while pending.options(&self.database).is_empty() {
                             let result = pending.resolve(&mut self.database, None);
-                            if result == ResolutionResult::Complete {
+                            if result == SelectionResult::Complete {
                                 break;
                             }
                         }
@@ -615,7 +615,7 @@ impl eframe::App for App {
                     items: self.database.stack.entries(),
                     db: &self.database,
                     left_clicked: &mut self.left_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -663,7 +663,7 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut None,
                     right_clicked: &mut self.right_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -688,7 +688,7 @@ impl eframe::App for App {
                     cards,
                     left_clicked: &mut self.left_clicked,
                     right_clicked: &mut self.right_clicked,
-                    target: self.hovering_target,
+                    target: self.hovering_target.clone(),
                 },
             );
 
@@ -721,9 +721,9 @@ impl eframe::App for App {
                     && Turn::can_cast(&self.database, card)
                 {
                     let mut pending = Player::play_card(&mut self.database, self.player1, card);
-                    while pending.only_immediate_results(&self.database) {
+                    while pending.options(&self.database).is_empty() {
                         let result = pending.resolve(&mut self.database, None);
-                        if result == ResolutionResult::Complete {
+                        if result == SelectionResult::Complete {
                             break;
                         }
                     }
@@ -752,9 +752,9 @@ impl eframe::App for App {
                             selected,
                         );
 
-                        while pending.only_immediate_results(&self.database) {
+                        while pending.options(&self.database).is_empty() {
                             let result = pending.resolve(&mut self.database, None);
-                            if result == ResolutionResult::Complete {
+                            if result == SelectionResult::Complete {
                                 break;
                             }
                         }
@@ -896,9 +896,9 @@ impl eframe::App for App {
             if resolving.priority(&self.database) == self.player2 {
                 let mut pending = self.ai.priority(&mut self.database, resolving);
 
-                while pending.only_immediate_results(&self.database) {
+                while pending.options(&self.database).is_empty() {
                     let result = pending.resolve(&mut self.database, None);
-                    if result == ResolutionResult::Complete {
+                    if result == SelectionResult::Complete {
                         break;
                     }
                 }
@@ -917,7 +917,7 @@ impl eframe::App for App {
                     .open(&mut open)
                     .show(ctx, |ui| {
                         ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                            let rest = match resolving.options(&mut self.database) {
+                            let rest = match resolving.options(&self.database) {
                                 Options::MandatoryList(list) => list,
                                 Options::OptionalList(list) => {
                                     if ui.button("None").clicked() {
@@ -947,7 +947,8 @@ impl eframe::App for App {
                     });
 
                 if !open || ctx.input(|input| input.key_released(egui::Key::Escape)) {
-                    let can_cancel = resolving.can_cancel(&self.database);
+                    let can_cancel =
+                        matches!(resolving.options(&self.database), Options::OptionalList(_));
                     debug!("Can cancel {:?} = {}", resolving, can_cancel);
                     if can_cancel {
                         self.to_resolve = None;
@@ -955,11 +956,11 @@ impl eframe::App for App {
                 } else if let Some(choice) = choice {
                     loop {
                         match resolving.resolve(&mut self.database, choice) {
-                            ResolutionResult::Complete => {
+                            SelectionResult::Complete => {
                                 let mut pending = Battlefields::check_sba(&mut self.database);
-                                while pending.only_immediate_results(&self.database) {
+                                while pending.options(&self.database).is_empty() {
                                     let result = pending.resolve(&mut self.database, None);
-                                    if result == ResolutionResult::Complete {
+                                    if result == SelectionResult::Complete {
                                         break;
                                     }
                                 }
@@ -967,7 +968,7 @@ impl eframe::App for App {
                                 if pending.is_empty() {
                                     let entries = self.database.stack.entries_unsettled();
                                     if !self.organizing_stack && entries.len() > 1 {
-                                        resolving.set_organize_stack(&self.database, entries);
+                                        *resolving = PendingEffects::organize_stack(&self.database);
                                         self.organizing_stack = true;
                                     } else {
                                         debug!("Stepping priority");
@@ -979,7 +980,7 @@ impl eframe::App for App {
                                         debug!("Giving ai priority",);
                                         let pending = self.ai.priority(
                                             &mut self.database,
-                                            &mut PendingResults::default(),
+                                            &mut PendingEffects::default(),
                                         );
                                         maybe_organize_stack(
                                             &mut self.database,
@@ -994,12 +995,12 @@ impl eframe::App for App {
 
                                 break;
                             }
-                            ResolutionResult::TryAgain => {
-                                if !resolving.only_immediate_results(&self.database) {
+                            SelectionResult::TryAgain => {
+                                if !resolving.options(&self.database).is_empty() {
                                     break;
                                 }
                             }
-                            ResolutionResult::PendingChoice => {
+                            SelectionResult::PendingChoice => {
                                 break;
                             }
                         }
@@ -1124,22 +1125,22 @@ impl eframe::App for App {
 
 fn cleanup_stack(
     db: &mut Database,
-    to_resolve: &mut Option<PendingResults>,
+    to_resolve: &mut Option<PendingEffects>,
     organizing_stack: &mut bool,
 ) {
     let mut pending = Stack::resolve_1(db);
-    while pending.only_immediate_results(db) {
+    while pending.options(db).is_empty() {
         let result = pending.resolve(db, None);
-        if result == ResolutionResult::Complete {
+        if result == SelectionResult::Complete {
             break;
         }
     }
 
     if pending.is_empty() {
         pending = Battlefields::check_sba(db);
-        while pending.only_immediate_results(db) {
+        while pending.options(db).is_empty() {
             let result = pending.resolve(db, None);
-            if result == ResolutionResult::Complete {
+            if result == SelectionResult::Complete {
                 break;
             }
         }
@@ -1150,8 +1151,8 @@ fn cleanup_stack(
 
 fn maybe_organize_stack(
     db: &mut Database,
-    mut pending: PendingResults,
-    to_resolve: &mut Option<PendingResults>,
+    pending: PendingEffects,
+    to_resolve: &mut Option<PendingEffects>,
     organizing_stack: &mut bool,
 ) {
     if !pending.is_empty() {
@@ -1161,8 +1162,7 @@ fn maybe_organize_stack(
         let entries = db.stack.entries_unsettled();
         debug!("Stack entries: {:?}", entries);
         if entries.len() > 1 {
-            pending.set_organize_stack(db, entries);
-            *to_resolve = Some(pending);
+            *to_resolve = Some(PendingEffects::organize_stack(db));
             *organizing_stack = true;
         } else {
             *to_resolve = None;

@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::{collections::HashMap, marker::PhantomData};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 
 use anyhow::{anyhow, Context};
 
@@ -12,6 +12,7 @@ use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use protobuf::{Enum, MessageDyn, MessageFull};
+use rust_embed::RustEmbed;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
@@ -32,7 +33,6 @@ use crate::{
 mod _tests;
 
 pub mod abilities;
-pub mod action_result;
 pub mod battlefield;
 pub mod card;
 pub mod cost;
@@ -44,78 +44,45 @@ pub mod in_play;
 pub mod library;
 pub mod log;
 pub mod mana;
-pub mod pending_results;
 pub mod player;
 pub mod protogen;
 pub mod stack;
 pub mod turns;
 pub mod types;
 
-#[macro_export]
-macro_rules! initialize_assets {
-    ($relative_path:literal, $absolute_path:literal) => {
-        CardDefs {
-            relative_path: $relative_path,
-            get_bytes: {
-                ::cfg_if::cfg_if! {
-                    if #[cfg(debug_assertions)] {
-                        fn get() -> std::borrow::Cow<'static,[u8]> {
-                            std::borrow::Cow::from(std::fs::read($absolute_path).unwrap())
-                        }
-                        get
-                    } else {
-                        fn get() -> std::borrow::Cow<'static,[u8]> {
-                            std::borrow::Cow::from(&include_bytes!($absolute_path)[..])
-                        }
-                        get
-                    }
-                }
-            },
-        }
-    };
-}
-
-#[iftree::include_file_tree(
-    "
-paths = 'cards/**'
-template.identifiers = false
-template.initializer = 'initialize_assets'
-"
-)]
-pub struct CardDefs {
-    pub relative_path: &'static str,
-    pub get_bytes: fn() -> std::borrow::Cow<'static, [u8]>,
-}
+#[derive(RustEmbed)]
+#[folder = "cards/"]
+pub struct CardDefs;
 
 pub type Cards = IndexMap<String, Card>;
 
-pub fn load_protos() -> anyhow::Result<Vec<(Card, &'static str)>> {
+pub fn load_protos() -> anyhow::Result<Vec<(Card, Cow<'static, str>)>> {
     let mut results = vec![];
 
-    for card_file in ASSETS.iter() {
-        let contents = (card_file.get_bytes)();
+    for card_file in CardDefs::iter() {
+        let contents = CardDefs::get(&card_file).unwrap();
 
-        let card: protogen::card::Card = serde_yaml::from_slice(&contents)
+        let card: protogen::card::Card = serde_yaml::from_slice(&contents.data)
             .map_err(|e| {
                 let location = e.location().unwrap();
-                Report::build(ReportKind::Error, card_file.relative_path, location.index())
+                Report::build(ReportKind::Error, &card_file, location.index())
                     .with_label(Label::new((
-                        card_file.relative_path,
+                        &card_file,
                         location.index()..location.index() + 1,
                     )))
                     .with_message(e.to_string())
                     .finish()
                     .eprint((
-                        card_file.relative_path,
-                        Source::from(std::str::from_utf8(&contents).expect("Invalid utf8")),
+                        &card_file,
+                        Source::from(std::str::from_utf8(&contents.data).expect("Invalid utf8")),
                     ))
                     .unwrap();
 
                 anyhow!(e.to_string())
             })
-            .with_context(|| format!("Parsing file: {}", card_file.relative_path))?;
+            .with_context(|| format!("Parsing file: {}", card_file))?;
 
-        results.push((card, card_file.relative_path));
+        results.push((card, card_file));
     }
 
     Ok(results)
@@ -295,40 +262,36 @@ where
         where
             E: serde::de::Error,
         {
-            let split = v
-                .split('}')
-                .map(|s| s.trim_start_matches('{'))
-                .filter(|s| !s.is_empty())
-                .collect_vec();
+            Ok(deserialize_cost(v)?
+                .into_iter()
+                .map(protobuf::EnumOrUnknown::new)
+                .collect_vec())
+        }
+    }
 
-            let mut results = vec![];
-            for symbol in split {
-                if let Ok(count) = symbol.parse::<usize>() {
-                    for _ in 0..count {
-                        results.push(ManaCost::GENERIC);
-                    }
-                } else {
-                    let cost = match symbol {
-                        "W" => ManaCost::WHITE,
-                        "U" => ManaCost::BLUE,
-                        "B" => ManaCost::BLACK,
-                        "R" => ManaCost::RED,
-                        "G" => ManaCost::GREEN,
-                        "X" => ManaCost::X,
-                        "C" => ManaCost::COLORLESS,
-                        s => {
-                            return Err(E::custom(format!("Invalid mana cost {}", s)));
-                        }
-                    };
+    deserializer.deserialize_str(Visit)
+}
 
-                    if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
-                        results.pop();
-                        results.push(ManaCost::TWO_X);
-                    } else {
-                        results.push(cost);
-                    }
-                }
-            }
+pub fn deserialize_paying<'de, D>(
+    deserializer: D,
+) -> Result<Vec<protobuf::EnumOrUnknown<ManaCost>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visit;
+    impl<'de> Visitor<'de> for Visit {
+        type Value = Vec<protobuf::EnumOrUnknown<ManaCost>>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("expected a sequence of {W}, {U}, {B}, {R}, {G}, {C}, or {#}")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            let mut results = deserialize_cost(v)?;
+            results.sort();
 
             Ok(results
                 .into_iter()
@@ -338,6 +301,47 @@ where
     }
 
     deserializer.deserialize_str(Visit)
+}
+
+fn deserialize_cost<E>(v: &str) -> Result<Vec<ManaCost>, E>
+where
+    E: serde::de::Error,
+{
+    let split = v
+        .split('}')
+        .map(|s| s.trim_start_matches('{'))
+        .filter(|s| !s.is_empty())
+        .collect_vec();
+    let mut results = vec![];
+    for symbol in split {
+        if let Ok(count) = symbol.parse::<usize>() {
+            for _ in 0..count {
+                results.push(ManaCost::GENERIC);
+            }
+        } else {
+            let cost = match symbol {
+                "W" => ManaCost::WHITE,
+                "U" => ManaCost::BLUE,
+                "B" => ManaCost::BLACK,
+                "R" => ManaCost::RED,
+                "G" => ManaCost::GREEN,
+                "X" => ManaCost::X,
+                "C" => ManaCost::COLORLESS,
+                s => {
+                    return Err(E::custom(format!("Invalid mana cost {}", s)));
+                }
+            };
+
+            if matches!(cost, ManaCost::X) && matches!(results.last(), Some(ManaCost::X)) {
+                results.pop();
+                results.push(ManaCost::TWO_X);
+            } else {
+                results.push(cost);
+            }
+        }
+    }
+
+    Ok(results)
 }
 
 fn serialize_mana_cost<S>(
@@ -769,6 +773,7 @@ where
     deserializer.deserialize_str(Visit::<T>::default())
 }
 
+#[allow(dead_code)]
 fn serialize_optional_enum<T, S>(
     value: &Option<::protobuf::EnumOrUnknown<T>>,
     serializer: S,
@@ -784,6 +789,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 fn deserialize_optional_enum<'de, T, D>(
     deserializer: D,
 ) -> Result<Option<::protobuf::EnumOrUnknown<T>>, D::Error>

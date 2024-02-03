@@ -3,15 +3,14 @@ use std::collections::{HashMap, VecDeque};
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    in_play::{CardId, Database, ExileReason},
+    in_play::{CardId, Database},
     player::Owner,
-    protogen::effects::Duration,
     Cards,
 };
 
 #[derive(Debug, Default)]
 pub struct DeckDefinition {
-    pub(crate) cards: HashMap<String, usize>,
+    cards: HashMap<String, usize>,
 }
 
 impl DeckDefinition {
@@ -48,10 +47,11 @@ impl Library {
         Self { cards }
     }
 
-    pub(crate) fn shuffle(&mut self) {
+    pub fn shuffle(&mut self) {
         self.cards.make_contiguous().shuffle(&mut thread_rng())
     }
 
+    #[cfg(test)]
     pub(crate) fn place_on_top(db: &mut Database, player: Owner, card: CardId) {
         if card.move_to_library(db) {
             db.all_players[player].library.cards.push_back(card);
@@ -68,31 +68,6 @@ impl Library {
     pub(crate) fn place_on_bottom(db: &mut Database, player: Owner, card: CardId) {
         if card.move_to_library(db) {
             db.all_players[player].library.cards.push_front(card);
-        }
-    }
-
-    pub(crate) fn exile_top_card(
-        db: &mut Database,
-        player: Owner,
-        source: CardId,
-        reason: Option<ExileReason>,
-    ) -> Option<CardId> {
-        if let Some(card) = db.all_players[player].library.cards.pop_back() {
-            card.move_to_exile(db, source, reason, Duration::PERMANENTLY);
-            Some(card)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn reveal_top(db: &mut Database, player: Owner) -> Option<CardId> {
-        if let Some(card) = db.all_players[player].library.cards.back().copied() {
-            {
-                db[card].revealed = true;
-            };
-            Some(card)
-        } else {
-            None
         }
     }
 

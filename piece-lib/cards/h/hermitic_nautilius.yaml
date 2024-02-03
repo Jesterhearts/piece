@@ -7,12 +7,13 @@ activated_abilities:
   - cost:
       mana_cost: '{1}{U}'
     effects:
-      - effect: !BattlefieldModifier
-          apply_to_self: true
+      - effect: !SelectSource {}
+      - effect: !ApplyModifier
           modifier:
-            add_power: 3
-            add_toughness: -3
-          duration: until end of turn
+            modifier:
+              add_power: 3
+              add_toughness: -3
+            duration: until end of turn
         oracle_text: >
           {1}{U}: Hermitic Nautilus gets +3/-3 until end of turn.
 

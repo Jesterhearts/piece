@@ -8,25 +8,18 @@ use crate::{
     protogen::{
         cost::ManaCost,
         mana::ManaSource,
-        mana::{Mana, ManaRestriction},
+        mana::{spend_reason::Reason, Mana, ManaRestriction},
         types::Type,
     },
     types::TypeSet,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SpendReason {
-    Casting(CardId),
-    Activating(CardId),
-    Other,
-}
-
-impl SpendReason {
+impl Reason {
     fn card(&self) -> Option<CardId> {
         match self {
-            SpendReason::Casting(card) => Some(*card),
-            SpendReason::Activating(source) => Some(*source),
-            SpendReason::Other => None,
+            Reason::Activating(source) => Some(source.source.as_ref().cloned().unwrap().into()),
+            Reason::Casting(card) => Some(card.card.as_ref().cloned().unwrap().into()),
+            Reason::Other(_) => None,
         }
     }
 }
@@ -87,7 +80,7 @@ impl ManaPool {
         db: &Database,
         mana: Mana,
         source: ManaSource,
-        reason: SpendReason,
+        reason: &Reason,
     ) -> (bool, ManaSource) {
         let mana = self.sourced.entry(mana).or_default();
         let mut ultimate_source = source;
@@ -140,7 +133,7 @@ impl ManaPool {
                     sourced.get_mut(&ManaRestriction::ARTIFACT_SPELL_OR_ABILITY)
                 {
                     Some(restricted)
-                } else if matches!(reason, SpendReason::Activating(_)) {
+                } else if matches!(reason, Reason::Activating(_)) {
                     if let Some(restricted) = sourced.get_mut(&ManaRestriction::ACTIVATE_ABILITY) {
                         Some(restricted)
                     } else {
@@ -160,7 +153,7 @@ impl ManaPool {
                 } else {
                     (false, ManaSource::ANY)
                 }
-            } else if matches!(reason, SpendReason::Activating(_)) {
+            } else if matches!(reason, Reason::Activating(_)) {
                 let restricted =
                     if let Some(restricted) = sourced.get_mut(&ManaRestriction::ACTIVATE_ABILITY) {
                         Some(restricted)
@@ -201,7 +194,7 @@ impl ManaPool {
         db: &Database,
         cost: ManaCost,
         source: ManaSource,
-        reason: SpendReason,
+        reason: &Reason,
     ) -> bool {
         let mut mana_pool = self.clone();
         match cost {
@@ -270,7 +263,7 @@ impl ManaPool {
         self.all_mana().filter(|(count, _, _, _)| *count > 0)
     }
 
-    pub(crate) fn max(&self, db: &Database, reason: SpendReason) -> Option<Mana> {
+    pub(crate) fn max(&self, db: &Database, reason: &Reason) -> Option<Mana> {
         self.available_mana()
             .filter(|(_, _, _, restriction)| {
                 if *restriction == ManaRestriction::NONE {
@@ -302,7 +295,7 @@ impl ManaPool {
 
 fn has_available_mana(
     sourced: &BTreeMap<ManaRestriction, usize>,
-    reason: SpendReason,
+    reason: &Reason,
     db: &Database,
 ) -> bool {
     sourced

@@ -1,66 +1,68 @@
 use crate::{
-    action_result::{self, ActionResult},
-    effects::EffectBehaviors,
-    protogen::effects::Cascade,
+    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    in_play::{CardId, Database, ExileReason},
+    protogen::{
+        effects::{
+            Cascade, ChooseCast, ClearSelected, Duration, MoveToBottomOfLibrary, PopSelected,
+            PushSelected, SelectExiledWithCascadeOrDiscover, ShuffleSelected,
+        },
+        targets::Location,
+    },
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for Cascade {
-    fn needs_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        source: Option<CardId>,
+        _selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let source = source.unwrap();
+        let owner = db[source].owner;
+        let mana_value = db[source].modified_cost.cmc() + source.get_x(db);
 
-    fn wants_targets(
-        &self,
-        _db: &crate::in_play::Database,
-        _source: crate::in_play::CardId,
-    ) -> usize {
-        0
-    }
+        let mut casting = vec![];
+        while let Some(card) = db.all_players[owner].library.draw() {
+            card.move_to_exile(
+                db,
+                source,
+                Some(ExileReason::CascadeOrDiscover),
+                Duration::PERMANENTLY,
+            );
 
-    fn push_pending_behavior(
-        &self,
-        db: &mut crate::in_play::Database,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
-            source,
-            cascading: source.faceup_face(db).cost.cmc(),
-            player: controller,
+            if !card.is_land(db) && card.faceup_face(db).cost.cmc() < mana_value {
+                casting.push(Selected {
+                    location: Some(Location::IN_EXILE),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                });
+                break;
+            }
+        }
+
+        let mut results = vec![ApplyResult::PushFront(EffectBundle {
+            effects: vec![
+                PushSelected::default().into(),
+                ClearSelected::default().into(),
+                SelectExiledWithCascadeOrDiscover::default().into(),
+                ShuffleSelected::default().into(),
+                MoveToBottomOfLibrary::default().into(),
+                PopSelected::default().into(),
+            ],
+            source: Some(source),
+            ..Default::default()
+        })];
+
+        results.push(ApplyResult::PushFront(EffectBundle {
+            push_on_enter: Some(casting),
+            effects: vec![ChooseCast::default().into(), PopSelected::default().into()],
+            source: Some(source),
+            ..Default::default()
         }));
-    }
 
-    fn push_behavior_from_top_of_library(
-        &self,
-        db: &crate::in_play::Database,
-        source: crate::in_play::CardId,
-        _target: crate::in_play::CardId,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
-            source,
-            cascading: source.faceup_face(db).cost.cmc(),
-            player: db[source].controller,
-        }))
-    }
-
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut crate::in_play::Database,
-        _targets: Vec<crate::stack::ActiveTarget>,
-        source: crate::in_play::CardId,
-        controller: crate::player::Controller,
-        results: &mut crate::pending_results::PendingResults,
-    ) {
-        results.push_settled(ActionResult::from(action_result::cascade::Cascade {
-            source,
-            cascading: source.faceup_face(db).cost.cmc(),
-            player: controller,
-        }))
+        results
     }
 }

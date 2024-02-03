@@ -1,80 +1,116 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::EffectBehaviors,
+    effects::{
+        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
+    },
     in_play::{CardId, Database},
-    log::LogId,
-    pending_results::{choose_targets::ChooseTargets, PendingResults, TargetSource},
-    player::Controller,
-    protogen::effects::{effect::Effect, ChooseCast},
-    stack::ActiveTarget,
+    protogen::effects::{CastSelected, ChooseCast, MoveToHand, PopSelected},
+    stack::{Selected, TargetType},
 };
 
 impl EffectBehaviors for ChooseCast {
-    fn needs_targets(&self, _db: &Database, _source: CardId) -> usize {
-        1
+    fn wants_input(
+        &self,
+        _db: &Database,
+        _source: Option<CardId>,
+        _already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> bool {
+        true
     }
 
-    fn wants_targets(&self, _db: &Database, _source: CardId) -> usize {
-        1
-    }
-
-    fn valid_targets(
+    fn options(
         &self,
         db: &Database,
-        source: CardId,
-        log_session: LogId,
-        _controller: Controller,
-        _already_chosen: &std::collections::HashSet<ActiveTarget>,
-    ) -> Vec<ActiveTarget> {
-        db.cards
-            .keys()
-            .copied()
-            .filter(|card| {
-                card.passes_restrictions(
-                    db,
-                    log_session,
-                    source,
-                    &source.faceup_face(db).restrictions,
-                ) && card.passes_restrictions(db, log_session, source, &self.restrictions)
-            })
-            .filter_map(|card| card.target_from_location(db))
-            .collect_vec()
+        _source: Option<CardId>,
+        already_selected: &[Selected],
+        _modes: &[usize],
+    ) -> Options {
+        Options::OptionalList(
+            already_selected
+                .iter()
+                .map(|target| target.id(db).unwrap())
+                .filter(|id| !self.chosen.iter().any(|card| card == id))
+                .map(|card| card.name(db).clone())
+                .enumerate()
+                .collect_vec(),
+        )
     }
 
-    fn push_pending_behavior(
-        &self,
+    fn select(
+        &mut self,
         db: &mut Database,
-        source: CardId,
-        controller: Controller,
-        results: &mut PendingResults,
-    ) {
-        let targets = self.valid_targets(
-            db,
-            source,
-            LogId::current(db),
-            controller,
-            results.all_currently_targeted(),
-        );
+        _source: Option<CardId>,
+        option: Option<usize>,
+        selected: &mut SelectedStack,
+    ) -> SelectionResult {
+        if let Some(option) = option {
+            let option = selected
+                .iter()
+                .map(|target| target.id(db).unwrap())
+                .filter(|id| !self.chosen.iter().any(|card| card == id))
+                .nth(option)
+                .unwrap();
 
-        results.push_choose_targets(ChooseTargets::new(
-            TargetSource::Effect(Effect::from(self.clone())),
-            targets,
-            LogId::current(db),
-            source,
-        ))
-    }
-
-    fn push_behavior_with_targets(
-        &self,
-        db: &mut Database,
-        targets: Vec<ActiveTarget>,
-        _source: CardId,
-        _controller: Controller,
-        results: &mut PendingResults,
-    ) {
-        for target in targets {
-            results.push_choose_cast(target.id(db).unwrap(), false, false);
+            self.chosen.push(option.into());
+            if self.chosen.len() == selected.len() {
+                SelectionResult::Complete
+            } else {
+                SelectionResult::PendingChoice
+            }
+        } else {
+            SelectionResult::Complete
         }
+    }
+
+    fn apply(
+        &mut self,
+        db: &mut Database,
+        _source: Option<CardId>,
+        selected: &mut SelectedStack,
+        _skip_replacement: bool,
+    ) -> Vec<ApplyResult> {
+        let mut results = vec![];
+        if self.discovering {
+            let not_cast = selected
+                .iter()
+                .filter(|target| {
+                    !self
+                        .chosen
+                        .iter()
+                        .any(|card| *card == target.id(db).unwrap())
+                })
+                .cloned()
+                .collect_vec();
+            results.push(ApplyResult::PushFront(EffectBundle {
+                push_on_enter: Some(not_cast),
+                effects: vec![MoveToHand::default().into(), PopSelected::default().into()],
+                ..Default::default()
+            }));
+        }
+
+        for card in self.chosen.iter().rev() {
+            let card: CardId = card.clone().into();
+            results.push(ApplyResult::PushFront(EffectBundle {
+                push_on_enter: Some(vec![Selected {
+                    location: card.location(db),
+                    target_type: TargetType::Card(card),
+                    targeted: false,
+                    restrictions: vec![],
+                }]),
+                effects: vec![
+                    CastSelected {
+                        pay_costs: self.pay_costs,
+                        ..Default::default()
+                    }
+                    .into(),
+                    PopSelected::default().into(),
+                ],
+                ..Default::default()
+            }));
+        }
+
+        results
     }
 }

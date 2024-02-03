@@ -5,17 +5,24 @@ oracle_text: 'Equipped creature has "{T}: Add one mana of any color."'
 activated_abilities:
   - cost:
       mana_cost: '{1}'
+    targets:
+      selector: !SelectTargets
+        count:
+          count: !Fixed
+            count: 1
+        restrictions:
+          - restriction: !OfType
+              types: Creature
     effects:
       - effect: !Equip
           modifiers:
             - mana_ability:
                 cost:
                   tap: true
-                gain_mana:
-                  gain: !Choice
-                    choices: '{W}, {U}, {B}, {R}, {G}'
-                mana_source: any
-                mana_restriction: none
+                effects:
+                  - effect: !GainMana
+                      gain: !Choice
+                        choices: '{W}, {U}, {B}, {R}, {G}'
                 oracle_text: |
                   {T}: Add one mana of any color.
     oracle_text: Equip {1}

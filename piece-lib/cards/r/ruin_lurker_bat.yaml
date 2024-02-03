@@ -11,8 +11,12 @@ triggered_abilities:
             controller: !Self_ {}
         - restriction: !DescendedThisTurn {}
     effects:
-      - effect: !Scry
-          count: 1
+      - effect: !SelectEffectController {}
+      - effect: !SelectTopOfLibrary
+          count:
+            count: !Fixed
+              count: 1
+      - effect: !Scry {}
     oracle_text: At the beginning of your end step, if you descended this turn, scry
       1.
 power: 1

@@ -4,18 +4,21 @@ cost:
   mana_cost: '{1}{U}'
 oracle_text: Return target creature to its owner's hand. If it was tapped, create
   a map token.
+targets:
+  selector: !SelectTargets
+    count:
+      count: !Fixed
+        count: 1
+    restrictions:
+      - restriction: !OfType
+          types: Creature
+      - restriction: !Location
+          locations: On Battlefield
 effects:
-  - effect: !ApplyThenIfWas
-      apply:
-        - effect: !ReturnTargetToHand
-            restrictions:
-              - restriction: !OfType
-                  types: Creature
-              - restriction: !Location
-                  locations: On Battlefield
+  - effect: !IfThenElse
+      if_:
+        - restriction: !Tapped {}
       then:
-        if_was:
-          - restriction: !Tapped {}
-        apply:
-          - effect: !CreateToken
-              token: !Map {}
+        - effect: !CreateToken
+            token: !Map {}
+  - effect: !MoveToHand {}

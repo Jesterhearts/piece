@@ -7,18 +7,20 @@ activated_abilities:
   - cost:
       mana_cost: '{1}'
       tap: true
-      additional_costs:
-        - cost: !SacrificeSource {}
+    additional_costs:
+      - effect: !SelectSource {}
+      - effect: !Sacrifice {}
+      - effect: !ClearSelected {}
     effects:
-      - oracle_text: ''
-        effect: !ExamineTopCards
-          count: 2
+      - effect: !SelectTopOfLibrary
+          count:
+            count: !Fixed
+              count: 2
+      - effect: !SelectDestinations
           destinations:
-            - destination:
-                destination: !Hand {}
+            - destination: !MoveToHand {}
               count: 1
-            - destination:
-                destination: !Graveyard {}
+            - destination: !MoveToGraveyard {}
               count: 1
     oracle_text: '{1}, {T}, Sacrifice Orazca Puzzle-Door: Look at the top two cards
       of your library. Put one of those cards into your hand and the other into your
