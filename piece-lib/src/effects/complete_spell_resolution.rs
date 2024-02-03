@@ -1,11 +1,15 @@
 use crate::{
     effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
-    in_play::{CardId, Database},
+    in_play::{CardId, CastFrom, Database},
     log::Log,
     protogen::{
-        effects::{CompleteSpellResolution, MoveToBattlefield, MoveToGraveyard, PopSelected},
+        effects::{
+            ChooseCast, CompleteSpellResolution, MoveToBattlefield, MoveToExile, MoveToGraveyard,
+            PopSelected, SelectSource, TriggeredAbility,
+        },
         targets::Location,
     },
+    turns::Phase,
 };
 
 impl EffectBehaviors for CompleteSpellResolution {
@@ -26,6 +30,27 @@ impl EffectBehaviors for CompleteSpellResolution {
                     PopSelected::default().into(),
                     PopSelected::default().into(),
                 ]
+            } else if card.rebound(db) && db[card].cast_from == Some(CastFrom::Hand) {
+                db.delayed_triggers
+                    .entry(db[card].owner)
+                    .or_default()
+                    .entry(Phase::Upkeep)
+                    .or_default()
+                    .push((
+                        card,
+                        TriggeredAbility {
+                            effects: vec![
+                                SelectSource::default().into(),
+                                ChooseCast::default().into(),
+                            ],
+                            oracle_text: "At the beginning of your next upkeep, \
+                                you may cast the spell from exile without paying its mana cost"
+                                .to_string(),
+                            ..Default::default()
+                        },
+                    ));
+
+                vec![MoveToExile::default().into(), PopSelected::default().into()]
             } else {
                 vec![
                     MoveToGraveyard::default().into(),
