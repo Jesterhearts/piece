@@ -33,6 +33,7 @@ impl EffectBehaviors for MoveToStack {
                 Log::cast(db, *card);
 
                 pending.extend(card.move_to_stack(db, targets, cast_from, selected.modes.clone()));
+                card.apply_modifiers_layered(db);
 
                 for _ in 0..card.cascade(db) {
                     pending.extend(Stack::push_ability(

@@ -4,7 +4,7 @@ use indexmap::IndexSet;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    effects::{EffectBehaviors, PendingEffects, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, PendingEffects, SelectionResult},
     in_play::{CardId, Database},
     library::Library,
     load_cards,
@@ -53,17 +53,14 @@ fn cascades() -> anyhow::Result<()> {
 
     let zhul = CardId::upload(&mut db, &cards, player, "Zhulodok, Void Gorger");
     let mut results = PendingEffects::default();
-    results.apply_results(MoveToBattlefield::default().apply(
-        &mut db,
-        None,
-        &mut SelectedStack::new(vec![Selected {
-            location: Some(Location::ON_BATTLEFIELD),
-            target_type: TargetType::Card(zhul),
-            targeted: false,
-            restrictions: vec![],
-        }]),
-        false,
-    ));
+    results.selected.push(Selected {
+        location: Some(Location::ON_BATTLEFIELD),
+        target_type: TargetType::Card(zhul),
+        targeted: false,
+        restrictions: vec![],
+    });
+    let to_apply = MoveToBattlefield::default().apply(&mut db, None, &mut results.selected, false);
+    results.apply_results(to_apply);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
@@ -77,10 +74,10 @@ fn cascades() -> anyhow::Result<()> {
 
     // Resolve the first cascade
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Choose to cast
     let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     // Choose targets for metamorphosis.
     let result = results.resolve(&mut db, Some(0));
@@ -102,10 +99,18 @@ fn cascades() -> anyhow::Result<()> {
         SubtypeSet::from([Subtype::ELDRAZI, Subtype::ANGEL])
     );
 
+    assert_eq!(
+        db.all_players[player]
+            .library
+            .cards
+            .iter()
+            .copied()
+            .collect::<HashSet<_>>(),
+        HashSet::from([deck1, deck4])
+    );
+
     // Resolve the second cascade
     let mut results = Stack::resolve_1(&mut db);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Choose not to cast
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);

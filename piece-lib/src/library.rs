@@ -3,15 +3,14 @@ use std::collections::{HashMap, VecDeque};
 use rand::{seq::SliceRandom, thread_rng};
 
 use crate::{
-    in_play::{CardId, Database, ExileReason},
+    in_play::{CardId, Database},
     player::Owner,
-    protogen::effects::Duration,
     Cards,
 };
 
 #[derive(Debug, Default)]
 pub struct DeckDefinition {
-    pub(crate) cards: HashMap<String, usize>,
+    cards: HashMap<String, usize>,
 }
 
 impl DeckDefinition {
@@ -70,24 +69,6 @@ impl Library {
         if card.move_to_library(db) {
             db.all_players[player].library.cards.push_front(card);
         }
-    }
-
-    pub(crate) fn exile_top_card(
-        db: &mut Database,
-        player: Owner,
-        source: CardId,
-        reason: Option<ExileReason>,
-    ) -> Option<CardId> {
-        if let Some(card) = db.all_players[player].library.cards.pop_back() {
-            card.move_to_exile(db, source, reason, Duration::PERMANENTLY);
-            Some(card)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn top(&mut self) -> Option<CardId> {
-        self.cards.back().copied()
     }
 
     pub(crate) fn draw(&mut self) -> Option<CardId> {

@@ -226,6 +226,7 @@ impl Stack {
             ),
         };
 
+        assert!(next.targets.len() <= 1);
         let mut pending = PendingEffects::new(SelectedStack::new(next.targets.clone()));
         pending.selected.modes = next.modes;
         pending.push_front(EffectBundle {
@@ -316,7 +317,6 @@ impl Stack {
 
     pub(crate) fn move_card_to_stack_from_hand(db: &mut Database, card: CardId) -> PendingEffects {
         db[card].cast_from = Some(CastFrom::Hand);
-        card.apply_modifiers_layered(db);
 
         let mut pending = PendingEffects::default();
         match Stack::prepare_card_for_stack(db, card, true) {

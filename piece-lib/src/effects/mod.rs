@@ -6,6 +6,7 @@ mod ban_attacking_this_turn;
 mod cascade;
 mod cast_selected;
 mod choose_attackers;
+mod choose_cast;
 mod clear_selected;
 mod clone_selected;
 mod complete_spell_resolution;
@@ -55,6 +56,7 @@ mod select_all;
 mod select_all_players;
 mod select_destinations;
 mod select_effect_controller;
+mod select_exiled_with_cascade_or_discover;
 mod select_for_each_player;
 mod select_mode;
 mod select_non_targeting;
@@ -62,6 +64,7 @@ mod select_source;
 mod select_target_controller;
 mod select_targets;
 mod select_top_of_library;
+mod shuffle_selected;
 mod spend_mana;
 mod tap;
 mod transform;
@@ -161,6 +164,7 @@ impl Options {
         Cascade(Cascade),
         CastSelected(CastSelected),
         ChooseAttackers(ChooseAttackers),
+        ChooseCast(ChooseCast),
         ClearSelected(ClearSelected),
         CloneSelected(CloneSelected),
         CompleteSpellResolution(CompleteSpellResolution),
@@ -214,9 +218,11 @@ impl Options {
         SelectNonTargeting(SelectNonTargeting),
         SelectSource(SelectSource),
         SelectEffectController(SelectEffectController),
+        SelectExiledWithCascadeOrDiscover(SelectExiledWithCascadeOrDiscover),
         SelectTargetController(SelectTargetController),
         SelectTargets(SelectTargets),
         SelectTopOfLibrary(SelectTopOfLibrary),
+        ShuffleSelected(ShuffleSelected),
         SpendMana(SpendMana),
         Tap(Tap),
         Transform(Transform),

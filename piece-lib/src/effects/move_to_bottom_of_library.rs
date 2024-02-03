@@ -27,10 +27,7 @@ impl EffectBehaviors for MoveToBottomOfLibrary {
             {
                 let target = target.id(db).unwrap();
                 pending.extend(Battlefields::maybe_leave_battlefield(db, target));
-                target.move_to_limbo(db);
-                if !db[target].token {
-                    Library::place_on_bottom(db, db[target].owner, target);
-                }
+                Library::place_on_bottom(db, db[target].owner, target);
             }
         }
 

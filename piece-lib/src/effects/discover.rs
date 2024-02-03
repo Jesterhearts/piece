@@ -1,11 +1,11 @@
-use rand::{seq::SliceRandom, thread_rng};
-
 use crate::{
     effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
-    library::Library,
     protogen::{
-        effects::{CastSelected, Discover, MoveToBottomOfLibrary, PopSelected},
+        effects::{
+            ChooseCast, ClearSelected, Discover, Duration, MoveToBottomOfLibrary, PopSelected,
+            PushSelected, SelectExiledWithCascadeOrDiscover, ShuffleSelected,
+        },
         targets::Location,
     },
     stack::{Selected, TargetType},
@@ -21,15 +21,17 @@ impl EffectBehaviors for Discover {
     ) -> Vec<ApplyResult> {
         let discover_value = self.count.count(db, source, selected);
         let source = source.unwrap();
+        let owner = db[source].owner;
 
         let mut casting = vec![];
-        let mut exiled = vec![];
-        while let Some(card) = Library::exile_top_card(
-            db,
-            db[source].owner,
-            source,
-            Some(ExileReason::CascadeOrDiscover),
-        ) {
+        while let Some(card) = db.all_players[owner].library.draw() {
+            card.move_to_exile(
+                db,
+                source,
+                Some(ExileReason::CascadeOrDiscover),
+                Duration::PERMANENTLY,
+            );
+
             if !card.is_land(db) && card.faceup_face(db).cost.cmc() < discover_value as usize {
                 casting.push(Selected {
                     location: Some(Location::IN_EXILE),
@@ -39,29 +41,29 @@ impl EffectBehaviors for Discover {
                 });
                 break;
             }
-            exiled.push(Selected {
-                location: Some(Location::IN_EXILE),
-                target_type: TargetType::Card(card),
-                targeted: false,
-                restrictions: vec![],
-            });
         }
 
-        let mut results = vec![ApplyResult::PushBack(EffectBundle {
-            push_on_enter: Some(casting),
+        let mut results = vec![ApplyResult::PushFront(EffectBundle {
             effects: vec![
-                CastSelected::default().into(),
+                PushSelected::default().into(),
+                ClearSelected::default().into(),
+                SelectExiledWithCascadeOrDiscover::default().into(),
+                ShuffleSelected::default().into(),
+                MoveToBottomOfLibrary::default().into(),
                 PopSelected::default().into(),
             ],
             source: Some(source),
             ..Default::default()
         })];
 
-        exiled.shuffle(&mut thread_rng());
         results.push(ApplyResult::PushBack(EffectBundle {
-            push_on_enter: Some(exiled),
+            push_on_enter: Some(casting),
             effects: vec![
-                MoveToBottomOfLibrary::default().into(),
+                ChooseCast {
+                    discovering: true,
+                    ..Default::default()
+                }
+                .into(),
                 PopSelected::default().into(),
             ],
             source: Some(source),

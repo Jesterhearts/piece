@@ -15,7 +15,7 @@ impl EffectBehaviors for Mill {
         let target = selected.first().unwrap().player().unwrap();
         let count = self.count.count(db, source, selected);
         for _ in 0..count {
-            if let Some(card) = db.all_players[target].library.top() {
+            if let Some(card) = db.all_players[target].library.draw() {
                 card.move_to_graveyard(db);
             }
         }
