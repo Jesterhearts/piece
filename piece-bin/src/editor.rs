@@ -196,11 +196,6 @@ impl App {
                                 ui.label(comment);
                             });
                         }
-                        if let Some(hidden) = comment::exts::hidden.get(options) {
-                            if hidden {
-                                return;
-                            }
-                        }
                     }
                 }
 
@@ -504,7 +499,56 @@ impl App {
                         RuntimeType::F32 => todo!(),
                         RuntimeType::F64 => todo!(),
                         RuntimeType::Bool => todo!(),
-                        RuntimeType::String => todo!(),
+                        RuntimeType::String => {
+                            let mut repeated = target.mut_repeated(message);
+
+                            ui.vertical(|ui| {
+                                let key = format!("{}_repeated_{}", prefix, target.full_name());
+                                let text = dynamic_repeated_fields.entry(key.clone()).or_default();
+
+                                if repeated.is_empty() {
+                                    text.clear();
+                                }
+
+                                for (idx, text) in text.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                        ui.label("value:");
+                                        let sense =
+                                            ui.add(TextEdit::singleline(text).desired_width(200.0));
+
+                                        if sense.changed() || sense.lost_focus() {
+                                            repeated
+                                                .set(idx, ReflectValueBox::String(text.clone()));
+                                        }
+                                    });
+                                }
+
+                                ui.horizontal(|ui| {
+                                    if ui.button("+").clicked() {
+                                        text.push(Default::default());
+                                        repeated.push(ReflectValueBox::String(String::default()));
+                                    }
+                                    if ui.button("-").clicked() {
+                                        let mut copy = repeated
+                                            .into_iter()
+                                            .map(|v| v.to_str().unwrap().to_string())
+                                            .collect_vec();
+
+                                        text.pop();
+                                        copy.pop();
+
+                                        repeated.clear();
+                                        for value in copy {
+                                            repeated.push(ReflectValueBox::String(value));
+                                        }
+                                    }
+                                    if ui.button("reset").clicked() {
+                                        text.clear();
+                                        repeated.clear();
+                                    }
+                                });
+                            });
+                        }
                         RuntimeType::VecU8 => todo!(),
                         RuntimeType::Enum(descriptor) => {
                             ui.vertical(|ui| {
@@ -595,6 +639,19 @@ impl App {
                                                 .fields()
                                                 .map(|field| field.name().to_case(Case::Title))
                                                 .collect_vec()
+                                        })
+                                        .filter(|oneof| {
+                                            let field = descriptor
+                                                .field_by_name(&oneof.to_case(Case::Snake))
+                                                .unwrap();
+                                            let options = field.proto().options.get_or_default();
+
+                                            if let Some(hidden) = comment::exts::hidden.get(options)
+                                            {
+                                                !hidden
+                                            } else {
+                                                true
+                                            }
                                         })
                                         .collect_vec();
 
