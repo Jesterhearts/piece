@@ -442,7 +442,7 @@ impl eframe::App for App {
                 .ai
                 .priority(&mut self.database, &mut PendingEffects::default());
 
-            while pending.options(&self.database).is_empty() {
+            while !pending.wants_input(&self.database) {
                 let result = pending.resolve(&mut self.database, None);
                 if result == SelectionResult::Complete {
                     break;
@@ -459,7 +459,7 @@ impl eframe::App for App {
 
         let enabled = self.to_resolve.is_none()
             && self.adding_card.is_none()
-            && self.database.turn.active_player() == self.player1;
+            && self.database.turn.priority_player() == self.player1;
 
         let frame = Frame {
             fill: Color32::from_hex("#141414").unwrap(),
@@ -485,7 +485,7 @@ impl eframe::App for App {
 
                         if self.database.turn.passed_full_priority_round() {
                             let mut pending = Turn::step(&mut self.database);
-                            while pending.options(&self.database).is_empty() {
+                            while !pending.wants_input(&self.database) {
                                 let result = pending.resolve(&mut self.database, None);
                                 if result == SelectionResult::Complete {
                                     break;
@@ -530,7 +530,7 @@ impl eframe::App for App {
                             && ctx.input(|input| input.key_released(egui::Key::Num4)))
                     {
                         let mut pending = Player::draw(self.player1, 1);
-                        while pending.options(&self.database).is_empty() {
+                        while !pending.wants_input(&self.database) {
                             let result = pending.resolve(&mut self.database, None);
                             if result == SelectionResult::Complete {
                                 break;
@@ -721,7 +721,7 @@ impl eframe::App for App {
                     && Turn::can_cast(&self.database, card)
                 {
                     let mut pending = Player::play_card(&mut self.database, self.player1, card);
-                    while pending.options(&self.database).is_empty() {
+                    while !pending.wants_input(&self.database) {
                         let result = pending.resolve(&mut self.database, None);
                         if result == SelectionResult::Complete {
                             break;
@@ -752,7 +752,7 @@ impl eframe::App for App {
                             selected,
                         );
 
-                        while pending.options(&self.database).is_empty() {
+                        while !pending.wants_input(&self.database) {
                             let result = pending.resolve(&mut self.database, None);
                             if result == SelectionResult::Complete {
                                 break;
@@ -896,7 +896,7 @@ impl eframe::App for App {
             if resolving.priority(&self.database) == self.player2 {
                 let mut pending = self.ai.priority(&mut self.database, resolving);
 
-                while pending.options(&self.database).is_empty() {
+                while !pending.wants_input(&self.database) {
                     let result = pending.resolve(&mut self.database, None);
                     if result == SelectionResult::Complete {
                         break;
@@ -958,7 +958,7 @@ impl eframe::App for App {
                         match resolving.resolve(&mut self.database, choice) {
                             SelectionResult::Complete => {
                                 let mut pending = Battlefields::check_sba(&mut self.database);
-                                while pending.options(&self.database).is_empty() {
+                                while !pending.wants_input(&self.database) {
                                     let result = pending.resolve(&mut self.database, None);
                                     if result == SelectionResult::Complete {
                                         break;
@@ -1129,7 +1129,7 @@ fn cleanup_stack(
     organizing_stack: &mut bool,
 ) {
     let mut pending = Stack::resolve_1(db);
-    while pending.options(db).is_empty() {
+    while !pending.wants_input(db) {
         let result = pending.resolve(db, None);
         if result == SelectionResult::Complete {
             break;
@@ -1138,7 +1138,7 @@ fn cleanup_stack(
 
     if pending.is_empty() {
         pending = Battlefields::check_sba(db);
-        while pending.options(db).is_empty() {
+        while !pending.wants_input(db) {
             let result = pending.resolve(db, None);
             if result == SelectionResult::Complete {
                 break;

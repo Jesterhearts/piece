@@ -47,6 +47,8 @@ impl AI {
                 assert!(pending.options(db).is_empty());
 
                 let result = pending.resolve(db, None);
+                assert_eq!(result, SelectionResult::TryAgain);
+                let result = pending.resolve(db, None);
                 assert_eq!(result, SelectionResult::Complete);
 
                 if let Some(card) = db.hand[self.player].iter().find(|card| !card.is_land(db)) {
