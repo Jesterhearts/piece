@@ -17,12 +17,13 @@ use crate::{
 impl EffectBehaviors for Discard {
     fn wants_input(
         &self,
-        _db: &Database,
-        _source: Option<CardId>,
-        _already_selected: &[Selected],
+        db: &Database,
+        source: Option<CardId>,
+        selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        let count = self.count.count(db, source, selected);
+        count != (self.cards.len() as i32)
     }
 
     fn options(
@@ -89,7 +90,7 @@ impl EffectBehaviors for Discard {
             Log::discarded(db, target)
         }
 
-        vec![ApplyResult::PushBack(EffectBundle {
+        vec![ApplyResult::PushFront(EffectBundle {
             source,
             effects: vec![
                 MoveToGraveyard::default().into(),

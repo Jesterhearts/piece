@@ -19,7 +19,7 @@ impl EffectBehaviors for SacrificePermanent {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        self.selected.is_none()
     }
 
     fn options(

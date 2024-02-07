@@ -15,7 +15,7 @@ impl EffectBehaviors for SelectDestinations {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        (self.placing as usize) < self.destinations.len()
     }
 
     fn options(

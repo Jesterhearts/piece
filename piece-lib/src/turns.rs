@@ -9,7 +9,10 @@ use crate::{
     log::{Log, LogId},
     player::{AllPlayers, Owner, Player},
     protogen::{
-        effects::{ChooseAttackers, Dest, MoveToGraveyard, PopSelected, SelectDestinations},
+        effects::{
+            count::{self, Fixed},
+            ChooseAttackers, Count, Discard, PopSelected,
+        },
         targets::Location,
         triggers::TriggerSource,
         types::Type,
@@ -373,25 +376,21 @@ impl Turn {
                 if in_hand.len() > hand_size {
                     let discard = in_hand.len() - hand_size;
                     results.push_back(EffectBundle {
-                        push_on_enter: Some(
-                            in_hand
-                                .iter()
-                                .copied()
-                                .map(|card| Selected {
-                                    location: Some(Location::IN_HAND),
-                                    target_type: TargetType::Card(card),
-                                    targeted: false,
-                                    restrictions: vec![],
-                                })
-                                .collect_vec(),
-                        ),
+                        push_on_enter: Some(vec![Selected {
+                            location: None,
+                            target_type: TargetType::Player(player),
+                            targeted: false,
+                            restrictions: vec![],
+                        }]),
                         effects: vec![
-                            SelectDestinations {
-                                destinations: vec![Dest {
-                                    count: discard as u32,
-                                    destination: Some(MoveToGraveyard::default().into()),
+                            Discard {
+                                count: protobuf::MessageField::some(Count {
+                                    count: Some(count::Count::Fixed(Fixed {
+                                        count: discard as i32,
+                                        ..Default::default()
+                                    })),
                                     ..Default::default()
-                                }],
+                                }),
                                 ..Default::default()
                             }
                             .into(),

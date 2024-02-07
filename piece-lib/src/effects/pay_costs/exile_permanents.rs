@@ -17,7 +17,7 @@ impl EffectBehaviors for ExilePermanents {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        self.selected.len() != (self.maximum as usize)
     }
 
     fn options(

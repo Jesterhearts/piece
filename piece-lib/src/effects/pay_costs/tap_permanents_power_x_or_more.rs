@@ -16,12 +16,17 @@ use crate::{
 impl EffectBehaviors for TapPermanentsPowerXOrMore {
     fn wants_input(
         &self,
-        _db: &Database,
+        db: &Database,
         _source: Option<CardId>,
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        let tapped = self
+            .selected
+            .iter()
+            .map(|card| CardId::from(card.clone()).power(db).unwrap_or_default())
+            .sum::<i32>();
+        tapped < (self.x_is as i32)
     }
 
     fn options(

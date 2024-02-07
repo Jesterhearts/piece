@@ -14,12 +14,23 @@ use crate::{
 impl EffectBehaviors for ExilePermanentsCmcX {
     fn wants_input(
         &self,
-        _db: &Database,
+        db: &Database,
         _source: Option<CardId>,
-        _already_selected: &[Selected],
+        selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        let exiled = self
+            .selected
+            .iter()
+            .map(|card| db[CardId::from(card.clone())].modified_cost.cmc())
+            .sum::<usize>();
+
+        let x_is = match self.x_is.enum_value().unwrap() {
+            XIs::MANA_VALUE_OF_SELECTED => db[selected.first().unwrap().id(db).unwrap()]
+                .modified_cost
+                .cmc(),
+        };
+        exiled < x_is
     }
 
     fn options(

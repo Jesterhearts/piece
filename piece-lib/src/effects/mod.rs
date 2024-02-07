@@ -657,7 +657,7 @@ impl From<EffectBundle> for PendingEffects {
 impl Count {
     pub(crate) fn count(
         &self,
-        db: &mut Database,
+        db: &Database,
         source: Option<CardId>,
         selected: &[Selected],
     ) -> i32 {
@@ -683,10 +683,11 @@ impl Count {
             count::Count::NumberOfCountersOnSelected(counters) => {
                 if let Some(first) = selected.first() {
                     if let Some(card) = first.id(db) {
-                        *db[card]
+                        db[card]
                             .counters
-                            .entry(counters.type_.enum_value().unwrap())
-                            .or_default() as i32
+                            .get(&counters.type_.enum_value().unwrap())
+                            .copied()
+                            .unwrap_or_default() as i32
                     } else {
                         todo!("number of counters on players")
                     }

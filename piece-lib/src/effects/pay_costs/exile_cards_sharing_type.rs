@@ -20,7 +20,7 @@ impl EffectBehaviors for ExileCardsSharingType {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        self.selected.len() != (self.count as usize)
     }
 
     fn options(

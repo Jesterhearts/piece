@@ -14,10 +14,10 @@ impl EffectBehaviors for ChooseCast {
         &self,
         _db: &Database,
         _source: Option<CardId>,
-        _already_selected: &[Selected],
+        selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        true
+        self.chosen.len() != selected.len()
     }
 
     fn options(
