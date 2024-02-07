@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::SelectAllPlayers,
     stack::{Selected, TargetType},
@@ -12,7 +12,7 @@ impl EffectBehaviors for SelectAllPlayers {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         for player in db.all_players.all_players() {
             selected.push(Selected {
                 location: None,

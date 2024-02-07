@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
-    },
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::{
         effects::{ChooseAttackers, DeclareAttacking, PopSelected},
@@ -94,9 +92,9 @@ impl EffectBehaviors for ChooseAttackers {
         _source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         vec![
-            ApplyResult::PushBack(EffectBundle {
+            EffectBundle {
                 push_on_enter: Some(
                     self.targets
                         .iter()
@@ -109,8 +107,8 @@ impl EffectBehaviors for ChooseAttackers {
                         .collect_vec(),
                 ),
                 ..Default::default()
-            }),
-            ApplyResult::PushBack(EffectBundle {
+            },
+            EffectBundle {
                 push_on_enter: Some(
                     self.attackers
                         .iter()
@@ -127,7 +125,7 @@ impl EffectBehaviors for ChooseAttackers {
                     PopSelected::default().into(),
                 ],
                 ..Default::default()
-            }),
+            },
         ]
     }
 }

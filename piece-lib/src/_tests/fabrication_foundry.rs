@@ -43,15 +43,13 @@ fn exile_return_to_battlefield() -> anyhow::Result<()> {
     // Choose gy target
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
-    // Pay white
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Choose exiled card
     let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, SelectionResult::TryAgain);
-    // Complete
+    // Pay white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
+    // Complete
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);

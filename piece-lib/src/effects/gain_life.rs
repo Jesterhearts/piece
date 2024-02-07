@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::GainLife,
 };
@@ -11,7 +11,7 @@ impl EffectBehaviors for GainLife {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let target = selected.first().unwrap().player().unwrap();
         let count = self.count.count(db, source, selected);
         db.all_players[target].life_total += count;

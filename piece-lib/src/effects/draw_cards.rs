@@ -1,5 +1,5 @@
 use crate::{
-    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{handle_replacements, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::{replacement_effect::Replacing, DrawCards, Effect, PlayerLoses},
@@ -13,7 +13,7 @@ impl EffectBehaviors for DrawCards {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut results = vec![];
         let target = selected.first().unwrap().player().unwrap();
         for _ in 0..self.count.count(db, source, selected) {
@@ -21,7 +21,7 @@ impl EffectBehaviors for DrawCards {
                 if let Some(card) = db.all_players[target].library.draw() {
                     card.move_to_hand(db);
                 } else {
-                    results.push(ApplyResult::PushBack(EffectBundle {
+                    results.push(EffectBundle {
                         push_on_enter: Some(vec![Selected {
                             location: None,
                             target_type: TargetType::Player(target),
@@ -34,7 +34,7 @@ impl EffectBehaviors for DrawCards {
                         }],
                         source,
                         ..Default::default()
-                    }));
+                    });
                 }
             } else {
                 results.extend(handle_replacements(

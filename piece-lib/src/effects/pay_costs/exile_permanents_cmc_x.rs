@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -111,7 +111,7 @@ impl EffectBehaviors for ExilePermanentsCmcX {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         for card in self.selected.iter() {
             let card: CardId = card.clone().into();
             card.move_to_exile(db, source.unwrap(), None, Duration::PERMANENTLY)

@@ -5,8 +5,10 @@ activated_abilities:
       mana_cost: '{4}{W}'
       tap: true
     additional_costs:
-      - effect: !SelectSource {}
-      - effect: !Sacrifice {}
+      pay_costs:
+        - cost: !SacrificePermanent
+            restrictions:
+              - restriction: !Self_
     effects:
       - effect: !Discover
           count:

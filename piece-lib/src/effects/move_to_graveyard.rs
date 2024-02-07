@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     battlefield::Battlefields,
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{effects::MoveToGraveyard, triggers::TriggerSource},
@@ -16,7 +16,7 @@ impl EffectBehaviors for MoveToGraveyard {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let results = move_card_to_graveyard(db, selected, source);
         for card in db.cards.keys().copied().collect_vec() {
             card.apply_modifiers_layered(db);
@@ -30,7 +30,7 @@ pub(crate) fn move_card_to_graveyard(
     db: &mut Database,
     selected: &mut SelectedStack,
     source: Option<CardId>,
-) -> Vec<ApplyResult> {
+) -> Vec<EffectBundle> {
     let mut pending = vec![];
 
     for target in selected.iter() {

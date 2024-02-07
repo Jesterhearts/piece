@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
-    },
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::{CastSelected, ChooseCast, MoveToHand, PopSelected},
     stack::{Selected, TargetType},
@@ -70,7 +68,7 @@ impl EffectBehaviors for ChooseCast {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut results = vec![];
         if self.discovering {
             let not_cast = selected
@@ -83,16 +81,16 @@ impl EffectBehaviors for ChooseCast {
                 })
                 .cloned()
                 .collect_vec();
-            results.push(ApplyResult::PushFront(EffectBundle {
+            results.push(EffectBundle {
                 push_on_enter: Some(not_cast),
                 effects: vec![MoveToHand::default().into(), PopSelected::default().into()],
                 ..Default::default()
-            }));
+            });
         }
 
         for card in self.chosen.iter().rev() {
             let card: CardId = card.clone().into();
-            results.push(ApplyResult::PushFront(EffectBundle {
+            results.push(EffectBundle {
                 push_on_enter: Some(vec![Selected {
                     location: card.location(db),
                     target_type: TargetType::Card(card),
@@ -108,7 +106,7 @@ impl EffectBehaviors for ChooseCast {
                     PopSelected::default().into(),
                 ],
                 ..Default::default()
-            }));
+            });
         }
 
         results

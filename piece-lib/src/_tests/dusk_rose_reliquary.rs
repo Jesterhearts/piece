@@ -56,6 +56,8 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     //resolve casting the reliquary
@@ -100,8 +102,8 @@ fn exiles_until_leaves_battlefield() -> anyhow::Result<()> {
 
     // Activate the ability
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::PendingChoice);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
@@ -196,6 +198,8 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     //resolve casting the reliquary
@@ -209,12 +213,12 @@ fn destroyed_during_etb_does_not_exile() -> anyhow::Result<()> {
 
     // Activate the ability
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card4, 0);
-    // Pay the mana
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::PendingChoice);
     // Target the reliquary
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    // Pay the mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);

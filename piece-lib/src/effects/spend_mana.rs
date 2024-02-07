@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     player::Player,
     protogen::{
@@ -17,7 +17,7 @@ impl EffectBehaviors for SpendMana {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let player = db[source.unwrap()].controller;
         let spent = Player::spend_mana(
             db,

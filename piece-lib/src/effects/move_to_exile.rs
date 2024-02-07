@@ -1,6 +1,6 @@
 use crate::{
     battlefield::Battlefields,
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     log::LogId,
     protogen::{
@@ -18,7 +18,7 @@ impl EffectBehaviors for MoveToExile {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut pending = vec![];
 
         for target in selected.iter() {

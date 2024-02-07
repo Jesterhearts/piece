@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
-    },
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::LogId,
     player::Controller,
@@ -74,10 +72,10 @@ impl EffectBehaviors for TapPermanent {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let card: CardId = self.selected.as_ref().cloned().unwrap().into();
 
-        vec![ApplyResult::PushBack(EffectBundle {
+        vec![EffectBundle {
             push_on_enter: Some(vec![Selected {
                 location: card.location(db),
                 target_type: TargetType::Card(card),
@@ -87,7 +85,7 @@ impl EffectBehaviors for TapPermanent {
             effects: vec![Tap::default().into(), PopSelected::default().into()],
             source,
             ..Default::default()
-        })]
+        }]
     }
 }
 

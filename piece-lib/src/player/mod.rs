@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     battlefield::Battlefields,
-    effects::{ApplyResult, EffectBundle, PendingEffects},
+    effects::{EffectBundle, PendingEffects},
     in_play::{CardId, Database},
     library::Library,
     log::{Log, LogEntry, LogId},
@@ -517,11 +517,11 @@ impl Player {
         true
     }
 
-    pub(crate) fn manifest(db: &mut Database, player: Owner) -> Option<ApplyResult> {
+    pub(crate) fn manifest(db: &mut Database, player: Owner) -> Option<EffectBundle> {
         if let Some(manifested) = db.all_players[player].library.draw() {
             db[manifested].manifested = true;
             db[manifested].facedown = true;
-            Some(ApplyResult::PushBack(EffectBundle {
+            Some(EffectBundle {
                 push_on_enter: Some(vec![Selected {
                     location: Some(Location::IN_HAND),
                     target_type: TargetType::Card(manifested),
@@ -533,7 +533,7 @@ impl Player {
                     PopSelected::default().into(),
                 ],
                 ..Default::default()
-            }))
+            })
         } else {
             None
         }

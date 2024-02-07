@@ -6,8 +6,10 @@ activated_abilities:
   - cost:
       mana_cost: '{2}'
     additional_costs:
-      - effect: !SelectSource {}
-      - effect: !DiscardSelected {}
+      pay_costs:
+        - cost: !Discard
+            restrictions:
+              - restriction: !Self_
     effects:
       - effect: !Cycling
           subtypes: Island

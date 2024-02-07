@@ -51,6 +51,8 @@ fn ability() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::resolve_1(&mut db);

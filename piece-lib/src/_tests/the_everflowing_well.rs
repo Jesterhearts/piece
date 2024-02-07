@@ -41,8 +41,6 @@ fn copies_permanent() -> anyhow::Result<()> {
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
     let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     let mut results = Stack::move_card_to_stack_from_hand(&mut db, elesh);

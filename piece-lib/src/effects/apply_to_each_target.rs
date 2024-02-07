@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::{ApplyToEachTarget, PopSelected},
 };
@@ -11,17 +11,17 @@ impl EffectBehaviors for ApplyToEachTarget {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut results = vec![];
         for target in selected.current.clone().into_iter().rev() {
             let mut effects = self.effects.clone();
             effects.push(PopSelected::default().into());
-            results.push(ApplyResult::PushFront(EffectBundle {
+            results.push(EffectBundle {
                 push_on_enter: Some(vec![target]),
                 effects,
                 source,
                 ..Default::default()
-            }));
+            });
         }
 
         results

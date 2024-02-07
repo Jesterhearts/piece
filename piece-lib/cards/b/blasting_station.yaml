@@ -13,12 +13,11 @@ activated_abilities:
         restrictions:
           - restriction: !CanBeDamaged {}
     additional_costs:
-      - effect: !PayCosts
-          pay_costs:
-            - cost: !SacrificePermanent
-                restrictions:
-                  - restriction: !OfType
-                      types: Creature
+      pay_costs:
+        - cost: !SacrificePermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Creature
     effects:
       - effect: !DamageSelected
           count:

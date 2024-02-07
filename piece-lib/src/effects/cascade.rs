@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     protogen::{
         effects::{
@@ -18,7 +18,7 @@ impl EffectBehaviors for Cascade {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let source = source.unwrap();
         let owner = db[source].owner;
         let mana_value = db[source].modified_cost.cmc() + source.get_x(db);
@@ -43,7 +43,7 @@ impl EffectBehaviors for Cascade {
             }
         }
 
-        let mut results = vec![ApplyResult::PushFront(EffectBundle {
+        let mut results = vec![EffectBundle {
             effects: vec![
                 PushSelected::default().into(),
                 ClearSelected::default().into(),
@@ -54,14 +54,14 @@ impl EffectBehaviors for Cascade {
             ],
             source: Some(source),
             ..Default::default()
-        })];
+        }];
 
-        results.push(ApplyResult::PushFront(EffectBundle {
+        results.push(EffectBundle {
             push_on_enter: Some(casting),
             effects: vec![ChooseCast::default().into(), PopSelected::default().into()],
             source: Some(source),
             ..Default::default()
-        }));
+        });
 
         results
     }

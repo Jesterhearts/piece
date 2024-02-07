@@ -1,5 +1,5 @@
 use crate::{
-    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{handle_replacements, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::{replacement_effect::Replacing, CreateToken, MoveToBattlefield},
@@ -13,13 +13,13 @@ impl EffectBehaviors for CreateToken {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let owner = selected.first().unwrap().player().unwrap();
         if skip_replacement {
             let card = CardId::upload_token(db, owner, self.token.as_ref().cloned().unwrap());
 
             vec![
-                ApplyResult::PushFront(EffectBundle {
+                EffectBundle {
                     push_on_enter: Some(vec![Selected {
                         location: None,
                         target_type: TargetType::Card(card),
@@ -29,11 +29,11 @@ impl EffectBehaviors for CreateToken {
                     source,
                     effects: vec![MoveToBattlefield::default().into()],
                     ..Default::default()
-                }),
-                ApplyResult::PushFront(EffectBundle {
+                },
+                EffectBundle {
                     push_on_enter: Some(vec![]),
                     ..Default::default()
-                }),
+                },
             ]
         } else {
             handle_replacements(

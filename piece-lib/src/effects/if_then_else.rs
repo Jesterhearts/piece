@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::IfThenElse,
@@ -12,7 +12,7 @@ impl EffectBehaviors for IfThenElse {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         if selected.iter().all(|selected| match &selected.target_type {
             crate::stack::TargetType::Card(card) => {
                 card.passes_restrictions(db, LogId::current(db), source.unwrap(), &self.if_)
@@ -27,17 +27,17 @@ impl EffectBehaviors for IfThenElse {
                 &self.if_,
             ),
         }) {
-            vec![ApplyResult::PushFront(EffectBundle {
+            vec![EffectBundle {
                 source,
                 effects: self.then.clone(),
                 ..Default::default()
-            })]
+            }]
         } else {
-            vec![ApplyResult::PushFront(EffectBundle {
+            vec![EffectBundle {
                 source,
                 effects: self.else_.clone(),
                 ..Default::default()
-            })]
+            }]
         }
     }
 }

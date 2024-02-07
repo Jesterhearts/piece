@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     protogen::{
         effects::{
@@ -18,7 +18,7 @@ impl EffectBehaviors for Discover {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let discover_value = self.count.count(db, source, selected);
         let source = source.unwrap();
         let owner = db[source].owner;
@@ -43,7 +43,7 @@ impl EffectBehaviors for Discover {
             }
         }
 
-        let mut results = vec![ApplyResult::PushFront(EffectBundle {
+        let mut results = vec![EffectBundle {
             effects: vec![
                 PushSelected::default().into(),
                 ClearSelected::default().into(),
@@ -54,9 +54,9 @@ impl EffectBehaviors for Discover {
             ],
             source: Some(source),
             ..Default::default()
-        })];
+        }];
 
-        results.push(ApplyResult::PushBack(EffectBundle {
+        results.push(EffectBundle {
             push_on_enter: Some(casting),
             effects: vec![
                 ChooseCast {
@@ -68,7 +68,7 @@ impl EffectBehaviors for Discover {
             ],
             source: Some(source),
             ..Default::default()
-        }));
+        });
 
         results
     }

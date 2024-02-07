@@ -15,20 +15,19 @@ static_abilities:
                 value: 3
 activated_abilities:
   - additional_costs:
-      - effect: !PayCosts
-          pay_costs:
-            - cost: !TapPermanent
-                restrictions:
-                  - restriction: !OfType
-                      types: Artifact, Creature
-            - cost: !TapPermanent
-                restrictions:
-                  - restriction: !OfType
-                      types: Artifact, Creature
-            - cost: !TapPermanent
-                restrictions:
-                  - restriction: !OfType
-                      types: Artifact, Creature
+      pay_costs:
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature
     effects:
       - effect: !SelectSource {}
       - effect: !AddCounters

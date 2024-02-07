@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::SelectMode,
     stack::Selected,
@@ -49,7 +49,7 @@ impl EffectBehaviors for SelectMode {
         _source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         // Already selected modes
         vec![]
     }

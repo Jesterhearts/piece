@@ -1,7 +1,7 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
-    protogen::effects::PayCost,
+    protogen::effects::{pay_cost::Cost, PayCost},
     stack::Selected,
 };
 
@@ -39,6 +39,11 @@ impl EffectBehaviors for PayCost {
         option: Option<usize>,
         selected: &mut SelectedStack,
     ) -> SelectionResult {
+        if !self.saved_selected {
+            selected.save();
+            self.saved_selected = true;
+        }
+
         self.cost
             .as_mut()
             .unwrap()
@@ -51,13 +56,26 @@ impl EffectBehaviors for PayCost {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let results = self
             .cost
             .as_mut()
             .unwrap()
             .apply(db, source, selected, skip_replacement);
 
+        if self.saved_selected {
+            let _ = selected.restore();
+        }
+
         results
+    }
+}
+
+impl<T: Into<Cost>> From<T> for PayCost {
+    fn from(value: T) -> Self {
+        Self {
+            cost: Some(value.into()),
+            ..Default::default()
+        }
     }
 }

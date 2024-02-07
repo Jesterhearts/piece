@@ -4,7 +4,7 @@ use itertools::Itertools;
 use protobuf::Enum;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -27,7 +27,7 @@ impl EffectBehaviors for DeclareAttacking {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let attackers = selected.restore();
 
         let mut results = vec![];
@@ -132,7 +132,7 @@ impl EffectBehaviors for DeclareAttacking {
             db[attacker].attacking = Some(target);
 
             if !attacker.vigilance(db) {
-                results.push(ApplyResult::PushFront(EffectBundle {
+                results.push(EffectBundle {
                     push_on_enter: Some(vec![Selected {
                         location: Some(Location::ON_BATTLEFIELD),
                         target_type: TargetType::Card(attacker),
@@ -142,7 +142,7 @@ impl EffectBehaviors for DeclareAttacking {
                     source: Some(attacker),
                     effects: vec![Tap::default().into()],
                     ..Default::default()
-                }));
+                });
             }
         }
 

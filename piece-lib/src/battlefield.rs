@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 use crate::{
     abilities::Ability,
-    effects::{ApplyResult, EffectBundle, PendingEffects, SelectedStack},
+    effects::{EffectBundle, PendingEffects, SelectedStack},
     in_play::{CardId, Database},
     player::{Controller, Owner},
     protogen::{
@@ -307,7 +307,7 @@ impl Battlefields {
         }
 
         if let Some(additional_costs) = ability.additional_costs(db) {
-            bundle.effects.extend(additional_costs.iter().cloned());
+            bundle.effects.push(additional_costs.clone().into());
         }
 
         if let Some(cost) = ability.cost(db) {
@@ -380,7 +380,7 @@ impl Battlefields {
     pub(crate) fn maybe_leave_battlefield(
         db: &mut Database,
         target: CardId,
-    ) -> Option<ApplyResult> {
+    ) -> Option<EffectBundle> {
         if !db.battlefield[db[target].controller].contains(&target) {
             return None;
         }
@@ -432,14 +432,14 @@ impl Battlefields {
         if selected.is_empty() {
             None
         } else {
-            Some(ApplyResult::PushBack(EffectBundle {
+            Some(EffectBundle {
                 push_on_enter: Some(selected),
                 effects: vec![
                     MoveToBattlefield::default().into(),
                     PopSelected::default().into(),
                 ],
                 ..Default::default()
-            }))
+            })
         }
     }
 }

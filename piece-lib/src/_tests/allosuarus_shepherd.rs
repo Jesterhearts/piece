@@ -40,8 +40,6 @@ fn modify_base_p_t_works() -> anyhow::Result<()> {
     card.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Pay costs
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);

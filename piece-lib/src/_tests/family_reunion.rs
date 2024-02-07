@@ -39,6 +39,9 @@ fn p1p1() -> anyhow::Result<()> {
     // Choose the mode
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
+    // Pay the costs
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
@@ -86,6 +89,9 @@ fn hexproof() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::PendingChoice);
     // Choose the mode
     let result = results.resolve(&mut db, Some(1));
+    assert_eq!(result, SelectionResult::TryAgain);
+    // Pay the costs
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);

@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
-    },
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -95,8 +93,8 @@ impl EffectBehaviors for TapPermanentsPowerXOrMore {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
-        vec![ApplyResult::PushBack(EffectBundle {
+    ) -> Vec<EffectBundle> {
+        vec![EffectBundle {
             push_on_enter: Some(
                 self.selected
                     .iter()
@@ -111,7 +109,7 @@ impl EffectBehaviors for TapPermanentsPowerXOrMore {
             effects: vec![Tap::default().into(), PopSelected::default().into()],
             source,
             ..Default::default()
-        })]
+        }]
     }
 }
 

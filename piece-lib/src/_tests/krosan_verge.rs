@@ -94,6 +94,8 @@ fn tutors() -> anyhow::Result<()> {
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
 
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);

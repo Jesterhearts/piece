@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::{Log, LogId},
     protogen::effects::SelectAll,
@@ -15,7 +15,7 @@ impl EffectBehaviors for SelectAll {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         for card in db.cards.keys().copied().collect_vec() {
             if card.passes_restrictions(db, LogId::current(db), source.unwrap(), &self.restrictions)
             {

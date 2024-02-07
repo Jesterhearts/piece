@@ -59,13 +59,15 @@ fn destroys_artifact() -> anyhow::Result<()> {
 
     // Activate the ability on the bear, targeting the banner
     let mut results = Battlefields::activate_ability(&mut db, &None, player1, card, 0);
-    // Pay the generic mana
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::PendingChoice);
+    // Target th banner
     let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, SelectionResult::TryAgain);
+    // Sacrifice the hammer
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
+    // Pay the generic mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);

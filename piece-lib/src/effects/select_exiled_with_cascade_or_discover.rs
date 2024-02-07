@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ExileReason},
     protogen::{effects::SelectExiledWithCascadeOrDiscover, targets::Location},
     stack::{Selected, TargetType},
@@ -12,7 +12,7 @@ impl EffectBehaviors for SelectExiledWithCascadeOrDiscover {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         selected.extend(
             db.exile
                 .exile_zones

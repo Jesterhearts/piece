@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     player::Player,
     protogen::effects::Manifest,
@@ -14,7 +14,7 @@ impl EffectBehaviors for Manifest {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let target = selected.first().unwrap().player().unwrap();
         Player::manifest(db, target).into_iter().collect_vec()
     }

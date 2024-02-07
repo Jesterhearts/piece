@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::SelectTargetController,
     stack::{Selected, TargetType},
@@ -12,7 +12,7 @@ impl EffectBehaviors for SelectTargetController {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let target = selected.first().unwrap().id(db).unwrap();
         selected.save();
         selected.clear();

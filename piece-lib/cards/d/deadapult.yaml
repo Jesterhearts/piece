@@ -11,12 +11,11 @@ activated_abilities:
         restrictions:
           - restriction: !CanBeDamaged {}
     additional_costs:
-      - effect: !PayCosts
-          pay_costs:
-            - cost: !SacrificePermanent
-                restrictions:
-                  - restriction: !OfType
-                      subtypes: Zombie
+      pay_costs:
+        - cost: !SacrificePermanent
+            restrictions:
+              - restriction: !OfType
+                  subtypes: Zombie
     effects:
       - effect: !DamageSelected
           count:

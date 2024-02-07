@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::RemoveCounters,
 };
@@ -11,7 +11,7 @@ impl EffectBehaviors for RemoveCounters {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let count = self.count.count(db, source, selected);
         let target = selected.first().unwrap().id(db).unwrap();
         *db[target]

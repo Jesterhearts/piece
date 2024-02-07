@@ -27,7 +27,7 @@ message Card {
       [(comment.comment) = "The aura modifiers associated with this card."];
 
   effects.SelectMode modes = 9;
-  repeated effects.Effect additional_costs = 10;
+  effects.PayCosts additional_costs = 10;
   effects.TargetSelection targets = 11;
   repeated effects.Effect effects = 12;
 

@@ -1,6 +1,6 @@
 use crate::{
     abilities::Ability,
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, CastFrom, Database},
     log::Log,
     protogen::{
@@ -17,7 +17,7 @@ impl EffectBehaviors for MoveToStack {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let targets = selected.restore();
         let casting = selected.pop().unwrap();
 

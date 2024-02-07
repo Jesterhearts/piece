@@ -124,12 +124,6 @@ pub enum SelectionResult {
 }
 
 #[derive(Debug)]
-pub enum ApplyResult {
-    PushFront(EffectBundle),
-    PushBack(EffectBundle),
-}
-
-#[derive(Debug)]
 pub enum Options {
     MandatoryList(Vec<(usize, String)>),
     OptionalList(Vec<(usize, String)>),
@@ -243,11 +237,13 @@ impl Options {
 )]
 #[enum_delegate::implement_for(crate::protogen::effects::pay_cost::Cost,
     enum Cost {
+        Discard(Discard),
         ExileCardsSharingType(ExileCardsSharingType),
         ExilePermanents(ExilePermanents),
         ExilePermanentsCmcX(ExilePermanentsCmcX),
         PayLife(PayLife),
         PayMana(PayMana),
+        RemoveCounters(RemoveCounters),
         SacrificePermanent(SacrificePermanent),
         TapPermanent(TapPermanent),
         TapPermanentsPowerXOrMore(TapPermanentsPowerXOrMore),
@@ -352,7 +348,7 @@ pub(crate) trait EffectBehaviors {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         skip_replacement: bool,
-    ) -> Vec<ApplyResult>;
+    ) -> Vec<EffectBundle>;
 
     /// Apply the replacement effects to the bundle.
     fn apply_replacement(&self, effect: Effect) -> Vec<Effect> {
@@ -451,25 +447,13 @@ impl PendingEffects {
         self.bundles.push_front(bundle);
     }
 
-    pub fn apply_result(&mut self, result: ApplyResult) {
-        match result {
-            ApplyResult::PushFront(bundle) => {
-                self.bundles.push_front(bundle);
-            }
-            ApplyResult::PushBack(bundle) => self.bundles.push_back(bundle),
-        }
+    pub fn apply_result(&mut self, result: EffectBundle) {
+        self.bundles.push_front(result);
     }
 
-    pub fn apply_results(&mut self, other: impl IntoIterator<Item = ApplyResult>) {
+    pub fn apply_results(&mut self, other: impl IntoIterator<Item = EffectBundle>) {
         for result in other.into_iter() {
-            match result {
-                ApplyResult::PushFront(bundle) => {
-                    self.bundles.push_front(bundle);
-                }
-                ApplyResult::PushBack(bundle) => {
-                    self.bundles.push_back(bundle);
-                }
-            }
+            self.bundles.push_front(result);
         }
     }
 
@@ -724,7 +708,7 @@ fn handle_replacements<T: Into<effect::Effect>>(
     replacing: Replacing,
     effect: T,
     passes_restrictions: impl Fn(CardId, &[Restriction]) -> bool,
-) -> Vec<ApplyResult> {
+) -> Vec<EffectBundle> {
     let replacements = db.replacement_abilities_watching(replacing);
     let replacements = replacements
         .into_iter()
@@ -738,7 +722,7 @@ fn handle_replacements<T: Into<effect::Effect>>(
         })
         .collect_vec();
 
-    vec![ApplyResult::PushFront(EffectBundle {
+    vec![EffectBundle {
         push_on_enter: Some(replacements),
         effects: vec![ReorderSelected {
             associated_effect: protobuf::MessageField::some(Effect {
@@ -750,7 +734,7 @@ fn handle_replacements<T: Into<effect::Effect>>(
         .into()],
         source,
         ..Default::default()
-    })]
+    }]
 }
 
 impl From<TargetSelection> for effect::Effect {

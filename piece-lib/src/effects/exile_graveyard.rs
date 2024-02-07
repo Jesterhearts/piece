@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::{Duration, ExileGraveyard},
 };
@@ -13,7 +13,7 @@ impl EffectBehaviors for ExileGraveyard {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         for target in selected.iter().map(|target| target.player().unwrap()) {
             for card in db
                 .owner_view_mut(target)

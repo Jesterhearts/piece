@@ -17,13 +17,12 @@ etb_ability:
             types: Creature
         - restriction: !OnBattlefield {}
   additional_costs:
-    - effect: !PayCosts
-        pay_costs:
-          - cost: !SacrificePermanent
-              restrictions:
-                - restriction: !OfType
-                    types: Artifact, Creature
-                - restriction: !Self_ {}
+    pay_costs:
+      - cost: !SacrificePermanent
+          restrictions:
+            - restriction: !OfType
+                types: Artifact, Creature
+            - restriction: !Self_ {}
   effects:
     - oracle_text: Put a +1/+1 counter on target creature
       effect: !ApplyToEachTarget

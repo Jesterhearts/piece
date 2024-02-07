@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::effects::ForEachManaOfSource,
 };
@@ -11,7 +11,7 @@ impl EffectBehaviors for ForEachManaOfSource {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut pending = vec![];
         let source = source.unwrap();
         if let Some(from_source) = db[source]
@@ -20,11 +20,11 @@ impl EffectBehaviors for ForEachManaOfSource {
             .copied()
         {
             for _ in 0..from_source {
-                pending.push(ApplyResult::PushFront(EffectBundle {
+                pending.push(EffectBundle {
                     effects: self.effects.to_vec(),
                     source: Some(source),
                     ..Default::default()
-                }));
+                });
             }
         }
 

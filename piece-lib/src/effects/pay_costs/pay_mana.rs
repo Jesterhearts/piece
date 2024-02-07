@@ -3,9 +3,7 @@ use itertools::Itertools;
 use protobuf::Enum;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
-    },
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -304,13 +302,13 @@ impl EffectBehaviors for PayMana {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         db[source.unwrap()].x_is = self.x_paid() as usize;
 
         let (mana_paid, mana_sources) = self.paying();
         source.unwrap().mana_from_source(db, &mana_sources);
 
-        vec![ApplyResult::PushBack(EffectBundle {
+        vec![EffectBundle {
             effects: vec![Effect {
                 effect: Some(
                     SpendMana {
@@ -325,7 +323,7 @@ impl EffectBehaviors for PayMana {
             }],
             source,
             ..Default::default()
-        })]
+        }]
     }
 }
 

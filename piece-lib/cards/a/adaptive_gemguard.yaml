@@ -5,14 +5,15 @@ cost:
 oracle_text: ''
 activated_abilities:
   - additional_costs:
-      - effect: !SelectTargets
-          count:
-            count: !Fixed
-              count: 2
-          restrictions:
-            - restriction: !OfType
-                types: Artifact, Creature
-      - effect: !Tap {}
+      pay_costs:
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature
+        - cost: !TapPermanent
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact, Creature
     effects:
       - effect: !ClearSelected {}
       - effect: !SelectSource {}

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    effects::{handle_replacements, ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{handle_replacements, EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{
@@ -25,7 +25,7 @@ impl EffectBehaviors for MoveToBattlefield {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         if skip_replacement {
             let mut pending = vec![];
             let adding_to_battlefield = selected.restore();
@@ -60,7 +60,7 @@ impl EffectBehaviors for MoveToBattlefield {
                         to_trigger.push(MoveToStack::default().into());
                         to_trigger.push(PopSelected::default().into());
 
-                        pending.push(ApplyResult::PushBack(EffectBundle {
+                        pending.push(EffectBundle {
                             push_on_enter: Some(vec![Selected {
                                 location: Some(Location::ON_BATTLEFIELD),
                                 target_type: TargetType::Ability {
@@ -73,7 +73,7 @@ impl EffectBehaviors for MoveToBattlefield {
                             source,
                             effects: to_trigger,
                             ..Default::default()
-                        }));
+                        });
                     }
 
                     for (listener, trigger) in

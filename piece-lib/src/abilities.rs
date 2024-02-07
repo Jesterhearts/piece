@@ -5,8 +5,8 @@ use crate::{
     protogen::{
         cost::{ability_restriction, AbilityCost},
         effects::{
-            static_ability, ActivatedAbility, Effect, EtbAbility, GainManaAbility, TargetSelection,
-            TriggeredAbility,
+            static_ability, ActivatedAbility, Effect, EtbAbility, GainManaAbility, PayCosts,
+            TargetSelection, TriggeredAbility,
         },
     },
     turns::Phase,
@@ -132,11 +132,12 @@ impl Ability {
         }
     }
 
-    pub(crate) fn additional_costs<'db>(&self, db: &'db Database) -> Option<&'db [Effect]> {
+    pub(crate) fn additional_costs<'db>(&'db self, db: &'db Database) -> Option<&'db PayCosts> {
         match self {
-            Ability::Activated(id) => Some(&db[*id].ability.additional_costs),
-            Ability::Mana(id) => Some(&db[*id].ability.additional_costs),
-            Ability::Etb(_) | Ability::TriggeredAbility(_) => None,
+            Ability::Activated(id) => db[*id].ability.additional_costs.as_ref(),
+            Ability::Mana(id) => db[*id].ability.additional_costs.as_ref(),
+            Ability::Etb(etb) => etb.additional_costs.as_ref(),
+            Ability::TriggeredAbility(_) => None,
         }
     }
 

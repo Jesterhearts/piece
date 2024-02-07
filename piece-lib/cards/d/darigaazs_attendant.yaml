@@ -6,8 +6,10 @@ mana_abilities:
   - cost:
       mana_cost: '{1}'
     additional_costs:
-      - !SelectSource {}
-      - !Sacrifice {}
+      pay_costs:
+        - cost: !SacrificePermanent
+            restrictions:
+              - restriction: !Self_
     effects:
       - effect: !GainMana
           gain: !Specific

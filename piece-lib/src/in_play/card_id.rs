@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     abilities::Ability,
     battlefield::Battlefields,
-    effects::ApplyResult,
+    effects::EffectBundle,
     in_play::{
         ActivatedAbilityId, CastFrom, Database, ExileReason, GainManaAbilityId, ModifierId,
         StaticAbilityId,
@@ -406,7 +406,7 @@ impl CardId {
         targets: Vec<Selected>,
         from: CastFrom,
         chosen_modes: Vec<usize>,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         if db.stack.split_second(db) {
             warn!("Skipping add to stack (split second)");
             return vec![];

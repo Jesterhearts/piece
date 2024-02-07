@@ -7,11 +7,12 @@ activated_abilities:
       mana_cost: '{W}{B}{G}'
       tap: true
     additional_costs:
-      - effect: !SelectSource {}
-      - effect: !Sacrifice {}
-      - effect: !ClearSelected {}
+      pay_costs:
+        - cost: !SacrificePermanent
+            restrictions:
+              - restriction: !Self_
     effects:
-      - effect: !SelectEffectController {}
+      - effect: !SelectEffectController
       - effect: !DrawCards
           count:
             count: !Fixed

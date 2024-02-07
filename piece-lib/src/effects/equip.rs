@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database, ModifierId},
     protogen::effects::{BattlefieldModifier, Duration, Equip},
 };
@@ -13,11 +13,17 @@ impl EffectBehaviors for Equip {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let source = source.unwrap();
         let Some(target) = selected.first() else {
             return vec![];
         };
+
+        for modifier in db.modifiers.keys().copied().collect_vec() {
+            if db[modifier].source == source {
+                modifier.deactivate(db);
+            }
+        }
 
         let target = target.id(db).unwrap();
         if !target.can_be_targeted(db, db[source].controller) {

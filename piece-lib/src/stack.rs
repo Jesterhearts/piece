@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     abilities::Ability,
-    effects::{ApplyResult, EffectBundle, PendingEffects, SelectedStack, SelectionResult},
+    effects::{EffectBundle, PendingEffects, SelectedStack, SelectionResult},
     in_play::{CardId, CastFrom, Database},
     log::{Log, LogId},
     player::Owner,
@@ -284,7 +284,7 @@ impl Stack {
         _db: &mut Database,
         listener: CardId,
         trigger: TriggeredAbility,
-    ) -> ApplyResult {
+    ) -> EffectBundle {
         let mut to_trigger = vec![
             Effect::from(PushSelected::default()),
             Effect::from(ClearSelected::default()),
@@ -299,7 +299,7 @@ impl Stack {
             effect: Some(MoveToStack::default().into()),
             ..Default::default()
         });
-        ApplyResult::PushBack(EffectBundle {
+        EffectBundle {
             push_on_enter: Some(vec![Selected {
                 location: Some(Location::ON_BATTLEFIELD),
                 target_type: TargetType::Ability {
@@ -312,17 +312,14 @@ impl Stack {
             source: Some(listener),
             effects: to_trigger,
             ..Default::default()
-        })
+        }
     }
 
     pub(crate) fn move_card_to_stack_from_hand(db: &mut Database, card: CardId) -> PendingEffects {
         db[card].cast_from = Some(CastFrom::Hand);
 
         let mut pending = PendingEffects::default();
-        match Stack::prepare_card_for_stack(db, card, true) {
-            ApplyResult::PushFront(bundle) => pending.push_front(bundle),
-            ApplyResult::PushBack(bundle) => pending.push_back(bundle),
-        }
+        pending.push_front(Stack::prepare_card_for_stack(db, card, true));
 
         pending
     }
@@ -332,7 +329,7 @@ impl Stack {
         source: CardId,
         targets: Vec<Selected>,
         chosen_modes: Vec<usize>,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         db.stack.entries.insert(
             StackId::new(),
             StackEntry {
@@ -381,7 +378,7 @@ impl Stack {
         source: CardId,
         ability: Ability,
         targets: Vec<Selected>,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         db.stack.entries.insert(
             StackId::new(),
             StackEntry {
@@ -417,7 +414,7 @@ impl Stack {
         db: &mut Database,
         card: CardId,
         pay_costs: bool,
-    ) -> ApplyResult {
+    ) -> EffectBundle {
         let mut to_cast = vec![
             Effect {
                 effect: Some(PushSelected::default().into()),
@@ -434,7 +431,13 @@ impl Stack {
         if let Some(target) = card.faceup_face(db).targets.as_ref() {
             to_cast.push(target.clone().into());
         }
-        to_cast.extend(card.faceup_face(db).additional_costs.iter().cloned());
+        to_cast.push(
+            card.faceup_face(db)
+                .additional_costs
+                .get_or_default()
+                .clone()
+                .into(),
+        );
         if pay_costs {
             to_cast.push(Effect {
                 effect: Some(
@@ -476,7 +479,7 @@ impl Stack {
             ..Default::default()
         });
 
-        ApplyResult::PushBack(EffectBundle {
+        EffectBundle {
             push_on_enter: Some(vec![Selected {
                 location: Some(Location::IN_HAND),
                 target_type: TargetType::Card(card),
@@ -486,7 +489,7 @@ impl Stack {
             effects: to_cast,
             source: Some(card),
             ..Default::default()
-        })
+        }
     }
 }
 

@@ -1,9 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{
-        ApplyResult, EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult,
-    },
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     log::LogId,
     protogen::{effects::TutorLibrary, targets::Location},
@@ -66,7 +64,7 @@ impl EffectBehaviors for TutorLibrary {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut results = vec![];
 
         for (card, dest) in self
@@ -84,7 +82,7 @@ impl EffectBehaviors for TutorLibrary {
                 db[card].revealed = true;
             }
 
-            results.push(ApplyResult::PushFront(EffectBundle {
+            results.push(EffectBundle {
                 push_on_enter: Some(vec![Selected {
                     location: Some(Location::IN_LIBRARY),
                     target_type: TargetType::Card(card),
@@ -94,7 +92,7 @@ impl EffectBehaviors for TutorLibrary {
                 source,
                 effects: vec![dest.clone().into()],
                 ..Default::default()
-            }));
+            });
         }
 
         results

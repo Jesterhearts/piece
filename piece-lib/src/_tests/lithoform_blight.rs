@@ -38,6 +38,8 @@ fn works() -> anyhow::Result<()> {
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);

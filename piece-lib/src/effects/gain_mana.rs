@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::effects::{gain_mana::Gain, GainMana},
     stack::Selected,
@@ -64,7 +64,7 @@ impl EffectBehaviors for GainMana {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         match self.gain.as_ref().unwrap() {
             Gain::Specific(gain) => {
                 let controller = db[source.unwrap()].controller;

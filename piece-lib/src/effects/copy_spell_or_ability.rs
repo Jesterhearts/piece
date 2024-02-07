@@ -1,6 +1,6 @@
 use crate::{
     abilities::Ability,
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     protogen::{
         effects::{ClearSelected, CopySpellOrAbility, MoveToStack, PopSelected, PushSelected},
@@ -16,7 +16,7 @@ impl EffectBehaviors for CopySpellOrAbility {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let target = selected.first().unwrap();
 
         let TargetType::Stack(target) = target.target_type else {
@@ -31,7 +31,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                 let copy = card.token_copy_of(db, controller);
                 db[copy].x_is = db[card].x_is;
 
-                results.push(ApplyResult::PushBack(EffectBundle {
+                results.push(EffectBundle {
                     push_on_enter: Some(vec![Selected {
                         location: Some(Location::IN_STACK),
                         target_type: TargetType::Card(copy),
@@ -47,11 +47,11 @@ impl EffectBehaviors for CopySpellOrAbility {
                         PopSelected::default().into(),
                     ],
                     ..Default::default()
-                }));
+                });
             }
             Entry::Ability { source, ability } => match &ability {
                 Ability::Activated(activated) => {
-                    results.push(ApplyResult::PushBack(EffectBundle {
+                    results.push(EffectBundle {
                         push_on_enter: Some(vec![Selected {
                             location: Some(Location::IN_STACK),
                             target_type: TargetType::Ability {
@@ -75,7 +75,7 @@ impl EffectBehaviors for CopySpellOrAbility {
                             PopSelected::default().into(),
                         ],
                         ..Default::default()
-                    }));
+                    });
                 }
                 _ => todo!(),
             },

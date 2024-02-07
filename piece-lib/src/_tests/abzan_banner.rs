@@ -45,9 +45,11 @@ fn sacrifice_draw_card() -> anyhow::Result<()> {
     card.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 1);
+    // Pay banner cost
+    let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
-    // Pay banner cost
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
     let result = results.resolve(&mut db, None);
@@ -97,8 +99,6 @@ fn add_mana() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
 
     let result = results.resolve(&mut db, Some(0));
-    assert_eq!(result, SelectionResult::TryAgain);
-    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::Complete);
 
     assert_eq!(

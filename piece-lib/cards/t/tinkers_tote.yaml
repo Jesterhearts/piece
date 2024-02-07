@@ -23,9 +23,10 @@ activated_abilities:
   - cost:
       mana_cost: '{W}'
     additional_costs:
-      - effect: !SelectSource {}
-      - effect: !Sacrifice {}
-      - effect: !ClearSelected {}
+      pay_costs:
+        - cost: !SacrificePermanent
+            restrictions:
+              - restriction: !Self_
     effects:
       - effect: !SelectEffectController {}
       - effect: !GainLife

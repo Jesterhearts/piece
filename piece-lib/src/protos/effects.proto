@@ -334,7 +334,7 @@ message ActivatedAbility {
   cost.AbilityCost cost = 1;
 
   TargetSelection targets = 2;
-  repeated Effect additional_costs = 3;
+  PayCosts additional_costs = 3;
   repeated Effect effects = 4;
 
   string oracle_text = 5;
@@ -347,14 +347,14 @@ message EtbAbility {
   string oracle_text = 1;
   SelectMode modes = 2;
   TargetSelection targets = 3;
-  repeated Effect additional_costs = 4;
+  PayCosts additional_costs = 4;
   repeated effects.Effect effects = 5;
 }
 
 message GainManaAbility {
   cost.AbilityCost cost = 1;
 
-  repeated Effect additional_costs = 2;
+  PayCosts additional_costs = 2;
   repeated Effect effects = 3;
 
   string oracle_text = 4;
@@ -501,6 +501,7 @@ message DestroySelected {}
 message Discard {
   Count count = 1;
   repeated ids.CardId cards = 2;
+  repeated targets.Restriction restrictions = 3;
 }
 
 message DiscardSelected {}
@@ -633,6 +634,13 @@ message PayCost {
     bool reduced = 7 [(comment.hidden) = true];
   }
 
+  message RemoveCounters {
+    repeated targets.Restriction restrictions = 1;
+    counters.Counter counter = 2;
+    Count count = 3;
+    ids.CardId selected = 4 [(comment.hidden) = true];
+  }
+
   message SacrificePermanent {
     repeated targets.Restriction restrictions = 1;
     ids.CardId selected = 2 [(comment.hidden) = true];
@@ -649,15 +657,19 @@ message PayCost {
     repeated ids.CardId selected = 3 [(comment.hidden) = true];
   }
 
+  bool saved_selected = 4;
+
   oneof cost {
-    ExileCardsSharingType exile_cards_sharing_type = 4;
-    ExilePermanents exile_permanents = 5;
-    ExilePermanentsCmcX exile_permanents_cmc_x = 6;
-    PayLife pay_life = 7;
-    PayMana pay_mana = 8;
-    SacrificePermanent sacrifice_permanent = 9;
-    TapPermanent tap_permanent = 10;
-    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 11;
+    Discard discard = 5;
+    ExileCardsSharingType exile_cards_sharing_type = 6;
+    ExilePermanents exile_permanents = 7;
+    ExilePermanentsCmcX exile_permanents_cmc_x = 8;
+    PayLife pay_life = 9;
+    PayMana pay_mana = 10;
+    RemoveCounters remove_counters = 11;
+    SacrificePermanent sacrifice_permanent = 12;
+    TapPermanent tap_permanent = 13;
+    TapPermanentsPowerXOrMore tap_permanents_power_x_or_more = 14;
   }
 }
 

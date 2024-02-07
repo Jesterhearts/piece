@@ -47,8 +47,6 @@ fn untaps() -> anyhow::Result<()> {
     creature.move_to_battlefield(&mut db);
 
     let mut results = Battlefields::activate_ability(&mut db, &None, player, card, 0);
-    let result = results.resolve(&mut db, None);
-    assert_eq!(result, SelectionResult::TryAgain);
     // Target the player
     let result = results.resolve(&mut db, Some(1));
     assert_eq!(result, SelectionResult::TryAgain);

@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::LogId,
     protogen::effects::{CounterSpell, MoveToGraveyard},
@@ -12,7 +12,7 @@ impl EffectBehaviors for CounterSpell {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         selected.current.retain(|target| {
             target
                 .id(db)
@@ -20,10 +20,10 @@ impl EffectBehaviors for CounterSpell {
                 .can_be_countered(db, LogId::current(db), source.unwrap(), &[])
         });
 
-        vec![ApplyResult::PushBack(EffectBundle {
+        vec![EffectBundle {
             source,
             effects: vec![MoveToGraveyard::default().into()],
             ..Default::default()
-        })]
+        }]
     }
 }

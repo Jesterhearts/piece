@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, Database},
     log::Log,
     protogen::effects::SelectSource,
@@ -13,7 +13,7 @@ impl EffectBehaviors for SelectSource {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         Log::card_chosen(db, source.unwrap());
         selected.push(Selected {
             location: source.unwrap().location(db),

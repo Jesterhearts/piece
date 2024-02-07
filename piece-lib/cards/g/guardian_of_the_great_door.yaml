@@ -5,24 +5,23 @@ oracle_text: As an additional cost to cast this spell, tap four untapped artifac
 cost:
   mana_cost: '{W}{W}'
 additional_costs:
-  - effect: !PayCosts
-      pay_costs:
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature, Land
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature, Land
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature, Land
-        - cost: !TapPermanent
-            restrictions:
-              - restriction: !OfType
-                  types: Artifact, Creature, Land
+  pay_costs:
+    - cost: !TapPermanent
+        restrictions:
+          - restriction: !OfType
+              types: Artifact, Creature, Land
+    - cost: !TapPermanent
+        restrictions:
+          - restriction: !OfType
+              types: Artifact, Creature, Land
+    - cost: !TapPermanent
+        restrictions:
+          - restriction: !OfType
+              types: Artifact, Creature, Land
+    - cost: !TapPermanent
+        restrictions:
+          - restriction: !OfType
+              types: Artifact, Creature, Land
 power: 4
 toughness: 4
 keywords: Flying

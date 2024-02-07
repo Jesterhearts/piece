@@ -4,20 +4,21 @@ use aho_corasick::AhoCorasick;
 use itertools::Itertools;
 use protobuf::Enum;
 
-use crate::{
-    protogen::effects::Effect,
-    protogen::{
-        card::Card,
-        cost::{AbilityCost, ManaCost},
-        effects::{
-            count::Fixed,
-            create_token::{self, Token},
-            ActivatedAbility, Count, Explore, Sacrifice, SelectSource, SelectTargets,
-        },
-        empty::Empty,
-        targets::{restriction::OfType, Restriction},
-        types::{Subtype, Type, Typeline},
+use crate::protogen::{
+    card::Card,
+    cost::{AbilityCost, ManaCost},
+    effects::{
+        count::Fixed,
+        create_token::{self, Token},
+        pay_cost::SacrificePermanent,
+        ActivatedAbility, Count, Effect, Explore, PayCosts, SelectTargets,
     },
+    empty::Empty,
+    targets::{
+        restriction::{self, OfType},
+        Restriction,
+    },
+    types::{Subtype, Type, Typeline},
 };
 
 impl Card {
@@ -79,16 +80,19 @@ impl From<Token> for Card {
                         restrictions: vec![],
                         ..Default::default()
                     }),
-                    additional_costs: vec![
-                        Effect {
-                            effect: Some(SelectSource::default().into()),
+                    additional_costs: protobuf::MessageField::some(PayCosts {
+                        pay_costs: vec![SacrificePermanent {
+                            restrictions: vec![Restriction {
+                                restriction: Some(restriction::Restriction::Self_(
+                                    Default::default(),
+                                )),
+                                ..Default::default()
+                            }],
                             ..Default::default()
-                        },
-                        Effect {
-                            effect: Some(Sacrifice::default().into()),
-                            ..Default::default()
-                        },
-                    ],
+                        }
+                        .into()],
+                        ..Default::default()
+                    }),
                     effects: vec![
                         Effect {
                             effect: Some(

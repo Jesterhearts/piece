@@ -1,5 +1,5 @@
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, EffectBundle, SelectedStack},
+    effects::{EffectBehaviors, EffectBundle, SelectedStack},
     in_play::{CardId, CastFrom, Database},
     log::Log,
     protogen::{
@@ -19,7 +19,7 @@ impl EffectBehaviors for CompleteSpellResolution {
         source: Option<CardId>,
         _selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let card = source.unwrap();
         Log::spell_resolved(db, card);
 
@@ -58,10 +58,11 @@ impl EffectBehaviors for CompleteSpellResolution {
                 ]
             };
 
-            vec![ApplyResult::PushFront(EffectBundle {
+            vec![EffectBundle {
                 effects,
+                source,
                 ..Default::default()
-            })]
+            }]
         } else {
             vec![]
         }

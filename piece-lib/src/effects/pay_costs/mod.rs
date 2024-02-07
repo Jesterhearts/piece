@@ -4,12 +4,13 @@ mod exile_permanents_cmc_x;
 mod pay_cost;
 mod pay_life;
 mod pay_mana;
+mod remove_counters;
 mod sacrifice_permanent;
 mod tap_permanent;
 mod tap_permanents_power_x_or_more;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     player::Owner,
     protogen::effects::PayCosts,
@@ -24,7 +25,8 @@ impl EffectBehaviors for PayCosts {
         already_selected: &[Selected],
         modes: &[usize],
     ) -> bool {
-        self.pay_costs[self.paying as usize].wants_input(db, source, already_selected, modes)
+        !self.pay_costs.is_empty()
+            && self.pay_costs[self.paying as usize].wants_input(db, source, already_selected, modes)
     }
 
     fn priority(
@@ -85,7 +87,7 @@ impl EffectBehaviors for PayCosts {
         source: Option<CardId>,
         selected: &mut SelectedStack,
         skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         let mut results = vec![];
 
         if self.apply_or_else {

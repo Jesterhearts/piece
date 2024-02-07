@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    effects::{ApplyResult, EffectBehaviors, Options, SelectedStack, SelectionResult},
+    effects::{EffectBehaviors, EffectBundle, Options, SelectedStack, SelectionResult},
     in_play::{CardId, Database},
     protogen::{effects::Cycling, targets::Location},
     stack::{Selected, TargetType},
@@ -73,7 +73,7 @@ impl EffectBehaviors for Cycling {
         _source: Option<CardId>,
         selected: &mut SelectedStack,
         _skip_replacement: bool,
-    ) -> Vec<ApplyResult> {
+    ) -> Vec<EffectBundle> {
         if !self.types.is_empty() || !self.subtypes.is_empty() {
             let tutoring = selected
                 .restore()

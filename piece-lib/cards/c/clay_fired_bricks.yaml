@@ -25,19 +25,21 @@ activated_abilities:
     cost:
       mana_cost: '{5}{W}{W}'
     additional_costs:
-      - effect: !PayCosts
-          pay_costs:
-            - cost: !ExilePermanents
-                restrictions:
-                  - restriction: !OfType
-                      types: Artifact
-                  - restriction: !Location
-                      locations: On Battlefield, In Graveyard
-                  - restriction: !NotSelf {}
-                minimum: 1
-                maximum: 1
-      - effect: !SelectSource
-      - effect: !MoveToExile
+      pay_costs:
+        - cost: !ExilePermanents
+            restrictions:
+              - restriction: !OfType
+                  types: Artifact
+              - restriction: !Location
+                  locations: On Battlefield, In Graveyard
+              - restriction: !NotSelf {}
+            minimum: 1
+            maximum: 1
+        - cost: !ExilePermanents
+            restrictions:
+              - restriction: !Self_ {}
+            minimum: 1
+            maximum: 1
     effects:
       - effect: !Transform {}
       - effect: !MoveToBattlefield {}

@@ -40,6 +40,8 @@ fn cost_reducer() -> anyhow::Result<()> {
     // Target the bear
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay white mana
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);

@@ -5,11 +5,11 @@ use crate::{
     in_play::{CardId, Database},
     log::LogId,
     player::Controller,
-    protogen::effects::{pay_cost::SacrificePermanent, MoveToGraveyard, PopSelected},
+    protogen::effects::{self, pay_cost::RemoveCounters, PopSelected},
     stack::{Selected, TargetType},
 };
 
-impl EffectBehaviors for SacrificePermanent {
+impl EffectBehaviors for RemoveCounters {
     fn wants_input(
         &self,
         _db: &Database,
@@ -17,7 +17,7 @@ impl EffectBehaviors for SacrificePermanent {
         _already_selected: &[Selected],
         _modes: &[usize],
     ) -> bool {
-        self.selected.is_none()
+        true
     }
 
     fn options(
@@ -83,7 +83,12 @@ impl EffectBehaviors for SacrificePermanent {
                 restrictions: vec![],
             }]),
             effects: vec![
-                MoveToGraveyard::default().into(),
+                effects::RemoveCounters {
+                    counter: self.counter,
+                    count: self.count.clone(),
+                    ..Default::default()
+                }
+                .into(),
                 PopSelected::default().into(),
             ],
             source,
@@ -92,7 +97,7 @@ impl EffectBehaviors for SacrificePermanent {
     }
 }
 
-impl SacrificePermanent {
+impl RemoveCounters {
     fn compute_targets<'db>(
         &'db self,
         db: &'db Database,
@@ -109,13 +114,9 @@ impl SacrificePermanent {
                     LogId::current(db),
                     source.unwrap(),
                     &self.restrictions,
-                ) && !already_selected.iter().any(|selected| {
-                    if let Some(id) = selected.id(db) {
-                        id == *card
-                    } else {
-                        false
-                    }
-                })
+                ) && !already_selected
+                    .iter()
+                    .any(|selected| selected.id(db).unwrap() == *card)
             })
     }
 }

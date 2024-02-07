@@ -45,6 +45,8 @@ fn x_is_zero() -> anyhow::Result<()> {
     // Choose the target
     let result = results.resolve(&mut db, Some(0));
     assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
+    assert_eq!(result, SelectionResult::TryAgain);
     // Pay the white
     let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::PendingChoice);
@@ -115,6 +117,8 @@ fn x_is_two() -> anyhow::Result<()> {
     assert_eq!(result, SelectionResult::TryAgain);
     // Choose the target
     let result = results.resolve(&mut db, Some(0));
+    assert_eq!(result, SelectionResult::TryAgain);
+    let result = results.resolve(&mut db, None);
     assert_eq!(result, SelectionResult::TryAgain);
     // Pay the white
     let result = results.resolve(&mut db, None);

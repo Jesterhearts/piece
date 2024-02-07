@@ -34,11 +34,10 @@ activated_abilities:
                       - restriction: !OfType
                           types: Artifact, Enchantment
                 additional_costs:
-                  - effect: !PushSelected {}
-                  - effect: !ClearSelected {}
-                  - effect: !SelectSource {}
-                  - effect: !Sacrifice {}
-                  - effect: !PopSelected {}
+                  pay_costs:
+                    - cost: !SacrificePermanent
+                        restrictions:
+                          - restriction: !Self_
                 effects:
                   - effect: !DestroySelected
                 oracle_text: '{3}, {T}, Sacrifice Deconstruction Hammer: Destroy Target
